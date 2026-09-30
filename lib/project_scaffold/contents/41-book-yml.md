@@ -146,7 +146,7 @@ typography:
     placement: sides            # center: 中央 / sides: 左右
 ```
 
-標準添付書体は、明朝体（Zen Old Mincho）・ゴシック体（Zen Kaku Gothic New）・丸ゴシック体（Zen Maru Gothic）・プログラミング用フォント（HackGen35 Console NF）の四種類です。これ以外のフォント名を指定すると、Google Fonts からの自動取得を試みます（Google Fonts の豊富な書体を活かして、個性的な書籍を執筆されるのも良いかと思います）。
+標準添付書体は、明朝体（Zen Old Mincho）・ゴシック体（Zen Kaku Gothic New）・丸ゴシック体（Zen Maru Gothic）・プログラミング用フォント（HackGen35 Console NF）の四種類です。これ以外のフォント名を指定すると、Google Fonts からの自動取得を試みます。Google Fonts の書体を選べば、本の雰囲気に合わせた紙面を作れます。
 
 ### output — 出力設定
 
@@ -171,6 +171,8 @@ output:
     bleed: 3mm              # 塗り足し幅（既定: 3mm）
     crop_marks: true        # トンボを付けるか（既定: true）
     full_bleed: false       # 本文にフチなし（塗り足しまで届く）要素があるか（既定: false）
+    cover_bleed: scale      # 表紙の塗り足し: scale（拡大して流用・既定）/ keep（拡大しない）
+    icc_profile:            # CMYK 変換の ICC プロファイル（空なら同梱の Japan Color 2001 Coated）
 
   epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
     embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
@@ -190,7 +192,7 @@ output:
 | `epub` | 電子書籍（クリーン EPUB。楽天 Kobo / Apple Books 向け） |
 | `kindle` | Amazon Kindle 用ファイル（KPF。中間 EPUB から自動変換） |
 
-:::{.column}
+:::{.note}
 **`epub` と `kindle` の違い**
 
 同じ電子書籍でも、配信先によって最適な作り方が異なります。Vivlio Starter は両者を別ターゲットとして分離しています。
@@ -201,22 +203,21 @@ output:
 両方を同時に出力したい場合は `targets: epub, kindle` のように指定します。
 :::
 
-`cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
+`cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は @chapref:ch-cover を参照してください。
 
-PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は「ビルド」の章を参照してください。
+PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は @chapref:ch-build を参照してください。
 
 [^type3-font]: Type 3 は、文字の形を PDF 内の描画命令で定義するフォント形式です。
 
-:::{.column}
+:::{.note}
 **`print_pdf.full_bleed` — 入稿用 PDF の生成方式**
 
 既定（`false`）では、入稿用 PDF は閲覧用 PDF から高速に導出されます。本文が閲覧用とまったく同じレンダリング由来になるため、ページずれや内容差が起きず、ビルド時間も大幅に短くなります。
 
-ただし、閲覧用 PDF は仕上がりサイズで裁たれていて塗り足し（裁ち落とし）部分を復元できません。**紙の端まで届く画像や背景（フチなし要素）が本文にある本**では `full_bleed: true` を指定してください。従来どおり塗り足し付きで個別にレンダリングされ、フチなし要素が白フチ（裁ち落とし事故）になるのを防げます。
+ただし、閲覧用 PDF は仕上がりサイズで裁たれていて塗り足し（裁ち落とし）部分を復元できません。**紙の端まで届く画像や背景（フチなし要素）が本文にある本**では `full_bleed: true` を指定してください。入稿用 PDF を塗り足し付きで組み直すので、フチなし要素が白フチ（裁ち落とし事故）になるのを防げます。
 :::
 
-:::{.column}
-**PDF プレビュー設定（macOS のみ）**
+#### `pdf_preview` — ビルド後に開く PDF の位置（macOS のみ）
 
 `pdf_preview` セクションでは、`vs build` 後に自動表示する PDF のウィンドウ位置を設定できます。デュアルモニター環境でサブモニターに表示させたい場合などに便利です。
 
@@ -226,7 +227,6 @@ output:
     close_existing_windows: true
     window_bounds: "{0, 0, 1280, 960}"
 ```
-:::
 
 ### legal — 免責・商標
 
@@ -259,7 +259,7 @@ verify:
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は「ビルド」の章を参照してください。
+外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は @chapref:ch-build を参照してください。
 
 ## 機能別の詳細設定
 
@@ -267,7 +267,7 @@ verify:
 
 ### index_glossary / index / glossary — 索引・用語集
 
-索引・用語集を有効にするか、候補をどの程度拾うかを指定します。索引語の選び方そのものは、前章の「索引・用語集機能」で説明しています。
+索引・用語集を有効にするか、候補をどの程度拾うかを指定します。主な設定は次のとおりです。主要参照の出し方などを含む全体と、索引語の選び方は @chapref:ch-index-glossary で説明しています。
 
 ```yaml
 index_glossary:
@@ -289,8 +289,6 @@ glossary:
   max_definition_length: 500
 ```
 
-詳細なワークフローは「索引・用語集機能」の章を参照してください。
-
 索引ライブラリ（用語集の `[g]` と棄却語を書籍間で持ち運ぶ仕組み）に設定は要りません。`vs index:export` / `vs index:import` は既定で `index_library.yml` を読み書きし、別の場所を使いたいときは `vs index:export ~/vivlio/shared.yml` のように引数でパスを渡します。
 
 ### metrics — メトリクス基準値
@@ -299,9 +297,8 @@ glossary:
 
 ```yaml
 metrics:
-  use: standard    # compact / handy / standard / commercial / heavy / author_custom
-                   # relative … 絶対の目安でなく、その本自身の章の中央値と比べる
-  exclude_chapters: [00, 90-98, 99]   # 評価から除外する章番号
+  use: standard                      # 下の表から選ぶ
+  exclude_chapters: [00, 90-98, 99]  # 警告と比較から外す章番号
 ```
 
 選ぶ目安は**本全体の本文字数**（コードと記法を除いた地の文の量）です。ページ数は判型・余白・書体・図版の量で変わるため、参考値として併記しています。
@@ -314,9 +311,11 @@ metrics:
 | `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
 | `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
 | `author_custom` | — | 自分で基準値を定義したい場合 |
-| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「原稿の分量と難度の計測」の章） |
+| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は @chapref:ch-metrics） |
 
-`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「原稿の分量と難度の計測」の章を参照してください。
+`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは @chapref:ch-metrics を参照してください。
+
+`exclude_chapters` に挙げた章は、分量の警告（✅ 💡）と文章の質の警告（🤔）、章間のばらつきの比較から外れます。章別の一覧には表示されますが、印は付きません。前書き・付録・後書きのように、短いことに意味がある章を外すための設定です。既定は `[00, 90-98, 99]`（前書き・付録・後書き）で、章番号と `90-98` のような範囲で書きます。本文の章を外したいときも、ここへ番号を足します。
 
 ### lint / spellcheck — 文章校正
 
@@ -337,7 +336,7 @@ spellcheck:
   check_code_blocks: false # コードブロック内をチェック対象にするか
 ```
 
-上の値がいずれも既定です。技術書では和欧間のスペースを入れる書き方が普通なので、`allow_space_*` は最初から許容してあります。`arabic-kanji-numbers`（`一つ → 1つ`）を切ってあるのは、`prh`（`一つ → ひとつ`）と指摘がぶつかるためです。
+上の値がいずれも既定です。技術書では和欧間のスペースを入れる書き方が普通なので、`allow_space_*` は最初から許容してあります。`arabic-kanji-numbers`（`一つ → 1つ`）を切ってあるのは、逆を向く `kansuji-counter-suffix`（`1つ → 一つ`）と指摘がぶつかるためです。既定では、数を漢数字で書く側に合わせています。
 
 ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、個別の語を指摘させたくないときは専用の除外ファイルに書きます。
 
@@ -348,7 +347,7 @@ spellcheck:
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
-詳細は「文章校正」の章を参照してください。
+詳細は @chapref:ch-lint を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 
@@ -372,4 +371,4 @@ pdf_read:
     inline_image_text: include   # include / exclude / captionize（イラスト内テキストの扱い）
 ```
 
-詳細は「PDF からの原稿の取り出し」の章を参照してください。
+詳細は @chapref:ch-pdf-read を参照してください。

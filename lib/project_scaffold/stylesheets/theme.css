@@ -27,7 +27,7 @@
   --accent-indigo:        #4f46e5;
 
   --accent-navy:          #1d4ed8;
-  --accent-blue:          #0ea5e9;
+  --accent-blue:          #0186d8;
   --accent-cyan:          #06b6d4;
 
   --accent-teal:          #0d9488;
@@ -45,13 +45,13 @@
   --accent-purple:        #7c3aed;
   --accent-indigo:        #4f46e5;
   --accent-navy:          #1d4ed8;
-  --accent-blue:          #0ea5e9;
+  --accent-blue:          #0186d8;
   --accent-cyan:          #06b6d4;
   --accent-teal:          #0d9488;
   --accent-mint:          #10b981;
   --accent-green:         #15803d;
   --accent-lime:          #65a30d; */
-  --theme-accent:         var(--accent-yellow); /* config/book.yml の theme.color 設定により自動更新 */
+  --theme-accent:         var(--accent-green); /* config/book.yml の theme.color 設定により自動更新 */
 
   /* カラートークン（共通） */
   --color-text:            #000;

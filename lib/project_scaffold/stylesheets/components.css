@@ -604,3 +604,27 @@ body.vs-kindle .book-card::after { content: ""; display: block; clear: both; }
    無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */
 body.vs-kindle img.vs-math-inline { max-height: 1.8em; width: auto; }
 body.vs-kindle figure.vs-math-display img { max-width: 100%; height: auto; }
+
+/* =====================================================================
+   相互参照（@pageref・@chapref のページ番号と見出しのアンカー）
+   - 前書き・後書きからも章を参照するので、本文・付録だけが読む
+     chapter-common.css ではなく、全部が読むここに置く
+   ===================================================================== */
+
+/* @pageref・@chapref のページ番号（PDF のみ）。EPUB リーダーは target-counter を解釈できず
+   content 宣言ごと破棄・Kindle は ::after 自体を無視するため、リフローでは自動的に
+   「タイトルのみのリンク」へ劣化する（at-directive-tier1-spec §1.1）。 */
+a.pageref::after {
+  content: "（p." target-counter(attr(href url), page) "）";
+}
+
+/* 前付け（00-preface）はローマ数字のノンブルなので、参照もローマ数字で出す（索引と同じ） */
+a.pageref.frontmatter::after {
+  content: "（p." target-counter(attr(href url), page, lower-roman) "）";
+}
+
+/* 見出しラベル（`## タイトル @id`）と章題（暗黙の章ラベル）が残すアンカー。紙面には何も出さない。 */
+.vs-sec-anchor {
+  display: inline;
+}
+

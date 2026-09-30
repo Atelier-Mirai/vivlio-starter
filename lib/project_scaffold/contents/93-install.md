@@ -17,7 +17,7 @@ bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 
 スクリプトは Xcode Command Line Tools の確認と導入案内から始め、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。
 
-:::{.column}
+:::{.memo}
 **ターミナルの開き方（macOS）**
 
 Spotlight から: `Cmd + Space` →「Terminal」と入力 → Enter。
@@ -60,9 +60,9 @@ gem install query-stream        # データ展開機能
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
-| rouge | `gem install rouge` | コードブロック言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
+| Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
 | Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
@@ -182,7 +182,7 @@ ruby -v
 4) Vivliostyle CLI と Vivlio Starter
 
 ```bash
-npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli
+npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli @vscode/vscode-languagedetection
 gem install vivlio-starter
 ```
 
@@ -233,13 +233,13 @@ vs --version
 | ImageMagick の WebP 変換が失敗 | WebP 非対応ビルド | `brew reinstall imagemagick` |
 | Google Fonts の SSL エラーが解消しない | 証明書パスが未反映 | シェルを再起動して `SSL_CERT_FILE` が有効になっているか確認 |
 
-:::{.column}
+:::{.tip}
 **まず `vs doctor` を試してください**
 
-ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは「環境の診断と更新」の章で説明しています。
+ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは @chapref:ch-doctor で説明しています。
 :::
 
-:::{.column}
+:::{.note}
 **GitHub の 100MB 制約について**
 
 GitHub には 100MB を超えるファイルを通常の Git でプッシュできません。生成する PDF の名前は `project.name` と `project.version` で決まり、`output.pdf.compress: true` の場合は末尾に `_compressed` が付きます。PDF をリポジトリに含めるなら、`.gitignore` の末尾に `!*.pdf` を追記します。容量が大きくなる場合は、リリースページへの添付や手元での保管も検討してください。

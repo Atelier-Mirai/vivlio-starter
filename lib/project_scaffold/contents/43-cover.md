@@ -4,7 +4,7 @@
 一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の SVG や PNG を用意する場合も、準備から生成・確認までの流れは共通です。
 :::
 
-ソース画像は `covers/` に置き、生成された PDF や JPEG は `.cache/vs/covers/` に保存されます。どれが元のデザインで、どれが配布用の生成物かを分けて扱えます。
+表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙だけは、プロジェクト直下に `vivlio_starter_frontcover_v1.0.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
 
 ## カバーテーマの選択
 
@@ -14,14 +14,14 @@
 
 ```yaml
 output:
-  # 開発者提供のデザインを使う場合
+  # 同梱のデザインを使う場合
   cover: light   # 明るいテーマ
   # cover: dark  # 暗いテーマ
 
   # 著者が用意した独自デザインを使う場合
   # cover: floral    # covers/frontcover_floral.png または frontcover_floral.svg を使用
   # cover: mandala   # covers/frontcover_mandala.png または frontcover_mandala.svg を使用
-  # cover: master    # covers/frontcover_master.png を使用（従来の方法）
+  # cover: master    # covers/frontcover_master.png を使用（既定）
 ```
 
 ### テーマ別のソースファイル探索順
@@ -32,12 +32,16 @@ output:
 |:---:|:---|:---|
 | 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した PNG |
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
-| 3 | `covers/bundled/frontcover.svg` | 開発者提供のテンプレート SVG |
+| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート SVG（`light` / `dark` のみ） |
 
 たとえば `cover: dark` なら、次の順に探します。
 1. `covers/frontcover_dark.png` があればそれを使用
 2. なければ `covers/frontcover_dark.svg` を使用
 3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
+
+`floral` のような独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートには切り替えず、ビルドが 🔴 で知らせます。テーマ名やファイル名の書き誤りに気づけるようにするためです。
+
+PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異なります。PNG は、塗り足しまで描いた `_bleed` 付きの画像や `cover_bleed` の設定（後述）が使えます。SVG は、仕上がりの大きさで描いた絵に、トンボを付けて書き出します。
 
 ### light / dark テーマ
 
@@ -52,11 +56,13 @@ output:
 
 独自の SVG を使う場合は、`covers/` に `frontcover_<テーマ名>.svg` を置き、`book.yml` にテーマ名を書きます。別案を試すときも、ファイルを残したまま設定を切り替えられます。
 
-```bash
+:::{.diagram}
+```text
 covers/
 ├── frontcover_floral.svg    # 著者が用意した花柄デザイン
 └── backcover_floral.svg
 ```
+:::
 
 ```yaml
 output:
@@ -75,16 +81,26 @@ SVG に `{{title}}` や `{{author}}` などを書いておけば、ビルド時�
 
 デザインツールから PNG を書き出して使う場合は、`covers/frontcover_<テーマ名>.png` に置きます。
 
-```bash
+:::{.diagram}
+```text
 covers/
 ├── frontcover_master.png
 └── backcover_master.png
 ```
+:::
 
 ```yaml
 output:
   cover: master  # covers/frontcover_master.png, covers/backcover_master.png を使用
 ```
+
+画像は、仕上がりの判型に合わせた大きさ（350 dpi）で用意します。
+
+| 判型 | 画像の大きさ |
+| :--- | :--- |
+| A4（210 × 297 mm） | 2,894 × 4,091 px |
+| B5（182 × 257 mm） | 2,508 × 3,541 px |
+| A5（148 × 210 mm） | 2,039 × 2,894 px |
 
 ## カバー画像の生成
 
@@ -100,25 +116,20 @@ output:
 vs cover
 ```
 
-`vs cover` は `book.yml` のテーマと判型を読み、必要な形式を生成します。終わったら `.cache/vs/covers/` のファイルを開いて確認してください。
+`vs cover` は `book.yml` のテーマ・判型・`output.targets` を読み、必要な表紙を作ります。`pdf` があれば閲覧用（RGB）、`print_pdf` があれば入稿用（CMYK）、`epub` があれば電子書籍用（JPEG）です。入稿用の表紙はプロジェクト直下に置かれるので、それを開いて確かめてください。閲覧用と電子書籍用は、`vs build` で本に組み込んだ姿で確かめます。
 
-### フォーマット別の生成
+### 判型や形式を指定して作り直す
 
-一つの形式だけを作り直す場合は、引数で対象を指定します。
+一つの判型や形式だけを作り直すときは、引数で指定します。
 
 ```bash
-# A4サイズのRGB版PDFのみ生成
-vs cover a4
-
-# B5サイズのCMYK版PDF/X-1aのみ生成
-vs cover b5
-
-# A5サイズのCMYK版PDF/X-1aのみ生成
-vs cover a5
-
-# EPUB用JPEGのみ生成
-vs cover epub
+vs cover a4     # A4 判の表紙（RGB 版・CMYK 版は output.targets に従う）
+vs cover b5     # B5 判の表紙
+vs cover a5     # A5 判の表紙
+vs cover epub   # 電子書籍用の JPEG だけ
 ```
+
+引数を省いたときは、`page.use` の判型で作ります。判型の引数で作る表紙が RGB 版か CMYK 版かは、引数ではなく `output.targets`（`pdf` / `print_pdf`）で決まります。
 
 ## 設定のカスタマイズ
 
@@ -166,6 +177,8 @@ page:
 
 印刷用 PDF では、表紙画像が塗り足し領域まで拡大されます。裁断で周辺が落ちることを見込み、タイトルや著者名などは端から十分に離して配置してください。
 
+塗り足しまで描いた表紙を用意したときは、`covers/frontcover_master_bleed.png` のように、表紙の画像の名前に `_bleed` を付けて置きます。こちらを拡大せずにそのまま使います。拡大したくないが、塗り足し用の画像もないときは、`config/book.yml` の `output.print_pdf.cover_bleed` を `keep` にします。この場合、塗り足しの帯は白のまま残ります。
+
 :::{.note}
 **PDF/X-1aとは**
 
@@ -182,10 +195,10 @@ PDF/X-1a は、商業印刷向けの PDF 規格です。色空間やフォント
 - **ファイル形式**: JPEG
 - **特徴**: ファイルサイズを抑え、電子書籍リーダーで表示しやすい
 
-:::{.column}
-**EPUBカバーのトリミング処理**
+:::{.note}
+**EPUB 用の表紙は左右が切り落とされます**
 
-マスター画像は 2,894 × 4,092 px です。高さ2,560 pxに縮小すると、横幅は約1,812 pxになります。これを1,600 px幅にするため、左右それぞれ106 pxずつトリミングします。
+元の画像を高さ 2,560 px に縮めてから、中央の幅 1,600 px を切り出します。A4 判のマスター画像（2,894 × 4,091 px）なら、縮めた横幅は約 1,810 px なので、左右を約 105 px ずつ切り落とします。
 
 EPUB 用にはマスター画像の中央部分が残ります。タイトルや著者名が左右の切り落としにかからないよう、中央寄りへ配置してください。
 :::
@@ -215,53 +228,35 @@ vs clean --cover --cache --purge
 ## トラブルシューティング
 
 :::{.section-lead}
-生成できないときや、印刷用の色が画面と違って見えるときは、次の項目から原因を確認してください。
+ImageMagick や Ghostscript などのツールがない・動かないときは、`vs doctor --fix` で導入してください。ここでは、ツールを入れても直らない症状を扱います。
 :::
 
 ### マスターファイルが見つからない
 
 **症状**: コマンド実行時に警告が表示される。
 
-```
+:::{.output}
+```text
 🟡 表紙マスターが見つかりません: covers/frontcover_master.png
 ```
+:::
 
-**原因**: マスター画像が指定された場所に存在しない。
+独自のテーマ名で PNG も SVG も見つからないときは、次のように表示されます。
+
+:::{.output}
+```text
+🔴 カスタム画像 'floral' のPNGファイルもSVGファイルも見つかりません
+        covers/frontcover_floral.png または .svg
+        covers/backcover_floral.png または .svg
+```
+:::
+
+**原因**: 表紙の画像が指定された場所に存在しない。
 
 **解決方法**:
 1. `covers/` ディレクトリが存在するか確認
-2. ファイル名が `frontcover_master.png` および `backcover_master.png` になっているか確認
+2. ファイル名が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた名前になっているか確認（`master` なら `frontcover_master.png` と `backcover_master.png`）
 3. `book.yml` の `output.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
-
-### 必要なツールがインストールされていない
-
-**症状**: カバー画像が生成されない。
-
-**原因**: ImageMagick または Ghostscript がインストールされていない。
-
-**解決方法**:
-
-```bash
-# 自動インストール（推奨）
-vs doctor --fix
-
-# 手動インストール（macOSの場合）
-brew install imagemagick ghostscript
-
-# 確認
-magick -version
-gs --version
-```
-
-:::{.note}
-**ツールの診断**
-
-`vs doctor` コマンドで、必要なツールがインストールされているか確認できます。
-
-```bash
-vs doctor
-```
-:::
 
 ### CMYK変換で色が変わる
 
@@ -289,8 +284,8 @@ vs doctor
 # 2. カバー画像を生成
 vs cover
 
-# 3. 生成されたファイルを確認
-ls -lh .cache/vs/covers/
+# 3. 本文と結合してビルドし、表紙を確かめる
+vs build
 ```
 
 ### デザインの修正と再生成
@@ -311,12 +306,12 @@ vs build
 ### 印刷所入稿前の最終確認
 
 ```bash
-# 1. 印刷用PDFのみを再生成
-vs cover b5  # または vs cover a5
+# 1. 入稿用の表紙を作り直す（output.targets に print_pdf を入れておく）
+vs cover
 
-# 2. 生成されたCMYK版PDFを確認（テーマが master・判型が B5 の場合）
-open .cache/vs/covers/frontcover_master_b5_cmyk.pdf
-open .cache/vs/covers/backcover_master_b5_cmyk.pdf
+# 2. プロジェクト直下の入稿用表紙を開いて確かめる
+open vivlio_starter_frontcover_v1.0.0.pdf
+open vivlio_starter_backcover_v1.0.0.pdf
 
 # 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
 
@@ -339,8 +334,4 @@ open .cache/vs/covers/backcover_master_b5_cmyk.pdf
 
 一つのソースから作っていても、RGB 版と CMYK 版では色が変わり、EPUB 用では左右が切り取られます。用途ごとに仕上がりを確かめることで、同じデザインを安心して使い分けられます。
 
-:::{.column}
-**次のステップ**
-
-カバーができたら、次章の `vs build` で本文 PDF と結合できます。本文と並べたときの印象も、そこで確かめてください。
-:::
+カバーができたら、`vs build` で本文と結合できます（@chapref:ch-build）。本文と並べたときの印象も、そこで確かめてください。

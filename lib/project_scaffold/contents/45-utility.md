@@ -21,8 +21,8 @@
 vs open
 
 # ファイル名を指定して開く（拡張子は省略可）
-vs open 01-quickstart
-vs open 01-quickstart.pdf
+vs open 11-intro
+vs open 11-intro.pdf
 ```
 
 引数を省略した場合は、通常版・圧縮版の更新日時を比較して新しいほうを自動選択します。
@@ -48,7 +48,7 @@ macOS 専用のコマンドです。
 
 圧縮が役立つのは、主にネットワーク経由でファイルを共有するときです。
 
-- サンプル原稿の公開: 執筆中の章を `vs build 01-intro` などで個別にビルドし、レビュー担当者へ送付したり、SNSやブログで公開したりする際の転送量を抑えます。
+- サンプル原稿の公開: 執筆中の章を `vs build 11-intro` などで個別にビルドし、レビュー担当者へ送付したり、SNSやブログで公開したりする際の転送量を抑えます。
 
 :::{.memo}
 **印刷所へ入稿する PDF**
@@ -63,8 +63,8 @@ macOS 専用のコマンドです。
 vs pdf:compress
 
 # 入力ファイル名を指定（拡張子 .pdf は省略可）
-vs pdf:compress 01-intro
-vs pdf:compress 01-intro.pdf
+vs pdf:compress 11-intro
+vs pdf:compress 11-intro.pdf
 
 # 入出力ファイル名を明示指定
 vs pdf:compress input.pdf output.pdf
@@ -75,8 +75,8 @@ vs pdf:compress input.pdf output.pdf
 ファイル名を指定した場合、出力ファイルは自動的に `_compressed` が接尾語として付いたファイル名になります。
 
 ```bash
-vs build 01-intro        # → 01-intro.pdf が生成される
-vs pdf:compress 01-intro # → 01-intro_compressed.pdf が生成される
+vs build 11-intro        # → 11-intro.pdf が生成される
+vs pdf:compress 11-intro # → 11-intro_compressed.pdf が生成される
 ```
 
 ### 自動圧縮の設定
@@ -91,7 +91,7 @@ output:
 
 処理時間が増えるため、普段は `false` に設定しておき、必要なときだけ `vs pdf:compress` コマンドを使うのがお勧めです。自動圧縮が有効な場合でも `vs build --no-compress` で一時的にスキップできます。
 
-:::{.column}
+:::{.memo}
 `output.pdf.compress: true` なら、ビルド後に `_compressed` 付きのファイルが生成されます。既存の PDF をあとから圧縮したい場合は、`vs pdf:compress` を使います。
 :::
 
@@ -135,7 +135,7 @@ vs clean --all
 | `--all` | `--index-dictionaries` を除く上記すべてをまとめて実行 |
 | `--index-dictionaries` | 索引・用語集辞書データを削除（確認あり） |
 
-:::{.column}
+:::{.tip}
 ビルド結果が更新されないなど、キャッシュが原因と思われるときは `vs clean --cache` を試せます。次のビルドでは必要なデータが作り直されます。
 :::
 
@@ -210,8 +210,8 @@ vs clean --all
 | `--font-code` | `"hackgen35"` | コードフォント |
 | `--column-font-size` | `8pt` | コラムの文字サイズ |
 
-:::{.column}
-**ヒント**: `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
+:::{.tip}
+`book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
 :::
 
 ### 実践例
@@ -266,7 +266,7 @@ blockquote {
 
 ### テンプレートの編集
 
-`templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。
+`templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は、章のスラッグ（`11-intro` なら `intro`）に置き換わります。
 
 ```markdown
 <!-- templates/chapter.md の例 -->
@@ -291,4 +291,4 @@ blockquote {
 | `_book.md` | `data/books.yml` | 書籍カード形式 |
 | `_book.table.md` | `data/books.yml` | 書籍テーブル形式 |
 
-新しいデータファイルを追加する場合は、対応するテンプレートをこのディレクトリに作成してください。詳細は「データ展開機能」の章を参照してください。
+新しいデータファイルを追加する場合は、対応するテンプレートをこのディレクトリに作成してください。詳細は @chapref:ch-querystream を参照してください。

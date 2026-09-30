@@ -220,7 +220,7 @@
 
 ### `vs pdf:compress` — PDF の圧縮
 
-`vs pdf:compress [入力PDF] [出力PDF]`（省略時: `output/book.pdf` → `output/book_compressed.pdf`）
+`vs pdf:compress [入力PDF] [出力PDF]`（入力の省略時は書籍全体の閲覧用 PDF。出力の省略時は入力名に `_compressed` を付けたもの。例: `mybook_v1.0.0.pdf` → `mybook_v1.0.0_compressed.pdf`）
 
 ### `vs pdf:pages` — ページの JPEG 切り出し
 

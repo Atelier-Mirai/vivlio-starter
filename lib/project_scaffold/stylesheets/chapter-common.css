@@ -180,6 +180,12 @@ p {
   text-indent: 0;
 }
 
+/* 囲み（.note・.tip など）の先頭に置いた太字の見出しは、区切る前の段落がない。
+   半行あけると囲み自身の上余白に上乗せされ、見出しの上だけが広く空く（改善案 #76）。 */
+.strong-heading:first-child {
+  margin-block-start: 0;
+}
+
 /* 右寄せユーティリティ */
 .text-right,
 .text-right p {
@@ -410,18 +416,6 @@ h2.vs-break-merged {
 .vs-hspace {
   display: inline-block;
   width: 0;
-}
-
-/* @pageref のページ番号（PDF のみ）。EPUB リーダーは target-counter を解釈できず
-   content 宣言ごと破棄・Kindle は ::after 自体を無視するため、リフローでは自動的に
-   「タイトルのみのリンク」へ劣化する（at-directive-tier1-spec §1.1）。 */
-a.pageref::after {
-  content: "（p." target-counter(attr(href url), page) "）";
-}
-
-/* 見出しラベル（`## タイトル @id`）が残すアンカー。紙面には何も出さない。 */
-.vs-sec-anchor {
-  display: inline;
 }
 
 /* @qr:URL が挿入する QR コード（at-directive-tier1-spec §1.4）。

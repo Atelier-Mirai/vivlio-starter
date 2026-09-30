@@ -51,8 +51,8 @@ theme:
                 # cyan / teal / green / lime から選択
                 # '#ff0000' のような HEX 記法も指定可
 
-  preface_color: teal # 前書き/後書き専用カラー 未指定ならcolorと同色
-  appendix_color: cyan # 付録専用カラー 未指定ならcolorと同色
+  preface_color: # 前書き/後書きの色（例: teal）。空欄なら color と同じ色
+  appendix_color: # 付録の色（例: cyan）。空欄なら color と同じ色
 
   style: image # image: 画像あり / simple: 画像なし
                # image にすると下の扉絵・節絵が有効になります。（付録は常に simple）
@@ -143,8 +143,8 @@ typography:
 # ======= 出力設定 =======
 output:
   # ------- 出力フォーマット -------
-  # targets: pdf # pdf / print_pdf / epub / kindleから選択可
-  targets: pdf                          # 閲覧用PDFを指定
+  targets: pdf # pdf / print_pdf / epub / kindleから選択可
+  # targets: pdf                          # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
   # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF,
@@ -183,12 +183,12 @@ output:
                       # false のまま入稿すると白フチ事故になります
                       # （false は閲覧用 PDF から導出するぶん速い代わりに、
                       #   裁たれた塗り足しを復元できません）
-    # 以下は任意
-    # cover_bleed: scale # 持ち込み表紙の塗り足し。既定は scale（＝拡大して流用）
-    #                    # keep にすると拡大しない（塗り足し帯は白のまま）
-    #                    # covers/frontcover_master_bleed.png があればそちらが優先されます
-    # icc_profile: /path/to/JapanColor2001Coated.icc # CMYK 変換用
-    #                    # 未指定なら press-ready 同梱の Japan Color 2001 Coated
+    cover_bleed: scale # 持ち込み表紙の塗り足し。scale は拡大して流用
+                       # keep にすると拡大しない（塗り足し帯は白のまま）
+                       # covers/frontcover_master_bleed.png があればそちらが優先されます
+    icc_profile: # CMYK 変換用の ICC プロファイルのパス
+                 # 空なら press-ready 同梱の Japan Color 2001 Coated
+                 # 例: icc_profile: /path/to/JapanColor2001Coated.icc
 
   # ------- EPUB設定（楽天Kobo / Apple Books 向けクリーン EPUB） -------
   epub:

@@ -276,7 +276,7 @@ Vivliostyle の `target-counter` はレンダリング時にページ番号を�
 
 索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。同じページを指す重複は `backlink dedup` が排除します。組み上がった PDF の named destinations を読んで「アンカー ID からページ番号」を得るので、章が複数ページにまたがっても正確です。
 
-著者向けの記法と運用は「索引・用語集機能」の章にあります。
+著者向けの記法と運用は @chapref:ch-index-glossary にあります。
 
 :::{.note}
 索引語は本文に埋め込まれる透明なアンカーです。初出を包む `<dfn>` はブラウザ既定で斜体になるため、打ち消しを `stylesheets/base.css` に置いています。索引語が現れるのは本文・見出し・目次のすべてなので、全ページが読む CSS でなければ届きません。
@@ -363,14 +363,14 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 `vs lint` は、textlint の検査・Ruby 側の独自ルール・英語のスペルチェックを、ひとまとめに走らせるコマンドです。実装は `cli/lint/` にあり、textlint では扱えない判定を Ruby 側が受け持ちます。
 
-独自ルールは `ProseChecker` に 14 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るもの——いずれも textlint の枠組みでは書けないものです。
+独自ルールは `ProseChecker` に 15 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るもの——いずれも textlint の枠組みでは書けないものです。
 
 | 種類 | ルール |
 | :--- | :--- |
 | 日本語の読み違い | `mazegaki` ・ `ambiguous-comparison` ・ `missing-period` ・ `ja-no-weak-phrase` |
 | 長さ | `sentence-length` ・ `long-parenthetical` |
 | 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` |
-| 記法の取り違え | `stray-index-markup` ・ `indented-code-block` ・ `setext-heading` |
+| 記法の取り違え | `stray-index-markup` ・ `indented-code-block` ・ `setext-heading` ・ `multiple-chapter-headings` |
 | 抑止の閉じ忘れ | `unclosed-suppression` |
 
 `--fix` で直せるのは `mazegaki` と `kanji-lookalike` の二つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
@@ -421,7 +421,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 **記法の知識を `Masking` へ置いてはいけません。** あちらは索引・メトリクス・前処理など 20 箇所以上が通る共通基盤なので、記法の知識を混ぜると lint と無関係な処理まで意味が変わります。
 
-### メトリクス
+### メトリクス @metrics-json
 
 `vs metrics` は章ごとに解析し、結果を `.cache/metrics/{basename}.yml` へ残します。**鮮度は章ファイル自身の mtime と比べ、章ごとに独立して判定します**。1 章だけ直したときに解析し直すのは、その章だけです。
 
@@ -438,6 +438,39 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 章の解析は並列で走ります。既定の並列度は **CPU コア数と 4 の小さいほう**で、`VIVLIO_METRICS_CONCURRENCY` で上書きできます。**表示は章番号順に整列する**ので、解析の終わった順に出ることはありません。
 
+画面への出力は次の順で進みます。
+
+1. **章別リストの逐次出力**: 章の解析は並列でも、表示は章番号順です。先に終わった章があっても前の章を追い越しません。`--sections`・`--warn`・章指定の絞り込みはこの段階で当て、対象が 1 章もなければ「対象章がありません」と表示します。
+2. **全体集計**: 全章の解析が終わってから、基本情報・文構造・詳細分析をまとめて表示します。
+3. **推敲用の参考資料**: `--all` のときだけ、章間のばらつき以降を続けて出します。
+
+棒グラフの縮尺は、解析の前に文字数を概算して先に決めます。章が出るたびに横幅が変わることはありません。
+
+`--json` / `--yaml` は逐次出力を省き、次の形で一括して返します。
+
+```json
+{
+  "stats": [
+    { "path": "contents/11-intro.md", "chars": 1200, "warnings": [], ... }
+  ],
+  "totals": {
+    "chars": 2400,
+    "avg_sentence_chars": 210.5,
+    "vocabulary": { "mattr": 0.586, "kanji_ratio": 27.1, ... },
+    "readability": { "score": 42.1, "label": "Standard" }
+  },
+  "advice": {
+    "consistency": [ { "label": "漢字比率", "mean": 27.38, "high": [...], "low": [...] } ],
+    "long_sentences": [ { "chapter_num": 3, "line": 274, "length": 118, "text": "…" } ],
+    "sentence_rhythm": { "distribution": {...}, "monotone_runs": [...] },
+    "content_words": [ { "word": "画像", "pos": "名詞", "count": 306 } ],
+    "kanji_levels": { "ratios": [...], "lists": {...}, "locations": [...] }
+  }
+}
+```
+
+`totals` は上で述べた素の値から組み立てた全体値なので、外部ツールで平均を計算し直す必要はありません。`advice` は画面の `--all`（推敲用の参考資料）を構造化したものです。どちらもキャッシュから組み立てるので、章を再解析せずに返せます。
+
 ### QueryStream
 
 `data/*.yml` のデータと `templates/_book.md` などのテンプレートを組み合わせ、原稿の 1 行を一覧へ展開する機能です。実装は `query-stream` gem として独立しており、`cli/pre_process/data_render.rb` が呼び出します。
@@ -446,7 +479,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 テンプレートは `templates/_<単数形>.<スタイル>.md` の規約で解決されるため、`_book.mystyle.md` を置くだけで `= books | :mystyle` が有効になります。`data/elements.yml` と `templates/_element.md` を置けば、設定を変えずに `= elements` が使えます。新しいデータ種別を足すのに、コードを書く必要はありません。
 
-記法の詳しい説明は「データ展開機能」の章にあります。
+記法の詳しい説明は @chapref:ch-querystream にあります。
 
 ### CrossReference
 
