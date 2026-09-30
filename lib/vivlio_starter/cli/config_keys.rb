@@ -126,6 +126,7 @@ module VivlioStarter
       %i[index_glossary use_mecab]                    => Spec[default: true],
       %i[index_glossary timezone]                     => Spec[default: "Asia/Tokyo"],
       %i[index_glossary context_width]                => Spec[default: 40],
+      %i[index_glossary exclude_chapters]             => Spec[default: []],
 
       # ------- index -------
       %i[index auto_discovery]                        => Spec[default: true],

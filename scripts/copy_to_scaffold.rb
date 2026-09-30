@@ -155,6 +155,8 @@ if File.exist?(book_yml)
   #                   雛形は閲覧用 PDF だけ（最初の targets の行）を有効にして配る（改善案 #80）
   #   *_pagebreak  … 本書はページ数を抑えるため節の改ページと改丁をやめているが、
   #                   新しく始める本には組版として整った側を渡す
+  #   index_glossary.exclude_chapters … 本書は見本の 97 章を索引から外している。
+  #                   章立ては本ごとに違うので、雛形は何も外さない [] から
   #   page.use     … 本書は大部なので A4（a4_custom）で組んでいるが、同人誌で
   #                   一般的なのは B5。判型は本の性格そのものなので既定は動かさない
   #                   （a4_custom の中身は page_presets.yml ごと配る。大著を書く人の
@@ -166,6 +168,8 @@ if File.exist?(book_yml)
   content.gsub!(/^(\s+appendix_color:).*$/, '\1 # 付録の色（例: cyan）。空欄なら color と同じ色')
   content.gsub!(/^(\s+)targets:/, '\1# targets:')
   content.sub!(/^(\s+)# targets:/, '\1targets:')
+  # metrics にも同じ名前のキーがあるので、索引の行は行末のコメントで見分ける
+  content.sub!(/^(\s+exclude_chapters:\s*)\[[^\]]*\](\s*# 索引・用語集の対象から外す章)/, '\1[]\2')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
   # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、

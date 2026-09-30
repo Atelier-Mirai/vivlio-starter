@@ -157,6 +157,69 @@ module VivlioStarter
                      'catalog.yml が無くても辞書は追随する'
       end
 
+      # --- phase: 索引から外す章（index_glossary.exclude_chapters・改善案 #97） ---
+
+      BOOK_YML = <<~YAML
+        index_glossary:
+          context_width: 40 # 文脈抽出の幅
+
+          exclude_chapters: %<value>s # 索引・用語集の対象から外す章（既定は [] ＝外さない）
+                                 # 記法の見本の章など
+
+        metrics:
+          exclude_chapters: [00, 90-98, 99] # 分量喚起から除外する章
+      YAML
+
+      def write_book_yml(value) = File.write('config/book.yml', format(BOOK_YML, value:))
+
+      def exclusions = YAML.load_file('config/book.yml').dig('index_glossary', 'exclude_chapters')
+
+      def test_exclusion_number_follows_a_single_rename
+        write_book_yml('[97]')
+
+        capture_io { ChapterRename.follow!('97-sample', '96-sample') }
+
+        assert_equal [96], exclusions
+        text = File.read('config/book.yml')
+        assert_includes text, '# 記法の見本の章など', '著者のコメントは残す'
+        assert_includes text, 'exclude_chapters: [00, 90-98, 99]', 'metrics の同名キーには触れない'
+      end
+
+      # 1 章ずつ置き換えると 12→13 のあと 13→15 に巻き込まれて 15 まで動く
+      def test_exclusion_numbers_move_at_once_on_renumber
+        write_book_yml('[12, 13]')
+
+        capture_io { ChapterRename.follow_all!({ '12-first' => '13-first', '13-second' => '15-second' }) }
+
+        assert_equal [13, 15], exclusions
+      end
+
+      # 範囲は metrics と同じく番号帯を指すので、帯の中で番号が動いても書き換えない
+      def test_exclusion_range_is_left_as_written
+        write_book_yml('[93-97]')
+
+        capture_io { ChapterRename.follow!('97-sample', '96-sample') }
+
+        assert_equal ['93-97'], exclusions
+      end
+
+      def test_exclusion_slug_follows_a_slug_change
+        write_book_yml('[sample]')
+
+        capture_io { ChapterRename.follow!('97-sample', '97-example') }
+
+        assert_equal ['example'], exclusions
+      end
+
+      def test_unrelated_exclusions_are_untouched
+        write_book_yml('[95, 97]')
+        before = File.read('config/book.yml')
+
+        capture_io { ChapterRename.follow!('21-markdown', '20-markdown') }
+
+        assert_equal before, File.read('config/book.yml'), '指していない章の改名では書き換えない'
+      end
+
       # --- phase: 登録簿の健全性 ---
 
       # 追随先を足すときに label を書き忘れると、失敗しても何が落ちたか分からない

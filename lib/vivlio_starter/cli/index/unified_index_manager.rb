@@ -1061,7 +1061,10 @@ module VivlioStarter
       # @return [Array<String>] 章ベースネームの配列（指定章が先頭）
       def context_source_chapters(chapters)
         scanned = chapters.map { File.basename(it.to_s, '.md') }
-        others = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }.sort
+        # index_glossary.exclude_chapters の章（記法の見本など）は、文脈の例としても見せない
+        others = IndexCommands.without_excluded_chapters(
+          Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }.sort
+        )
         scanned + (others - scanned)
       end
 

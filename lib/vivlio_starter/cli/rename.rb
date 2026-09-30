@@ -282,7 +282,7 @@ module VivlioStarter
         # ファイル移動を先に全部済ませてから追随させる。21→20, 22→21 のように
         # 玉突きで動くとき、追随を混ぜると中間状態で取り違える。
         rename_map.each { |_old, info| FileUtils.mv(info[:old_file], info[:new_file]) }
-        rename_map.each { |old_basename, info| ChapterRename.follow!(old_basename, info[:new_basename]) }
+        ChapterRename.follow_all!(rename_map.transform_values { it[:new_basename] })
       end
 
       # 連番付け直し後の生成物クリーニングを行う

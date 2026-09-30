@@ -96,7 +96,10 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          UnifiedIndexManager.new.plan!(IndexCommands.resolve_chapters(files || []))
+          chapters = IndexCommands.resolve_chapters(files || [])
+          return IndexCommands.report_no_chapters if chapters.empty?
+
+          UnifiedIndexManager.new.plan!(chapters)
           0
         rescue SystemExit => e
           raise e
@@ -141,6 +144,7 @@ module VivlioStarter
           end
 
           chapters = IndexCommands.resolve_chapters(files || [])
+          return IndexCommands.report_no_chapters if chapters.empty?
 
           manager = UnifiedIndexManager.new
           manager.auto_process!(chapters)

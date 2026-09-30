@@ -16,6 +16,8 @@
 #   `metrics.exclude_chapters: [00, 90-98, 99]` のように**章番号の範囲**で書かれた
 #   設定は追随しない。この値は前書き・本文・付録・後書きの区分そのもので、
 #   `vs renumber` は区分の内側でしか番号を振らないため、改番で見直す必要が生じない。
+#   `index_glossary.exclude_chapters` の単独の番号（`[97]`）は特定の章を指すので追随させる
+#   （範囲は metrics と同じく番号帯として扱い、書き換えない）。
 #   （以前は改番のたびに見直しを促す案内を出していたが、見直す対象が無いのに毎回
 #   出るノイズだったので撤去した。）
 #
@@ -35,7 +37,14 @@ module VivlioStarter
       module_function
 
       # 追随先 1 件。label は失敗時のメッセージに使う。
-      Follower = Data.define(:label, :handler)
+      #
+      # batch: true の追随先は、1 章ずつではなく**改名の対応表全体**を一度に受け取る
+      # （handler.call({ 旧 => 新, … })）。章番号で書かれた値を追う追随先のためで、
+      # 1 章ずつ置き換えると `--step 2` の 12→13・13→15 で `12` が 13 を経て 15 まで
+      # 動いてしまう。basename で書かれた値（catalog・索引辞書）は一意なので 1 章ずつでよい。
+      Follower = Data.define(:label, :handler, :batch) do
+        def initialize(label:, handler:, batch: false) = super
+      end
 
       # catalog.yml の章名を差し替える
       def follow_catalog(old_basename, new_basename)
@@ -95,32 +104,111 @@ module VivlioStarter
         end
       end
 
+      # book.yml の index_glossary.exclude_chapters（改善案 #97）。1 行の配列で書かれた値だけを扱う。
+      EXCLUSION_LINE = /^(?<head>[ \t]+exclude_chapters:[ \t]*)\[(?<body>[^\]\n]*)\]/
+
+      # 索引から外す章（book.yml の index_glossary.exclude_chapters）を改名に追随させる。
+      #
+      # 本書は見本の 97 章を `[97]` と番号で外している。metrics.exclude_chapters と
+      # 同じ書き方にそろえ、範囲も書けるようにするためで、そのぶん改番で指す章が
+      # ずれる。ここで番号・スラッグ・basename の指定を新しい名前へ書き換える。
+      # **範囲（`90-98`）は書き換えない**——metrics と同じく番号帯そのものを指す書き方で、
+      # 帯の中で番号が動いても指す範囲は変わらないため。
+      #
+      # book.yml は著者のコメントを抱えているので、YAML を書き戻さずにその 1 行だけを直す
+      # （metrics にも同名のキーがあるので、`index_glossary:` 節の中に限る）。
+      # @param renames [Hash{String => String}] 旧 basename => 新 basename
+      def follow_index_exclusions(renames)
+        path = Common::CONFIG_FILE
+        return unless File.file?(path)
+
+        text = File.read(path, encoding: 'utf-8')
+        section = index_glossary_section_range(text) or return
+        matched = EXCLUSION_LINE.match(text[section]) or return
+
+        tokens = matched[:body].split(',').map(&:strip).reject(&:empty?)
+        rewritten = rewrite_exclusion_tokens(tokens, renames)
+        return if rewritten == tokens
+
+        text[section] = text[section].sub(EXCLUSION_LINE) { "#{matched[:head]}[#{rewritten.join(', ')}]" }
+        File.write(path, text, encoding: 'utf-8')
+        Common.log_result(
+          "book.yml の index_glossary.exclude_chapters を [#{tokens.join(', ')}] から [#{rewritten.join(', ')}] へ書き換えました",
+          status: :success
+        )
+      end
+
+      # 外す章の指定を、改名の対応表で**同時に**置き換える（連鎖させない）。
+      # 番号は 2 桁にそろえて照合し、書き換えた値も 2 桁で書く（`[00, 90-98, 99]` と同じ）。
+      # @param tokens [Array<String>] 配列の要素（book.yml に書かれたまま）
+      # @param renames [Hash{String => String}] 旧 basename => 新 basename
+      # @return [Array<String>]
+      def rewrite_exclusion_tokens(tokens, renames)
+        table = renames.each_with_object({}) do |(old_basename, new_basename), map|
+          old_number, old_slug = old_basename.split('-', 2)
+          new_number, new_slug = new_basename.split('-', 2)
+          map[old_number] = new_number
+          map[old_slug] = new_slug if old_slug && new_slug
+          map[old_basename] = new_basename
+        end
+
+        tokens.map do |token|
+          bare = token.delete(%('"))
+          key = bare.match?(/\A\d+\z/) ? format('%02d', bare.to_i) : bare
+          table.fetch(key, token)
+        end
+      end
+
+      # book.yml の `index_glossary:` 節の範囲（次の最上位キーの手前まで）
+      def index_glossary_section_range(text)
+        start = text.index(/^index_glossary:[ \t]*(?:#.*)?$/) or return nil
+        finish = text.index(/^[^\s#]/, start + 1) || text.size
+        start...finish
+      end
+
       # 追随先の登録簿。**ここへ 1 行足すだけ**で rename / renumber の両方に効く。
       FOLLOWERS = [
         Follower.new(label: 'catalog.yml', handler: method(:follow_catalog)),
         Follower.new(label: '画像ディレクトリ', handler: method(:follow_image_dir)),
         Follower.new(label: '索引辞書', handler: method(:follow_index_dictionary)),
-        Follower.new(label: '本文の章参照', handler: method(:follow_chapter_references))
+        Follower.new(label: '本文の章参照', handler: method(:follow_chapter_references)),
+        Follower.new(label: 'book.yml の index_glossary.exclude_chapters', handler: method(:follow_index_exclusions), batch: true)
       ].freeze
 
-      # 章名の変更を全追随先へ伝える。
+      # 章名の変更を全追随先へ伝える（1 章ぶん）。
+      # @param old_basename [String] 例 '21-markdown-tutorial'
+      # @param new_basename [String] 例 '20-markdown-tutorial'
+      # @param followers [Array<Follower>] 差し替え用（テストで失敗経路を作るため）
+      def follow!(old_basename, new_basename, followers: FOLLOWERS)
+        follow_all!({ old_basename => new_basename }, followers:)
+      end
+
+      # 章名の変更をまとめて全追随先へ伝える（vs renumber）。
       #
       # **1 つが失敗しても止めない。** 原稿ファイルの移動は追随より先に済んでいるので、
       # 途中で abort すると「ファイルは新しい名前、catalog は古い名前」という中途半端な
       # 状態が残る。追随できなかったものを名指しで警告して先へ進むほうが復旧しやすい。
       #
-      # @param old_basename [String] 例 '21-markdown-tutorial'
-      # @param new_basename [String] 例 '20-markdown-tutorial'
-      # @param followers [Array<Follower>] 差し替え用（テストで失敗経路を作るため）
-      def follow!(old_basename, new_basename, followers: FOLLOWERS)
+      # @param renames [Hash{String => String}] 旧 basename => 新 basename
+      # @param followers [Array<Follower>] 差し替え用
+      def follow_all!(renames, followers: FOLLOWERS)
         followers.each do |follower|
-          follower.handler.call(old_basename, new_basename)
-        rescue StandardError => e
-          Common.log_warn(
-            "#{follower.label} が章名の変更に追随できませんでした: #{e.message}",
-            detail: "#{old_basename} → #{new_basename} の変更を手作業で反映してください"
-          )
+          if follower.batch
+            guard(follower, renames) { follower.handler.call(renames) }
+          else
+            renames.each { |old, new| guard(follower, old => new) { follower.handler.call(old, new) } }
+          end
         end
+      end
+
+      # 追随先 1 件を実行し、失敗したら名指しで知らせて先へ進む
+      def guard(follower, renames)
+        yield
+      rescue StandardError => e
+        Common.log_warn(
+          "#{follower.label} が章名の変更に追随できませんでした: #{e.message}",
+          detail: "#{renames.map { |old, new| "#{old} → #{new}" }.join('、')} の変更を手作業で反映してください"
+        )
       end
     end
   end

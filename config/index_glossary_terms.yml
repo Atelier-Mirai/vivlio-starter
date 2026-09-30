@@ -1,16 +1,6 @@
 ---
-generated_at: '2026-10-01 00:06:14'
+generated_at: '2026-10-01 02:04:53'
 terms:
-- term: "--force"
-  yomi: "--force"
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/\\-\\-force/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 24-chapter-management
 - term: Amazon
   yomi: Amazon
   flags: i
@@ -18,7 +8,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bAmazon\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: CLI
@@ -29,7 +19,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCLI\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 11-workflow
 - term: CMYK
@@ -39,7 +29,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCMYK\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: CSS
@@ -49,17 +39,17 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCSS\\b/"
-  updated_at: '2026-08-05 01:14:06'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 11-workflow
-- term: CSS組版
+- term: CSS 組版
   yomi: CSSくみはん
   flags: ig
   definition: HTML と CSS を使って書籍の紙面を設計・組版する手法。Web 制作の知識をそのまま活かして印刷品質の PDF を作れるのが特徴です。
   source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/CSS組版/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/CSS\\ 組版/"
+  updated_at: '2026-10-01 01:26:10'
   main:
   - 11-workflow
 - term: CommonMark
@@ -69,30 +59,20 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bCommonMark\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
 - term: EPUB
   yomi: EPUB
-  flags: g
+  flags: ig
   definition: 電子書籍の国際標準フォーマット。リフロー型が基本で、画面サイズに応じて文字サイズやレイアウトが変化します。Apple Books や Kobo
     など多くのリーダーで閲覧できます。
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bEPUB\\b/"
-  updated_at: '2026-08-05 01:14:06'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
-- term: Enhanced
-  yomi: Enhanced
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/\\bEnhanced\\b/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 94-pdf-read
 - term: GFM
   yomi: GFM
   flags: ig
@@ -100,7 +80,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bGFM\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
 - term: Ghostscript
@@ -110,29 +90,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bGhostscript\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
-- term: Git
-  yomi: Git
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/\\bGit\\b/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 21-markdown-tutorial
-- term: GitHub
-  yomi: GitHub
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/\\bGitHub\\b/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 93-install
 - term: HTML
   yomi: HTML
   flags: ig
@@ -141,7 +101,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bHTML\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 11-workflow
 - term: HexaPDF
@@ -151,7 +111,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bHexaPDF\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 94-pdf-read
 - term: Homebrew
@@ -161,7 +121,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bHomebrew\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 51-doctor
 - term: ImageMagick
@@ -171,7 +131,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bImageMagick\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 93-install
 - term: JPEG
@@ -181,7 +141,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bJPEG\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 42-frontispiece
 - term: KDP
@@ -191,7 +151,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKDP\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: KFX
@@ -201,7 +161,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bKFX\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: KPF
@@ -211,7 +171,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKPF\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: Kindle
@@ -222,7 +182,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKindle\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: Kobo
@@ -232,7 +192,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKobo\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: LaTeX
@@ -242,7 +202,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-21 19:10:01'
   pattern: "/\\bLaTeX\\b/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 92-latex-cheatsheet
 - term: MATTR
@@ -252,7 +212,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bMATTR\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: MathJax
@@ -264,7 +224,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bMathJax\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 92-latex-cheatsheet
 - term: MeCab
@@ -274,7 +234,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bMeCab\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: Node.js
@@ -284,7 +244,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/Node\\.js/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 93-install
 - term: OCR
@@ -294,7 +254,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bOCR\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 94-pdf-read
 - term: PDF/X-1a
@@ -306,7 +266,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/PDF/X\\-1a/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: PNG
@@ -316,7 +276,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bPNG\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: Pandoc
@@ -328,19 +288,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bPandoc\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
-- term: Previewer
-  yomi: Previewer
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/\\bPreviewer\\b/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 44-build
 - term: QueryStream
   yomi: QueryStream
   flags: ig
@@ -348,7 +298,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bQueryStream\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 26-querystream
 - term: RGB
@@ -358,7 +308,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bRGB\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: Ruby
@@ -368,7 +318,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bRuby\\b/"
-  updated_at: '2026-08-09 03:08:17'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 12-new
 - term: SVG
@@ -378,9 +328,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bSVG\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 43-cover
+  - 23-figures
 - term: TTR
   yomi: TTR
   flags: i
@@ -388,19 +338,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bTTR\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
-- term: TeX
-  yomi: TeX
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-21 19:10:01'
-  pattern: "/\\bTeX\\b/"
-  main:
-  - 61-developer
-  updated_at: '2026-08-21 19:10:02'
 - term: Twemoji
   yomi: Twemoji
   flags: ig
@@ -410,7 +350,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bTwemoji\\b/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: VFM
@@ -421,7 +361,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bVFM\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
 - term: Vivliostyle
@@ -432,9 +372,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bVivliostyle\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 61-developer
+  - 11-workflow
 - term: WebP
   yomi: WebP
   flags: i
@@ -442,9 +382,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bWebP\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 45-utility
+  - 12-new
 - term: Xcode
   yomi: Xcode
   flags: i
@@ -452,7 +392,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bXcode\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 51-doctor
 - term: YAML
@@ -463,19 +403,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bYAML\\b/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 42-frontispiece
-- term: text-right
-  yomi: text-right
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/text\\-right/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 22-extensions
+  - 26-querystream
 - term: アウトライン
   yomi: あうとらいん
   flags: i
@@ -483,9 +413,39 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/アウトライン/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 94-pdf-read
+- term: 青コメ
+  yomi: あおこめ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/青コメ/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
+- term: 赤コメ
+  yomi: あかこめ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/赤コメ/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
+- term: アスキーアート
+  yomi: あすきーあーと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/アスキーアート/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
 - term: アスペクト比
   yomi: あすぺくとひ
   flags: ig
@@ -495,7 +455,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/アスペクト比/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 42-frontispiece
 - term: 改ページ
@@ -507,17 +467,7 @@ terms:
   pattern: "/改ページ/"
   main:
   - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
-- term: 一件検索
-  yomi: いちけんけんさく
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/一件検索/"
-  main:
-  - 26-querystream
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 一般候補
   yomi: いっぱんこうほ
   flags: i
@@ -527,27 +477,17 @@ terms:
   pattern: "/一般候補/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:01'
-- term: 印刷用PDF
-  yomi: いんさつようPDF
+  updated_at: '2026-10-01 01:26:09'
+- term: 引用
+  yomi: いんよう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-04 23:37:28'
-  pattern: "/印刷用PDF/"
-  main:
-  - 44-build
-  updated_at: '2026-08-21 19:10:01'
-- term: インデント
-  yomi: いんでんと
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/インデント/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/引用/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
 - term: インラインコード
   yomi: いんらいんこーど
   flags: i
@@ -557,7 +497,27 @@ terms:
   pattern: "/インラインコード/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
+- term: インライン数式
+  yomi: いんらいんすうしき
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/インライン数式/"
+  main:
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
+- term: 裏表紙
+  yomi: うらびょうし
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/裏表紙/"
+  main:
+  - 43-cover
+  updated_at: '2026-10-01 01:26:10'
 - term: エスケープ
   yomi: えすけーぷ
   flags: i
@@ -567,17 +527,47 @@ terms:
   pattern: "/エスケープ/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: エラー
-  yomi: えらー
+  updated_at: '2026-10-01 01:26:09'
+- term: 閲覧用 PDF
+  yomi: えつらんようぴーでぃーえふ
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/エラー/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/閲覧用\\ PDF/"
   main:
   - 44-build
+  updated_at: '2026-10-01 01:26:10'
+- term: Enhanced Mode
+  yomi: えんはんすともーど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Enhanced\\ Mode/"
+  main:
+  - 94-pdf-read
+  updated_at: '2026-10-01 01:26:10'
+- term: 奥付
+  yomi: おくづけ
+  flags: ig
+  definition: 書名・著者・発行日などを記した巻末のページ。`book.yml` の書籍情報から自動で組まれる。
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/奥付/"
+  updated_at: '2026-10-01 01:26:10'
+  main:
+  - 41-book-yml
+- term: 会話文
+  yomi: かいわぶん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/会話文/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
 - term: 拡張記法
   yomi: かくちょうきほう
   flags: i
@@ -585,7 +575,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/拡張記法/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 22-extensions
 - term: 箇条書き
@@ -596,8 +586,8 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/箇条書き/"
   main:
-  - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: カバー画像
   yomi: かばーがぞう
   flags: i
@@ -605,7 +595,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/カバー画像/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: 加筆検討
@@ -617,7 +607,7 @@ terms:
   pattern: "/加筆検討/"
   main:
   - 32-metrics
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 漢字比率
   yomi: かんじひりつ
   flags: i
@@ -627,7 +617,7 @@ terms:
   pattern: "/漢字比率/"
   main:
   - 32-metrics
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 外部ツール
   yomi: がいぶつーる
   flags: i
@@ -637,36 +627,17 @@ terms:
   pattern: "/外部ツール/"
   main:
   - 51-doctor
-  updated_at: '2026-08-21 19:10:01'
-- term: 画像最適化
-  yomi: がぞうさいてきか
+  updated_at: '2026-10-01 01:26:09'
+- term: 脚注
+  yomi: きゃくちゅう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/画像最適化/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/脚注/"
   main:
-  updated_at: '2026-08-21 19:10:01'
-- term: 画像名
-  yomi: がぞうめい
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/画像名/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 42-frontispiece
-- term: 既定値
-  yomi: きていち
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/既定値/"
-  main:
-  - 12-new
-  updated_at: '2026-08-21 19:10:01'
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: キャッシュ
   yomi: きゃっしゅ
   flags: i
@@ -674,9 +645,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/キャッシュ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 32-metrics
+  - 45-utility
 - term: キャプション
   yomi: きゃぷしょん
   flags: i
@@ -684,9 +655,39 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/キャプション/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
+- term: Kindle Previewer
+  yomi: きんどるぷれびゅーあー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Kindle\\ Previewer/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
+- term: 技術書典
+  yomi: ぎじゅつしょてん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/技術書典/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:11'
+- term: ギリシャ文字
+  yomi: ぎりしゃもじ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/ギリシャ文字/"
+  main:
+  - 92-latex-cheatsheet
+  updated_at: '2026-10-01 01:26:11'
 - term: 空白ページ
   yomi: くうはくぺーじ
   flags: i
@@ -696,7 +697,7 @@ terms:
   pattern: "/空白ページ/"
   main:
   - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 行番号
   yomi: くだりばんごう
   flags: i
@@ -706,7 +707,7 @@ terms:
   pattern: "/行番号/"
   main:
   - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: クラス
   yomi: くらす
   flags: i
@@ -714,17 +715,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/クラス/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 22-extensions
-- term: クリーン
-  yomi: くりーん
-  flags: i
-  definition: ''
+- term: クリーン EPUB
+  yomi: くりーんいーぱぶ
+  flags: ig
+  definition: |-
+    楽天 Kobo・Apple Books 向けの EPUB（`targets: epub`）。Kindle 向けの調整を含まず、SVG の図版や数式をそのまま収める。
+     一覧性を優先して出現箇所は省いています。
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/クリーン/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/クリーン\\ EPUB/"
+  updated_at: '2026-10-01 01:26:10'
   main:
   - 44-build
 - term: クロスリファレンス
@@ -734,7 +737,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/クロスリファレンス/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
 - term: 形態素解析
@@ -744,39 +747,39 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/形態素解析/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
-- term: 更新計画
-  yomi: こうしんけいかく
+- term: Guesslang
+  yomi: げすらんぐ
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/更新計画/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bGuesslang\\b/"
   main:
-  - 51-doctor
-  updated_at: '2026-08-21 19:10:01'
-- term: コメント
-  yomi: こめんと
+  - 31-lint
+  updated_at: '2026-10-01 01:26:10'
+- term: 言語名
+  yomi: げんごめい
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/コメント/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/言語名/"
   main:
   - 22-extensions
-- term: コロン
-  yomi: ころん
+  updated_at: '2026-10-01 01:26:10'
+- term: コラム
+  yomi: こらむ
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/コロン/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/コラム/"
   main:
-  - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
 - term: 語彙多様度
   yomi: ごいたようど
   flags: i
@@ -784,7 +787,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/語彙多様度/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: 語彙難度
@@ -796,7 +799,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/語彙難度/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: 五十音順
@@ -806,7 +809,7 @@ terms:
   source: manual_markup
   approved_at: '2026-08-09 18:17:24'
   pattern: "/五十音順/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 02:04:53'
   main:
   - 33-index-glossary
 - term: 索引語
@@ -818,7 +821,7 @@ terms:
   pattern: "/索引語/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
 - term: 索引ページ
   yomi: さくいんぺーじ
   flags: i
@@ -826,7 +829,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/索引ページ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
 - term: 集約表示
@@ -838,9 +841,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/集約表示/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 31-lint
+- term: 終了コード
+  yomi: しゅうりょうこーど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/終了コード/"
+  main:
+  - 45-utility
+  updated_at: '2026-10-01 01:26:11'
 - term: 出力形式
   yomi: しゅつりょくけいしき
   flags: i
@@ -850,7 +863,7 @@ terms:
   pattern: "/出力形式/"
   main:
   - 44-build
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 手動登録
   yomi: しゅどうとうろく
   flags: ig
@@ -860,7 +873,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/手動登録/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
 - term: 主要参照
@@ -872,19 +885,38 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/主要参照/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
+- term: 章扉
+  yomi: しょうとびら
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/章扉/"
+  main:
+  - 42-frontispiece
+  updated_at: '2026-10-01 01:26:10'
+- term: 章番号
+  yomi: しょうばんごう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/章番号/"
+  main:
+  - 24-chapter-management
+  updated_at: '2026-10-01 01:26:10'
 - term: シンタックスハイライト
   yomi: しんたっくすはいらいと
   flags: ig
-  definition: |-
-    ソースコードの予約語や文字列を色分けして表示すること。コードブロックに言語名を添えると自動で適用される。
-    言語名を省いた場合は内容から推測される。
+  definition: ソースコードの予約語や文字列を色分けして表示すること。コードブロックの開始行に言語名を書くと適用される。言語名がなければ色分けされず、書き忘れは
+    `vs lint` が言語を推定して知らせる。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/シンタックスハイライト/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 22-extensions
 - term: 字下げ
@@ -896,7 +928,7 @@ terms:
   pattern: "/字下げ/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 自動ID
   yomi: じどうID
   flags: ig
@@ -906,7 +938,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/自動ID/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
 - term: 自動インストール
@@ -916,7 +948,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/自動インストール/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 93-install
 - term: 自動修正
@@ -928,7 +960,7 @@ terms:
   pattern: "/自動修正/"
   main:
   - 31-lint
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 自動抽出
   yomi: じどうちゅうしゅつ
   flags: ig
@@ -940,17 +972,17 @@ terms:
   pattern: "/自動抽出/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:01'
-- term: 冗長表現
-  yomi: じょうちょうひょうげん
+  updated_at: '2026-10-01 01:26:09'
+- term: 除外リスト
+  yomi: じょがいりすと
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/冗長表現/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/除外リスト/"
   main:
   - 31-lint
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
 - term: 推奨候補
   yomi: すいしょうこうほ
   flags: i
@@ -960,7 +992,7 @@ terms:
   pattern: "/推奨候補/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 水平線
   yomi: すいへいせん
   flags: i
@@ -970,17 +1002,17 @@ terms:
   pattern: "/水平線/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: スコア
-  yomi: すこあ
+  updated_at: '2026-10-01 01:26:09'
+- term: 数式
+  yomi: すうしき
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/スコア/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/数式/"
   main:
-  - 33-index-glossary
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: スペルチェック
   yomi: すぺるちぇっく
   flags: i
@@ -988,29 +1020,29 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/スペルチェック/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 31-lint
-- term: 設定ファイル
-  yomi: せっていふぁいる
+- term: 図解注釈
+  yomi: ずかいちゅうしゃく
+  flags: ig
+  definition: スクリーンショットなどの画像に、枠・矢印・丸数字を重ねる記法。`:::{.showcase}` の中に `rect:1 …` のような注釈行を書くと、ビルド時に画像へ焼き込まれる。
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/図解注釈/"
+  updated_at: '2026-10-01 01:26:10'
+  main:
+  - 23-figures
+- term: 図番号
+  yomi: ずばんごう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/設定ファイル/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/図番号/"
   main:
-  - 41-book-yml
-- term: セットアップ
-  yomi: せっとあっぷ
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/セットアップ/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 51-doctor
+  - 23-figures
+  updated_at: '2026-10-01 01:26:10'
 - term: 千分率
   yomi: せんふんりつ
   flags: i
@@ -1020,7 +1052,7 @@ terms:
   pattern: "/千分率/"
   main:
   - 23-figures
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 相互参照
   yomi: そうごさんしょう
   flags: i
@@ -1030,27 +1062,57 @@ terms:
   pattern: "/相互参照/"
   main:
   - 25-cross-reference
-  updated_at: '2026-08-21 19:10:01'
-- term: ソート
-  yomi: そーと
+  updated_at: '2026-10-01 01:26:09'
+- term: 装飾画像
+  yomi: そうしょくがぞう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/ソート/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/装飾画像/"
   main:
-  - 33-index-glossary
-  updated_at: '2026-08-21 19:10:01'
-- term: タイトル
-  yomi: たいとる
+  - 42-frontispiece
+  updated_at: '2026-10-01 01:26:11'
+- term: 体言止め
+  yomi: たいげんどめ
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/タイトル/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/体言止め/"
   main:
-  - 25-cross-reference
+  - 31-lint
+  updated_at: '2026-10-01 01:26:10'
+- term: Type 3 フォント
+  yomi: たいぷすりーふぉんと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Type\\ 3\\ フォント/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
+- term: タスクリスト
+  yomi: たすくりすと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/タスクリスト/"
+  main:
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
+- term: 単章ビルド
+  yomi: たんしょうびるど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/単章ビルド/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
 - term: 単数形
   yomi: たんすうがた
   flags: i
@@ -1060,7 +1122,17 @@ terms:
   pattern: "/単数形/"
   main:
   - 26-querystream
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
+- term: ダイアグラム
+  yomi: だいあぐらむ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/ダイアグラム/"
+  main:
+  - 23-figures
+  updated_at: '2026-10-01 01:26:10'
 - term: 代替テキスト
   yomi: だいたいてきすと
   flags: ig
@@ -1070,49 +1142,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/代替テキスト/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
-- term: 中央寄せ
-  yomi: ちゅうおうよせ
+- term: 中間ファイル
+  yomi: ちゅうかんふぁいる
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/中央寄せ/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/中間ファイル/"
   main:
-  - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
-- term: チュートリアル
-  yomi: ちゅーとりある
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-04 23:37:28'
-  pattern: "/チュートリアル/"
-  main:
-  - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: 綴り誤り
-  yomi: つづりあやまり
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/綴り誤り/"
-  main:
-  - 31-lint
-  updated_at: '2026-08-21 19:10:01'
-- term: テキスト
-  yomi: てきすと
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/テキスト/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 94-pdf-read
+  - 45-utility
+  updated_at: '2026-10-01 01:26:10'
 - term: テスト
   yomi: てすと
   flags: i
@@ -1120,9 +1162,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テスト/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 61-developer
+- term: Tesseract
+  yomi: てっさらくと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bTesseract\\b/"
+  main:
+  - 94-pdf-read
+  updated_at: '2026-10-01 01:26:10'
 - term: テンプレート
   yomi: てんぷれーと
   flags: i
@@ -1130,7 +1182,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テンプレート/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 45-utility
 - term: テーブル
@@ -1140,9 +1192,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テーブル/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 22-extensions
+  - 21-markdown-tutorial
 - term: テーマカラー
   yomi: てーまからー
   flags: i
@@ -1150,7 +1202,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テーマカラー/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 42-frontispiece
 - term: ディスプレイ数式
@@ -1160,29 +1212,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-21 19:10:01'
   pattern: "/ディスプレイ数式/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
-- term: デザイン
-  yomi: でざいん
+- term: データ展開
+  yomi: でーたてんかい
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/デザイン/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/データ展開/"
   main:
-  - 42-frontispiece
-- term: 電子書籍
-  yomi: でんししょせき
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/電子書籍/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 11-workflow
+  - 26-querystream
+  updated_at: '2026-10-01 01:26:10'
 - term: データファイル
   yomi: でーたふぁいる
   flags: i
@@ -1190,39 +1232,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/データファイル/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 26-querystream
-- term: 到達性
-  yomi: とうたつせい
-  flags: i
-  definition: ''
+- term: 扉絵
+  yomi: とびらえ
+  flags: ig
+  definition: 章扉に置く縦長の画像（frontispiece）。`book.yml` の `theme` で選んだ画像から、版面の比率に合わせて切り出される。
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/到達性/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/扉絵/"
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 44-build
-  updated_at: '2026-08-21 19:10:01'
-- term: トラブルシューティング
-  yomi: とらぶるしゅーてぃんぐ
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/トラブルシューティング/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 51-doctor
-- term: トリムマーク
-  yomi: とりむまーく
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-04 23:37:28'
-  pattern: "/トリムマーク/"
-  main:
-  - 44-build
-  updated_at: '2026-08-21 19:10:01'
+  - 42-frontispiece
 - term: トンボ
   yomi: とんぼ
   flags: ig
@@ -1230,7 +1252,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/トンボ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
 - term: 読解難度
@@ -1240,7 +1262,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/読解難度/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: 波ダッシュ
@@ -1252,9 +1274,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/波ダッシュ/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
+- term: 二段組
+  yomi: にだんぐみ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/二段組/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
 - term: 日本語校正
   yomi: にほんごこうせい
   flags: i
@@ -1264,17 +1296,28 @@ terms:
   pattern: "/日本語校正/"
   main:
   - 31-lint
-  updated_at: '2026-08-21 19:10:01'
-- term: ネスト
-  yomi: ねすと
+  updated_at: '2026-10-01 01:26:09'
+- term: 入稿用 PDF
+  yomi: にゅうこうようぴーでぃーえふ
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/ネスト/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/入稿用\\ PDF/"
   main:
-  - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
+- term: 塗り足し
+  yomi: ぬりたし
+  flags: ig
+  definition: '裁断のずれで紙の端に白が出ないよう、仕上がりの外側まで広げて描く部分。印刷入稿用 PDF（`targets: print_pdf`）では既定で
+    3mm 付く。'
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/塗り足し/"
+  updated_at: '2026-10-01 01:26:10'
+  main:
+  - 44-build
 - term: ノンブル
   yomi: のんぶる
   flags: ig
@@ -1284,29 +1327,49 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ノンブル/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
-- term: 背景画像
-  yomi: はいけいがぞう
+- term: 派生画像
+  yomi: はせいがぞう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/背景画像/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/派生画像/"
   main:
   - 42-frontispiece
-- term: 発行者
-  yomi: はっこうしゃ
+  updated_at: '2026-10-01 01:26:10'
+- term: 判型
+  yomi: はんけい
+  flags: ig
+  definition: 本の仕上がりの大きさ。A5・B5・A4 などがあり、`book.yml` の `page.use` で選ぶプリセットが、判型に合わせた余白や文字の大きさを決める。
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/判型/"
+  updated_at: '2026-10-01 01:26:10'
+  main:
+  - 41-book-yml
+- term: 版面
+  yomi: はんめん
+  flags: ig
+  definition: ページのうち本文を組む領域。天・地・ノド・小口の余白を除いた部分で、扉絵の縦横比や図版の幅の基準になる。
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/版面/"
+  updated_at: '2026-10-01 01:26:10'
+  main:
+  - 41-book-yml
+- term: ハード改行
+  yomi: はーどかいぎょう
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/発行者/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/ハード改行/"
   main:
-  - 12-new
-  updated_at: '2026-08-21 19:10:01'
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: バッククォート
   yomi: ばっくくぉーと
   flags: i
@@ -1316,17 +1379,17 @@ terms:
   pattern: "/バッククォート/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: バックリンク
-  yomi: ばっくりんく
+  updated_at: '2026-10-01 01:26:09'
+- term: 番号帯
+  yomi: ばんごうたい
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/バックリンク/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/番号帯/"
   main:
-  - 33-index-glossary
+  - 24-chapter-management
+  updated_at: '2026-10-01 01:26:10'
 - term: 番号リスト
   yomi: ばんごうりすと
   flags: i
@@ -1335,28 +1398,8 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/番号リスト/"
   main:
-  - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
-- term: バンド
-  yomi: ばんど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/バンド/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 42-frontispiece
-- term: バンドル
-  yomi: ばんどる
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/バンドル/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 42-frontispiece
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: バンドル画像
   yomi: ばんどるがぞう
   flags: i
@@ -1364,29 +1407,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バンドル画像/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 42-frontispiece
-- term: パイプ
-  yomi: ぱいぷ
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/パイプ/"
-  main:
-  - 61-developer
-  updated_at: '2026-08-21 19:10:01'
-- term: パターン
-  yomi: ぱたーん
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/パターン/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 94-pdf-read
 - term: パーミル
   yomi: ぱーみる
   flags: ig
@@ -1396,7 +1419,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/パーミル/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 23-figures
 - term: 表記揺れ
@@ -1406,19 +1429,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/表記揺れ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 31-lint
-- term: ピリオド
-  yomi: ぴりおど
+- term: 表紙
+  yomi: ひょうし
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/ピリオド/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/表紙/"
   main:
-  - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  - 43-cover
+  updated_at: '2026-10-01 01:26:10'
 - term: フィールド
   yomi: ふぃーるど
   flags: i
@@ -1428,7 +1451,7 @@ terms:
   pattern: "/フィールド/"
   main:
   - 26-querystream
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: フェンス
   yomi: ふぇんす
   flags: i
@@ -1438,7 +1461,7 @@ terms:
   pattern: "/フェンス/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: フォント
   yomi: ふぉんと
   flags: i
@@ -1446,9 +1469,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/フォント/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 44-build
+  - 41-book-yml
 - term: 複合番号
   yomi: ふくごうばんごう
   flags: ig
@@ -1458,9 +1481,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/複合番号/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 22-extensions
+- term: 複数行ヘッダー
+  yomi: ふくすうぎょうへっだー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/複数行ヘッダー/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
 - term: 節見出し
   yomi: ふしみだし
   flags: i
@@ -1470,7 +1503,7 @@ terms:
   pattern: "/節見出し/"
   main:
   - 42-frontispiece
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: 振り仮名
   yomi: ふりかめい
   flags: ig
@@ -1480,7 +1513,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/振り仮名/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
 - term: フレーバー
@@ -1492,29 +1525,29 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/フレーバー/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
-- term: プレビュー
-  yomi: ぷれびゅー
+- term: 付録
+  yomi: ふろく
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/プレビュー/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/付録/"
   main:
-  - 44-build
-- term: ページ番号
-  yomi: ぺーじばんごう
+  - 24-chapter-management
+  updated_at: '2026-10-01 01:26:10'
+- term: プロジェクト名
+  yomi: ぷろじぇくとめい
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/ページ番号/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/プロジェクト名/"
   main:
-  - 33-index-glossary
+  - 12-new
+  updated_at: '2026-10-01 01:26:10'
 - term: 本文字数
   yomi: ほんもじすう
   flags: ig
@@ -1524,19 +1557,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/本文字数/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
-- term: マスター
-  yomi: ますたー
+- term: 前書き
+  yomi: まえがき
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/マスター/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/前書き/"
   main:
-  - 43-cover
+  - 24-chapter-management
+  updated_at: '2026-10-01 01:26:10'
 - term: マスター画像
   yomi: ますたーがぞう
   flags: ig
@@ -1546,7 +1579,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/マスター画像/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
 - term: 交ぜ書き
@@ -1557,7 +1590,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-21 19:10:01'
   pattern: "/交ぜ書き/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 31-lint
 - term: 丸数字
@@ -1569,27 +1602,17 @@ terms:
   pattern: "/丸数字/"
   main:
   - 23-figures
-  updated_at: '2026-08-21 19:10:01'
-- term: マーカー
-  yomi: まーかー
+  updated_at: '2026-10-01 01:26:09'
+- term: mermaid
+  yomi: まーめいど
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/マーカー/"
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bmermaid\\b/"
   main:
-  - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: マークアップ
-  yomi: まーくあっぷ
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/マークアップ/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 33-index-glossary
+  - 23-figures
+  updated_at: '2026-10-01 01:26:10'
 - term: 見直し候補
   yomi: みなおしこうほ
   flags: i
@@ -1599,17 +1622,17 @@ terms:
   pattern: "/見直し候補/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:02'
-- term: 無効化
-  yomi: むこうか
+  updated_at: '2026-10-01 01:26:09'
+- term: メタデータ
+  yomi: めたでーた
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/無効化/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/メタデータ/"
   main:
-  - 31-lint
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
 - term: 目安語数
   yomi: めやすごすう
   flags: ig
@@ -1619,19 +1642,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/目安語数/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
-- term: モード
-  yomi: もーど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/モード/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 44-build
 - term: 用語集ページ
   yomi: ようごしゅうぺーじ
   flags: i
@@ -1639,7 +1652,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/用語集ページ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 33-index-glossary
 - term: 横結合
@@ -1651,9 +1664,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/横結合/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 22-extensions
+- term: ら抜き言葉
+  yomi: らぬきことば
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/ら抜き言葉/"
+  main:
+  - 31-lint
+  updated_at: '2026-10-01 01:26:11'
 - term: ラベル
   yomi: らべる
   flags: i
@@ -1661,7 +1684,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/ラベル/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
 - term: ラベルID
@@ -1673,29 +1696,19 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラベルID/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
-- term: リスト
-  yomi: りすと
+- term: Re:VIEW
+  yomi: りびゅー
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/リスト/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Re:VIEW/"
   main:
-  - 25-cross-reference
-- term: リファレンス
-  yomi: りふぁれんす
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-04 23:37:28'
-  pattern: "/リファレンス/"
-  main:
-  - 90-notation-cheatsheet
-  updated_at: '2026-08-21 19:10:01'
+  - 95-import
+  updated_at: '2026-10-01 01:26:10'
 - term: リンク
   yomi: りんく
   flags: i
@@ -1703,19 +1716,29 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/リンク/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 44-build
-- term: レビュー
-  yomi: れびゅー
+  - 21-markdown-tutorial
+- term: リード文
+  yomi: りーどぶん
   flags: i
   definition: ''
   source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/レビュー/"
-  updated_at: '2026-08-21 19:10:01'
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/リード文/"
   main:
-  - 33-index-glossary
+  - 22-extensions
+  updated_at: '2026-10-01 01:26:10'
+- term: ルビ
+  yomi: るび
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/ルビ/"
+  main:
+  - 21-markdown-tutorial
+  updated_at: '2026-10-01 01:26:10'
 - term: レビューファイル
   yomi: れびゅーふぁいる
   flags: i
@@ -1725,7 +1748,7 @@ terms:
   pattern: "/レビューファイル/"
   main:
   - 33-index-glossary
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: ログレベル
   yomi: ろぐれべる
   flags: i
@@ -1735,7 +1758,17 @@ terms:
   pattern: "/ログレベル/"
   main:
   - 91-command-cheatsheet
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
+- term: Rosetta
+  yomi: ろぜった
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bRosetta\\b/"
+  main:
+  - 51-doctor
+  updated_at: '2026-10-01 01:26:10'
 - term: ローマ数字
   yomi: ろーますうじ
   flags: i
@@ -1745,17 +1778,7 @@ terms:
   pattern: "/ローマ数字/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-08-21 19:10:01'
-- term: ワークフロー
-  yomi: わーくふろー
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/ワークフロー/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 11-workflow
+  updated_at: '2026-10-01 01:26:09'
 - term: アバター
   yomi: アバター
   flags: i
@@ -1765,7 +1788,7 @@ terms:
   pattern: "/アバター/"
   main:
   - 22-extensions
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
 - term: スラッグ
   yomi: スラッグ
   flags: i
@@ -1773,19 +1796,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/スラッグ/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 24-chapter-management
-- term: バリアント
-  yomi: バリアント
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/バリアント/"
-  updated_at: '2026-08-21 19:10:01'
-  main:
-  - 42-frontispiece
 - term: プリセット
   yomi: プリセット
   flags: i
@@ -1793,21 +1806,20 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/プリセット/"
-  updated_at: '2026-08-21 19:10:01'
+  updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
 - term: ラスタライズ
   yomi: ラスタライズ
   flags: ig
-  definition: |-
-    ベクタ画像（SVG など）を画素の集まり（PNG・JPEG）へ変換すること。
-    EPUB や Kindle は SVG の扱いが端末ごとに異なるため、扉絵や合成画像はラスタライズしてから収める。
+  definition: ベクタの図形や文字を、画素の集まりの画像へ変換すること。Kindle（KFX）は SVG を扱えないため、図版や扉絵はビルド時に JPEG
+    などへ変換して収める。入稿先がフォントを受け付けないときは、`vs pdf:rasterize` で PDF の全ページを画像にできる。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラスタライズ/"
-  updated_at: '2026-08-21 19:10:02'
+  updated_at: '2026-10-01 01:26:10'
   main:
-  - 44-build
+  - 45-utility
 scanned_chapters:
 - 00-preface
 - 11-workflow
