@@ -196,6 +196,21 @@ module VivlioStarter
           assert_equal [%w[css]], no_js.requests.map(&:candidates)
         end
 
+        def test_should_find_ruby_only_by_ruby_specific_idioms
+          ruby = [
+            "scores.each do |score|\n  total += score\n",
+            "Date.new(1955, 5, 5).jisx0301   #=> \"S30.05.05\"\n",
+            "while n.positive?\n  bits << n % 2\n",
+            "label = \"\#{name}さん\"\n",
+            "(0...N).max_by { |i| wins[i] }\n"
+          ]
+          # 他の言語と紛れる書き方は Ruby のしるしにしない（CSS の a:hover、JavaScript の .map）
+          not_ruby = ["a:hover {\n  color: red;\n}\n", "const doubled = items.map(x => x * 2)\n"]
+
+          ruby.each { assert_equal 'ruby', detector.language_hint(it), it }
+          not_ruby.each { refute_equal 'ruby', detector.language_hint(it), it }
+        end
+
         def test_should_find_a_single_language_hint
           assert_equal 'javascript', detector.language_hint("let a = 1\nconsole.log(a)\n")
           assert_equal 'css', detector.language_hint(".box {\n  color: red;\n}\n")

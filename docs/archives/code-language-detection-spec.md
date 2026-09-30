@@ -278,3 +278,10 @@ Guesslang の言語 ID を、Prism の言語名へ読み替える。
 - **`alert(`・`constructor(`・`class 名前 {` を JavaScript のしるしに足した。** 入門書の短い例（`alert("こんにちは")` の 2 行、クラスの宣言）が、しるしに当たらず取りこぼされていた。ai_web_starter の言語名つきフェンスから言語名を外して当てさせる試験で、JavaScript の検出率が 44/58（75%）→ 49/58（84%）に上がった（CSS 34/38・HTML 38/46 は変わらず、誤った言語は 0）。
 - **しるしの言語を候補に加えるのは、本で著者が書いている言語のときだけにした。** 練習帳の言語名つきフェンスで同じ試験をすると、§8.5 の「しるしの言語は候補に加える」のために、Java の `var reader = …`・Rust の `let label = …`・結果を示す `//=>` が JavaScript のしるしに当たり、6 件を誤った言語で知らせた（練習帳は本全体で JavaScript を書いていない）。本で書いている言語に限ると 0 件になり、ai_web_starter の結果は変わらなかった。
 - **代わりに、本で一度も書いていない言語は、確信度が低いと知らせない。** CSS だけを書いた本の中の短い JavaScript は知らされない。JavaScript を多く載せる本なら、どこかで言語名を書いているので効く。
+
+### 8.7 Ruby のしるしを足す（2026-09-30）
+
+- **Ruby にしか現れない書き方を Ruby のしるしに足した**（`CodeLanguageDetector::RUBY_MARKERS`）。ブロック引数（`do |x|`・`{ |x|`）、`end` だけの行、`#=>`、`.each`・`.times`・`.sort_by`・`.tally` など、式展開 `#{…}`、`unless`・`elsif`、`attr_reader`・`Data.define`・`%w(…)`、`?` や `!` で終わるメソッド。
+- **他の言語と紛れるものは入れない。** `.map`・`.reduce`（JavaScript）、`.sum`（Rust）、`:name`（CSS の `a:hover`）、`@name`（CSS の `@media`）。
+- **練習帳の言語名つきフェンスで言語名を外して当てさせる試験で、Ruby の検出率が 224/580（38%）→ 376/580（64%）に上がった。** 誤った言語は C・Java・Rust などを含めて 0 件のまま。ai_web_starter の CSS・HTML・JavaScript は変わらない。言語名なしフェンスでは、本書 0 件のまま、練習帳に Ruby が 2 件付いた（`COMMENTARY_062.md` の `Date.new(…).jisx0301 #=> …`。言語名を書き忘れた本物の Ruby）。
+- **取りこぼす 204 件の多くは 1〜2 行の代入**（`ratio = total.to_f / GOAL * 100`・`POLYNOMIAL = 0x07`）。Python などでも通る形で Ruby に特有の手がかりが無いので、拾わない。

@@ -76,6 +76,22 @@ module VivlioStarter
         # 木・盤面に 1 件も言語が付かなかった（仕様 §1.5）。0.1〜0.3 は誤りが多い。
         MIN_CONFIDENCE = 0.3
 
+        # Ruby のしるし。Ruby にしか現れない書き方に絞る（仕様 §8.7）。
+        # `.map`・`.reduce`（JavaScript にもある）、`.sum`（Rust）、`:name`（CSS の `a:hover`）、
+        # `@name`（CSS の `@media`）は、他の言語と紛れるので入れない。
+        RUBY_MARKERS = /
+          ^\s*(?:puts|require|require_relative)\s
+          | \bdo\s*\|[^|]*\| | \{\s*\|[^|]*\|                  # ブロック引数
+          | ^\s*end\s*$                                      # end だけの行（def … end を含む）
+          | \#\s*=>                                          # 結果を書き添える #=>
+          | \.(?:each|each_with_index|each_with_object|each_slice|each_cons|times|upto|downto|
+                 sort_by|min_by|max_by|tally|select|reject)\b
+          | \#\{                                             # 文字列の式展開
+          | \b(?:unless|elsif)\b
+          | \battr_(?:reader|accessor|writer)\b | Data\.define | %[wi][(\[{]
+          | \.\w+[?!](?=[\s)(,]|$)                           # ? や ! で終わるメソッド
+        /x
+
         # 言語のしるし。Guesslang の推定がこの言語と一致すれば、確信度が低くても知らせる。
         #
         # 数行のコードは、Guesslang の確信度が 0.3 に届かない（`let x = …` や `console.log(x)` は
@@ -100,10 +116,7 @@ module VivlioStarter
                          document\.\w|addEventListener|\$\(["']|\balert\(|\bconstructor\s*\(|
                          ^\s*class\s+\w+(?:\s+extends\s+\w+)?\s*\{/x)
           },
-          'ruby' => lambda { |body, _lines|
-            (body.match?(/^\s*def \w+[^:]*$/) && body.match?(/^\s*end\s*$/)) ||
-              body.match?(/^\s*(?:puts|require|require_relative) /)
-          },
+          'ruby' => ->(body, _lines) { body.match?(RUBY_MARKERS) },
           'python' => ->(body, _lines) { body.match?(/^\s*def \w+\(.*\):\s*$|^\s*(?:import \w+|from \w+ import )/) },
           'c' => ->(body, _lines) { body.match?(/#include\s*[<"]|\bint main\s*\(/) },
           'json' => lambda do |body, _lines|
