@@ -160,8 +160,8 @@ module VivlioStarter
 
           result = detector.findings(texts, book_languages: Set['ruby', 'css'], guesser:)
 
-          # 2 章目の `let a = 1` は JavaScript のしるしに当たるので、候補に javascript が加わる
-          assert_equal [%w[ruby], %w[css javascript ruby]], guesser.requests.map(&:candidates)
+          # 2 章目の `let a = 1` は JavaScript のしるしに当たるが、本で JavaScript を書いていないので候補に加えない
+          assert_equal [%w[ruby], %w[css ruby]], guesser.requests.map(&:candidates)
           assert_equal [[5, 'ruby']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
           assert_equal [[1, 'shell-session'], [5, 'ruby']],
                        result.findings['contents/12-b.md'].map { [it.line, it.language] }
@@ -182,10 +182,26 @@ module VivlioStarter
           assert_equal [[1, 'javascript']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
         end
 
+        def test_should_add_the_hint_language_only_when_the_book_uses_it
+          # 章の言語は css だけ。JavaScript のしるしがあるコードに、本で JavaScript を書いていれば
+          # 候補へ javascript を加える。書いていなければ加えない（Java の `var x = …` などの誤り防止）
+          texts = { 'contents/11-a.md' => "```css\np { color: red; }\n```\n\n```\nalert(\"こんにちは\")\n```\n" }
+
+          uses_js = FakeGuesser.new
+          detector.findings(texts, book_languages: Set['css', 'javascript'], guesser: uses_js)
+          no_js = FakeGuesser.new
+          detector.findings(texts, book_languages: Set['css'], guesser: no_js)
+
+          assert_equal [%w[css javascript]], uses_js.requests.map(&:candidates)
+          assert_equal [%w[css]], no_js.requests.map(&:candidates)
+        end
+
         def test_should_find_a_single_language_hint
           assert_equal 'javascript', detector.language_hint("let a = 1\nconsole.log(a)\n")
           assert_equal 'css', detector.language_hint(".box {\n  color: red;\n}\n")
           assert_equal 'ruby', detector.language_hint("def hello\n  puts 1\nend\n")
+          assert_equal 'javascript', detector.language_hint("alert(\"こんにちは\")\n")
+          assert_equal 'javascript', detector.language_hint("class Rectangle {\n  constructor(w, h) {\n  }\n}\n")
           assert_equal 'json', detector.language_hint(%({\n  "name": "x"\n}\n))
           # <script> の中の JavaScript にも当たるが、HTML を優先する
           assert_equal 'html', detector.language_hint("<script>\n  const a = 1\n</script>\n")

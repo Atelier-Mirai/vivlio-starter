@@ -93,9 +93,12 @@ module VivlioStarter
             body.match?(/^[^{}\n]*\{\s*(?:$|[\w-]+\s*:)/) && body.match?(/^\s*[\w-]+\s*:\s*[^;{}]+;/) &&
               body.count('{') == body.count('}')
           },
+          # alert・constructor・`class 名前 {` は入門書の短い例に多い（`alert("こんにちは")` の 2 行など）。
+          # `class 名前 {` は Java・C# にもあるが、Guesslang の推定との一致を条件にするので区別できる
           'javascript' => lambda { |body, _lines|
             body.match?(/\b(?:const|let|var)\s+\w+\s*=|\bfunction\s*\w*\s*\(|=>\s*[{(\w]|console\.log|
-                         document\.\w|addEventListener|\$\(["']/x)
+                         document\.\w|addEventListener|\$\(["']|\balert\(|\bconstructor\s*\(|
+                         ^\s*class\s+\w+(?:\s+extends\s+\w+)?\s*\{/x)
           },
           'ruby' => lambda { |body, _lines|
             (body.match?(/^\s*def \w+[^:]*$/) && body.match?(/^\s*end\s*$/)) ||
@@ -141,10 +144,14 @@ module VivlioStarter
               case classify(fence.body)
               in :skip then next
               in :guess
-                # 言語のしるしが示す言語は候補に加える。章の言語が css だけでも、JavaScript の
-                # しるしがあるコードを JavaScript と見分けられるように（一致は二段目の推定で確かめる）
+                # 言語のしるしが示す言語は、本のどこかで著者が書いている言語なら候補に加える。
+                # 章の言語が css だけでも、JavaScript のしるしがあるコードを JavaScript と見分けられる
+                # ように（一致は二段目の推定で確かめる）。本で一度も書いていない言語は加えない——
+                # Java の `var x = …` や Rust の `let x = …` も JavaScript のしるしに当たり、
+                # 候補に加えると Guesslang が JavaScript を選ぶことがある（仕様 §8.6）。
                 hint = language_hint(fence.body)
-                choices = (candidates(chapter.languages, book_languages) | [hint].compact).sort
+                extra = [hint].compact & book_languages.to_a
+                choices = (candidates(chapter.languages, book_languages) | extra).sort
                 request = CodeLanguageGuesser::Request.new(id: pending.size, body: fence.body, candidates: choices)
                 pending[request.id] = [path, fence.line, request, hint]
               in String => language
