@@ -60,6 +60,11 @@ module VivlioStarter
         CONTAINER_OPEN = /\A\s*:{3,}\s*\{?\s*\.?([\w-]+)/
         CONTAINER_CLOSE = /\A\s*:{3,}\s*\z/
 
+        # ソースコードの取り込み（```include:パス``` と、閉じを次の行に書く形）。
+        # Masking のフェンスの判定は `include:` の開始行をフェンスと見ないので、そのままだと
+        # 次の行の閉じ ``` を新しいフェンスの開始と読み、以後の組がずれる（仕様 §8.10）。
+        INCLUDE_BLOCK = /^[ \t]*```include:([^\s`:]+)[^\n`]*(?:```[ \t]*$|\n[ \t]*```[ \t]*$)/
+
         # 除外のしるし（仕様 §3.5）。1 つでもあればコードではないとみなす。
         NOT_CODE = /
           ^\s*(?:`{3}|~{3}|:{3})   # 入れ子のフェンス・囲み（記法の説明）
@@ -224,6 +229,15 @@ module VivlioStarter
         # @param text [String]
         # @return [Scan]
         def scan(text)
+          # 取り込みのブロックは、行数を保ったまま空行にしてから走査する。拡張子の言語
+          # （star1/greeting.c なら c）は、著者が明示した言語として数える
+          included = Set.new
+          text = text.gsub(INCLUDE_BLOCK) do |block|
+            language = normalize_language(File.extname(::Regexp.last_match(1)).delete('.'))
+            included << language if language
+            "\n" * block.count("\n")
+          end
+
           blocks = []
           Masking.replace_top_level_fences(text) do |block, lineno|
             blocks << [lineno, block]
@@ -247,7 +261,7 @@ module VivlioStarter
               languages << language if language
             end
           end
-          Scan.new(bare_fences: bare, languages: languages)
+          Scan.new(bare_fences: bare, languages: languages | included)
         end
 
         # フェンスの本文を分ける。

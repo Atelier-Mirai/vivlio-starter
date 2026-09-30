@@ -11,6 +11,7 @@ require_relative 'import/yaml_processor'
 require_relative 'import/re_parser'
 require_relative 'import/re_renderer'
 require_relative 'import/re_report'
+require_relative 'lint/code_language_detector'
 require_relative 'units'
 require_relative 'upgrade'
 
@@ -164,6 +165,7 @@ module VivlioStarter
         raise 'catalog.yml から原稿の一覧を読み取れませんでした' if basenames.empty?
 
         chapters = unify_labels(basenames.filter_map { render_chapter(it, report) }, report)
+        chapters = infer_code_languages(chapters, report)
         write_chapters!(chapters)
 
         report.emit!
@@ -223,6 +225,33 @@ module VivlioStarter
                                           "#{chapter.basename}-… へ改名しました。",
                                  detail: 'Vivlio Starter のラベルは本全体で一意である必要があります（クロスリファレンスの章）。')
         chapter.with(markdown:)
+      end
+
+      # 言語名のないコードブロックの言語を推定して書き込む（code-language-detection-spec.md §8.10）。
+      # vs lint --fix と同じ仕組みを、全章を変換し終えてから 1 回だけかける——本全体の明示の言語と
+      # `include:` の拡張子を候補に使え、Guesslang の起動も 1 回で済む。書き込むのは確かなもの
+      # （〜と推定）だけ。確かめきれないものは言語名なしで残し、あとで vs lint が「〜らしい」と
+      # 提案できるようにする（`text` を付けると、色を付けない指定になって提案が出なくなる）。
+      def infer_code_languages(chapters, report)
+        texts = chapters.to_h { [it.basename, it.markdown] }
+        result = Lint::CodeLanguageDetector.findings(
+          texts, book_languages: Lint::CodeLanguageDetector.book_languages(texts.values),
+                 guesser: Lint::CodeLanguageGuesser.new
+        )
+        report.count(:code_unguessed, result.unguessed)
+
+        chapters.map do |chapter|
+          estimated, suggested = (result.findings[chapter.basename] || []).partition { !it.suggested? }
+          report.count(:code_language, estimated.size)
+          report.count(:code_suggested, suggested.size)
+          next chapter if estimated.empty?
+
+          languages = estimated.to_h { [it.line, it.language] }
+          chapter.with(markdown: Lint::CodeLanguageDetector.write_languages(chapter.markdown, languages))
+        end
+      rescue Lint::CodeLanguageGuesser::Error => e
+        Common.log_warn("コードブロックの言語名の推定を飛ばしました: #{e.message}")
+        chapters
       end
 
       def write_chapters!(chapters)

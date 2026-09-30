@@ -77,12 +77,37 @@ module VivlioStarter
         # ================================================================
         # コード・端末・実行結果（同 §3.2）
         # ================================================================
-        # 言語名は Rouge の推定に委ねるので、ここではキャプションと本文だけを見る
+        # 言語名は全章を変換したあとの推定に委ねる（ImportCommands#infer_code_languages）ので、ここではキャプションと本文だけを見る
         def test_should_convert_list_with_caption_and_label
           result = convert("//list[hello][あいさつ]{\nputs 1\n//}\n")
 
           assert_includes result, '** あいさつ @hello **'
           assert_includes result, "\nputs 1\n```"
+        end
+
+        # 旧来の書き方 //emlist[キャプション][言語] は、//list と引数の並びが違う。
+        # 同じ並びで読むと、言語名がキャプションに、キャプションがラベルに回っていた
+        def test_should_read_language_of_caption_first_blocks
+          plain = convert("//emlist[][c]{\nint n;\n//}\n")
+          captioned = convert("//emlist[キャプション][Ruby]{\nputs 1\n//}\n")
+
+          assert_equal "```c\nint n;\n```", plain
+          assert_includes captioned, '** キャプション **'
+          assert_includes captioned, "```ruby\nputs 1"
+        end
+
+        # //list[ラベル][キャプション][言語] の第 3 引数の裸の語は言語名（file= や開始行ではない）
+        def test_should_read_bare_language_option_of_list
+          result = convert("//list[sample][サンプル][ruby]{\nputs 2\n//}\n")
+
+          assert_includes result, '** サンプル @sample **'
+          assert_includes result, "```ruby\nputs 2"
+        end
+
+        # 明示も拡張子も無ければ言語名を付けない。全章を変換したあとで推定する
+        # （ImportCommands#infer_code_languages）。text を付けると vs lint が提案しなくなる
+        def test_should_leave_language_empty_when_not_stated
+          assert_equal "```\nputs 1\n```", convert("//list[][]{\nputs 1\n//}\n")
         end
 
         # キャプションがファイル名に見えるときはフェンスの情報文字列へ入れる

@@ -18,6 +18,46 @@ module VivlioStarter
       end
 
       # ================================================================
+      # コードブロックの言語名の推定（code-language-detection-spec.md §8.10）
+      # ================================================================
+      # 推定器（Guesslang）は差し替えて Node なしで走らせる
+      class FakeGuesser
+        def initialize(confidence) = @confidence = confidence
+        def available? = true
+
+        def guess(requests)
+          requests.to_h { [it.id, Lint::CodeLanguageGuesser::Guess.new(language: 'c', confidence: @confidence)] }
+        end
+      end
+
+      # 確かなものは書き込み、取り込みのブロックの閉じ ``` は新しいフェンスと読まない
+      def test_should_write_estimated_languages_after_all_chapters_are_rendered
+        markdown = "```include:star1/greeting.c\n```\n\n```\n#include <math.h>\nprintf(\"%f\", M_PI);\n```\n"
+        chapters = [chapter('11-exercises', markdown, [])]
+
+        result = Lint::CodeLanguageGuesser.stub(:new, FakeGuesser.new(0.9)) do
+          ImportCommands.infer_code_languages(chapters, @report)
+        end
+
+        assert_includes result.first.markdown, "```c\n#include <math.h>"
+        assert_includes result.first.markdown, "```include:star1/greeting.c\n```"
+        assert_equal 1, @report.counted(:code_language)
+      end
+
+      # 確かめきれないものは言語名なしで残す（あとで vs lint が「〜らしい」と提案できるように）
+      def test_should_leave_unconfirmed_code_without_language
+        markdown = "```include:star1/greeting.c\n```\n\n```\nint y; // 年\nint m; // 月\n```\n"
+        chapters = [chapter('11-exercises', markdown, [])]
+
+        result = Lint::CodeLanguageGuesser.stub(:new, FakeGuesser.new(0.05)) do
+          ImportCommands.infer_code_languages(chapters, @report)
+        end
+
+        assert_equal markdown, result.first.markdown
+        assert_equal 0, @report.counted(:code_language)
+      end
+
+      # ================================================================
       # ラベルの一意化（re-direct-import-spec.md §3.6）
       # ================================================================
       # Re:VIEW は章内で一意ならよいが、Vivlio は本全体で一意でなければならない

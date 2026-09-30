@@ -53,7 +53,7 @@ module VivlioStarter
         end
 
         # 変換できた記法を数える（サマリの母数になる）
-        def count(category) = @counts[category] += 1
+        def count(category, by = 1) = @counts[category] += by
 
         def counted(category) = @counts[category]
 
@@ -96,8 +96,22 @@ module VivlioStarter
             "インライン命令 #{@counts[:inline]} 件を変換"
           ]
           lines << "ラベル ID #{@counts[:relabel]} 件を一意化のため改名" if @counts[:relabel].positive?
+          lines.concat(code_language_lines)
           lines << tally_line
           lines.compact
+        end
+
+        # 言語名のないコードブロックの推定の結果（ImportCommands#infer_code_languages）
+        def code_language_lines
+          lines = []
+          lines << "コードブロック #{@counts[:code_language]} 個に、推定した言語名を付与" if @counts[:code_language].positive?
+          if @counts[:code_suggested].positive?
+            lines << "コードブロック #{@counts[:code_suggested]} 個は言語名を確かめきれず（vs lint で「〜らしい」と提案します）"
+          end
+          if @counts[:code_unguessed].positive?
+            lines << "コードブロック #{@counts[:code_unguessed]} 個は言語名なし（vs doctor --fix で Guesslang を入れると推定できます）"
+          end
+          lines
         end
 
         def tally_line

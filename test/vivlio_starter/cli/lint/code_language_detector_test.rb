@@ -82,6 +82,29 @@ module VivlioStarter
           assert_equal [13], detector.scan(text).bare_fences.map(&:line)
         end
 
+        def test_should_skip_include_blocks_and_count_their_extensions
+          # 取り込みの閉じ ``` を新しいフェンスの開始と読まない。拡張子の言語は明示として数える
+          text = <<~MD
+            ### 時刻に応じた挨拶
+
+            ```include:star1/greeting.c
+            ```
+
+            ### 棒グラフ
+
+            ```include:star1/bar_graph1.c```
+
+            ```
+            printf("x");
+            ```
+          MD
+
+          scan = detector.scan(text)
+
+          assert_equal [10], scan.bare_fences.map(&:line)
+          assert_equal Set['c'], scan.languages
+        end
+
         def test_should_ignore_fences_nested_in_a_markdown_example
           text = <<~MD
             ````markdown

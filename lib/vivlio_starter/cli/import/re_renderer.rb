@@ -260,15 +260,27 @@ module VivlioStarter
         # 第 3 引数は実測の 9 割が `file=パス,開始行` か裸の数値（開始行）で、
         # 残りが `lineno=` などのキー付き。file= の値はカンマを含むので先に抜く
         def code_block(node)
-          label, caption, options = node.args
+          label, caption, options = code_block_args(node)
           opts = parse_options(options)
           @report.count(:block)
 
           return include_fence(node, opts, label, caption) if opts['file']
 
-          language = detect_language(caption, nil, node.body)
+          language = detect_language(caption, opts['lang'], node.body)
           [caption_for(label, caption), fence(node.body, info_string(language, label, caption, opts))]
             .compact.join("\n\n")
+        end
+
+        # ラベルを取らないブロック（旧来の Re:VIEW の書き方）。引数は `[キャプション][言語]` で、
+        # `//list[ラベル][キャプション][言語]` と並びが違う。同じ並びで読むと、言語名 `c` が
+        # キャプションに、キャプションがラベルに回り、本文は言語名なしになっていた。
+        CAPTION_FIRST_BLOCKS = %w[emlist emlistnum source].freeze
+
+        # @return [Array(String, String, String)] ラベル・キャプション・オプション（言語名を含む）
+        def code_block_args(node)
+          return [nil, *node.args.first(2)] if CAPTION_FIRST_BLOCKS.include?(node.name.to_s)
+
+          node.args.first(3)
         end
 
         # 外部ファイルは Vivlio の `include:` へ落とす。source/ は codes/ へ
@@ -696,36 +708,27 @@ module VivlioStarter
 
           key, value = token.split('=', 2)
           if value.nil?
-            options['start'] = key if key.match?(/\A\d+\z/)
+            # 裸の数値は開始行、裸の語は言語名（`//list[id][caption][ruby]`）
+            if key.match?(/\A\d+\z/)
+              options['start'] = key
+            elsif key.match?(/\A[a-z][\w+#.-]*\z/i)
+              options['lang'] = key
+            end
           else
             options[key.strip] = value.strip
           end
         end
 
-        # 言語名は「明示 → ファイル名の拡張子 → Rouge の推定」の順に決める
-        def detect_language(caption, explicit, body)
-          return explicit.strip if explicit.to_s.strip.match?(/\A[a-z0-9+#-]+\z/i)
+        # 言語名は「明示 → ファイル名の拡張子」の順に決める。どちらも無ければ言語名を付けず、
+        # 全章を変換したあとで本全体の言語を候補に推定する（ImportCommands#infer_code_languages・
+        # code-language-detection-spec.md §8.10）。Prism の言語名は小文字なので、明示もそろえる
+        # （`//emlist[][Java]`）。
+        # @return [String, nil]
+        def detect_language(caption, explicit, _body)
+          return explicit.strip.downcase if explicit.to_s.strip.match?(/\A[a-z0-9+#-]+\z/i)
 
           extension = File.extname(caption.to_s.strip)
-          return extension.delete('.').downcase unless extension.empty?
-
-          guess_language(body.join("\n"))
-        end
-
-        # Rouge による推定。シェルらしさだけは先に見る（$ や % で始まる行）
-        ROUGE_TAGS = {
-          'javascript' => 'js', 'typescript' => 'ts', 'markdown' => 'md',
-          'plaintext' => 'text', 'bash' => 'zsh', 'shell' => 'zsh'
-        }.freeze
-
-        def guess_language(code)
-          return 'zsh' if code.match?(/^[ \t]*[$%][ \t]+/)
-
-          require 'rouge'
-          tag = Rouge::Lexer.guess(source: code).tag
-          ROUGE_TAGS.fetch(tag, tag)
-        rescue LoadError, StandardError
-          'text'
+          extension.empty? ? nil : extension.delete('.').downcase
         end
 
         def inline(text, line = nil)
