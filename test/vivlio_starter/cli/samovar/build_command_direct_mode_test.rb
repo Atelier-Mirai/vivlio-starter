@@ -110,6 +110,22 @@ module VivlioStarter
           assert_match(/theme\.color/, out.join)
         end
 
+        # プロジェクトの章を .md で指定したら、本の設定で組む指定を添える（改善案 #83）。
+        # プロジェクトの外や、contents/ 以外の .md には出さない
+        def test_should_hint_chapter_build_for_project_chapter
+          FileUtils.mkdir_p(File.join(@tmpdir, 'config'))
+          FileUtils.mkdir_p(File.join(@tmpdir, 'contents'))
+          File.write(File.join(@tmpdir, 'config', 'book.yml'), "book:\n")
+          File.write(File.join(@tmpdir, 'contents', '12-new.md'), "# 章\n")
+          command = BuildCommand.new(['contents/12-new.md'])
+
+          chapter = Dir.chdir(@tmpdir) { capture_io { command.send(:hint_book_build, 'contents/12-new.md') }.join }
+          other = Dir.chdir(@tmpdir) { capture_io { command.send(:hint_book_build, 'myawesome.md') }.join }
+
+          assert_match(/vs build 12-new と指定します/, chapter)
+          assert_empty other
+        end
+
         private
 
         # 直接モードの排他判定だけを見たいので、Node チェックは通過させる

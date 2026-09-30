@@ -124,6 +124,7 @@ module VivlioStarter
           deliver(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at)
         ensure
           Common.install_configuration!(saved_config)
+          PostProcessCommands::HeadingProcessor.chapter_numbering = true
           discard(workspace)
         end
 
@@ -386,6 +387,8 @@ module VivlioStarter
           PreProcessCommands::LinkImageValidator.reset!
           PreProcessCommands::IssueRegistry.reset!
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = chapters.map(&:basename)
+          # 1 章だけの配布資料に「第1章」は要らない。章が複数なら番号で区別する（改善案 #84）
+          PostProcessCommands::HeadingProcessor.chapter_numbering = chapters.size > 1
 
           BuildLock.with_lock do
             pipeline = UnifiedBuildPipeline.new(

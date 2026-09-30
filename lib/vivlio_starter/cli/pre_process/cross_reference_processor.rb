@@ -177,7 +177,7 @@ module VivlioStarter
           basename = File.basename(filename.to_s, '.*')
           number = extract_chapter_number(basename).to_i
           context = { file_type: nil, chapter_display_number: nil, appendix_letter: nil }
-          if MAIN_CHAPTER_RANGE.include?(number)
+          if MAIN_CHAPTER_RANGE.include?(number) && PostProcessCommands::HeadingProcessor.chapter_numbering?
             index = main_chapters_from_catalog.index(basename)
             context[:chapter_display_number] = index && (index + 1)
           elsif (90..98).cover?(number)
@@ -321,8 +321,9 @@ module VivlioStarter
             # 本文章・前後付では nil となり従来どおり章番号を用いる。
             chapter_label = CrossReferenceProcessor.appendix_letter_for(@source_file) || @chapter_number
             label_id = info[:auto] ? "#{type}-#{chapter_label}-#{count}" : info[:id]
-            Label.new(label_id, type, @chapter_number, "#{chapter_label}-#{count}",
-                      info[:title], @source_file, line_number, info[:auto])
+            # 章番号を振らない配布資料では「図 1」（HeadingProcessor.chapter_numbering?・改善案 #84）
+            number = PostProcessCommands::HeadingProcessor.chapter_numbering? ? "#{chapter_label}-#{count}" : count.to_s
+            Label.new(label_id, type, @chapter_number, number, info[:title], @source_file, line_number, info[:auto])
           end
         end
 

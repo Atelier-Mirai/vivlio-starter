@@ -124,6 +124,7 @@ module VivlioStarter
         ensure
           Thread.current[:vs_verify_options] = nil
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
+          PostProcessCommands::HeadingProcessor.chapter_numbering = true
         end
 
         # プロジェクト文脈（config/book.yml）なしで実行できるか。
@@ -167,7 +168,21 @@ module VivlioStarter
           end
 
           warn_ignored_options!
+          hint_book_build(source)
           BuildCommands::DirectBuild.new(source, theme: options[:theme]).call
+        end
+
+        # プロジェクトの章を .md で指定すると直接ビルドになり、book.yml を読まない
+        # （テーマ色・判型などが本と違う）。推敲中のプレビューのつもりで使うと戸惑うので、
+        # 本の設定で組む指定を添える（改善案 #83）。
+        def hint_book_build(source)
+          return unless File.file?(Common::CONFIG_FILE)
+
+          path = File.expand_path(source)
+          return unless File.dirname(path) == File.expand_path(Common::CONTENTS_DIR)
+
+          common.log_always("💡 本の設定（book.yml）で組むなら vs build #{File.basename(path, '.md')} と指定します" \
+                            '（.md を付けると、設定ファイルなしのビルドになります）')
         end
 
         # 直接ビルドで受け付けないオプションを 1 回だけ通知する（spec §1.4）。

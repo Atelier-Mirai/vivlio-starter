@@ -49,6 +49,15 @@ module VivlioStarter
           @chapter_tokens_override || []
         end
 
+        # 章番号を振るか。直接ビルドで章が 1 つだけの配布資料には振らない（改善案 #84）。
+        # 振らないときは章扉に「第N章」を出さず、節番号を 1, 2, …、図表番号を「図 1」とする
+        # （CrossReferenceProcessor も見る）。既定は振る。
+        def chapter_numbering=(enabled)
+          @chapter_numbering = enabled
+        end
+
+        def chapter_numbering? = @chapter_numbering != false
+
         # 見出し(h1..hN)に本文参照用のマーカー（class と data 属性）を付与
         # @param html_paths [Array<String>] HTMLファイルパスの配列
         # @param max_level [Integer] 処理する見出しの最大レベル（デフォルト: 3）
@@ -181,7 +190,7 @@ module VivlioStarter
 
           {
             file_type: entry.kind.to_s,
-            chapter_display_number: if chapter_number_i
+            chapter_display_number: if chapter_number_i && chapter_numbering?
                                       resolve_main_chapter_display_number(chapter_token,
                                                                           chapter_number_i)
                                     end,
@@ -298,7 +307,10 @@ module VivlioStarter
 
           number_changed = number_text.empty? ? !current_number.to_s.empty? : current_number != number_text
           title_changed = current_title != title_text
-          number_changed || title_changed
+          # 番号の無い見出し（章番号を振らない配布資料・改善案 #84）は、番号も題も変わらないので
+          # 組み直しが起きず、題の span が付かない。柱の章題は span から取るので、無ければ組み直す
+          title_span_missing = title_class && current_title_span.nil?
+          number_changed || title_changed || title_span_missing
         end
 
         # 元のタイトルノードを抽出
