@@ -226,6 +226,42 @@ module VivlioStarter
           assert_equal [%w[css]], no_js.requests.map(&:candidates)
         end
 
+        def test_should_suggest_the_hint_language_when_the_guess_is_not_confirmed
+          # しるしは JavaScript だが、Guesslang は低い確信度で css と答えた（短いコードでよく起きる）
+          texts = { 'contents/11-a.md' => "```\nlet element = document.getElementById(\"css\")\n```\n" }
+          other = FakeGuesser.new
+          def other.guess(requests)
+            requests.to_h { [it.id, CodeLanguageGuesser::Guess.new(language: 'css', confidence: 0.05)] }
+          end
+
+          result = detector.findings(texts, book_languages: Set['css', 'javascript'], guesser: other)
+
+          found = result.findings['contents/11-a.md']
+          assert_equal [['javascript', :suggested]], found.map { [it.language, it.certainty] }
+        end
+
+        def test_should_suggest_when_the_code_is_too_short_to_guess
+          # Guesslang は 20 文字未満を判定しない（結果を返さない）
+          texts = { 'contents/11-a.md' => "```\nalert(1)\n```\n" }
+          silent = FakeGuesser.new
+          def silent.guess(_requests) = {}
+
+          result = detector.findings(texts, book_languages: Set['javascript'], guesser: silent)
+
+          assert_equal [:suggested], result.findings['contents/11-a.md'].map(&:certainty)
+        end
+
+        def test_should_not_suggest_a_language_the_book_never_uses
+          # Java の本の `var x = 1;` は JavaScript のしるしに当たるが、本で JavaScript を書いていない
+          texts = { 'contents/11-a.md' => "```java\nint n;\n```\n\n```\nvar x = 1;\nx += 2;\n```\n" }
+          silent = FakeGuesser.new
+          def silent.guess(_requests) = {}
+
+          result = detector.findings(texts, book_languages: Set['java'], guesser: silent)
+
+          assert_empty result.findings
+        end
+
         def test_should_find_ruby_only_by_ruby_specific_idioms
           ruby = [
             "scores.each do |score|\n  total += score\n",

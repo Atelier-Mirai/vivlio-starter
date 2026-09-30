@@ -154,7 +154,10 @@ module VivlioStarter
         Scan = Data.define(:bare_fences, :languages)
 
         # 言語名を付けるよう知らせるフェンス 1 つ
-        Finding = Data.define(:line, :language)
+        # certainty は :estimated（〜と推定。--fix で書き込む）か :suggested（〜らしい。著者への提案だけ）。
+        Finding = Data.define(:line, :language, :certainty) do
+          def suggested? = certainty == :suggested
+        end
 
         # 検査の結果。unguessed は、二段目の推定器が使えずに推定を見送ったフェンスの数
         # （0 でなければ、推定器を入れるよう案内する）。
@@ -189,7 +192,7 @@ module VivlioStarter
                 request = CodeLanguageGuesser::Request.new(id: pending.size, body: fence.body, candidates: choices)
                 pending[request.id] = [path, fence.line, request, hint]
               in String => language
-                found[path] << Finding.new(line: fence.line, language:)
+                found[path] << Finding.new(line: fence.line, language:, certainty: :estimated)
               end
             end
           end
@@ -198,12 +201,10 @@ module VivlioStarter
           unguessed = 0
           if pending.any?
             if guesser&.available?
-              guesser.guess(pending.values.map { it[2] }).each do |id, guess|
-                path, line, request, hint = pending.fetch(id)
-                guess = adjust_language(guess, hint, request.candidates)
-                next unless report?(guess, hint)
-
-                found[path] << Finding.new(line:, language: guess.language)
+              guesses = guesser.guess(pending.values.map { it[2] })
+              pending.each do |id, (path, line, request, hint)|
+                finding = judge(guesses[id], hint, request.candidates, book_languages)
+                found[path] << finding.with(line:) if finding
               end
             else
               unguessed = pending.size
@@ -261,6 +262,21 @@ module VivlioStarter
           return :skip if PreProcessCommands::MathSpanDetector.display_math("```\n#{body}```\n")
 
           :guess
+        end
+
+        # 1 つのフェンスについて、知らせ方を決める（仕様 §8.9）。
+        #   〜と推定（:estimated）: 確信度が十分か、しるしと一致した。--fix で書き込む
+        #   〜らしい（:suggested）: しるしはあるが確かめきれない（Guesslang が一致しない・短くて判定しない）。
+        #                           しるしの言語を本のどこかで著者が書いているときだけ。著者への提案にとどめる
+        # しるしの無いものは、確信度が低ければ知らせない（シェルのコマンドを Ruby と見るなど誤りが多い）。
+        # 行数では絞らない。短くても、しるしがあれば当たっていた（仕様 §8.9）。
+        # @return [Finding, nil] line は呼び出し側が入れる
+        def judge(guess, hint, candidates, book_languages)
+          guess = adjust_language(guess, hint, candidates) if guess
+          return Finding.new(line: nil, language: guess.language, certainty: :estimated) if guess && report?(guess, hint)
+          return nil unless hint && book_languages.include?(hint)
+
+          Finding.new(line: nil, language: hint, certainty: :suggested)
         end
 
         # Guesslang の推定を知らせるか。確信度が十分か、言語のしるしと一致したとき。

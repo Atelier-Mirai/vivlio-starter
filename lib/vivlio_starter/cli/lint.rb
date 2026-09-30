@@ -256,11 +256,15 @@ module VivlioStarter
           fixed_files = options[:fix] ? write_code_languages!(texts, result.findings) : []
           print_code_language_report(result)
 
-          count = options[:fix] ? 0 : result.findings.values.sum(&:size)
-          { exit: count.positive? ? 1 : 0, code_count: count, fixed_files: fixed_files }
+          # 「〜らしい」は --fix で書き込まないので、--fix のあとも残る
+          all = result.findings.values.flatten
+          estimated = all.count { !it.suggested? }
+          count = options[:fix] ? all.size - estimated : all.size
+          { exit: count.positive? ? 1 : 0, code_count: count, fixable_count: options[:fix] ? 0 : estimated,
+            fixed_files: fixed_files }
         rescue Lint::CodeLanguageGuesser::Error => e
           Common.log_warn("[コードブロック] #{e.message}")
-          { exit: 0, code_count: 0, fixed_files: [] }
+          { exit: 0, code_count: 0, fixable_count: 0, fixed_files: [] }
         end
 
         # 本全体（catalog.yml の全章）で明示されている言語。読めなければ検査対象の章だけで決める。
@@ -275,11 +279,14 @@ module VivlioStarter
           Lint::CodeLanguageDetector.book_languages(texts.values)
         end
 
-        # 推定した言語名を原稿へ書き込む
+        # 推定した言語名を原稿へ書き込む。「〜らしい」は著者が確かめるものなので書き込まない
         # @return [Array<String>] 書き込んだ原稿のパス
         def write_code_languages!(texts, findings)
-          findings.map do |path, list|
-            atomic_write(path, Lint::CodeLanguageDetector.write_languages(texts[path], list.to_h { [it.line, it.language] }))
+          findings.filter_map do |path, list|
+            estimated = list.reject(&:suggested?)
+            next if estimated.empty?
+
+            atomic_write(path, Lint::CodeLanguageDetector.write_languages(texts[path], estimated.to_h { [it.line, it.language] }))
             path
           end
         end
@@ -289,19 +296,29 @@ module VivlioStarter
           verb = options[:fix] ? 'を書き込みました' : 'と推定'
           result.findings.each do |path, list|
             Common.log_always "📄 #{path}  (コードブロックの言語名)"
-            rows = list.group_by(&:language).map do |language, found|
-              { count: found.size, label: "#{language} #{verb}", lines: found.map(&:line) }
+            rows = list.group_by { [it.language, it.suggested?] }.map do |(language, suggested), found|
+              label = suggested ? "#{language} らしい（言語名の付け忘れ？）" : "#{language} #{verb}"
+              { count: found.size, label:, lines: found.map(&:line) }
             end
             arranged = Lint::FindingRows.arrange(rows, path: path)
-            width = arranged.map { it[:label].length }.max
+            # ラベルに全角の字が混ざる（「らしい（言語名の付け忘れ？）」）ので、表示幅で揃える
+            display_width = ->(text) { text.each_char.sum { it.ascii_only? ? 1 : 2 } }
+            width = arranged.map { display_width.(it[:label]) }.max
             arranged.each do |row|
-              Common.log_always format('  %3d件  %-*s  行: %s', row[:count], width, row[:label], row[:lines])
+              padding = ' ' * (width - display_width.(row[:label]))
+              Common.log_always format('  %3d件  %s%s  行: %s', row[:count], row[:label], padding, row[:lines])
             end
             Common.log_always ''
           end
 
-          if result.findings.any? && !options[:fix]
-            Common.log_always '💡 コードブロックに言語名を書くと色分けされます（vs lint --fix で書き込めます）'
+          all = result.findings.values.flatten
+          if all.any? { !it.suggested? } && !options[:fix]
+            Common.log_always '💡 コードブロックに言語名を書くと色分けされます（「〜と推定」は vs lint --fix で書き込めます）'
+          end
+          if all.any?(&:suggested?)
+            Common.log_always '🤔 「〜らしい」は確かめきれなかったものです。--fix では書き込まないので、見て言語名を書いてください'
+          end
+          if all.any? && !(options[:fix] && all.none?(&:suggested?))
             Common.log_always '   色を付けない文字（実行結果・ディレクトリの木など）は ```text と書くと、指摘は出なくなります'
             Common.log_always ''
           end
@@ -318,7 +335,7 @@ module VivlioStarter
           lint_count  = lint_info[:lint_count].to_i + prose_info[:prose_count].to_i
           spell_count = spell_info[:spell_count].to_i
           code_count  = code_info[:code_count].to_i
-          fixable     = lint_info[:fixable_count].to_i + prose_info[:fixable_count].to_i + code_count
+          fixable     = lint_info[:fixable_count].to_i + prose_info[:fixable_count].to_i + code_info[:fixable_count].to_i
           total       = lint_count + spell_count + code_count
 
           Common.log_always ''

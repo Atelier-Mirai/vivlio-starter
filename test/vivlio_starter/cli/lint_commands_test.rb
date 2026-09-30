@@ -125,6 +125,36 @@ module VivlioStarter
         assert_equal "```ruby\nputs 1\nputs 2\n```\n", File.read(path)
       end
 
+      # 「〜らしい」は著者への提案だけ。--fix では書き込まない
+      class SuggestingGuesser
+        def available? = true
+
+        def guess(requests)
+          requests.to_h { [it.id, Lint::CodeLanguageGuesser::Guess.new(language: 'css', confidence: 0.05)] }
+        end
+      end
+
+      def test_code_language_suggestions_are_shown_but_not_written_with_fix
+        path = 'contents/11-install.md'
+        original = "```javascript\nlet a = 1\n```\n\n```\nlet element = document.getElementById(\"x\")\n```\n"
+        File.write(path, original)
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            Lint::CodeLanguageGuesser.stub(:new, SuggestingGuesser.new) do
+              stdout, = capture_io { LintCommands.execute_lint(['11-install'], { fix: true }) }
+            end
+          end
+        end
+
+        assert_match(/javascript らしい（言語名の付け忘れ？）  行: 5/, stdout)
+        assert_match(/--fix では書き込まない/, stdout)
+        assert_equal original, File.read(path)
+      end
+
       def test_code_language_check_points_to_doctor_when_guesslang_is_missing
         File.write('contents/11-install.md', "```\nputs 1\nputs 2\n```\n")
         fake_status = Struct.new(:success?).new(true)
