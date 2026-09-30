@@ -38,7 +38,7 @@ module VivlioStarter
           definition: 30.0,    # 「〜とは」など定義パターンに現れた
           technical: 15.0,     # カタカナ語・英字語などの専門用語らしさ
           noun_sequence: 10.0, # MeCab が拾った名詞連続
-          heading: 20.0        # 見出しに現れた（現時点では未使用・主要参照仕様で使う）
+          heading: 45.0        # 節の見出しに現れた（見出しは「何を説明する節か」の宣言）
         }.freeze
 
         # TF-IDF のスケール係数。閾値との突き合わせではなく順位付けに使うので、
@@ -80,6 +80,12 @@ module VivlioStarter
 
         # 用語 → スコアのハッシュ
         def scores = terms.to_h { [it, score(it)] }
+
+        # 語を候補から外す（語の形でなく置かれ方で非語と分かったもの）
+        def discard(term)
+          @traits.delete(term)
+          @tfidf.delete(term)
+        end
 
         # スコアをリセット
         def reset!

@@ -283,6 +283,154 @@ module VivlioStarter
           refute_includes @extractor.all_candidates, 'column'
         end
 
+        # --- phase: 候補の質（改善案 #98） ---
+
+        def extract(markdown)
+          File.write('contents/10-a.md', markdown)
+          @extractor.extract_from_chapters!(['10-a'])
+          @extractor.all_candidates
+        end
+
+        def mecab!
+          skip 'MeCab が利用できない環境ではスキップ' unless YomiInferrer.new.available?
+        end
+
+        # 空白を落として連結すると「閲覧用PDF」になり、本文の「閲覧用 PDF」と一致しない
+        def test_noun_sequence_keeps_the_space_between_words
+          mecab!
+          candidates = extract("閲覧用 PDF を作ります。閲覧用 PDF は画面で読みます。\n")
+
+          assert_includes candidates, '閲覧用 PDF'
+          refute_includes candidates, '閲覧用PDF'
+        end
+
+        # 接頭辞で切ると「章ビルド」という断片が候補になる
+        def test_prefix_stays_with_the_following_noun
+          mecab!
+          candidates = extract("単章ビルドで確かめます。単章ビルドは速い。\n")
+
+          assert_includes candidates, '単章ビルド'
+          refute_includes candidates, '章ビルド'
+        end
+
+        # 英語の複合名は 1 語に。語の途中（viewBox）からは切り出さない
+        def test_english_names_are_kept_whole
+          candidates = extract("Kindle Previewer で確かめます。viewBox の値を決めます。\n")
+
+          assert_includes candidates, 'Kindle Previewer'
+          refute_includes candidates, 'Previewer'
+          refute_includes candidates, 'Box'
+        end
+
+        # 見出しと次の行の語をつなげない
+        def test_words_do_not_join_across_lines
+          candidates = extract("## Technical Terms\n\nHTML を書きます。\n")
+
+          refute(candidates.any? { it.include?('Terms HTML') }, candidates.inspect)
+        end
+
+        # 図解注釈の注釈行・画像の代替テキスト・ラベルは、紙面の本文ではない
+        def test_machine_data_image_alt_and_labels_are_not_read
+          candidates = extract(<<~MD)
+            :::{.showcase}
+            ![弾く人](a.webp)
+            rect:1 10, 10, 20, 20 愛用のバイオリン
+            :::
+
+            ![アインシュタインの肖像](b.webp)
+
+            ** 素数の表 @prime-table **
+          MD
+
+          %w[バイオリン アインシュタイン @prime-table prime-table].each { refute_includes candidates, it }
+        end
+
+        # 助詞で終わる・指示語で始まる断片と、数と単位は語ではない
+        def test_fragments_and_measurements_are_rejected
+          mecab!
+          candidates = extract("前章の説明を見ます。その語について述べます。幅は 1mm と 2,894 です。\n")
+
+          %w[前章の その語 1mm 2,894].each { refute_includes candidates, it }
+        end
+
+        # 表の列の値として並ぶ語は、本文の語のように数えない
+        def test_table_column_values_are_discarded
+          rows = Array.new(4) { |i| "| 記法#{i} | 拡張リファレンス |" }.join("\n")
+          candidates = extract("| やりたいこと | 解説章 |\n|---|---|\n#{rows}\n\nKindle を使います。\n")
+
+          refute_includes candidates, '拡張リファレンス'
+        end
+
+        # 本文によく出る語は、比較表の行見出しに並んでも残る
+        def test_frequent_prose_term_survives_as_a_table_row_header
+          prose = "Kindle で読みます。\n" * 8
+          rows = Array.new(3) { "| Kindle | 対応 |" }.join("\n")
+          candidates = extract("#{prose}\n| 形式 | 対応 |\n|---|---|\n#{rows}\n")
+
+          assert_includes candidates, 'Kindle'
+        end
+
+        # 決まり文句の中の語（「表示結果は次のようになります」）は外す
+        def test_boilerplate_phrase_is_discarded
+          mecab!
+          candidates = extract("表示結果は次のようになります。\n" * 6)
+
+          refute_includes candidates, '表示結果'
+        end
+
+        # 続きが同じでも、決まった組み合わせの名前（Re:VIEW Starter）は定型句ではない
+        def test_fixed_compound_name_is_not_boilerplate
+          candidates = extract("Re:VIEW Starter の原稿です。\n" * 6)
+
+          assert_includes candidates, 'Re:VIEW Starter'
+        end
+
+        # --- phase: 見出しの語（改善案 #98） ---
+
+        # 2 字の要語は本文だけでは拾わないが、見出しに出れば拾う
+        def test_short_noun_in_a_heading_becomes_a_candidate
+          mecab!
+          body = "扉絵を用意します。扉絵は縦長です。\n"
+          refute_includes extract(body), '扉絵', '本文だけでは 2 字の語を拾わない'
+
+          @extractor = IndexCandidateExtractor.new
+          candidates = extract("## 扉絵の設定\n\n#{body}")
+
+          assert_includes candidates, '扉絵'
+          assert_includes @extractor.scoring.breakdown('扉絵')[:traits], :heading
+        end
+
+        # 見出しの単独名詞でも、動作を表す名詞（サ変接続）は節の話題ではない
+        def test_action_noun_in_a_heading_is_not_picked_up
+          mecab!
+          candidates = extract("## 指摘の見方\n\n指摘を読みます。\n")
+
+          refute_includes candidates, '指摘'
+        end
+
+        # 多くの章の見出しに出る語（まとめ・設定）は構成の言葉なので見出しの加点をしない
+        def test_structural_heading_word_gets_no_heading_bonus
+          mecab!
+          chapters = Array.new(5) { |i| "1#{i}-c" }
+          chapters.each { File.write("contents/#{it}.md", "## 目次の設定\n\n目次を作ります。\n") }
+
+          @extractor.extract_from_chapters!(chapters)
+
+          refute_includes @extractor.all_candidates, '目次'
+        end
+
+        # 登録語にも候補と同じく見出しの加点を付ける。付けないと、見出しに出る登録語だけが
+        # 候補より低く出て、見直し候補へ押し出される
+        def test_registered_term_in_a_heading_gets_the_heading_bonus
+          File.write('contents/10-a.md', "## 交ぜ書き\n\n交ぜ書きを直します。\n\n交ぜ書きは読みにくい。\n")
+          File.write('contents/11-b.md', "体言止めを使います。\n\n体言止めは短い。\n")
+          @extractor.extract_from_chapters!(%w[10-a 11-b])
+
+          scores = @extractor.score_terms([{ 'term' => '交ぜ書き' }, { 'term' => '体言止め' }])
+
+          assert_operator scores['交ぜ書き'], :>, scores['体言止め'], '同じ出方なら見出しに出る語が上'
+        end
+
         # --- phase: 登録語のスコア付け（score_terms） ---
 
         # 原稿に 1 回も出てこない語はスコアを持たない。技術用語らしい綴りだと
