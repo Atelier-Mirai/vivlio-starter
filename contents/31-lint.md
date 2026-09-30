@@ -365,6 +365,19 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 
 `---` なら第 2 レベル、`===` なら第 1 レベルの見出しです。とくに `===` は章題と同じ階層なので、気づかないまま目次にも並びます。改ページにするなら**前に空行**を入れてください。
 
+### 章見出しが二つあるファイル
+
+章番号はファイルごとに振られます。一つの章ファイルに `#` を 2 つ書くと、二つ目の見出しは新しい章になりません。章扉と同じ見た目の見出しにはなりますが「第 N 章」が付かず、その下の節番号も前の章の続き（1-1 のあとが 1-2）になります。ビルドは成功するので、紙面を見るまで気づけません。
+
+:::{.output}
+```
+    1件  [multiple-chapter-headings] 章見出し（#）は 1 ファイルに一つです（1 つ目は 1 行目の「git について」）。この見出しは新しい章にならず、節番号も前の章の続きになります（章を分けるならファイルを分ける／章の中の見出しにするなら ## を使う）
+         行: 7
+```
+:::
+
+章を分けるときは、ファイルを分けて `catalog.yml` に並べてください。コードブロックの中の `# コメント` は章見出しと見なしません。設定ファイルなしのビルド（`vs build file.md`）は、一つのファイルを `#` ごとに章に分けて組みます（@ch-build の章）。
+
 ## コードブロックの言語名 @lint-code-language
 
 :::{.section-lead}
@@ -553,7 +566,7 @@ lint:
 
 切ったルールは表示に出ず、`vs lint --fix` でも修正が当たりません。無効化した分は問題件数にも数えません。`prh` と書くと、表記揺れの辞書がすべて止まります（辞書の項目を一つずつは切れません）。
 
-Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
+Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 

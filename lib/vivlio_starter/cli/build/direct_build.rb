@@ -16,6 +16,8 @@
 #
 # 意図的な制約:
 #   - 章種は常に本章（chapter）。catalog を引かないため 00-/99- でも前書き扱いしない
+#   - 章番号はファイルごとに振られるので、1 ファイルに `#` を複数書いた原稿は
+#     `#` ごとに章ファイルへ分けて組む（改善案 #77）
 #   - theme.style は simple 固定。扉絵・節絵アセットの生成は軽量経路の趣旨に反する
 #   - 出力は閲覧用 PDF のみ（print_pdf / EPUB / Kindle は対象外）
 #
@@ -61,6 +63,18 @@ module VivlioStarter
         # 01–89 は本章の範囲であり、10 はその中庸。
         FALLBACK_NUMBER = '10'
         FALLBACK_SLUG = 'document'
+
+        # ワークスペースに置く 1 章分の原稿
+        Chapter = Data.define(:basename, :body)
+
+        # 章見出し（ATX の `#` 1 つ）。`##` 以下や `#タグ` は含めない
+        CHAPTER_HEADING = /\A {0,3}\#[ \t]+\S/
+
+        # 先頭のフロントマター（YAML の `# コメント` を章見出しと読まないために除く）
+        FRONT_MATTER = /\A---\r?\n.*?^---\r?\n/m
+
+        # 章の末尾の改ページ（`---`）と空行。次の章はどのみち新しいページから始まる
+        TRAILING_PAGEBREAKS = /(?:^[ \t]*(?:---)?[ \t]*\r?\n)+\z/
 
         # stylesheets 配下で唯一ビルドが書き込む生成物（FontManager が更新し
         # page-settings.css が @import する）。ワークスペース側の実体コピーへ逃がす対象。
@@ -113,15 +127,50 @@ module VivlioStarter
           discard(workspace)
         end
 
-        # ワークスペース内の章 basename（NN-slug）。
+        # ワークスペース内の最初の章の basename（NN-slug）。
         # 01–89 の番号付きファイルだけ番号を保ち、それ以外（番号なし・00・90–99）は
-        # 10 に付け替える＝常に本章扱い（spec §1.1）。
+        # 10 に付け替える＝常に本章扱い（spec §1.1）。章が複数あって 89 を超えるときも
+        # 10 から振る（90 以降は付録の番号になるため）。
         def basename
           @basename ||= begin
             number, slug = source_name.match(/\A(\d+)[-_](.+)\z/)&.captures
-            number = format('%02d', number.to_i) if number
-            number = FALLBACK_NUMBER unless number && (1..89).cover?(number.to_i)
-            "#{number}-#{sanitize_slug(slug || source_name)}"
+            number = number&.to_i
+            number = FALLBACK_NUMBER.to_i unless number && (1..(90 - chapter_bodies.size)).cover?(number)
+            format('%02d-%s', number, sanitize_slug(slug || source_name))
+          end
+        end
+
+        # ワークスペースに置く章。2 章目以降は最初の章の番号を 1 つずつ進め、slug に
+        # 通し番号を付ける（10-notes, 11-notes-2, …）。
+        # @return [Array<Chapter>]
+        def chapters
+          @chapters ||= begin
+            number, slug = basename.split('-', 2)
+            chapter_bodies.each_with_index.map do |body, index|
+              name = index.zero? ? basename : format('%02d-%s-%d', number.to_i + index, slug, index + 1)
+              Chapter.new(basename: name, body:)
+            end
+          end
+        end
+
+        # 原稿を章見出し（`#`）ごとに切り分けた本文。1 つ目の章見出しより前（フロントマターや
+        # 前置きの段落）は最初の章に含める。コードの中の `# コメント` では切らない。
+        # 章の末尾の改ページ（`---`）は落とす——次の章はどのみち新しいページから始まり、
+        # 残すと白紙のページが入る。
+        # @return [Array<String>]
+        def chapter_bodies
+          @chapter_bodies ||= begin
+            text = File.read(source, encoding: 'utf-8')
+            front = text[FRONT_MATTER].to_s.count("\n")
+            cuts = []
+            Masking.each_prose_line(text) do |line, lineno|
+              cuts << lineno if lineno > front && line.match?(CHAPTER_HEADING)
+            end
+
+            lines = text.lines
+            starts = [0] + cuts.drop(1).map { it - 1 }
+            bodies = starts.zip(starts.drop(1) + [lines.size]).map { |from, to| lines[from...to].join }
+            bodies[0...-1].map { it.sub(TRAILING_PAGEBREAKS, "") } + [bodies.last]
           end
         end
 
@@ -198,10 +247,13 @@ module VivlioStarter
 
           FileUtils.cp(File.join(NewCommands::SCAFFOLD_SOURCE, Common::PAGE_PRESETS_FILE),
                        File.join(workspace, Common::PAGE_PRESETS_FILE))
-          File.write(File.join(workspace, Build::CatalogLoader::CATALOG_FILE),
-                     "CHAPTERS:\n  - #{basename}\n", encoding: 'utf-8')
+          catalog = chapters.map { "  - #{it.basename}\n" }.join
+          File.write(File.join(workspace, Build::CatalogLoader::CATALOG_FILE), "CHAPTERS:\n#{catalog}", encoding: 'utf-8')
 
-          FileUtils.cp(source, File.join(workspace, Common::CONTENTS_DIR, "#{basename}.md"))
+          chapters.each do |chapter|
+            File.write(File.join(workspace, Common::CONTENTS_DIR, "#{chapter.basename}.md"), chapter.body,
+                       encoding: 'utf-8')
+          end
           copy_referenced_images(workspace)
         end
 
@@ -273,19 +325,21 @@ module VivlioStarter
         # 出す従来動作に委ねる・spec §2.4）。
         def copy_referenced_images(workspace)
           images_root = File.join(workspace, Common::IMAGES_DIR)
-          chapter_dir = File.join(images_root, basename)
 
-          copied = File.read(source, encoding: 'utf-8').scan(LOCAL_IMAGE_PATTERN).flatten.uniq.filter_map do |ref|
-            src = image_search_bases.map { File.expand_path(ref, it) }.find { File.file?(it) }
-            # 参照の相対構造ごと持ち込む。ImagePathNormalizer が images/<章>/<参照文字列>
-            # へ正規化するため、ファイル名だけ平らにコピーすると参照が外れる。
-            dest = File.expand_path(ref, chapter_dir)
-            next unless src && dest.start_with?("#{images_root}/")
+          copied = chapters.flat_map do |chapter|
+            chapter_dir = File.join(images_root, chapter.basename)
+            chapter.body.scan(LOCAL_IMAGE_PATTERN).flatten.uniq.filter_map do |ref|
+              src = image_search_bases.map { File.expand_path(ref, it) }.find { File.file?(it) }
+              # 参照の相対構造ごと持ち込む。ImagePathNormalizer が images/<章>/<参照文字列>
+              # へ正規化するため、ファイル名だけ平らにコピーすると参照が外れる。
+              dest = File.expand_path(ref, chapter_dir)
+              next unless src && dest.start_with?("#{images_root}/")
 
-            FileUtils.mkdir_p(File.dirname(dest))
-            FileUtils.cp(src, dest)
-            ref
-          end
+              FileUtils.mkdir_p(File.dirname(dest))
+              FileUtils.cp(src, dest)
+              ref
+            end
+          end.uniq
 
           return if copied.empty?
 
@@ -331,12 +385,12 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = { verify_external_links: false }
           PreProcessCommands::LinkImageValidator.reset!
           PreProcessCommands::IssueRegistry.reset!
-          PostProcessCommands::HeadingProcessor.chapter_tokens_override = [basename]
+          PostProcessCommands::HeadingProcessor.chapter_tokens_override = chapters.map(&:basename)
 
           BuildLock.with_lock do
             pipeline = UnifiedBuildPipeline.new(
               PipelineCommand.new(options: { resize: false, compress: false, clean: !debug? }),
-              entries: [entry], mode: :single
+              entries: chapters.map { entry(it.basename) }, mode: :single
             )
             pipeline.run
             name = pipeline.generated_pdf_name
@@ -347,11 +401,11 @@ module VivlioStarter
         end
 
         # catalog を引かずに手組みする Entry。常に本章（chapter）扱い（spec §1.1）。
-        def entry
-          number, slug = basename.split('-', 2)
+        def entry(name)
+          number, slug = name.split('-', 2)
           TokenResolver::Entry.new(
             number:, slug:, kind: :chapter, label: 'CHAPTERS',
-            path: File.join(Common::CONTENTS_DIR, "#{basename}.md"),
+            path: File.join(Common::CONTENTS_DIR, "#{name}.md"),
             exists: true, in_catalog: true, valid: true
           )
         end

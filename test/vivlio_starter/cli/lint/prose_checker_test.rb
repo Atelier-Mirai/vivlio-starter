@@ -468,6 +468,23 @@ class TestProseChecker < Minitest::Test
     assert_empty check("段落です。\n\n---\n\n次の段落。\n")
   end
 
+  # 章番号はファイルごとに振られるので、2 つ目の `#` は新しい章にならない。
+  # 1 つ目の場所を添えて、2 つ目以降を指摘する
+  def test_should_report_second_chapter_heading_in_one_file
+    findings = check("# git について\n\n## 基本\n\n---\n\n# github について\n\n## 基本\n")
+                 .select { it.rule == 'multiple-chapter-headings' }
+
+    assert_equal [7], findings.map(&:line)
+    assert_match(/1 つ目は 1 行目の「git について」/, findings.first.label)
+  end
+
+  # コードの中のシェルのコメント・フロントマターの YAML コメント・## 以下は章見出しではない
+  def test_should_not_report_hash_lines_that_are_not_chapter_headings
+    body = "---\ntitle: 資料\n# 下書き\n---\n# 章\n\n## 節\n\n```bash\n# コメント\n```\n\n#タグ\n"
+
+    assert_empty(check(body).select { it.rule == 'multiple-chapter-headings' })
+  end
+
   # 3 ルールとも lint.disabled_rules で黙る。
   def test_should_respect_disabled_rules_for_notation_findings
     body = "フラグは [g] です。\n\n    字下げコード\n\n本文の途中\n---\n"

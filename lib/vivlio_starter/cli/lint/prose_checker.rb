@@ -10,6 +10,7 @@
 #     - stray-index-markup   索引語のつもりでない `[g]`（markdown-notation-collision-spec.md §5）
 #     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
+#     - multiple-chapter-headings 1 つの章ファイルに 2 つ目の章見出し（`#`）
 #     - slash-between-japanese 和文どうしを空きなしの半角スラッシュで並べた箇所
 #     - space-around-brackets  かっこの隣の空白。区切り記号（`） — `）や強調の閉じの隣は許容
 #     - long-parenthetical   長すぎる補足（丸かっこの中の和文が 60 字を超える）
@@ -59,6 +60,7 @@ module VivlioStarter
         STRAY_INDEX_RULE     = 'stray-index-markup'
         INDENTED_CODE_RULE   = 'indented-code-block'
         SETEXT_RULE          = 'setext-heading'
+        MULTIPLE_CHAPTER_HEADINGS_RULE = 'multiple-chapter-headings'
         SLASH_RULE           = 'slash-between-japanese'
         BRACKET_SPACE_RULE   = 'space-around-brackets'
         LONG_PARENTHETICAL_RULE = 'long-parenthetical'
@@ -85,6 +87,12 @@ module VivlioStarter
         # **行末の改行まで見込む。** prose_lines が渡すのは chomp していない生の行で、
         # `\z` だけで閉じると "---\n" に当たらず、指摘が 1 件も出ない（実測で踏んだ）。
         SETEXT_UNDERLINE = /\A {0,3}(=+|-+)[ \t]*\r?\n?\z/
+
+        # 章見出し（ATX の `#` 1 つ）。`##` 以下や `#タグ` は含めない。
+        CHAPTER_HEADING = /\A {0,3}\#[ \t]+(\S.*?)[ \t]*\r?\n?\z/
+
+        # 先頭のフロントマター。YAML の `# コメント` を章見出しと読まないために除く
+        FRONT_MATTER = /\A---\r?\n.*?^---\r?\n/m
 
         # 交ぜ書き辞書の第 1 層。MeCab が無くても動く語だけが入っている。
         # 語の採否と、誤検出で落とした語の理由は辞書側に置く。
@@ -216,6 +224,7 @@ module VivlioStarter
           findings.concat(stray_index_findings(text))          unless rules.include?(STRAY_INDEX_RULE)
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
+          findings.concat(multiple_chapter_heading_findings(text)) unless rules.include?(MULTIPLE_CHAPTER_HEADINGS_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
           findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
@@ -861,6 +870,29 @@ module VivlioStarter
             Finding.new(line: lineno, rule: SETEXT_RULE,
                         label: "直前の行に続いているため、改ページではなく#{level}の見出しになります" \
                                '（改ページにするなら前に空行を入れる／見出しにするなら ## を使う）')
+          end
+        end
+
+        # 1 つの章ファイルに 2 つ目の章見出し（`#`）がある箇所の指摘。
+        #
+        # 章番号はファイルごとに振られるので、2 つ目の `#` は新しい章にならない。章扉と同じ
+        # 見た目の見出しにはなるが「第 N 章」が付かず、その下の節番号も前の章の続きになる
+        # （1-1 のあとが 2-1 ではなく 1-2）。ビルドは通るので、紙面を見るまで気づけない。
+        def multiple_chapter_heading_findings(text)
+          front = text[FRONT_MATTER].to_s.count("\n")
+          headings = prose_lines(text).filter_map do |lineno, line|
+            next if lineno <= front
+            next unless (matched = line.match(CHAPTER_HEADING))
+
+            [lineno, matched[1]]
+          end
+          first_line, first_title = headings.first
+
+          headings.drop(1).map do |lineno, _title|
+            Finding.new(line: lineno, rule: MULTIPLE_CHAPTER_HEADINGS_RULE,
+                        label: "章見出し（#）は 1 ファイルに一つです（1 つ目は #{first_line} 行目の「#{first_title}」）。" \
+                               'この見出しは新しい章にならず、節番号も前の章の続きになります' \
+                               '（章を分けるならファイルを分ける／章の中の見出しにするなら ## を使う）')
           end
         end
 

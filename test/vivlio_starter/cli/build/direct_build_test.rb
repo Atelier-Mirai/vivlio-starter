@@ -192,6 +192,39 @@ module VivlioStarter
         end
 
         # ------------------------------------------------------------
+        # 章見出しごとの分割（改善案 #77）
+        # ------------------------------------------------------------
+
+        # 章番号はファイルごとに振られるので、`#` ごとに章ファイルへ分ける。
+        # 章の末尾の改ページ（---）は落とす（次の章は新しいページから始まり、残すと白紙が入る）
+        def test_should_split_chapters_at_each_chapter_heading
+          body = "# git について\n\n## git の基本\nいろいろ書く\n\n---\n\n# github について\n\n## github の基本\n"
+          chapters = direct_build_for('notes.md', body).send(:chapters)
+
+          assert_equal %w[10-notes 11-notes-2], chapters.map(&:basename)
+          assert_equal "# git について\n\n## git の基本\nいろいろ書く\n", chapters.first.body
+          assert_equal "# github について\n\n## github の基本\n", chapters.last.body
+        end
+
+        # コードの中のシェルのコメントでは切らない。章見出しが一つなら従来どおり 1 章
+        def test_should_not_split_at_hash_comment_in_code
+          body = "# 手順\n\n```bash\n# インストール\nbrew install git\n```\n"
+          chapters = direct_build_for('notes.md', body).send(:chapters)
+
+          assert_equal ['10-notes'], chapters.map(&:basename)
+          assert_equal body, chapters.first.body
+        end
+
+        # 番号付きのファイルは番号を保ち、続く章はその次から。付録の番号（90 以降）に
+        # 届くなら 10 から振る
+        def test_should_number_following_chapters_after_the_first
+          two = "# 一\n\n# 二\n"
+
+          assert_equal %w[05-note 06-note-2], direct_build_for('05-note.md', two).send(:chapters).map(&:basename)
+          assert_equal %w[10-last 11-last-2], direct_build_for('89-last.md', two).send(:chapters).map(&:basename)
+        end
+
+        # ------------------------------------------------------------
         # --theme の検証
         # ------------------------------------------------------------
 
