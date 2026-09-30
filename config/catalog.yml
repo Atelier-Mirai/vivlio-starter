@@ -18,9 +18,10 @@ CHAPTERS:
   - 【第二部：書く】:
       - 21-markdown-tutorial
       - 22-extensions
-      - 23-chapter-management
-      - 24-cross-reference
-      - 25-querystream
+      - 23-figures
+      - 24-chapter-management
+      - 25-cross-reference
+      - 26-querystream
   - 【第三部：整える】:
       - 31-lint
       - 32-metrics

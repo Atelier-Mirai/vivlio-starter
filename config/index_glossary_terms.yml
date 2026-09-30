@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-09-29 18:18:49'
+generated_at: '2026-10-01 00:06:14'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -10,7 +10,7 @@ terms:
   pattern: "/\\-\\-force/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 23-chapter-management
+  - 24-chapter-management
 - term: Amazon
   yomi: Amazon
   flags: i
@@ -350,7 +350,7 @@ terms:
   pattern: "/\\bQueryStream\\b/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 25-querystream
+  - 26-querystream
 - term: RGB
   yomi: RGB
   flags: i
@@ -516,7 +516,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/一件検索/"
   main:
-  - 25-querystream
+  - 26-querystream
   updated_at: '2026-08-21 19:10:01'
 - term: 一般候補
   yomi: いっぱんこうほ
@@ -686,7 +686,7 @@ terms:
   pattern: "/キャプション/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: 空白ページ
   yomi: くうはくぺーじ
   flags: i
@@ -736,7 +736,7 @@ terms:
   pattern: "/クロスリファレンス/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: 形態素解析
   yomi: けいたいそかいせき
   flags: i
@@ -908,7 +908,7 @@ terms:
   pattern: "/自動ID/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: 自動インストール
   yomi: じどういんすとーる
   flags: i
@@ -1019,7 +1019,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/千分率/"
   main:
-  - 22-extensions
+  - 23-figures
   updated_at: '2026-08-21 19:10:01'
 - term: 相互参照
   yomi: そうごさんしょう
@@ -1029,7 +1029,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/相互参照/"
   main:
-  - 24-cross-reference
+  - 25-cross-reference
   updated_at: '2026-08-21 19:10:01'
 - term: ソート
   yomi: そーと
@@ -1050,7 +1050,7 @@ terms:
   pattern: "/タイトル/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: 単数形
   yomi: たんすうがた
   flags: i
@@ -1059,7 +1059,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/単数形/"
   main:
-  - 25-querystream
+  - 26-querystream
   updated_at: '2026-08-21 19:10:01'
 - term: 代替テキスト
   yomi: だいたいてきすと
@@ -1192,7 +1192,7 @@ terms:
   pattern: "/データファイル/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 25-querystream
+  - 26-querystream
 - term: 到達性
   yomi: とうたつせい
   flags: i
@@ -1398,7 +1398,7 @@ terms:
   pattern: "/パーミル/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 22-extensions
+  - 23-figures
 - term: 表記揺れ
   yomi: ひょうきゆれ
   flags: i
@@ -1427,7 +1427,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/フィールド/"
   main:
-  - 25-querystream
+  - 26-querystream
   updated_at: '2026-08-21 19:10:01'
 - term: フェンス
   yomi: ふぇんす
@@ -1568,7 +1568,7 @@ terms:
   approved_at: '2026-08-09 03:08:17'
   pattern: "/丸数字/"
   main:
-  - 22-extensions
+  - 23-figures
   updated_at: '2026-08-21 19:10:01'
 - term: マーカー
   yomi: まーかー
@@ -1663,7 +1663,7 @@ terms:
   pattern: "/ラベル/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: ラベルID
   yomi: らべるID
   flags: ig
@@ -1675,7 +1675,7 @@ terms:
   pattern: "/ラベルID/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: リスト
   yomi: りすと
   flags: i
@@ -1685,7 +1685,7 @@ terms:
   pattern: "/リスト/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 24-cross-reference
+  - 25-cross-reference
 - term: リファレンス
   yomi: りふぁれんす
   flags: i
@@ -1775,7 +1775,7 @@ terms:
   pattern: "/スラッグ/"
   updated_at: '2026-08-21 19:10:01'
   main:
-  - 23-chapter-management
+  - 24-chapter-management
 - term: バリアント
   yomi: バリアント
   flags: i
@@ -1814,9 +1814,10 @@ scanned_chapters:
 - 12-new
 - 21-markdown-tutorial
 - 22-extensions
-- 23-chapter-management
-- 24-cross-reference
-- 25-querystream
+- 23-figures
+- 24-chapter-management
+- 25-cross-reference
+- 26-querystream
 - 31-lint
 - 32-metrics
 - 33-index-glossary
