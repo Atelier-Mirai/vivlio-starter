@@ -151,6 +151,8 @@ if File.exist?(book_yml)
   #   preface_color / appendix_color … 本書は前書きと付録の色を変えているが、
   #                   新しく始める本は空欄（color と同じ色）から。既定値も nil。
   #                   空欄だと書き方の手がかりがないので、行末のコメントごと例つきにする
+  #   targets      … 執筆中に EPUB や Kindle を試すと作業中の book.yml の値が変わる。
+  #                   雛形は閲覧用 PDF だけ（最初の targets の行）を有効にして配る（改善案 #80）
   #   *_pagebreak  … 本書はページ数を抑えるため節の改ページと改丁をやめているが、
   #                   新しく始める本には組版として整った側を渡す
   #   page.use     … 本書は大部なので A4（a4_custom）で組んでいるが、同人誌で
@@ -162,6 +164,8 @@ if File.exist?(book_yml)
   content.gsub!(/^(\s+use:\s*)(?:a4|a5|b5)_\w+(\s*#.*)?$/, '\1b5_standard\2')
   content.gsub!(/^(\s+preface_color:).*$/, '\1 # 前書き/後書きの色（例: teal）。空欄なら color と同じ色')
   content.gsub!(/^(\s+appendix_color:).*$/, '\1 # 付録の色（例: cyan）。空欄なら color と同じ色')
+  content.gsub!(/^(\s+)targets:/, '\1# targets:')
+  content.sub!(/^(\s+)# targets:/, '\1targets:')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
   # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、

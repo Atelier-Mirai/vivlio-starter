@@ -156,7 +156,7 @@ module VivlioStarter
         end
 
         # theme.color を hex へ解決する（パレット・解決規則は ThemeColor に一元化）。未解決は既定色。
-        def theme_color_hex = ThemeColor.resolve(@config.dig(:theme, :color)) || ThemeColor::DEFAULT
+        def theme_color_hex = ThemeColor.resolve(@config.dig(:theme, :color)) || ThemeColor.resolve(ThemeColor::DEFAULT_NAME)
 
         def marker_codepoint(char)
           char.codepoints

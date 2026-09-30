@@ -31,7 +31,7 @@ module VivlioStarter
         # 閲覧用 PDF のみ・ファイル名も違う（章名.pdf）ため全章の結合とは別物。
         # `final clean` は全章表にも同名の行があるが、あちらは :join 相で
         # 他ターゲットの完了を待つためのもの。単章は待つ相手がいないので自前で持つ。
-        SINGLE_ONLY = ['entries.js + pdf', 'rename output pdfs', 'final clean'].freeze
+        SINGLE_ONLY = ['entries.js + pdf', 'shorten single pdf destination names', 'rename output pdfs', 'final clean'].freeze
 
         def setup
           skip 'config/book.yml が見つかりません（リポジトリルートで実行してください）' unless File.exist?('config/book.yml')

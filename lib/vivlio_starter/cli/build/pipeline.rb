@@ -4,6 +4,7 @@ require 'digest'
 require 'tmpdir'
 
 require_relative 'backlink_dedup_orchestrator'
+require_relative 'destination_names'
 require_relative 'epub_builder'
 require_relative 'epub_flow'
 require_relative 'print_pdf_builder'
@@ -328,6 +329,9 @@ module VivlioStarter
             ['merge all pdfs', -> { Build::PdfMerger.merge_all_pdfs!(entries) },            t.pdf, :pdf, :whole_book],
             ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) },
              t.pdf, :pdf, :whole_book],
+            # 結合までは長い名前を手がかりに使うので、付け替えは仕上がった閲覧用 PDF にだけ行う
+            ['shorten destination names', -> { Build::DestinationNames.shorten!(Build::PdfMerger.merged_output_pdf) },
+             t.pdf, :pdf, :whole_book],
             # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。この行が立つのは他ターゲットが
             # 無いときだけなので、掃除を :pdf 相に含めても EPUB 枝と競合しない。
             ['compress, rename and final clean', -> { run_step12_rename_and_clean },
@@ -378,6 +382,8 @@ module VivlioStarter
           # 単章固有の出力。閲覧用 PDF のみ・ファイル名も違う（章名.pdf）ため、
           # 全章の結合・アウトライン・リネームとは別物になる。
           add_step('entries.js + pdf',   -> { generate_entries_and_pdf })
+          # 全章の 'shorten destination names' とは対象の PDF が違うので、名前も分ける
+          add_step('shorten single pdf destination names', -> { Build::DestinationNames.shorten!(single_mode_output_pdf) })
           add_step('rename output pdfs', -> { rename_single_mode_pdf })
           add_step('final clean',        -> { run_final_clean })
         end

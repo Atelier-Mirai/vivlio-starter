@@ -15,6 +15,8 @@ module VivlioStarter
       # Vivliostyle が PDF に書くリンク先の名前（viv-id-http:…）はビルド時の URL を丸ごと
       # 含むため、PDF 1.7 の実装上限 127 バイトを超える。poppler はリンク先 1 個ごとに
       # これを警告し、1 章で百行を超える。ページの画像化には関係しない（改善案.md #44）。
+      # いまのビルドは仕上げの直前に短い名前へ付け替える（#81・Build::DestinationNames）ので
+      # 出なくなったが、以前の版で組んだ PDF を扱うときのために残す。
       IGNORED_WARNING = /name token is longer than what the specification says it can be/
 
       module_function

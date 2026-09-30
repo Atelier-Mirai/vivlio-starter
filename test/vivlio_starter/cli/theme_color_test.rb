@@ -53,6 +53,23 @@ module VivlioStarter
         assert_equal TC.resolve(declared), TC::DEFAULT
       end
 
+      # 色はプロジェクトの theme.css から引く。既存の本の theme.css は作ったときの写しで、
+      # gem 側の PALETTE で焼くと PDF と Kindle で色が食い違うため（改善案 #79）。
+      # theme.css に無い色名は PALETTE で補い、コメントアウトした宣言は読まない
+      def test_palette_follows_project_theme_css
+        Dir.mktmpdir do |dir|
+          css = File.join(dir, 'theme.css')
+          File.write(css, ":root {\n  --accent-blue: #0EA5E9;\n  /* --accent-green: #000000; */\n}\n")
+
+          palette = TC.palette(css)
+
+          assert_equal '#0ea5e9', palette['blue'], 'theme.css の値（小文字にそろえる）'
+          assert_equal TC::PALETTE['green'], palette['green'], 'コメントの中の宣言は読まない'
+          assert_equal TC::PALETTE['navy'], palette['navy'], 'theme.css に無い色名は PALETTE で補う'
+        end
+        assert_same TC::PALETTE, TC.palette('/nonexistent/theme.css'), 'theme.css が無ければ PALETTE'
+      end
+
       # PALETTE は theme.css の --accent-* の写し。片方だけ直すと Kindle だけ色が違う本になる
       # （PDF・EPUB は theme.css、Kindle の焼き込みは PALETTE で組むため）。
       # コメントアウトした旧パレットの行は読まない

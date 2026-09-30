@@ -5,6 +5,7 @@ require_relative '../cover'
 require_relative 'vivliostyle_config_writer'
 require_relative 'crop_marks_overlay'
 require_relative 'print_geometry'
+require_relative 'destination_names'
 
 module VivlioStarter
   module CLI
@@ -65,6 +66,8 @@ module VivlioStarter
           # 縮小配置してしまうため（仕様 §3.8）、overlay 完了後まで遅延させる。
           finalize_print_boxes! if derived
           add_outline!
+          # 印刷所の検査に掛かる長い名前・ビルドした場所のパスを入稿物に残さない（改善案 #81）
+          Build::DestinationNames.shorten!(output_print_pdf)
           rename!
         end
 

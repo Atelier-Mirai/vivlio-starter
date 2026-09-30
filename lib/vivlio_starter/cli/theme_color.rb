@@ -7,7 +7,10 @@ module VivlioStarter
     # ================================================================
     # テーマ・アクセント色の解決（色名/hex → リテラル hex）と混色。
     # ================================================================
-    # パレットの正典は stylesheets/theme.css の --accent-*。本モジュールはその Ruby 側の写しで、
+    # パレットの正典は stylesheets/theme.css の --accent-*。色名はビルドしているプロジェクトの
+    # theme.css から引き、PALETTE は theme.css が無いときと、そこに無い色名の代わりに使う
+    # （改善案 #79。既存の本の theme.css は作ったときの写しなので、gem 側の値で焼くと
+    # PDF と Kindle で色が食い違う。著者が theme.css の値を変えた場合も同じ）。
     # 2 つの用途で共用する:
     #   - Kindle 用リテラル焼き込み（KFX は var()/color-mix 非対応のため、book-settings.css に
     #     テーマ色を具体色で焼く。kindle-theme-color-literalize-spec.md）。
@@ -28,6 +31,12 @@ module VivlioStarter
       # パレット不明・空・不正値のフォールバック（DEFAULT_NAME の hex）。
       DEFAULT = PALETTE.fetch(DEFAULT_NAME)
 
+      # ビルドしているプロジェクトの theme.css（作業ディレクトリからの相対パス）
+      THEME_CSS = File.join('stylesheets', 'theme.css')
+
+      # theme.css の色の宣言。コメントアウトした旧パレットは先に取り除いてから読む
+      ACCENT_DECLARATION = /--accent-([a-z]+):\s*(\#(?:\h{8}|\h{6}|\h{3}))\s*;/
+
       module_function
 
       # 色名 / hex（3・6・8 桁）/ 0x → hex 文字列。3 桁・8 桁はそのまま返す（techbook 互換）。
@@ -40,14 +49,30 @@ module VivlioStarter
         return "##{raw}" if raw.match?(/\A(?:\h{3}|\h{6}|\h{8})\z/)
         return "##{raw.delete_prefix('0x')}" if raw.match?(/\A0x(?:\h{6}|\h{8})\z/)
 
-        PALETTE[raw]
+        palette[raw]
+      end
+
+      # 色名 → hex の表。theme.css の宣言を PALETTE に重ねる。ビルド中は章ごとに何度も
+      # 呼ばれるので、ファイルの更新時刻が変わらない限り読み直さない。
+      # @param theme_css [String] theme.css のパス
+      # @return [Hash{String => String}]
+      def palette(theme_css = THEME_CSS)
+        return PALETTE unless File.file?(theme_css)
+
+        key = [File.expand_path(theme_css), File.mtime(theme_css)]
+        return @palette if @palette_key == key
+
+        declared = File.read(theme_css, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
+                       .scan(ACCENT_DECLARATION).to_h { |name, hex| [name, hex.downcase] }
+        @palette_key = key
+        @palette = PALETTE.merge(declared).freeze
       end
 
       # Kindle リテラル用: 必ず #rrggbb（6 桁）へ正規化する。resolve 結果を 6 桁化し、
-      # 解釈不能なら fallback（既定は DEFAULT）を 6 桁化して返す。book.yml 由来の不正値による
+      # 解釈不能なら fallback（既定は DEFAULT_NAME の色）を 6 桁化して返す。book.yml 由来の不正値による
       # CSS 注入・構文破壊を構造的に防ぐ（戻り値は必ず /\A#\h{6}\z/）。
       # @return [String] "#rrggbb"
-      def to_hex6(color, fallback: DEFAULT)
+      def to_hex6(color, fallback: DEFAULT_NAME)
         normalize_hex6(resolve(color)) || normalize_hex6(resolve(fallback)) || DEFAULT
       end
 

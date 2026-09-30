@@ -141,6 +141,7 @@ module VivlioStarter
           'build front and back matter',
           'merge all pdfs',
           'apply outline to output pdf',
+          'shorten destination names',
           'compress, rename and final clean'
         ]
         labels = pipeline.timings.map(&:first)
@@ -282,6 +283,7 @@ module VivlioStarter
           'index scan and build',
           'convert sections html',
           'entries.js + pdf',
+          'shorten single pdf destination names',
           'rename output pdfs',
           'final clean'
         ]
@@ -531,7 +533,7 @@ module VivlioStarter
         end
       end
 
-      def test_single_mode_timings_has_9_entries
+      def test_single_mode_timings_has_10_entries
         pipeline = build_single_pipeline(['45-test'])
         stub_single_pipeline_steps(pipeline)
 
@@ -541,24 +543,25 @@ module VivlioStarter
           end
         end
 
-        # single mode は 9 ステップ。章単位の 6 つ（clean / optimize images /
+        # single mode は 10 ステップ。章単位の 6 つ（clean / optimize images /
         # prepare theme images / preprocess sections / index scan and build /
-        # convert sections html）を full mode の表から導出し、単章固有の出力を 3 つ足す
-        assert_equal 9, pipeline.timings.length, 'single mode は 9 ステップを記録するべき'
+        # convert sections html）を full mode の表から導出し、単章固有の出力を 4 つ足す
+        # （リンク先の名前の付け替え・改善案 #81 を含む）
+        assert_equal 10, pipeline.timings.length, 'single mode は 10 ステップを記録するべき'
       end
 
-      def test_full_mode_timings_has_12_entries
+      def test_full_mode_timings_has_19_entries
         pipeline = build_full_pipeline
         stub_pipeline_steps(pipeline)
 
         with_build_stubs { pipeline.run }
 
-        # full mode（pdf専用）は 18 ステップ。前付・奥付の HTML 生成
+        # full mode（pdf専用）は 19 ステップ。前付・奥付の HTML 生成
         # （front-back-matter-single-render-spec.md §2.1）とカバー資産の生成
         # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶんで
         # 元の 15 から 2 つ、過剰解像度の縮小（image-format-per-target-spec.md §3.6）で
-        # さらに 1 つ増えている。
-        assert_equal 18, pipeline.timings.length, 'full mode は 18 ステップを記録するべき'
+        # さらに 1 つ、リンク先の名前の付け替え（改善案 #81）でもう 1 つ増えている。
+        assert_equal 19, pipeline.timings.length, 'full mode は 19 ステップを記録するべき'
       end
 
       private
