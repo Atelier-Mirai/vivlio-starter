@@ -63,8 +63,10 @@ module VivlioStarter
 
       # ------- theme -------
       %i[theme color]                                 => Spec[default: "green"],
-      %i[theme preface_color]                         => Spec[default: "teal"],
-      %i[theme appendix_color]                        => Spec[default: "cyan"],
+      # 前書き・付録の色は書かなければ theme.color に従う（改善案 #73）。既定値を持たせると、
+      # 行を消しても空欄にしてもこの色が入り、「省略時は color と同じ」にならない
+      %i[theme preface_color]                         => Spec[default: nil],
+      %i[theme appendix_color]                        => Spec[default: nil],
       %i[theme style]                                 => Spec[default: "image"],
       %i[theme frontispiece image]                    => Spec[default: "sakura"],
       %i[theme frontispiece edge_inset]               => Spec[default: "5mm"],

@@ -53,6 +53,16 @@ module VivlioStarter
         assert_equal TC.resolve(declared), TC::DEFAULT
       end
 
+      # PALETTE は theme.css の --accent-* の写し。片方だけ直すと Kindle だけ色が違う本になる
+      # （PDF・EPUB は theme.css、Kindle の焼き込みは PALETTE で組むため）。
+      # コメントアウトした旧パレットの行は読まない
+      def test_palette_matches_theme_css
+        css = File.read(File.expand_path('../../../stylesheets/theme.css', __dir__))
+        declared = css.gsub(%r{/\*.*?\*/}m, '').scan(/--accent-([a-z]+):\s*(#\h{6});/).to_h
+
+        assert_equal TC::PALETTE, declared
+      end
+
       # mix_with_white: accent 比率で白と混色し #rrggbb を返す
       def test_mix_with_white_precomputes_color_mix
         # #f0a000 = (240,160,0)。15% accent + 85% white → 各成分 round(c*0.15 + 255*0.85)

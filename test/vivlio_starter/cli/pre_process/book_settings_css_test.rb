@@ -190,14 +190,14 @@ class BookSettingsCssSupplementalTest < Minitest::Test
   ThemeDouble = Data.define(:appendix_color, :preface_color)
   CfgDouble = Data.define(:theme)
 
-  # appendix_color 未指定なら --appendix-accent-color は宣言せず、preface は常に宣言する
-  def test_should_omit_appendix_when_unset_but_always_declare_preface
-    cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: '', preface_color: ''))
+  # appendix_color・preface_color を省略したら、どちらもテーマ色を宣言する（「省略時は color と同じ」・改善案 #73）
+  def test_should_declare_theme_accent_for_unset_appendix_and_preface
+    cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: nil, preface_color: ''))
     settings = { theme_accent_value: 'var(--accent-yellow)' }
 
     lines = BSC.supplemental_color_declarations(settings, cfg)
 
-    refute(lines.any? { it.start_with?('--appendix-accent-color:') })
+    assert_includes lines, '--appendix-accent-color: var(--accent-yellow);'
     assert_includes lines, '--color-preface-accent: var(--accent-yellow);'
   end
 
@@ -437,12 +437,13 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     refute_includes css, VivlioStarter::CLI::ThemeColor::DEFAULT, '全て blue に追従し、既定色は焼かれない'
   end
 
-  # 付録色未指定のときは appendix.css の静的既定（既定色 green）に合わせる（PDF の実カスケードと一致）
-  def test_should_default_unset_appendix_accent_to_default_color
+  # 付録色未指定のときはテーマ色に従う（PDF の --appendix-accent-color と同じ・改善案 #73）。
+  # テーマ色と同じなので、Kindle の付録専用の規則は出さない
+  def test_should_default_unset_appendix_accent_to_theme_color
     css = BSC.render(build_config(theme_color: 'blue', appendix_color: nil))
 
-    assert_includes css, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #15803d; }',
-                    '付録は未指定なら既定色（PDF と同じ）'
+    assert_includes css, '--appendix-accent-color: var(--accent-blue);'
+    refute_includes css, 'body.appendix.vs-header-simple.vs-kindle h1', '付録は未指定ならテーマ色'
     assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文は theme 色'
   end
 

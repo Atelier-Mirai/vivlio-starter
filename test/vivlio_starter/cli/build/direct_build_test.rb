@@ -219,6 +219,15 @@ module VivlioStarter
           assert_equal 'blue', build.send(:direct_configuration).theme.color
         end
 
+        # 配布資料向けに、節ごとの改ページと改丁をしない。版面プリセットの値は残る（改善案 #75）
+        def test_should_not_break_pages_at_sections
+          page = direct_build_for('myawesome.md', "# 見出し\n").send(:direct_configuration).page
+
+          assert_equal false, page.section_pagebreak
+          assert_equal 'any', page.chapter_pagebreak
+          assert_equal Common::DIRECT_PAGE_PRESET, page.use
+        end
+
         private
 
         def direct_build_for(filename, content = "# 見出し\n", theme: nil)

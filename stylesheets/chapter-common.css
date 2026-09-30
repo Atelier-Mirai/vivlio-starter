@@ -180,6 +180,12 @@ p {
   text-indent: 0;
 }
 
+/* 囲み（.note・.tip など）の先頭に置いた太字の見出しは、区切る前の段落がない。
+   半行あけると囲み自身の上余白に上乗せされ、見出しの上だけが広く空く（改善案 #76）。 */
+.strong-heading:first-child {
+  margin-block-start: 0;
+}
+
 /* 右寄せユーティリティ */
 .text-right,
 .text-right p {

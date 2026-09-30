@@ -148,6 +148,9 @@ if File.exist?(book_yml)
   # （config_keys_test.rb が scaffold の book.yml と突き合わせる）。
   #   version      … 本書は 1.0.0 だが、新しく始める本は 0.1.0 から
   #   window_bounds … ルートは 5K の外部モニタ向け。一般的な画面に収まる値へ
+  #   preface_color / appendix_color … 本書は前書きと付録の色を変えているが、
+  #                   新しく始める本は空欄（color と同じ色）から。既定値も nil。
+  #                   空欄だと書き方の手がかりがないので、行末のコメントごと例つきにする
   #   *_pagebreak  … 本書はページ数を抑えるため節の改ページと改丁をやめているが、
   #                   新しく始める本には組版として整った側を渡す
   #   page.use     … 本書は大部なので A4（a4_custom）で組んでいるが、同人誌で
@@ -157,6 +160,8 @@ if File.exist?(book_yml)
   content.gsub!(/^(\s+version:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"0.1.0"\3')
   # `use:` は metrics にもあるので、判型プリセットの綴りに限って当てる
   content.gsub!(/^(\s+use:\s*)(?:a4|a5|b5)_\w+(\s*#.*)?$/, '\1b5_standard\2')
+  content.gsub!(/^(\s+preface_color:).*$/, '\1 # 前書き/後書きの色（例: teal）。空欄なら color と同じ色')
+  content.gsub!(/^(\s+appendix_color:).*$/, '\1 # 付録の色（例: cyan）。空欄なら color と同じ色')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
   # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、

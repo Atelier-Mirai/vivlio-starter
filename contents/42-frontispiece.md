@@ -467,11 +467,11 @@ theme:
 
 | 印象 | `color` | `preface_color` | `appendix_color` |
 | --- | --- | --- | --- |
-| 落ち着いた自然な色（雛形の既定） | `green` | `teal` | `cyan` |
+| 落ち着いた自然な色（本書の設定） | `green` | `teal` | `cyan` |
 | 技術書らしい青 | `blue` | `navy` | `cyan` |
 | 柔らかく明るい | `yellow` | `orange` | `lime` |
 
-雛形の既定は、既定の扉絵 `sakura` に合わせた緑の組み合わせです。扉絵を替えたときは、絵の色に合わせてテーマカラーも選び直すとよいでしょう。
+`preface_color` と `appendix_color` は省略でき、省略すると `color` と同じ色になります。`vs new` で作った本は、`color: green` だけを書き、二つを省略した状態から始まります。green は既定の扉絵 `sakura` に合わせた色です。扉絵を替えたときは、絵の色に合わせてテーマカラーも選び直すとよいでしょう。
 
 `yellow` や `cyan` のような明るい色は、太字の文字色としては淡めになります。モノクロで印刷する本では、`navy`・`indigo`・`green` のような濃い色のほうが強調が紙面に残ります。
 

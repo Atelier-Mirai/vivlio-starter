@@ -14,7 +14,7 @@ module VivlioStarter
     #   - techbook の画像化アセットの色決定（Techbook::Processor#theme_color_hex）。
     # ================================================================
     module ThemeColor
-      # theme.css の --accent-* と一致させること（12 色）。
+      # theme.css の --accent-* と一致させること（12 色。theme_color_test の test_palette_matches_theme_css が確かめる）。
       PALETTE = {
         'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
         'magenta' => '#e11d74', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',

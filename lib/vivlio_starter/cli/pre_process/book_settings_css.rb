@@ -305,22 +305,15 @@ module VivlioStarter
         end
 
         # appendix / preface のアクセント色（旧 update_appendix_css / update_preface_css 相当）。
-        #   - appendix_color 未指定なら宣言しない（appendix.css の既定がカスケードで生きる）
-        #   - preface は常に宣言（未指定時は theme accent へフォールバック）
+        # どちらも常に宣言し、未指定なら theme accent に従う（「省略時は color と同じ」・改善案 #73）
         def supplemental_color_declarations(settings, cfg)
           theme_cfg = cfg.theme
           accent = settings[:theme_accent_value]
-          lines = []
 
-          appendix_color = theme_cfg.appendix_color
-          unless appendix_color.to_s.strip.empty?
-            value = CssUpdater.normalize_color_value(appendix_color, fallback: accent)
-            lines << "--appendix-accent-color: #{value};"
-          end
-
-          preface_value = CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent)
-          lines << "--color-preface-accent: #{preface_value};"
-          lines
+          [
+            "--appendix-accent-color: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent)};",
+            "--color-preface-accent: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent)};"
+          ]
         end
 
         # 見出しマーカー（旧 update_chapter_common_css 相当）。未指定時は ♣ / ♦。
@@ -535,19 +528,17 @@ module VivlioStarter
           CSS
         end
 
-        # 付録アクセントのリテラル hex。appendix_color 未指定時は appendix.css の静的既定
-        # （--appendix-accent-color: var(--accent-green)）に合わせて既定色を返す——PDF/クリーン
-        # EPUB の実カスケードと一致させるため（theme.color にはフォールバックしない）。
+        # 付録アクセントのリテラル hex。appendix_color 未指定時はテーマ色へフォールバック
+        # （supplemental_color_declarations が --appendix-accent-color を fallback: accent で宣言する
+        # のと一致＝PDF/クリーン EPUB のカスケードと揃える）。
         def appendix_accent_hex6(theme_cfg, theme_hex)
           raw = theme_cfg.appendix_color
-          return ThemeColor::DEFAULT if raw.to_s.strip.empty?
+          return theme_hex if raw.to_s.strip.empty?
 
           ThemeColor.to_hex6(raw, fallback: theme_hex)
         end
 
-        # 前書き/後書きアクセントのリテラル hex。preface_color 未指定時はテーマ色へフォールバック
-        # （supplemental_color_declarations が --color-preface-accent を常に fallback: accent で宣言する
-        # のと一致＝PDF/クリーン EPUB のカスケードと揃える。appendix の静的既定とは異なる）。
+        # 前書き/後書きアクセントのリテラル hex。付録と同じく、未指定時はテーマ色へフォールバック。
         def preface_accent_hex6(theme_cfg, theme_hex)
           raw = theme_cfg.preface_color
           return theme_hex if raw.to_s.strip.empty?

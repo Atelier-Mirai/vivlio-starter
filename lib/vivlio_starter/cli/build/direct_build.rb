@@ -53,6 +53,9 @@ module VivlioStarter
         # 扉絵を使わない直接ビルドにはその理由がない。blue は cyan と navy の中間で、モノクロで刷っても
         # 太字が本文から浮く濃さがある（改善案 #66）
         DEFAULT_THEME_COLOR = 'blue'
+        # 配布資料は数ページで終わるので、節（##）ごとに改ページすると空白だらけになる。
+        # 章は 1 つだけなので改丁も要らない（改善案 #75）
+        PAGE_BREAKS = { section_pagebreak: false, chapter_pagebreak: 'any' }.freeze
 
         # 章番号を持たない（または本章の範囲外の）原稿へ割り当てる番号と slug。
         # 01–89 は本章の範囲であり、10 はその中庸。
@@ -175,6 +178,7 @@ module VivlioStarter
             book: { main_title: title, language: 'ja' },
             project: { name: sanitize_slug(source_name) },
             theme: { style: FIXED_THEME_STYLE, color: theme_color },
+            page: PAGE_BREAKS,
             output: { targets: ['pdf'] }
           )
         end
