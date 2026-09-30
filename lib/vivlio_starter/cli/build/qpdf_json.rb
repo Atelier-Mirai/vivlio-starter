@@ -11,6 +11,15 @@
 #   （CombinePDF は保存時に `/Dests` を再構築せず全損させる）。
 #   Apache-2.0 の外部コマンド呼び出しであり、本体のライセンスには影響しない。
 #
+# オブジェクトストリームは外してから読む（改善案 #95）:
+#   qpdf の --update-from-json は、オブジェクトストリームの中にあるオブジェクトの差し替えを、
+#   成功を返したまま捨てることがある。捨てられるかは更新の組み合わせと順番しだいで、
+#   vivliostyle（Chrome）の PDF はストリームを末尾に置いて前のほうの番号をまとめるため起きやすい
+#   （44 章の PDF でリンク 1 件だけを書き換えると、どのキーでも捨てられた。qpdf 12.4.1）。
+#   read の前に外した形へ書き直せば、read が返す番号と apply! が書き換える番号がそろったまま、
+#   更新はすべて反映される。外したぶん中間ファイルは大きくなるが、仕上げで作り直す
+#   （アウトラインの書き込み・DestinationNames）。
+#
 # 値の表現:
 #   読み出した値をそのまま書き戻せる（参照は "N G R"、名前は "/Name"、文字列は "u:…"）。
 #   pdf-reader で読んで書き戻すと名前の再エスケープや日本語の往復で壊れる余地があるため、
@@ -37,6 +46,7 @@ module VivlioStarter
             Common.log_warn("[qpdf] PDF が見つかりません: #{pdf_path}")
             return nil
           end
+          return nil unless unpack_object_streams!(pdf_path)
 
           out, status = Open3.capture2('qpdf', pdf_path, '--json=2', '--json-key=qpdf',
                                        '--json-key=pages', '--json-stream-data=none')
@@ -51,6 +61,24 @@ module VivlioStarter
         rescue StandardError => e
           Common.log_warn("[qpdf] PDF 構造の取得に失敗: #{e.message}")
           nil
+        end
+
+        # オブジェクトストリームがあれば、外した形に書き直す（ファイル冒頭の説明を参照）。
+        # qpdf は書き直すときに番号を振り直すので、必ず read より前に行う。
+        #
+        # @return [Boolean] 書き直しが要らなかったか、書き直せたか
+        def unpack_object_streams!(pdf_path)
+          return true unless File.binread(pdf_path).include?('/ObjStm')
+
+          unpacked = "#{pdf_path}.unpacked.tmp.pdf"
+          if system('qpdf', pdf_path, unpacked, '--object-streams=disable', out: File::NULL, err: File::NULL)
+            FileUtils.mv(unpacked, pdf_path)
+            true
+          else
+            FileUtils.rm_f(unpacked)
+            Common.log_warn("[qpdf] オブジェクトストリームを外せませんでした: #{pdf_path}")
+            false
+          end
         end
 
         # 差分更新を適用し、元ファイルを置き換える。
