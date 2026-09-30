@@ -154,18 +154,48 @@ module VivlioStarter
         def test_should_batch_requests_with_chapter_candidates_and_map_results_back
           texts = {
             'contents/11-a.md' => "```ruby\nputs 1\n```\n\n```\nputs 2\nputs 3\n```\n",
-            'contents/12-b.md' => "```\n$ vs build\n```\n\n```\nlet a = 1\n```\n"
+            'contents/12-b.md' => "```\n$ vs build\n```\n\n```\nx = 1\ny = 2\n```\n"
           }
           guesser = FakeGuesser.new(language: 'ruby')
 
           result = detector.findings(texts, book_languages: Set['ruby', 'css'], guesser:)
 
-          # 2 章目の `let a = 1` は JavaScript のしるしに当たるが、本で JavaScript を書いていないので候補に加えない
           assert_equal [%w[ruby], %w[css ruby]], guesser.requests.map(&:candidates)
           assert_equal [[5, 'ruby']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
           assert_equal [[1, 'shell-session'], [5, 'ruby']],
                        result.findings['contents/12-b.md'].map { [it.line, it.language] }
           assert_equal 0, result.unguessed
+        end
+
+        def test_should_not_let_comments_or_other_languages_mislead_the_hints
+          # コメントの `=>`・`{|}` は、JavaScript・Ruby のしるしにしない
+          c_with_comments = "#include <stdio.h>\n// length => 13\n// {|}\nint main(void) {\n  return 0;\n}\n"
+          # switch の `default:` と次の行の文は、CSS の「プロパティ: 値;」ではない
+          c_with_switch = "#include <stdio.h>\nint main(void) {\n  switch (n) {\n  default:\n    printf(\"x\");\n  }\n}\n"
+          # Java の System.out.printf は、C の printf ではない
+          java = "public static void main(String[] args) {\n  System.out.printf(\"%d\", n);\n}\n"
+
+          assert_equal 'c', detector.language_hint(c_with_comments)
+          assert_equal 'c', detector.language_hint(c_with_switch)
+          assert_equal 'java', detector.language_hint(java)
+        end
+
+        def test_should_read_cpp_as_c_when_the_hint_says_c
+          # Guesslang は C を C++ と取り違えやすい。stdio.h や printf があれば C とする
+          texts = { 'contents/11-a.md' => "```\n#include <stdio.h>\n\nint main(void) {\n  printf(\"hi\");\n}\n```\n" }
+
+          result = detector.findings(texts, book_languages: Set.new, guesser: FakeGuesser.new(language: 'cpp'))
+
+          assert_equal ['c'], result.findings['contents/11-a.md'].map(&:language)
+        end
+
+        def test_should_look_for_not_code_marks_outside_strings_and_comments
+          # 【】や ↑ は実行結果のしるしだが、本物のコードの文字列やコメントにも現れる
+          code = "printf(\"【使い方】\\n\");\n// ここを入れ替える ↑\nint n = 0;\n"
+          output = "【最短経路】\n  #S**#\n"
+
+          assert_equal :guess, detector.classify(code)
+          assert_equal :skip, detector.classify(output)
         end
 
         def test_should_report_low_confidence_guesses_only_when_the_hint_agrees

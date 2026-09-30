@@ -69,6 +69,11 @@ module VivlioStarter
           | error\[E\d+\]          # コンパイラのエラー出力
         /x
 
+        # 文字列とコメント。除外のしるしは、この外だけで探す。本物のコードにも
+        # `printf("【使い方】\n")` や `// ↑` のように同じ字が現れる（仕様 §8.8）。
+        # `#` は後ろに空白があるときだけコメントとみなす（盤面の `#S**#` を消さないため）。
+        LITERALS = %r{"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|//[^\n]*|/\*.*?\*/|(?:^|(?<=\s))\#\s[^\n]*}m
+
         # 行頭が日本語の行（地の文）。コメントは `#`・`//` で始まるので数えられない。
         JAPANESE_LINE = /\A\s*[^\x00-\x7F]/
 
@@ -105,9 +110,15 @@ module VivlioStarter
             lines.first.lstrip.start_with?('<') &&
               body.match?(%r{</[a-zA-Z][\w-]*>|<!DOCTYPE|<(?:link|meta|img|input|br|hr)\b[^>]*>}i)
           },
+          # 「プロパティ: 値;」は行頭か `{` の直後から探す（1 行で書いたルール `p { color: blue; }` も拾う）。
+          # 値は改行をまたいでよい（`linear-gradient(…)` を複数行に書く）。C の `default:`・`case …:` と
+          # C++ の `public:` などは、次の行の文までを 1 つの宣言と見てしまうので除く。
+          # `@import "…"` だけのファイルも CSS とする
           'css' => lambda { |body, _lines|
-            body.match?(/^[^{}\n]*\{\s*(?:$|[\w-]+\s*:)/) && body.match?(/^\s*[\w-]+\s*:\s*[^;{}]+;/) &&
-              body.count('{') == body.count('}')
+            rule = body.match?(/^[^{}\n]*\{\s*(?:$|[\w-]+\s*:)/) &&
+                   body.match?(/(?:^[ \t]*|\{[ \t]*)(?!(?:default|case|public|private|protected)\b)[\w-]+[ \t]*:[^;{}]+;/) &&
+                   body.count('{') == body.count('}')
+            rule || body.match?(/^\s*@import\s+(?:url\()?["']/)
           },
           # alert・constructor・`class 名前 {` は入門書の短い例に多い（`alert("こんにちは")` の 2 行など）。
           # `class 名前 {` は Java・C# にもあるが、Guesslang の推定との一致を条件にするので区別できる
@@ -118,7 +129,17 @@ module VivlioStarter
           },
           'ruby' => ->(body, _lines) { body.match?(RUBY_MARKERS) },
           'python' => ->(body, _lines) { body.match?(/^\s*def \w+\(.*\):\s*$|^\s*(?:import \w+|from \w+ import )/) },
-          'c' => ->(body, _lines) { body.match?(/#include\s*[<"]|\bint main\s*\(/) },
+          # C は標準ライブラリで見分ける。`#include` と `int main(` は C++ にもある。
+          # printf の前に `.` があるものは Java の System.out.printf なので除く。
+          # （x フラグの正規表現では # がコメントになるので \# と書く）
+          'c' => lambda { |body, _lines|
+            body.match?(/\#include\s*<(?:stdio|stdlib|string|math|time|ctype|stdbool|limits)\.h>|
+                         (?<![.\w])(?:printf|scanf|fgets|malloc)\s*\(/x)
+          },
+          'cpp' => ->(body, _lines) { body.match?(/#include\s*<(?:iostream|vector|string|map)>|\bstd::|\bcout\s*<</) },
+          'java' => lambda { |body, _lines|
+            body.match?(/\bpublic\s+static\s+void\s+main\b|System\.(?:out|err)\.print|^\s*import\s+java\./)
+          },
           'json' => lambda do |body, _lines|
             body.lstrip.start_with?('{', '[') && JSON.parse(body)
           rescue JSON::ParserError
@@ -178,7 +199,8 @@ module VivlioStarter
           if pending.any?
             if guesser&.available?
               guesser.guess(pending.values.map { it[2] }).each do |id, guess|
-                path, line, _request, hint = pending.fetch(id)
+                path, line, request, hint = pending.fetch(id)
+                guess = adjust_language(guess, hint, request.candidates)
                 next unless report?(guess, hint)
 
                 found[path] << Finding.new(line:, language: guess.language)
@@ -234,7 +256,7 @@ module VivlioStarter
           return :skip if lines.empty?
           # 端末の記録は出力の行にログの接頭辞などを含むので、除外のしるしより先に見る
           return SHELL_SESSION if lines.first.match?(SHELL_PROMPT)
-          return :skip if body.match?(NOT_CODE)
+          return :skip if body.gsub(LITERALS, '').match?(NOT_CODE)
           return :skip if lines.count { it.match?(JAPANESE_LINE) } * 3 > lines.size
           return :skip if PreProcessCommands::MathSpanDetector.display_math("```\n#{body}```\n")
 
@@ -242,16 +264,36 @@ module VivlioStarter
         end
 
         # Guesslang の推定を知らせるか。確信度が十分か、言語のしるしと一致したとき。
+        # 食い違うときに確信度が高くても退ける案は採らない。Rust の `let x = …` は JavaScript の
+        # しるしに当たるので、正しく Rust と推定したものまで退けてしまう（仕様 §8.8）。
         def report?(guess, hint) = guess.confidence >= MIN_CONFIDENCE || guess.language == hint
+
+        # その言語にしか現れないしるし。これが当たれば、Guesslang の推定より、しるしの言語を採る。
+        # Guesslang は C や Java を C++ と取り違えやすい（仕様 §8.8）。JavaScript・Ruby などの
+        # しるしは他の言語にも似た形があるので含めない（Rust の `let x = …` は JavaScript のしるしに当たる）。
+        DECISIVE_HINTS = %w[c cpp java].freeze
+
+        # 推定した言語を、決め手になるしるしがあればその言語に読み替える。
+        # 候補に入っていない言語には読み替えない（候補は著者の明示から決めている）。
+        def adjust_language(guess, hint, candidates)
+          return guess unless DECISIVE_HINTS.include?(hint) && candidates.include?(hint)
+
+          guess.with(language: hint)
+        end
 
         # 言語のしるし（LANGUAGE_HINTS）が 1 言語だけに当たれば、その言語。
         # HTML は <script>・<style> の中身で JavaScript・CSS にも当たるので、HTML を優先する。
         # @return [String, nil]
+        #
+        # しるしはコメントを除いてから探す。コメントには別の言語の書き方が入りやすい
+        # （C のコメントの `// length => 13` が JavaScript の `=>` に、`{|}` が Ruby のブロック引数に
+        # 当たった。仕様 §8.8）。文字列は残す（Ruby の `"#{name}"` は手がかりになる）。
         def language_hint(body)
-          lines = body.lines.map(&:chomp).reject { it.strip.empty? }
+          code = body.gsub(LITERALS) { |literal| literal.start_with?('"', "'") ? literal : '' }
+          lines = code.lines.map(&:chomp).reject { it.strip.empty? }
           return nil if lines.empty?
 
-          hits = LANGUAGE_HINTS.select { |_language, rule| rule.call(body, lines) }.keys
+          hits = LANGUAGE_HINTS.select { |_language, rule| rule.call(code, lines) }.keys
           return 'html' if hits.include?('html')
 
           hits.one? ? hits.first : nil
