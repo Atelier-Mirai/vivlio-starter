@@ -69,7 +69,7 @@ module VivlioStarter
       end
 
       # 存在しない画像名は既定画像（sakura）へフォールバックすることを確認
-      # （color: pink → yellow と同様の一貫したフォールバック）
+      # （color: pink → 既定色と同様の一貫したフォールバック）
       def test_missing_image_falls_back_to_sakura
         with_temp_theme_images do |images_root|
           bundled = File.join(images_root, 'bundled')

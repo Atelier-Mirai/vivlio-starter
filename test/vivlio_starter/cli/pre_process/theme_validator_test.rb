@@ -34,7 +34,7 @@ module VivlioStarter
         out = capture_stdout { TV.validate_color('pink') }
 
         assert_match(/theme\.color 'pink'/, out)
-        assert_match(/yellow/, out)
+        assert_match(/既定色（green）/, out)
       end
 
       # 有効な色名・HEX・未指定では警告しない

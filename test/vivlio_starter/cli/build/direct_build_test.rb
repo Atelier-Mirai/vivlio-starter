@@ -212,6 +212,13 @@ module VivlioStarter
           assert_equal '#e91e63', build.send(:direct_configuration).theme.color
         end
 
+        # 省略時は本の既定（green）ではなく blue。扉絵を使わない配布資料向けの色（改善案 #66）
+        def test_should_default_theme_color_to_blue
+          build = direct_build_for('myawesome.md', "# 見出し\n")
+
+          assert_equal 'blue', build.send(:direct_configuration).theme.color
+        end
+
         private
 
         def direct_build_for(filename, content = "# 見出し\n", theme: nil)

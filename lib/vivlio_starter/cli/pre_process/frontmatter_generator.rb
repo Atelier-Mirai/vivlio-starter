@@ -27,6 +27,7 @@ require 'yaml'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../font_manager'
+require_relative '../theme_color'
 require_relative 'css_updater'
 require_relative 'book_settings_css'
 require_relative 'theme_image_resolver'
@@ -313,7 +314,7 @@ module VivlioStarter
           hex_0x_ok   = t.match(/^0x(?:[0-9a-f]{6}|[0-9a-f]{8})$/i)
 
           if t.empty?
-            ['yellow', 'var(--accent-yellow)']
+            default_theme_color
           elsif hex_ok
             [t, t]
           elsif hex_bare_ok
@@ -325,12 +326,15 @@ module VivlioStarter
           elsif ALLOWED_COLORS.include?(t)
             [t, "var(--accent-#{t})"]
           else
-            # 無効な色名は既定色（yellow）へフォールバックしてビルドを継続する。
+            # 無効な色名は既定色（ThemeColor::DEFAULT_NAME）へフォールバックしてビルドを継続する。
             # 著者向けの警告は ThemeValidator が Step 2 で一度だけ表示する
             # （ここは章ごとに呼ばれるため、ログを出すと重複してしまう）。
-            ['yellow', 'var(--accent-yellow)']
+            default_theme_color
           end
         end
+
+        # 未指定・無効な色名のときの色（config_keys.rb の theme.color の既定値）
+        def default_theme_color = [ThemeColor::DEFAULT_NAME, "var(--accent-#{ThemeColor::DEFAULT_NAME})"]
 
         # テーマスタイルをパース
         def parse_theme_style(raw_style)

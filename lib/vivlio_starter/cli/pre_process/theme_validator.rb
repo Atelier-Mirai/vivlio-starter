@@ -13,7 +13,7 @@
 #     走るため、色・画像の警告を各所で出すと重複する。検証はここに集約する。
 #
 # 検証内容:
-#   - theme.color: 既定色名・HEX 以外を指定 → 警告（既定 yellow で継続）
+#   - theme.color: 既定色名・HEX 以外を指定 → 警告（既定色 ThemeColor::DEFAULT_NAME で継続）
 #   - theme.frontispiece / theme.ornament: 実在しない画像名 → 警告
 #     （プレースホルダー画像で代用される旨を案内）
 # ================================================================
@@ -50,11 +50,11 @@ module VivlioStarter
         # theme.color の妥当性を検証する
         def validate_color(raw)
           value = raw.to_s.strip
-          return if value.empty? # 未指定は既定色（yellow）
+          return if value.empty? # 未指定は既定色
           return if valid_color?(value)
 
           Common.log_warn(
-            "theme.color '#{raw}' は無効な色名です。既定色（yellow）でビルドを続行します。",
+            "theme.color '#{raw}' は無効な色名です。既定色（#{ThemeColor::DEFAULT_NAME}）でビルドを続行します。",
             detail: "指定できる色: #{VALID_COLORS.join(' / ')}、" \
                     "または '#ff0000' のような HEX（#rrggbb / #rrggbbaa）"
           )

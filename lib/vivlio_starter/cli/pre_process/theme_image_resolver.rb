@@ -38,7 +38,7 @@ module VivlioStarter
         THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
 
         # 扉絵・飾り画像の既定画像スラッグ。未指定時も無効な指定時もこの画像に寄せる。
-        # （無効な color が yellow へフォールバックするのと揃えた挙動。バンドルの桜を使う）
+        # （無効な color が既定色へフォールバックするのと揃えた挙動。バンドルの桜を使う）
         FALLBACK_THEME_IMAGE_SLUG = 'sakura'
 
         # 万一バリアント解決に失敗したときの最終フォールバックパス（通常は到達しない）。

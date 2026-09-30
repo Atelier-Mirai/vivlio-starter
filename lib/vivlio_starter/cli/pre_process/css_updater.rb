@@ -22,6 +22,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../theme_color'
 
 module VivlioStarter
   module CLI
@@ -33,7 +34,7 @@ module VivlioStarter
         module_function
 
         # 色値を正規化（色名 or HEX）
-        def normalize_color_value(raw_value, fallback: 'var(--accent-yellow)')
+        def normalize_color_value(raw_value, fallback: "var(--accent-#{ThemeColor::DEFAULT_NAME})")
           raw_string = raw_value.to_s.strip
           return fallback if raw_string.empty?
 

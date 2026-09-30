@@ -340,7 +340,7 @@ vs build contents/00-preface.md            # 執筆中の章を、その場で�
 
 カレントディレクトリに `myawesome.pdf`（元ファイル名の拡張子違い）が生成され、macOS では自動的に開きます。
 
-`--theme` には `book.yml` の `theme.color` と同じ色名（yellow / orange / red / magenta / purple / indigo / navy / blue / cyan / teal / green / lime）に加えて、`--theme '#e91e63'` のような HEX 記法も指定できます。省略時は yellow です。シェルが `#` をコメントとして解釈しないよう、HEX は引用符で囲んでください。
+`--theme` には `book.yml` の `theme.color` と同じ色名（yellow / orange / red / magenta / purple / indigo / navy / blue / cyan / teal / green / lime）に加えて、`--theme '#e91e63'` のような HEX 記法も指定できます。省略時は blue です（本の既定の green は扉絵に合わせた色なので、扉絵を使わない配布資料向けに別の色にしています）。シェルが `#` をコメントとして解釈しないよう、HEX は引用符で囲んでください。
 
 :::{.note}
 このモードは「軽量な確認」に用途を絞っています。

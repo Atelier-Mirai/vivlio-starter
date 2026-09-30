@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'config_keys'
+
 module VivlioStarter
   module CLI
     # ================================================================
@@ -12,16 +14,19 @@ module VivlioStarter
     #   - techbook の画像化アセットの色決定（Techbook::Processor#theme_color_hex）。
     # ================================================================
     module ThemeColor
-      # パレット不明・空・不正値のフォールバック（theme.css の既定テーマ yellow）。
-      DEFAULT = '#f0a000'
-
       # theme.css の --accent-* と一致させること（12 色）。
       PALETTE = {
         'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
         'magenta' => '#e11d74', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',
-        'navy' => '#1d4ed8', 'blue' => '#0ea5e9', 'cyan' => '#06b6d4',
+        'navy' => '#1d4ed8', 'blue' => '#0186d8', 'cyan' => '#06b6d4',
         'teal' => '#0d9488', 'green' => '#15803d', 'lime' => '#65a30d'
       }.freeze
+
+      # 本の既定テーマ色。config_keys.rb の theme.color を正典とし、未指定・空・無効な色名の
+      # どれも同じ色で組む（行を消すと緑、綴りを誤ると黄、という食い違いをなくすため）。
+      DEFAULT_NAME = ConfigKeys::KEYS[%i[theme color]].default
+      # パレット不明・空・不正値のフォールバック（DEFAULT_NAME の hex）。
+      DEFAULT = PALETTE.fetch(DEFAULT_NAME)
 
       module_function
 

@@ -20,7 +20,7 @@ module VivlioStarter
       # resolve: 色名→hex・hex 透過・techbook 互換（3/8 桁はそのまま）。解決不能は nil。
       def test_resolve_matches_palette_and_passes_hex_through
         assert_equal '#f0a000', TC.resolve('yellow')
-        assert_equal '#0ea5e9', TC.resolve('blue')
+        assert_equal '#0186d8', TC.resolve('blue')
         assert_equal '#123abc', TC.resolve('#123ABC'), 'hex は小文字化して透過'
         assert_equal '#abcdef', TC.resolve('abcdef'), 'bare hex に # を付す'
         assert_equal '#abcdef', TC.resolve('0xabcdef')
@@ -34,15 +34,23 @@ module VivlioStarter
         assert_equal '#f0a000', TC.to_hex6('yellow')
         assert_equal '#aabbcc', TC.to_hex6('#abc'), '3 桁は 6 桁へ展開'
         assert_equal '#123456', TC.to_hex6('#12345678'), '8 桁は alpha を捨てて 6 桁'
-        assert_equal '#0ea5e9', TC.to_hex6('blue')
+        assert_equal '#0186d8', TC.to_hex6('blue')
         assert_match(/\A#\h{6}\z/, TC.to_hex6('teal'))
       end
 
       # 注入文字列・未知値は fallback（既定または指定）へ落ち、CSS 構文を壊さない
       def test_to_hex6_rejects_injection_and_falls_back
-        assert_equal '#f0a000', TC.to_hex6('red;}body{background:url(evil)'), '注入文字列は既定へ'
-        assert_equal '#f0a000', TC.to_hex6(nil)
-        assert_equal '#0ea5e9', TC.to_hex6('bogus', fallback: 'blue'), 'fallback を尊重'
+        assert_equal '#15803d', TC.to_hex6('red;}body{background:url(evil)'), '注入文字列は既定へ'
+        assert_equal '#15803d', TC.to_hex6(nil)
+        assert_equal '#0186d8', TC.to_hex6('bogus', fallback: 'blue'), 'fallback を尊重'
+      end
+
+      # 既定色は config_keys.rb の theme.color に従う（未指定と無効な色名で色が食い違わないように）
+      def test_default_follows_declared_theme_color
+        declared = ConfigKeys::KEYS[%i[theme color]].default
+
+        assert_equal declared, TC::DEFAULT_NAME
+        assert_equal TC.resolve(declared), TC::DEFAULT
       end
 
       # mix_with_white: accent 比率で白と混色し #rrggbb を返す

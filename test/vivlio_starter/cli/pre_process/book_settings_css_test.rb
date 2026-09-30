@@ -428,22 +428,22 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     assert(kindle_lines.none? { it.include?('color-mix(') }, 'Kindle 規則に color-mix() を残さない')
   end
 
-  # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば yellow は消える。
+  # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば既定色は消える。
   def test_should_follow_theme_color_in_kindle_accent
     css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'blue'))
 
-    assert_includes css, 'body.vs-kindle strong { color: #0ea5e9; }'
-    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }'
-    refute_includes css, '#f0a000', '全て blue に追従し、既定の yellow は焼かれない'
+    assert_includes css, 'body.vs-kindle strong { color: #0186d8; }'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }'
+    refute_includes css, VivlioStarter::CLI::ThemeColor::DEFAULT, '全て blue に追従し、既定色は焼かれない'
   end
 
-  # 付録色未指定のときは appendix.css の静的既定（yellow）に合わせる（PDF の実カスケードと一致）
-  def test_should_default_unset_appendix_accent_to_yellow
+  # 付録色未指定のときは appendix.css の静的既定（既定色 green）に合わせる（PDF の実カスケードと一致）
+  def test_should_default_unset_appendix_accent_to_default_color
     css = BSC.render(build_config(theme_color: 'blue', appendix_color: nil))
 
-    assert_includes css, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #f0a000; }',
-                    '付録は未指定なら yellow（PDF と同じ）'
-    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }', '本文は theme 色'
+    assert_includes css, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #15803d; }',
+                    '付録は未指定なら既定色（PDF と同じ）'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文は theme 色'
   end
 
   # appendix_color がテーマ色と異なるときだけ付録専用（body.appendix）規則を出す
@@ -453,7 +453,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
 
     distinct = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
     assert_includes distinct, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #dc2626; }'
-    assert_includes distinct, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }', '本文側は theme 色のまま'
+    assert_includes distinct, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文側は theme 色のまま'
   end
 
   # クリーン EPUB 非汚染: 生成した accent 規則はすべて body.vs-kindle 前置
@@ -485,7 +485,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   def test_should_default_unset_preface_accent_to_theme_color
     css = BSC.render(build_config(theme_color: 'blue', preface_color: nil))
 
-    assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0ea5e9; }'
+    assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0186d8; }'
   end
 
   # page.section_pagebreak: false を book.yml に書くと、全文生成に打ち消し規則が載る。

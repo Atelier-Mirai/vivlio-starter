@@ -523,7 +523,7 @@ module VivlioStarter
           colbg = ThemeColor.mix_with_white(acc, 0.15)
           apx = appendix_accent_hex6(theme_cfg, acc)
 
-          # 付録色がテーマ色と同一なら付録専用の上書きは不要（既定構成は両方 yellow）。
+          # 付録色がテーマ色と同一なら付録専用の上書きは不要。
           lines = base_kindle_accent_rules(acc, colbg)
           lines += appendix_kindle_accent_rules(apx) unless apx == acc
           # 前書き/後書き（preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
@@ -536,7 +536,7 @@ module VivlioStarter
         end
 
         # 付録アクセントのリテラル hex。appendix_color 未指定時は appendix.css の静的既定
-        # （--appendix-accent-color: var(--accent-yellow)）に合わせて yellow を返す——PDF/クリーン
+        # （--appendix-accent-color: var(--accent-green)）に合わせて既定色を返す——PDF/クリーン
         # EPUB の実カスケードと一致させるため（theme.color にはフォールバックしない）。
         def appendix_accent_hex6(theme_cfg, theme_hex)
           raw = theme_cfg.appendix_color
@@ -547,7 +547,7 @@ module VivlioStarter
 
         # 前書き/後書きアクセントのリテラル hex。preface_color 未指定時はテーマ色へフォールバック
         # （supplemental_color_declarations が --color-preface-accent を常に fallback: accent で宣言する
-        # のと一致＝PDF/クリーン EPUB のカスケードと揃える。appendix の yellow 既定とは異なる）。
+        # のと一致＝PDF/クリーン EPUB のカスケードと揃える。appendix の静的既定とは異なる）。
         def preface_accent_hex6(theme_cfg, theme_hex)
           raw = theme_cfg.preface_color
           return theme_hex if raw.to_s.strip.empty?

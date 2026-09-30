@@ -266,9 +266,9 @@ module VivlioStarter
               h3_svg = File.read(h3_svg_path)
               h4_svg = File.read(h4_svg_path)
 
-              # Accent color for "blue" is #0ea5e9. Check fill replacement.
-              assert_includes h3_svg, 'fill="#0ea5e9"'
-              assert_includes h4_svg, 'fill="#0ea5e9"'
+              # Accent color for "blue" is #0186d8. Check fill replacement.
+              assert_includes h3_svg, 'fill="#0186d8"'
+              assert_includes h4_svg, 'fill="#0186d8"'
               mock_resize.verify
             end
           end
@@ -345,7 +345,7 @@ module VivlioStarter
 
               svg = File.read(svg_path)
               assert_includes svg, 'fill="#A0041E"'
-              refute_includes svg, 'fill="#0ea5e9"'
+              refute_includes svg, 'fill="#0186d8"'
               mock_resize.verify
             end
           end
@@ -392,12 +392,12 @@ module VivlioStarter
               h3_svg = File.read(h3_svg_path)
               h4_svg = File.read(h4_svg_path)
 
-              # 🌸 (h3) should NOT be recolored to blue (#0ea5e9); it must retain #FFC0CB
+              # 🌸 (h3) should NOT be recolored to blue (#0186d8); it must retain #FFC0CB
               assert_includes h3_svg, 'fill="#FFC0CB"'
-              refute_includes h3_svg, 'fill="#0ea5e9"'
+              refute_includes h3_svg, 'fill="#0186d8"'
 
-              # ♠ (h4) SHOULD be recolored to blue (#0ea5e9)
-              assert_includes h4_svg, 'fill="#0ea5e9"'
+              # ♠ (h4) SHOULD be recolored to blue (#0186d8)
+              assert_includes h4_svg, 'fill="#0186d8"'
               refute_includes h4_svg, 'fill="#000000"'
 
               mock_resize.verify

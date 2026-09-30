@@ -47,9 +47,12 @@ module VivlioStarter
       class DirectBuild
         WORKSPACE_PREFIX = 'vs-direct-'
 
-        # 扉絵・節絵を使わない simple 固定（spec §1.2）。既定色は yellow。
+        # 扉絵・節絵を使わない simple 固定（spec §1.2）。
         FIXED_THEME_STYLE = 'simple'
-        DEFAULT_THEME_COLOR = 'yellow'
+        # 既定色は本（theme.color の green）と別に持つ。green は既定の扉絵 sakura に合わせた色で、
+        # 扉絵を使わない直接ビルドにはその理由がない。blue は cyan と navy の中間で、モノクロで刷っても
+        # 太字が本文から浮く濃さがある（改善案 #66）
+        DEFAULT_THEME_COLOR = 'blue'
 
         # 章番号を持たない（または本章の範囲外の）原稿へ割り当てる番号と slug。
         # 01–89 は本章の範囲であり、10 はその中庸。
@@ -73,7 +76,7 @@ module VivlioStarter
         LOCAL_IMAGE_PATTERN = %r{!\[[^\]]*\]\((?!https?://|data:)([^)\s]+)\)}
 
         # @param source [String] 入力 Markdown のパス（呼び出し元 cwd 基準）
-        # @param theme [String, nil] --theme の値（省略時 yellow）
+        # @param theme [String, nil] --theme の値（省略時 blue）
         def initialize(source, theme: nil)
           # ワークスペースへ chdir した後も同じファイルを指せるよう絶対パスで保持する
           @source = File.expand_path(source.to_s)

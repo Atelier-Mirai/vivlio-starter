@@ -461,11 +461,25 @@ theme:
 
 **HEX表記**：`color: #ff0000` のように色コードを直接指定することもできます。
 
-一覧にない色名（例: `pink`）を指定した場合は、`vs build` / `vs preflight` が次のように警告し、既定色（yellow）でビルドを続行します。
+### 色を組み合わせる
+
+テーマカラーのほかに、前書き・後書きの色（`preface_color`）と付録の色（`appendix_color`）も選べます（@ch-book-yml の章）。3 色を同じ系統からとると、本全体の印象がそろいます。
+
+| 印象 | `color` | `preface_color` | `appendix_color` |
+| --- | --- | --- | --- |
+| 落ち着いた自然な色（雛形の既定） | `green` | `teal` | `cyan` |
+| 技術書らしい青 | `blue` | `navy` | `cyan` |
+| 柔らかく明るい | `yellow` | `orange` | `lime` |
+
+雛形の既定は、既定の扉絵 `sakura` に合わせた緑の組み合わせです。扉絵を替えたときは、絵の色に合わせてテーマカラーも選び直すとよいでしょう。
+
+`yellow` や `cyan` のような明るい色は、太字の文字色としては淡めになります。モノクロで印刷する本では、`navy`・`indigo`・`green` のような濃い色のほうが強調が紙面に残ります。
+
+一覧にない色名（例: `pink`）を指定した場合は、`vs build` / `vs preflight` が次のように警告し、既定色（green）でビルドを続行します。
 
 :::{.output}
 ```text
-🟡 theme.color 'pink' は無効な色名です。既定色（yellow）でビルドを続行します。
+🟡 theme.color 'pink' は無効な色名です。既定色（green）でビルドを続行します。
         指定できる色: yellow / orange / red / magenta / purple / indigo / navy / blue / cyan / teal / green / lime、または '#ff0000' のような HEX（#rrggbb / #rrggbbaa）
 ```
 :::
