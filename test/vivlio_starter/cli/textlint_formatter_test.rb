@@ -194,6 +194,45 @@ module VivlioStarter
         assert(rows.any? { it[:label].include?('上限 5 個') }, '上限値は文面から持ち越す')
       end
 
+      # 本書の設定で動くルールのうち英文を返すものは、すべて日本語で出る。
+      # メッセージは 2026-09-30 に textlint --format json から写した上流の実出力
+      # （no-unmatched-pair は複数行で、閉じる側の字は 3 行目にしか無い）
+      def test_should_translate_every_english_upstream_message
+        {
+          ['no-unmatched-pair', "Cannot find a pairing character for (.\n                    \n" \
+                                "You should close this sentence with ).\nThis pair of marks is called round bracket()."] =>
+            '開きの ( に対応する閉じの ) が、同じ文の中にありません。' \
+            '閉じ忘れか、開きと閉じで字幅（全角・半角）が食い違っていないか確かめてください',
+          ['no-nfd', "Disallow to use NFD(well-known as UTF8-MAC 濁点): \"が\" => \"が\""] =>
+            '濁点・半濁点が文字から分かれています（NFD）。「が」を 1 字で打ち直してください',
+          ['no-exclamation-question-mark', 'Disallow to use "！".'] =>
+            '「！」を使わない設定です。書き換えるか、.textlintrc.yml の no-exclamation-question-mark で許してください',
+          ['no-hankaku-kana', 'Disallow to use 半角カタカナ: "ｱｲｳ"'] =>
+            '半角カタカナ「ｱｲｳ」があります。全角のカタカナで書いてください',
+          ['no-invalid-control-character', 'Found invalid control character(BACKSPACE \\u0008)'] =>
+            '目に見えない制御文字（U+0008 BACKSPACE）が紛れ込んでいます。指摘の位置の字を消してください',
+          ['no-zero-width-spaces', 'Zero width space is disallowed.'] =>
+            '目に見えないゼロ幅スペース（U+200B）が紛れ込んでいます。指摘の位置の字を消してください'
+        }.each do |(rule, message), expected|
+          json = JSON.generate([{ filePath: '/proj/a.md',
+                                  messages: [{ ruleId: "ja-technical-writing/#{rule}", message:, line: 1 }] }])
+          rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+          assert_equal "[#{rule}] #{expected}", rows.first[:label], rule
+        end
+      end
+
+      # かぎかっこ自体が対の字のときも読める——「」で囲むと「「」」になってしまう
+      def test_should_show_unmatched_kagikakko_without_nested_brackets
+        message = "Cannot find a pairing character for 「.\n                    \n" \
+                  "You should close this sentence with 」.\nThis pair of marks is called かぎ括弧「」."
+        json = JSON.generate([{ filePath: '/proj/a.md',
+                                messages: [{ ruleId: 'no-unmatched-pair', message:, line: 3 }] }])
+        label = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows].first[:label]
+
+        assert label.start_with?('[no-unmatched-pair] 開きの 「 に対応する閉じの 」 が'), label
+      end
+
       # 上流が文面を変えたら訳せないが、そのときも指摘は落とさない——
       # 訳し損ねた英文が出るほうが、指摘そのものを取り落とすよりずっとよい
       def test_aggregate_json_passes_through_unknown_english_messages

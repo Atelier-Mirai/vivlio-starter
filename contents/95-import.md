@@ -21,7 +21,7 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 
 `vs import` が読み取るのは `.re` ファイルです。Re:VIEW の gem や Re:VIEW Starter の変換スクリプトは使いません。以前の執筆環境が残っていなくても、原稿ファイルがあれば取り込めます。
 
-対応しているのは **Re:VIEW Starter 記法**です。たとえば行頭の `-` は Starter では番号付きリストですが、Re:VIEW では段落として扱われるなど、記法体系に相違があります(Re:VIEW 記法から Markdown への変換も可能かとは思いますが、未検証です）。
+対応しているのは **Re:VIEW Starter 記法**です。たとえば行頭の `-` は、Starter では番号付きリストに、Re:VIEW では段落になるなど、両者の記法には違いがあります。Re:VIEW 記法の原稿も取り込める見込みはありますが、検証はしていません。
 :::
 
 ### 取り込み元の確認

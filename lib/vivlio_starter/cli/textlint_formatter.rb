@@ -100,22 +100,63 @@ module VivlioStarter
       # 上流ルールの英文メッセージを日本語に差し替える表（ルール => [照合, 差し替え文]）。
       #
       # 日本語の原稿を書いている著者に英文だけが返るのは、それだけで指摘が読み飛ばされる。
-      # 上限値のような**意味のある数値は差し替え文へ持ち越す**——`Maximum is 3` を
-      # 「多すぎます」に丸めると、あと何個減らせばよいのかが分からなくなるためである。
+      # 照合の名前付きキャプチャは、同じ名前で差し替え文へ持ち越す。上限値のような
+      # **意味のある数値や、挙がった字を落とさない**——`Maximum is 3` を「多すぎます」に
+      # 丸めると、あと何個減らせばよいのかが分からなくなるためである。
+      #
+      # 照合は**メッセージ全体**に当てる。no-unmatched-pair は閉じる側の字を 3 行目にしか
+      # 書かないので、先頭行だけでは「何で閉じればよいか」まで訳せない。
+      #
+      # 載せたのは、本書の設定で動くルールのうち英文を返すものすべて（2026-09-30 に
+      # 上流の全ルールの RuleError を洗った）。sentence-length も英文だが、実行時の設定が
+      # 常に切るので載せていない（LintRunner の独自ルールが受け持つ）。
       #
       # max-comma が数えるのは半角カンマだけで、和文の読点は max-ten が別に見ている。
       # 和文に半角カンマが並ぶのは数字の桁区切り（`2,894 × 4,092 px`）か欧文の語の並びで、
       # 実際この 2 つしか本書では当たらない。何を数えられたのか著者には分からないので、
       # 桁区切りも数に入ることを文言へ書いた（warning-messages-actionable）。
       #
+      # no-unmatched-pair は、閉じ忘れだけでなく**開きと閉じの字幅の取り違え**
+      # （`(補足）`）でも当たる（実測: 95 章）。どちらも疑えるよう両方を挙げる。
+      # 対の字は「」で囲まずに示す——かぎかっこ自体が対象のとき「「」」と読めなくなる。
+      #
+      # no-exclamation-question-mark は同梱の設定では 4 種とも許しているので、当たるのは
+      # 著者が設定を変えたときだけ。書き換えるか設定で許すかを選べるよう、設定の場所を添える。
+      #
       # ここは**表示だけ**を差し替える。指摘そのものは消さないので、--fix との食い違いは
       # 起きない（lint-false-positive-notes.md §7 が戒めているのは、表示の段で
       # 黙らせて --fix に効かない状態を作ることである）。
       MESSAGE_TRANSLATIONS = {
         'max-comma' => [
-          /\AThis sentence exceeds the maximum count of comma\. Maximum is (\d+)\.?\z/,
+          /\AThis sentence exceeds the maximum count of comma\. Maximum is (?<max>\d+)\.?\z/,
           '一つの文に半角カンマが多すぎます（上限 %<max>s 個）。' \
           '読点「、」で区切るか文を分けてください（数字の桁区切りも数えます）'
+        ],
+        'no-unmatched-pair' => [
+          /\ACannot find a pairing character for (?<open>.)\.\s+You should close this sentence with (?<close>.)\./,
+          '開きの %<open>s に対応する閉じの %<close>s が、同じ文の中にありません。' \
+          '閉じ忘れか、開きと閉じで字幅（全角・半角）が食い違っていないか確かめてください'
+        ],
+        'no-nfd' => [
+          /\ADisallow to use NFD\(well-known as UTF8-MAC 濁点\): "(?<actual>.+)" => "(?<expected>.+)"\z/,
+          '濁点・半濁点が文字から分かれています（NFD）。「%<expected>s」を 1 字で打ち直してください'
+        ],
+        'no-exclamation-question-mark' => [
+          /\ADisallow to use "(?<mark>.+)"\.\z/,
+          '「%<mark>s」を使わない設定です。書き換えるか、' \
+          '.textlintrc.yml の no-exclamation-question-mark で許してください'
+        ],
+        'no-hankaku-kana' => [
+          /\ADisallow to use 半角カタカナ: "(?<text>.+)"\z/,
+          '半角カタカナ「%<text>s」があります。全角のカタカナで書いてください'
+        ],
+        'no-invalid-control-character' => [
+          /\AFound invalid control character\((?<name>.+) \\u(?<code>\h{4})\)\z/,
+          '目に見えない制御文字（U+%<code>s %<name>s）が紛れ込んでいます。指摘の位置の字を消してください'
+        ],
+        'no-zero-width-spaces' => [
+          /\AZero width space is disallowed\.\z/,
+          '目に見えないゼロ幅スペース（U+200B）が紛れ込んでいます。指摘の位置の字を消してください'
         ]
       }.freeze
 
@@ -137,17 +178,17 @@ module VivlioStarter
         rule = short_rule(rule_id)
         return mixed_style_head(message) if rule == MIXED_STYLE_RULE
 
-        RULE_SUMMARIES[rule] || translate_message(rule, message_head(message))
+        RULE_SUMMARIES[rule] || translate_message(rule, message) || message_head(message)
       end
 
-      # 英文メッセージを MESSAGE_TRANSLATIONS の文言へ差し替える。
-      # 表に無いルールと、表にあっても文面が変わった（上流の更新）ものは素通しにする——
-      # 訳し損ねた英文が出るほうが、指摘そのものを取り落とすよりずっとよい。
-      def self.translate_message(rule, head)
+      # 英文メッセージを MESSAGE_TRANSLATIONS の文言へ差し替える。訳せなければ nil。
+      # 表に無いルールと、表にあっても文面が変わった（上流の更新）ものは、呼び出し側が
+      # 先頭行を素通しにする——訳し損ねた英文が出るほうが、指摘そのものを取り落とすよりずっとよい。
+      def self.translate_message(rule, message)
         pattern, template = MESSAGE_TRANSLATIONS[rule]
-        return head unless pattern && (m = pattern.match(head))
+        return unless pattern && (m = pattern.match(message.to_s))
 
-        format(template, max: m[1])
+        format(template, **m.named_captures.transform_keys(&:to_sym))
       end
 
       # 指摘の頭に付くパターン番号（`ja-no-redundant-expression` の `【dict2】`）。
