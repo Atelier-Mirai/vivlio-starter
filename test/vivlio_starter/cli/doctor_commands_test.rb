@@ -54,7 +54,7 @@ module VivlioStarter
 
       # --fix 実行時に設定ファイルの診断・復元（diagnose_config_files!）が起動することを確認するテスト。
       # ※ 開発環境の Node.js やツールの有無に依存せずテストをパスさせるため、
-      #    rouge_gem_available? / mathjax_full_available? も true にスタブ化しています。
+      #    mathjax_full_available? も true にスタブ化しています。
       def test_doctor_fix_diagnoses_config_files_when_environment_complete
         with_host_os('darwin') do
           diagnose_called = false
@@ -63,7 +63,6 @@ module VivlioStarter
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
-                      DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :command_exists?, ->(_) { true } do
                           DoctorCommands.stub :command_runnable?, ->(*, **) { true } do
@@ -74,7 +73,6 @@ module VivlioStarter
                             end
                           end
                         end
-                      end
                       end
                 end
               end
@@ -181,7 +179,6 @@ module VivlioStarter
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
-                      DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :diagnose_config_files!, nil do
                           # 存在・機能チェックとも同じ述語（vips は install 後に true）で駆動する
@@ -206,7 +203,6 @@ module VivlioStarter
                            end
                           end
                         end
-                    end
                   end
                 end
               end
@@ -226,7 +222,6 @@ module VivlioStarter
           stub_logging do
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :waifu2x_available?, true do
-                    DoctorCommands.stub :rouge_gem_available?, true do
                       DoctorCommands.stub :mathjax_full_available?, true do
                       DoctorCommands.stub :diagnose_config_files!, nil do
                         DoctorCommands.stub :tesseract_language_available?, lambda { |language|
@@ -258,7 +253,6 @@ module VivlioStarter
                           end
                         end
                       end
-                  end
                 end
               end
             end
@@ -505,7 +499,6 @@ module VivlioStarter
             [DoctorCommands, :pdf_plugin_installed?, true],
             [DoctorCommands, :tesseract_language_available?, true],
             [DoctorCommands, :waifu2x_available?, true],
-            [DoctorCommands, :rouge_gem_available?, true],
             [DoctorCommands, :mathjax_full_available?, true],
             [DoctorCommands, :kindlepreviewer_functional?, true],
             # inkscape のみ起動不能、他は全て存在＋起動可能とする
@@ -628,7 +621,6 @@ module VivlioStarter
           [DoctorCommands, :pdf_plugin_installed?, plugin_installed],
           [DoctorCommands, :tesseract_language_available?, false],
           [DoctorCommands, :waifu2x_available?, true],
-          [DoctorCommands, :rouge_gem_available?, true],
           [DoctorCommands, :mathjax_full_available?, true],
           [DoctorCommands, :kindlepreviewer_functional?, true],
           [DoctorCommands, :command_runnable?, available],

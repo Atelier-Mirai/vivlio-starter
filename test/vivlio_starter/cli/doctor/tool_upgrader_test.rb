@@ -90,7 +90,7 @@ module VivlioStarter
           assert_equal ['qpdf', 'vivliostyle CLI'], plan.updates.map(&:label).sort
         end
 
-        # 更新対象外ツール（waifu2x / rouge）は「対象外（手動）」として計画に明示される
+        # 更新対象外ツール（waifu2x）は「対象外（手動）」として計画に明示される
         def test_should_mark_manual_tools_as_out_of_scope
           deps = stub_deps(capture: capture_map)
 
@@ -98,7 +98,6 @@ module VivlioStarter
 
           manuals = plan.entries.select { it.action == :manual }.map(&:label)
           assert_includes manuals, 'waifu2x'
-          assert_includes manuals, 'rouge'
           refute_includes plan.updates.map(&:label), 'waifu2x'
         end
 

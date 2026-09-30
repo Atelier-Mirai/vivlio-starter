@@ -14,7 +14,7 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 - node / npm
 - ImageMagick / qpdf / pdfinfo / Ghostscript / MeCab
 - `waifu2x-ncnn-vulkan`（任意）
-- Rouge（コードブロック言語推定用 gem）
+- Guesslang（任意。言語名のないコードの言語推定用。`vs doctor --fix` で入ります）
 
 :::{.memo}
 **Re:VIEW Starter の実行環境は要りません**
@@ -169,7 +169,6 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | `原稿（.re）が見つかりません` | `config.yml` の `contentdir` が既定と違う | `contentdir` の指すディレクトリに `.re` があるか確認する |
 | 章が足りない | `catalog.yml` に載っていない | 取り込みたい章を `catalog.yml` へ追加してから実行する |
 | 会話に話者の色が付かない | `book.yml` に話者が未登録 | 🟡 が挙げた話者キーを `book.yml` の `characters` に登録する |
-| Rouge が見つからない | gem が未インストール | `vs doctor --fix` または `gem install rouge` |
 | 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
 | 裏表紙が雛形の見本画像のまま | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を自分の画像に置き換える |
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |

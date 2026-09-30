@@ -105,14 +105,12 @@ module VivlioStarter
           Tool.new(label: 'kindle-previewer', kind: :cask, package: 'kindle-previewer', checks: %w[kindlepreviewer]),
           # Enhanced Mode プラグイン（gem 名は provider.rb / doctor.rb と同値。導入済みの場合のみ更新対象）
           Tool.new(label: 'vivlio-starter-pdf', kind: :gem, package: 'vivlio-starter-pdf', checks: []),
-          Tool.new(label: 'waifu2x', kind: :manual, package: nil, checks: []),
-          Tool.new(label: 'rouge', kind: :manual, package: nil, checks: [])
+          Tool.new(label: 'waifu2x', kind: :manual, package: nil, checks: [])
         ].freeze
 
         # 更新対象外（:manual）の理由（計画表の注記）
         MANUAL_NOTES = {
-          'waifu2x' => '導入経路が多様',
-          'rouge' => '本 gem の依存として Bundler 管理'
+          'waifu2x' => '導入経路が多様'
         }.freeze
 
         # 一括問い合わせコマンド。ツールごとの個別問い合わせはしない（遅いため・spec §2.2）。

@@ -28,7 +28,7 @@
 #   - vips (libvips): 高速画像処理（Enhanced Mode の OCR 用）
 #   - tesseract / tesseract-lang: OCR エンジンと日本語データ（Enhanced Mode 用）
 #   - mecab: 索引機能の読み自動推測
-#   - rouge: コードブロック言語推定（Ruby gem）
+#   - guesslang (@vscode/vscode-languagedetection): vs lint のコードブロックの言語推定（npm パッケージ）
 #   - mathjax (mathjax-full): 数式の SVG 化（npm パッケージ）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
 #   - kindlepreviewer (Kindle Previewer 3 / 4): Kindle(KPF) 変換（任意・targets: kindle 用）
@@ -200,7 +200,6 @@ module VivlioStarter
           'tesseract-lang' => nil,
           'waifu2x' => nil,
           'mecab' => 'mecab', # 索引の読み自動推測・交ぜ書き検出の第 2 層
-          'rouge' => nil, # vs import の言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
           'mermaid' => nil, # ```mermaid の図化用（@mermaid-js/mermaid-cli・mmdc）
           'guesslang' => nil, # vs lint のコードブロックの言語推定用（@vscode/vscode-languagedetection）
@@ -219,8 +218,6 @@ module VivlioStarter
                  tesseract_language_available?('jpn')
                when 'waifu2x'
                  waifu2x_available?
-               when 'rouge'
-                 rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
                when 'guesslang'
@@ -416,12 +413,6 @@ module VivlioStarter
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
 
-          # Rouge（vs import の言語推定用）
-          if missing.include?('rouge')
-            Common.log_always('Rouge（vs import の言語推定用）をインストールします…')
-            system('gem install rouge')
-          end
-
           # mathjax-full（数式の SVG 化用・npm パッケージ）
           if missing.include?('mathjax')
             if system('which npm >/dev/null 2>&1')
@@ -510,8 +501,6 @@ module VivlioStarter
                  tesseract_language_available?('jpn')
                when 'waifu2x'
                  waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
-               when 'rouge'
-                 rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
                when 'guesslang'
@@ -1016,7 +1005,6 @@ module VivlioStarter
           'waifu2x' => 'waifu2x-ncnn-vulkan',
           'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
           'mecab' => 'MeCab (索引の読み推測・交ぜ書き検出用)',
-          'rouge' => 'Rouge (vs import の言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
           'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
           'guesslang' => 'Guesslang (vs lint のコードブロックの言語推定・@vscode/vscode-languagedetection)',
@@ -1173,13 +1161,6 @@ module VivlioStarter
       # Ruby 自身が Rosetta 下で動いていれば host_cpu は x86_64 になるが、
       # その場合 Rosetta は当然入っているので、判定を飛ばして差し支えない。
       def apple_silicon? = RbConfig::CONFIG['host_cpu'].to_s.start_with?('arm')
-
-      def rouge_gem_available?
-        require 'rouge'
-        true
-      rescue LoadError
-        false
-      end
 
       # Vivliostyle が PDF レンダリングに使う headless Chrome のキャッシュを点検し、
       # 中断したダウンロード/展開で壊れた残骸があれば（--fix 時に）掃除する。

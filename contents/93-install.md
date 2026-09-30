@@ -60,7 +60,6 @@ gem install query-stream        # データ展開機能
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
-| rouge | `gem install rouge` | `vs import` でのコードの言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
