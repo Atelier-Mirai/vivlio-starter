@@ -179,6 +179,7 @@ vs rename 11-intro 12-introduction
 | `config/catalog.yml` | 章の並び順の定義 |
 | `images/<章名>/` | 章専用の画像ディレクトリ |
 | 索引辞書の主要参照 | `main:` が指す章名（→ @ch-index-glossary） |
+| 索引から外す章 | `book.yml` の `index_glossary.exclude_chapters` に書いた章番号（範囲は書き換えない） |
 
 ## `vs renumber` — 章番号を一括で付け直す
 

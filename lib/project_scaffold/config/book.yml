@@ -240,6 +240,8 @@ index_glossary:
   context_width: 40 # 文脈抽出の幅（キーワード前後の文字数）
                     # 小さな画面なら 20文字、大画面なら 60文字 など調整可能
 
+  exclude_chapters: [] # 索引・用語集の対象から外す章（例: 記法の見本の章）
+
   # 索引ライブラリ（用語集[g]・reject を書籍間で持ち運ぶ）は設定不要です。
   #   vs index:export [パス] … 書き出す（省略時 index_library.yml）
   #   vs index:import [パス] … 取り込む（別の本のライブラリは パスを指定）
