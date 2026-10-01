@@ -254,9 +254,9 @@ index:
   title: "索引" # 索引ページのタイトル
 
   target_terms: light # 索引語数の目安
-                      #   light    … 控えめ（主要な語だけを拾う）
-                      #   standard … 標準（既定）
-                      #   thorough … 丁寧（初学者向けに広く拾う）
+                      #   light    … 少なめ（主要な語だけを拾う。既定）
+                      #   standard … 標準
+                      #   thorough … 多め（初学者向けに広く拾う）
                       #   260      … 語数を直接指定することもできます
                       # 目安は本文の文字数から算出されます。vs index:plan で確認できます。
 
