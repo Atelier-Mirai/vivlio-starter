@@ -62,6 +62,12 @@ module VivlioStarter
 
         # --- phase: 他の記法のブラケットには触らない ---
 
+        # 表の見出しの「幅 [mm]」は単位の表記。索引を切っていても角かっこごと残す（改善案 #99）
+        def test_should_keep_short_alphanumeric_brackets_intact
+          assert_equal '幅 [mm] と解像度 [px]。', strip('幅 [mm] と解像度 [px]。')
+          assert_equal 'OS の話。', strip('[OS|OS] の話。')
+        end
+
         def test_should_keep_inline_footnote_intact
           # ブラケットだけ剥がすと脚注本体が本文へ流れ込み、脚注末尾の「。」と
           # 本文の「。」が重なる（`安全です。。`）のが元の症状（spec §1）

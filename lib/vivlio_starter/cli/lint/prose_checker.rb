@@ -7,7 +7,6 @@
 #   textlint のルールでは扱えない指摘を、原稿へ直接当てる。
 #     - mazegaki             交ぜ書き（「だ円」→「楕円」）。1 対 1 の置換なので --fix できる
 #     - ambiguous-comparison 二通りに読める対比（「B は A と同じように X しない」）
-#     - stray-index-markup   索引語のつもりでない `[g]`（markdown-notation-collision-spec.md §5）
 #     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
 #     - multiple-chapter-headings 1 つの章ファイルに 2 つ目の章見出し（`#`）
@@ -39,7 +38,6 @@
 require 'yaml'
 
 require_relative '../common'
-require_relative '../index_markup'
 require_relative '../masking'
 require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
@@ -57,7 +55,6 @@ module VivlioStarter
 
         MAZEGAKI_RULE  = 'mazegaki'
         AMBIGUOUS_RULE = 'ambiguous-comparison'
-        STRAY_INDEX_RULE     = 'stray-index-markup'
         INDENTED_CODE_RULE   = 'indented-code-block'
         SETEXT_RULE          = 'setext-heading'
         MULTIPLE_CHAPTER_HEADINGS_RULE = 'multiple-chapter-headings'
@@ -221,7 +218,6 @@ module VivlioStarter
           findings = []
           findings.concat(mazegaki_findings(text, allowlist))  unless rules.include?(MAZEGAKI_RULE)
           findings.concat(ambiguous_findings(text))            unless rules.include?(AMBIGUOUS_RULE)
-          findings.concat(stray_index_findings(text))          unless rules.include?(STRAY_INDEX_RULE)
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(multiple_chapter_heading_findings(text)) unless rules.include?(MULTIPLE_CHAPTER_HEADINGS_RULE)
@@ -785,39 +781,7 @@ module VivlioStarter
         def kangxi_ideograph(radical) = KANGXI_JAPANESE_FORMS.fetch(radical) { radical.unicode_normalize(:nfkc) }
         private_class_method :kangxi_ideograph
 
-        # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）--------
-
-        # 索引語のつもりでない `[g]` の指摘。
-        #
-        # **すべての `[語]` は叩けない。** 手動登録は正しい記法で、本書でも
-        # `[五十音順|ごじゅうおんじゅん]` が現役である。事故が起きるのは、著者が
-        # 索引語を書いたつもりのない短い綴りに限られるので、そこだけを見る。
-        # 参照リンクとタスクリストは IndexMarkup が既に除いている（T-1・T-2）。
-        def stray_index_findings(text)
-          labels = IndexMarkup.link_labels(Masking.strip_code(text))
-
-          prose_lines(text).flat_map do |lineno, line|
-            protected_line, = Masking.protect_code(line)
-            stray_terms(protected_line, labels).map do |term|
-              Finding.new(line: lineno, rule: STRAY_INDEX_RULE,
-                          label: "[#{term}] は索引語として登録されます" \
-                                 "（コードなら `[#{term}]` と囲む／索引に載せるなら [#{term}|よみ] と仮名の読みを添える）")
-            end
-          end
-        end
-
-        # 1 行から、索引語として疑わしい短い綴りだけを拾う。
-        def stray_terms(line, labels)
-          line.to_enum(:scan, IndexMarkup::TERM_PATTERN).filter_map do
-            match = ::Regexp.last_match
-            term  = match[1]
-            next if IndexMarkup.skip_term?(term)
-            next if IndexMarkup.other_notation?(match, labels)
-            next unless IndexMarkup.short_ascii_term?(term)
-
-            term
-          end
-        end
+        # --- 記法の取り違え（markdown-notation-collision-spec.md §6・§7）--------
 
         # 4 スペース字下げコードブロックの指摘（非対応・§6）。
         #

@@ -55,9 +55,8 @@ module VivlioStarter
           @plan = plan
         end
 
-        # 画面へ出力する。
-        # @param dry_run [Boolean] true なら「書き換えていない」旨を末尾に添える
-        def render(dry_run: false)
+        # 画面へ出力する（`vs index:plan` の画面。`vs index:auto` は出さない——改善案 #99）
+        def render
           emit(volume_line)
           emit(registration_line)
           emit('')
@@ -67,7 +66,7 @@ module VivlioStarter
           emit('')
           candidate_section.each { emit(it) }
           emit('')
-          emit(footer(dry_run:))
+          emit('※ vs index:plan は下見です。辞書・レビューファイルは変更していません')
         end
 
         private
@@ -186,12 +185,6 @@ module VivlioStarter
           q = ->(ratio) { scores[[(scores.size * ratio).to_i, scores.size - 1].min].round }
           "スコア分布: 最小 #{q[0.0]} / 下位 25% #{q[0.25]} / 中央 #{q[0.5]} / " \
             "上位 25% #{q[0.75]} / 最大 #{scores.last.round}"
-        end
-
-        def footer(dry_run:)
-          return '※ vs index:plan は下見です。辞書・レビューファイルは変更していません' if dry_run
-
-          "#{ReviewMarkdownGenerator::REVIEW_FILE} を編集後、vs index:apply を実行してください"
         end
 
         def number(value) = value.to_s.reverse.scan(/\d{1,3}/).join(',').reverse

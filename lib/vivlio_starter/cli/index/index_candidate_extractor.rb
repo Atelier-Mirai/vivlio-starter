@@ -18,6 +18,7 @@ require_relative 'yomi_inferrer'
 require_relative 'code_block_stripper'
 require_relative 'scoring_engine'
 require_relative 'term_pattern'
+require_relative 'context_snippet'
 require_relative '../lint/notation_guard'
 
 module VivlioStarter
@@ -262,8 +263,22 @@ module VivlioStarter
 
         # テキストの名詞連続を 1 つずつ渡す。
         # @yieldparam nouns [Array<Array(String, Boolean, String)>] [表層形, 直前に空白があったか, 品詞細分類]
-        def each_noun_sequence(mecab, text, &)
-          text.each_line { each_noun_sequence_in_line(mecab, it.chomp, &) }
+        def each_noun_sequence(mecab, text)
+          text.each_line do |line|
+            each_noun_sequence_in_line(mecab, line.chomp) { yield without_okurigana_suffix(it) }
+          end
+        end
+
+        # 語の後ろに付いて句を作る接尾語。IPADIC はこれらを名詞（接尾）とするので、名詞連続に
+        # 付いて「日本語ならでは」「Apple Books 向け」が候補になっていた（改善案 #99）。
+        # 送り仮名つきの接尾語をまとめて外すと「箇条書き」が「箇条」に削れるので、列挙する
+        PHRASE_SUFFIXES = %w[ならでは 向け 付き 済み ごと].freeze
+
+        # 末尾の句を作る接尾語を外す（「Apple Books 向け」→「Apple Books」）
+        def without_okurigana_suffix(nouns)
+          nouns = nouns.dup
+          nouns.pop while nouns.any? && nouns.last[2] == '接尾' && PHRASE_SUFFIXES.include?(nouns.last[0])
+          nouns
         end
 
         # 1 行ぶん。行ごとに解析するのは、名詞連続が行をまたいでつながらないようにするため
@@ -281,7 +296,10 @@ module VivlioStarter
             # 落とすと「閲覧用 PDF」が「閲覧用PDF」になり、本文と一致しなくなる
             token = [node.surface, node.rlength > node.length, pos_detail]
 
-            if pos == '名詞'
+            # 空白の後に置かれた記号だけの名詞（IPADIC は `/` を名詞とする）は連続を切る。
+            # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
+            # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す
+            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/))
               current_nouns << token
             elsif pos == '接頭詞' && pos_detail == '名詞接続'
               # 接頭辞は次の名詞と 1 語をなす（「単章ビルド」「同梱画像」）。
@@ -405,16 +423,21 @@ module VivlioStarter
           @scoring.terms.each do |term|
             tf = 0
             df = 0
+            pattern = occurrence_pattern(term)
             contents.each do |content|
-              n = content.scan(term).size
+              n = content.scan(pattern).size
               next if n.zero?
 
               tf += n
               df += 1
             end
             @scoring.observe(term, tf:, df:, doc_count:)
+            term_frequencies[term] = tf
           end
         end
+
+        # 候補ごとの延べ出現数（calculate_tfidf_scores! が数えたもの）
+        def term_frequencies = @term_frequencies ||= {}
 
         # 表のセルの中身がその語だけ、というセルがこの数以上あり、かつ出現のこの割合以上を
         # 占める語は、表の列の値とみなす。割合も見るのは、本文によく出る語（Kindle は 99 回中
@@ -437,14 +460,30 @@ module VivlioStarter
         def discard_structural_terms!
           labels = table_cell_labels
           @scoring.terms.each do |term|
-            @scoring.discard(term) if table_label?(term, labels[term]) || boilerplate?(term)
+            @scoring.discard(term) if table_label?(term, labels[term]) || boilerplate?(term) || enclosed?(term)
           end
         end
+
+        # より長い候補の中にしか出てこない語か。「ギリシャ」は本文の 3 回とも「ギリシャ文字」の
+        # 一部で、カタカナの並びとして切り出されただけだった（改善案 #99）。長いほうの候補が
+        # 同じ回数以上出ていれば、短いほうが単独で使われた箇所はない
+        def enclosed?(term)
+          tf = term_frequencies[term].to_i
+          return false if tf.zero?
+
+          pattern = occurrence_pattern(term)
+          longer_terms.any? do |longer, longer_tf|
+            longer_tf >= tf && longer.length > term.length && longer.include?(term) && longer.match?(pattern)
+          end
+        end
+
+        # 長さ 3 字以上の候補と出現数（enclosed? の照合相手）
+        def longer_terms = @longer_terms ||= term_frequencies.select { |term, tf| term.length >= 3 && tf.positive? }
 
         def table_label?(term, cells)
           return false if cells < TABLE_LABEL_MIN_CELLS
 
-          cells >= prose_documents.sum { it.scan(term).size } * TABLE_LABEL_SHARE
+          cells >= prose_documents.sum { it.scan(occurrence_pattern(term)).size } * TABLE_LABEL_SHARE
         end
 
         # 表のセルの中身（強調とインラインコードの記号を外したもの）の出現数
@@ -464,7 +503,7 @@ module VivlioStarter
         # 限る——「Re:VIEW Starter」「トンボ・塗り足し付き」のような決まった組み合わせの名前は
         # 続きが同じでも定型句ではない。
         def boilerplate?(term)
-          pattern = /#{Regexp.escape(term)}(.{#{BOILERPLATE_TAIL}})/
+          pattern = /#{occurrence_pattern(term)}(.{#{BOILERPLATE_TAIL}})/
           tails = prose_documents.flat_map { it.scan(pattern).flatten }
           return false if tails.size < BOILERPLATE_MIN_OCCURRENCES
 
@@ -472,38 +511,17 @@ module VivlioStarter
           tail.match?(/\A[ぁ-ん]/) && count >= tails.size * BOILERPLATE_SHARE
         end
 
+        # 語の出現を数える綴り。英字・カタカナの語は、同じ字種の語の一部として出る位置を数えない
+        # （綴りの解釈は TermPattern.bounded）
+        def occurrence_pattern(term) = (@occurrence_patterns ||= {})[term] ||= TermPattern.bounded(term)
+
         # 出現数を数える本文（抽出と同じくコード・機械データ・画像の記法などを除いたもの）。
         # 生の原稿で数えると、抽出で読まなかった箇所の出現まで数えてしまう——図解注釈の
         # 例の画像を 7 回使う「バイオリン」が、本文には 1 回しか出ないのに上位へ来ていた。
         def prose_documents = @prose_documents ||= @documents.values.map { sanitize_content_for_extraction(it) }
 
-        # 用語の周辺コンテキストを抽出
-        # 前方が不足する場合は後方を延長、後方が不足する場合は前方を延長
-        def extract_context(content, term)
-          idx = content.index(term)
-          return '' if idx.nil?
-
-          w = @context_width
-
-          ideal_start = idx - w
-          ideal_end = idx + term.length + w
-
-          # 前方不足分を後方に補償
-          if ideal_start.negative?
-            ideal_end += ideal_start.abs
-            ideal_start = 0
-          end
-
-          # 後方不足分を前方に補償
-          if ideal_end > content.length
-            overshoot = ideal_end - content.length
-            ideal_start = [ideal_start - overshoot, 0].max
-            ideal_end = content.length
-          end
-
-          context = content[ideal_start...ideal_end]
-          context.gsub(/\s+/, ' ').strip
-        end
+        # 語の使われ方の抜粋（語を含む 1 文。切り方は ContextSnippet が唯一の定義元）
+        def extract_context(content, term) = ContextSnippet.around(content, term, width: @context_width)
 
         # config から context_width を読み込み（既定値 40）
         def load_context_width

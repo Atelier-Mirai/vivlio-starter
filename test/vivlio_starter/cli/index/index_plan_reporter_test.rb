@@ -31,8 +31,8 @@ module VivlioStarter
           )
         end
 
-        def render(plan_data, dry_run: false)
-          out, = capture_io { IndexPlanReporter.new(plan_data).render(dry_run:) }
+        def render(plan_data)
+          out, = capture_io { IndexPlanReporter.new(plan_data).render }
           out
         end
 
@@ -181,18 +181,12 @@ module VivlioStarter
           refute_includes out, '推奨候補', '候補抽出が無効なときに空の帯を出さない'
         end
 
-        # --- phase: plan と auto の差は末尾だけ（§6.3） ---
+        # --- phase: 末尾の案内（改善案 #99: auto はこの画面を出さず、plan だけが出す） ---
 
-        def test_dry_run_differs_only_in_the_footer
-          data = plan(scores: [10, 20, 30])
-          plan_out = render(data, dry_run: true)
-          auto_out = render(data, dry_run: false)
+        def test_render_ends_by_saying_nothing_was_written
+          out = render(plan(scores: [10, 20, 30]))
 
-          assert_includes plan_out, '辞書・レビューファイルは変更していません'
-          refute_includes auto_out, '辞書・レビューファイルは変更していません'
-
-          assert_equal plan_out.lines[0..-2], auto_out.lines[0..-2],
-                       'plan と auto で本体の表示が変わってはならない'
+          assert_equal '※ vs index:plan は下見です。辞書・レビューファイルは変更していません', out.lines.last.chomp
         end
       end
     end

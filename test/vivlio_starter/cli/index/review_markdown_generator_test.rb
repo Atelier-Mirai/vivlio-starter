@@ -655,17 +655,20 @@ module VivlioStarter
       end
 
       # 機械で分けられない短い語は、候補の中に散らさず末尾の小節にまとめる
-      def test_short_heading_terms_are_gathered_at_the_end_of_each_section
+      # 推奨・一般の両方から 1 か所（3 節の末尾）に集め、推奨の帯の語を先に並べる（改善案 #99）
+      def test_short_heading_terms_are_gathered_in_one_place
         md = generate_candidates(high: [heading_candidate('扉絵', short: true), heading_candidate('図番号'), heading_candidate('項目', short: true)],
                                  low: [heading_candidate('目安', short: true), heading_candidate('派生画像')])
         high = md[/^## 2\..*?(?=^## 3\.)/m]
         low = md[/^## 3\..*?(?=^## 4\.)/m]
 
-        assert_operator high.index('**図番号**'), :<, high.index('### 見出しから拾った短い語（2語）')
-        assert_operator high.index('### 見出しから拾った短い語'), :<, high.index('**扉絵**')
-        assert_includes high, '**項目**'
-        assert_includes low, '### 見出しから拾った短い語（1語）'
-        assert_includes high, 'vs index:export', '外した語を次の本へ持ち運べることを添える'
+        refute_includes high, '**扉絵**'
+        assert_includes high, '見出しから拾った 2 字の語が 2 語あります'
+        assert_equal 1, md.scan('### 見出しから拾った短い語').size
+        assert_operator low.index('**派生画像**'), :<, low.index('### 見出しから拾った短い語（3語）')
+        assert_operator low.index('**項目**'), :<, low.index('**目安**'), '推奨候補の帯の語を先に並べる'
+        assert_operator low.index('**扉絵**'), :<, low.index('**目安**')
+        assert_includes low, 'vs index:export', '外した語を次の本へ持ち運べることを添える'
       end
 
       def test_no_subsection_without_short_heading_terms

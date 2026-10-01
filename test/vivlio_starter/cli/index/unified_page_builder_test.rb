@@ -82,6 +82,20 @@ module VivlioStarter
           assert_includes html, 'data-initial="か"'
         end
 
+        # 英字の読みは大文字・小文字を区別せずに並べる。文字コード順だと「KPF」が「Kindle」より先に来た（改善案 #99）
+        def test_build_index_sorts_latin_readings_ignoring_case
+          create_index_cache(
+            %w[KPF Kobo Kindle\ Previewer Kindle KDP].to_h { [it, [{ 'yomi' => it, 'link' => "01.html##{it}" }]] }
+          )
+
+          @builder.build_index!
+
+          html = File.read(INDEX_OUTPUT_FILE)
+          order = %w[KDP Kindle Kindle\ Previewer Kobo KPF].map { html.index(">#{it}<") }
+          assert(order.all?, "語が見つからない: #{order.inspect}")
+          assert_equal order.sort, order
+        end
+
         def test_build_index_returns_nil_when_empty
           create_index_cache({})
 

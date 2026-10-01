@@ -689,8 +689,9 @@ module VivlioStarter
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
             match = ::Regexp.last_match
             inner = match[1]
-            # 脚注参照 [^id]・参照リンク・タスクリストはそのまま残す
-            if IndexMarkup.skip_term?(inner) || IndexMarkup.other_notation?(match, labels)
+            # 脚注参照 [^id]・参照リンク・タスクリスト・単位の表記（「幅 [mm]」）はそのまま残す
+            if IndexMarkup.skip_term?(inner) || IndexMarkup.other_notation?(match, labels) ||
+               IndexMarkup.short_ascii_term?(inner)
               match[0]
             else
               IndexMarkup.plain_text(inner)

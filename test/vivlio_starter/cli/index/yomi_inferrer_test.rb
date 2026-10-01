@@ -64,6 +64,25 @@ module VivlioStarter
           end
         end
 
+        # 語だけを解析すると「章」が人名（アキラ）と読まれる。人名・動詞を含まない解析を選ぶ（改善案 #99）
+        def test_infer_avoids_person_name_readings
+          skip 'MeCab が利用できない環境ではスキップ' unless @inferrer.available?
+          @inferrer.instance_variable_set(:@overrides, {})
+
+          assert_equal 'ぜんしょう', @inferrer.infer('全章')
+          assert_equal 'しょうばんごう', @inferrer.infer('章番号')
+        end
+
+        # 英字が残る読みでは語の空白を残す（「fancylist」にしない）。仮名どうしの間は詰める（改善案 #99）
+        def test_infer_keeps_spaces_next_to_latin_readings
+          skip 'MeCab が利用できない環境ではスキップ' unless @inferrer.available?
+          @inferrer.instance_variable_set(:@overrides, {})
+
+          assert_equal 'fancy list', @inferrer.infer('fancy list')
+          assert_equal 'Re:VIEW Starter', @inferrer.infer('Re:VIEW Starter')
+          assert_equal 'Markdown ふぁいる', @inferrer.infer('Markdown ファイル')
+        end
+
         # --- phase: available? tests ---
 
         def test_available_caches_result

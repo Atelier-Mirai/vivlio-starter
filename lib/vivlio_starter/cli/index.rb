@@ -129,7 +129,7 @@ module VivlioStarter
           kept = without_excluded_chapters(basenames)
           # 名指しした章を黙って落とすと、指定が効かなかった理由が分からない
           dropped = basenames - kept
-          Common.log_warn("index_glossary.exclude_chapters により索引の対象外です: #{dropped.join(', ')}") if dropped.any?
+          Common.log_warn("次の章は index_glossary.exclude_chapters により索引の対象外です: #{dropped.join(', ')}") if dropped.any?
           kept
         else
           begin

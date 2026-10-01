@@ -1,5 +1,5 @@
 ---
-rejected_at: '2026-10-01 01:26:11'
+rejected_at: '2026-10-01 14:04:58'
 rejected_terms:
 - term: Starter
   yomi: Starter
@@ -253,126 +253,26 @@ rejected_terms:
 - term: ニュートン
   yomi: にゅーとん
   rejected_at: '2026-08-09 17:57:19'
-- term: セットアップ
-  yomi: せっとあっぷ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 280.2
-- term: 電子書籍
-  yomi: でんししょせき
-  rejected_at: '2026-10-01 01:26:10'
-  score: 274.9
-- term: TeX
-  yomi: TeX
-  rejected_at: '2026-10-01 01:26:10'
-  score: 285.2
-- term: ワークフロー
-  yomi: わーくふろー
-  rejected_at: '2026-10-01 01:26:10'
-  score: 179.2
-- term: 設定ファイル
-  yomi: せっていふぁいる
-  rejected_at: '2026-10-01 01:26:10'
-  score: 267.3
-- term: Git
-  yomi: Git
-  rejected_at: '2026-10-01 01:26:10'
-  score: 265.6
 - term: エラー
   yomi: えらー
   rejected_at: '2026-10-01 01:26:10'
   score: 255.0
-- term: コロン
-  yomi: ころん
-  rejected_at: '2026-10-01 01:26:10'
-  score: 261.7
-- term: タイトル
-  yomi: たいとる
-  rejected_at: '2026-10-01 01:26:10'
-  score: 235.1
 - term: 既定値
   yomi: きていち
   rejected_at: '2026-10-01 01:26:10'
   score: 232.4
-- term: GitHub
-  yomi: GitHub
-  rejected_at: '2026-10-01 01:26:10'
-  score: 266.7
-- term: パイプ
-  yomi: ぱいぷ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 266.5
-- term: ピリオド
-  yomi: ぴりおど
-  rejected_at: '2026-10-01 01:26:10'
-  score: 275.5
-- term: マーカー
-  yomi: まーかー
-  rejected_at: '2026-10-01 01:26:10'
-  score: 274.0
-- term: マークアップ
-  yomi: まーくあっぷ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 179.2
 - term: "--force"
   yomi: "--force"
   rejected_at: '2026-10-01 01:26:10'
   score: 277.6
-- term: インデント
-  yomi: いんでんと
-  rejected_at: '2026-10-01 01:26:10'
-  score: 235.9
-- term: ネスト
-  yomi: ねすと
-  rejected_at: '2026-10-01 01:26:10'
-  score: 218.6
-- term: 中央寄せ
-  yomi: ちゅうおうよせ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 280.8
-- term: 無効化
-  yomi: むこうか
-  rejected_at: '2026-10-01 01:26:10'
-  score: 250.6
 - term: クリーン
   yomi: くりーん
   rejected_at: '2026-10-01 01:26:10'
   score: 276.6
-- term: プレビュー
-  yomi: ぷれびゅー
-  rejected_at: '2026-10-01 01:26:10'
-  score: 261.4
-- term: トラブルシューティング
-  yomi: とらぶるしゅーてぃんぐ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 217.2
-- term: 冗長表現
-  yomi: じょうちょうひょうげん
-  rejected_at: '2026-10-01 01:26:10'
-  score: 184.8
-- term: 綴り誤り
-  yomi: つづりあやまり
-  rejected_at: '2026-10-01 01:26:10'
-  score: 280.8
-- term: バックリンク
-  yomi: ばっくりんく
-  rejected_at: '2026-10-01 01:26:10'
-  score: 134.2
-- term: 到達性
-  yomi: とうたつせい
-  rejected_at: '2026-10-01 01:26:10'
-  score: 271.2
-- term: 背景画像
-  yomi: はいけいがぞう
-  rejected_at: '2026-10-01 01:26:10'
-  score: 241.5
 - term: 印刷用PDF
   yomi: いんさつようPDF
   rejected_at: '2026-10-01 01:26:10'
   score: 194.8
-- term: トリムマーク
-  yomi: とりむまーく
-  rejected_at: '2026-10-01 01:26:10'
-  score: 134.2
 - term: パターン
   yomi: ぱたーん
   rejected_at: '2026-10-01 01:26:10'
@@ -387,30 +287,10 @@ rejected_terms:
   yomi: でざいん
   rejected_at: '2026-10-01 01:26:10'
   score: 316.8
-- term: text-right
-  yomi: text-right
-  rejected_at: '2026-10-01 01:26:10'
-  score: 353.8
-- term: ページ番号
-  yomi: ぺーじばんごう
-  rejected_at: '2026-10-01 01:26:10'
-  score: 298.0
-- term: スコア
-  yomi: すこあ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 301.0
 - term: リスト
   yomi: りすと
   rejected_at: '2026-10-01 01:26:10'
   score: 319.2
-- term: 発行者
-  yomi: はっこうしゃ
-  rejected_at: '2026-10-01 01:26:10'
-  score: 346.2
-- term: コメント
-  yomi: こめんと
-  rejected_at: '2026-10-01 01:26:10'
-  score: 299.0
 - term: チュートリアル
   yomi: ちゅーとりある
   rejected_at: '2026-10-01 01:26:10'
@@ -423,18 +303,6 @@ rejected_terms:
   yomi: りふぁれんす
   rejected_at: '2026-10-01 01:26:10'
   score: 331.0
-- term: レビュー
-  yomi: れびゅー
-  rejected_at: '2026-10-01 01:26:10'
-  score: 322.9
-- term: ソート
-  yomi: そーと
-  rejected_at: '2026-10-01 01:26:10'
-  score: 299.9
-- term: 一件検索
-  yomi: いちけんけんさく
-  rejected_at: '2026-10-01 01:26:10'
-  score: 294.9
 - term: CSS組版
   yomi: CSSくみはん
   rejected_at: '2026-10-01 01:26:10'
@@ -443,10 +311,6 @@ rejected_terms:
   yomi: ますたー
   rejected_at: '2026-10-01 01:26:10'
   score: 315.3
-- term: バンド
-  yomi: ばんど
-  rejected_at: '2026-10-01 01:26:10'
-  score: 344.6
 - term: モード
   yomi: もーど
   rejected_at: '2026-10-01 01:26:10'

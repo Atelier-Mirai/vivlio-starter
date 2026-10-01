@@ -42,43 +42,24 @@ module VivlioStarter
           YAML
         end
 
-        # --- phase: 単位・記号とまぎらわしい手動登録（§11-3）---
+        # --- phase: 単位の表記（改善案 #99。§11-3 の「載せて警告」を改めた）---
 
-        # 紙面へ出る直前の番人。弾かずに警告だけ出す
-        # （markdown-notation-collision-spec.md §11-3）。
-        def test_should_note_short_ascii_manual_markup
+        # 読みのない短い ASCII（表の見出しの「幅 [mm]」）は索引の記法として扱わず、本文に残す
+        def test_should_leave_short_ascii_brackets_as_text
           scanner = build_scanner([])
-          scanner.send(:process_content_with_code_block_exclusion,
-                       "フラグは [g] です。単位は [eV] です。\n", '11-probe')
+          out = scanner.send(:process_content_with_code_block_exclusion, "幅 [mm] と解像度 [px] です。\n", '11-probe')
 
-          noted = scanner.instance_variable_get(:@short_ascii_terms)
-          assert_equal %w[g eV], noted.keys
-          assert_equal ['11-probe:1'], noted['g']
+          assert_includes out, '幅 [mm] と解像度 [px] です。'
+          refute_match(/index-term/, out)
         end
 
-        # 読みを添えてあるのは索引へ載せる意思表示。控えない。
-        def test_should_not_note_short_terms_with_reading
+        # 読みを添えてあるのは索引へ載せる意思表示。3 文字以上や日本語の語は従来どおり載る
+        def test_should_tag_short_terms_with_reading_and_ordinary_terms
           scanner = build_scanner([])
-          scanner.send(:process_content_with_code_block_exclusion, "単位は [Hz|へるつ] です。\n", '11-probe')
+          out = scanner.send(:process_content_with_code_block_exclusion,
+                             "[OS|OS] と [CSS] と [基本情報技術者] です。\n", '11-probe')
 
-          assert_empty scanner.instance_variable_get(:@short_ascii_terms)
-        end
-
-        # 3 文字以上と日本語の語は索引語として自然なので控えない。
-        def test_should_not_note_ordinary_manual_markup
-          scanner = build_scanner([])
-          scanner.send(:process_content_with_code_block_exclusion,
-                       "[CSS] と [基本情報技術者] です。\n", '11-probe')
-
-          assert_empty scanner.instance_variable_get(:@short_ascii_terms)
-        end
-
-        # 控えても索引語としては従来どおり登録する（弾かない）。
-        def test_should_still_tag_short_terms
-          scanner = build_scanner([])
-          tagged = scanner.send(:process_content_with_code_block_exclusion, "フラグは [g] です。\n", '11-probe')
-
-          assert_match(/class="index-term"[^>]*>g</, tagged)
+          %w[OS CSS 基本情報技術者].each { assert_match(/class="index-term"[^>]*>#{it}</, out) }
         end
 
         # --- phase: scan_and_tag_file! tests ---

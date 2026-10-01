@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-10-01 02:04:53'
+generated_at: '2026-10-01 15:43:56'
 terms:
 - term: Amazon
   yomi: Amazon
@@ -43,7 +43,7 @@ terms:
   main:
   - 11-workflow
 - term: CSS 組版
-  yomi: CSSくみはん
+  yomi: CSS くみはん
   flags: ig
   definition: HTML と CSS を使って書籍の紙面を設計・組版する手法。Web 制作の知識をそのまま活かして印刷品質の PDF を作れるのが特徴です。
   source: auto_extracted
@@ -73,6 +73,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
+- term: Enhanced Mode
+  yomi: Enhanced Mode
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Enhanced\\ Mode/"
+  main:
+  - 94-pdf-read
+  updated_at: '2026-10-01 01:26:10'
 - term: GFM
   yomi: GFM
   flags: ig
@@ -93,6 +103,34 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
+- term: Git
+  yomi: Git
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bGit\\b/"
+  updated_at: '2026-10-01 14:04:58'
+- term: GitHub
+  yomi: GitHub
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bGitHub\\b/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 93-install
+- term: Guesslang
+  yomi: Guesslang
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bGuesslang\\b/"
+  main:
+  - 31-lint
+  updated_at: '2026-10-01 01:26:10'
 - term: HTML
   yomi: HTML
   flags: ig
@@ -185,6 +223,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
+- term: Kindle Previewer
+  yomi: Kindle Previewer
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Kindle\\ Previewer/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
 - term: Kobo
   yomi: Kobo
   flags: i
@@ -311,6 +359,26 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 43-cover
+- term: Re:VIEW
+  yomi: Re:VIEW
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Re:VIEW/"
+  main:
+  - 95-import
+  updated_at: '2026-10-01 01:26:10'
+- term: Rosetta
+  yomi: Rosetta
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bRosetta\\b/"
+  main:
+  - 51-doctor
+  updated_at: '2026-10-01 01:26:10'
 - term: Ruby
   yomi: Ruby
   flags: g
@@ -341,6 +409,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
+- term: Tesseract
+  yomi: Tesseract
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bTesseract\\b/"
+  main:
+  - 94-pdf-read
+  updated_at: '2026-10-01 01:26:10'
 - term: Twemoji
   yomi: Twemoji
   flags: ig
@@ -353,6 +431,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 44-build
+- term: Type 3 フォント
+  yomi: Type 3 ふぉんと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/Type\\ 3\\ フォント/"
+  main:
+  - 44-build
+  updated_at: '2026-10-01 01:26:10'
 - term: VFM
   yomi: VFM
   flags: ig
@@ -406,6 +494,16 @@ terms:
   updated_at: '2026-10-01 01:26:10'
   main:
   - 26-querystream
+- term: mermaid
+  yomi: mermaid
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-10-01 01:26:09'
+  pattern: "/\\bmermaid\\b/"
+  main:
+  - 23-figures
+  updated_at: '2026-10-01 01:26:10'
 - term: アウトライン
   yomi: あうとらいん
   flags: i
@@ -529,7 +627,7 @@ terms:
   - 21-markdown-tutorial
   updated_at: '2026-10-01 01:26:09'
 - term: 閲覧用 PDF
-  yomi: えつらんようぴーでぃーえふ
+  yomi: えつらんよう PDF
   flags: i
   definition: ''
   source: auto_extracted
@@ -537,16 +635,6 @@ terms:
   pattern: "/閲覧用\\ PDF/"
   main:
   - 44-build
-  updated_at: '2026-10-01 01:26:10'
-- term: Enhanced Mode
-  yomi: えんはんすともーど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/Enhanced\\ Mode/"
-  main:
-  - 94-pdf-read
   updated_at: '2026-10-01 01:26:10'
 - term: 奥付
   yomi: おくづけ
@@ -658,16 +746,6 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
-- term: Kindle Previewer
-  yomi: きんどるぷれびゅーあー
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/Kindle\\ Previewer/"
-  main:
-  - 44-build
-  updated_at: '2026-10-01 01:26:10'
 - term: 技術書典
   yomi: ぎじゅつしょてん
   flags: i
@@ -719,7 +797,7 @@ terms:
   main:
   - 22-extensions
 - term: クリーン EPUB
-  yomi: くりーんいーぱぶ
+  yomi: くりーん EPUB
   flags: ig
   definition: |-
     楽天 Kobo・Apple Books 向けの EPUB（`targets: epub`）。Kindle 向けの調整を含まず、SVG の図版や数式をそのまま収める。
@@ -750,16 +828,6 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
-- term: Guesslang
-  yomi: げすらんぐ
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/\\bGuesslang\\b/"
-  main:
-  - 31-lint
-  updated_at: '2026-10-01 01:26:10'
 - term: 言語名
   yomi: げんごめい
   flags: i
@@ -770,6 +838,16 @@ terms:
   main:
   - 22-extensions
   updated_at: '2026-10-01 01:26:10'
+- term: コメント
+  yomi: こめんと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/コメント/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 22-extensions
 - term: コラム
   yomi: こらむ
   flags: i
@@ -809,7 +887,7 @@ terms:
   source: manual_markup
   approved_at: '2026-08-09 18:17:24'
   pattern: "/五十音順/"
-  updated_at: '2026-10-01 02:04:53'
+  updated_at: '2026-10-01 15:43:56'
   main:
   - 33-index-glossary
 - term: 索引語
@@ -973,6 +1051,16 @@ terms:
   main:
   - 33-index-glossary
   updated_at: '2026-10-01 01:26:09'
+- term: 冗長表現
+  yomi: じょうちょうひょうげん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-08-09 03:08:17'
+  pattern: "/冗長表現/"
+  main:
+  - 31-lint
+  updated_at: '2026-10-01 14:04:58'
 - term: 除外リスト
   yomi: じょがいりすと
   flags: i
@@ -1043,6 +1131,26 @@ terms:
   main:
   - 23-figures
   updated_at: '2026-10-01 01:26:10'
+- term: 設定ファイル
+  yomi: せっていふぁいる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/設定ファイル/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 41-book-yml
+- term: セットアップ
+  yomi: せっとあっぷ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/セットアップ/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 51-doctor
 - term: 千分率
   yomi: せんふんりつ
   flags: i
@@ -1082,16 +1190,6 @@ terms:
   pattern: "/体言止め/"
   main:
   - 31-lint
-  updated_at: '2026-10-01 01:26:10'
-- term: Type 3 フォント
-  yomi: たいぷすりーふぉんと
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/Type\\ 3\\ フォント/"
-  main:
-  - 44-build
   updated_at: '2026-10-01 01:26:10'
 - term: タスクリスト
   yomi: たすくりすと
@@ -1145,6 +1243,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
+- term: 中央寄せ
+  yomi: ちゅうおうよせ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-08-09 03:08:17'
+  pattern: "/中央寄せ/"
+  main:
+  - 22-extensions
+  updated_at: '2026-10-01 14:04:58'
 - term: 中間ファイル
   yomi: ちゅうかんふぁいる
   flags: i
@@ -1155,6 +1263,16 @@ terms:
   main:
   - 45-utility
   updated_at: '2026-10-01 01:26:10'
+- term: 綴り誤り
+  yomi: つづりあやまり
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-08-09 03:08:17'
+  pattern: "/綴り誤り/"
+  main:
+  - 31-lint
+  updated_at: '2026-10-01 14:04:58'
 - term: テスト
   yomi: てすと
   flags: i
@@ -1165,16 +1283,6 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 61-developer
-- term: Tesseract
-  yomi: てっさらくと
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/\\bTesseract\\b/"
-  main:
-  - 94-pdf-read
-  updated_at: '2026-10-01 01:26:10'
 - term: テンプレート
   yomi: てんぷれーと
   flags: i
@@ -1215,6 +1323,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 21-markdown-tutorial
+- term: 電子書籍
+  yomi: でんししょせき
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/電子書籍/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 11-workflow
 - term: データ展開
   yomi: でーたてんかい
   flags: i
@@ -1245,6 +1363,14 @@ terms:
   updated_at: '2026-10-01 01:26:10'
   main:
   - 42-frontispiece
+- term: トラブルシューティング
+  yomi: とらぶるしゅーてぃんぐ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/トラブルシューティング/"
+  updated_at: '2026-10-01 14:04:58'
 - term: トンボ
   yomi: とんぼ
   flags: ig
@@ -1298,7 +1424,7 @@ terms:
   - 31-lint
   updated_at: '2026-10-01 01:26:09'
 - term: 入稿用 PDF
-  yomi: にゅうこうようぴーでぃーえふ
+  yomi: にゅうこうよう PDF
   flags: i
   definition: ''
   source: auto_extracted
@@ -1340,6 +1466,16 @@ terms:
   main:
   - 42-frontispiece
   updated_at: '2026-10-01 01:26:10'
+- term: 発行者
+  yomi: はっこうしゃ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-08-09 03:08:17'
+  pattern: "/発行者/"
+  main:
+  - 12-new
+  updated_at: '2026-10-01 14:04:58'
 - term: 判型
   yomi: はんけい
   flags: ig
@@ -1548,6 +1684,16 @@ terms:
   main:
   - 12-new
   updated_at: '2026-10-01 01:26:10'
+- term: ページ番号
+  yomi: ぺーじばんごう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ページ番号/"
+  updated_at: '2026-10-01 14:04:58'
+  main:
+  - 25-cross-reference
 - term: 本文字数
   yomi: ほんもじすう
   flags: ig
@@ -1603,16 +1749,6 @@ terms:
   main:
   - 23-figures
   updated_at: '2026-10-01 01:26:09'
-- term: mermaid
-  yomi: まーめいど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/\\bmermaid\\b/"
-  main:
-  - 23-figures
-  updated_at: '2026-10-01 01:26:10'
 - term: 見直し候補
   yomi: みなおしこうほ
   flags: i
@@ -1699,16 +1835,6 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 25-cross-reference
-- term: Re:VIEW
-  yomi: りびゅー
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/Re:VIEW/"
-  main:
-  - 95-import
-  updated_at: '2026-10-01 01:26:10'
 - term: リンク
   yomi: りんく
   flags: i
@@ -1759,16 +1885,6 @@ terms:
   main:
   - 91-command-cheatsheet
   updated_at: '2026-10-01 01:26:09'
-- term: Rosetta
-  yomi: ろぜった
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/\\bRosetta\\b/"
-  main:
-  - 51-doctor
-  updated_at: '2026-10-01 01:26:10'
 - term: ローマ数字
   yomi: ろーますうじ
   flags: i

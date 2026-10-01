@@ -171,6 +171,61 @@ module VivlioStarter
         assert_includes output, '[eV|よみ]'
       end
 
+      # タスクリストのマーカー（`- [x]`）とコードの中の `[g]` は索引の記法ではない（改善案 #99）
+      def test_auto_process_ignores_task_markers_and_code_spans
+        File.write('contents/21-tasks.md', <<~MD)
+          # Tasks
+
+          - [x] 原稿を書く
+          - [ ] 図版を用意する
+
+          記号として見せるなら `` `[g]` `` と書きます。
+        MD
+
+        output, = capture_io { @manager.auto_process!(['21-tasks']) }
+
+        refute_includes output, '[x] は単位・記号表記'
+        refute_includes output, '[g] は単位・記号表記'
+        refute_includes load_all_terms, 'x'
+      end
+
+      # auto は件数と次の手順だけを告げる。目安の表は vs index:plan の役目（改善案 #99）
+      def test_auto_process_reports_only_the_review_file_summary
+        File.write('contents/10-intro.md', "Vivliostyle で組版します。Vivliostyle は CSS 組版エンジンです。\n")
+
+        output, = capture_io { @manager.auto_process!(['10-intro']) }
+
+        assert_includes output, '🔍 レビューファイルを生成しました: 推奨候補'
+        assert_equal 1, output.scan('vs index:apply を実行してください').size
+        refute_includes output, 'いまの目安'
+        refute_includes output, '末尾から戻せます'
+      end
+
+      # 候補にも主要参照の推測を添え、その章の文脈を先頭に出す。[im?95] で採れば主要参照ごと入る（改善案 #99）
+      def test_candidate_gets_suggested_main_reference_and_its_context_first
+        File.write('contents/00-preface.md', "# はじめに\n\n開発は Re:VIEW Starter に触発されて始まりました。\n")
+        File.write('contents/95-import.md', <<~MD)
+          # Re:VIEW Starter からの移行
+
+          Re:VIEW Starter で書いた本を移すには、vs import を使います。
+          Re:VIEW Starter の原稿をそのまま読み取ります。
+          Re:VIEW Starter の設定も引き継ぎます。
+        MD
+
+        capture_io { @manager.auto_process!(%w[00-preface 95-import]) }
+        review = File.read('_index_glossary_review.md')
+        line = review.match(/^- \[ m\?95\][^\n]*\*\*Re:VIEW Starter\*\*[^\n]*\n  - ([^:]+):/)
+
+        refute_nil line, '候補の行に主要参照の推測 [ m?95] が付く'
+        assert_equal '95-import', line[1], '推測した章の文脈を先頭に出す'
+
+        File.write('_index_glossary_review.md', review.sub('- [ m?95] `NEW!` **Re:VIEW Starter**', '- [im?95] `NEW!` **Re:VIEW Starter**'))
+        capture_io { @manager.apply_markdown_review! }
+
+        entry = UnifiedTermsManager.new.find_term('Re:VIEW Starter')
+        assert_equal ['95-import'], entry['main']
+      end
+
       # R9 の逃げ道: 読み付き [eV|いーぶい] は従来どおり登録される
       def test_auto_process_registers_short_ascii_term_with_explicit_yomi
         File.write('contents/94-sample.md', <<~MD)

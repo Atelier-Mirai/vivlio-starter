@@ -171,6 +171,16 @@ module VivlioStarter
         refute_includes stripped, 'config_key'
       end
 
+      # 2 個以上のバッククォートで囲んだコードも外す。1 個囲みだけを見ていた頃は
+      # `` `[g]` `` の中身が地の文に残り、索引の走査が `[g]` を記法と見なした（改善案 #99）
+      def test_strip_code_blanks_code_spans_of_any_length
+        stripped = Masking.strip_code("バッククォートで囲んで `` `[g]` `` と書く。`x` も外す。\n")
+
+        refute_includes stripped, '[g]'
+        refute_includes stripped, 'x'
+        assert_includes stripped, 'と書く。'
+      end
+
       # 地の文中のインライン ``` がフェンス対をズラさない（内外反転しない）。
       def test_strip_code_inline_triple_backtick_does_not_shift_fences
         md = <<~MD

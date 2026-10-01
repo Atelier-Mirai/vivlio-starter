@@ -321,24 +321,6 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 書いたつもりと Markdown の解釈がずれる箇所を三つ見つけます。いずれもビルドは成功するので、紙面を見るまで気づけません。正解が二択で、決められるのは著者だけなので、三つとも自動修正はしません。
 :::
 
-### 索引記法とまぎらわしい角括弧
-
-`[語]` は索引に載せるための記法です。フラグ名や単位を説明するつもりで `[g]` `[eV]` のように書くと、その 1 文字が索引に載ってしまいます。
-
-:::{.output}
-```
-    1件  [stray-index-markup] [g] は索引語として登録されます（コードなら `[g]` と囲む／索引に載せるなら [g|よみ] と仮名の読みを添える）
-         行: 299
-```
-:::
-
-指摘するのは**読みを添えていない、半角 1〜2 文字**の綴りだけです。`[CSS]` や `[PDF]` のような 3 文字は、索引語として自然なので指摘しません。直し方は二つあります。
-
-- 記号として見せたいだけなら、バッククォートで囲んで `` `[g]` `` と書く
-- 索引に載せたいなら、`[eV|いーぶい]` のように**仮名の読み**を添える
-
-読みは並べ替えに使う欄です。意味を書く場所ではないので、`[eV|電子ボルト]` としても E の欄に並びます。意味は用語集の説明文へ書いてください。
-
 ### 4 スペースの字下げ
 
 標準の Markdown には字下げでコードを示す書き方がありますが、Vivlio Starter は対応していません（@chapref:ch-markdown-tutorial を参照）。空行に挟まれた字下げの段落があると指摘します。
@@ -566,7 +548,7 @@ lint:
 
 切ったルールは表示に出ず、`vs lint --fix` でも修正が当たりません。無効化した分は問題件数にも数えません。`prh` と書くと、表記揺れの辞書がすべて止まります（辞書の項目を一つずつは切れません）。
 
-Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
+Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 

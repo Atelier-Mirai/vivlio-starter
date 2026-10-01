@@ -69,6 +69,21 @@ module VivlioStarter
         end
 
         def literal(entry) = Regexp.new(Regexp.escape(entry['term'].to_s))
+
+        # 語の一部とみなす字種（英数字・カタカナ）
+        SAME_SCRIPT = [/[A-Za-z0-9]/, /[ァ-ヶー]/].freeze
+
+        # 辞書に綴りのない語（抽出した候補）の照合用 Regexp。英字・カタカナの語は、
+        # 同じ字種の語の一部として出る位置に当てない。部分一致だと「ファイ」（ギリシャ文字の
+        # 表の 1 回）が「ファイル」の 287 回を、「TeX」（本文 3 回）が「LaTeX」の 21 回を
+        # 自分の出現として数えていた（改善案 #99）。
+        # @param term [String]
+        # @return [Regexp]
+        def bounded(term)
+          head = SAME_SCRIPT.find { term[0].to_s.match?(it) }
+          tail = SAME_SCRIPT.find { term[-1].to_s.match?(it) }
+          Regexp.new("#{"(?<!#{head.source})" if head}#{Regexp.escape(term)}#{"(?!#{tail.source})" if tail}")
+        end
       end
     end
   end

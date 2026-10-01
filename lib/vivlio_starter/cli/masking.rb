@@ -78,8 +78,12 @@ module VivlioStarter
         strip_inline_code(stripped)
       end
 
-      # インラインコード `...` を空白に置き換える。
-      def strip_inline_code(text) = text.gsub(/`[^`\n]+`/, ' ')
+      # インラインコード（1 行の中の N 個のバッククォートの対）を空白に置き換える。
+      # 囲みの長さは INLINE_CODE_SPAN と同じく数える。`[^`]+` の 1 個囲みだけを見ていた頃は、
+      # 2 個で囲んだ `` `[g]` `` の中身が地の文に残り、索引の走査が `[g]` を
+      # 索引の記法と見なしていた（改善案 #99）。
+      INLINE_CODE_SPAN_IN_LINE = /(?<!`)(`+)(?!`)[^\n]+?(?<!`)\1(?!`)/
+      def strip_inline_code(text) = text.gsub(INLINE_CODE_SPAN_IN_LINE, ' ')
 
       # --- (c) トップレベルのフェンスブロックを選択的に置換する -------------
 

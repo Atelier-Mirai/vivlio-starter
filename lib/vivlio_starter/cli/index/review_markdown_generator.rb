@@ -360,21 +360,16 @@ module VivlioStarter
           # 索引・用語集レビュー
           ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
           ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
-          ※ フラグの `m` は主要参照（その語を腰を据えて説明している章）です。[im33] なら 33 章。
-             複数章は [im21,22]。索引でその章の説明箇所が太字＋先頭に並びます。
-          ※ `m?` が付いているものは機械が推測した候補です。そのままだと採用されます。
-             違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
-          ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます
-             （子行がフラグ欄より優先されます）。
-          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。
-             やっぱり戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply`。
-             外した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに外し直さずに済む）。
+          ※ フラグの `m` は主要参照（その語を腰を据えて説明している章）です。[im33] なら 33 章、複数章は [im21,22]。索引でその章の説明箇所が太字＋先頭に並びます。
+          ※ `m?` が付いているものは機械が推測した候補です。そのままだと採用されます。違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
+          ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます（子行がフラグ欄より優先されます）。
+          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply` を実行します。外した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに外し直さずに済みます）。
 
           #{build_terms_section(terms)}
 
           #{build_high_candidates_section(high_candidates)}
 
-          #{build_low_candidates_section(low_candidates)}
+          #{build_low_candidates_section(low_candidates, short_heading_candidates(high_candidates, low_candidates))}
 
           #{build_rejected_section(rejected)}
         MARKDOWN
@@ -417,9 +412,7 @@ module VivlioStarter
         <<~HEADER + sort_by_label_and_appearance(review).map { build_term_line(it, checked: true) }.join
           ### 見直し候補（#{review.size}語）
 
-          登録済みですが、未登録の候補と同じ土俵でスコア順に並べると、目安語数の外へ
-          出た語です。索引としての優先度が低いか、より適切な語（「カラー」に対する
-          「アクセントカラー」のような、長くて意味の絞られた語）が別にあるかもしれません。
+          登録済みですが、未登録の候補と同じ土俵でスコア順に並べると、目安語数の外へ出た語です。索引としての優先度が低いか、より適切な語（「カラー」に対する「アクセントカラー」のような、長くて意味の絞られた語）が別にあるかもしれません。
 
           - そのままにする場合: [i] のまま `vs index:apply`
           - 索引から外す場合: [-i] にする
@@ -443,20 +436,13 @@ module VivlioStarter
         <<~HEADER + common.map { build_term_line(it, checked: true) }.join
           ### 一般語（索引から外すことを推奨・#{common.size}語）
 
-          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を
-          判断できないため、外すことを推奨します。
+          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を判断できないため、外すことを推奨します。
 
           分かれ目は**その語を腰を据えて説明している箇所があるか**です。
 
-          - **説明箇所がある**（Markdown の解説書における「Markdown」など）
-            → [i] に戻し、`[im21]` か子行 `- 主要参照: 21` でその箇所を指してください。
-              索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります
-          - **説明箇所がない**（書名・副題そのものなど、本全体が主題である語）
-            → [-i] のまま。指す先のない主要参照は目印になりません。
-              フラグに `g` があれば用語集には残るので、ページ番号を並べる代わりに
-              定義文で説明を届けられます
-          - **どちらでもない一般語**
-            → [-i] のまま `vs index:apply`
+          - **説明箇所がある**（Markdown の解説書における「Markdown」など）→ [i] に戻し、`[im21]` か子行 `- 主要参照: 21` でその箇所を指してください。索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります。
+          - **説明箇所がない**（書名・副題そのものなど、本全体が主題である語）→ [-i] のまま。指す先のない主要参照は目印になりません。フラグに `g` があれば用語集には残るので、ページ番号を並べる代わりに定義文で説明を届けられます。
+          - **どちらでもない一般語** → [-i] のまま `vs index:apply`
 
         HEADER
       end
@@ -498,18 +484,14 @@ module VivlioStarter
         false
       end
 
-      # 2. 推奨候補セクション
+      # 2. 推奨候補セクション。見出しから拾った短い語は 3 節の末尾にまとめる
       def build_high_candidates_section(candidates)
         section = "## 2. 推奨候補 (High Candidates: #{candidates.size}語)\n\n"
+        return "#{section}推奨候補はありません。\n" if candidates.empty?
 
-        if candidates.empty?
-          section += "推奨候補はありません。\n"
-        else
-          short, regular = candidates.partition { it['short_heading'] }
-          sort_by_label_and_appearance(regular).each { section += build_candidate_line(it) }
-          section += build_short_heading_subsection(short)
-        end
-
+        short, regular = candidates.partition { it['short_heading'] }
+        sort_by_label_and_appearance(regular).each { section += build_candidate_line(it) }
+        section += "\n※ このほか、見出しから拾った 2 字の語が #{short.size} 語あります（3 節の末尾にまとめています）。\n" if short.any?
         section
       end
 
@@ -519,23 +501,30 @@ module VivlioStarter
       # 一語ずつ判断する場所ではない——迷うほどの語なら順位が上がって推奨候補に
       # 現れる。文脈を並べると推奨候補と同じ密度になり、「これも全部見なければ」
       # と読めてしまううえ、後ろの除外済みリストまで遠くなる。
-      def build_low_candidates_section(candidates)
+      # @param short [Array<Hash>] 推奨・一般の両方から集めた、見出しから拾った短い語
+      def build_low_candidates_section(candidates, short = [])
         section = "## 3. 一般候補 (Low Candidates: #{candidates.size}語)\n"
-        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ [i] にしてください。\n"
-        section += "   一覧性を優先して出現箇所は省いています。\n\n"
+        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ [i] にしてください。一覧性を優先して出現箇所は省いています。\n\n"
 
-        if candidates.empty?
+        regular = candidates.reject { it['short_heading'] }
+        if regular.empty?
           section += "一般候補はありません。\n"
         else
-          short, regular = candidates.partition { it['short_heading'] }
           sort_by_label_and_appearance(regular).each { section += build_candidate_line(it, context_limit: 0) }
-          section += build_short_heading_subsection(short, context_limit: 0)
         end
 
-        section
+        section + build_short_heading_subsection(short)
       end
 
-      # 見出しから拾った短い語（2 字以下）の小節。推奨候補・一般候補それぞれの末尾に置く。
+      # 見出しから拾った短い語。推奨候補の帯の語を先に、帯の中は他の候補と同じ順に並べる
+      def short_heading_candidates(high_candidates, low_candidates)
+        [high_candidates, low_candidates].flat_map do |band|
+          sort_by_label_and_appearance(band.select { it['short_heading'] })
+        end
+      end
+
+      # 見出しから拾った短い語（2 字以下）の小節。推奨候補・一般候補の両方から集め、3 節の末尾の
+      # 1 か所に置く（帯ごとに分けると 2 か所を見て回ることになる——改善案 #99）。
       #
       # 「扉絵」のような要語と「項目」のような一般的な語が混ざり、機械では分けられない
       # （IndexCandidateExtractor#short_heading_term?）。候補の中に散らばっていると、
@@ -544,17 +533,16 @@ module VivlioStarter
       #
       # 外した語は除外済みリストに入って候補に戻らず、ライブラリで次の本へも持ち運べる。
       # 判断は最初の 1 冊で済む、と書いておくのは、[r] を付ける手間を惜しませないため。
-      def build_short_heading_subsection(candidates, context_limit: 2)
+      def build_short_heading_subsection(candidates)
         return '' if candidates.empty?
 
-        <<~HEADER + sort_by_label_and_appearance(candidates).map { build_candidate_line(it, context_limit:) }.join
+        <<~HEADER + candidates.map { build_candidate_line(it, context_limit: 0) }.join
 
           ### 見出しから拾った短い語（#{candidates.size}語）
 
-          節の見出しに出る 2 字の語です。「扉絵」「書体」のような要語と、「項目」「目安」の
-          ような一般的な語が混ざります。原稿の出方では見分けられないので、ここにまとめました。
-          残す語は [i]、要らない語は [r] にしてください。[r] にした語は除外済みリストに入り、
-          次からは候補に出ません。`vs index:export` で書き出せば、次の本でも候補に出ません。
+          節の見出しに出る 2 字の語です（推奨候補・一般候補の両方から集め、推奨候補の語を先に並べています）。「扉絵」「書体」のような要語と、「項目」「目安」のような一般的な語が混ざります。原稿の出方では見分けられないので、ここにまとめました。
+
+          残す語は [i]、要らない語は [r] にしてください。[r] にした語は除外済みリストに入り、次からは候補に出ません。`vs index:export` で書き出せば、次の本でも候補に出ません。
 
         HEADER
       end
@@ -703,7 +691,8 @@ module VivlioStarter
         score = candidate['score'] || 0
         label = determine_label(candidate)
 
-        line = '- [ ]'
+        # 主要参照の推測があれば `[ m?95]`。採るときは `[im?95]` と i を書き足すだけで済む
+        line = "- #{IndexCommands::TermLine.build(' ', main: candidate['main_tokens'], suggested: candidate['main_suggested'])}"
         line += " `#{label}`" if label
         line += " **#{term}** (#{yomi}) - スコア: #{score.round(1)}\n"
 
@@ -828,17 +817,9 @@ module VivlioStarter
       def extract_context(context_text)
         return '' if context_text.nil? || context_text.empty?
 
-        # 改行を除去
-        text = context_text.to_s.gsub(/[\r\n]+/, ' ').strip
-
-        context_width = @config[:context_width]
-
-        if text.length <= context_width * 2
-          text
-        else
-          # 形態素境界を考慮した切り出しは抽出時に済んでいるため、ここでは単純にトリム
-          text[0..(context_width * 2)]
-        end
+        # 長さはここで切らない。抜粋は ContextSnippet が文と読点の位置で詰めて作っており、
+        # 字数で切り直すと「…自動化します。こ」のような半端な終わりに戻る（改善案 #99）
+        context_text.to_s.gsub(/[\r\n]+/, ' ').strip
       end
     end
   end

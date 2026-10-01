@@ -441,6 +441,51 @@ module VivlioStarter
           assert_operator scores['交ぜ書き'], :>, scores['体言止め'], '同じ出方なら見出しに出る語が上'
         end
 
+        # --- phase: 候補の出どころ（改善案 #99） ---
+
+        # 長い語の中の一致を数えない。「TeX」が「LaTeX」の出現を自分の出現として数えていた
+        def test_matches_inside_longer_words_are_not_counted
+          extract("LaTeX で書きます。LaTeX の記法です。LaTeX は広く使われます。TeX の決まりです。\n")
+
+          assert_operator @extractor.term_scores['TeX'], :<, @extractor.term_scores['LaTeX']
+        end
+
+        # 句を作る接尾語（ならでは・向け）は名詞連続の末尾から外す。「箇条書き」の「書き」は語の一部
+        def test_phrase_suffix_is_trimmed_from_noun_sequences
+          mecab!
+          candidates = extract("日本語ならではの読み違いです。箇条書きを使います。箇条書きの記号です。\n")
+
+          refute_includes candidates, '日本語ならでは'
+          assert_includes candidates, '箇条書き'
+        end
+
+        # 空白の後の記号（インラインコードを消した跡の ` / `）で名詞連続をつながない
+        def test_spaced_symbols_do_not_join_noun_sequences
+          mecab!
+          candidates = extract("`error` / `warn` / `info` から選びます。Re:VIEW の原稿を取り込みます。\n")
+
+          refute(candidates.any? { it.match?(%r{\A[/ ]+\z}) }, candidates.inspect)
+          assert_includes candidates, 'Re:VIEW'
+        end
+
+        # 長い候補の中にしか出ない語（「ギリシャ文字」の「ギリシャ」）は候補にしない。
+        # 単独でも出る語（「MATTR」と別に出る「TTR」）は残す
+        def test_term_found_only_inside_a_longer_term_is_discarded
+          candidates = extract("ギリシャ文字を使います。ギリシャ文字の表です。MATTR を測ります。TTR も測ります。\n")
+
+          refute_includes candidates, 'ギリシャ'
+          assert_includes candidates, 'TTR'
+        end
+
+        # 文脈は語を含む 1 文。文字数で切ると次の文の 1 字目や記法が入っていた
+        def test_contexts_are_whole_sentences
+          extract("前置きです。Vivliostyle をコアに据えた仕組みです。次の文です。\n")
+
+          context = @extractor.term_contexts['Vivliostyle'].first[:context]
+
+          assert_equal 'Vivliostyle をコアに据えた仕組みです。', context
+        end
+
         # --- phase: 登録語のスコア付け（score_terms） ---
 
         # 原稿に 1 回も出てこない語はスコアを持たない。技術用語らしい綴りだと

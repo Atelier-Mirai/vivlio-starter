@@ -110,7 +110,7 @@ module VivlioStarter
           # 辞書の backlink_sources は読まない——前回ビルドの幽霊リンクを持ち込まないため
           @glossary_backlinks = load_glossary_backlinks
 
-          sorted_terms = terms.sort_by { it['yomi'] || it['term'] }
+          sorted_terms = terms.sort_by { yomi_order(it['yomi'] || it['term']) }
           html = generate_glossary_html(sorted_terms)
           FileUtils.mkdir_p(File.dirname(GLOSSARY_OUTPUT_FILE))
           File.write(GLOSSARY_OUTPUT_FILE, html, encoding: 'utf-8')
@@ -188,10 +188,14 @@ module VivlioStarter
         # 用語を読みでソート
         def sort_index_terms_by_yomi
           @index_data.sort_by do |_term, occurrences|
-            first_yomi = occurrences.first['yomi'] || occurrences.first[:yomi] || ''
-            first_yomi.to_s
+            yomi_order((occurrences.first['yomi'] || occurrences.first[:yomi]).to_s)
           end
         end
+
+        # 読みの並べ順。英字の大文字と小文字を区別しない（辞書の並び）。文字コードのまま
+        # 比べると大文字が小文字より先に来て、K の行が「KPF → Kindle」になっていた（改善案 #99）。
+        # 大文字・小文字だけが違う読みは、元の読みで並べて順番を毎回同じにする
+        def yomi_order(yomi) = [yomi.to_s.downcase, yomi.to_s]
 
         # 五十音の行ごとにグループ化
         def group_by_kana_row(sorted_terms)

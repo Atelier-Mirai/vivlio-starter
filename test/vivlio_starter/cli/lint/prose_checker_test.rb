@@ -412,31 +412,12 @@ class TestProseChecker < Minitest::Test
     assert_empty PC.allowlist_from('/nonexistent/allow.yml')
   end
 
-  # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）---
+  # --- 記法の取り違え（markdown-notation-collision-spec.md §6・§7）---
 
-  # L-1: 索引語のつもりでない短い綴りだけを拾う。
-  def test_should_report_stray_index_markup_only_for_short_ascii
-    findings = check("フラグは [g] と書きます。単位は [eV] です。\n")
-
-    assert_equal %w[stray-index-markup stray-index-markup], findings.map(&:rule)
-    assert_match(/\[g\] は索引語として登録されます/, findings.first.label)
-    assert_match(/仮名の読みを添える/, findings.first.label, '直し方まで示す')
-  end
-
-  # 3 文字は叩かない。`[CSS]` `[PDF]` は意図的な索引語としてごく自然な綴り。
-  def test_should_not_report_three_letter_terms
-    assert_empty check("[CSS] と [PDF] は索引語です。\n")
-  end
-
-  # 読みを添えてあるのは索引へ載せる意思表示。
-  def test_should_not_report_terms_with_reading
-    assert_empty check("単位は [eV|いーぶい] です。\n")
-  end
-
-  # 参照リンクとタスクリストは索引マークアップではない（T-1・T-2）。
-  def test_should_not_report_other_notations_as_stray_markup
-    body = "参照 [完全形][sample] と [sample] です。\n\n[sample]: https://example.com\n\n- [x] 済み\n"
-    assert_empty check(body)
+  # 表の見出しの「幅 [mm]」は単位の表記で、索引の記法として扱わない（ビルドも本文に残す）。
+  # 以前の stray-index-markup は「索引に載る」前提で指摘していたが、改善案 #99 で外した
+  def test_should_not_report_short_ascii_brackets
+    assert_empty check("幅 [mm] と解像度 [px] を書きます。\n")
   end
 
   # L-2: 字下げコードブロックはブロックの先頭 1 行だけ指摘する。
@@ -485,10 +466,10 @@ class TestProseChecker < Minitest::Test
     assert_empty(check(body).select { it.rule == 'multiple-chapter-headings' })
   end
 
-  # 3 ルールとも lint.disabled_rules で黙る。
+  # 2 ルールとも lint.disabled_rules で黙る。
   def test_should_respect_disabled_rules_for_notation_findings
-    body = "フラグは [g] です。\n\n    字下げコード\n\n本文の途中\n---\n"
-    rules = %w[stray-index-markup indented-code-block setext-heading]
+    body = "本文です。\n\n    字下げコード\n\n本文の途中\n---\n"
+    rules = %w[indented-code-block setext-heading]
 
     refute_empty check(body)
     assert_empty check(body, disabled_rules: rules)

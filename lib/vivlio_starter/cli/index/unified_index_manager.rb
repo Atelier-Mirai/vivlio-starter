@@ -22,6 +22,9 @@ require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
 require_relative 'index_candidate_extractor'
 require_relative 'index_match_scanner'
+# IndexCommands.without_excluded_chapters（索引の対象から外す章）。index.rb は
+# このファイルをメソッドの中で読むので、ここから読んでも循環しない
+require_relative '../index'
 require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
@@ -71,7 +74,7 @@ module VivlioStarter
         # 棄却済みの語も混ざっており、そのまま出すと下見だけが多く見え、しかも
         # 著者が自分で外した語を推奨してしまう（実測: 2,880 件 対 2,644 件）。
         selectable, = selectable_candidates(candidates)
-        build_plan_reporter(chapters, selectable, extractor: @extractor).render(dry_run: true)
+        build_plan_reporter(chapters, selectable, extractor: @extractor).render
         0
       end
 
@@ -116,6 +119,7 @@ module VivlioStarter
         by_name = selectable.to_h { [it['term'], it] }
         high_candidates = review_entries(bands&.recommended, by_name)
         low_candidates = review_entries(bands&.general, by_name)
+        high_candidates, low_candidates = with_suggested_main([high_candidates, low_candidates], chapters)
 
         # 5. 自動承認は既定で行わない。旧既定（スコア 300 以上を無条件登録）が
         #    「頻出の一般語ばかりが辞書に入る」現状を作った張本人である。
@@ -149,11 +153,11 @@ module VivlioStarter
         @terms_manager.record_scanned_chapters!(chapters)
 
         # 10. 結果レポート
+        # 目安の語数や候補の分布は出さない（`vs index:plan` の役目）。auto の後に著者が
+        # することはレビューファイルを開くことなので、件数と次の手順だけを告げる。
+        # 以前は `index-term-selection-spec.md` §6.3 に従って plan と同じ画面を出していたが、
+        # 30 行近い表の後に肝心の案内が埋もれていた（改善案 #99）
         report_dictionary_writes(dictionary_writes)
-        # 現況と候補の分布は vs index:plan と同じ画面を出す（§6.3）。
-        # 辞書を書き換えた後なので、登録語数は更新後の値になる。
-        @terms_manager.clear_cache!
-        build_plan_reporter(chapters, selectable, extractor: @extractor).render
         report_auto_results(auto_approved, high_candidates, low_candidates,
                             rejected_count_in_candidates, rejected_with_context.size)
       end
@@ -773,6 +777,38 @@ module VivlioStarter
         )
       end
 
+      # 候補にも主要参照の推測（`[ m?95]`）を添え、その章の文脈を先頭に出す。
+      #
+      # 推測は登録語にしか付けていなかったので、「Re:VIEW Starter」（95 章の章題で 12 回出る）を
+      # 候補として採るとき、著者は説明している章を自分で探して書き足すことになった。文脈も
+      # 章番号の若い順に 2 件だけ出していたため、前書きと早見表の 1 回ずつが並び、肝心の
+      # 95 章は見えなかった（改善案 #99）。登録語と同じ式（MainReferenceSuggester）で推測する。
+      # @param bands [Array<Array<Hash>>] 推奨候補・一般候補
+      # @return [Array<Array<Hash>>] 同じ並びの帯
+      def with_suggested_main(bands, chapters)
+        suggestions = suggest_main_references(bands.flatten, chapters)
+        bands.map do |band|
+          band.map do |candidate|
+            main = suggestions[candidate['term']] or next candidate
+
+            candidate.merge('main_tokens' => chapter_tokens(main), 'main_suggested' => true,
+                            'contexts' => main_chapter_first(candidate, main))
+          end
+        end
+      end
+
+      # 主要参照の章の文脈を先頭へ。抽出の経路がその章の文脈を拾っていなければ、原稿から作る
+      def main_chapter_first(candidate, main)
+        contexts = Array(candidate['contexts'])
+        own, others = contexts.partition { it['chapter'] == main }
+        if own.empty?
+          path = resolve_chapter_path(main)
+          snippet = path ? extract_surrounding_context(File.read(path, encoding: 'utf-8'), candidate['term']) : ''
+          own = [{ 'chapter' => main, 'context' => snippet }] unless snippet.empty?
+        end
+        own + others
+      end
+
       # 候補の文脈を正規化
       def normalize_candidate(candidate)
         candidate.merge('contexts' => deduplicate_contexts(candidate['contexts']))
@@ -852,9 +888,17 @@ module VivlioStarter
           # インライン脚注 ^[本文] を、skip_term? で参照脚注 [^1] を落とす。
           # ここは | を含まない語だけを見る（[用語|読み] は上の走査の担当で、
           # 汎用の TERM_PATTERN に替えると同じ語を二重登録する）。
-          content_without_code.scan(IndexMarkup::TERM_ONLY_PATTERN) do |match|
-            term = match[0]
+          # 参照リンクとタスクリストのマーカー（`- [x]`）は、ビルドや lint と同じく
+          # IndexMarkup.other_notation? で除く。マーカーの判定は行頭からの並びを見るので、
+          # 行ごとに照合する（改善案 #99: 21 章の `- [x]` を単位・記号として警告していた）
+          labels = IndexMarkup.link_labels(content_without_code)
+          matches = content_without_code.each_line.flat_map do |line|
+            line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).map { ::Regexp.last_match }
+          end
+          matches.each do |match|
+            term = match[1]
             next if IndexMarkup.skip_term?(term)
+            next if IndexMarkup.other_notation?(match, labels)
             next if term.match?(/^https?:/) # URL を除外
 
             # R9: 単位・記号表記（[eV] [Hz] [g] 等）は登録せず、集約して後で警告
@@ -926,7 +970,7 @@ module VivlioStarter
           normalized_contexts = contexts.map do |ctx|
             {
               'chapter' => ctx[:chapter] || ctx['chapter'],
-              'context' => smart_context_cut(ctx[:context] || ctx['context'])
+              'context' => ctx[:context] || ctx['context']
             }
           end
 
@@ -1011,11 +1055,10 @@ module VivlioStarter
         rejected.map do |item|
           enriched = item.dup
 
-          # スコアがない場合は候補リストから復元を試みる
-          unless enriched['score']
-            candidate = candidates.find { it['term'] == item['term'] }
-            enriched['score'] = candidate['score'] if candidate&.dig('score')
-          end
+          # スコアはいまの候補のものを優先する。除外済みリストに残るのは外した時点の値で、
+          # 数え方を直しても古いまま出ていた（「TeX」が「LaTeX」込みの 285 点・改善案 #99）
+          candidate = candidates.find { it['term'] == item['term'] }
+          enriched['score'] = candidate['score'] if candidate&.dig('score')
 
           # 文脈は登録済み用語と同じく毎回原稿から拾う（棄却リストの写しは使わない）
           enriched['contexts'] = collect_contexts_for_term(item['term'], chapters)
@@ -1117,183 +1160,9 @@ module VivlioStarter
         possible_paths.find { |path| File.exist?(path) }
       end
 
-      # 用語の周辺文脈を抽出
-      # @param content [String] 本文
-      # @param term [String] 用語
-      # @return [String] 文脈
+      # 語の使われ方の抜粋（語を含む 1 文。切り方は ContextSnippet が唯一の定義元）
       def extract_surrounding_context(content, term)
-        context_width = @config[:context_width]
-        index = content.index(term)
-        return '' unless index
-
-        # 基本の範囲を計算
-        ideal_start = index - context_width
-        ideal_end = index + term.length + context_width
-
-        # 前方が足りない場合は後方を延長
-        if ideal_start.negative?
-          shortage = -ideal_start
-          ideal_end += shortage
-          ideal_start = 0
-        end
-
-        # 後方が足りない場合は前方を延長
-        if ideal_end > content.length
-          shortage = ideal_end - content.length
-          ideal_start = [ideal_start - shortage, 0].max
-          ideal_end = content.length
-        end
-
-        raw_context = content[ideal_start...ideal_end]
-        smart_context_cut(raw_context)
-      end
-
-      # スマートな文脈カット（先頭と末尾の両方で形態素境界を考慮）
-      # @param text [String] テキスト
-      # @return [String] カット後のテキスト
-      def smart_context_cut(text)
-        return '' if text.nil? || text.empty?
-
-        # 改行を除去
-        cleaned = text.to_s.gsub(/[\r\n]+/, ' ').strip
-
-        # 先頭が単語の途中（小文字カナなど）で始まっている場合、常に修正
-        # これは長さに関係なく適用
-        start_offset = skip_partial_word_start(cleaned)
-        cleaned = cleaned[start_offset..] if start_offset.positive?
-
-        context_width = @config[:context_width]
-        max_length = context_width * 2
-
-        return cleaned if cleaned.length <= max_length
-
-        # 先頭のカット: 文頭でない場合、適切な区切り位置から開始
-        start_pos = find_smart_start_position(cleaned, max_length)
-
-        # 先頭をカットした後のテキスト
-        working_text = cleaned[start_pos..]
-
-        return working_text if working_text.length <= max_length
-
-        # 末尾のカット
-        find_smart_end_position(working_text, max_length)
-      end
-
-      # スマートな開始位置を探す
-      # @param text [String] テキスト
-      # @param max_length [Integer] 最大長
-      # @return [Integer] 開始位置
-      def find_smart_start_position(text, max_length)
-        return 0 if text.length <= max_length
-
-        # 先頭が単語の途中（小文字カナなど）で始まっている場合、次の単語境界まで進める
-        start_offset = skip_partial_word_start(text)
-        return start_offset if start_offset.positive?
-
-        # 先頭20文字以内で区切りを探す
-        search_range = text[0..19]
-
-        # 優先度順: 句読点 > スペース > 助詞
-        boundary_patterns = [
-          /[。、！？]/, # 句読点
-          /\s+/, # スペース
-          /[をはがのにでとへやもって]/ # 助詞・助動詞
-        ]
-
-        boundary_patterns.each do |pattern|
-          match = search_range.index(pattern)
-          next unless match&.positive? && match < 18
-
-          # マッチの次の位置から開始
-          return match + 1
-        end
-
-        0
-      end
-
-      # 単語の途中で始まっている場合、次の単語開始位置まで進める
-      # @param text [String] テキスト
-      # @return [Integer] スキップすべき文字数
-      def skip_partial_word_start(text)
-        return 0 if text.nil? || text.empty?
-
-        first_char = text[0]
-
-        # 1. 小文字カナ（単語の途中でしか現れない文字）で始まる場合
-        return find_next_word_boundary(text) if first_char.match?(/[ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ]/)
-
-        # 2. カタカナで始まり、後続もカタカナが続く場合（単語の途中の可能性）
-        #    例: "ブサイト" は "ウェブサイト" の途中
-        if first_char.match?(/[ァ-ヴー]/) && text.length > 1
-          # 連続するカタカナの終端を探す
-          katakana_end = find_katakana_sequence_end(text)
-          if katakana_end.positive?
-            # カタカナ列の後ろに、文字種の境界があればそこから開始
-            return katakana_end
-          end
-        end
-
-        0
-      end
-
-      # 次の単語境界を探す
-      # @param text [String] テキスト
-      # @return [Integer] 境界位置
-      def find_next_word_boundary(text)
-        # 最大15文字まで探索
-        (1..[text.length - 1, 15].min).each do |i|
-          char = text[i]
-          # 文字種の変化点を探す（カタカナ→非カタカナ、ひらがな→漢字など）
-          return i if word_boundary_char?(char)
-        end
-        0
-      end
-
-      # カタカナ列の終端位置を探す
-      # @param text [String] テキスト
-      # @return [Integer] カタカナ列の終端位置（0なら単語境界なし）
-      def find_katakana_sequence_end(text)
-        # 最大10文字のカタカナ列を探索
-        (1..[text.length - 1, 10].min).each do |i|
-          char = text[i]
-          # カタカナでなくなったら、そこが境界
-          return i unless char.match?(/[ァ-ヴー]/)
-        end
-        0
-      end
-
-      # 単語境界になりうる文字かどうか
-      # @param char [String] 文字
-      # @return [Boolean]
-      def word_boundary_char?(char)
-        return false if char.nil?
-
-        # 漢字、句読点、スペース、英数字の開始
-        char.match?(/[一-龯。、！？\s「」『』（）a-zA-Z0-9]/)
-      end
-
-      # スマートな終了位置を探す
-      # @param text [String] テキスト
-      # @param max_length [Integer] 最大長
-      # @return [String] カット後のテキスト
-      def find_smart_end_position(text, max_length)
-        # 末尾付近で区切りを探す
-        truncated = text[0..(max_length + 10)]
-
-        boundary_patterns = [
-          /[。、！？]/,
-          /\s+/,
-          /[をはがのにでとへやもって]/
-        ]
-
-        boundary_patterns.each do |pattern|
-          last_match = truncated.rindex(pattern)
-          next unless last_match && last_match > max_length - 15 && last_match <= max_length + 5
-
-          return truncated[0..last_match]
-        end
-
-        text[0...max_length]
+        IndexCommands::ContextSnippet.around(content, term, width: @config[:context_width])
       end
 
       # 索引候補として除外すべき用語かどうかを判定
@@ -1328,12 +1197,12 @@ module VivlioStarter
 
       # 結果をレポート（auto_process!用）
       # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）。
-      # 帯の内訳そのものは IndexPlanReporter が既に出しているので、ここでは繰り返さない。
+      # 帯の内訳や目安の語数は出さない（`vs index:plan` の役目）。
       def report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count, rejected_listed = 0)
         approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 件・" : ''
         # 除外済みの件数も載せる。候補の数だけを告げると「外した語はもう出てこない」
         # と読めるが、実際は末尾に一覧があり、そこが戻す唯一の入口である。
-        listed = rejected_listed.positive? ? "・除外済み #{rejected_listed} 件（末尾から戻せます）" : ''
+        listed = rejected_listed.positive? ? "・除外済み #{rejected_listed} 件" : ''
         Common.log_summary(
           "レビューファイルを生成しました: #{approved}" \
           "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件#{listed}",
