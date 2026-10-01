@@ -1,5 +1,5 @@
 ---
-rejected_at: '2026-10-01 14:04:58'
+rejected_at: '2026-10-01 21:49:23'
 rejected_terms:
 - term: Starter
   yomi: Starter
@@ -129,12 +129,6 @@ rejected_terms:
 - term: ステップ
   yomi: すてっぷ
   rejected_at: '2026-08-03 23:14:32'
-- term: Markdown
-  yomi: Markdown
-  rejected_at: '2026-08-03 23:16:08'
-- term: PDF
-  yomi: PDF
-  rejected_at: '2026-08-03 23:16:08'
 - term: インストール
   yomi: いんすとーる
   rejected_at: '2026-08-03 23:16:08'

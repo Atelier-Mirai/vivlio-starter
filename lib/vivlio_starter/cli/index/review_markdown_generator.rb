@@ -361,7 +361,7 @@ module VivlioStarter
           ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
           ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
           ※ フラグの `m` は主要参照（その語を腰を据えて説明している章）です。[im33] なら 33 章、複数章は [im21,22]。索引でその章の説明箇所が太字＋先頭に並びます。
-          ※ `m?` が付いているものは機械が推測した候補です。そのままだと採用されます。違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
+          ※ `m?` が付いているものは機械が推測した主要参照の章です。登録済みの語はそのままだと採用されます。違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。候補（2・3 節）の `[m?33]` は、`[im33]` のように i を書き足すと、索引への登録と主要参照の指定が一度に済みます。
           ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます（子行がフラグ欄より優先されます）。
           ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply` を実行します。外した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに外し直さずに済みます）。
 
@@ -436,7 +436,7 @@ module VivlioStarter
         <<~HEADER + common.map { build_term_line(it, checked: true) }.join
           ### 一般語（索引から外すことを推奨・#{common.size}語）
 
-          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を判断できないため、外すことを推奨します。
+          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を判断できないため、外すことを推奨します。ただし、主要参照が決まっている語（`m21` のように `?` の付かないもの）は説明箇所がある語なので、`[i]` のまま出しています。
 
           分かれ目は**その語を腰を据えて説明している箇所があるか**です。
 
@@ -486,7 +486,8 @@ module VivlioStarter
 
       # 2. 推奨候補セクション。見出しから拾った短い語は 3 節の末尾にまとめる
       def build_high_candidates_section(candidates)
-        section = "## 2. 推奨候補 (High Candidates: #{candidates.size}語)\n\n"
+        section = "## 2. 推奨候補 (High Candidates: #{candidates.size}語)\n"
+        section += "※ 目安語数に入るほど重要なのに、まだ登録していない語です。採る語は `[m?61]` を `[im61]` のように書き換えてください（i を書き足す。用語集にも載せるなら `[igm61]`）。`m61` はその語を説明している章（主要参照）で、違う章なら数字を書き換え、指定しないなら `[i]` にします。採らない語は、そのままにするか `[r]`（次から候補に出さない）にします。\n\n"
         return "#{section}推奨候補はありません。\n" if candidates.empty?
 
         short, regular = candidates.partition { it['short_heading'] }
@@ -504,7 +505,7 @@ module VivlioStarter
       # @param short [Array<Hash>] 推奨・一般の両方から集めた、見出しから拾った短い語
       def build_low_candidates_section(candidates, short = [])
         section = "## 3. 一般候補 (Low Candidates: #{candidates.size}語)\n"
-        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ [i] にしてください。一覧性を優先して出現箇所は省いています。\n\n"
+        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ `[m?61]` を `[im61]` のように書き換えてください（書き方は 2 節と同じ）。一覧性を優先して出現箇所は省いています。\n\n"
 
         regular = candidates.reject { it['short_heading'] }
         if regular.empty?
@@ -637,8 +638,11 @@ module VivlioStarter
       end
 
       def base_flag(term)
-        # 一般語は「外す」を既定にして提示する。著者は残したければ [i] へ戻す（R5）
-        return '-i' if term['common_term']
+        # 一般語は「外す」を既定にして提示する。著者は残したければ [i] へ戻す（R5）。
+        # ただし著者が主要参照を決めた語（`m21`。機械の推測 `m?` は含まない）は残す——
+        # 説明箇所がある語は残す、という一般語の欄の基準そのものなので。外す印のまま
+        # 出していたため、そのまま apply した Markdown・PDF が索引から外れていた（改善案 #99）
+        return '-i' if term['common_term'] && !confirmed_main?(term)
 
         in_index = term['in_index'] != false # 既定はtrue（後方互換性）
         in_glossary = term['in_glossary'] == true
@@ -648,6 +652,9 @@ module VivlioStarter
         else 'i'
         end
       end
+
+      # 著者が決めた主要参照を持つか（機械の推測 `m?` は数えない）
+      def confirmed_main?(term) = Array(term['main_tokens']).any? && !term['main_suggested']
 
       # 除外済み行を構築
       def build_rejected_line(item, checkbox: '[ ]')
@@ -661,6 +668,9 @@ module VivlioStarter
         line += " `#{label}`" if label
         line += " **#{term}** (#{yomi})"
         line += " - スコア: #{score.round(1)}" if score
+        # 原稿のどこにも無い語は、登録語と同じ注記を添える。文脈もスコアも無い行が
+        # 黙って並ぶと、出現箇所の表示が漏れたのか、語が消えたのか見分けられない
+        line += ' - [原稿に出現しません]' if contexts.empty?
         line += "\n"
 
         contexts.first(2).each do |ctx|
@@ -691,8 +701,12 @@ module VivlioStarter
         score = candidate['score'] || 0
         label = determine_label(candidate)
 
-        # 主要参照の推測があれば `[ m?95]`。採るときは `[im?95]` と i を書き足すだけで済む
-        line = "- #{IndexCommands::TermLine.build(' ', main: candidate['main_tokens'], suggested: candidate['main_suggested'])}"
+        # 主要参照の推測があれば `[m?95]`。採るときは `[im95]` と i を書き足すだけで済む
+        # （空白を残すと `[ m?95]` になり、書き換えるたびに空白を 1 字消す手間が増える）。
+        # 推測が無ければ未決定の欄 `[ ]`
+        main = candidate['main_tokens']
+        flags = IndexCommands::TermLine.in_flag?(Array(main)) ? '' : ' '
+        line = "- #{IndexCommands::TermLine.build(flags, main:, suggested: candidate['main_suggested'])}"
         line += " `#{label}`" if label
         line += " **#{term}** (#{yomi}) - スコア: #{score.round(1)}\n"
 

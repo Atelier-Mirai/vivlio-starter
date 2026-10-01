@@ -346,6 +346,16 @@ module VivlioStarter
         assert_match(/^- \[-i\] \*\*ファイル\*\*/, content)
       end
 
+      # 主要参照が決まっている一般語は説明箇所がある語なので残す。機械の推測（m?）だけなら外す印（改善案 #99）
+      def test_common_terms_with_a_confirmed_main_reference_stay_in_the_index
+        confirmed = common_term('Markdown').merge('main_tokens' => ['21'])
+        guessed = common_term('ファイル').merge('main_tokens' => ['25'], 'main_suggested' => true)
+        content = generate_with([confirmed, guessed])
+
+        assert_match(/^- \[im21\] \*\*Markdown\*\*/, content)
+        assert_match(/^- \[-im\?25\] \*\*ファイル\*\*/, content)
+      end
+
       # 行の書式を変えると既存パーサが軒並みマッチしなくなる。
       # 追加情報は行末（スコアと同じ位置）に置く、という約束を固定する。
       def test_common_term_lines_stay_parseable
@@ -652,6 +662,32 @@ module VivlioStarter
       def generate_candidates(high: [], low: [])
         @generator.generate!(terms: [], high_candidates: high, low_candidates: low, rejected: [])
         File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+      end
+
+      # 除外済みの語でも、原稿のどこにも無いものは注記する。文脈もスコアも無い行が黙って並ぶと、
+      # 表示が漏れたのか語が消えたのか見分けられない（改善案 #99）
+      def test_rejected_term_absent_from_the_manuscript_is_noted
+        rejected = [{ 'term' => 'バリアント', 'yomi' => 'バリアント', 'contexts' => [] },
+                    { 'term' => 'パターン', 'yomi' => 'ぱたーん', 'contexts' => [{ 'chapter' => '94-pdf-read', 'context' => 'パターンを追加' }] }]
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected:)
+        md = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes md, '**バリアント** (バリアント) - [原稿に出現しません]'
+        refute_match(/\*\*パターン\*\* \(ぱたーん\)[^\n]*原稿に出現しません/, md)
+      end
+
+      # 主要参照の推測がある候補は `[m?61]`（空白なし。i を書き足せば `[im61]`）、無ければ `[ ]`（改善案 #99）
+      def test_candidate_line_carries_the_suggested_main_reference_without_a_space
+        guessed = heading_candidate('図番号').merge('main_tokens' => ['61'], 'main_suggested' => true)
+        md = generate_candidates(high: [guessed, heading_candidate('派生画像')])
+
+        assert_includes md, '- [m?61] `NEW!` **図番号**'
+        assert_includes md, '- [ ] `NEW!` **派生画像**'
+        assert_includes md, '`[im61]`', '2 節の案内で、i を書き足せば登録されることを示す'
+
+        File.write(ReviewMarkdownGenerator::REVIEW_FILE, md.sub('- [m?61] `NEW!` **図番号**', '- [im61] `NEW!` **図番号**'))
+        assert_equal ['図番号'], @generator.parse_index_approved.map { it['term'] }
+        assert_equal ['61'], @generator.parse_main_references['図番号']
       end
 
       # 機械で分けられない短い語は、候補の中に散らさず末尾の小節にまとめる

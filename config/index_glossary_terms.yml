@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-10-01 15:43:56'
+generated_at: '2026-10-01 21:51:47'
 terms:
 - term: Amazon
   yomi: Amazon
@@ -263,6 +263,16 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 32-metrics
+- term: Markdown
+  yomi: Markdown
+  flags: ig
+  definition: 見出しや箇条書きなどを簡単な記号で表す軽量マークアップ言語。プレーンテキストのまま読み書きでき、Vivlio Starter では原稿をこの形式で書きます。
+  source: review
+  approved_at: '2026-10-01 21:49:23'
+  pattern: "/\\bMarkdown\\b/"
+  updated_at: '2026-10-01 21:49:23'
+  main:
+  - 21-markdown-tutorial
 - term: MathJax
   yomi: MathJax
   flags: ig
@@ -305,6 +315,17 @@ terms:
   updated_at: '2026-10-01 01:26:09'
   main:
   - 94-pdf-read
+- term: PDF
+  yomi: PDF
+  flags: ig
+  definition: Portable Document Format の略。環境に依存せず、レイアウトを保ったまま表示・印刷できるファイル形式です。Vivlio
+    Starter は閲覧用と印刷入稿用の 2 種類を出力します。
+  source: review
+  approved_at: '2026-10-01 21:49:23'
+  pattern: "/\\bPDF\\b/"
+  updated_at: '2026-10-01 21:49:23'
+  main:
+  - 44-build
 - term: PDF/X-1a
   yomi: PDF/X-1a
   flags: ig
@@ -887,7 +908,7 @@ terms:
   source: manual_markup
   approved_at: '2026-08-09 18:17:24'
   pattern: "/五十音順/"
-  updated_at: '2026-10-01 15:43:56'
+  updated_at: '2026-10-01 21:51:47'
   main:
   - 33-index-glossary
 - term: 索引語

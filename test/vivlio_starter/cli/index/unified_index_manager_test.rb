@@ -201,7 +201,7 @@ module VivlioStarter
         refute_includes output, '末尾から戻せます'
       end
 
-      # 候補にも主要参照の推測を添え、その章の文脈を先頭に出す。[im?95] で採れば主要参照ごと入る（改善案 #99）
+      # 候補にも主要参照の推測を添え、その章の文脈を先頭に出す。[im95] と i を書き足せば主要参照ごと入る（改善案 #99）
       def test_candidate_gets_suggested_main_reference_and_its_context_first
         File.write('contents/00-preface.md', "# はじめに\n\n開発は Re:VIEW Starter に触発されて始まりました。\n")
         File.write('contents/95-import.md', <<~MD)
@@ -214,16 +214,29 @@ module VivlioStarter
 
         capture_io { @manager.auto_process!(%w[00-preface 95-import]) }
         review = File.read('_index_glossary_review.md')
-        line = review.match(/^- \[ m\?95\][^\n]*\*\*Re:VIEW Starter\*\*[^\n]*\n  - ([^:]+):/)
+        line = review.match(/^- \[m\?95\][^\n]*\*\*Re:VIEW Starter\*\*[^\n]*\n  - ([^:]+):/)
 
-        refute_nil line, '候補の行に主要参照の推測 [ m?95] が付く'
+        refute_nil line, '候補の行に主要参照の推測 [m?95] が付く'
         assert_equal '95-import', line[1], '推測した章の文脈を先頭に出す'
 
-        File.write('_index_glossary_review.md', review.sub('- [ m?95] `NEW!` **Re:VIEW Starter**', '- [im?95] `NEW!` **Re:VIEW Starter**'))
+        File.write('_index_glossary_review.md', review.sub('- [m?95] `NEW!` **Re:VIEW Starter**', '- [im95] `NEW!` **Re:VIEW Starter**'))
         capture_io { @manager.apply_markdown_review! }
 
         entry = UnifiedTermsManager.new.find_term('Re:VIEW Starter')
         assert_equal ['95-import'], entry['main']
+      end
+
+      # 除外済みリストの文脈にも、索引の対象から外した章（見本の 97 章）を使わない（改善案 #99）
+      def test_rejected_contexts_skip_excluded_chapters
+        File.write('contents/23-figures.md', "アインシュタインは一般相対性理論を提唱しました。\n")
+        File.write('contents/97-sample.md', "特殊・一般相対性理論を提唱した。\n")
+        ReviewQueueManager.new.save_rejected_terms([{ 'term' => '一般相対性理論', 'yomi' => 'いっぱんそうたいせいりろん' }])
+
+        enriched = IndexCommands.stub(:without_excluded_chapters, ->(list, **) { list - ['97-sample'] }) do
+          @manager.send(:enrich_rejected_with_context)
+        end
+
+        assert_equal ['23-figures'], enriched.first['contexts'].map { it['chapter'] }
       end
 
       # R9 の逃げ道: 読み付き [eV|いーぶい] は従来どおり登録される

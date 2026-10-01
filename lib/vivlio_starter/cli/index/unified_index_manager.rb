@@ -777,7 +777,7 @@ module VivlioStarter
         )
       end
 
-      # 候補にも主要参照の推測（`[ m?95]`）を添え、その章の文脈を先頭に出す。
+      # 候補にも主要参照の推測（`[m?95]`）を添え、その章の文脈を先頭に出す。
       #
       # 推測は登録語にしか付けていなかったので、「Re:VIEW Starter」（95 章の章題で 12 回出る）を
       # 候補として採るとき、著者は説明している章を自分で探して書き足すことになった。文脈も
@@ -1050,7 +1050,9 @@ module VivlioStarter
       # @return [Array<Hash>] 文脈付きリジェクト用語のリスト
       def enrich_rejected_with_context(candidates = [])
         rejected = @queue_manager.load_rejected_terms_with_metadata
-        chapters = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
+        # 登録語と同じく、索引の対象から外した章（index_glossary.exclude_chapters）は文脈に
+        # 使わない。contents/ の全章を見ていたため、97 章（見本）の文が並んでいた（改善案 #99）
+        chapters = context_source_chapters([])
 
         rejected.map do |item|
           enriched = item.dup
