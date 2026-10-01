@@ -641,6 +641,48 @@ module VivlioStarter
 
         assert @generator.exists?
       end
+
+      # --- phase: 見出しから拾った短い語（改善案 #98） ---
+
+      def heading_candidate(term, short: false)
+        { 'term' => term, 'yomi' => term, 'score' => 100.0, 'is_new' => true, 'short_heading' => short,
+          'contexts' => [{ 'chapter' => '42-frontispiece', 'context' => "#{term}の文脈" }] }
+      end
+
+      def generate_candidates(high: [], low: [])
+        @generator.generate!(terms: [], high_candidates: high, low_candidates: low, rejected: [])
+        File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+      end
+
+      # 機械で分けられない短い語は、候補の中に散らさず末尾の小節にまとめる
+      def test_short_heading_terms_are_gathered_at_the_end_of_each_section
+        md = generate_candidates(high: [heading_candidate('扉絵', short: true), heading_candidate('図番号'), heading_candidate('項目', short: true)],
+                                 low: [heading_candidate('目安', short: true), heading_candidate('派生画像')])
+        high = md[/^## 2\..*?(?=^## 3\.)/m]
+        low = md[/^## 3\..*?(?=^## 4\.)/m]
+
+        assert_operator high.index('**図番号**'), :<, high.index('### 見出しから拾った短い語（2語）')
+        assert_operator high.index('### 見出しから拾った短い語'), :<, high.index('**扉絵**')
+        assert_includes high, '**項目**'
+        assert_includes low, '### 見出しから拾った短い語（1語）'
+        assert_includes high, 'vs index:export', '外した語を次の本へ持ち運べることを添える'
+      end
+
+      def test_no_subsection_without_short_heading_terms
+        refute_includes generate_candidates(high: [heading_candidate('図番号')]), '見出しから拾った短い語'
+      end
+
+      # 小節の案内文が、直前の候補の説明文として読まれない（説明文は字下げした行）
+      def test_subsection_guidance_is_not_read_as_a_definition
+        md = generate_candidates(high: [heading_candidate('図番号'), heading_candidate('扉絵', short: true)])
+        File.write(ReviewMarkdownGenerator::REVIEW_FILE,
+                   md.sub('- [ ] `NEW!` **図番号**', '- [g] `NEW!` **図番号**')
+                     .sub(/(\*\*図番号\*\*[^\n]*\n(?:  - [^\n]*\n)*)/) { "#{::Regexp.last_match(1)}\n  図に振る番号。\n" })
+
+        approved = @generator.parse_glossary_approved.find { it['term'] == '図番号' }
+
+        assert_equal '図に振る番号。', approved['definition']
+      end
     end
   end
 end

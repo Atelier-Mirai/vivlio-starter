@@ -934,7 +934,9 @@ module VivlioStarter
             'term' => term,
             'yomi' => yomi,
             'score' => extractor.term_scores[term] || 0,
-            'contexts' => normalized_contexts
+            'contexts' => normalized_contexts,
+            # レビューで「見出しから拾った短い語」として 1 か所にまとめる
+            'short_heading' => extractor.short_heading_term?(term)
           }
         end
       end

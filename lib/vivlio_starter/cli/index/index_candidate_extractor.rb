@@ -129,6 +129,21 @@ module VivlioStarter
           Common.log_success("#{@scoring.terms.size} 件の候補語を抽出しました")
         end
 
+        # 見出しの経路でしか拾わない短い語の長さ。本文の経路（名詞連続・専門用語）は 3 文字以上
+        SHORT_TERM_MAX_LENGTH = 2
+
+        # 見出しから拾った短い語か。
+        #
+        # 「扉絵」「書体」のような要語と、「項目」「目安」のような一般的な語が混ざる。
+        # 本書で 6 つの手がかり（辞書の単語コスト・品詞・強調・見出しでの位置・節への集中・
+        # 言い換えの併記）を測ったが、どれも両者の分布が重なり、原稿の統計では分けられ
+        # なかった（改善案 #98）。そこで採否は著者に委ね、レビューで 1 か所にまとめて見せる。
+        def short_heading_term?(term)
+          return false if term.length > SHORT_TERM_MAX_LENGTH
+
+          Array(@scoring.breakdown(term)&.fetch(:traits)).include?(:heading)
+        end
+
         # 辞書に登録済みの用語へ、候補と**同じ式**でスコアを与える。
         #
         # 帯の判定（推奨候補・見直し候補）は登録語と未登録候補を同じ土俵で

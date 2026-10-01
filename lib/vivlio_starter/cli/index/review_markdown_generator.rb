@@ -368,6 +368,7 @@ module VivlioStarter
              （子行がフラグ欄より優先されます）。
           ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。
              やっぱり戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply`。
+             外した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに外し直さずに済む）。
 
           #{build_terms_section(terms)}
 
@@ -504,10 +505,9 @@ module VivlioStarter
         if candidates.empty?
           section += "推奨候補はありません。\n"
         else
-          sorted = sort_by_label_and_appearance(candidates)
-          sorted.each do |c|
-            section += build_candidate_line(c)
-          end
+          short, regular = candidates.partition { it['short_heading'] }
+          sort_by_label_and_appearance(regular).each { section += build_candidate_line(it) }
+          section += build_short_heading_subsection(short)
         end
 
         section
@@ -527,11 +527,36 @@ module VivlioStarter
         if candidates.empty?
           section += "一般候補はありません。\n"
         else
-          sorted = sort_by_label_and_appearance(candidates)
-          sorted.each { section += build_candidate_line(it, context_limit: 0) }
+          short, regular = candidates.partition { it['short_heading'] }
+          sort_by_label_and_appearance(regular).each { section += build_candidate_line(it, context_limit: 0) }
+          section += build_short_heading_subsection(short, context_limit: 0)
         end
 
         section
+      end
+
+      # 見出しから拾った短い語（2 字以下）の小節。推奨候補・一般候補それぞれの末尾に置く。
+      #
+      # 「扉絵」のような要語と「項目」のような一般的な語が混ざり、機械では分けられない
+      # （IndexCandidateExtractor#short_heading_term?）。候補の中に散らばっていると、
+      # 著者は 100 語の中から 1 語ずつ見つけて判断することになる。1 か所に並べれば、
+      # 残す語と外す語を一度に決められる。
+      #
+      # 外した語は除外済みリストに入って候補に戻らず、ライブラリで次の本へも持ち運べる。
+      # 判断は最初の 1 冊で済む、と書いておくのは、[r] を付ける手間を惜しませないため。
+      def build_short_heading_subsection(candidates, context_limit: 2)
+        return '' if candidates.empty?
+
+        <<~HEADER + sort_by_label_and_appearance(candidates).map { build_candidate_line(it, context_limit:) }.join
+
+          ### 見出しから拾った短い語（#{candidates.size}語）
+
+          節の見出しに出る 2 字の語です。「扉絵」「書体」のような要語と、「項目」「目安」の
+          ような一般的な語が混ざります。原稿の出方では見分けられないので、ここにまとめました。
+          残す語は [i]、要らない語は [r] にしてください。[r] にした語は除外済みリストに入り、
+          次からは候補に出ません。`vs index:export` で書き出せば、次の本でも候補に出ません。
+
+        HEADER
       end
 
       # 4. 除外済みリストセクション（Candidatesと同様の形式、rejected_atでラベル判定）
