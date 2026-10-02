@@ -1,14 +1,6 @@
 ---
-rejected_at: '2026-10-01 21:49:23'
+rejected_at: '2026-10-02 18:30:57'
 rejected_terms:
-- term: Starter
-  yomi: Starter
-  rejected_at: '2026-07-05 21:00:15'
-  score: 2146.8
-- term: Vivlio
-  yomi: Vivlio
-  rejected_at: '2026-07-05 21:00:15'
-  score: 2074.0
 - term: ヒント
   yomi: ひんと
   rejected_at: '2026-07-05 21:00:15'
@@ -25,10 +17,6 @@ rejected_terms:
   yomi: すきっぷ
   rejected_at: '2026-07-05 21:00:15'
   score: 939.8
-- term: ジョン
-  yomi: じょん
-  rejected_at: '2026-07-05 21:00:15'
-  score: 313.5
 - term: チェック
   yomi: ちぇっく
   rejected_at: '2026-07-05 21:00:15'
@@ -40,10 +28,6 @@ rejected_terms:
 - term: g
   yomi: g
   rejected_at: '2026-07-05 21:00:15'
-- term: Step
-  yomi: Step
-  rejected_at: '2026-07-05 21:00:15'
-  score: 1790.0
 - term: Command
   yomi: Command
   rejected_at: '2026-07-05 21:00:15'
@@ -56,10 +40,6 @@ rejected_terms:
   yomi: Mode
   rejected_at: '2026-07-05 21:00:15'
   score: 957.1
-- term: VIEW
-  yomi: VIEW
-  rejected_at: '2026-07-05 21:00:15'
-  score: 269.2
 - term: Hz
   yomi: Hz
   rejected_at: '2026-07-16 20:06:30'
@@ -223,12 +203,6 @@ rejected_terms:
   yomi: えつらんよう
   rejected_at: '2026-08-04 23:37:28'
   score: 343.3
-- term: Vivlio Starter
-  yomi: Vivlio Starter
-  rejected_at: '2026-08-05 01:14:06'
-- term: 用語集
-  yomi: ようごしゅう
-  rejected_at: '2026-08-09 03:08:17'
 - term: アインシュタイン
   yomi: あいんしゅたいん
   rejected_at: '2026-08-09 17:57:19'
@@ -329,3 +303,6 @@ rejected_terms:
   yomi: こうしんけいかく
   rejected_at: '2026-10-01 01:26:10'
   score: 294.9
+- term: 用語集
+  yomi: ようごしゅう
+  rejected_at: '2026-10-02 17:25:38'

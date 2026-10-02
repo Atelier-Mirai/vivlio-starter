@@ -62,6 +62,31 @@ module VivlioStarter
           %w[OS CSS 基本情報技術者].each { assert_match(/class="index-term"[^>]*>#{it}</, out) }
         end
 
+        # --- phase: 辞書の判断を原稿の記法で上書きしない（index-glossary-registration-spec.md §3.1.2）---
+
+        # 用語集だけの語は、原稿の [px|px] の箇所も索引に入れず、用語集の語として扱う
+        def test_should_treat_markup_of_glossary_only_term_as_glossary
+          File.write('config/index_glossary_terms.yml',
+                     { 'terms' => [{ 'term' => 'px', 'yomi' => 'px', 'flags' => 'g', 'definition' => '画素。', 'pattern' => '/\bpx\b/' }] }.to_yaml)
+          scanner = IndexMatchScanner.new
+          out = scanner.send(:process_content_with_code_block_exclusion, "幅は [px|px] です。\n", '11-probe')
+
+          refute_match(/index-term/, out)
+          assert_match(%r{px<a [^>]*class="glossary-link"}, out)
+          assert_empty scanner.index_data
+        end
+
+        # 棄却した語は、原稿に [語] があっても索引に入れず、語だけを組む
+        def test_should_not_index_markup_of_rejected_term
+          File.write('config/index_glossary_terms.yml', "terms: []\n")
+          File.write('config/index_glossary_rejected.yml', { 'rejected_terms' => [{ 'term' => 'セットアップ' }] }.to_yaml)
+          scanner = IndexMatchScanner.new
+          out = scanner.send(:process_content_with_code_block_exclusion, "[セットアップ]を済ませます。[Ruby]もあります。\n", '11-probe')
+
+          assert_includes out, 'セットアップを済ませます。'
+          assert_equal ['Ruby'], scanner.index_data.keys
+        end
+
         # --- phase: scan_and_tag_file! tests ---
 
         def test_scan_detects_term_with_yomi

@@ -11,24 +11,21 @@ module VivlioStarter
         # 本書の実測値を既定に使う（仕様書 §6.2 の表示例と揃える）
         BOOK_CHARS = 129_006
 
-        def plan(chapters: %w[11-a], prose_chars: BOOK_CHARS, registered: 153, scores: [],
-                 target: 'standard', bands: nil)
+        def plan(chapters: %w[11-a], prose_chars: BOOK_CHARS, registered: 153, glossary: 40, rejected: 90,
+                 undecided: 0, target: 'standard', bands: nil)
           estimator = IndexSizeEstimator.new(prose_chars)
+          registration = IndexPlanReporter::Registration.new(index: registered, glossary:, rejected:, undecided_main: undecided)
           IndexPlanReporter::Plan.new(
-            chapters:, prose_chars:, registered_terms: registered, candidate_scores: scores,
+            chapters:, prose_chars:, registration:,
             estimate: estimator.estimate(target), all_estimates: estimator.all_presets, bands:
           )
         end
 
         # 帯の表示だけを見たいので、順位付けは通さず結果を直接組む
-        def bands(recommended: %w[新語A 新語B], general: %w[一般A], review: %w[旧語A], hidden: 0)
-          entry = ->(t, reg) { TermRanking::Entry.new(term: t, score: 1.0, registered: reg, manual: false) }
-          TermRanking::Bands.new(
-            recommended: recommended.map { entry[it, false] },
-            general: general.map { entry[it, false] },
-            review: review.map { entry[it, true] },
-            hidden_count: hidden, target: 357, pool_size: 1071, total: 100 + hidden
-          )
+        def bands(recommended: %w[新語A 新語B], general: %w[一般A])
+          entry = ->(t) { TermRanking::Entry.new(term: t, score: 1.0, registered: false) }
+          TermRanking::Bands.new(recommended: recommended.map { entry[it] }, general: general.map { entry[it] },
+                                 target: 357, pool_size: 1071)
         end
 
         def render(plan_data)
@@ -38,13 +35,18 @@ module VivlioStarter
 
         # --- phase: 現況の表示 ---
 
-        def test_render_shows_volume_registration_and_candidates
-          out = render(plan(chapters: %w[11-a 12-b], scores: [10, 20, 30]))
+        def test_render_shows_volume_and_registration
+          out = render(plan(chapters: %w[11-a 12-b]))
 
           assert_includes out, '2 章'
           assert_includes out, '129,006 字', '3 桁区切りで表示する'
-          assert_includes out, '索引語の登録: 153 語'
-          assert_includes out, '候補: 3 件'
+          assert_includes out, 'いまの登録: 索引 153 語・用語集 40 語・棄却 90 語'
+        end
+
+        # 主要参照が決まっていない語は、あるときだけ数を出す（index-glossary-registration-spec.md §5.3）
+        def test_render_shows_undecided_main_references_only_when_any
+          assert_includes render(plan(undecided: 2)), '主要参照が決まっていない索引語 2 語'
+          refute_includes render(plan(undecided: 0)), '主要参照が決まっていない'
         end
 
         # --- phase: 操作盤であること（§6.2 の要点） ---
@@ -62,7 +64,7 @@ module VivlioStarter
         def test_render_lists_every_preset_with_its_target
           out = render(plan)
 
-          %w[light standard thorough].each { assert_includes out, it }
+          %w[light（少なめ） standard（標準） thorough（多め）].each { assert_includes out, it }
           assert_includes out, '244〜356 語', 'standard の目安（実測較正）'
           assert_includes out, '132〜183 語', 'light の目安'
           assert_includes out, '458〜468 語', 'thorough の目安'
@@ -72,7 +74,8 @@ module VivlioStarter
           out = render(plan(target: 'light'))
           current = out.lines.find { it.include?('← 現在') }
 
-          assert_includes current.to_s, 'light', '現在の設定に印が付く'
+          assert_includes current.to_s, 'light（少なめ）', '現在の設定に印が付く'
+          assert_includes out, '■ いまの目安（index.target_terms: light ＝ 少なめ）'
         end
 
         # 著者は「500 字に 1 語」という密度で考える。設定は語数で持つので、
@@ -116,75 +119,49 @@ module VivlioStarter
         # 割合（「上位 60%」）は出さない。決まるのは語数と順位なので、
         # 100 点満点に準えて逆の意味に読まれる表現を持ち込まない。
         def test_render_does_not_use_percentage_bands
-          out = render(plan(scores: (1..100).to_a))
+          out = render(plan(bands: bands))
 
           refute_match(/上位 \d+%まで/, out)
           refute_match(/\d+%〜\d+%/, out)
         end
 
-        def test_render_shows_five_number_summary
-          out = render(plan(scores: [10, 20, 30, 40, 50]))
+        # 著者がスコアで判断する場面は無いので、スコアの分布・候補の総数は出さない（§5.1）
+        def test_render_omits_scores_and_candidate_totals
+          out = render(plan(bands: bands))
 
-          assert_includes out, 'スコア分布'
-          assert_includes out, '最小 10'
-          assert_includes out, '最大 50'
+          refute_includes out, 'スコア'
+          refute_includes out, '■ 候補'
+          refute_includes out, '提示していません'
+          refute_includes out, '見直し候補'
         end
 
-        def test_render_omits_distribution_when_no_candidates
-          out = render(plan(scores: []))
+        # --- phase: vs index:auto を実行すると（呼び名はレビューファイルの節にそろえる） ---
 
-          refute_includes out, 'スコア分布', '候補が無いときに空の分布を出さない'
-          assert_includes out, '候補: 0 件'
-        end
+        def test_render_tells_what_auto_will_list
+          out = render(plan(bands: bands))
 
-        # --- phase: 帯の表示（§3.4-1 / §6.4） ---
-
-        def test_render_shows_the_three_bands
-          out = render(plan(scores: [10, 20], bands: bands))
-
-          assert_includes out, '推奨候補'
-          assert_includes out, '一般候補'
-          assert_includes out, '見直し候補'
-          assert_includes out, '同じ土俵でスコア順に並べた結果'
-        end
-
-        def test_render_previews_band_contents
-          out = render(plan(scores: [10], bands: bands(recommended: %w[新語A 新語B], review: %w[旧語A])))
-
-          assert_includes out, '推奨候補の例: 新語A / 新語B'
-          assert_includes out, '見直し候補の例: 旧語A'
+          assert_includes out, '■ vs index:auto を実行すると'
+          assert_includes out, '推奨する語 2 語・残りの語 1 語をレビューファイルに並べます'
+          assert_includes out, '推奨する語の例: 新語A / 新語B'
         end
 
         def test_render_truncates_long_previews_and_says_so
-          out = render(plan(scores: [10], bands: bands(recommended: (1..12).map { "語#{it}" })))
+          out = render(plan(bands: bands(recommended: (1..12).map { "語#{it}" })))
 
           assert_includes out, '…他 7 語', '5 件だけ出して、残りは件数で言う'
         end
 
-        # 提示しなかったぶんは黙らせない（no silent caps）
-        def test_render_reports_hidden_candidates
-          out = render(plan(scores: [10], bands: bands(hidden: 3_197)))
+        def test_render_explains_when_candidate_extraction_is_off
+          out = render(plan(bands: nil))
 
-          assert_includes out, '3,197 件は提示していません'
-          assert_includes out, 'candidate_pool'
-        end
-
-        def test_render_omits_hidden_notice_when_nothing_was_dropped
-          out = render(plan(scores: [10], bands: bands(hidden: 0)))
-
-          refute_includes out, '提示していません'
-        end
-
-        def test_render_omits_bands_when_not_available
-          out = render(plan(scores: [10], bands: nil))
-
-          refute_includes out, '推奨候補', '候補抽出が無効なときに空の帯を出さない'
+          assert_includes out, 'index.auto_discovery: false'
+          refute_includes out, '推奨する語', '候補抽出が無効なときに空の帯を出さない'
         end
 
         # --- phase: 末尾の案内（改善案 #99: auto はこの画面を出さず、plan だけが出す） ---
 
         def test_render_ends_by_saying_nothing_was_written
-          out = render(plan(scores: [10, 20, 30]))
+          out = render(plan)
 
           assert_equal '※ vs index:plan は下見です。辞書・レビューファイルは変更していません', out.lines.last.chomp
         end

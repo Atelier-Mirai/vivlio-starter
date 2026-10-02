@@ -27,6 +27,7 @@ require_relative 'term_pattern'
 require_relative 'main_reference'
 require_relative 'heading_outline'
 require_relative 'yomi_inferrer'
+require_relative 'review_queue_manager'
 
 module VivlioStarter
   module CLI
@@ -98,6 +99,11 @@ module VivlioStarter
             flags = t['flags'].to_s
             flags.include?('g') && !flags.include?('i')
           end)
+          # 原稿の `[語]` があっても索引に入れない語。辞書で用語集だけと決めた語と、
+          # 棄却した語（辞書に無いもの）。辞書の判断を原稿の記法で上書きしない
+          # （index-glossary-registration-spec.md §3.1.2）
+          @not_indexed_markup = @glossary_only_terms.map { it['term'] }.to_set |
+                                (ReviewQueueManager.new.load_rejected_terms.to_set - @unified_terms.map { it['term'] })
           # 主要参照（説明箇所）の指定。辞書の main: を 用語 → 章名の集合に畳む。
           # 単一章とリストの両方を受ける（index-main-reference-spec.md §1.3）。
           # 主要参照の指定。`21#Markdown とは` のような節指定も受ける（R2）
@@ -383,6 +389,10 @@ def process_line(line, file_basename)
     # 索引語にしたいなら読みを添える（`[OS|OS]`）。判定は IndexMarkup.short_ascii_term?
     elsif yomi_raw.nil? && IndexMarkup.short_ascii_term?(term_text)
       match[0]
+    # 用語集だけの語・棄却した語は、角かっこを外した語だけを組む。用語集だけの語は、
+    # この後の apply_glossary_only_linking が用語集の語として拾う（章の最初なら †）
+    elsif @not_indexed_markup.include?(term_text)
+      IndexMarkup.plain_text(term_text)
     else
       # 読みの決定順序:
       # 1. 記法で指定された読み [用語|読み]

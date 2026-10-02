@@ -42,12 +42,21 @@ module VivlioStarter
         # thorough の幅が狭いのは実測が 2 冊しかないためで、
         # その帯が本当に狭いことを意味しない。
         BASE_TERMS = {
-          light: (65..90),      # 控えめ: 主要な語だけを拾う
-          standard: (120..175), # 標準（既定）
-          thorough: (225..230)  # 丁寧: 初学者向けに広く拾う
+          light: (65..90),      # 少なめ: 主要な語だけを拾う（既定）
+          standard: (120..175), # 標準
+          thorough: (225..230)  # 多め: 初学者向けに広く拾う
         }.freeze
 
-        DEFAULT_PRESET = :standard
+        # 画面に添えるプリセットの訳語。比べているのは語数なので、語数の多い少ないで言う
+        # （index-glossary-registration-spec.md §5.3）
+        PRESET_LABELS = { light: '少なめ', standard: '標準', thorough: '多め' }.freeze
+
+        # 既定のプリセット。値は ConfigKeys が唯一の定義元——ここに別の値を書くと、
+        # 書き間違えたときだけ既定と違う目安になる（以前は standard を書いていた）
+        def self.default_preset = ConfigKeys::KEYS[%i[index target_terms]].default.to_sym
+
+        # 「light（少なめ）」の形
+        def self.preset_label(preset) = "#{preset}（#{PRESET_LABELS.fetch(preset)}）"
 
         # 基準となる分量（BASE_TERMS はこの字数時点の語数）
         BASE_CHARS = 50_000.0
@@ -111,17 +120,17 @@ module VivlioStarter
         # 設定値を Symbol（プリセット）か Integer（語数）へ寄せる。
         # 未知の値は既定のプリセットへ落とし、著者へ知らせる。
         def normalize(setting)
-          return DEFAULT_PRESET if setting.nil?
+          return self.class.default_preset if setting.nil?
           return setting.to_i if setting.is_a?(Integer) || setting.to_s.match?(/\A\d+\z/)
 
           key = setting.to_s.strip.downcase.to_sym
           return key if BASE_TERMS.key?(key)
 
           Common.log_warn(
-            "index.target_terms の値 '#{setting}' は解釈できません（#{DEFAULT_PRESET} として扱います）",
+            "index.target_terms の値 '#{setting}' は解釈できません（#{self.class.default_preset} として扱います）",
             detail: "指定できるのは #{BASE_TERMS.keys.join(' / ')} か、語数を表す整数（例: 260）です"
           )
-          DEFAULT_PRESET
+          self.class.default_preset
         end
 
         # Heaps 則で 5 万字時点の語数を今の分量へ引き伸ばす

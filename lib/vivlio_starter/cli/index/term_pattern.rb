@@ -84,6 +84,47 @@ module VivlioStarter
           tail = SAME_SCRIPT.find { term[-1].to_s.match?(it) }
           Regexp.new("#{"(?<!#{head.source})" if head}#{Regexp.escape(term)}#{"(?!#{tail.source})" if tail}")
         end
+
+        # 空白の有無だけを問う照合。語の中の空白と、英数字と和文の境目を `[ \t　]*` にする。
+        # 英字どうし・和文どうしの間は問わない（「PD F」「組 版」は揺れではなく誤り）。
+        # 問える位置が無い語（「PDF」「数式」）は nil。
+        #
+        # lint（index-term-spacing）と、綴りを直したときの原稿の書き換えが共有する。
+        # 両者が別々に綴りを解釈すると、lint が指摘する箇所と書き換える箇所がずれる。
+        # 前後の境目は ASCII_WORD_BEHIND / AHEAD と同じく `_` も語の一部に数える
+        # ——コードを伏せた目印（`__VS_CODE_SPAN__0__`）の中に当てないため。
+        # @param term [String]
+        # @return [Regexp, nil]
+        def spacing_insensitive(term)
+          chars = term.to_s.strip.chars
+          return nil if chars.empty?
+
+          flexible = false
+          body = chars.each_with_index.filter_map do |char, i|
+            next if char.match?(/\s/)
+
+            prev = chars[i - 1] if i.positive?
+            gap = prev && (prev.match?(/\s/) || script_boundary?(chars[i - 2], char, prev))
+            flexible ||= gap
+            "#{'[ \t　]*' if gap}#{Regexp.escape(char)}"
+          end.join
+          return nil unless flexible
+
+          head = ASCII_WORD_BEHIND if chars.first.match?(/[A-Za-z0-9]/)
+          tail = ASCII_WORD_AHEAD if chars.last.match?(/[A-Za-z0-9]/)
+          Regexp.new("#{head}#{body}#{tail}")
+        end
+
+        # 英数字と和文の境目か（prev が空白のときは、その前の文字と比べる）
+        def script_boundary?(before_space, char, prev)
+          left = prev.match?(/\s/) ? before_space : prev
+          return false if left.nil?
+
+          ascii = ->(c) { c.match?(/[A-Za-z0-9]/) }
+          japanese = ->(c) { c.match?(/[\p{Han}\p{Hiragana}\p{Katakana}ー]/) }
+          (ascii.(left) && japanese.(char)) || (japanese.(left) && ascii.(char))
+        end
+        private_class_method :script_boundary?
       end
     end
   end

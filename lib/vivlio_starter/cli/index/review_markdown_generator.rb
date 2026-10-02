@@ -46,9 +46,10 @@ module VivlioStarter
       CONTEXT_NOTES = [OUTSIDE_CATALOG_NOTE, OUT_OF_SCOPE_NOTE, '（catalog 外）'].freeze
 
       # セクションの見出し。走査範囲の境目に使うので綴りを 1 箇所に置く
-      TERMS_SECTION = '## 1. 登録済み用語の確認'
-      HIGH_SECTION = '## 2. 推奨候補'
-      REJECTED_SECTION = '## 4. 除外済みリスト'
+      TERMS_SECTION = '## 1. 登録済みの語'
+      HIGH_SECTION = '## 2. 推奨する語'
+      REJECTED_SECTION = '## 4. 棄却した語'
+      ABSENT_SECTION = '## 5. 原稿に出てこない語'
 
       # 見出しの位置。**行頭に限る**のが要点——本文で見出し名に触れただけで
       # 境界がそこへ動き、以降の解釈がまるごとずれる。凡例に「4 節『除外済み
@@ -102,6 +103,19 @@ module VivlioStarter
         IndexCommands::TermLine.scan(File.read(review_file_path, encoding: 'utf-8'))
       end
 
+      # いまの形式（4 つの節の見出し）か。古い形式のファイルを apply が読み違えないように見る
+      def current_format?
+        return false unless exists?
+
+        content = File.read(review_file_path, encoding: 'utf-8')
+        [TERMS_SECTION, REJECTED_SECTION].all? { self.class.section_index(content, it) }
+      end
+
+      # レビューファイルに行がある語の名前（全節）。apply がフラグを外してよいのは、
+      # 著者が目にした語だけ（index-glossary-registration-spec.md §3.1.4）
+      # @return [Array<String>]
+      def listed_term_names = term_lines.map(&:term).uniq
+
       # 除外済みリスト（セクション 4）の手前までの用語行。
       # あちらは「復帰させるか」を問う別の場なので、承認・棄却の集計には混ぜない。
       def term_lines_before_rejected_section
@@ -118,8 +132,17 @@ module VivlioStarter
 
         content = File.read(review_file_path, encoding: 'utf-8')
         boundary = self.class.section_index(content, REJECTED_SECTION)
-        boundary ? IndexCommands::TermLine.scan(content[boundary..]) : []
+        return [] unless boundary
+
+        # 5 節（原稿に出てこない語）の手前まで。5 節には登録済みの語も並ぶので、
+        # 4 節と同じに読むと「印の無い語＝棄却のまま」と取り違える
+        finish = self.class.section_index(content, ABSENT_SECTION) || content.size
+        IndexCommands::TermLine.scan(content[boundary...finish])
       end
+
+      # 記録ごと消す語（`[DELETE]`。全節。index-glossary-registration-spec.md §3.3.3）
+      # @return [Array<String>]
+      def parse_deleted = term_lines.select(&:delete?).map(&:term).uniq
 
       # 用語集として承認された候補を抽出（[g], [ig], [gi] マーク）
       # 説明文も抽出する
@@ -130,10 +153,9 @@ module VivlioStarter
         content = File.read(review_file_path, encoding: 'utf-8')
         approved = []
 
-        # [g], [ig], [gi] を用語集として抽出
+        # 用語集に載せる印（[g]・[ig]・[-ig] など。読み方は TermLine）
         parse_terms_with_definitions(content).each do |entry|
-          flag = entry[:flag]
-          next unless flag.match?(/^(?:g|ig|gi)$/)
+          next unless entry[:line].glossary?
 
           approved << {
             'term' => entry[:term],
@@ -175,7 +197,7 @@ module VivlioStarter
       # @return [Array<Hash>] リジェクト解除候補のリスト（flag 付き）
       def parse_unreject
         term_lines_in_rejected_section.select(&:unrejecting?)
-                                      .map { { 'term' => it.term, 'yomi' => it.yomi, 'flag' => it.flags } }
+                                      .map { { 'term' => it.term, 'yomi' => it.yomi, 'flag' => it.kept_flags } }
       end
 
       # 除外済みリストの全項目を抽出（フラグ不問）。
@@ -200,6 +222,22 @@ module VivlioStarter
       # つかない形なので、値の有無に関わらず弾ける前半を切り出しておく。
       MAIN_REFERENCE_PREFIX = /^\s*-\s*(?:主要参照|main)\s*[:：]/
       MAIN_REFERENCE_LINE = /#{MAIN_REFERENCE_PREFIX}\s*(?:`(?:NEW!|Today)`\s*)?(.+)$/
+
+      # 見出し語の綴りを直す子行（`- 綴り: ラベル ID`。改善案 #103）。主要参照と同じく、
+      # 空行を挟まずに用語行の下へ書く（空行の後の字下げは用語集の説明文になる）
+      SPELLING_PREFIX = /^\s*-\s*綴り\s*[:：]/
+      SPELLING_LINE = /#{SPELLING_PREFIX}\s*(.+)$/
+
+      # 綴りを直す指定。全節から読む（登録済みの語は 1 節にも 5 節にも並ぶ）
+      # @return [Hash{String => String}] いまの綴り → 新しい綴り
+      def parse_spelling_changes
+        return {} unless exists?
+
+        term_blocks(File.read(review_file_path, encoding: 'utf-8')).filter_map do |term, body|
+          spelled = body[SPELLING_LINE, 1]&.strip
+          [term, spelled] if spelled && !spelled.empty? && spelled != term
+        end.to_h
+      end
 
       def parse_main_references
         return {} unless exists?
@@ -290,7 +328,7 @@ module VivlioStarter
               # `  - ラベル: 値` で下の出現箇所行と同型なので、先に弾かないと
               # `chapter: 主要参照` という文脈が辞書へ入る。しかもレビューを
               # 往復するたび再出力・再取り込みされ、値が空へ潰れて残り続ける。
-              if current_line.match?(MAIN_REFERENCE_PREFIX)
+              if current_line.match?(MAIN_REFERENCE_PREFIX) || current_line.match?(SPELLING_PREFIX)
                 i += 1
                 next
               end
@@ -322,6 +360,7 @@ module VivlioStarter
 
             results << {
               flag: flag,
+              line: parsed,
               term: term,
               yomi: yomi,
               contexts: contexts,
@@ -347,7 +386,8 @@ module VivlioStarter
         Common::CONFIG.index_glossary.to_h
       end
 
-      # Markdown形式を構築
+      # Markdown形式を構築。節は 登録済み・推奨・残り・棄却 の 4 つ
+      # （index-glossary-registration-spec.md §3.2。小節は立てない）
       # @param data [Hash] セクション別データ
       # @return [String] Markdown文字列
       def build_markdown(data)
@@ -355,98 +395,63 @@ module VivlioStarter
         high_candidates = data[:high_candidates] || []
         low_candidates = data[:low_candidates] || []
         rejected = data[:rejected] || []
+        absent = data[:absent] || []
 
         <<~MARKDOWN
           # 索引・用語集レビュー
-          ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
-          ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
-          ※ フラグの `m` は主要参照（その語を腰を据えて説明している章）です。[im33] なら 33 章、複数章は [im21,22]。索引でその章の説明箇所が太字＋先頭に並びます。
-          ※ `m?` が付いているものは機械が推測した主要参照の章です。登録済みの語はそのままだと採用されます。違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。候補（2・3 節）の `[m?33]` は、`[im33]` のように i を書き足すと、索引への登録と主要参照の指定が一度に済みます。
-          ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます（子行がフラグ欄より優先されます）。
-          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply` を実行します。外した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに外し直さずに済みます）。
+          ※ 印: [i]=索引、[g]=用語集、[ig]=両方、[ ]=未決定、[r]=棄却、[DELETE]=記録ごと消す
+          ※ マイナスは直後の 1 文字にだけ掛かります。[-i]=索引から外す、[-g]=用語集から外す、[-ig]=索引から外して用語集には残す、[-i-g]=両方から外す（[r] と同じ）。どこにも載らなくなる語は棄却します。
+          ※ 主要参照（その語を腰を据えて説明している章）は [im21] のように m と章番号で書きます。複数章は [im21,22]、付けない語は [i]。`m?21` は機械の推測で、そのまま apply すれば採用されます。
+          ※ 読みは ( ) 内を書き換えます。
+          ※ 用語の下には、空行を挟まずに次の子行を書けます。
+            - 主要参照: … 主要参照を、章だけでなく節まで指す（例: `- 主要参照: 25#ラベルIDの扱い`）
+            - 綴り: … 辞書に登録した語そのものの綴りを直す（例: 「ラベルID」を `- 綴り: ラベル ID` で「ラベル ID」に。読み・印・説明文・主要参照はそのまま残る。原稿に古い綴りがあれば、apply のときに直すか尋ねる）
+          ※ 用語集の説明文は、空行の後に字下げして書きます。次は、子行と説明文を書いた例です。
+
+              - [igm25] **ラベルID** (らべるID)
+                - 主要参照: 25#ラベルIDの扱い
+                - 綴り: ラベル ID
+                - 25-cross-reference: 図・表・リストに「ラベルID」を付けてキャプションを記述する
+
+                図・表・リスト・見出しに付ける識別名。キャプションの末尾に @id と書き、本文から参照する。
 
           #{build_terms_section(terms)}
 
           #{build_high_candidates_section(high_candidates)}
 
-          #{build_low_candidates_section(low_candidates, short_heading_candidates(high_candidates, low_candidates))}
+          #{build_low_candidates_section(low_candidates)}
 
           #{build_rejected_section(rejected)}
+
+          #{build_absent_section(absent)}
         MARKDOWN
       end
 
-      # 凡例に添える除外済みの語数。2,000 行を超えるファイルなので、末尾に
-      # 何語あるかを先頭で言っておかないと「無くなった」と読まれる。
-      def rejected_note(rejected)
-        rejected.empty? ? '' : "（現在 #{rejected.size} 語）"
-      end
-
-      # 1. 登録済み用語セクション
+      # 1. 登録済みの語。印は「いま辞書にどう登録されているか」を示し、そのまま apply すれば
+      # 変わらない（§2.1）。小節を立てない代わりに、apply で変わる行を先に置く——
+      # 外す印 [-i] の付いた一般語 → 推測 m? の付いた語 → それ以外
       def build_terms_section(terms)
         # 無効な用語をフィルタリング（手動登録は除外しない）
         valid_terms = terms.reject { |t| should_filter_term?(t) }
-        section = "## 1. 登録済み用語の確認 (Terms: #{valid_terms.size}語)\n\n"
+        section = "#{TERMS_SECTION}（#{valid_terms.size}語）\n"
+        section += "※ いまの登録を印で示しています。そのまま `vs index:apply` すれば変わりません。変えたい語だけ [] の中を書き換えてください。\n"
+        return "#{section}\n登録済みの語はありません。\n" if valid_terms.empty?
 
-        return "#{section}登録済みの用語はありません。\n" if valid_terms.empty?
-
-        common, rest = valid_terms.partition { it['common_term'] }
-        review, ordinary = rest.partition { it['review_candidate'] }
-        section += build_common_terms_subsection(common)
-        section += build_review_terms_subsection(review)
-        section += "### 登録語 (#{ordinary.size}語)\n\n" if common.any? || review.any?
-        sort_by_label_and_appearance(ordinary).each { section += build_term_line(it, checked: true) }
+        removing, rest = valid_terms.partition { it['common_term'] && !confirmed_main?(it) }
+        guessed, ordinary = rest.partition { it['main_suggested'] }
+        section += "#{COMMON_TERM_GUIDE}\n" if removing.any?
+        section += "\n"
+        [removing, guessed, ordinary].each do |group|
+          sort_by_label_and_appearance(group).each { section += build_term_line(it, checked: true) }
+        end
         section
       end
 
-      # 見直し候補（順位が目安語数の外に出た登録語）のサブセクション。
-      #
-      # この一覧が無いと、著者は「見直し候補 61 件」という**件数だけ**を告げられ、
-      # どの語のことか分からないまま終わる。外すべき語を見つける場はここにしかない。
-      #
-      # 一般語と違って既定は現状維持（[i] のまま）にする。順位が低いことは
-      # 「索引に要らない」を意味しない——章を絞った本では専門語でも出現が少ない。
-      # 判断材料（順位が外に出たという事実）だけ示して、決めるのは著者に委ねる。
-      def build_review_terms_subsection(review)
-        return '' if review.empty?
-
-        <<~HEADER + sort_by_label_and_appearance(review).map { build_term_line(it, checked: true) }.join
-          ### 見直し候補（#{review.size}語）
-
-          登録済みですが、未登録の候補と同じ土俵でスコア順に並べると、目安語数の外へ出た語です。索引としての優先度が低いか、より適切な語（「カラー」に対する「アクセントカラー」のような、長くて意味の絞られた語）が別にあるかもしれません。
-
-          - そのままにする場合: [i] のまま `vs index:apply`
-          - 索引から外す場合: [-i] にする
-          - 二度と候補に出したくない場合: [r] にする（除外済みリストへ移ります）
-
-        HEADER
-      end
-
-      # 一般語（広く散らばりすぎている語）のサブセクション。
-      #
-      # セクション番号を増やさないのが要点——既存のパーサは
-      # 「## 4. 除外済みリスト」を境界に使っているので、`## 5.` を足すと
-      # そこまでの解釈がずれる。`###` の入れ子なら影響しない。
-      #
-      # 行の書式は通常の登録語と同一にする。`- [-i] ` と `**用語** (読み)` の
-      # 間に何かを差し込むと、7 つのパーサの正規表現が軒並みマッチしなくなる。
-      # 追加情報は行末（スコアと同じ位置）へ置く。
-      def build_common_terms_subsection(common)
-        return '' if common.empty?
-
-        <<~HEADER + common.map { build_term_line(it, checked: true) }.join
-          ### 一般語（索引から外すことを推奨・#{common.size}語）
-
-          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を判断できないため、外すことを推奨します。ただし、主要参照が決まっている語（`m21` のように `?` の付かないもの）は説明箇所がある語なので、`[i]` のまま出しています。
-
-          分かれ目は**その語を腰を据えて説明している箇所があるか**です。
-
-          - **説明箇所がある**（Markdown の解説書における「Markdown」など）→ [i] に戻し、`[im21]` か子行 `- 主要参照: 21` でその箇所を指してください。索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります。
-          - **説明箇所がない**（書名・副題そのものなど、本全体が主題である語）→ [-i] のまま。指す先のない主要参照は目印になりません。フラグに `g` があれば用語集には残るので、ページ番号を並べる代わりに定義文で説明を届けられます。
-          - **どちらでもない一般語** → [-i] のまま `vs index:apply`
-
-        HEADER
-      end
-
+      # 一般語（本の広い範囲に散らばる語）に外す印を付けた理由。一般語は「スコアが低い語」
+      # ではなく「広く散らばる語」なので、スコアの話にしない（§3.2）
+      COMMON_TERM_GUIDE = '※ 外す印 `[-i]`（用語集にも載っている語は `[-ig]`）が付いた語は、本の広い範囲に散らばっていて、索引から引いても説明箇所が分からない語です。' \
+                          '次から候補に出さなくてよければ、このまま `vs index:apply` してください。' \
+                          '索引に残したい語は `[i]` に（説明している章があれば `[im21]` に）してください。'
 
       # 用語をフィルタリングすべきかどうかを判定
       # 手動登録の用語は著者の意図があるためフィルタリングしない
@@ -484,77 +489,38 @@ module VivlioStarter
         false
       end
 
-      # 2. 推奨候補セクション。見出しから拾った短い語は 3 節の末尾にまとめる
+      # 2. 推奨する語（目安の語数の内側に入る未登録語）
       def build_high_candidates_section(candidates)
-        section = "## 2. 推奨候補 (High Candidates: #{candidates.size}語)\n"
-        section += "※ 目安語数に入るほど重要なのに、まだ登録していない語です。採る語は `[m?61]` を `[im61]` のように書き換えてください（i を書き足す。用語集にも載せるなら `[igm61]`）。`m61` はその語を説明している章（主要参照）で、違う章なら数字を書き換え、指定しないなら `[i]` にします。採らない語は、そのままにするか `[r]`（次から候補に出さない）にします。\n\n"
-        return "#{section}推奨候補はありません。\n" if candidates.empty?
+        section = "#{HIGH_SECTION}（#{candidates.size}語）\n"
+        section += "※ 目安の語数に入るほど重要なのに、まだ登録していない語です。採る語は `[m?61]` を `[im61]` のように書き換えてください（i を書き足す。用語集にも載せるなら `[igm61]`）。`m61` はその語を説明している章（主要参照）で、違う章なら数字を書き換え、付けないなら `[i]` にします。採らない語は、そのままにするか `[r]`（次から候補に出さない）にします。\n\n"
+        return "#{section}推奨する語はありません。\n" if candidates.empty?
 
-        short, regular = candidates.partition { it['short_heading'] }
-        sort_by_label_and_appearance(regular).each { section += build_candidate_line(it) }
-        section += "\n※ このほか、見出しから拾った 2 字の語が #{short.size} 語あります（3 節の末尾にまとめています）。\n" if short.any?
+        sort_by_label_and_appearance(candidates).each { section += build_candidate_line(it) }
         section
       end
 
-      # 3. 一般候補セクション
+      # 3. 残りの語
       #
       # ここだけ文脈を出さない。目安語数の外に出た語を**眺める**場所であって、
-      # 一語ずつ判断する場所ではない——迷うほどの語なら順位が上がって推奨候補に
-      # 現れる。文脈を並べると推奨候補と同じ密度になり、「これも全部見なければ」
-      # と読めてしまううえ、後ろの除外済みリストまで遠くなる。
-      # @param short [Array<Hash>] 推奨・一般の両方から集めた、見出しから拾った短い語
-      def build_low_candidates_section(candidates, short = [])
-        section = "## 3. 一般候補 (Low Candidates: #{candidates.size}語)\n"
-        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ `[m?61]` を `[im61]` のように書き換えてください（書き方は 2 節と同じ）。一覧性を優先して出現箇所は省いています。\n\n"
+      # 一語ずつ判断する場所ではない——迷うほどの語なら順位が上がって推奨する語に
+      # 現れる。文脈を並べると推奨する語と同じ密度になり、「これも全部見なければ」
+      # と読めてしまううえ、後ろの棄却した語まで遠くなる。
+      def build_low_candidates_section(candidates)
+        section = "## 3. 残りの語（#{candidates.size}語）\n"
+        section += "※ 目安の語数の外に出た語です。眺めて、目に留まったものだけ `[m?61]` を `[im61]` のように書き換えてください（書き方は 2 節と同じ）。一覧性を優先して出現箇所は省いています。\n\n"
+        return "#{section}残りの語はありません。\n" if candidates.empty?
 
-        regular = candidates.reject { it['short_heading'] }
-        if regular.empty?
-          section += "一般候補はありません。\n"
-        else
-          sort_by_label_and_appearance(regular).each { section += build_candidate_line(it, context_limit: 0) }
-        end
-
-        section + build_short_heading_subsection(short)
+        sort_by_label_and_appearance(candidates).each { section += build_candidate_line(it, context_limit: 0) }
+        section
       end
 
-      # 見出しから拾った短い語。推奨候補の帯の語を先に、帯の中は他の候補と同じ順に並べる
-      def short_heading_candidates(high_candidates, low_candidates)
-        [high_candidates, low_candidates].flat_map do |band|
-          sort_by_label_and_appearance(band.select { it['short_heading'] })
-        end
-      end
-
-      # 見出しから拾った短い語（2 字以下）の小節。推奨候補・一般候補の両方から集め、3 節の末尾の
-      # 1 か所に置く（帯ごとに分けると 2 か所を見て回ることになる——改善案 #99）。
-      #
-      # 「扉絵」のような要語と「項目」のような一般的な語が混ざり、機械では分けられない
-      # （IndexCandidateExtractor#short_heading_term?）。候補の中に散らばっていると、
-      # 著者は 100 語の中から 1 語ずつ見つけて判断することになる。1 か所に並べれば、
-      # 残す語と外す語を一度に決められる。
-      #
-      # 外した語は除外済みリストに入って候補に戻らず、ライブラリで次の本へも持ち運べる。
-      # 判断は最初の 1 冊で済む、と書いておくのは、[r] を付ける手間を惜しませないため。
-      def build_short_heading_subsection(candidates)
-        return '' if candidates.empty?
-
-        <<~HEADER + candidates.map { build_candidate_line(it, context_limit: 0) }.join
-
-          ### 見出しから拾った短い語（#{candidates.size}語）
-
-          節の見出しに出る 2 字の語です（推奨候補・一般候補の両方から集め、推奨候補の語を先に並べています）。「扉絵」「書体」のような要語と、「項目」「目安」のような一般的な語が混ざります。原稿の出方では見分けられないので、ここにまとめました。
-
-          残す語は [i]、要らない語は [r] にしてください。[r] にした語は除外済みリストに入り、次からは候補に出ません。`vs index:export` で書き出せば、次の本でも候補に出ません。
-
-        HEADER
-      end
-
-      # 4. 除外済みリストセクション（Candidatesと同様の形式、rejected_atでラベル判定）
+      # 4. 棄却した語（Candidatesと同様の形式、rejected_atでラベル判定）
       def build_rejected_section(rejected)
-        section = "## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
-        section += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
+        section = "#{REJECTED_SECTION}（#{rejected.size}語）\n"
+        section += "※ 次から候補に出さない語です。戻すときは [i]・[g]・[ig] を入れてください。棄却した語は `vs index:export` で次の本へも持ち運べます（同じ語を本ごとに棄却し直さずに済みます）。\n\n"
 
         if rejected.empty?
-          section += "除外済みの用語はありません。\n"
+          section += "棄却した語はありません。\n"
         else
           # ラベルと出現順でソート
           sorted = sort_rejected_by_label(rejected)
@@ -562,6 +528,37 @@ module VivlioStarter
         end
 
         section
+      end
+
+      # 5. 原稿に出てこない語。登録済みの語・使っていない語・棄却した語を 1 か所にまとめる
+      # （index-glossary-registration-spec.md §3.3.1）。既定の印はどれも [ ] で、そのまま apply
+      # すると、登録済みの語は索引・用語集から外れ（説明文のある語は使っていない語として残る）、
+      # 使っていない語・棄却した語はそのまま。並びは apply で変わる登録済みの語を先に置く
+      ABSENT_KINDS = %w[registered unused rejected].freeze
+
+      def build_absent_section(absent)
+        section = "#{ABSENT_SECTION}（#{absent.size}語）\n"
+        section += "※ 原稿のどこにも出てこない語です。登録済みの語は、そのまま `vs index:apply` すると索引・用語集から外れます（説明文のある語は、使っていない語として残ります）。誤って登録した語は `[DELETE]` で記録ごと消せます。\n\n"
+        return "#{section}原稿に出てこない語はありません。\n" if absent.empty?
+
+        absent.sort_by { [ABSENT_KINDS.index(it['kind']), it['yomi'].to_s.downcase] }.each do |item|
+          section += build_absent_line(item)
+        end
+        section
+      end
+
+      # 5 節の 1 行。行末に、いまの扱い（登録済みならその印）を添える
+      def build_absent_line(item)
+        status = case item['kind']
+                 when 'registered'
+                   "いまの登録: #{IndexCommands::TermLine.build(item['flags'].to_s, main: Array(item['main_tokens']))}"
+                 when 'unused' then '使っていない語'
+                 else '棄却した語'
+                 end
+        line = "- [ ] **#{item['term']}** (#{item['yomi'] || item['term']}) - [原稿に出現しません] - #{status}\n"
+        definition = item['definition'].to_s.strip
+        line += "\n#{definition.each_line.map { "  #{it.chomp}\n" }.join}" unless definition.empty?
+        "#{line}\n"
       end
 
       # 用語行を構築（Termsセクション用）- Candidatesと同様の形式
@@ -639,10 +636,12 @@ module VivlioStarter
 
       def base_flag(term)
         # 一般語は「外す」を既定にして提示する。著者は残したければ [i] へ戻す（R5）。
+        # 用語集にも載っている語は [-ig]（索引から外し、用語集には残す）。g を印に含めないと、
+        # 用語集に載っていることが行から読めない（index-glossary-registration-spec.md §3.4）。
         # ただし著者が主要参照を決めた語（`m21`。機械の推測 `m?` は含まない）は残す——
         # 説明箇所がある語は残す、という一般語の欄の基準そのものなので。外す印のまま
         # 出していたため、そのまま apply した Markdown・PDF が索引から外れていた（改善案 #99）
-        return '-i' if term['common_term'] && !confirmed_main?(term)
+        return term['in_glossary'] == true ? '-ig' : '-i' if term['common_term'] && !confirmed_main?(term)
 
         in_index = term['in_index'] != false # 既定はtrue（後方互換性）
         in_glossary = term['in_glossary'] == true
@@ -710,15 +709,29 @@ module VivlioStarter
         line += " `#{label}`" if label
         line += " **#{term}** (#{yomi}) - スコア: #{score.round(1)}\n"
 
-        # 1 行に詰めるときは語の間の空行も置かない（詰めることが目的なので）
-        return line if context_limit.zero?
+        # 1 行に詰めるときは語の間の空行も置かない（詰めることが目的なので）。ただし説明文は
+        # 出す——出さないまま [g] にすると、空の説明文で残しておいた説明文を上書きする
+        if context_limit.zero?
+          definition = candidate_definition(candidate)
+          return definition.empty? ? line : "#{line}#{definition}\n"
+        end
 
         Array(candidate['contexts']).first(context_limit).each do |ctx|
           chapter = ctx['chapter'] || '不明'
           line += "  - #{chapter}: #{extract_context(ctx['context'])}\n"
         end
+        line += candidate_definition(candidate)
 
         "#{line}\n"
+      end
+
+      # 使っていない語を原稿に書き戻したときは、以前の説明文を添える。[g] にすれば
+      # 書き直さずにそのまま戻る（index-glossary-registration-spec.md §3.3.2）
+      def candidate_definition(candidate)
+        definition = candidate['definition'].to_s.strip
+        return '' if definition.empty?
+
+        "\n#{definition.each_line.map { "  #{it.chomp}\n" }.join}"
       end
 
       # 走査した章に出てこない登録語の注記。行き先の違う 3 通りを言い分ける。

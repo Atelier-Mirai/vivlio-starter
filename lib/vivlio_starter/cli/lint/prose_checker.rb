@@ -16,6 +16,7 @@
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
 #     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
 #     - ja-no-weak-phrase    断定を避ける言い回し（「かもしれません」「思います」）
+#     - index-term-spacing   索引・用語集の辞書の語と空白だけ違う書き方。--fix できる（改善案 #102）
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -31,6 +32,7 @@
 #
 # 依存:
 #   - Masking: コード領域の判定（辞書をコード例へ当てないため）
+#   - TermPattern: 索引・用語集の語の空白の揺れの照合（綴りを直すときの原稿の書き換えと共有）
 #   - MazegakiDictionary: 交ぜ書きの語（採否の基準と、落とした語の理由もあちら側）
 #   - MazegakiScanner: MeCab があるときだけ足す第 2 層（mazegaki-two-tier-spec.md）
 # ================================================================
@@ -39,6 +41,7 @@ require 'yaml'
 
 require_relative '../common'
 require_relative '../masking'
+require_relative '../index/term_pattern'
 require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
@@ -67,9 +70,10 @@ module VivlioStarter
         SENTENCE_LENGTH_RULE = 'sentence-length'
         UNCLOSED_SUPPRESSION_RULE = 'unclosed-suppression'
         WEAK_PHRASE_RULE     = 'ja-no-weak-phrase'
+        INDEX_TERM_SPACING_RULE = 'index-term-spacing'
 
-        # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
-        FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
+        # --fix で直せるルール。どれも「この文字列はこう書く」が 1 つに決まる。
+        FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE, INDEX_TERM_SPACING_RULE].freeze
 
         # --- 記法の取り違え -----------------------------------------------------
 
@@ -211,7 +215,8 @@ module VivlioStarter
         # @param allowlist [Array<Regexp>] allowlist_from が返す除外パターン
         # @param parenthetical_max [Integer, :off, nil] book.yml lint.parenthetical_length_max
         # @return [Array<Finding>]
-        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil)
+        # @param index_terms [Array<String>] 索引・用語集の辞書の語（index-term-spacing に使う）
+        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil, index_terms: [])
           text  = File.read(path, encoding: 'UTF-8')
           rules = Array(disabled_rules).map(&:to_s)
 
@@ -234,6 +239,7 @@ module VivlioStarter
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
           findings.concat(weak_phrase_findings(text))          unless rules.include?(WEAK_PHRASE_RULE)
           findings.concat(unclosed_suppression_findings(text)) unless rules.include?(UNCLOSED_SUPPRESSION_RULE)
+          findings.concat(index_term_spacing_findings(text, index_terms)) unless rules.include?(INDEX_TERM_SPACING_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -780,6 +786,68 @@ module VivlioStarter
 
         def kangxi_ideograph(radical) = KANGXI_JAPANESE_FORMS.fetch(radical) { radical.unicode_normalize(:nfkc) }
         private_class_method :kangxi_ideograph
+
+        # --- 辞書の語と空白だけ違う書き方（改善案 #102）----------------------------
+
+        # 索引・用語集の辞書は、空白も含めた綴りで本文を照合する。本文が空白だけ違うと
+        # （「Type 3 フォント」に対する「Type3 フォント」）、その箇所は索引にもバックリンクにも
+        # 拾われないが、著者には見えない。辞書の語から揺れを探し、直し方を添えて知らせる。
+        #
+        # 空白の有無を問うのは、辞書の語が空白を持つ位置と、英数字と和文の境目だけ。
+        # 英字どうし・和文どうしの間は問わない（「PD F」「組 版」のような分け方は揺れではなく誤り）。
+        def index_term_spacing_findings(text, terms)
+          variants = spacing_variants(terms)
+          return [] if variants.empty?
+
+          authored_prose_lines(text).flat_map do |lineno, line|
+            protected_line, = Masking.protect_code(line)
+            spacing_mismatches(protected_line, variants).map do |term, written|
+              # ほかのルールと同じ「書かれた形 => 直す形」の短い形
+              Finding.new(line: lineno, rule: INDEX_TERM_SPACING_RULE, label: "#{written} => #{term}（索引・用語集の綴り）")
+            end
+          end
+        end
+
+        # 1 行の中の [辞書の語, 書かれた形] の組。長い語から照らし、その範囲の中は短い語で数えない
+        # ——辞書に「Type 3 フォント」と「Type 3」があると、「Type3 フォント」を 2 度指摘していた
+        def spacing_mismatches(line, variants)
+          covered = []
+          found = variants.flat_map do |term, pattern|
+            line.to_enum(:scan, pattern).filter_map do
+              match = ::Regexp.last_match
+              range = match.begin(0)...match.end(0)
+              next if covered.any? { it.cover?(range.begin) || range.cover?(it.begin) }
+
+              covered << range
+              [term, match[0]] unless match[0] == term
+            end
+          end
+          found.uniq
+        end
+
+        # 空白だけ違う書き方を辞書の綴りへ直したテキストを返す。行数は入力と必ず一致する。
+        def fix_index_term_spacing(text, terms)
+          variants = spacing_variants(terms)
+          return text if variants.empty?
+
+          prose = authored_prose_lines(text).to_h
+          text.each_line.with_index(1).map do |line, lineno|
+            next line unless prose.key?(lineno)
+
+            protected_line, spans = Masking.protect_code(line)
+            variants.each { |term, pattern| protected_line = protected_line.gsub(pattern) { term } }
+            Masking.restore_code(protected_line, spans)
+          end.join
+        end
+
+        # 辞書の語 → 空白の有無だけを問う照合。問える位置が無い語（「PDF」「数式」）は除く。
+        # 長い語を先に照らす——「閲覧用 PDF」を直す前に「PDF」側の照合が割り込まないように
+        # @return [Array<Array(String, Regexp)>]
+        def spacing_variants(terms)
+          Array(terms).filter_map { |term| (pattern = IndexCommands::TermPattern.spacing_insensitive(term)) && [term, pattern] }
+                      .sort_by { -it[0].length }
+        end
+        private_class_method :spacing_variants, :spacing_mismatches
 
         # --- 記法の取り違え（markdown-notation-collision-spec.md §6・§7）--------
 

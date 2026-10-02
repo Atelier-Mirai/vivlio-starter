@@ -78,6 +78,36 @@ module VivlioStarter
           assert_predicate parse('- [-g] **X** (x)'), :reject_glossary?
         end
 
+        # マイナスは直後の 1 文字にだけ掛かり、文字の順番は問わない（index-glossary-registration-spec.md §3.4）
+        def test_minus_applies_to_the_next_letter_only
+          %w[-ig g-i].each do |mark|
+            line = parse("- [#{mark}m?21] **X** (x)")
+            assert_predicate line, :reject_index?, mark
+            assert_predicate line, :glossary?, mark
+            refute_predicate line, :reject_both?, mark
+          end
+          %w[i-g -gi].each do |mark|
+            line = parse("- [#{mark}] **X** (x)")
+            assert_predicate line, :reject_glossary?, mark
+            assert_predicate line, :index?, mark
+          end
+          line = parse('- [-i-g] **X** (x)')
+          assert_predicate line, :reject_both?
+          refute_predicate line, :reject_index?, '両方外すときは棄却としてだけ扱う'
+        end
+
+        # 棄却した語から戻す先は、載せる文字だけを i・g・ig の形で
+        def test_kept_flags_are_normalized
+          assert_equal 'ig', parse('- [gi] **X** (x)').kept_flags
+          assert_equal 'i', parse('- [x] **X** (x)').kept_flags
+          assert_equal 'g', parse('- [-ig] **X** (x)').kept_flags
+        end
+
+        # 印でない文字が混じる欄は、印として読まない
+        def test_unknown_letters_are_not_read_as_marks
+          refute_predicate parse('- [ok] **X** (x)'), :index?
+        end
+
         # 主要参照が付いても判定は変わらない（9 パーサの回帰）
         def test_predicates_ignore_the_main_part
           assert_predicate parse('- [igm33] **X** (x)'), :index?
@@ -114,14 +144,14 @@ module VivlioStarter
         # --- phase: 用語行でないもの ---
 
         def test_returns_nil_for_non_term_lines
-          ['  - 主要参照: 21', '## 2. 推奨候補', '本文です。', ''].each do |line|
+          ['  - 主要参照: 21', '## 2. 推奨する語', '本文です。', ''].each do |line|
             assert_nil parse(line), line.inspect
           end
         end
 
         def test_scans_a_document
           doc = <<~MD
-            ## 1. 登録済み用語の確認
+            ## 1. 登録済みの語
 
             - [im33] **用語集** (ようごしゅう)
               - 12-quickstart: 抜粋

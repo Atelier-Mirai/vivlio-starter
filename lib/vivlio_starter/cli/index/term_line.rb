@@ -28,6 +28,15 @@
 #   そのまま `vs index:apply` すればどちらも採用されるが、著者が自分で決めた
 #   ものと機械の下書きが見分けられないと、レビューが「全部確認し直す」作業になる。
 #
+# 印の文字の読み方（index-glossary-registration-spec.md §3.4）:
+#   i = 索引、g = 用語集（x は i の古い綴り）。**マイナスは直後の 1 文字にだけ掛かる**。
+#   文字の順番は問わない。
+#     [-ig]・[g-i] … 索引から外し、用語集には残す
+#     [i-g]・[-gi] … 用語集から外し、索引には残す
+#     [-i-g]・[r]  … 両方から外して棄却する
+#   機械が出す印は、いまの登録の文字をすべて含める（一般語の ig の語は [-igm?21]）。
+#   `-i` だけを出すと、用語集に載っていることが行から読めなかった。
+#
 # 仕様: index-main-reference-section-spec.md R6
 # ================================================================
 
@@ -43,9 +52,9 @@ module VivlioStarter
         # フラグ本体と主要参照を分ける。`igm?21,22` → ['ig', ['21','22'], true]
         FLAG_AND_MAIN = /\A([^m]*)m(\?)?(.*)\z/
 
-        INDEX_FLAGS = %w[i ig gi x].freeze
-        GLOSSARY_FLAGS = %w[g ig gi].freeze
-        REJECT_BOTH_FLAGS = %w[r -ig -gi].freeze
+        # 印の 1 文字（マイナス付きを含む）。並びが全部これで書かれているときだけ印として読む
+        MARK = /-?[igx]/
+        MARKS = /\A(?:-?[igx])+\z/
 
         class << self
           # 1 行を解釈する。用語行でなければ nil
@@ -85,20 +94,39 @@ module VivlioStarter
           end
         end
 
-        def index? = INDEX_FLAGS.include?(flags)
-        def glossary? = GLOSSARY_FLAGS.include?(flags)
-        def reject_both? = REJECT_BOTH_FLAGS.include?(flags)
-        def reject_index? = flags == '-i'
-        def reject_glossary? = flags == '-g'
+        # 載せる先（マイナスの付かない文字）と、外す先（マイナスの付いた文字）
+        def kept = marks.reject { it.start_with?('-') }.map { normalize(it) }.uniq
+        def removed = marks.select { it.start_with?('-') }.map { normalize(it) }.uniq
+
+        def index? = kept.include?('i') && !removed.include?('i')
+        def glossary? = kept.include?('g') && !removed.include?('g')
+        def reject_both? = flags.strip == 'r' || (removed.include?('i') && removed.include?('g'))
+        def reject_index? = removed.include?('i') && !reject_both?
+        def reject_glossary? = removed.include?('g') && !reject_both?
+        # 記録ごと消す（index-glossary-registration-spec.md §3.3.3）。取り返しのつかない
+        # 操作なので長い大文字の綴りにしてあるが、読むときは大文字・小文字を区別しない
+        def delete? = flags.strip.casecmp?('DELETE')
 
         # 除外済みリストから拾い上げる対象（セクション 4 で復帰マークが付いた行）
-        def unrejecting? = (INDEX_FLAGS + GLOSSARY_FLAGS).include?(flags)
+        def unrejecting? = index? || glossary?
+
+        # 載せる先を i・g・ig の形で（棄却した語から戻すときの登録先）
+        def kept_flags = [('i' if index?), ('g' if glossary?)].compact.join
 
         # 保留（`[ ]` や空欄）
         def pending? = flags.strip.empty?
 
         # 行末から拾えるスコア
         def score = trailer[/- スコア:\s*([\d.]+)/, 1]&.to_f
+
+        private
+
+        def marks
+          text = flags.strip
+          text.match?(MARKS) ? text.scan(MARK) : []
+        end
+
+        def normalize(mark) = mark.delete('-').tr('x', 'i')
       end
     end
   end

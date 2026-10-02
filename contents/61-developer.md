@@ -369,11 +369,11 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 | :--- | :--- |
 | 日本語の読み違い | `mazegaki` ・ `ambiguous-comparison` ・ `missing-period` ・ `ja-no-weak-phrase` |
 | 長さ | `sentence-length` ・ `long-parenthetical` |
-| 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` |
+| 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` ・ `index-term-spacing` |
 | 記法の取り違え | `indented-code-block` ・ `setext-heading` ・ `multiple-chapter-headings` |
 | 抑止の閉じ忘れ | `unclosed-suppression` |
 
-`--fix` で直せるのは `mazegaki` と `kanji-lookalike` の二つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
+`--fix` で直せるのは `mazegaki`・`kanji-lookalike`・`index-term-spacing` の三つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
 
 **自前のルールが上流と重なったら、上流を切ります。** どれを切るかは `SUPERSEDED_TEXTLINT_RULES` の 1 表が持ちます。
 

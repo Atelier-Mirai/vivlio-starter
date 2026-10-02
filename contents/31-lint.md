@@ -360,6 +360,21 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 
 章を分けるときは、ファイルを分けて `catalog.yml` に並べてください。コードブロックの中の `# コメント` は章見出しと見なしません。設定ファイルなしのビルド（`vs build file.md`）は、一つのファイルを `#` ごとに章に分けて組みます（@ch-build の章）。
 
+## 索引・用語集の語の書き方
+
+:::{.section-lead}
+索引・用語集に登録した語と、空白だけが違う書き方を見つけます。辞書の語は空白も含めた綴りで原稿から探すので、空白が違う箇所は索引に載りません。ビルドは成功するので、索引のページを見るまで気づけません。
+:::
+
+:::{.output}
+```
+    2件  [index-term-spacing] Type3 フォント => Type 3 フォント（索引・用語集の綴り）
+         行: 35, 240
+```
+:::
+
+空白の有無を見るのは、辞書の語が空白を持つ位置と、英数字と和文の境目だけです。綴りや大文字・小文字の違いは、別の語のこともあるので指摘しません。直し方は一つに決まるので、`vs lint --fix` で辞書の綴りへ直せます。書名の引用のように、わざと元の表記を残したい箇所は `<!-- no-lint -->` で外してください。指摘はいつも辞書の綴りへ直す向きに出ます。同じ語の指摘がたくさん出て、辞書の綴りのほうが誤っていると分かったときは、レビューファイルで辞書の綴りを直します（@pageref:ch-index-glossary の章）。索引の対象から外した章（`index_glossary.exclude_chapters`）は検査しません。
+
 ## コードブロックの言語名 @lint-code-language
 
 :::{.section-lead}
@@ -548,7 +563,7 @@ lint:
 
 切ったルールは表示に出ず、`vs lint --fix` でも修正が当たりません。無効化した分は問題件数にも数えません。`prh` と書くと、表記揺れの辞書がすべて止まります（辞書の項目を一つずつは切れません）。
 
-Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
+Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `index-term-spacing` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 

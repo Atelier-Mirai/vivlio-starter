@@ -400,16 +400,6 @@ module VivlioStarter
           assert_includes @extractor.scoring.breakdown('扉絵')[:traits], :heading
         end
 
-        # 見出しから拾った 2 字の語は、レビューで 1 か所にまとめるために見分ける
-        def test_short_heading_term_is_identified
-          mecab!
-          extract("## 扉絵の設定\n\n扉絵を用意します。\n\n## 図番号の付け方\n\n図番号を振ります。\n")
-
-          assert @extractor.short_heading_term?('扉絵')
-          refute @extractor.short_heading_term?('図番号'), '3 字以上は本文の経路でも拾うので対象外'
-          refute @extractor.short_heading_term?('未登録'), '候補でない語'
-        end
-
         # 見出しの単独名詞でも、動作を表す名詞（サ変接続）は節の話題ではない
         def test_action_noun_in_a_heading_is_not_picked_up
           mecab!

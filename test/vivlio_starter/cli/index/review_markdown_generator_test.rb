@@ -56,7 +56,7 @@ module VivlioStarter
         content = generate_main(%w[21 22])
 
         assert_match(/^- \[im21,22\] \*\*Markdown\*\*/, content)
-        refute_includes content, '  - 主要参照:', '子行は出さない'
+        refute_includes content[/^## 1\..*/m], '  - 主要参照:', '子行は出さない（冒頭の凡例の例は除く）'
       end
 
       # 章名や節指定はフラグ欄だと読めないので子行に譲る
@@ -111,7 +111,7 @@ module VivlioStarter
                              high_candidates: [], low_candidates: [], rejected: [])
         content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
 
-        refute_match(/^ {2}- 主要参照:/, content, '指定が無ければ子行を出さない')
+        refute_match(/^ {2}- 主要参照:/, content[/^## 1\..*/m], '指定が無ければ子行を出さない（冒頭の凡例は除く）')
         assert_match(/^- \[i\] \*\*Ruby\*\*/, content, 'フラグ欄にも入らない')
         assert_equal({ 'Ruby' => nil }, @generator.parse_main_references)
       end
@@ -261,7 +261,7 @@ module VivlioStarter
         assert_equal ['Markdown'], with_main[:approved].map { it['term'] }
       end
 
-      # --- phase: 一般語のサブセクション（§3 R5.2） ---
+      # --- phase: 1 節（登録済みの語）。小節を立てず、apply で変わる行を先に置く ---
 
       def common_term(name, spread: '20/27 章（74%）')
         { 'term' => name, 'yomi' => name, 'flags' => 'i', 'in_index' => true,
@@ -277,59 +277,22 @@ module VivlioStarter
         File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
       end
 
-      # --- phase: 見直し候補のサブセクション ---
+      # 1 節は小節を立てない。外す印 [-i] の一般語 → 推測 m? の語 → それ以外、の順に並べる
+      # （index-glossary-registration-spec.md §3.2。見直し候補はなくした）
+      def test_terms_section_has_no_subsections_and_lists_changing_lines_first
+        guessed = ordinary_term('数式').merge('main_tokens' => ['22'], 'main_suggested' => true)
+        content = generate_with([ordinary_term('特殊相対性理論'), guessed, common_term('ファイル')])
+        section = content[/^## 1\..*?(?=^## 2\.)/m]
 
-      def review_term(name)
-        { 'term' => name, 'yomi' => name, 'flags' => 'i', 'in_index' => true,
-          'review_candidate' => true, 'score' => 120.0 }
+        refute_includes section, '###'
+        order = %w[ファイル 数式 特殊相対性理論].map { section.index("**#{it}**") }
+        assert_equal order.sort, order
+        assert_includes section, '本の広い範囲に散らばっていて'
       end
 
-      # 件数だけ告げられても、どの語のことか分からないまま終わる。
-      # 外すべき語を見つける場はここにしかない。
-      def test_review_candidates_get_their_own_subsection
-        content = generate_with([review_term('カラー'), ordinary_term('特殊相対性理論')])
-
-        assert_includes content, '### 見直し候補（1語）'
-        assert_includes content, '**カラー**'
-        assert_includes content, '### 登録語 (1語)'
-      end
-
-      # 一般語と違い、既定は現状維持。順位が低いことは「索引に要らない」を意味しない
-      def test_review_candidates_stay_registered_by_default
-        content = generate_with([review_term('カラー')])
-
-        assert_match(/^- \[i\] \*\*カラー\*\*/, content)
-      end
-
-      def test_review_subsection_shows_how_to_act
-        content = generate_with([review_term('カラー')])
-
-        assert_includes content, '[-i]', '索引から外す手段'
-        assert_includes content, '[r]', '二度と候補に出さない手段'
-      end
-
-      # 同じ語を 2 つの枠に出すと、どちらの助言に従えばよいのか分からなくなる
-      def test_a_term_appears_in_only_one_subsection
-        both = common_term('ファイル').merge('review_candidate' => true)
-        content = generate_with([both])
-
-        assert_includes content, '### 一般語（索引から外すことを推奨・1語）'
-        refute_includes content, '### 見直し候補'
-        assert_equal 1, content.scan(/\*\*ファイル\*\*/).size
-      end
-
-      def test_no_subsection_when_nothing_needs_review
-        content = generate_with([ordinary_term('特殊相対性理論')])
-
-        refute_includes content, '### 見直し候補'
-        refute_includes content, '### 登録語', '仕分けが無ければ見出しも要らない'
-      end
-
-      def test_common_terms_get_their_own_subsection
-        content = generate_with([common_term('ファイル'), ordinary_term('特殊相対性理論')])
-
-        assert_includes content, '### 一般語（索引から外すことを推奨・1語）'
-        assert_includes content, '### 登録語 (1語)'
+      # 外す印の説明は、外す印の付いた語があるときだけ出す
+      def test_common_term_guide_appears_only_with_removal_flags
+        refute_includes generate_with([ordinary_term('特殊相対性理論')]), '本の広い範囲に散らばっていて'
       end
 
       # 著者が判断できるよう、事実（どれだけ広いか）を必ず添える
@@ -356,6 +319,13 @@ module VivlioStarter
         assert_match(/^- \[-im\?25\] \*\*ファイル\*\*/, content)
       end
 
+      # 用語集にも載っている一般語は [-ig]。g を印に含めて、用語集に載っていることを行に残す（§3.4）
+      def test_common_glossary_term_shows_its_g_in_the_removal_flag
+        content = generate_with([common_term('PDF').merge('in_glossary' => true, 'flags' => 'ig')])
+
+        assert_match(/^- \[-ig\] \*\*PDF\*\*/, content)
+      end
+
       # 行の書式を変えると既存パーサが軒並みマッチしなくなる。
       # 追加情報は行末（スコアと同じ位置）に置く、という約束を固定する。
       def test_common_term_lines_stay_parseable
@@ -368,14 +338,75 @@ module VivlioStarter
         assert_equal ['特殊相対性理論'], approved.map { it['term'] }
       end
 
-      # セクション番号を増やすと「## 4. 除外済みリスト」を境界に使う
-      # パーサの解釈がずれる。入れ子の ### で足すこと。
-      def test_does_not_introduce_a_new_numbered_section
-        content = generate_with([common_term('ファイル')])
+      # 5 節（原稿に出てこない語）の行は、4 節（棄却した語）の読み取りに混ざらない。混ざると、
+      # 5 節の登録済みの語の [ ] を「棄却のまま」と読み、apply で棄却してしまう（§3.3.1）
+      def test_absent_section_is_not_read_as_the_rejected_section
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [],
+                             rejected: [{ 'term' => '棄却語', 'yomi' => 'ききゃくご', 'contexts' => [{ 'chapter' => '10-a', 'context' => '棄却語です' }] }],
+                             absent: [{ 'term' => '旧い語', 'yomi' => 'ふるいご', 'kind' => 'registered', 'flags' => 'i', 'main_tokens' => ['33'] }])
 
-        assert_includes content, '## 1. 登録済み用語の確認'
-        assert_includes content, '## 4. 除外済みリスト'
-        refute_includes content, '## 5.'
+        assert_equal ['棄却語'], @generator.parse_rejected_section_all.map { it['term'] }
+      end
+
+      # 5 節は、登録済み → 使っていない語 → 棄却した語の順。印はどれも [ ] で、いまの扱いを行末に添える
+      def test_absent_section_lists_registered_first_with_current_status
+        absent = [
+          { 'term' => 'Step', 'yomi' => 'Step', 'kind' => 'rejected' },
+          { 'term' => '用語', 'yomi' => 'ようご', 'kind' => 'unused', 'definition' => '残した説明文。' },
+          { 'term' => '推奨候補', 'yomi' => 'すいしょうこうほ', 'kind' => 'registered', 'flags' => 'i', 'main_tokens' => ['33'] }
+        ]
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected: [], absent:)
+        section = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')[/^## 5\..*\z/m]
+
+        assert_includes section, '- [ ] **推奨候補** (すいしょうこうほ) - [原稿に出現しません] - いまの登録: [im33]'
+        assert_includes section, '- [ ] **用語** (ようご) - [原稿に出現しません] - 使っていない語'
+        assert_includes section, "\n  残した説明文。\n", '残した説明文を見せる（[g] にすれば戻る）'
+        order = %w[推奨候補 用語 Step].map { section.index("**#{it}**") }
+        assert_equal order.sort, order
+      end
+
+      # 冒頭の凡例に子行の書き方の例を置く。例は字下げしてあるので、用語の行・主要参照・綴り・
+      # 説明文のどれとしても読まれない（読まれると、例の語が辞書に入ってしまう）
+      def test_legend_example_shows_child_lines_without_being_parsed
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected: [])
+        text = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes text, "      - 主要参照: 25#ラベルIDの扱い\n      - 綴り: ラベル ID\n"
+        assert_empty IndexCommands::TermLine.scan(text)
+        assert_empty @generator.parse_spelling_changes
+        assert_empty @generator.parse_main_references
+        assert_empty @generator.parse_glossary_approved
+      end
+
+      # 綴りの子行は、綴りの指定として読み、出現箇所（文脈）には混ぜない（改善案 #103）
+      def test_spelling_line_is_read_as_a_spelling_change_not_a_context
+        File.write(ReviewMarkdownGenerator::REVIEW_FILE, <<~MD)
+          ## 1. 登録済みの語（1語）
+          - [g] **ラベルID** (らべるID)
+            - 25-cross-reference: ラベルIDを付けます。
+            - 綴り: ラベル ID
+
+            識別名。
+          ## 4. 棄却した語（0語）
+        MD
+
+        assert_equal({ 'ラベルID' => 'ラベル ID' }, @generator.parse_spelling_changes)
+        approved = @generator.parse_glossary_approved.first
+        assert_equal ['25-cross-reference'], approved['contexts'].map { it['chapter'] }
+        assert_equal '識別名。', approved['definition']
+      end
+
+      # [DELETE] は大文字・小文字を区別せずに読む（§3.3.3）
+      def test_parse_deleted_reads_delete_marks
+        File.write(ReviewMarkdownGenerator::REVIEW_FILE, <<~MD)
+          ## 1. 登録済みの語（1語）
+          - [DELETE] **Step** (Step)
+          ## 4. 棄却した語（1語）
+          - [delete] **Hz** (Hz)
+          ## 5. 原稿に出てこない語（0語）
+        MD
+
+        assert_equal %w[Step Hz], @generator.parse_deleted
       end
 
       def test_omits_the_subsection_when_no_common_terms
@@ -459,10 +490,10 @@ module VivlioStarter
         @generator.generate!(data)
 
         content = File.read('_index_glossary_review.md')
-        assert_includes content, '## 1. 登録済み用語の確認'
-        assert_includes content, '## 2. 推奨候補'
-        assert_includes content, '## 3. 一般候補'
-        assert_includes content, '## 4. 除外済みリスト'
+        assert_includes content, '## 1. 登録済みの語'
+        assert_includes content, '## 2. 推奨する語'
+        assert_includes content, '## 3. 残りの語'
+        assert_includes content, '## 4. 棄却した語'
       end
 
       def test_generate_shows_manual_markup_label
@@ -501,7 +532,7 @@ module VivlioStarter
 
       def test_parse_index_approved_extracts_checked_items
         content = <<~MD
-          ## 2. 推奨候補 (High Candidates: 2語)
+          ## 2. 推奨する語 (High Candidates: 2語)
 
           - [x] `NEW!` **JavaScript** (じゃばすくりぷと) - スコア: 200.0
             - 01-intro - "sample context"
@@ -522,7 +553,7 @@ module VivlioStarter
 
       def test_parse_rejected_extracts_r_marked_items
         content = <<~MD
-          ## 2. 推奨候補 (High Candidates: 2語)
+          ## 2. 推奨する語 (High Candidates: 2語)
 
           - [r] `NEW!` **BadTerm** (ばっどたーむ) - スコア: 100.0
             - 01-intro - "context"
@@ -530,7 +561,7 @@ module VivlioStarter
           - [ ] `NEW!` **GoodTerm** (ぐっどたーむ) - スコア: 150.0
             - 02-basics - "context"
 
-          ## 4. 除外済みリスト (Rejected: 0語)
+          ## 4. 棄却した語 (Rejected: 0語)
         MD
         File.write('_index_glossary_review.md', content)
 
@@ -542,11 +573,11 @@ module VivlioStarter
 
       def test_parse_rejected_ignores_rejected_section
         content = <<~MD
-          ## 2. 推奨候補 (High Candidates: 1語)
+          ## 2. 推奨する語 (High Candidates: 1語)
 
           - [r] `NEW!` **FromCandidates** (ふろむきゃんでぃでーつ) - スコア: 100.0
 
-          ## 4. 除外済みリスト (Rejected: 1語)
+          ## 4. 棄却した語 (Rejected: 1語)
 
           - [r] `Today` **AlreadyRejected** (おるれでぃりじぇくてっど)
         MD
@@ -562,9 +593,9 @@ module VivlioStarter
 
       def test_parse_unreject_extracts_from_rejected_section
         content = <<~MD
-          ## 2. 推奨候補 (High Candidates: 0語)
+          ## 2. 推奨する語 (High Candidates: 0語)
 
-          ## 4. 除外済みリスト (Rejected: 2語)
+          ## 4. 棄却した語 (Rejected: 2語)
 
           - [i] `Today` **ToUnreject** (とぅあんりじぇくと) - スコア: 50.0
             - 01-intro - "context"
@@ -585,13 +616,13 @@ module VivlioStarter
       def test_section_boundary_ignores_the_heading_name_written_in_prose
         content = <<~MD
           # 索引・用語集レビュー
-          ※ 外した語は ## 4. 除外済みリスト に集まります
+          ※ 外した語は ## 4. 棄却した語 に集まります
 
-          ## 1. 登録済み用語の確認 (Terms: 1語)
+          ## 1. 登録済みの語 (Terms: 1語)
 
           - [-i] **Dropped** (どろっぷど)
 
-          ## 4. 除外済みリスト (Rejected: 1語)
+          ## 4. 棄却した語 (Rejected: 1語)
 
           - [ ] **StayRejected** (すていりじぇくてっど)
         MD
@@ -601,35 +632,36 @@ module VivlioStarter
         assert_equal ['StayRejected'], @generator.parse_rejected_section_all.map { it['term'] }
       end
 
-      # 2,000 行を超えるファイルなので、末尾に何語あるかを先頭で言っておかないと
-      # 「除外済みリストが無くなった」と読まれる
-      def test_legend_tells_how_many_terms_are_in_the_rejected_list
+      # 棄却した語の数は 4 節の見出しに出す。次の本へ持ち運べることも添える
+      def test_rejected_section_shows_the_count_and_how_to_carry_it
         @generator.generate!(terms: [], high_candidates: [], low_candidates: [],
                              rejected: [{ 'term' => 'Bad', 'yomi' => 'ばっど' },
                                         { 'term' => 'Worse', 'yomi' => 'わーす' }])
         content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
 
-        assert_includes content, '「除外済みリスト」（現在 2 語）に集まります'
+        assert_includes content, '## 4. 棄却した語（2語）'
+        assert_includes content, 'vs index:export'
       end
 
-      # 0 語のときに「（現在 0 語）」と言うのは不要な念押し
-      def test_legend_omits_the_count_when_nothing_is_rejected
-        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected: [])
-        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+      # 古い形式（節の見出しが違う）のファイルを見分ける。apply が読み違えないように
+      def test_current_format_rejects_old_section_headings
+        File.write(ReviewMarkdownGenerator::REVIEW_FILE, "## 1. 登録済み用語の確認 (Terms: 0語)\n\n## 4. 除外済みリスト (Rejected: 0語)\n")
+        refute @generator.current_format?
 
-        assert_includes content, '「除外済みリスト」に集まります'
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected: [])
+        assert @generator.current_format?
       end
 
       # --- phase: parse_yomi_changes tests ---
 
       def test_parse_yomi_changes_extracts_from_terms_section
         content = <<~MD
-          ## 1. 登録済み用語の確認 (Terms: 1語)
+          ## 1. 登録済みの語 (Terms: 1語)
 
           - [x] **Ruby** (るびー・かいてい)
             - 01-intro - "context"
 
-          ## 2. 推奨候補 (High Candidates: 0語)
+          ## 2. 推奨する語 (High Candidates: 0語)
         MD
         File.write('_index_glossary_review.md', content)
 
@@ -654,8 +686,8 @@ module VivlioStarter
 
       # --- phase: 見出しから拾った短い語（改善案 #98） ---
 
-      def heading_candidate(term, short: false)
-        { 'term' => term, 'yomi' => term, 'score' => 100.0, 'is_new' => true, 'short_heading' => short,
+      def heading_candidate(term)
+        { 'term' => term, 'yomi' => term, 'score' => 100.0, 'is_new' => true,
           'contexts' => [{ 'chapter' => '42-frontispiece', 'context' => "#{term}の文脈" }] }
       end
 
@@ -690,37 +722,14 @@ module VivlioStarter
         assert_equal ['61'], @generator.parse_main_references['図番号']
       end
 
-      # 機械で分けられない短い語は、候補の中に散らさず末尾の小節にまとめる
-      # 推奨・一般の両方から 1 か所（3 節の末尾）に集め、推奨の帯の語を先に並べる（改善案 #99）
-      def test_short_heading_terms_are_gathered_in_one_place
-        md = generate_candidates(high: [heading_candidate('扉絵', short: true), heading_candidate('図番号'), heading_candidate('項目', short: true)],
-                                 low: [heading_candidate('目安', short: true), heading_candidate('派生画像')])
-        high = md[/^## 2\..*?(?=^## 3\.)/m]
-        low = md[/^## 3\..*?(?=^## 4\.)/m]
+      # 見出しから拾った短い語も、他の候補と同じ並びに置く（小節も注記も付けない。§3.2）
+      def test_short_heading_words_sit_among_other_candidates
+        md = generate_candidates(high: [heading_candidate('扉絵'), heading_candidate('図番号')],
+                                 low: [heading_candidate('目安')])
 
-        refute_includes high, '**扉絵**'
-        assert_includes high, '見出しから拾った 2 字の語が 2 語あります'
-        assert_equal 1, md.scan('### 見出しから拾った短い語').size
-        assert_operator low.index('**派生画像**'), :<, low.index('### 見出しから拾った短い語（3語）')
-        assert_operator low.index('**項目**'), :<, low.index('**目安**'), '推奨候補の帯の語を先に並べる'
-        assert_operator low.index('**扉絵**'), :<, low.index('**目安**')
-        assert_includes low, 'vs index:export', '外した語を次の本へ持ち運べることを添える'
-      end
-
-      def test_no_subsection_without_short_heading_terms
-        refute_includes generate_candidates(high: [heading_candidate('図番号')]), '見出しから拾った短い語'
-      end
-
-      # 小節の案内文が、直前の候補の説明文として読まれない（説明文は字下げした行）
-      def test_subsection_guidance_is_not_read_as_a_definition
-        md = generate_candidates(high: [heading_candidate('図番号'), heading_candidate('扉絵', short: true)])
-        File.write(ReviewMarkdownGenerator::REVIEW_FILE,
-                   md.sub('- [ ] `NEW!` **図番号**', '- [g] `NEW!` **図番号**')
-                     .sub(/(\*\*図番号\*\*[^\n]*\n(?:  - [^\n]*\n)*)/) { "#{::Regexp.last_match(1)}\n  図に振る番号。\n" })
-
-        approved = @generator.parse_glossary_approved.find { it['term'] == '図番号' }
-
-        assert_equal '図に振る番号。', approved['definition']
+        refute_includes md, '見出しから拾った'
+        assert_includes md[/^## 2\..*?(?=^## 3\.)/m], '**扉絵**'
+        assert_includes md[/^## 3\..*?(?=^## 4\.)/m], '**目安**'
       end
     end
   end

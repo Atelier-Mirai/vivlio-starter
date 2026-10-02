@@ -262,10 +262,10 @@ index:
 
   candidate_pool: 3.0 # 目安語数の何倍までを候補として提示するか
 
-  auto_approve: false # true … 推奨候補を自動で辞書へ登録する。
+  auto_approve: false # true … 推奨する語を自動で辞書へ登録する。
                       # false（既定）… レビューファイルで著者が選ぶ。
 
-  common_term_ratio: 0.5 # この比率以上の章に出る語は「一般語」として索引から外すことを推奨する
+  common_term_ratio: 0.5 # この比率以上の章に出る語は「一般語」として、レビューファイルで外す印を付ける
 
   reference_style: main_and_sub # 参照の出し方
                                 # main_and_sub … 主要参照を太字で先頭に置き、
@@ -285,7 +285,7 @@ glossary:
   title: "用語集" # 用語集ページのタイトル
 
   require_definition: false # 説明文を必須にするか
-                            # true の場合、[g] フラグで説明文がないとエラー
+                            # true の場合、[g] の語に説明文がないとエラー
 
   max_definition_length: 500 # 説明文の最大文字数（超過した場合は警告）
                              # Markdown 装飾を除去した文字数で判定

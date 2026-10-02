@@ -38,12 +38,12 @@ class TestProseChecker < Minitest::Test
   MazegakiDictionary = VivlioStarter::CLI::Lint::MazegakiDictionary
 
   # 原稿を一時ファイルへ書いて検査する（check はパスを受け取るため）
-  def check(body, disabled_rules: [], parenthetical_max: nil, sentence_max: nil)
+  def check(body, disabled_rules: [], parenthetical_max: nil, sentence_max: nil, index_terms: [])
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'chapter.md')
       File.write(path, body)
       PC.check(path, disabled_rules: disabled_rules, parenthetical_max: parenthetical_max,
-                     sentence_max: sentence_max)
+                     sentence_max: sentence_max, index_terms: index_terms)
     end
   end
 
@@ -1030,5 +1030,44 @@ class TestProseChecker < Minitest::Test
 
     assert_equal [1, 1, 1], rows.map { it[:count] }, '3 つとも同数'
     assert_equal %w[5 17 30], rows.map { it[:lines] }, '同数なら出現行の早い順'
+  end
+
+  # --- 辞書の語と空白だけ違う書き方（index-term-spacing・改善案 #102）---
+
+  TERMS = ['Type 3 フォント', 'Type 3', '閲覧用 PDF', 'PDF'].freeze
+
+  # 空白だけ違う書き方を、辞書の綴りと直し方を添えて知らせる
+  def test_should_report_spacing_mismatches_with_dictionary_terms
+    findings = check("Type3 フォント対策と閲覧用PDF を作ります。\n", index_terms: TERMS)
+
+    assert_equal %w[index-term-spacing index-term-spacing], findings.map(&:rule)
+    assert_equal 'Type3 フォント => Type 3 フォント（索引・用語集の綴り）', findings.first.label
+    assert_equal '閲覧用PDF => 閲覧用 PDF（索引・用語集の綴り）', findings.last.label
+  end
+
+  # 長い語の揺れの範囲の中は、短い語（Type 3）で 2 度数えない
+  def test_should_report_overlapping_terms_once
+    findings = check("Type3 フォントです。\n", index_terms: TERMS)
+
+    assert_equal 1, findings.size
+  end
+
+  # 辞書どおりの書き方・コードの中・英字の語の途中は指摘しない
+  def test_should_not_report_matching_terms_code_or_word_parts
+    body = "Type 3 フォントと閲覧用 PDF です。`Type3 フォント` はコード。XType3 フォントは別の語。\n"
+
+    assert_empty check(body, index_terms: TERMS)
+  end
+
+  # --fix は辞書の綴りへ直す。コードの中は直さない
+  def test_should_fix_spacing_to_the_dictionary_term
+    fixed = PC.fix_index_term_spacing("Type3 フォント対策と閲覧用PDF。`Type3 フォント`\n", TERMS)
+
+    assert_equal "Type 3 フォント対策と閲覧用 PDF。`Type3 フォント`\n", fixed
+  end
+
+  def test_index_term_spacing_is_fixable_and_can_be_disabled
+    assert_includes PC::FIXABLE_RULES, 'index-term-spacing'
+    assert_empty check("Type3 フォント\n", index_terms: TERMS, disabled_rules: ['index-term-spacing'])
   end
 end

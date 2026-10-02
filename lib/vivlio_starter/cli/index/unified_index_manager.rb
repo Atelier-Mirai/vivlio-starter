@@ -25,6 +25,7 @@ require_relative 'index_match_scanner'
 # IndexCommands.without_excluded_chapters（索引の対象から外す章）。index.rb は
 # このファイルをメソッドの中で読むので、ここから読んでも循環しない
 require_relative '../index'
+require_relative 'manuscript_markup'
 require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
@@ -55,7 +56,9 @@ module VivlioStarter
 
       attr_reader :terms_manager, :queue_manager, :markdown_generator
 
-      def initialize
+      # @param input [IO] 棄却するときの問い合わせ（§3.1.3）の答えを読む先。テストで差し替える
+      def initialize(input: $stdin)
+        @input = input
         @terms_manager = UnifiedTermsManager.new
         @queue_manager = ReviewQueueManager.new
         @markdown_generator = ReviewMarkdownGenerator.new
@@ -88,12 +91,11 @@ module VivlioStarter
         # R8: 辞書へ書いた登録内容を種別ごとに集め、既定ログレベルで要約表示する
         dictionary_writes = {}
 
-        # 1. 手動登録の語を検出して統合辞書に登録
-        manual_terms = extract_manual_markup_terms(chapters)
-        if manual_terms.any?
-          added = @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
+        # 1. 手動登録の語のうち、辞書に無い語を登録する
+        fresh_terms = fresh_manual_terms(extract_manual_markup_terms(chapters))
+        if fresh_terms.any?
+          added = @terms_manager.merge_terms!(fresh_terms, flags: 'i', source: 'manual_markup')
           dictionary_writes['手動登録'] = added if added.any?
-          Common.log_info("手動登録（[用語|読み]）から #{manual_terms.size} 件の用語を登録しました")
         end
 
         # auto_discovery が無効の場合、自動候補抽出をスキップ
@@ -109,8 +111,10 @@ module VivlioStarter
         candidates = extract_candidates(chapters)
         Common.log_info("候補抽出: #{candidates.size}件")
 
-        # 3. 既に辞書にある語とリジェクト済みの語を落とす（＝選べる候補だけ残す）
+        # 3. 既に辞書にある語とリジェクト済みの語を落とす（＝選べる候補だけ残す）。
+        #    使っていない語のうち原稿に出てくる語は、説明文を添えて候補に戻す（§3.3.2）
         selectable, rejected_count_in_candidates = selectable_candidates(candidates)
+        selectable = with_returning_unused_terms(selectable, chapters)
 
         # 4. 登録語と同じ土俵で並べ、推奨候補／一般候補／見直し候補に分ける。
         #    スコアの絶対値では切らない——閾値は書籍の規模で意味が変わるうえ、
@@ -129,24 +133,25 @@ module VivlioStarter
           dictionary_writes['自動承認'] = added if added.any?
         end
 
-        # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与。
-        #    見直し候補（順位が目安語数の外に出た登録語）も渡し、レビューで一覧できるようにする
+        # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与
         terms_with_context = enrich_terms_with_context(
-          @terms_manager.load_terms, chapters,
-          scores: candidate_scores_by_name(selectable, candidates),
-          review_terms: bands&.review&.map(&:term)&.to_set || Set[]
+          @terms_manager.load_terms.reject { it['flags'].to_s.empty? }, chapters,
+          scores: candidate_scores_by_name(selectable, candidates)
         )
 
         # 7. リジェクト済み用語に文脈とスコアを付与
         # candidatesからスコアを復元できるように渡す
         rejected_with_context = enrich_rejected_with_context(candidates)
 
-        # 8. _index_review.md を生成
+        # 8. _index_review.md を生成。原稿に出てこない語は 5 節にまとめる（§3.3.1）
+        present_terms, absent_terms = terms_with_context.partition { Array(it['contexts']).any? }
+        present_rejected, absent_rejected = rejected_with_context.partition { Array(it['contexts']).any? }
         @markdown_generator.generate!(
-          terms: terms_with_context,
+          terms: present_terms,
           high_candidates: high_candidates,
           low_candidates: low_candidates,
-          rejected: rejected_with_context
+          rejected: present_rejected,
+          absent: absent_entries(absent_terms, absent_unused_terms(chapters), absent_rejected)
         )
 
         # 9. 走査した章集合を辞書へ記録（R7: ビルド時の章追加検知に使う）
@@ -172,6 +177,14 @@ module VivlioStarter
           return
         end
 
+        # 節の見出しが変わった（index-glossary-registration-spec.md §4.1）。古い形式のまま
+        # 読むと、節の境目を見失って棄却した語の欄を登録済みとして読み違えるので、止める
+        unless @markdown_generator.current_format?
+          Common.log_error("#{ReviewMarkdownGenerator::REVIEW_FILE} が古い形式です",
+                           detail: 'vs index:auto で作り直してから、もう一度 vs index:apply を実行してください')
+          return
+        end
+
         # --- Phase: 索引処理 ---
         index_approved = @markdown_generator.parse_index_approved
         index_rejected = @markdown_generator.parse_index_rejected
@@ -193,6 +206,15 @@ module VivlioStarter
         dropped_i = []
         dropped_g = []
 
+        # --- Phase: 記録ごと消す（[DELETE]・§3.3.3） ---
+        # 原稿に印の残る語は、外してよいか確かめる。断られた語は消さない
+        deleted = @markdown_generator.parse_deleted
+        declined_delete = confirm_markup_removal(deleted, action: '削除')
+        (deleted - declined_delete.to_a).each do |term|
+          delete_record!(term)
+          changes_made = true
+        end
+
         # --- Phase: 索引承認 ---
         if index_approved.any?
           @terms_manager.merge_terms!(index_approved, flags: 'i', source: 'auto_extracted')
@@ -208,6 +230,12 @@ module VivlioStarter
           changes_made = true
         end
 
+        # 載せると決めた語は、棄却した語の一覧に残さない（4 節・5 節のどちらで印を付けても）
+        rejected_names = @queue_manager.load_rejected_terms.to_set
+        (index_approved + glossary_approved).map { it['term'] }.uniq.each do |term|
+          @queue_manager.unreject_term_by_name!(term) if rejected_names.include?(term)
+        end
+
         # [ig] → [i] に変更された場合: g フラグを除去
         glossary_approved_names = glossary_approved.map { it['term'] }
         index_only = index_approved.reject { glossary_approved_names.include?(it['term']) }
@@ -217,6 +245,16 @@ module VivlioStarter
           @terms_manager.remove_flag!(term['term'], 'g')
           Common.log_info("用語集フラグを除去しました（索引のみ）: #{term['term']}")
           changes_made = true
+        end
+
+        # --- Phase: 棄却する語の、原稿の印（§3.1.3） ---
+        # 辞書から消える語に原稿の印があれば、外してよいか確かめる。断られた語は棄却しない
+        # ——印を残したまま棄却すると、辞書と原稿が食い違う
+        declined = confirm_markup_removal(leaving_terms(index_rejected, glossary_rejected, both_rejected))
+        if declined.any?
+          index_rejected = index_rejected.reject { declined.include?(it['term']) }
+          glossary_rejected = glossary_rejected.reject { declined.include?(it['term']) }
+          both_rejected = both_rejected.reject { declined.include?(it['term']) }
         end
 
         # --- Phase: 索引のみリジェクト（[-i]） ---
@@ -283,23 +321,38 @@ module VivlioStarter
 
         # 明示的にリジェクトされた用語は孤立除去の対象外
         # （[-i] で i を除去した後に残る g を誤って除去しないため）
-        explicitly_rejected = (index_rejected + glossary_rejected + both_rejected).map { it['term'] }.uniq
+        # 原稿の印を残して棄却をやめた語も、ここに含めて登録を保つ
+        explicitly_rejected = ((index_rejected + glossary_rejected + both_rejected).map { it['term'] } +
+                               declined.to_a + declined_delete.to_a).uniq
+
+        # 外すのは、レビューファイルに行があって印の無い語だけ。行の無い語は著者が
+        # 判断していないので触らない——表示しない登録語（脚注参照やカラーコードの形をした
+        # 自動抽出の語）まで、apply のたびにフラグを外していた
+        # （index-glossary-registration-spec.md §3.1.4）
+        listed = @markdown_generator.listed_term_names
 
         # 索引フラグの孤立除去
-        stale_index = @terms_manager.index_term_names - index_approved_names - unreject_index_names - explicitly_rejected
+        stale_index = (@terms_manager.index_term_names - index_approved_names - unreject_index_names -
+                       explicitly_rejected) & listed
+        # [ ] で外したとき、説明文のある語は使っていない語として残す（§3.3.2）
         stale_index.each do |term_name|
-          @terms_manager.remove_flag!(term_name, 'i')
+          @terms_manager.remove_flag!(term_name, 'i', keep_unused: true)
           Common.log_info("索引フラグを除去: #{term_name}")
           changes_made = true
         end
 
         # 用語集フラグの孤立除去
-        stale_glossary = @terms_manager.glossary_term_names - glossary_approved_names_all - unreject_glossary_names - explicitly_rejected
+        stale_glossary = (@terms_manager.glossary_term_names - glossary_approved_names_all - unreject_glossary_names -
+                          explicitly_rejected) & listed
         stale_glossary.each do |term_name|
-          @terms_manager.remove_flag!(term_name, 'g')
+          @terms_manager.remove_flag!(term_name, 'g', keep_unused: true)
           Common.log_info("用語集フラグを除去: #{term_name}")
           changes_made = true
         end
+
+        # --- Phase: 見出し語の綴りの修正（`- 綴り: …`・改善案 #103） ---
+        # ほかの印はいまの綴りで書かれているので、すべて反映した後に綴りを直す
+        changes_made = true if apply_spelling_changes!(@markdown_generator.parse_spelling_changes)
 
         # --- Phase: Section 4 同期処理 ---
         rejected_section_all = @markdown_generator.parse_rejected_section_all
@@ -334,7 +387,7 @@ module VivlioStarter
           rejected_total = both_rejected.size + dropped_i.size + dropped_g.size
           # 何をどれだけ適用したかを既定ログレベルでも 1 行で報告する
           Common.log_result("辞書を更新しました（索引 #{index_count} 件・用語集 #{glossary_count} 件・" \
-                            "リジェクト #{rejected_total} 件）", status: :success)
+                            "棄却 #{rejected_total} 件）", status: :success)
           Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
           Common.log_info('ページ生成は vs build 実行時に行われます')
         else
@@ -345,6 +398,90 @@ module VivlioStarter
         # _index_glossary_review.md は残す（再編集の可能性があるため）
         # vs build の clean 処理で削除される
         changes_made
+      end
+
+      # 辞書から消える語の名前。`i` だけの語の `[-i]`・`g` だけの語の `[-g]`・`[r]`。
+      # `ig` の語の `[-i]` は用語集に残るので含めない（原稿の印は用語集の語として扱われる）
+      def leaving_terms(index_rejected, glossary_rejected, both_rejected)
+        flags_of = ->(term) { @terms_manager.find_term(term)&.dig('flags').to_s }
+        (index_rejected.map { it['term'] }.select { flags_of.(it) == 'i' } +
+          glossary_rejected.map { it['term'] }.select { flags_of.(it) == 'g' } +
+          both_rejected.map { it['term'] }).uniq
+      end
+
+      # 棄却する語に原稿の印があれば、語ごとに確かめる。「はい」なら印を外し、
+      # 「いいえ」（Enter だけ・端末でない実行を含む）なら棄却をやめる。
+      # @param terms [Array<String>] 辞書から消える語
+      # @return [Set<String>] 棄却をやめた語
+      # @param action [String] 「棄却」か「削除」
+      def confirm_markup_removal(terms, action: '棄却')
+        paths = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
+        terms.each_with_object(Set[]) do |term, declined|
+          places = IndexCommands::ManuscriptMarkup.places(term, paths)
+          next if places.empty?
+
+          where = places.size > 1 ? "#{places.first} ほか #{places.size - 1} 箇所に" : "#{places.first} に"
+          if Common.confirm?("#{where} [#{term}] と書かれています。原稿の [] を外して#{action}しますか？", input: @input)
+            count = IndexCommands::ManuscriptMarkup.strip!(term, paths)
+            Common.log_result("原稿の [#{term}] を外しました（#{count} 箇所）", status: :success)
+          else
+            Common.log_warn("原稿の [#{term}] を残したので、#{action}しませんでした",
+                            detail: "#{action}するには、もう一度 vs index:apply を実行して「はい」と答えてください")
+            declined << term
+          end
+        end
+      end
+
+      # 見出し語の綴りを直す。新しい綴りが辞書にもうあれば直さずに知らせる。棄却した語の一覧に
+      # 新しい綴りがあれば外す（登録と棄却の両方に載らないように）
+      # @param changes [Hash{String => String}] いまの綴り → 新しい綴り
+      # @return [Boolean] 1 語でも直したか
+      def apply_spelling_changes!(changes)
+        changes.count do |old_name, new_name|
+          case @terms_manager.rename_term!(old_name, new_name)
+          when :renamed
+            @queue_manager.unreject_term_by_name!(new_name)
+            Common.log_result("「#{old_name}」の綴りを「#{new_name}」に直しました", status: :success)
+            confirm_manuscript_respelling(old_name, new_name)
+            true
+          when :taken
+            Common.log_warn("「#{old_name}」の綴りを直せませんでした: 「#{new_name}」はすでに辞書にあります",
+                            detail: '同じ語なら、どちらかを [DELETE] で消してから、もう一度直してください')
+            false
+          else false
+          end
+        end.positive?
+      end
+
+      # 原稿に古い綴りが残っていれば、原稿も直すか確かめる。索引の照合は大文字・小文字を
+      # 区別し、lint は空白の違いしか見ないので、残したままだと黙って索引から外れる。
+      # 「いいえ」（Enter だけ・端末でない実行を含む）なら原稿は触らずに知らせる。
+      def confirm_manuscript_respelling(old_name, new_name)
+        paths = IndexCommands.without_excluded_chapters(Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort)
+        places = IndexCommands::ManuscriptMarkup.spelling_places(old_name, new_name, paths)
+        return if places.empty?
+
+        written = places.map(&:last).uniq.map { "「#{it}」" }.join
+        where = places.size > 1 ? "#{places.first.first} ほか #{places.size - 1} 箇所に" : "#{places.first.first} に"
+        if Common.confirm?("原稿の #{where}#{written}があります。原稿も直しますか？", input: @input)
+          count = IndexCommands::ManuscriptMarkup.respell!(old_name, new_name, paths)
+          Common.log_result("原稿の#{written}を「#{new_name}」に直しました（#{count} 箇所）", status: :success)
+        else
+          Common.log_warn("原稿の#{written}を残しました（#{places.size} 箇所）",
+                          detail: "このままでは索引の「#{new_name}」に載りません。原稿を「#{new_name}」に書き換えてください")
+        end
+      end
+
+      # 語の記録を辞書・棄却した語の一覧の両方から消す（[DELETE]）。誤って登録した語の
+      # ゴミを残さないための操作で、棄却と違って「候補に出さない」という記録も残さない
+      def delete_record!(term)
+        removed = @terms_manager.remove_term!(term)
+        @queue_manager.unreject_term_by_name!(term)
+        if removed && !removed['definition'].to_s.strip.empty?
+          Common.log_warn("説明文ごと削除しました: #{term}")
+        else
+          Common.log_info("削除しました: #{term}")
+        end
       end
 
       # 用語を削除する。**定義文を持つ語は黙って消さない**
@@ -613,7 +750,7 @@ module VivlioStarter
       # 選べる候補だけを残す。既に辞書にある語とリジェクト済みの語を落とす。
       # @return [Array(Array<Hash>, Integer)] 候補と、リジェクトで落とした件数
       def selectable_candidates(candidates)
-        existing = @terms_manager.term_names
+        existing = @terms_manager.listed_term_names
         rejected = @queue_manager.load_rejected_terms
         rejected_count = 0
 
@@ -627,6 +764,37 @@ module VivlioStarter
         end
 
         [selectable, rejected_count]
+      end
+
+      # 使っていない語（§3.3.2）のうち、原稿に書き戻された語を候補に加える。抽出の経路が
+      # 拾っていない語もあるので、辞書の語として採点して足す。以前の説明文を添えるので、
+      # [g] にすれば書き直さずに戻る
+      def with_returning_unused_terms(selectable, chapters)
+        sources = context_source_chapters(chapters)
+        by_name = selectable.to_h { [it['term'], it] }
+        returning = @terms_manager.unused_terms.filter_map do |entry|
+          contexts = collect_contexts_for_term(entry['term'], sources)
+          next if contexts.empty?
+
+          base = by_name.delete(entry['term']) ||
+                 { 'term' => entry['term'], 'yomi' => entry['yomi'], 'contexts' => contexts,
+                   'score' => @extractor&.score_terms([entry])&.dig(entry['term']) || 0 }
+          base.merge('definition' => entry['definition'])
+        end
+        by_name.values + returning
+      end
+
+      # 原稿に出てこない使っていない語
+      def absent_unused_terms(chapters)
+        sources = context_source_chapters(chapters)
+        @terms_manager.unused_terms.select { collect_contexts_for_term(it['term'], sources).empty? }
+      end
+
+      # 5 節（原稿に出てこない語）に並べる項目。種類（registered / unused / rejected）を添える
+      def absent_entries(registered, unused, rejected)
+        registered.map { it.merge('kind' => 'registered') } +
+          unused.map { it.merge('kind' => 'unused') } +
+          rejected.map { it.merge('kind' => 'rejected') }
       end
 
       # 表示用のスコア表（用語 → スコア）。辞書には持たないので毎回作る。
@@ -648,7 +816,11 @@ module VivlioStarter
       # ——番号だけだと改番で意味が変わり、スラッグだけだと同名章と衝突する。
       # 解決は TokenResolver（章トークン解釈の正典）に委ねる。
       #
-      # 行を消した語は nil が来る＝指定の解除。key? で見て明示的に nil を渡す。
+      # 主要参照の欄が空の索引語（`[i]`・`[ig]`）は「付けない」と記録する（`main: []`）。
+      # 辞書の `main` が無いのは「まだ決めていない」で、次の `vs index:auto` が推測（`m?`）を
+      # 付ける。空の配列と区別しないと、著者が `m?12` を消して「付けない」と決めても、
+      # 次の実行で推測が付き直し、そのまま apply すると採用されていた
+      # （index-glossary-registration-spec.md §3.1.1・改善案 #101）。
       def apply_main_references!(main_references)
         return false if main_references.empty?
 
@@ -656,17 +828,38 @@ module VivlioStarter
         changed = false
 
         main_references.each do |term, tokens|
-          next unless @terms_manager.term_names.include?(term)
+          entry = @terms_manager.find_term(term) or next
 
-          chapters = tokens ? resolve_main_chapters(resolver, tokens, term) : nil
-          next if chapters == Array(@terms_manager.find_term(term)&.dig('main'))
+          # 主要参照は索引の機能なので、索引に載らない語（[-igm?21] で外した語など）には
+          # 書かれていても記録しない
+          next unless entry['flags'].to_s.include?('i')
+
+          chapters = if tokens then resolve_main_chapters(resolver, tokens, term)
+                     elsif declinable_main?(entry) then []
+                     else next
+                     end
+          next if !entry['main'].nil? && chapters == Array(entry['main'])
 
           @terms_manager.merge_terms!([{ 'term' => term, 'main' => chapters }], flags: '')
-          Common.log_info(chapters ? "主要参照を設定: #{term} → #{chapters.join(', ')}" : "主要参照を解除: #{term}")
+          log_main_reference_change(term, chapters, entry['main'])
           changed = true
         end
 
         changed
+      end
+
+      # 「主要参照を付けない」を記録できる語か。主要参照は索引の機能なので索引語に限り、
+      # 機能を切った本（`index.reference_style: all`）では記録しない
+      def declinable_main?(entry) = entry['flags'].to_s.include?('i') && !main_reference_disabled?
+
+      # 主要参照の変化を知らせる。まだ決めていなかった語に「付けない」を記録するのは、
+      # 初回の apply で登録語の数だけ起きるので黙る
+      def log_main_reference_change(term, chapters, before)
+        if chapters.any?
+          Common.log_info("主要参照を設定: #{term} → #{chapters.join(', ')}")
+        elsif Array(before).any?
+          Common.log_info("主要参照を外しました: #{term}")
+        end
       end
 
       # 章トークンを basename へ解決する。解決できないトークンは捨てずに知らせる
@@ -753,13 +946,23 @@ module VivlioStarter
         plan = IndexCommands::IndexPlanReporter::Plan.new(
           chapters:,
           prose_chars:,
-          registered_terms: registered.size,
-          candidate_scores: candidates.map { it['score'] },
+          registration: plan_registration(registered),
           estimate:,
           all_estimates: estimator.all_presets,
           bands: build_bands(registered, candidates, estimate, extractor)
         )
         IndexCommands::IndexPlanReporter.new(plan)
+      end
+
+      # plan に出す登録の内訳。主要参照が決まっていない語は、辞書に `main` が無い索引語
+      # （`main: []` は「付けない」と決めた語なので数えない。index-glossary-registration-spec.md §3.1.1）
+      def plan_registration(index_terms)
+        IndexCommands::IndexPlanReporter::Registration.new(
+          index: index_terms.size,
+          glossary: @terms_manager.glossary_terms.size,
+          rejected: @queue_manager.rejected_count,
+          undecided_main: main_reference_disabled? ? nil : index_terms.count { it['main'].nil? }
+        )
       end
 
       # 登録語と候補を同じ土俵で並べて帯に分ける。
@@ -875,10 +1078,13 @@ module VivlioStarter
           content_without_code.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN) do |term, yomi|
             next if term.nil? || term.empty?
 
+            lineno = content_without_code[0...::Regexp.last_match.begin(0)].count("\n") + 1
             context = extract_surrounding_context(content, term)
             terms << {
               'term' => term.strip,
               'yomi' => yomi.strip,
+              'explicit_yomi' => true,
+              'place' => "#{chapter_name}:#{lineno}",
               'contexts' => [{ 'chapter' => chapter_name, 'context' => context }]
             }
           end
@@ -892,10 +1098,10 @@ module VivlioStarter
           # IndexMarkup.other_notation? で除く。マーカーの判定は行頭からの並びを見るので、
           # 行ごとに照合する（改善案 #99: 21 章の `- [x]` を単位・記号として警告していた）
           labels = IndexMarkup.link_labels(content_without_code)
-          matches = content_without_code.each_line.flat_map do |line|
-            line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).map { ::Regexp.last_match }
+          matches = content_without_code.each_line.with_index(1).flat_map do |line, lineno|
+            line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).map { [::Regexp.last_match, lineno] }
           end
-          matches.each do |match|
+          matches.each do |match, lineno|
             term = match[1]
             next if IndexMarkup.skip_term?(term)
             next if IndexMarkup.other_notation?(match, labels)
@@ -912,6 +1118,7 @@ module VivlioStarter
             terms << {
               'term' => term.strip,
               'yomi' => yomi,
+              'place' => "#{chapter_name}:#{lineno}",
               'contexts' => [{ 'chapter' => chapter_name, 'context' => context }]
             }
           end
@@ -930,8 +1137,57 @@ module VivlioStarter
 
         warn_skipped_short_terms(skipped_short_terms)
 
-        # 重複を除去
-        terms.uniq { |t| t['term'] }
+        # 出現ごとに返す（同じ語が何か所にあるかを、棄却した語の知らせに使う）
+        terms
+      end
+
+      # 手動登録の語のうち、登録してよい語（1 語 1 件）。
+      #
+      # 原稿の `[語]` は、**辞書に無い語を登録する入口**である。辞書にすでにある語は、
+      # 著者がレビューで決めた登録（用語集だけ・主要参照）を変えない——以前は `i` を
+      # 足し直し、`[g]` にした語が `ig` へ戻っていた。棄却した語は登録せず、原稿の印を
+      # 外すか除外を解くよう知らせる（index-glossary-registration-spec.md §3.1.2・改善案 #100）。
+      # @param occurrences [Array<Hash>] extract_manual_markup_terms の戻り（出現ごと）
+      # @return [Array<Hash>]
+      def fresh_manual_terms(occurrences)
+        known = @terms_manager.load_terms.to_h { [it['term'], it] }
+        rejected = @queue_manager.load_rejected_terms.to_set
+
+        occurrences.group_by { it['term'] }.filter_map do |term, found|
+          places = found.map { it['place'] }.compact.uniq
+          # 使っていない語（flags が空）は、原稿に書き戻した語として登録し直す
+          if (entry = known[term]) && !entry['flags'].to_s.empty?
+            warn_markup_yomi_mismatch(term, entry, found)
+            next
+          end
+          if rejected.include?(term)
+            warn_rejected_markup(term, places)
+            next
+          end
+          found.first.except('place', 'explicit_yomi')
+        end
+      end
+
+      # 原稿に添えた読みが辞書の読みと違う。辞書を正とし、直す場所を案内する
+      def warn_markup_yomi_mismatch(term, entry, found)
+        written = found.select { it['explicit_yomi'] }.map { it['yomi'] }.uniq - [entry['yomi']]
+        return if written.empty?
+
+        Common.log_warn(
+          "原稿の [#{term}|#{written.first}] の読みが、辞書の読み（#{entry['yomi']}）と違います（#{found.first['place']}）",
+          detail: "辞書の読みを使います。直すときは #{ReviewMarkdownGenerator::REVIEW_FILE} の ( ) を書き換えて vs index:apply を実行してください"
+        )
+      end
+
+      # 棄却した語に、原稿で印が付いている
+      def warn_rejected_markup(term, places)
+        shown = places.first(3).join(', ')
+        shown += places.size > 3 ? " ほか #{places.size - 3} 箇所に" : " に"
+        Common.log_warn(
+          "#{shown} [#{term}] がありますが、棄却した語です。索引には載りません",
+          detail: "載せるなら #{ReviewMarkdownGenerator::REVIEW_FILE} の 4 節で [i] にして vs index:apply を実行してください。" \
+                  "載せないなら、原稿の [] を外してください"
+        )
       end
 
       # R9 でスキップした短い ASCII 語を警告する（警告親切方針: before→after ＋出現箇所）
@@ -978,9 +1234,7 @@ module VivlioStarter
             'term' => term,
             'yomi' => yomi,
             'score' => extractor.term_scores[term] || 0,
-            'contexts' => normalized_contexts,
-            # レビューで「見出しから拾った短い語」として 1 か所にまとめる
-            'short_heading' => extractor.short_heading_term?(term)
+            'contexts' => normalized_contexts
           }
         end
       end
@@ -991,13 +1245,17 @@ module VivlioStarter
       # @param terms [Array<Hash>] 用語のリスト
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 文脈付き用語のリスト
-      def enrich_terms_with_context(terms, chapters, scores: {}, review_terms: Set[])
+      def enrich_terms_with_context(terms, chapters, scores: {})
         context_sources = context_source_chapters(chapters)
         scanned = chapters.map { File.basename(it.to_s, '.md') }.to_set
-        spreads = IndexCommands::TermSpread.measure(terms, chapters)
+        # 一般語（外す印の推奨）と主要参照の推測は、索引の仕組みなので索引に載せている語だけに
+        # 当てる。用語集だけの語に当てると、行の印が [-im?00] になって g が消え、そのまま
+        # apply すると用語集から外れていた（index-glossary-registration-spec.md §2.1）
+        index_terms = terms.select { it['flags'].to_s.include?('i') }
+        spreads = IndexCommands::TermSpread.measure(index_terms, chapters)
         common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
                                           .to_h { [it.term, it] }
-        suggestions = suggest_main_references(terms, chapters)
+        suggestions = suggest_main_references(index_terms, chapters)
 
         terms.map do |term|
           enriched = term.dup
@@ -1018,17 +1276,13 @@ module VivlioStarter
             enriched['main_suggested'] = true
           end
 
-          # 広く散らばりすぎている語は「一般語」として別枠で提示する（R5）。
+          # 広く散らばりすぎている語は「一般語」として行末に注記し、外す印を推奨する（R5）。
           # 外すか残すかは著者が決めるので、ここでは事実を添えるだけ。
-          #
-          # 順位が目安語数の外に出た登録語は「見直し候補」。一般語と重なることが
-          # あるので、その場合は一般語を優先する——同じ語を 2 つの枠に出すと、
-          # どちらの助言に従えばよいのか分からなくなる。
+          # 順位で決める「見直し候補」はなくした——著者が選んだ語の 4 割が出て、
+          # 機械が当てられなかった語を並べるだけだった（index-glossary-registration-spec.md §5.2）
           if (spread = common[term['term']])
             enriched['common_term'] = true
             enriched['spread_text'] = spread.to_s
-          elsif review_terms.include?(term['term'])
-            enriched['review_candidate'] = true
           end
 
           # flags に基づいて索引・用語集の登録状態を反映
@@ -1057,10 +1311,12 @@ module VivlioStarter
         rejected.map do |item|
           enriched = item.dup
 
-          # スコアはいまの候補のものを優先する。除外済みリストに残るのは外した時点の値で、
-          # 数え方を直しても古いまま出ていた（「TeX」が「LaTeX」込みの 285 点・改善案 #99）
+          # スコアはいまの候補のものだけを出す。棄却した語のファイルに残るのは外した時点の値で、
+          # 数え方を直しても古いまま出ていた（「TeX」が「LaTeX」込みの 285 点・改善案 #99）。
+          # いまの候補に無い語（原稿から消えた語など）は、古い値も出さない——
+          # 「Step - スコア: 1790.0 - [原稿に出現しません]」と食い違って見えていた
           candidate = candidates.find { it['term'] == item['term'] }
-          enriched['score'] = candidate['score'] if candidate&.dig('score')
+          enriched['score'] = candidate&.dig('score')
 
           # 文脈は登録済み用語と同じく毎回原稿から拾う（棄却リストの写しは使わない）
           enriched['contexts'] = collect_contexts_for_term(item['term'], chapters)
@@ -1201,17 +1457,17 @@ module VivlioStarter
       # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）。
       # 帯の内訳や目安の語数は出さない（`vs index:plan` の役目）。
       def report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count, rejected_listed = 0)
-        approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 件・" : ''
+        approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 語・" : ''
         # 除外済みの件数も載せる。候補の数だけを告げると「外した語はもう出てこない」
         # と読めるが、実際は末尾に一覧があり、そこが戻す唯一の入口である。
-        listed = rejected_listed.positive? ? "・除外済み #{rejected_listed} 件" : ''
+        listed = rejected_listed.positive? ? "・棄却した語 #{rejected_listed} 語" : ''
         Common.log_summary(
           "レビューファイルを生成しました: #{approved}" \
-          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件#{listed}",
+          "推奨する語 #{high_candidates.size} 語・残りの語 #{low_candidates.size} 語#{listed}",
           detail: "#{ReviewMarkdownGenerator::REVIEW_FILE} を編集後、vs index:apply を実行してください"
         )
 
-        Common.log_info("リジェクト設定により #{rejected_count} 件の候補を除外しました") if rejected_count.positive?
+        Common.log_info("棄却した語 #{rejected_count} 語を候補から外しました") if rejected_count.positive?
       end
     end
   end

@@ -74,7 +74,7 @@ module VivlioStarter
         refute_includes terms_section, '**この 49 ページというずれは本書での値です**'
         refute_includes terms_section, '**アルファ**'
         assert_includes terms_section, '**Ruby**'
-        assert_includes terms_section, 'Terms: 1語', '登録されるのは [Ruby] だけ'
+        assert_includes terms_section, '## 1. 登録済みの語（1語）', '登録されるのは [Ruby] だけ'
       end
 
       def test_auto_process_excludes_code_fences
@@ -195,7 +195,7 @@ module VivlioStarter
 
         output, = capture_io { @manager.auto_process!(['10-intro']) }
 
-        assert_includes output, '🔍 レビューファイルを生成しました: 推奨候補'
+        assert_includes output, '🔍 レビューファイルを生成しました: 推奨する語'
         assert_equal 1, output.scan('vs index:apply を実行してください').size
         refute_includes output, 'いまの目安'
         refute_includes output, '末尾から戻せます'
@@ -237,6 +237,332 @@ module VivlioStarter
         end
 
         assert_equal ['23-figures'], enriched.first['contexts'].map { it['chapter'] }
+      end
+
+      # --- phase: 主要参照を付けない判断を残す（index-glossary-registration-spec.md §3.1.1） ---
+
+      def write_markdown_chapter
+        File.write('contents/21-intro.md', <<~MD)
+          # Markdown 入門
+
+          Markdown は軽量マークアップ言語です。Markdown の記法を学びます。
+        MD
+      end
+
+      def review_line(term) = File.read('_index_glossary_review.md')[/^- \[[^\]]*\][^\n]*\*\*#{Regexp.escape(term)}\*\*[^\n]*/]
+
+      # m? を消して [i] にすると「付けない」が残り、次の auto は推測を付けない
+      def test_removing_the_guess_records_no_main_reference
+        write_markdown_chapter
+        seed_unified_terms([{ name: 'Markdown', flags: 'i' }])
+        capture_io { @manager.auto_process!(['21-intro']) }
+        assert_match(/\A- \[im\?21\]/, review_line('Markdown'), '決めていない語には推測が付く')
+
+        File.write('_index_glossary_review.md', File.read('_index_glossary_review.md').sub(/^- \[im\?21\](?=[^\n]*\*\*Markdown\*\*)/, '- [i]'))
+        capture_io { @manager.apply_markdown_review! }
+        assert_equal [], UnifiedTermsManager.new.find_term('Markdown')['main']
+
+        capture_io { @manager.auto_process!(['21-intro']) }
+        assert_match(/\A- \[i\] /, review_line('Markdown'), '付けないと決めた語に推測を付け直さない')
+      end
+
+      # 推測を書き換えずに apply すれば、推測した章が入る（いまと同じ）
+      def test_unchanged_guess_is_adopted
+        write_markdown_chapter
+        seed_unified_terms([{ name: 'Markdown', flags: 'i' }])
+        capture_io { @manager.auto_process!(['21-intro']) }
+
+        capture_io { @manager.apply_markdown_review! }
+
+        assert_equal ['21-intro'], UnifiedTermsManager.new.find_term('Markdown')['main']
+      end
+
+      # 主要参照は索引の機能なので、用語集だけの語には「付けない」を記録しない
+      def test_glossary_only_term_gets_no_main_record
+        seed_unified_terms([{ name: 'WWW', flags: 'g' }])
+        write_review_with_rejected_items(terms: [{ term: 'WWW', yomi: 'WWW', flag: 'g' }], rejected: [])
+
+        capture_io { @manager.apply_markdown_review! }
+
+        refute UnifiedTermsManager.new.find_term('WWW').key?('main')
+      end
+
+      # --- phase: 原稿の [語] は辞書に無い語の入口（index-glossary-registration-spec.md §3.1.2） ---
+
+      # 用語集だけと決めた語は、原稿に [px|px] があっても索引のフラグを足さない
+      def test_markup_does_not_add_index_flag_to_glossary_only_term
+        File.write('contents/23-units.md', "# 単位\n\n幅は [px|px] で書きます。\n")
+        seed_unified_terms([{ name: 'px', flags: 'g', definition: '画素。' }])
+
+        capture_io { @manager.auto_process!(['23-units']) }
+
+        assert_equal 'g', UnifiedTermsManager.new.find_term('px')['flags']
+      end
+
+      # 棄却した語は登録せず、場所つきで知らせる
+      def test_markup_of_rejected_term_is_not_registered
+        File.write('contents/11-intro.md', "# はじめに\n\n最初に[セットアップ]を済ませます。\n")
+        ReviewQueueManager.new.save_rejected_terms([{ 'term' => 'セットアップ', 'yomi' => 'せっとあっぷ' }])
+
+        output, = capture_io { @manager.auto_process!(['11-intro']) }
+
+        assert_nil UnifiedTermsManager.new.find_term('セットアップ')
+        assert_includes output, '11-intro:3 に [セットアップ] がありますが、棄却した語です'
+      end
+
+      # 原稿に添えた読みが辞書と違っても、辞書の読みを使い、違いを知らせる
+      def test_markup_reading_does_not_override_the_dictionary
+        File.write('contents/21-intro.md', "# 入門\n\n[行頭|ぎょうがしら]をそろえます。\n")
+        File.write('config/index_glossary_terms.yml',
+                   { 'terms' => [{ 'term' => '行頭', 'yomi' => 'ぎょうとう', 'flags' => 'i', 'pattern' => '/行頭/' }] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+
+        output, = capture_io { @manager.auto_process!(['21-intro']) }
+
+        assert_equal 'ぎょうとう', UnifiedTermsManager.new.find_term('行頭')['yomi']
+        assert_includes output, '辞書の読み（ぎょうとう）と違います'
+      end
+
+      # --- phase: 棄却するとき、原稿の印も外す（index-glossary-registration-spec.md §3.1.3） ---
+
+      def reject_with_answer(answer, flags: 'i', mark: '-i')
+        File.write('contents/11-intro.md', "# はじめに\n\n最初に[セットアップ]を済ませます。\n")
+        seed_unified_terms([{ name: 'セットアップ', flags:, definition: (flags.include?('g') ? '準備。' : nil) }])
+        write_review_with_rejected_items(terms: [{ term: 'セットアップ', yomi: 'せっとあっぷ', flag: mark }], rejected: [])
+        manager = UnifiedIndexManager.new(input: StringIO.new(answer))
+        capture_io { manager.apply_markdown_review! }
+      end
+
+      def test_yes_strips_the_markup_and_rejects
+        output, = reject_with_answer("y\n")
+
+        assert_includes output, '11-intro:3 に [セットアップ] と書かれています'
+        assert_includes File.read('contents/11-intro.md'), '最初にセットアップを済ませます。'
+        assert_nil UnifiedTermsManager.new.find_term('セットアップ')
+        assert_includes load_rejected_terms, 'セットアップ'
+      end
+
+      # 印が何箇所もあれば、最初の場所と残りの数を示す
+      def test_confirmation_shows_the_first_place_and_the_rest
+        File.write('contents/11-intro.md', "# はじめに\n\n[セットアップ]を済ませます。\n\n[セットアップ]は一度だけです。\n")
+        seed_unified_terms([{ name: 'セットアップ', flags: 'i' }])
+        write_review_with_rejected_items(terms: [{ term: 'セットアップ', yomi: 'せっとあっぷ', flag: '-i' }], rejected: [])
+
+        output, = capture_io { UnifiedIndexManager.new(input: StringIO.new("y\n")).apply_markdown_review! }
+
+        assert_includes output, '11-intro:3 ほか 1 箇所に [セットアップ] と書かれています。'
+        assert_includes output, '原稿の [セットアップ] を外しました（2 箇所）'
+      end
+
+      # 「いいえ」（Enter だけ・端末でない実行も）なら、原稿も辞書も変えない
+      def test_no_keeps_the_markup_and_the_registration
+        output, = reject_with_answer("\n")
+
+        assert_includes output, '棄却しませんでした'
+        assert_includes File.read('contents/11-intro.md'), '[セットアップ]'
+        assert_equal 'i', UnifiedTermsManager.new.find_term('セットアップ')['flags']
+        refute_includes load_rejected_terms, 'セットアップ'
+      end
+
+      # 用語集に残る語（ig の [-i]）は辞書から消えないので、問い合わせない
+      def test_term_staying_in_the_glossary_is_not_asked
+        output, = reject_with_answer('', flags: 'ig')
+
+        refute_includes output, '❓'
+        assert_equal 'g', UnifiedTermsManager.new.find_term('セットアップ')['flags']
+        assert_includes File.read('contents/11-intro.md'), '[セットアップ]'
+      end
+
+      # 古い形式のレビューファイルでは apply を止める。節の境目を読み違えると、
+      # 棄却した語の欄を登録済みとして読んでしまう（index-glossary-registration-spec.md §4.1）
+      def test_apply_stops_on_an_old_review_file
+        seed_unified_terms([{ name: 'CSS', flags: 'i' }])
+        File.write('_index_glossary_review.md', "## 1. 登録済み用語の確認 (Terms: 1語)\n\n- [ ] **CSS** (CSS)\n\n## 4. 除外済みリスト (Rejected: 0語)\n")
+
+        output, = capture_io { @manager.apply_markdown_review! }
+
+        assert_includes output, '古い形式です'
+        assert_equal ['CSS'], load_index_terms.map { it['term'] }, '辞書は変えない'
+      end
+
+      # 棄却した語のスコアは、いまの候補のものだけを出す。原稿から消えた語に古い値を出さない
+      def test_rejected_term_absent_from_candidates_shows_no_stale_score
+        File.write('contents/10-intro.md', "# はじめに\n\n本文です。\n")
+        ReviewQueueManager.new.save_rejected_terms([{ 'term' => 'Step', 'yomi' => 'Step', 'score' => 1790.0 }])
+
+        enriched = @manager.send(:enrich_rejected_with_context, [])
+
+        assert_nil enriched.first['score']
+      end
+
+      # --- phase: 原稿に出てこない語・使っていない語・[DELETE]（index-glossary-registration-spec.md §3.3） ---
+
+      def review_text = File.read('_index_glossary_review.md')
+
+      # 原稿に出てこない登録語は 5 節に [ ] で出る。そのまま apply すると外れ、説明文のある語は
+      # 使っていない語（flags が空）として残る。棄却はしない
+      def test_absent_registered_term_is_removed_but_keeps_its_definition
+        File.write('contents/33-index.md', "# 索引\n\n推奨する語を選びます。\n")
+        seed_unified_terms([{ name: '推奨候補', flags: 'ig', definition: '目安の内側の語。' }, { name: '見直し候補', flags: 'i' }])
+
+        capture_io { @manager.auto_process!(['33-index']) }
+        assert_includes review_text[/^## 5\..*\z/m], '**推奨候補**'
+        refute_includes review_text[/^## 1\..*?(?=^## 2\.)/m], '**推奨候補**'
+
+        capture_io { @manager.apply_markdown_review! }
+
+        kept = UnifiedTermsManager.new.find_term('推奨候補')
+        assert_equal '', kept['flags'], '索引にも用語集にも載せない'
+        assert_equal '目安の内側の語。', kept['definition']
+        assert_nil UnifiedTermsManager.new.find_term('見直し候補'), '説明文の無い語は辞書から消える'
+        refute_includes load_rejected_terms, '見直し候補', '棄却はしない'
+      end
+
+      # 使っていない語を原稿に書き戻すと、以前の説明文つきで候補に戻る
+      # （短い原稿では目安の語数が 0 になり帯に入らないので、候補の段で確かめる）
+      def test_unused_term_returns_as_a_candidate_with_its_definition
+        File.write('config/index_glossary_terms.yml',
+                   { 'terms' => [{ 'term' => '推奨候補', 'yomi' => 'すいしょうこうほ', 'flags' => '', 'definition' => '目安の内側の語。' }] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+        File.write('contents/33-index.md', "# 索引\n\n推奨候補を選びます。推奨候補は重要です。\n")
+
+        selectable, = @manager.send(:selectable_candidates, @manager.send(:extract_candidates, ['33-index']))
+        returning = @manager.send(:with_returning_unused_terms, selectable, ['33-index']).find { it['term'] == '推奨候補' }
+
+        assert_equal '目安の内側の語。', returning['definition']
+      end
+
+      # 候補の欄で [g] にすれば、残しておいた説明文ごと用語集に戻る
+      def test_unused_term_marked_glossary_comes_back_with_its_definition
+        File.write('config/index_glossary_terms.yml',
+                   { 'terms' => [{ 'term' => '推奨候補', 'yomi' => 'すいしょうこうほ', 'flags' => '', 'definition' => '目安の内側の語。' }] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+        @manager.markdown_generator.generate!(
+          terms: [], low_candidates: [], rejected: [],
+          high_candidates: [{ 'term' => '推奨候補', 'yomi' => 'すいしょうこうほ', 'score' => 100.0, 'definition' => '目安の内側の語。' }]
+        )
+        File.write('_index_glossary_review.md', review_text.sub('- [ ] **推奨候補**', '- [g] **推奨候補**'))
+
+        capture_io { @manager.apply_markdown_review! }
+
+        entry = UnifiedTermsManager.new.find_term('推奨候補')
+        assert_equal 'g', entry['flags']
+        assert_equal '目安の内側の語。', entry['definition']
+      end
+
+      # [DELETE] は辞書からも棄却した語の一覧からも消す
+      def test_delete_removes_the_record_everywhere
+        seed_unified_terms([{ name: 'Step', flags: 'i' }])
+        seed_rejected_terms(['Hz'])
+        File.write('_index_glossary_review.md', <<~MD)
+          ## 1. 登録済みの語（1語）
+          - [DELETE] **Step** (Step)
+          ## 4. 棄却した語（1語）
+          - [DELETE] **Hz** (Hz)
+          ## 5. 原稿に出てこない語（0語）
+        MD
+
+        capture_io { @manager.apply_markdown_review! }
+
+        assert_nil UnifiedTermsManager.new.find_term('Step')
+        refute_includes load_rejected_terms, 'Hz'
+        refute_includes load_rejected_terms, 'Step', '棄却もしない'
+      end
+
+      # 原稿に印の残る語の [DELETE] は、印を外してよいか確かめる。「いいえ」なら消さない
+      def test_delete_asks_about_markup_left_in_the_manuscript
+        File.write('contents/11-intro.md', "# はじめに\n\n[Step]を踏みます。\n")
+        seed_unified_terms([{ name: 'Step', flags: 'i' }])
+        write_review_with_rejected_items(terms: [{ term: 'Step', yomi: 'Step', flag: 'DELETE' }], rejected: [])
+
+        output, = capture_io { UnifiedIndexManager.new(input: StringIO.new("\n")).apply_markdown_review! }
+
+        assert_includes output, '原稿の [] を外して削除しますか？'
+        assert_equal 'i', UnifiedTermsManager.new.find_term('Step')['flags']
+      end
+
+      # 用語集だけの語には、一般語の外す印も主要参照の推測も付けない。付けると [-im?00] になって
+      # g が消え、そのまま apply すると用語集から外れていた
+      def test_glossary_only_term_keeps_its_mark_even_when_widespread
+        %w[10-a 11-b 12-c 13-d 14-e 15-f].each { File.write("contents/#{it}.md", "# 章\n\nVivlio Starter を使います。Vivlio Starter で本を作ります。\n") }
+        seed_unified_terms([{ name: 'Vivlio Starter', flags: 'g', definition: '電子書籍執筆システム。' }])
+
+        capture_io { @manager.auto_process!(%w[10-a 11-b 12-c 13-d 14-e 15-f]) }
+        assert_match(/^- \[g\] (`Today` )?\*\*Vivlio Starter\*\*/, review_text)
+
+        capture_io { @manager.apply_markdown_review! }
+        assert_equal 'g', UnifiedTermsManager.new.find_term('Vivlio Starter')['flags'], 'そのまま apply しても変わらない'
+      end
+
+      # --- phase: 見出し語の綴りを直す（`- 綴り: …`・改善案 #103） ---
+
+      def write_spelling_review(term, spelled, flag: 'ig')
+        File.write('_index_glossary_review.md', <<~MD)
+          ## 1. 登録済みの語（1語）
+          - [#{flag}m25] **#{term}** (らべるID)
+            - 25-cross-reference: #{term}を付けます。
+            - 綴り: #{spelled}
+
+            識別名。
+          ## 4. 棄却した語（0語）
+          ## 5. 原稿に出てこない語（0語）
+        MD
+      end
+
+      # 綴りだけを直し、読み・印・説明文・主要参照は残す。照合の綴り（pattern）も作り直す
+      def test_spelling_line_renames_the_term_and_keeps_the_rest
+        File.write('contents/25-cross-reference.md', "# 相互参照\n\nラベル ID を付けます。\n")
+        File.write('config/index_glossary_terms.yml', { 'terms' => [
+          { 'term' => 'ラベルID', 'yomi' => 'らべるID', 'flags' => 'ig', 'definition' => '識別名。',
+            'main' => ['25-cross-reference'], 'pattern' => '/ラベルID/' }
+        ] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+        write_spelling_review('ラベルID', 'ラベル ID')
+
+        capture_io { @manager.apply_markdown_review! }
+
+        terms = UnifiedTermsManager.new
+        assert_nil terms.find_term('ラベルID')
+        entry = terms.find_term('ラベル ID')
+        assert_equal ['ig', 'らべるID', '識別名。', ['25-cross-reference']], entry.values_at('flags', 'yomi', 'definition', 'main')
+        assert_equal '/ラベル\ ID/', entry['pattern']
+      end
+
+      # 新しい綴りがもう辞書にあれば直さずに知らせる
+      def test_spelling_line_does_not_overwrite_an_existing_term
+        seed_unified_terms([{ name: 'ラベルID', flags: 'ig', definition: '識別名。' }, { name: 'ラベル ID', flags: 'i' }])
+        write_spelling_review('ラベルID', 'ラベル ID')
+
+        output, = capture_io { @manager.apply_markdown_review! }
+
+        assert_includes output, 'すでに辞書にあります'
+        refute_nil UnifiedTermsManager.new.find_term('ラベルID')
+      end
+
+      # 原稿に古い綴りが残っていれば、原稿も直すか確かめる。「はい」なら原稿を直す
+      def test_spelling_line_offers_to_respell_the_manuscript
+        File.write('contents/25-cross-reference.md', "# 相互参照\n\nラベルID を付けます。ラベル ID も同じです。\n")
+        seed_unified_terms([{ name: 'ラベルID', flags: 'ig', definition: '識別名。' }])
+        write_spelling_review('ラベルID', 'ラベル id')
+
+        output, = capture_io { UnifiedIndexManager.new(input: StringIO.new("y\n")).apply_markdown_review! }
+
+        assert_includes output, '「ラベルID」の綴りを「ラベル id」に直しました'
+        assert_includes output, '原稿の 25-cross-reference:3 ほか 1 箇所に「ラベルID」「ラベル ID」があります。原稿も直しますか？'
+        assert_equal "# 相互参照\n\nラベル id を付けます。ラベル id も同じです。\n", File.read('contents/25-cross-reference.md')
+      end
+
+      # 「いいえ」なら原稿は触らず、索引に載らないことを知らせる。辞書の綴りは直す
+      def test_spelling_line_keeps_the_manuscript_when_declined
+        File.write('contents/25-cross-reference.md', "# 相互参照\n\nラベルID を付けます。\n")
+        seed_unified_terms([{ name: 'ラベルID', flags: 'ig', definition: '識別名。' }])
+        write_spelling_review('ラベルID', 'ラベル id')
+
+        output, = capture_io { UnifiedIndexManager.new(input: StringIO.new("\n")).apply_markdown_review! }
+
+        assert_includes output, 'このままでは索引の「ラベル id」に載りません'
+        assert_equal "# 相互参照\n\nラベルID を付けます。\n", File.read('contents/25-cross-reference.md')
+        refute_nil UnifiedTermsManager.new.find_term('ラベル id')
       end
 
       # R9 の逃げ道: 読み付き [eV|いーぶい] は従来どおり登録される
@@ -411,7 +737,7 @@ module VivlioStarter
 
         content = File.read('_index_glossary_review.md')
         # 候補セクションには表示されない（除外済みセクションに表示される）
-        assert_includes content, '除外済みリスト'
+        assert_includes content, '## 4. 棄却した語'
       end
 
       # --- phase: enrich_terms_with_context tests ---
@@ -678,38 +1004,44 @@ module VivlioStarter
         assert_includes rejected, 'JavaScript'
       end
 
-      def test_apply_section4_blank_flag_removes_from_glossary_terms
-        # 統合辞書に用語集用語がある
+      # 1 節の行で印を外した（[ ]）語は、用語集のフラグを失う
+      def test_apply_blank_flag_in_section1_removes_from_glossary_terms
         seed_unified_terms([{ name: 'WWW', flags: 'g' }])
+        write_review_with_rejected_items(terms: [{ term: 'WWW', yomi: 'WWW', flag: ' ' }], rejected: [])
 
-        # レビューファイル: 候補セクションに WWW あるが [g] なし
+        @manager.apply_markdown_review!
+
+        assert_empty load_glossary_terms
+      end
+
+      # レビューファイルに行の無い語は、著者が判断していないので触らない
+      # （index-glossary-registration-spec.md §3.1.4。表示しない登録語まで外れていた）
+      def test_apply_keeps_terms_absent_from_the_review_file
+        seed_unified_terms([{ name: 'WWW', flags: 'g' }, { name: 'CSS', flags: 'i' }])
         write_review_with_rejected_items(terms: [], rejected: [])
 
         @manager.apply_markdown_review!
 
-        # 用語集フラグが除去される
-        terms = load_glossary_terms
-        assert_empty terms
+        assert_equal ['WWW'], load_glossary_terms.map { it['term'] }
+        assert_equal ['CSS'], load_index_terms.map { it['term'] }
       end
 
+      # 1 節で印を外した（[ ]）語だけが索引から外れる。行の無い語（JavaScript）は残る
       def test_apply_stale_index_data_removed_when_not_approved
-        # 統合辞書に3語あるが、レビューでは1語のみ [i] 承認
         seed_unified_terms([{ name: 'CSS', flags: 'i' }, { name: 'HTML', flags: 'i' }, { name: 'JavaScript', flags: 'i' }])
 
         write_review_with_rejected_items(
-          terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
+          terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }, { term: 'HTML', yomi: 'HTML', flag: ' ' }],
           rejected: []
         )
 
         @manager.apply_markdown_review!
 
-        terms = load_index_terms
-        assert_equal 1, terms.size
-        assert_equal 'CSS', terms.first['term']
+        assert_equal %w[CSS JavaScript], load_index_terms.map { it['term'] }.sort
       end
 
-      def test_apply_stale_glossary_data_removed_when_not_approved
-        # 統合辞書に用語集用語2つあるが、レビューでは1語のみ [g] 承認
+      # レビューファイルに行の無い用語集の語（Beta）は、著者が判断していないので残す（§3.1.4）
+      def test_apply_keeps_glossary_terms_absent_from_the_review_file
         seed_unified_terms([{ name: 'Alpha', flags: 'g' }, { name: 'Beta', flags: 'g' }])
 
         write_review_with_glossary_approved(
@@ -719,9 +1051,7 @@ module VivlioStarter
 
         @manager.apply_markdown_review!
 
-        terms = load_glossary_terms
-        assert_equal 1, terms.size
-        assert_equal 'Alpha', terms.first['term']
+        assert_equal %w[Alpha Beta], load_glossary_terms.map { it['term'] }.sort
       end
 
       def test_apply_unreject_with_i_flag_registers_to_index
@@ -812,9 +1142,8 @@ module VivlioStarter
         refute_includes index_names, 'HTML'
         refute_includes index_names, 'JavaScript'
 
-        # glossary は空（WWW は承認されていない）
-        glossary_terms = load_glossary_terms
-        assert_empty glossary_terms
+        # WWW はレビューファイルに行が無いので、触らずに残る（§3.1.4）
+        assert_equal ['WWW'], load_glossary_terms.map { it['term'] }
 
         # rejected に HTML, JavaScript が入っている
         rejected = load_rejected_terms
@@ -990,20 +1319,43 @@ module VivlioStarter
         assert_equal 'ウェブサイト', glossary.first['term']
       end
 
-      def test_apply_minus_ig_removes_term_entirely
-        seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+      # マイナスは直後の 1 文字にだけ掛かる（index-glossary-registration-spec.md §3.4）。
+      # [-ig] と [g-i] は「索引から外し、用語集には残す」、[-i-g] は両方外して棄却（[r] と同じ）
+      def apply_mark(mark, flags: 'ig')
+        seed_unified_terms([{ name: 'CSS', flags:, definition: '見た目を指定する言語。' }])
+        File.write('_index_glossary_review.md', build_review(terms: [{ term: 'CSS', yomi: 'CSS', flag: mark }], high: [], low: []),
+                   encoding: 'utf-8')
+        capture_io { @manager.apply_markdown_review! }
+        UnifiedTermsManager.new.find_term('CSS')
+      end
 
-        content = build_review(
-          terms: [{ term: 'CSS', yomi: 'CSS', flag: '-ig' }],
-          high: [], low: []
-        )
-        File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+      def test_apply_minus_i_with_g_keeps_the_glossary
+        %w[-ig g-i].each do |mark|
+          assert_equal 'g', apply_mark(mark)['flags'], mark
+          refute_includes load_rejected_terms, 'CSS', "#{mark} は棄却しない"
+        end
+      end
 
-        @manager.apply_markdown_review!
+      def test_apply_minus_g_with_i_keeps_the_index
+        %w[i-g -gi].each { assert_equal 'i', apply_mark(it)['flags'], it }
+      end
 
-        assert_empty load_index_terms
-        assert_empty load_glossary_terms
+      def test_apply_minus_i_minus_g_rejects_like_r
+        assert_nil apply_mark('-i-g')
         assert_includes load_rejected_terms, 'CSS'
+      end
+
+      # 索引から外す印に主要参照が書かれていても記録しない（主要参照は索引の機能）
+      def test_apply_does_not_record_main_for_a_term_leaving_the_index
+        seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: '見た目を指定する言語。' }])
+        File.write('_index_glossary_review.md',
+                   build_review(terms: [{ term: 'CSS', yomi: 'CSS', flag: '-igm?21' }], high: [], low: []), encoding: 'utf-8')
+
+        capture_io { @manager.apply_markdown_review! }
+
+        entry = UnifiedTermsManager.new.find_term('CSS')
+        assert_equal 'g', entry['flags']
+        assert_nil entry['main']
       end
 
       def test_unchecked_candidate_not_saved
@@ -1195,7 +1547,7 @@ module VivlioStarter
         content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
 
         # Section 1: Terms
-        content += "## 1. 登録済み用語の確認 (Terms: #{terms.size}語)\n\n"
+        content += "## 1. 登録済みの語 (Terms: #{terms.size}語)\n\n"
         if terms.empty?
           content += "登録済みの用語はありません。\n"
         else
@@ -1208,11 +1560,11 @@ module VivlioStarter
         end
 
         # Section 2 & 3: empty candidates
-        content += "\n\n## 2. 推奨候補 (High Candidates: 0語)\n\n"
-        content += "## 3. 一般候補 (Low Candidates: 0語)\n\n"
+        content += "\n\n## 2. 推奨する語 (High Candidates: 0語)\n\n"
+        content += "## 3. 残りの語 (Low Candidates: 0語)\n\n"
 
         # Section 4: Rejected
-        content += "## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
+        content += "## 4. 棄却した語 (Rejected: #{rejected.size}語)\n"
         content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
         if rejected.empty?
           content += "除外済みの用語はありません。\n"
@@ -1231,25 +1583,25 @@ module VivlioStarter
         content = "# 索引・用語集レビュー\n"
         content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
 
-        content += "## 1. 登録済み用語の確認 (Terms: #{terms.size}語)\n\n"
+        content += "## 1. 登録済みの語 (Terms: #{terms.size}語)\n\n"
         terms.each do |t|
           content += "- [#{t[:flag]}] **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
           content += "  - 01-test: テスト文脈\n\n"
         end
 
-        content += "\n\n## 2. 推奨候補 (High Candidates: #{high.size}語)\n\n"
+        content += "\n\n## 2. 推奨する語 (High Candidates: #{high.size}語)\n\n"
         high.each do |c|
           content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 200.0\n"
           content += "  - 01-test: テスト文脈\n\n"
         end
 
-        content += "\n\n## 3. 一般候補 (Low Candidates: #{low.size}語)\n\n"
+        content += "\n\n## 3. 残りの語 (Low Candidates: #{low.size}語)\n\n"
         low.each do |c|
           content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 100.0\n"
           content += "  - 01-test: テスト文脈\n\n"
         end
 
-        content += "\n\n## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
+        content += "\n\n## 4. 棄却した語 (Rejected: #{rejected.size}語)\n"
         content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
         rejected.each do |r|
           content += "- [#{r[:flag]}] **#{r[:term]}** (#{r[:yomi]}) - スコア: 100.0\n"
@@ -1265,16 +1617,16 @@ module VivlioStarter
         content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
 
         # Section 1: Terms with [g] flags
-        content += "## 1. 登録済み用語の確認 (Terms: #{glossary.size}語)\n\n"
+        content += "## 1. 登録済みの語 (Terms: #{glossary.size}語)\n\n"
         glossary.each do |t|
           content += "- [g] `Today` **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
           content += "  - 01-test: テスト文脈\n\n"
           content += "  #{t[:definition]}\n\n" if t[:definition]
         end
 
-        content += "\n\n## 2. 推奨候補 (High Candidates: 0語)\n\n"
-        content += "## 3. 一般候補 (Low Candidates: 0語)\n\n"
-        content += "## 4. 除外済みリスト (Rejected: 0語)\n"
+        content += "\n\n## 2. 推奨する語 (High Candidates: 0語)\n\n"
+        content += "## 3. 残りの語 (Low Candidates: 0語)\n\n"
+        content += "## 4. 棄却した語 (Rejected: 0語)\n"
         content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
         content += "除外済みの用語はありません。\n"
 

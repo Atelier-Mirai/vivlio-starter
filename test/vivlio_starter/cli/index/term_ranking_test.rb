@@ -7,9 +7,7 @@ module VivlioStarter
   module CLI
     module IndexCommands
       class TermRankingTest < Minitest::Test
-        def registered(*names, manual: [])
-          names.map { { 'term' => it, 'source' => manual.include?(it) ? 'manual_markup' : 'auto_extracted' } }
-        end
+        def registered(*names) = names.map { { 'term' => it } }
 
         def build(registered:, registered_scores:, candidate_scores:, target: 3, pool: 2.0)
           TermRanking.build(registered:, registered_scores:, candidate_scores:, target:, pool:)
@@ -17,7 +15,7 @@ module VivlioStarter
 
         # --- phase: 語数ではなく重要度で決める（§3.4-1 の要点） ---
 
-        # 「目安に達しているから推奨候補は 0 件」は誤り。登録語より重要な
+        # 「目安に達しているから推奨する語は 0 件」は誤り。登録語より重要な
         # 未登録語があるなら、それは索引に入るべき語である。
         def test_recommends_unregistered_terms_even_when_target_is_met
           bands = build(
@@ -31,31 +29,30 @@ module VivlioStarter
                        '登録語が目安に達していても、上位に食い込む未登録語は推奨に出る'
         end
 
-        # 枠外へ押し出された登録語は見直し候補になる。
-        # 推奨と見直しが同時に出ることで「入れ替え」の視点が得られる。
-        def test_registered_terms_pushed_out_of_target_become_review
+        # 登録語も目安の枠を占める。枠に入る未登録語は、登録語を除いた残りの枠の分だけ
+        def test_registered_terms_take_their_place_in_the_target
+          bands = build(
+            registered: registered('強い語'),
+            registered_scores: { '強い語' => 100.0 },
+            candidate_scores: { 'A' => 90.0, 'B' => 80.0, 'C' => 70.0 },
+            target: 3
+          )
+
+          assert_equal %w[A B], bands.recommended.map(&:term)
+          assert_equal %w[C], bands.general.map(&:term)
+        end
+
+        # 登録語は帯に出さない。目安の外に出た登録語を「見直し候補」として並べる帯は
+        # なくした（index-glossary-registration-spec.md §5.2）
+        def test_registered_terms_are_never_listed_in_the_bands
           bands = build(
             registered: registered('弱い語'),
             registered_scores: { '弱い語' => 1.0 },
-            candidate_scores: { 'A' => 100.0, 'B' => 90.0, 'C' => 80.0 },
+            candidate_scores: { 'A' => 100.0, 'B' => 90.0, 'C' => 80.0, 'D' => 70.0 },
             target: 3
           )
 
-          assert_equal %w[A B C], bands.recommended.map(&:term)
-          assert_equal ['弱い語'], bands.review.map(&:term)
-        end
-
-        # 著者が原稿に [用語|読み] と書いた語は機械が「外しては」と言わない。
-        def test_manual_markup_terms_are_never_listed_for_review
-          bands = build(
-            registered: registered('手動語', '自動語', manual: ['手動語']),
-            registered_scores: { '手動語' => 1.0, '自動語' => 1.0 },
-            candidate_scores: { 'A' => 100.0, 'B' => 90.0, 'C' => 80.0 },
-            target: 3
-          )
-
-          assert_equal ['自動語'], bands.review.map(&:term)
-          refute_includes bands.review.map(&:term), '手動語'
+          refute_includes (bands.recommended + bands.general).map(&:term), '弱い語'
         end
 
         # --- phase: 帯の範囲 ---
@@ -68,16 +65,6 @@ module VivlioStarter
           assert_equal %w[C1 C2 C3], bands.recommended.map(&:term)
           assert_equal %w[C4 C5 C6], bands.general.map(&:term), '4〜6 位（pool_size = 3 × 2）'
           assert_equal 6, bands.pool_size
-        end
-
-        # 提示しなかったぶんは黙らせない（no silent caps）
-        def test_hidden_count_reports_what_was_not_shown
-          candidates = (1..10).to_h { ["C#{it}", (100 - it).to_f] }
-          bands = build(registered: [], registered_scores: {}, candidate_scores: candidates,
-                        target: 3, pool: 2.0)
-
-          assert_equal 4, bands.hidden_count, '10 件中 6 件を提示、残り 4 件'
-          assert_equal 10, bands.total
         end
 
         def test_pool_never_shrinks_below_target
@@ -97,31 +84,6 @@ module VivlioStarter
           second = build(registered: [], registered_scores: {}, candidate_scores: scores.to_a.reverse.to_h, target: 3)
 
           assert_equal first.recommended.map(&:term), second.recommended.map(&:term)
-        end
-
-        # --- phase: 端の条件 ---
-
-        def test_registered_term_without_score_falls_to_the_bottom
-          bands = build(
-            registered: registered('死語'),
-            registered_scores: {}, # 原稿に出現しない＝スコアが取れない
-            candidate_scores: { 'A' => 1.0, 'B' => 0.5, 'C' => 0.1 },
-            target: 3
-          )
-
-          assert_equal ['死語'], bands.review.map(&:term)
-        end
-
-        def test_registered_terms_inside_target_are_not_reviewed
-          bands = build(
-            registered: registered('強い語'),
-            registered_scores: { '強い語' => 100.0 },
-            candidate_scores: { 'A' => 1.0 },
-            target: 3
-          )
-
-          assert_empty bands.review
-          assert_equal ['A'], bands.recommended.map(&:term)
         end
       end
     end

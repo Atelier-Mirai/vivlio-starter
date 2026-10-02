@@ -68,6 +68,12 @@ module VivlioStarter
       # 全用語名
       def term_names = load_terms.map { it['term'] }
 
+      # 使っていない語（索引にも用語集にも載せず、説明文だけを残した語。flags が空）
+      def unused_terms = load_terms.select { it['flags'].to_s.empty? }
+
+      # 索引か用語集に載せている語の名前（使っていない語を含まない）
+      def listed_term_names = load_terms.reject { it['flags'].to_s.empty? }.map { it['term'] }
+
       # 索引対象の用語名
       def index_term_names = index_terms.map { it['term'] }
 
@@ -113,6 +119,23 @@ module VivlioStarter
         added_names
       end
 
+      # 見出し語の綴りを直す（レビューファイルの `- 綴り: 新しい綴り`）。読み・印・説明文・
+      # 主要参照はそのまま残し、照合の綴り（pattern）だけを作り直す。
+      # 辞書は lint の正典なので、辞書の綴りが誤っていたときは、ここで辞書の側を直す
+      # （改善案 #103）。
+      # @return [Symbol] :renamed / :missing（元の語が無い） / :taken（新しい綴りが使われている）
+      def rename_term!(old_name, new_name)
+        existing = load_terms.dup
+        entry = existing.find { it['term'] == old_name } or return :missing
+        return :taken if existing.any? { it['term'] == new_name }
+
+        entry['term'] = new_name
+        entry['pattern'] = build_pattern(new_name)
+        entry['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+        save_terms!(existing)
+        :renamed
+      end
+
       # 用語を削除
       #
       # **削除したエントリを返す。** 呼び出し側が定義文の有無を見て著者へ知らせるため
@@ -144,7 +167,11 @@ module VivlioStarter
       # @param term_name [String] 用語名
       # @param remove_flag [String] 除去するフラグ ('i' or 'g')
       # @return [Hash, nil] フラグが空になり用語ごと削除したときそのエントリ。残ったときは nil
-      def remove_flag!(term_name, remove_flag)
+      # @param keep_unused [Boolean] フラグが無くなっても、説明文のある語は「使っていない語」
+      #   （flags が空）として残す。レビューファイルで `[ ]` にして外したときに使う——
+      #   説明文は著者が手で書いたもので、書き戻したときにそのまま戻せるように
+      #   （index-glossary-registration-spec.md §3.3.2）
+      def remove_flag!(term_name, remove_flag, keep_unused: false)
         existing = load_terms.dup
         term = existing.find { it['term'] == term_name }
         return nil unless term
@@ -157,7 +184,9 @@ module VivlioStarter
                     end
 
         dropped = nil
-        if new_flags.empty?
+        if new_flags.empty? && keep_unused && !term['definition'].to_s.strip.empty?
+          term['flags'] = ''
+        elsif new_flags.empty?
           # フラグがなくなったら用語自体を削除
           dropped = term
           existing.reject! { it['term'] == term_name }

@@ -575,6 +575,22 @@ module VivlioStarter
         assert_equal Set[4, 8], runner.send(:next_line_suppressions, text)
       end
 
+      # prh の指摘のうち、辞書の語と空白だけ違うものは落とす。index-term-spacing が同じ箇所を
+      # 指摘するので 2 度並べない（改善案 #102）。辞書に無い語の prh はそのまま残す
+      def test_prh_rows_covered_by_index_term_spacing_are_dropped
+        runner = LintCommands::LintRunner.new([], {})
+        runner.instance_variable_set(:@dictionary_terms, ['CSS 組版'])
+        result = { total: 3, fixable: 3, files: [{ path: 'a.md', rows: [
+          { count: 2, label: '[prh] CSS組版 => CSS 組版', lines: [1, 2] },
+          { count: 1, label: '[prh] 組み版 => 組版', lines: [3] }
+        ] }] }
+
+        runner.send(:drop_rows_covered_by_index_spacing!, result)
+
+        assert_equal ['[prh] 組み版 => 組版'], result[:files].first[:rows].map { it[:label] }
+        assert_equal 1, result[:total]
+      end
+
       # フェンスの中のコメントは記法の例示であって指示ではない
       # （Tokenizer / ProseChecker と同じ扱い）
       def test_next_line_suppression_ignores_comments_inside_code_fences

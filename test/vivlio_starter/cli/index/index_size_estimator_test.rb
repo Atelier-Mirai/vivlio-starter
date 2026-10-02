@@ -60,15 +60,16 @@ module VivlioStarter
           assert_equal(260..260, @estimator.estimate('260').range)
         end
 
-        def test_nil_setting_falls_back_to_standard
-          assert_equal :standard, @estimator.estimate(nil).preset
+        # 既定は ConfigKeys の値（light）。以前はここだけ standard だった（index-glossary-registration-spec.md §5.4）
+        def test_nil_setting_falls_back_to_the_configured_default
+          assert_equal :light, @estimator.estimate(nil).preset
         end
 
         def test_unknown_setting_warns_and_falls_back
           est = nil
           out, err = capture_io { est = @estimator.estimate('reference') }
 
-          assert_equal :standard, est.preset
+          assert_equal :light, est.preset
           assert_match(/target_terms/, out + err, '解釈できない値は黙って落とさず知らせる')
           assert_match(/light|standard|thorough/, out + err, '指定できる値を示す（親切警告の流儀）')
         end

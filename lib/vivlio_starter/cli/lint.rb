@@ -40,6 +40,7 @@ require_relative 'lint/dict_manager'
 require_relative 'lint/spell_checker'
 require_relative 'lint/prose_checker'
 require_relative 'lint/code_language_detector'
+require_relative 'index' # IndexCommands.without_excluded_chapters（index-term-spacing が索引の対象外の章を除く）
 
 module VivlioStarter
   module CLI
@@ -49,6 +50,8 @@ module VivlioStarter
 
       # textlint 用サポート YAML（allowlist/prh）の既定パス
       TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
+      # 索引・用語集の辞書（index-term-spacing が照らし合わせる）
+      INDEX_TERMS_RELATIVE = File.join(Common::CONFIG_DIR, 'index_glossary_terms.yml')
       TEXTLINT_REWRITE_RELATIVE   = File.join(Common::CONFIG_DIR, 'textlint_rewrite.yml')
 
       TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
@@ -148,9 +151,31 @@ module VivlioStarter
 
           # 一時ファイルのパスを元ファイル名へ戻す
           result[:files].each { |f| f[:path] = path_map[File.expand_path(f[:path])] || f[:path] }
+          drop_rows_covered_by_index_spacing!(result)
           # 無効化で除外した分は問題数に数えない（残り 0 なら成功扱い）
           { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable],
             rows_by_file: result[:files].to_h { [it[:path], it[:rows]] } }
+        end
+
+        # prh（textlint_rewrite.yml）の指摘のうち、辞書の語と空白だけが違うものを落とす。
+        # 同じ箇所を index-term-spacing も指摘するので、2 度並べない（改善案 #102）
+        PRH_ROW = /\A\[prh\] (.+?) => (.+)\z/
+
+        def drop_rows_covered_by_index_spacing!(result)
+          return if disabled_rules.include?(Lint::ProseChecker::INDEX_TERM_SPACING_RULE)
+
+          terms = dictionary_terms.to_set
+          result[:files].each do |file|
+            covered, kept = file[:rows].partition do |row|
+              (m = PRH_ROW.match(row[:label].to_s)) && terms.include?(m[2]) && m[1].gsub(/\s/, '') == m[2].gsub(/\s/, '')
+            end
+            next if covered.empty?
+
+            file[:rows] = kept
+            dropped = covered.sum { it[:count] }
+            result[:total] -= dropped
+            result[:fixable] = [result[:fixable] - dropped, 0].max
+          end
         end
 
         # textlint では扱えない指摘（交ぜ書き・二通りに読める対比）を当てる。
@@ -175,13 +200,15 @@ module VivlioStarter
         def apply_prose_fixes!(files)
           fix_mazegaki        = !disabled_rules.include?(Lint::ProseChecker::MAZEGAKI_RULE)
           fix_kanji_lookalike = !disabled_rules.include?(Lint::ProseChecker::KANJI_LOOKALIKE_RULE)
-          return [] unless fix_mazegaki || fix_kanji_lookalike
+          fix_index_spacing   = !disabled_rules.include?(Lint::ProseChecker::INDEX_TERM_SPACING_RULE)
+          return [] unless fix_mazegaki || fix_kanji_lookalike || fix_index_spacing
 
           files.filter_map do |path|
             original = File.read(path, encoding: 'UTF-8')
             fixed    = original
             fixed    = Lint::ProseChecker.fix_mazegaki(fixed, prose_allowlist) if fix_mazegaki
             fixed    = Lint::ProseChecker.fix_kanji_lookalike(fixed) if fix_kanji_lookalike
+            fixed    = Lint::ProseChecker.fix_index_term_spacing(fixed, index_terms_for(path)) if fix_index_spacing
             next if fixed == original
 
             atomic_write(path, fixed)
@@ -192,7 +219,31 @@ module VivlioStarter
         def check_prose(path)
           Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist,
                                          parenthetical_max: parenthetical_length_max,
-                                         sentence_max: sentence_length_max)
+                                         sentence_max: sentence_length_max,
+                                         index_terms: index_terms_for(path))
+        end
+
+        # その原稿で照らし合わせる索引・用語集の辞書の語（index-term-spacing・改善案 #102）。
+        # 索引の機能を切った本と、索引の対象から外した章（見本の章など）では照らさない
+        # ——索引に拾われなくても困らない箇所を指摘しても、著者の手間になるだけなので
+        def index_terms_for(path)
+          return [] unless Common.index_enabled?
+
+          chapter = File.basename(path.to_s, '.md')
+          return [] if IndexCommands.without_excluded_chapters([chapter]).empty?
+
+          dictionary_terms
+        end
+
+        # 辞書で索引・用語集に載せている語（使っていない語は含めない）
+        def dictionary_terms
+          @dictionary_terms ||= begin
+            path = Common.resolve_path_from_root(INDEX_TERMS_RELATIVE)
+            data = File.exist?(path) ? YAML.safe_load_file(path, permitted_classes: [Date, Time]) : {}
+            Array(data&.dig('terms')).reject { it['flags'].to_s.empty? }.filter_map { it['term'] }
+          rescue StandardError
+            []
+          end
         end
 
         # config/textlint_allowlist.yml の語で交ぜ書きの指摘を黙らせる。

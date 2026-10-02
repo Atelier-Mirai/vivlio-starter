@@ -4,15 +4,11 @@
 # Class: IndexPlanReporter
 # ----------------------------------------------------------------
 # 責務:
-#   索引の「現況と計画」を組み立てて表示する。
+#   `vs index:plan` の画面を組み立てて表示する。語数の目安を決めるための操作盤と、
+#   いまの登録の現況を示す（index-glossary-registration-spec.md §5）。
+#   `vs index:auto` はこの画面を出さず、件数と次の手順だけを告げる。
 #
-# なぜ切り出すか:
-#   `vs index:plan`（下見）と `vs index:auto`（本番）で**同じ画面**を出すため。
-#   見え方が実行ごとに変わると、著者は「下見で見た内容と本番が違うのでは」と
-#   疑うことになる。両者の違いは末尾の案内と、辞書・レビューファイルを書くか
-#   どうかだけにする（index-term-selection-spec.md §6.3）。
-#
-# 報告ではなく操作盤にする（§6.2）:
+# 報告ではなく操作盤にする（index-term-selection-spec.md §6.2）:
 #   現況を並べるだけでは著者の問い——「260 語にしたい。どのキーをいくつに
 #   すればよいか」——に答えられない。よって必ず次の 3 つを示す。
 #     1. いまの設定と、そこから決まる目安
@@ -21,27 +17,29 @@
 #   さらに「約 N 字に 1 語」を併記する。著者は密度で考えるのに対し設定は語数で
 #   持つので、この列が両者をつなぐ橋になる。
 #
-# 表示の作法:
-#   割合（「上位 60%」）は出さない。決まるのは語数と順位なので、順位と件数で言う。
-#   帯の名前はレビューファイルで既に使っている語（推奨候補・一般候補）に揃え、
-#   新しい語彙を持ち込まない（同 §6.4）。
+# 出さないもの:
+#   スコアの分布・候補の総数・提示しなかった件数。著者がスコアで判断する場面は無く、
+#   抽出の内部の数は決めることにつながらない（§5.1）。
 # ================================================================
 
 require_relative '../common'
 require_relative 'index_size_estimator'
-require_relative 'review_markdown_generator' # 末尾の案内でレビューファイル名を使う
 
 module VivlioStarter
   module CLI
     module IndexCommands
-      # 索引の現況と計画を表示する
+      # `vs index:plan` の画面
       class IndexPlanReporter
+        # いまの登録の内訳。undecided_main は主要参照が決まっていない索引語の数
+        # （主要参照の機能を切った本では nil）
+        Registration = Data.define(:index, :glossary, :rejected, :undecided_main)
+
         # 表示に必要な素材。算出はすべて呼び出し側（UnifiedIndexManager）が行い、
         # ここは組み立てと出力だけを担う（責務を混ぜない）。
-        Plan = Data.define(:chapters, :prose_chars, :registered_terms, :candidate_scores,
-                           :estimate, :all_estimates, :bands)
+        # bands は候補の抽出を切っている本（index.auto_discovery: false）では nil
+        Plan = Data.define(:chapters, :prose_chars, :registration, :estimate, :all_estimates, :bands)
 
-        # 帯の中身を画面に出す語数。全部出すのはレビューファイルの仕事。
+        # 推奨する語を画面に出す語数。全部出すのはレビューファイルの仕事。
         PREVIEW_COUNT = 5
 
         # 「語数を直接決める場合」の例に使う語数。現在の目安の中央に寄せると
@@ -55,16 +53,15 @@ module VivlioStarter
           @plan = plan
         end
 
-        # 画面へ出力する（`vs index:plan` の画面。`vs index:auto` は出さない——改善案 #99）
         def render
           emit(volume_line)
-          emit(registration_line)
+          registration_lines.each { emit(it) }
           emit('')
           current_section.each { emit(it) }
           emit('')
           options_section.each { emit(it) }
           emit('')
-          candidate_section.each { emit(it) }
+          auto_section.each { emit(it) }
           emit('')
           emit('※ vs index:plan は下見です。辞書・レビューファイルは変更していません')
         end
@@ -75,27 +72,30 @@ module VivlioStarter
 
         def emit(line) = Common.log_always(line)
 
-        def scores = @scores ||= plan.candidate_scores.compact.sort
-
         def volume_line
           "本文の分量: #{plan.chapters.size} 章 / #{number(plan.prose_chars)} 字（コード・記法を除く地の文）"
         end
 
-        def registration_line = "索引語の登録: #{number(plan.registered_terms)} 語"
+        # 主要参照の行は、決まっていない語があるときだけ出す
+        def registration_lines
+          reg = plan.registration
+          lines = ["いまの登録: 索引 #{number(reg.index)} 語・用語集 #{number(reg.glossary)} 語・棄却 #{number(reg.rejected)} 語"]
+          lines << "            主要参照が決まっていない索引語 #{number(reg.undecided_main)} 語" if reg.undecided_main.to_i.positive?
+          lines
+        end
 
         # --- ① いまの設定と、そこから決まる目安 ---
 
         def current_section
           est = plan.estimate
-          label = est.preset ? "index.target_terms: #{est.preset}" : "index.target_terms: #{est.range.begin}"
-          lines = ["■ いまの目安（#{label}）", "    #{est} ＝ #{density_text(est)}"]
-          lines << "    #{gap_text(est)}"
-          lines
+          # かっこの中にかっこを重ねない（「light（少なめ）」でなく「light ＝ 少なめ」）
+          label = est.preset ? "#{est.preset} ＝ #{IndexSizeEstimator::PRESET_LABELS.fetch(est.preset)}" : est.range.begin.to_s
+          ["■ いまの目安（index.target_terms: #{label}）", "    #{est} ＝ #{density_text(est)}", "    #{gap_text(est)}"]
         end
 
-        # 現在の登録語数が目安に対してどこにいるか。数字だけでなく「どちらへ動かすか」を言う。
+        # 現在の索引語数が目安に対してどこにいるか。数字だけでなく「どちらへ動かすか」を言う。
         def gap_text(est)
-          now = plan.registered_terms
+          now = plan.registration.index
           density = now.positive? ? "（約 #{number(plan.prose_chars / now)} 字に 1 語）" : ''
           if now < est.range.begin
             "現在 #{number(now)} 語は目安を #{number(est.range.begin - now)} 語下回っています#{density}"
@@ -112,7 +112,7 @@ module VivlioStarter
           lines = ['■ 設定を変えるとこうなります']
           plan.all_estimates.each do |est|
             mark = est.preset == plan.estimate.preset ? '   ← 現在' : ''
-            lines << format('    %-10s %-14s %s%s', est.preset, est.to_s, density_text(est), mark)
+            lines << "    #{pad(IndexSizeEstimator.preset_label(est.preset), 18)}#{pad(est.to_s, 14)}#{density_text(est)}#{mark}"
           end
           lines + direct_setting_lines
         end
@@ -136,55 +136,30 @@ module VivlioStarter
           r.begin == r.end ? "約 #{number(r.begin)} 字に 1 語" : "約 #{number(r.begin)}〜#{number(r.end)} 字に 1 語"
         end
 
-        # --- 候補 ---
+        # --- vs index:auto を実行するとどうなるか ---
 
-        def candidate_section
-          lines = ["■ 候補: #{number(scores.size)} 件"]
-          lines << "    #{score_distribution_line}" if scores.any?
-          return lines unless plan.bands
+        # 呼び名はレビューファイルの節の名前にそろえる（§3.2.2）
+        def auto_section
+          bands = plan.bands
+          return ['■ vs index:auto を実行すると', '    候補の抽出は切ってあります（index.auto_discovery: false）。原稿に [語] と書いた語だけを登録します'] unless bands
 
-          lines + band_lines(plan.bands)
+          ['■ vs index:auto を実行すると',
+           "    推奨する語 #{number(bands.recommended.size)} 語・残りの語 #{number(bands.general.size)} 語をレビューファイルに並べます",
+           *preview_line(bands.recommended)]
         end
 
-        # 帯は順位と件数で言う。割合は出さない（§6.4）。
-        # 名前はレビューファイルで既に使っている語をそのまま使う。
-        def band_lines(bands)
-          t = bands.target
-          lines = [
-            '',
-            "    登録済み #{number(plan.registered_terms)} 語と同じ土俵でスコア順に並べた結果:",
-            format('      推奨候補   上位 %s 位以内の未登録語      %s 件', number(t), number(bands.recommended.size)),
-            format('      一般候補   %s〜%s 位の未登録語   %s 件',
-                   number(t + 1), number(bands.pool_size), number(bands.general.size)),
-            format('      見直し候補 %s 位より下の登録済み語     %s 件', number(t), number(bands.review.size))
-          ]
-          lines + preview_lines(bands) + hidden_lines(bands)
+        def preview_line(entries)
+          return [] if entries.empty?
+
+          names = entries.first(PREVIEW_COUNT).map(&:term)
+          more = entries.size > PREVIEW_COUNT ? " …他 #{number(entries.size - PREVIEW_COUNT)} 語" : ''
+          ["    推奨する語の例: #{names.join(' / ')}#{more}"]
         end
 
-        # 帯の中身を少しだけ見せる。全部出すのはレビューファイルの仕事。
-        def preview_lines(bands)
-          [['推奨候補', bands.recommended], ['見直し候補', bands.review]].filter_map do |label, entries|
-            next if entries.empty?
-
-            names = entries.first(PREVIEW_COUNT).map(&:term)
-            more = entries.size > PREVIEW_COUNT ? " …他 #{number(entries.size - PREVIEW_COUNT)} 語" : ''
-            "      #{label}の例: #{names.join(' / ')}#{more}"
-          end
-        end
-
-        # 提示しなかったぶんは黙らせない（no silent caps）
-        def hidden_lines(bands)
-          return [] if bands.hidden_count.zero?
-
-          ["      #{number(bands.pool_size + 1)} 位以下の #{number(bands.hidden_count)} 件は提示していません",
-           '        増やすには config/book.yml の index.candidate_pool を上げてください']
-        end
-
-        # 分布は五数要約で示す。平均は外れ値に引きずられて実感と合わない。
-        def score_distribution_line
-          q = ->(ratio) { scores[[(scores.size * ratio).to_i, scores.size - 1].min].round }
-          "スコア分布: 最小 #{q[0.0]} / 下位 25% #{q[0.25]} / 中央 #{q[0.5]} / " \
-            "上位 25% #{q[0.75]} / 最大 #{scores.last.round}"
+        # 全角を 2 桁と数えて右を空白で埋める（訳語の全角で桁がずれないように）
+        def pad(text, width)
+          used = text.each_char.sum { it.bytesize > 1 ? 2 : 1 }
+          text + (' ' * [width - used, 1].max)
         end
 
         def number(value) = value.to_s.reverse.scan(/\d{1,3}/).join(',').reverse
