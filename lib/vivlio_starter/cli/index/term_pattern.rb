@@ -17,7 +17,8 @@
 #   辞書の `pattern` は `/\bRuby\b/` のようにスラッシュで囲む。ASCII 語だけ
 #   `\b` が付く（UnifiedTermsManager#build_pattern）。この `\b` は Ruby の
 #   語境界ではなく **ASCII の語境界** と読む（ascii_word_boundaries）ので、
-#   `/\bRuby\b/` は「Rubyの話」にも当たる。
+#   `/\bRuby\b/` は「Rubyの話」にも当たる。空白や和文を含む語（`/Type\ 3/`）は
+#   `\b` が付かないが、語をそのまま写した綴りなら同じ境目を足して読む（literal）。
 #
 #   利用側（本文タグ付け・広さ計測・主要参照の候補）は全員このモジュールを
 #   通すこと。ここだけ通さない経路があると、「索引には載るのに候補には出ない」
@@ -43,6 +44,8 @@ module VivlioStarter
           return literal(entry) if raw.empty?
 
           body = raw.start_with?('/') && raw.end_with?('/') ? raw[1...-1] : raw
+          return literal(entry) if body == Regexp.escape(entry['term'].to_s)
+
           Regexp.new(ascii_word_boundaries(body))
         rescue StandardError
           # 壊れた pattern で走査全体を止めない。完全一致へ落として先へ進む
@@ -68,7 +71,21 @@ module VivlioStarter
           body.sub(/\A\\b/) { ASCII_WORD_BEHIND }.sub(/\\b\z/) { ASCII_WORD_AHEAD }
         end
 
-        def literal(entry) = Regexp.new(Regexp.escape(entry['term'].to_s))
+        # 語をそのまま写した照合。英数字で始まる・終わる語は、英数字の語の途中に当てない。
+        #
+        # 辞書の綴りに `\b` が付くのは英数字だけの 1 語（`/\bCMYK\b/`）で、空白や和文を
+        # 含む語（`/Type\ 3/`・`/ラベル\ ID/`）には付かない。そのままでは「Type 3」が
+        # 「Type 30」「Type 3D」にも当たり、別のものを書いた頁が索引に載る。辞書の綴りが
+        # 語をそのまま写したものなら、ここで 1 語の語と同じ境目を足す——lint
+        # （spacing_insensitive）や、綴りを直したときの原稿の書き換えと同じ規則になる。
+        # 解釈の側で足すので、既存の辞書を書き換える必要はない。著者が手で書いた正規表現は
+        # 書かれたとおりに読む。
+        def literal(entry)
+          term = entry['term'].to_s
+          head = ASCII_WORD_BEHIND if term.match?(/\A[A-Za-z0-9]/)
+          tail = ASCII_WORD_AHEAD if term.match?(/[A-Za-z0-9]\z/)
+          Regexp.new("#{head}#{Regexp.escape(term)}#{tail}")
+        end
 
         # 語の一部とみなす字種（英数字・カタカナ）
         SAME_SCRIPT = [/[A-Za-z0-9]/, /[ァ-ヶー]/].freeze

@@ -10,6 +10,7 @@
 #   - 辞書の `\b` は ASCII の語境界として読む（日本語が続いても当たる）
 #   - 英字どうしの食い込みは従来どおり弾く
 #   - pattern を持たない語・壊れた pattern の語は完全一致へ落ちる
+#   - 語をそのまま写した pattern は、英数字で始まる・終わる語に英数字の境目を足す
 # ================================================================
 
 require 'test_helper'
@@ -55,6 +56,33 @@ module VivlioStarter
           pattern = TermPattern.for({ 'term' => 'CMYK', 'pattern' => '/[/' })
 
           assert_match pattern, 'CMYK 版'
+        end
+
+        # 空白を含む英字の語も、1 語の語と同じく英数字の語の途中に当てない。
+        # 当てると「Type 30」を書いた頁が「Type 3」の索引に載る
+        def test_spaced_ascii_term_does_not_match_inside_a_longer_word
+          pattern = TermPattern.for({ 'term' => 'Type 3', 'pattern' => '/Type\ 3/' })
+
+          refute_match pattern, 'Type 30 の例'
+          refute_match pattern, 'Type 3D の例'
+          refute_match pattern, 'OldType 3 の例'
+          assert_match pattern, 'Type 3 フォント'
+          assert_match pattern, 'Type 3フォント'
+        end
+
+        # 和文で始まり英字で終わる語は、英字の側にだけ境目を足す
+        def test_mixed_term_gets_a_boundary_only_on_the_ascii_side
+          pattern = TermPattern.for({ 'term' => 'ラベル ID', 'pattern' => '/ラベル\ ID/' })
+
+          assert_match pattern, '図のラベル IDを付ける'
+          refute_match pattern, 'ラベル IDs の一覧'
+        end
+
+        # 著者が手で書いた正規表現は、書かれたとおりに読む
+        def test_hand_written_pattern_is_kept_as_written
+          pattern = TermPattern.for({ 'term' => 'Type 3', 'pattern' => '/Type\ 3\d*/' })
+
+          assert_match pattern, 'Type 30 の例'
         end
       end
     end
