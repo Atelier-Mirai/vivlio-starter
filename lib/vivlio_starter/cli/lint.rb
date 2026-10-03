@@ -201,7 +201,8 @@ module VivlioStarter
           fix_mazegaki        = !disabled_rules.include?(Lint::ProseChecker::MAZEGAKI_RULE)
           fix_kanji_lookalike = !disabled_rules.include?(Lint::ProseChecker::KANJI_LOOKALIKE_RULE)
           fix_index_spacing   = !disabled_rules.include?(Lint::ProseChecker::INDEX_TERM_SPACING_RULE)
-          return [] unless fix_mazegaki || fix_kanji_lookalike || fix_index_spacing
+          fix_affix_spacing   = !disabled_rules.include?(Lint::ProseChecker::AFFIX_SPACING_RULE)
+          return [] unless fix_mazegaki || fix_kanji_lookalike || fix_index_spacing || fix_affix_spacing
 
           files.filter_map do |path|
             original = File.read(path, encoding: 'UTF-8')
@@ -209,6 +210,7 @@ module VivlioStarter
             fixed    = Lint::ProseChecker.fix_mazegaki(fixed, prose_allowlist) if fix_mazegaki
             fixed    = Lint::ProseChecker.fix_kanji_lookalike(fixed) if fix_kanji_lookalike
             fixed    = Lint::ProseChecker.fix_index_term_spacing(fixed, index_terms_for(path)) if fix_index_spacing
+            fixed    = Lint::ProseChecker.fix_affix_spacing(fixed) if fix_affix_spacing
             next if fixed == original
 
             atomic_write(path, fixed)

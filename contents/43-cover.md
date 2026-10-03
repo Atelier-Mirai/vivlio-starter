@@ -52,7 +52,7 @@ output:
   cover: dark  # 暗いテーマのデザインを使用
 ```
 
-### 著者独自デザインのsvg画像を用いる
+### 著者独自デザインのsvg 画像を用いる
 
 独自の SVG を使う場合は、`covers/` に `frontcover_<テーマ名>.svg` を置き、`book.yml` にテーマ名を書きます。別案を試すときも、ファイルを残したまま設定を切り替えられます。
 
@@ -77,7 +77,7 @@ SVG に `{{title}}` や `{{author}}` などを書いておけば、ビルド時�
 `floral`、`mandala` など複数のデザインを `covers/` に用意しておき、`book.yml` の `cover:` を切り替えるだけで異なるデザインを試せます。
 :::
 
-### 著者独自デザインのpng画像を用いる
+### 著者独自デザインのpng 画像を用いる
 
 デザインツールから PNG を書き出して使う場合は、`covers/frontcover_<テーマ名>.png` に置きます。
 
@@ -185,7 +185,7 @@ page:
 PDF/X-1a は、商業印刷向けの PDF 規格です。色空間やフォントなどに条件が定められており、印刷工程での扱いを揃える助けになります。入稿先に固有の指定がある場合は、その条件も確認してください。
 :::
 
-### EPUB用（JPEG）
+### EPUB 用（JPEG）
 
 **用途**: 電子書籍（EPUB）
 
@@ -258,7 +258,7 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 2. ファイル名が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた名前になっているか確認（`master` なら `frontcover_master.png` と `backcover_master.png`）
 3. `book.yml` の `output.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
 
-### CMYK変換で色が変わる
+### CMYK 変換で色が変わる
 
 **症状**: 印刷用 PDF（CMYK 版）の色が RGB 版と異なる。
 

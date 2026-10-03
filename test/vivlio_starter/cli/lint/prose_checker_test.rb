@@ -1070,4 +1070,42 @@ class TestProseChecker < Minitest::Test
     assert_includes PC::FIXABLE_RULES, 'index-term-spacing'
     assert_empty check("Type3 フォント\n", index_terms: TERMS, disabled_rules: ['index-term-spacing'])
   end
+
+  # --- 英字の語に付く和文の語（affix-spacing・改善案 #105）---
+
+  # 一覧の語と英字の語が空白なしで接した箇所を、直す形を添えて知らせる
+  def test_should_report_affixes_attached_to_alphabet_words
+    findings = check("EPUB用とKindle 用、A案、Newton法、付録Aを見ます。\n")
+
+    assert_equal ['EPUB用 => EPUB 用', 'A案 => A 案', 'Newton法 => Newton 法', '付録A => 付録 A'],
+                 findings.map { it.label.delete_suffix('（英字の語と和文の間の空白）') }
+    assert(findings.all? { it.rule == 'affix-spacing' })
+  end
+
+  # 一覧の語が長い語の一部のとき・一覧に無い語・数字・ひらがなとの境目は見ない
+  def test_should_not_report_words_outside_the_affix_list
+    body = "API用語、構図A、自動ID、50ページ、図1-1、IDの扱い、Markdownで書く。\n"
+
+    assert_empty check(body)
+  end
+
+  # 参照名・リンク先・URL・脚注の名前・コードには空白を入れない
+  def test_should_not_touch_references_links_or_code
+    body = "@ch-build用 を見る。[EPUB](https://example.com/a用) と[^fn用]と `PDF用` と <span class=\"x用\">。\n"
+
+    assert_empty check(body)
+    assert_equal body, PC.fix_affix_spacing(body)
+  end
+
+  # --fix は英字の語と一覧の語の間に空白を入れる。リンクの文字は直し、リンク先は残す
+  def test_should_fix_affix_spacing
+    fixed = PC.fix_affix_spacing("[EPUB用](https://example.com/a用)とRe:VIEW用、Node.js版。\n")
+
+    assert_equal "[EPUB 用](https://example.com/a用)とRe:VIEW 用、Node.js 版。\n", fixed
+  end
+
+  def test_affix_spacing_is_fixable_and_can_be_disabled
+    assert_includes PC::FIXABLE_RULES, 'affix-spacing'
+    assert_empty check("EPUB用\n", disabled_rules: ['affix-spacing'])
+  end
 end

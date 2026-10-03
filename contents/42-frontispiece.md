@@ -4,7 +4,7 @@
 章の始まりと節見出しは、読者がいま本のどこにいるかを確かめる目印になります。Vivlio Starter では、章扉の背景画像（frontispiece）と節見出しの装飾画像（ornament）を使う `image`、色と文字を中心に組む `simple` の二つのスタイルを選べます。本章では、それぞれの設定と画像の用意のしかたを見ていきます。
 :::
 
-## 扉絵（frontispiece） と 装飾画像（ornament） とは
+## 扉絵（frontispiece）と装飾画像（ornament）とは
 
 :::{.section-lead}
 frontispiece は章扉に置く縦長の画像、ornament は節見出しに添える横長の画像です。同じ絵柄を使っても、別の画像を組み合わせても構いません。章と節の見え方を揃えたいときに設定します。
@@ -459,7 +459,7 @@ theme:
 ![green](green.svg)
 ![lime](lime.svg)
 
-**HEX表記**：`color: #ff0000` のように色コードを直接指定することもできます。
+**HEX 表記**：`color: #ff0000` のように色コードを直接指定することもできます。
 
 ### 色を組み合わせる
 
