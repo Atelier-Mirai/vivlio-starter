@@ -1075,7 +1075,7 @@ class TestProseChecker < Minitest::Test
 
   # 一覧の語と英字の語が空白なしで接した箇所を、直す形を添えて知らせる
   def test_should_report_affixes_attached_to_alphabet_words
-    findings = check("EPUB用とKindle 用、A案、Newton法、付録Aを見ます。\n")
+    findings = check("EPUB用とKindle 用、A案、Newton法、付録Aを見ます。\n", disabled_rules: ['hiragana-spacing'])
 
     assert_equal ['EPUB用 => EPUB 用', 'A案 => A 案', 'Newton法 => Newton 法', '付録A => 付録 A'],
                  findings.map { it.label.delete_suffix('（英字の語と和文の間の空白）') }
@@ -1086,7 +1086,7 @@ class TestProseChecker < Minitest::Test
   def test_should_not_report_words_outside_the_affix_list
     body = "API用語、構図A、自動ID、50ページ、図1-1、IDの扱い、Markdownで書く。\n"
 
-    assert_empty check(body)
+    assert_empty check(body, disabled_rules: ['hiragana-spacing'])
   end
 
   # 参照名・リンク先・URL・脚注の名前・コードには空白を入れない
@@ -1107,5 +1107,35 @@ class TestProseChecker < Minitest::Test
   def test_affix_spacing_is_fixable_and_can_be_disabled
     assert_includes PC::FIXABLE_RULES, 'affix-spacing'
     assert_empty check("EPUB用\n", disabled_rules: ['affix-spacing'])
+  end
+
+  # --- 英字の語とひらがなの間（hiragana-spacing・改善案 #106）---
+
+  # 英字の語とひらがなが空白なしで接した箇所を、両側とも知らせる
+  def test_should_report_hiragana_attached_to_alphabet_words
+    findings = check("ラベル IDの扱い。著者独自デザインのsvg 画像。Markdown で書く。\n")
+
+    assert_equal ['IDの => ID の', 'のsvg => の svg'],
+                 findings.map { it.label.delete_suffix('（英字の語とひらがなの間の空白）') }
+    assert(findings.all? { it.rule == 'hiragana-spacing' })
+  end
+
+  # 数字・漢字やカタカナとの境目（affix-spacing の受け持ち）・参照名・コードは見ない
+  def test_should_not_report_hiragana_next_to_numbers_kanji_references_or_code
+    body = "50ページの、自動IDの、@ch-buildを見る。`IDの` と [リンク](https://example.com/aの)。\n"
+
+    assert_equal ['IDの => ID の'], check(body).map { it.label.delete_suffix('（英字の語とひらがなの間の空白）') }
+  end
+
+  # --fix はひらがなとの間に空白を入れる。affix-spacing と合わせて、両側が空く
+  def test_should_fix_hiragana_spacing
+    fixed = PC.fix_hiragana_spacing(PC.fix_affix_spacing("著者独自デザインのsvg画像を用いるHTMLタグ。`IDの`\n"))
+
+    assert_equal "著者独自デザインの svg 画像を用いる HTML タグ。`IDの`\n", fixed
+  end
+
+  def test_hiragana_spacing_is_fixable_and_can_be_disabled
+    assert_includes PC::FIXABLE_RULES, 'hiragana-spacing'
+    assert_empty check("IDの話です。\n", disabled_rules: ['hiragana-spacing'])
   end
 end

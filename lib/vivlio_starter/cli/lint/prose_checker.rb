@@ -72,9 +72,11 @@ module VivlioStarter
         WEAK_PHRASE_RULE     = 'ja-no-weak-phrase'
         INDEX_TERM_SPACING_RULE = 'index-term-spacing'
         AFFIX_SPACING_RULE   = 'affix-spacing'
+        HIRAGANA_SPACING_RULE = 'hiragana-spacing'
 
         # --fix で直せるルール。どれも「この文字列はこう書く」が 1 つに決まる。
-        FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE, INDEX_TERM_SPACING_RULE, AFFIX_SPACING_RULE].freeze
+        FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE, INDEX_TERM_SPACING_RULE, AFFIX_SPACING_RULE,
+                         HIRAGANA_SPACING_RULE].freeze
 
         # --- 記法の取り違え -----------------------------------------------------
 
@@ -242,6 +244,7 @@ module VivlioStarter
           findings.concat(unclosed_suppression_findings(text)) unless rules.include?(UNCLOSED_SUPPRESSION_RULE)
           findings.concat(index_term_spacing_findings(text, index_terms)) unless rules.include?(INDEX_TERM_SPACING_RULE)
           findings.concat(affix_spacing_findings(text)) unless rules.include?(AFFIX_SPACING_RULE)
+          findings.concat(hiragana_spacing_findings(text)) unless rules.include?(HIRAGANA_SPACING_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -869,53 +872,82 @@ module VivlioStarter
         AFFIX_AFTER_WORD = /(?<![A-Za-z0-9_])(#{ALPHABET_WORD})(#{Regexp.union(AFFIXES['suffixes']).source})(?!#{AFFIX_WORD_CHAR})/
         AFFIX_BEFORE_WORD = /(?<!#{AFFIX_WORD_CHAR})(#{Regexp.union(AFFIXES['prefixes']).source})(#{ALPHABET_WORD})(?![A-Za-z0-9])/
 
-        # 空白を入れてはいけない綴り。参照名（`@ch-build用` を `@ch-build 用` にすると参照が
-        # 切れる）・リンク先・URL・脚注の名前・HTML タグ・コードを伏せた目印。
-        # 位置を保つため、同じ長さの記号で伏せる
-        AFFIX_OPAQUE = %r{@[\w:./-]+|\]\([^)]*\)|https?://\S+|\[\^[^\]]*\]|<[^>]*>|#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__}
+        AFFIX_PATTERNS = [AFFIX_AFTER_WORD, AFFIX_BEFORE_WORD].freeze
 
         # 英字の語と一覧の語が空白なしで接した箇所の指摘（「EPUB用 => EPUB 用」）
         def affix_spacing_findings(text)
+          spacing_findings(text, AFFIX_PATTERNS, AFFIX_SPACING_RULE, '英字の語と和文の間の空白')
+        end
+
+        # 英字の語と一覧の語の間に空白を入れたテキストを返す。行数は入力と必ず一致する。
+        def fix_affix_spacing(text) = fix_spacing(text, AFFIX_PATTERNS)
+
+        # --- 英字の語とひらがなの間（改善案 #106）--------------------------------
+
+        # 英字の語の後ろにひらがな（「IDの」）・前にひらがな（「のsvg」）。
+        # affix-spacing と違って一覧で絞らない。「自動ID」のように意図して詰めた語は
+        # 漢字・カタカナとの組でできるので、ひらがなの境目では生まれない。
+        # 助詞の前に空白を入れない本もあるので、ルールを分けて切れるようにしてある
+        HIRAGANA_PATTERNS = [
+          /(?<![A-Za-z0-9_])(#{ALPHABET_WORD})(\p{Hiragana})/,
+          /(\p{Hiragana})(#{ALPHABET_WORD})(?![A-Za-z0-9])/
+        ].freeze
+
+        # 英字の語とひらがなが空白なしで接した箇所の指摘（「IDの => ID の」）
+        def hiragana_spacing_findings(text)
+          spacing_findings(text, HIRAGANA_PATTERNS, HIRAGANA_SPACING_RULE, '英字の語とひらがなの間の空白')
+        end
+
+        # 英字の語とひらがなの間に空白を入れたテキストを返す。行数は入力と必ず一致する。
+        def fix_hiragana_spacing(text) = fix_spacing(text, HIRAGANA_PATTERNS)
+
+        # --- 空白を入れる 2 つのルールの共通の処理 ---------------------------------
+
+        # 空白を入れてはいけない綴り。参照名（`@ch-build用` を `@ch-build 用` にすると参照が
+        # 切れる）・リンク先・URL・脚注の名前・HTML タグ・コードを伏せた目印。
+        # 位置を保つため、同じ長さの記号で伏せる
+        SPACING_OPAQUE = %r{@[\w:./-]+|\]\([^)]*\)|https?://\S+|\[\^[^\]]*\]|<[^>]*>|#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__}
+
+        # @param patterns [Array<Regexp>] 2 つ目のグループの頭が、空白を入れる位置
+        def spacing_findings(text, patterns, rule, note)
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
-            affix_gaps(protected_line).map { |_, written| written }.uniq.map do |written|
-              Finding.new(line: lineno, rule: AFFIX_SPACING_RULE,
-                          label: "#{written} => #{spaced_affix(written)}（英字の語と和文の間の空白）")
+            spacing_gaps(protected_line, patterns).map(&:last).uniq.map do |written|
+              Finding.new(line: lineno, rule:, label: "#{written} => #{spaced_form(written, patterns)}（#{note}）")
             end
           end
         end
 
-        # 英字の語と一覧の語の間に空白を入れたテキストを返す。行数は入力と必ず一致する。
-        def fix_affix_spacing(text)
+        def fix_spacing(text, patterns)
           prose = authored_prose_lines(text).to_h
           text.each_line.with_index(1).map do |line, lineno|
             next line unless prose.key?(lineno)
 
             protected_line, spans = Masking.protect_code(line)
-            fixed = affix_gaps(protected_line).map(&:first).sort.reverse
-                                              .reduce(protected_line.dup) { |acc, gap| acc.insert(gap, ' ') }
+            fixed = spacing_gaps(protected_line, patterns).map(&:first).sort.reverse
+                                                          .reduce(protected_line.dup) { |acc, gap| acc.insert(gap, ' ') }
             Masking.restore_code(fixed, spans)
           end.join
         end
 
         # 空白を入れる位置と、書かれた形の組
         # @return [Array<Array(Integer, String)>]
-        def affix_gaps(protected_line)
-          masked = protected_line.gsub(AFFIX_OPAQUE) { "\u0000" * it.length }
-          [AFFIX_AFTER_WORD, AFFIX_BEFORE_WORD].flat_map do |pattern|
+        def spacing_gaps(protected_line, patterns)
+          masked = protected_line.gsub(SPACING_OPAQUE) { "\u0000" * it.length }
+          patterns.flat_map do |pattern|
             masked.to_enum(:scan, pattern).map { ::Regexp.last_match.then { [it.begin(2), it[0]] } }
           end.uniq(&:first)
         end
 
         # 書かれた形に空白を入れた形（指摘の「直す形」）
-        def spaced_affix(written)
-          [AFFIX_AFTER_WORD, AFFIX_BEFORE_WORD].each do |pattern|
+        def spaced_form(written, patterns)
+          patterns.each do |pattern|
             match = written.match(pattern) or next
             return "#{match[1]} #{match[2]}"
           end
           written
         end
-        private_class_method :affix_gaps, :spaced_affix
+        private_class_method :spacing_findings, :fix_spacing, :spacing_gaps, :spaced_form
 
         # --- 記法の取り違え（markdown-notation-collision-spec.md §6・§7）--------
 
