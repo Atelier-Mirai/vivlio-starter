@@ -363,17 +363,17 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 `vs lint` は、textlint の検査・Ruby 側の独自ルール・英語のスペルチェックを、ひとまとめに走らせるコマンドです。実装は `cli/lint/` にあり、textlint では扱えない判定を Ruby 側が受け持ちます。
 
-独自ルールは `ProseChecker` に 15 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るもの——いずれも textlint の枠組みでは書けないものです。
+独自ルールは `ProseChecker` に 17 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るもの——いずれも textlint の枠組みでは書けないものです。
 
 | 種類 | ルール |
 | :--- | :--- |
 | 日本語の読み違い | `mazegaki` ・ `ambiguous-comparison` ・ `missing-period` ・ `ja-no-weak-phrase` |
 | 長さ | `sentence-length` ・ `long-parenthetical` |
-| 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` ・ `index-term-spacing` |
+| 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` ・ `index-term-spacing` ・ `affix-spacing` ・ `hiragana-spacing` |
 | 記法の取り違え | `indented-code-block` ・ `setext-heading` ・ `multiple-chapter-headings` |
 | 抑止の閉じ忘れ | `unclosed-suppression` |
 
-`--fix` で直せるのは `mazegaki`・`kanji-lookalike`・`index-term-spacing` の三つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
+`--fix` で直せるのは `mazegaki`・`kanji-lookalike`・`index-term-spacing`・`affix-spacing`・`hiragana-spacing` の五つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
 
 **自前のルールが上流と重なったら、上流を切ります。** どれを切るかは `SUPERSEDED_TEXTLINT_RULES` の 1 表が持ちます。
 

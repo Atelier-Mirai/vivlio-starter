@@ -375,6 +375,27 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 
 空白の有無を見るのは、辞書の語が空白を持つ位置と、英数字と和文の境目だけです。綴りや大文字・小文字の違いは、別の語のこともあるので指摘しません。直し方は一つに決まるので、`vs lint --fix` で辞書の綴りへ直せます。書名の引用のように、わざと元の表記を残したい箇所は `<!-- no-lint -->` で外してください。指摘はいつも辞書の綴りへ直す向きに出ます。同じ語の指摘がたくさん出て、辞書の綴りのほうが誤っていると分かったときは、レビューファイルで辞書の綴りを直します（@pageref:ch-index-glossary の章）。索引の対象から外した章（`index_glossary.exclude_chapters`）は検査しません。
 
+## 英字の語と和文の間の空白
+
+:::{.section-lead}
+「EPUB 用」「A 案」「Newton 法」「ID の」のように、英字の語と和文の間に半角空白を入れます。空白なしで書いた箇所を見つけます。
+:::
+
+:::{.output}
+```
+    1件  [affix-spacing] EPUB用 => EPUB 用（英字の語と和文の間の空白）
+         行: 188
+    2件  [hiragana-spacing] IDの => ID の（英字の語とひらがなの間の空白）
+         行: 200, 262
+```
+:::
+
+漢字・カタカナとの境目（`affix-spacing`）で見るのは、いろいろな英字の語に付く和文の語だけです。後ろに付く語（用・版・内・外・側・式・法・案・方式・形式・画像・変換・自体・タグ・ページ・以外・以上・向けなど）と、前に付く語（付録・図・表・リスト・例・案・方式）があります。英字と和文の境目をすべて見ると、「自動ID」のように意図して詰めた語まで指摘してしまうためです。一覧の語が別の語の一部になっているとき（「API用語」の「用」）と、数字に付くとき（「50ページ」）は見ません。
+
+ひらがなとの境目（`hiragana-spacing`）は、一覧で絞らずにすべて見ます（`IDの`・`のsvg`）。意図して詰めた語は漢字・カタカナとの組でできるので、ひらがなの境目では生まれないためです。助詞の前に空白を入れない書き方の本では、`lint.disabled_rules` にこのルールだけを書いて切ってください。
+
+どちらのルールも、参照名（`@ch-build`）・リンク先・URL・コードの中には空白を入れません。直し方は一つに決まるので、`vs lint --fix` で空白を入れられます。
+
 ## コードブロックの言語名 @lint-code-language
 
 :::{.section-lead}
@@ -563,7 +584,7 @@ lint:
 
 切ったルールは表示に出ず、`vs lint --fix` でも修正が当たりません。無効化した分は問題件数にも数えません。`prh` と書くと、表記揺れの辞書がすべて止まります（辞書の項目を一つずつは切れません）。
 
-Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `index-term-spacing` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
+Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `index-term-spacing` / `affix-spacing` / `hiragana-spacing` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 
