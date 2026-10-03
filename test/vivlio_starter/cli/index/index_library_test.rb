@@ -4,7 +4,7 @@
 # Test: index/index_library_test.rb
 # ================================================================
 # テスト対象:
-#   IndexCommands::IndexLibrary（用語集[g]・reject の export/import）
+#   IndexCommands::IndexLibrary（用語集の説明文・棄却した語・読みの export/import）
 # ================================================================
 
 require 'test_helper'
@@ -51,6 +51,20 @@ module VivlioStarter
           refute_includes data['glossary'].first.keys, 'source'
         end
 
+        # 使っていない語（説明文だけを残した語）も運ぶ。説明文の無い語は運ばない
+        # （index-library-reserve-spec.md §3.2）
+        def test_export_includes_unused_terms_and_skips_terms_without_definition
+          write_terms([
+                        { 'term' => '版面', 'yomi' => 'はんづら', 'flags' => '', 'definition' => '文字を組む範囲。' },
+                        { 'term' => '扉絵', 'yomi' => 'とびらえ', 'flags' => 'g', 'definition' => '' }
+                      ])
+
+          IndexLibrary.new.export!('lib.yml')
+
+          assert_equal [{ 'term' => '版面', 'yomi' => 'はんづら', 'definition' => '文字を組む範囲。' }],
+                       YAML.load_file('lib.yml')['glossary']
+        end
+
         def test_export_returns_false_when_nothing_to_export
           refute IndexLibrary.new.export!('lib.yml')
           refute_path_exists 'lib.yml'
@@ -81,22 +95,49 @@ module VivlioStarter
 
           assert_equal 1, result.glossary_added
           assert_equal 1, result.reject_added
+          # 用語集の語は、使っていない語として待つ。用語集のページ（glossary_terms）には載らない
           epub = load_terms.find { it['term'] == 'EPUB' }
-          assert_includes epub['flags'], 'g'
-          assert_equal '電子書籍。', epub['definition']
-          assert_includes load_rejected, '実装'
+          assert_equal ['', '電子書籍。', 'imported'], epub.values_at('flags', 'definition', 'source')
+          assert_empty UnifiedTermsManager.new.glossary_terms
+          # 棄却した語には出どころを残す（レビューファイルの 5 節に並べない目印）
+          assert_equal 'imported', load_rejected_entries.find { it['term'] == '実装' }['source']
         end
 
-        def test_import_keeps_local_by_default_but_prefer_import_overwrites
-          write_terms([{ 'term' => 'EPUB', 'yomi' => 'いーぱぶ', 'flags' => 'g', 'definition' => 'ローカル定義' }])
+        # 取り込みは追記だけ。辞書にある語の説明文・印は変えない
+        def test_import_keeps_the_local_term
+          write_terms([{ 'term' => 'EPUB', 'yomi' => 'いーぱぶ', 'flags' => 'i', 'definition' => 'ローカル定義' }])
           write_library('lib.yml',
                         glossary: [{ 'term' => 'EPUB', 'yomi' => 'いー', 'definition' => 'ライブラリ定義' }], reject: [])
 
-          IndexLibrary.new.import!('lib.yml')
-          assert_equal 'ローカル定義', load_terms.find { it['term'] == 'EPUB' }['definition']
+          result = IndexLibrary.new.import!('lib.yml')
 
-          IndexLibrary.new.import!('lib.yml', prefer_import: true)
-          assert_equal 'ライブラリ定義', load_terms.find { it['term'] == 'EPUB' }['definition']
+          assert_equal 1, result.glossary_skipped
+          assert_equal %w[i ローカル定義 いーぱぶ], load_terms.first.values_at('flags', 'definition', 'yomi')
+        end
+
+        # この本で棄却した語は、ライブラリに説明文があっても取り込まない（この本の判断を優先）。
+        # 説明文の無い語も取り込まない
+        def test_import_skips_terms_rejected_here_and_terms_without_definition
+          write_rejected([{ 'term' => '実装', 'yomi' => 'じっそう' }])
+          write_library('lib.yml',
+                        glossary: [{ 'term' => '実装', 'yomi' => 'じっそう', 'definition' => '作ること。' },
+                                   { 'term' => '扉絵', 'yomi' => 'とびらえ', 'definition' => '' }],
+                        reject: [])
+
+          result = IndexLibrary.new.import!('lib.yml')
+
+          assert_equal [0, 2], [result.glossary_added, result.glossary_skipped]
+          assert_empty load_terms
+          assert_includes load_rejected, '実装'
+        end
+
+        # 棄却の理由はライブラリから引き継ぐ
+        def test_import_keeps_the_reject_reason
+          write_library('lib.yml', glossary: [], reject: [{ 'term' => '実装', 'reason' => '汎用語' }])
+
+          IndexLibrary.new.import!('lib.yml')
+
+          assert_equal '汎用語', load_rejected_entries.first['reason']
         end
 
         def test_import_skips_reject_for_adopted_terms
@@ -154,9 +195,14 @@ module VivlioStarter
                      { 'version' => 1, 'glossary' => glossary, 'reject' => reject, 'yomi' => yomi }.to_yaml)
         end
 
-        def load_terms = YAML.load_file('config/index_glossary_terms.yml')['terms']
+        def load_terms
+          path = 'config/index_glossary_terms.yml'
+          File.exist?(path) ? YAML.load_file(path)['terms'] : []
+        end
 
-        def load_rejected = YAML.load_file('config/index_glossary_rejected.yml')['rejected_terms'].map { it['term'] }
+        def load_rejected_entries = YAML.load_file('config/index_glossary_rejected.yml')['rejected_terms']
+
+        def load_rejected = load_rejected_entries.map { it['term'] }
       end
     end
   end

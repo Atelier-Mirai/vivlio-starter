@@ -74,7 +74,7 @@ module VivlioStarter
         content = build_markdown(data)
         File.write(REVIEW_FILE, content, encoding: 'utf-8')
         Common.log_success("レビュー用ファイルを生成しました: #{REVIEW_FILE}")
-        Common.log_info('ファイルを開いて [ ] を [x] または [r] に変更してください')
+        Common.log_info('ファイルを開いて、印（[i]=索引、[g]=用語集、[r]=棄却）を付けてください')
         Common.log_info('完了したら: vs index:apply')
       end
 
@@ -423,7 +423,7 @@ module VivlioStarter
 
           #{build_rejected_section(rejected)}
 
-          #{build_absent_section(absent)}
+          #{build_absent_section(absent, data[:absent_imported].to_i)}
         MARKDOWN
       end
 
@@ -536,9 +536,14 @@ module VivlioStarter
       # 使っていない語・棄却した語はそのまま。並びは apply で変わる登録済みの語を先に置く
       ABSENT_KINDS = %w[registered unused rejected].freeze
 
-      def build_absent_section(absent)
+      # @param imported [Integer] 並べなかった、索引ライブラリから取り込んだ語の数
+      def build_absent_section(absent, imported = 0)
         section = "#{ABSENT_SECTION}（#{absent.size}語）\n"
-        section += "※ 原稿のどこにも出てこない語です。登録済みの語は、そのまま `vs index:apply` すると索引・用語集から外れます（説明文のある語は、使っていない語として残ります）。誤って登録した語は `[DELETE]` で記録ごと消せます。\n\n"
+        section += "※ 原稿のどこにも出てこない語です。登録済みの語は、そのまま `vs index:apply` すると索引・用語集から外れます（説明文のある語は、使っていない語として残ります）。誤って登録した語は `[DELETE]` で記録ごと消せます。\n"
+        # 取り込んだ語は、この本で片付ける語ではない。原稿に書けば 1〜4 節に並ぶ
+        # （index-library-reserve-spec.md §3.3）
+        section += "※ 索引ライブラリから取り込んだ語のうち、原稿に出てこない #{imported} 語は並べていません。原稿に書くと、候補として並びます。\n" if imported.positive?
+        section += "\n"
         return "#{section}原稿に出てこない語はありません。\n" if absent.empty?
 
         absent.sort_by { [ABSENT_KINDS.index(it['kind']), it['yomi'].to_s.downcase] }.each do |item|

@@ -418,6 +418,41 @@ module VivlioStarter
         refute_includes load_rejected_terms, '見直し候補', '棄却はしない'
       end
 
+      # 索引ライブラリから取り込んだ語は、原稿に出てこない間は 5 節に並べず、数だけ示す。
+      # この本で外した語・棄却した語は並べる（index-library-reserve-spec.md §3.3）
+      def test_absent_section_leaves_out_terms_imported_from_the_library
+        File.write('contents/33-index.md', "# 索引\n\n推奨する語を選びます。\n")
+        File.write('config/index_glossary_terms.yml', { 'terms' => [
+          { 'term' => '版面', 'yomi' => 'はんづら', 'flags' => '', 'definition' => '文字を組む範囲。', 'source' => 'imported' },
+          { 'term' => '推奨候補', 'yomi' => 'すいしょうこうほ', 'flags' => '', 'definition' => '目安の内側の語。', 'source' => 'review' }
+        ] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+        File.write('config/index_glossary_rejected.yml', { 'rejected_terms' => [
+          { 'term' => '項目', 'yomi' => 'こうもく', 'source' => 'imported' },
+          { 'term' => 'Step', 'yomi' => 'Step' }
+        ] }.to_yaml)
+
+        capture_io { @manager.auto_process!(['33-index']) }
+        absent = review_text[/^## 5\..*\z/m]
+
+        assert_includes absent, '**推奨候補**'
+        assert_includes absent, '**Step**'
+        refute_includes absent, '**版面**'
+        refute_includes absent, '**項目**'
+        assert_includes absent, '索引ライブラリから取り込んだ語のうち、原稿に出てこない 2 語は並べていません'
+      end
+
+      # 最後の報告の「棄却した語」は、4 節に並ぶ語（原稿に出てくる語）だけを数える
+      def test_report_counts_only_rejected_terms_listed_in_section_four
+        File.write('contents/33-index.md', "# 索引\n\n項目を選びます。\n")
+        seed_rejected_terms(%w[項目 Step])
+
+        output, = capture_io { @manager.auto_process!(['33-index']) }
+
+        assert_includes output, '棄却した語 1 語'
+        assert_includes review_text, '## 4. 棄却した語（1語）'
+      end
+
       # 使っていない語を原稿に書き戻すと、以前の説明文つきで候補に戻る
       # （短い原稿では目安の語数が 0 になり帯に入らないので、候補の段で確かめる）
       def test_unused_term_returns_as_a_candidate_with_its_definition

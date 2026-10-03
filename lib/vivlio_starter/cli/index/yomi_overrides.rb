@@ -40,9 +40,9 @@ module VivlioStarter
           {}
         end
 
-        # 読み辞書を追記マージする。既定は既存優先（prefer_import で上書き）。
+        # 読み辞書を追記マージする。すでにある読みは変えない（index-library-reserve-spec.md §3.5）。
         # @return [Array(Integer, Integer)] [書き込み件数, スキップ件数]
-        def merge!(map, prefer_import: false)
+        def merge!(map)
           return [0, 0] if map.nil? || map.empty?
 
           existing = load
@@ -52,7 +52,7 @@ module VivlioStarter
           map.each do |term, yomi|
             next if term.to_s.empty? || yomi.to_s.empty?
 
-            if existing.key?(term) && (!prefer_import || existing[term] == yomi)
+            if existing.key?(term)
               skipped += 1
             else
               existing[term] = yomi

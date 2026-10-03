@@ -116,6 +116,32 @@ module VivlioStarter
 
       # --- Phase: メタデータ ---
 
+      # 索引ライブラリから預かっていた語は、この本で採用したらこの本の語になる。
+      # レビューファイルで採用したら review、原稿の [語] で採用したら manual_markup
+      # （index-library-reserve-spec.md §5）
+      def test_merge_turns_an_imported_term_into_this_books_term_when_adopted
+        library = [{ 'term' => '版面', 'yomi' => 'はんづら', 'definition' => '文字を組む範囲。' },
+                   { 'term' => '扉絵', 'yomi' => 'とびらえ', 'definition' => '章の扉の絵。' },
+                   { 'term' => '塗り足し', 'yomi' => 'ぬりたし', 'definition' => '裁ち落としの余白。' }]
+        @manager.merge_terms!(library, flags: '', source: 'imported')
+
+        @manager.merge_terms!([{ 'term' => '版面' }], flags: 'i', source: 'auto_extracted')
+        @manager.merge_terms!([{ 'term' => '扉絵' }], flags: 'i', source: 'manual_markup')
+        # 主要参照だけを書き込む更新（印を足さない）は、採用ではない
+        @manager.merge_terms!([{ 'term' => '塗り足し', 'main' => [] }], flags: '')
+
+        sources = @manager.load_terms.to_h { [it['term'], it['source']] }
+        assert_equal({ '版面' => 'review', '扉絵' => 'manual_markup', '塗り足し' => 'imported' }, sources)
+      end
+
+      # この本の語の出どころは、印を足しても変えない
+      def test_merge_keeps_the_source_of_this_books_term
+        @manager.merge_terms!([{ 'term' => 'CSS' }], flags: 'i', source: 'auto_extracted')
+        @manager.merge_terms!([{ 'term' => 'CSS' }], flags: 'g', source: 'review')
+
+        assert_equal 'auto_extracted', @manager.load_terms.first['source']
+      end
+
       def test_merge_preserves_metadata
         @manager.merge_terms!(
           [{ 'term' => 'CSS', 'yomi' => 'CSS' }],

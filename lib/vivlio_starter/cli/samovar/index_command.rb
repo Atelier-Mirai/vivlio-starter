@@ -46,13 +46,13 @@ module VivlioStarter
               vs index:plan [章]  - 索引語数の目安と現況を表示（辞書は変更しない）
               vs index:auto [章]  - 候補抽出・分類・確認用ファイル生成（章を指定可）
               vs index:apply      - レビュー結果を index_glossary_terms.yml に適用
-              vs index:export     - 用語集[g]・棄却語 を index_library.yml に書き出す
-              vs index:import     - index_library.yml から用語集[g]・棄却語 を取り込む
+              vs index:export     - 用語集の説明文・棄却した語・読みを index_library.yml に書き出す
+              vs index:import     - index_library.yml から用語集の説明文・棄却した語・読みを取り込む
 
             ワークフロー:
               0. vs index:plan   → 目安語数と現況を確認する（任意）
               1. vs index:auto   → _index_glossary_review.md を生成
-              2. _index_glossary_review.md を編集（[x]で承認、[r]で棄却）
+              2. _index_glossary_review.md を編集（[i]=索引、[g]=用語集、[r]=棄却）
               3. vs index:apply  → index_glossary_terms.yml を更新
               4. vs build        → 索引ページを含む PDF を生成
 
@@ -60,7 +60,7 @@ module VivlioStarter
               vs index:auto 21          # 21 章だけを対象に候補抽出
               vs index:auto 21-23,25    # 範囲・複数指定も可
 
-            書籍間での持ち運び（用語集[g]・棄却語 を別の本へ引き継ぐ）:
+            書籍間での持ち運び（用語集の説明文・棄却した語・読みを別の本へ引き継ぐ）:
               vs index:export           # index_library.yml へ書き出す
               vs index:import           # index_library.yml から取り込む
               vs index:export mylib.yml # パスを指定して書き出す（取り込みも同様）
@@ -192,9 +192,9 @@ module VivlioStarter
         end
       end
 
-      # index:export コマンド - 用語集[g]・棄却語 を持ち運び用ファイルへ書き出す
+      # index:export コマンド - 用語集の説明文・棄却した語・読みを持ち運び用ファイルへ書き出す
       class IndexExportCommand < VsCommand
-        self.description = '用語集・棄却語を index_library.yml へ書き出します'
+        self.description = '用語集の説明文・棄却した語・読みを index_library.yml へ書き出します'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -220,12 +220,11 @@ module VivlioStarter
         end
       end
 
-      # index:import コマンド - 持ち運び用ファイルから用語集[g]・棄却語 を取り込む
+      # index:import コマンド - 持ち運び用ファイルから用語集の説明文・棄却した語・読みを取り込む
       class IndexImportCommand < VsCommand
-        self.description = 'index_library.yml から用語集・棄却語を取り込みます'
+        self.description = 'index_library.yml から用語集の説明文・棄却した語・読みを取り込みます'
 
         options do
-          option '--prefer-import', '衝突時にライブラリ側で既存を上書きする', default: false, key: :prefer_import
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -239,7 +238,7 @@ module VivlioStarter
 
           path = IndexCommands::IndexLibrary.resolve_path((args || []).first)
           Common.log_info("取り込み元: #{path}")
-          result = IndexCommands::IndexLibrary.new.import!(path, prefer_import: options[:prefer_import])
+          result = IndexCommands::IndexLibrary.new.import!(path)
           result ? 0 : 1
         rescue SystemExit => e
           raise e

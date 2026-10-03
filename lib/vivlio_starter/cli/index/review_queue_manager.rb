@@ -103,6 +103,9 @@ module VivlioStarter
           # 文脈があれば保存
           contexts = term['contexts'] || term[:contexts]
           entry['contexts'] = contexts if contexts&.any?
+          # 索引ライブラリから取り込んだ語は、出どころと理由を残す。出どころはレビューファイルの
+          # 5 節に並べない目印になる（index-library-reserve-spec.md §3.3）
+          %w[source reason].each { |key| entry[key] = term[key] if term[key] }
 
           existing << entry
         end

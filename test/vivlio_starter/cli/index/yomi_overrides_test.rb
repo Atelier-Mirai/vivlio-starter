@@ -41,22 +41,13 @@ module VivlioStarter
           assert_equal({ '碍子' => 'がいし', '重力' => 'じゅうりょく' }, YomiOverrides.load)
         end
 
-        def test_merge_keeps_existing_by_default
+        def test_merge_keeps_existing
           YomiOverrides.merge!({ '重力' => 'じゅうりょく' })
           written, skipped = YomiOverrides.merge!({ '重力' => 'ちから' })
 
           assert_equal 0, written
           assert_equal 1, skipped
           assert_equal 'じゅうりょく', YomiOverrides.load['重力']
-        end
-
-        def test_merge_overwrites_with_prefer_import
-          YomiOverrides.merge!({ '重力' => 'じゅうりょく' })
-          written, skipped = YomiOverrides.merge!({ '重力' => 'ちから' }, prefer_import: true)
-
-          assert_equal 1, written
-          assert_equal 0, skipped
-          assert_equal 'ちから', YomiOverrides.load['重力']
         end
 
         def test_merge_ignores_blank_entries

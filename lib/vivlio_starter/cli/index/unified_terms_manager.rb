@@ -106,7 +106,7 @@ module VivlioStarter
           idx = existing.find_index { it['term'] == term_name }
           if idx
             # 既存用語を更新（flags をマージ、データを上書き）
-            existing[idx] = merge_term_data(existing[idx], term, flags)
+            existing[idx] = merge_term_data(existing[idx], term, flags, source)
           else
             # 新規追加
             existing << build_term_entry(term, flags, source)
@@ -345,10 +345,19 @@ module VivlioStarter
       end
 
       # 用語データをマージ（既存 + 新規データ）
-      def merge_term_data(existing, new_data, flags)
+      def merge_term_data(existing, new_data, flags, source)
         merged = existing.dup
         # flags をマージ
         merged['flags'] = merge_flags(merged['flags'], flags)
+        # 索引ライブラリから預かっていた語を、この本で採用した。もうこの本の語なので、出どころを
+        # 書き換える。imported のままだと、後で使っていない語に戻したとき、5 節に並ばず
+        # [DELETE] で消せなかった（index-library-reserve-spec.md §5）。
+        # レビューファイルで採用したら review。索引の承認は新しい語を auto_extracted として
+        # 渡すが、預かっていた語は機械が拾った語ではない。原稿の [語] で採用したら manual_markup
+        # （読みの書き出しが、手動登録の語として扱う）
+        if merged['source'] == 'imported' && !flags.to_s.empty?
+          merged['source'] = source == 'manual_markup' ? 'manual_markup' : 'review'
+        end
         # nilでない場合のみ上書き
         merged['yomi'] = new_data['yomi'] || new_data[:yomi] || merged['yomi']
         merged['definition'] = new_data['definition'] if new_data['definition']

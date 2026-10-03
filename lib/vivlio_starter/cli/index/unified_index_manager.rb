@@ -146,12 +146,18 @@ module VivlioStarter
         # 8. _index_review.md を生成。原稿に出てこない語は 5 節にまとめる（§3.3.1）
         present_terms, absent_terms = terms_with_context.partition { Array(it['contexts']).any? }
         present_rejected, absent_rejected = rejected_with_context.partition { Array(it['contexts']).any? }
+        # 索引ライブラリから取り込んだ使っていない語・棄却した語は、原稿に出てこない間は
+        # 5 節に並べない。この本で片付ける語ではなく、ライブラリを重ねるほど本に固有の語が
+        # 埋もれるため（index-library-reserve-spec.md §3.3）
+        absent_unused = absent_unused_terms(chapters)
+        from_library = ->(item) { item['source'] == 'imported' }
         @markdown_generator.generate!(
           terms: present_terms,
           high_candidates: high_candidates,
           low_candidates: low_candidates,
           rejected: present_rejected,
-          absent: absent_entries(absent_terms, absent_unused_terms(chapters), absent_rejected)
+          absent: absent_entries(absent_terms, absent_unused.reject(&from_library), absent_rejected.reject(&from_library)),
+          absent_imported: absent_unused.count(&from_library) + absent_rejected.count(&from_library)
         )
 
         # 9. 走査した章集合を辞書へ記録（R7: ビルド時の章追加検知に使う）
@@ -164,7 +170,7 @@ module VivlioStarter
         # 30 行近い表の後に肝心の案内が埋もれていた（改善案 #99）
         report_dictionary_writes(dictionary_writes)
         report_auto_results(auto_approved, high_candidates, low_candidates,
-                            rejected_count_in_candidates, rejected_with_context.size)
+                            rejected_count_in_candidates, present_rejected.size)
       end
 
       # Markdownから承認・リジェクトを適用
@@ -1460,6 +1466,8 @@ module VivlioStarter
         approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 語・" : ''
         # 除外済みの件数も載せる。候補の数だけを告げると「外した語はもう出てこない」
         # と読めるが、実際は末尾に一覧があり、そこが戻す唯一の入口である。
+        # 数えるのは 4 節に並ぶ語（原稿に出てくる語）だけ。原稿に出てこない語は 5 節へ移るので、
+        # 棄却した語の全件を数えると 4 節の見出しの語数と食い違っていた
         listed = rejected_listed.positive? ? "・棄却した語 #{rejected_listed} 語" : ''
         Common.log_summary(
           "レビューファイルを生成しました: #{approved}" \
