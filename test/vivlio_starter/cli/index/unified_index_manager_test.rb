@@ -1381,6 +1381,33 @@ module VivlioStarter
       end
 
       # 索引から外す印に主要参照が書かれていても記録しない（主要参照は索引の機能）
+      # 4 節（棄却した語）から [igm33] で戻した語にも、主要参照を記録する。
+      # 棄却したままの行（[ ]）は読まない
+      def test_apply_records_main_for_a_term_returning_from_rejection
+        File.write('contents/33-index.md', "# 索引\n\n用語集を作ります。項目を選びます。\n")
+        seed_rejected_terms(%w[用語集 項目])
+        File.write('_index_glossary_review.md', <<~MD)
+          ## 1. 登録済みの語（0語）
+          ## 4. 棄却した語（2語）
+          - [igm33] **用語集** (ようごしゅう)
+            - 33-index: 用語集を作ります。
+
+            本に出てくる専門用語を集めた一覧。
+
+          - [ ] **項目** (こうもく)
+            - 33-index: 項目を選びます。
+
+          ## 5. 原稿に出てこない語（0語）
+        MD
+
+        capture_io { @manager.apply_markdown_review! }
+
+        entry = UnifiedTermsManager.new.find_term('用語集')
+        assert_equal ['ig', ['33-index']], entry.values_at('flags', 'main')
+        assert_nil UnifiedTermsManager.new.find_term('項目')
+        assert_includes load_rejected_terms, '項目'
+      end
+
       def test_apply_does_not_record_main_for_a_term_leaving_the_index
         seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: '見た目を指定する言語。' }])
         File.write('_index_glossary_review.md',

@@ -246,11 +246,21 @@ module VivlioStarter
         boundary = self.class.section_index(content, REJECTED_SECTION)
         search = boundary ? content[0...boundary] : content
 
+        # 4 節（棄却した語）は、棄却から戻す行だけを読む。`[igm33]` で戻した語の主要参照が
+        # 落ちていた。棄却したままの行（`[ ]`）を読むと「主要参照を付けない」と取り違えるので、
+        # 4 節をまるごと読みはしない
+        returning = term_lines_in_rejected_section.select(&:unrejecting?)
+        returning_names = returning.map(&:term)
+        if boundary
+          finish = self.class.section_index(content, ABSENT_SECTION) || content.size
+          returning_blocks = term_blocks(content[boundary...finish]).select { |term, _| returning_names.include?(term) }
+        end
+
         # まずフラグ欄（`[igm33]`）を読み、子行があればそちらで上書きする。
         # 章名や節指定のような長い値は子行にしか書けないので、後から書き足した
         # 細かい指定が勝つ形にしてある。
-        result = IndexCommands::TermLine.scan(search).to_h { [it.term, it.main] }
-        term_blocks(search).each do |term, body|
+        result = (IndexCommands::TermLine.scan(search) + returning).to_h { [it.term, it.main] }
+        (term_blocks(search).to_a + returning_blocks.to_a).each do |term, body|
           line = body[MAIN_REFERENCE_LINE, 1]
           result[term] = split_chapter_tokens(line) if line
         end
