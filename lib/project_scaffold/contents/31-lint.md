@@ -321,24 +321,6 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 書いたつもりと Markdown の解釈がずれる箇所を三つ見つけます。いずれもビルドは成功するので、紙面を見るまで気づけません。正解が二択で、決められるのは著者だけなので、三つとも自動修正はしません。
 :::
 
-### 索引記法とまぎらわしい角括弧
-
-`[語]` は索引に載せるための記法です。フラグ名や単位を説明するつもりで `[g]` `[eV]` のように書くと、その 1 文字が索引に載ってしまいます。
-
-:::{.output}
-```
-    1件  [stray-index-markup] [g] は索引語として登録されます（コードなら `[g]` と囲む／索引に載せるなら [g|よみ] と仮名の読みを添える）
-         行: 299
-```
-:::
-
-指摘するのは**読みを添えていない、半角 1〜2 文字**の綴りだけです。`[CSS]` や `[PDF]` のような 3 文字は、索引語として自然なので指摘しません。直し方は二つあります。
-
-- 記号として見せたいだけなら、バッククォートで囲んで `` `[g]` `` と書く
-- 索引に載せたいなら、`[eV|いーぶい]` のように**仮名の読み**を添える
-
-読みは並べ替えに使う欄です。意味を書く場所ではないので、`[eV|電子ボルト]` としても E の欄に並びます。意味は用語集の説明文へ書いてください。
-
 ### 4 スペースの字下げ
 
 標準の Markdown には字下げでコードを示す書き方がありますが、Vivlio Starter は対応していません（@chapref:ch-markdown-tutorial を参照）。空行に挟まれた字下げの段落があると指摘します。
@@ -377,6 +359,21 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 :::
 
 章を分けるときは、ファイルを分けて `catalog.yml` に並べてください。コードブロックの中の `# コメント` は章見出しと見なしません。設定ファイルなしのビルド（`vs build file.md`）は、一つのファイルを `#` ごとに章に分けて組みます（@ch-build の章）。
+
+## 索引・用語集の語の書き方
+
+:::{.section-lead}
+索引・用語集に登録した語と、空白だけが違う書き方を見つけます。辞書の語は空白も含めた綴りで原稿から探すので、空白が違う箇所は索引に載りません。ビルドは成功するので、索引のページを見るまで気づけません。
+:::
+
+:::{.output}
+```
+    2件  [index-term-spacing] Type3 フォント => Type 3 フォント（索引・用語集の綴り）
+         行: 35, 240
+```
+:::
+
+空白の有無を見るのは、辞書の語が空白を持つ位置と、英数字と和文の境目だけです。綴りや大文字・小文字の違いは、別の語のこともあるので指摘しません。直し方は一つに決まるので、`vs lint --fix` で辞書の綴りへ直せます。書名の引用のように、わざと元の表記を残したい箇所は `<!-- no-lint -->` で外してください。指摘はいつも辞書の綴りへ直す向きに出ます。同じ語の指摘がたくさん出て、辞書の綴りのほうが誤っていると分かったときは、レビューファイルで辞書の綴りを直します（@pageref:ch-index-glossary の章）。索引の対象から外した章（`index_glossary.exclude_chapters`）は検査しません。
 
 ## コードブロックの言語名 @lint-code-language
 
@@ -566,7 +563,7 @@ lint:
 
 切ったルールは表示に出ず、`vs lint --fix` でも修正が当たりません。無効化した分は問題件数にも数えません。`prh` と書くと、表記揺れの辞書がすべて止まります（辞書の項目を一つずつは切れません）。
 
-Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
+Vivlio Starter が独自に検査するルール（`mazegaki` / `ambiguous-comparison` / `index-term-spacing` / `indented-code-block` / `setext-heading` / `multiple-chapter-headings` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length` / `ja-no-weak-phrase`）も、同じキーで無効にできます。特定の語だけを除外したいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 

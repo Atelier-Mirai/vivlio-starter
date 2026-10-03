@@ -32,7 +32,7 @@
 | `vs open` | 生成された PDF を開く（macOS 専用） | 補助コマンドとカスタマイズ |
 | `vs pdf:compress` | 生成済み PDF を圧縮 | 補助コマンドとカスタマイズ |
 | `vs pdf:pages` | PDF をページ単位で JPEG 画像に切り出し | ビルド |
-| `vs pdf:rasterize` | PDF をラスタライズして再結合（Type3 フォント対策） | ビルド |
+| `vs pdf:rasterize` | PDF をラスタライズして再結合（Type 3 フォント対策） | ビルド |
 :::
 
 グローバルオプション: `-h` / `--help`（ヘルプ）・`-v` / `--verbose`（冗長出力）・`--version`（バージョン表示）。
@@ -237,7 +237,7 @@
 
 ### `vs pdf:rasterize` — PDF のラスタライズ再結合
 
-`vs pdf:rasterize <入力PDF> [オプション]`（Type3 フォント対策。入力省略時はビルド生成物）
+`vs pdf:rasterize <入力PDF> [オプション]`（Type 3 フォント対策。入力省略時はビルド生成物）
 
 :::{.long-table}
 | オプション | 説明 |

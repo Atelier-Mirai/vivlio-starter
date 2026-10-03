@@ -536,7 +536,7 @@
 
 - **動作確認で見つかった不具合（2026-10-02）**: 一般語の外す印と主要参照の推測を、用語集だけの語にも当てていた。棄却した語から `[g]` で戻した「Vivlio Starter」（16/27 章に出る）が `[-im?00]` と出て、そのまま apply すると用語集から外れて使っていない語になるところだった。`enrich_terms_with_context` で、どちらも索引に載せている語だけに当てる。
 
-**残り**: 雛形（`lib/project_scaffold/`）の同期（`copy_to_scaffold.rb`）。
+**雛形の同期**: 2026-10-03 に `copy_to_scaffold.rb` で同期し、本仕様書を archives へ移した。
 - **§3.4（2026-10-02）**: `TermLine` の判定を、印の文字を 1 つずつ読む形に作り直した（`MARK`・`kept`・`removed`・`kept_flags`）。棄却した語から戻すときの登録先は `kept_flags`（i・g・ig）で渡す。一般語の `ig` の語は `base_flag` が `-ig` を返す。`apply_main_references!` は索引に載らない語を飛ばす。いままでの `[-ig]` を両方外す前提だったテスト 1 件を、新しい読み方に改めた。
 - **綴りの子行（2026-10-02・改善案 #103）**: `- 綴り: 新しい綴り` で見出し語を直せるようにした（`parse_spelling_changes`・`rename_term!`・`apply_spelling_changes!`）。lint（改善案 #102）は辞書を正典とするので、辞書の側を直す入口として足した。
 - **綴りを直したときの原稿（2026-10-03・改善案 #103 追補）**: 原稿に古い綴りが残っていれば、原稿も直すかを確かめる（`ManuscriptMarkup.spelling_places`・`respell!`・`UnifiedIndexManager#confirm_manuscript_respelling`）。索引の照合は大文字・小文字を区別し、lint は空白の違いしか見ないため、原稿を残すと黙って索引から外れていた。空白の揺れの照合は lint から `TermPattern.spacing_insensitive` へ移して共有し、前後の境目には `_` も数える（コードを伏せた目印 `__VS_CODE_SPAN__0__` の中に当てないため）。`index_glossary.exclude_chapters` の章は直さない。

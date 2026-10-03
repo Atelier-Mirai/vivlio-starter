@@ -281,7 +281,7 @@ index:
   title: '索引'
   target_terms: light    # 索引語数の目安: light / standard / thorough / 数値で直接指定
   candidate_pool: 3.0    # 目安語数の何倍までを候補として提示するか
-  auto_approve: false    # true: 推奨候補を自動で辞書へ登録する
+  auto_approve: false    # true: 推奨する語を自動で辞書へ登録する
 
 glossary:
   title: '用語集'
