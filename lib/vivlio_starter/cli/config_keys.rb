@@ -211,13 +211,13 @@ module VivlioStarter
       %i[spellcheck check_code_blocks]                => Spec[default: false],
 
       # ------- pdf_read -------
-      %i[pdf_read text_area top_margin]               => Spec[default: 18],
-      %i[pdf_read text_area bottom_margin]            => Spec[default: 20],
-      %i[pdf_read text_area inner_margin]             => Spec[default: 15],
-      %i[pdf_read text_area outer_margin]             => Spec[default: 12],
+      %i[pdf_read text_area top_margin]               => Spec[default: nil],
+      %i[pdf_read text_area bottom_margin]            => Spec[default: nil],
+      %i[pdf_read text_area inner_margin]             => Spec[default: nil],
+      %i[pdf_read text_area outer_margin]             => Spec[default: nil],
       %i[pdf_read page_separator]                     => Spec[default: false],
       %i[pdf_read ocr mode]                           => Spec[default: "auto"],
-      %i[pdf_read ocr languages]                      => Spec[default: ["japanese"]],
+      %i[pdf_read ocr languages]                      => Spec[default: ["japanese", "english"]],
       %i[pdf_read ocr dpi]                            => Spec[default: 300],
       %i[pdf_read ocr psm]                            => Spec[default: 3],
       %i[pdf_read ocr inline_image_text]              => Spec[default: "include"],

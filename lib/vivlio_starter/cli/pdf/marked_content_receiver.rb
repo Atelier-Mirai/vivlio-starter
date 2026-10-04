@@ -9,11 +9,28 @@ module VivlioStarter
     # 構造ツリーの要素は本文を MCID で指すだけなので、文字そのものはページの側から拾う
     # （pdf-read-structure-spec.md §3.2）。文字を描く命令の前後で `runs` の数が増えた分を、
     # その時点で開いている MCID へ割り当てる。pdf-reader の内部の変数は読まない（論点 3）。
+    #
+    # タグの無い PDF の推定（経路 B・§4）に使えるよう、ページの文字と画像は MCID によらず
+    # すべて取っておき、文字にはフォントの太字・等幅の別を持たせる。
     class MarkedContentReceiver < ::PDF::Reader::PageTextReceiver
+      # 文字を描いたフォント。見出し（太字）とコード（等幅）の推定に使う
+      FontInfo = Data.define(:name, :bold, :mono)
+
       # 1 文字。座標は pdf-reader の TextRun と同じ（左下が原点・単位は pt）
-      Glyph = Data.define(:text, :x, :y, :width, :size, :page) do
+      Glyph = Data.define(:text, :x, :y, :width, :size, :page, :font) do
+        def initialize(text:, x:, y:, width:, size:, page:, font: nil) = super
+
         def right = x + width
+        def bold? = font&.bold || false
+        def mono? = font&.mono || false
       end
+
+      # 名前で見分ける等幅と太字。フォントの記述子に印が無い PDF も多いので、名前でも見る
+      MONO_FONT_NAME = /Mono|Code|Console|Courier|Consol|Menlo|Monaco|Inconsolata|HackGen|Cica|Ricty|Typewriter|CMTT|SFMono/i
+      BOLD_FONT_NAME = /Bold|Black|Heavy|Semibold|Demi|W[6-9]\b|CMBX/i
+      # PDF のフォント記述子の印（FixedPitch は 1 ビット目、ForceBold は 19 ビット目）
+      FIXED_PITCH_FLAG = 1
+      FORCE_BOLD_FLAG = 1 << 18
 
       # ページに描かれた画像の外接矩形
       ImageBox = Data.define(:page, :left, :bottom, :right, :top)
@@ -25,11 +42,24 @@ module VivlioStarter
       # 命令の前後の数の差が、その命令で描かれた文字になる
       ALL_RUNS = { rect: nil, skip_zero_width: false, skip_overlapping: false, merge: false }.freeze
 
-      # @return [Integer] 本文として数える文字の数（Artifact の中の文字を除く）
-      attr_reader :body_glyph_count
-
       # @return [Array<Glyph>] どの MCID にも属さない文字。構造ツリーから外した行番号などがここに入る
       attr_reader :unmarked_glyphs
+
+      # @return [Array<Glyph>] 描いた順のページの文字（Artifact の中の文字を除く）
+      attr_reader :page_glyphs
+
+      # @return [Array<ImageBox>] 描いた順のページの画像（Artifact の中の画像を除く）
+      attr_reader :page_images
+
+      # @return [Array(Float, Float)] ページの幅と高さ（pt）
+      attr_reader :page_size
+
+      # @return [Array<ImageBox>] 小さな塗りつぶしの図形。Chrome は箇条書きの点（•）を文字ではなく
+      #   図形で描くので、行の左にあれば箇条書きの頭とみなす手がかりにする
+      attr_reader :page_dots
+
+      # 箇条書きの点とみなす図形の大きさ（pt）
+      DOT_SIZE = (1.0..8.0)
 
       # @param page_number [Integer] 0 から数えたページの番号。Glyph に持たせる
       def initialize(page_number)
@@ -42,9 +72,42 @@ module VivlioStarter
         @glyphs_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @images_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @marks = []
-        @body_glyph_count = 0
         @unmarked_glyphs = []
+        @page_glyphs = []
+        @page_images = []
+        @fonts = {}
+        @page_size = [page.width, page.height]
+        @page_dots = []
+        @path = []
       end
+
+      # --- 図形（箇条書きの点を拾うためだけに、塗りつぶした小さな図形の外接矩形を取る） ---
+
+      def append_rectangle(x, y, width, height)
+        @path.push(device_point(x, y), device_point(x + width, y + height))
+      end
+
+      def begin_new_subpath(x, y) = @path << device_point(x, y)
+
+      def append_line(x, y) = @path << device_point(x, y)
+
+      def append_curved_segment(*coordinates) = coordinates.each_slice(2) { @path << device_point(*it) }
+
+      alias append_curved_segment_initial_point_replicated append_curved_segment
+      alias append_curved_segment_final_point_replicated append_curved_segment
+
+      def fill_path_with_nonzero = record_dot
+      def fill_path_with_even_odd = record_dot
+      def fill_stroke = record_dot
+      def fill_stroke_with_even_odd = record_dot
+      def close_fill_stroke = record_dot
+      def close_fill_stroke_with_even_odd = record_dot
+      def stroke_path = @path.clear
+      def close_and_stroke_path = @path.clear
+      def end_path = @path.clear
+
+      # 本文として数える文字の数（Artifact の中の文字を除く）
+      def body_glyph_count = @page_glyphs.size
 
       # @return [Hash{Integer => MarkedContent}]
       def marked_contents
@@ -85,7 +148,7 @@ module VivlioStarter
 
       # 画像は MCID の中で描かれる。描いた位置を変換行列から求めて、Figure と画像を結ぶ手がかりにする
       def invoke_xobject(label)
-        record_image(label) if current_mcid
+        record_image(label)
         super
       end
 
@@ -98,14 +161,43 @@ module VivlioStarter
       def record_new_glyphs
         before = runs(ALL_RUNS).size
         yield
+        font = font_info(@state.current_font)
         added = runs(ALL_RUNS)[before..].map do |run|
-          Glyph.new(text: run.text, x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number)
+          Glyph.new(text: run.text, x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
         end
         return if added.empty?
 
         mcid = current_mcid
-        @body_glyph_count += added.size unless inside_artifact?
+        @page_glyphs.concat(added) unless inside_artifact?
         mcid && !inside_artifact? ? @glyphs_by_mcid[mcid].concat(added) : @unmarked_glyphs.concat(added)
+      end
+
+      def font_info(font)
+        return nil unless font
+
+        @fonts[font.object_id] ||= begin
+          name = font.basefont.to_s.sub(/\A[A-Z]{6}\+/, '') # 埋め込みの部分集合の接頭辞（ABCDEF+）を外す
+          descriptor = font.font_descriptor || font.descendantfonts&.first&.font_descriptor
+          flags = descriptor&.font_flags.to_i
+          FontInfo.new(
+            name:,
+            bold: name.match?(BOLD_FONT_NAME) || flags.anybits?(FORCE_BOLD_FLAG) || descriptor&.font_weight.to_i >= 600,
+            mono: name.match?(MONO_FONT_NAME) || flags.anybits?(FIXED_PITCH_FLAG)
+          )
+        end
+      end
+
+      def device_point(x, y) = @state.ctm_transform_point(::PDF::Reader::Point.new(x, y))
+
+      def record_dot
+        unless @path.empty? || inside_artifact?
+          xs = @path.map(&:x)
+          ys = @path.map(&:y)
+          if DOT_SIZE.cover?(xs.max - xs.min) && DOT_SIZE.cover?(ys.max - ys.min)
+            @page_dots << ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max)
+          end
+        end
+        @path.clear
       end
 
       def record_image(label)
@@ -117,7 +209,9 @@ module VivlioStarter
         end
         xs = corners.map(&:x)
         ys = corners.map(&:y)
-        @images_by_mcid[current_mcid] << ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max)
+        box = ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max)
+        @page_images << box unless inside_artifact?
+        @images_by_mcid[current_mcid] << box if current_mcid
       end
     end
   end

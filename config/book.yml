@@ -422,11 +422,13 @@ spellcheck:
 # ======= PDF 読み取り（vs pdf:read）の既定値 =======
 pdf_read:
   # ------- 本文として拾う範囲（版面の外側を除く） -------
+  # 柱とノンブルは、ページをまたいだ繰り返しから見分けるので、既定では書かない。
+  # 見分けが外れて柱が本文に混ざるときだけ、除く幅を mm で書く（例: top_margin: 18）
   text_area:
-    top_margin: 18 # 上端からの除外幅(mm)
-    bottom_margin: 20 # 下端からの除外幅(mm)
-    inner_margin: 15 # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
-    outer_margin: 12 # 小口側の除外幅(mm)
+    top_margin: # 上端からの除外幅(mm)
+    bottom_margin: # 下端からの除外幅(mm)
+    inner_margin: # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
+    outer_margin: # 小口側の除外幅(mm)
 
   page_separator: false # true  … "---" でページ区切りを行なう
                         # false … "---" でページ区切りを行なわない

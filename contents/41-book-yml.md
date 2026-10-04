@@ -355,17 +355,18 @@ spellcheck:
 
 ```yaml
 pdf_read:
-  text_area:
-    top_margin: 18       # 上端からの除外幅（mm）
-    bottom_margin: 20    # 下端からの除外幅（mm）
-    inner_margin: 15     # 綴じ側の除外幅（mm）
-    outer_margin: 12     # 小口側の除外幅（mm）
+  text_area:             # 柱とノンブルは繰り返しから見分けるので、既定では書かない
+    top_margin:          # 上端からの除外幅（mm）
+    bottom_margin:       # 下端からの除外幅（mm）
+    inner_margin:        # 綴じ側の除外幅（mm）
+    outer_margin:        # 小口側の除外幅（mm）
   page_separator: false  # true: "---" でページ区切りを挿入する
 
   ocr:
     mode: auto           # auto / force / disable
     languages:
       - japanese
+      - english
     dpi: 300
     psm: 3
     inline_image_text: include   # include / exclude / captionize（イラスト内テキストの扱い）

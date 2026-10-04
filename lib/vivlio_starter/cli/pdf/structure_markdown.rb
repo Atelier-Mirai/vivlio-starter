@@ -68,6 +68,8 @@ module VivlioStarter
       # 段落として写す要素
       PARAGRAPH_TYPES = %i[P Note FENote Caption LBody TOCI TR TH TD].freeze
 
+      INFERRED_TABLE_NOTE = '<!-- pdf:read: 列を推定して組んだ表です。列の対応を確かめてください -->'
+
       HEADING_LEVELS = { H1: 1, H2: 2, H3: 3, H4: 4, H5: 5, H6: 6, H: 2, Title: 1 }.freeze
 
       # ファイル名の拡張子から、囲みの言語名を決める
@@ -158,7 +160,7 @@ module VivlioStarter
           flush(flow, loose: false)
         in :L then render_list(element, flow)
         in :LI then render_list(StructureReader::Element.new(type: :L, children: [element], alt: nil, actual_text: nil), flow)
-        in :Table then render_table(element, flow)
+        in :Table | :InferredTable then render_table(element, flow)
         in :BlockQuote then render_quote(element, flow)
         in :Figure | :Formula then render_figure(element, flow)
         in :Code then render_code(element, nil, flow)
@@ -255,6 +257,8 @@ module VivlioStarter
 
       # 本文より小さい字で、番号から始まる段落を脚注の本文とする。参照のある番号だけを脚注にする
       def footnote_body?(atoms, text)
+        # 番号が太字で描かれると「**1.**」になるので、強調などの印を外した文字で見る
+        text = stringify(atoms.reject { it.is_a?(Mark) && it.side != :inline }).strip
         match = text.match(FOOTNOTE_BODY_HEAD)
         return false unless match
 
@@ -387,7 +391,10 @@ module VivlioStarter
           flow.replace_last("#{flow.blocks.last}\n#{lines.join("\n")}", last_page: pages.last)
         else
           separator = "| #{Array.new(width, '---').join(' | ')} |"
-          flow.push([lines.first, separator, *lines.drop(1)].join("\n"), :table, width:, header: lines.first, last_page: pages.last)
+          table = [lines.first, separator, *lines.drop(1)].join("\n")
+          # 紙面から列を推定した表（経路 B）は、列の対応を確かめるよう促す（§7.2）
+          table = "#{INFERRED_TABLE_NOTE}\n\n#{table}" if element.type == :InferredTable
+          flow.push(table, :table, width:, header: lines.first, last_page: pages.last)
         end
       end
 
@@ -592,6 +599,8 @@ module VivlioStarter
       end
 
       def leading_number(line, char_width)
+        return nil if line.empty? # 行送りから補った空行
+
         # 番号のすぐ後のコードが数字で始まる（34 の行の「3.times」）ことがあるので、隙間で切る
         digits = line.chunk_while { |a, b| b.x - a.right <= char_width * 0.3 }.first
                      .take_while { it.text.match?(/\A\d+\z/) }

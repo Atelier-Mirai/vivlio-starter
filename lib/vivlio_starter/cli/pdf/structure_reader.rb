@@ -4,6 +4,7 @@ require 'pdf/reader'
 
 require_relative 'marked_content_receiver'
 require_relative 'structure_markdown'
+require_relative 'layout_structure'
 
 module VivlioStarter
   module PDF
@@ -63,6 +64,21 @@ module VivlioStarter
       # @return [String]
       def markdown(images: [])
         StructureMarkdown.new(root, images:, unmarked: receivers.map(&:unmarked_glyphs)).render
+      end
+
+      # 経路 B: 構造ツリーを使わず、紙面の文字の大きさ・位置・フォントから構造を推定する（§4）
+      # @param text_area [Hash, nil] { top:, bottom:, inner:, outer: }（pt）。指定したときだけ版面の外を除く
+      # @return [String]
+      def layout_markdown(images: [], text_area: nil)
+        StructureMarkdown.new(LayoutStructure.new(receivers, text_area:).root, images:).render
+      end
+
+      # 文字の層のあるページの割合。スキャンしたページ（文字が 10 字に満たない）を除いて数える
+      # @return [Float]
+      def text_page_ratio
+        return 0.0 if receivers.empty?
+
+        receivers.count { it.page_glyphs.size >= 10 }.fdiv(receivers.size)
       end
 
       private

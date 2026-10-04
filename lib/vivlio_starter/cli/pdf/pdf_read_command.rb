@@ -35,6 +35,8 @@ module VivlioStarter
 
       # PDF 格納ディレクトリの既定名
       SOURCES_DIR = 'sources'
+      # 経路 B（紙面の推定）に入るのに要る、文字の層のあるページの割合。下回ればスキャンとみなして OCR に任せる
+      LAYOUT_TEXT_PAGE_RATIO = 0.9
       # 自動割り当て章番号の上限（01〜98）
       MAX_AUTO_CHAPTER = 98
 
@@ -286,10 +288,13 @@ module VivlioStarter
         CLI::Common::CONTENTS_DIR
       end
 
-      # 経路 A: タグ付き PDF の構造ツリーから、見出し・段落・リスト・表・コード・脚注を戻す
-      # （pdf-read-structure-spec.md §3）。どちらのモードでも pdf-reader（MIT）だけで読む。
-      # 構造ツリーが本文の 9 割を覆っていなければ nil を返し、これまでの読み方（文字の並び）に任せる。
-      # 経路 A は構造でページをまたぐ段落をつなぐので、page_separator の区切りは入れない
+      # 見出し・段落・リスト・表・コード・脚注を戻して原稿を書く（pdf-read-structure-spec.md）。
+      # どちらのモードでも pdf-reader（MIT）だけで読む。
+      # - 経路 A: 構造ツリーが本文の 9 割以上を覆うタグ付き PDF は、構造ツリーから戻す（§3）
+      # - 経路 B: そうでなく、9 割以上のページに文字の層があれば、紙面の文字の大きさ・位置・
+      #   フォントから推定する（§4）
+      # どちらにも当たらない（スキャンした PDF）ときは nil を返し、これまでの読み方（OCR）に任せる。
+      # 構造でページをまたぐ段落をつなぐので、page_separator の区切りは入れない
       # @return [Hash, nil] :markdown_path, :pages
       def convert_structured(pdf_path, entry, mode)
         # 無い PDF・壊れた PDF は、これまでの読み方が理由を添えて止める
@@ -297,13 +302,20 @@ module VivlioStarter
 
         reader = ::PDF::Reader.new(pdf_path)
         structure = VivlioStarter::PDF::StructureReader.new(reader)
-        coverage = structure.coverage
-        CLI::Common.log_debug(format('[pdf:read] 構造ツリーが覆う本文: %.1f%%', coverage * 100))
-        return nil unless structure.usable?
+        CLI::Common.log_debug(format('[pdf:read] 構造ツリーが覆う本文: %.1f%%', structure.coverage * 100))
+        route = if structure.usable? then :tree
+                elsif structure.text_page_ratio >= LAYOUT_TEXT_PAGE_RATIO then :layout
+                end
+        return nil unless route
 
-        CLI::Common.log_info('[pdf:read] 構造ツリー（タグ）から、見出し・段落・表・コードを戻します')
+        CLI::Common.log_info(route == :tree ? '[pdf:read] 構造ツリー（タグ）から、見出し・段落・表・コードを戻します' :
+                                                '[pdf:read] 文字の大きさと位置から、見出し・段落・表・コードを推定します')
         images = mode == :enhanced ? structured_images(pdf_path, entry) : []
-        markdown = structure.markdown(images:)
+        markdown = if route == :tree
+                     structure.markdown(images:)
+                   else
+                     structure.layout_markdown(images:, text_area: specified_text_area)
+                   end
         pages = reader.page_count
         ensure_text_extracted!(markdown, pages, mode)
 
@@ -318,9 +330,16 @@ module VivlioStarter
       rescue ::PDF::Reader::MalformedPDFError, ::PDF::Reader::UnsupportedFeatureError
         nil
       rescue StandardError => e
-        # 構造ツリーの読み違いで止めず、これまでの読み方で原稿を作る
-        CLI::Common.log_warn("[pdf:read] 構造ツリーから戻せなかったので、文字の並びから読みます: #{e.message}")
+        # 構造の読み違いで止めず、これまでの読み方で原稿を作る
+        CLI::Common.log_warn("[pdf:read] 構造を戻せなかったので、文字の並びから読みます: #{e.message}")
         nil
+      end
+
+      # text_area は、book.yml で指定したときだけ効かせる（論点 6）。柱とノンブルは、経路 B が
+      # ページをまたいだ繰り返しから見分ける
+      def specified_text_area
+        margins = text_area_margin_points
+        margins.values.all?(&:zero?) ? nil : margins
       end
 
       # Enhanced Mode で画像を抜き出し、構造ツリーの Figure と位置で結ぶための一覧にする。

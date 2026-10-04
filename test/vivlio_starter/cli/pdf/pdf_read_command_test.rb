@@ -543,17 +543,38 @@ module VivlioStarter
         end
       end
 
-      # 構造ツリーの無い PDF は経路 A を使わず、これまでの読み方に任せる
-      def test_should_leave_untagged_pdf_to_text_reading
+      # タグの無い PDF は、紙面の文字の大きさと位置から見出しと段落を推定する（経路 B）
+      def test_should_infer_structure_from_untagged_pdf
         Dir.mktmpdir do |dir|
           pdf_path = File.join(dir, 'plain.pdf')
-          write_pdf(pdf_path) { it.draw_text 'No tags', at: [72, 700] }
+          write_pdf(pdf_path) do |pdf|
+            pdf.draw_text 'Inferred Title', at: [72, 760], size: 24
+            pdf.draw_text 'The first line of a paragraph runs across the page.', at: [72, 720]
+            pdf.draw_text 'It continues on the second line.', at: [72, 705]
+          end
           entry = Data.define(:basename).new('10-plain')
 
           result = @command.stub(:contents_dir, dir) { @command.send(:convert_structured, pdf_path, entry, :standard) }
 
+          assert_equal(<<~MARKDOWN, File.read(result[:markdown_path]))
+            # Inferred Title
+
+            The first line of a paragraph runs across the page. It continues on the second line.
+          MARKDOWN
+        end
+      end
+
+      # 文字の層の無い PDF（スキャン）は構造を戻さず、これまでの読み方（OCR）に任せる
+      def test_should_leave_scanned_pdf_to_text_reading
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'scan.pdf')
+          write_pdf(pdf_path) { it.stroke_rectangle([72, 700], 200, 100) }
+          entry = Data.define(:basename).new('10-scan')
+
+          result = @command.stub(:contents_dir, dir) { @command.send(:convert_structured, pdf_path, entry, :standard) }
+
           assert_nil(result)
-          refute(File.exist?(File.join(dir, '10-plain.md')))
+          refute(File.exist?(File.join(dir, '10-scan.md')))
         end
       end
 
