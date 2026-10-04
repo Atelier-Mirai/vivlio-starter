@@ -7,6 +7,7 @@ require 'pdf/reader'
 
 require_relative 'mecab_newline_cleaner'
 require_relative 'structure_reader'
+require_relative 'ocr_page'
 
 require_relative '../common'
 require_relative '../token_resolver'
@@ -346,7 +347,14 @@ module VivlioStarter
       # 文字は構造ツリーから読むので、プラグインの OCR は切る。抜き出しに失敗しても、
       # 画像の参照を書かないだけで原稿は作る
       def structured_images(pdf_path, entry)
-        result = enhanced_result(pdf_path, entry, ocr: { mode: 'disable' })
+        image_placements(enhanced_result(pdf_path, entry, ocr: { mode: 'disable' }))
+      rescue Error, LoadError => e
+        CLI::Common.log_warn("[pdf:read] 画像を抜き出せなかったので、画像の参照は書きません: #{e.message}")
+        []
+      end
+
+      # プラグインが抜き出した画像を、図と位置で結ぶための一覧にする（page は 0 から数える）
+      def image_placements(result)
         enhanced_images(result).filter_map do |asset|
           left, bottom, right, top = %w[left bottom right top].map { (asset[it.to_sym] || asset[it]).to_f }
           path = asset[:reference_path] || asset['reference_path']
@@ -355,9 +363,45 @@ module VivlioStarter
 
           VivlioStarter::PDF::StructureMarkdown::ImagePlacement.new(page:, left:, bottom:, right:, top:, path:)
         end
-      rescue Error, LoadError => e
-        CLI::Common.log_warn("[pdf:read] 画像を抜き出せなかったので、画像の参照は書きません: #{e.message}")
-        []
+      end
+
+      # OCR したページを含む PDF も、紙面の推定（経路 B）で構造を戻す（pdf-read-structure-spec.md §6）。
+      # プラグインが返す OCR の語を字に割り、文字の層のあるページと合わせて読む。OCR の誤認識は
+      # config/ocr_corrections.yml の表で直す。語を返さない 1.2.0 より前のプラグインなら nil を返し、
+      # これまでの読み方（ページごとの文字列）に任せる
+      # @return [Hash, nil] :markdown_path, :pages
+      def convert_ocr_layout(pdf_path, entry, result)
+        words = result['page_words'] || result[:page_words]
+        return nil unless words.is_a?(Array) && words.any?
+
+        placements = image_placements(result)
+        sizes = Array(result['page_sizes'] || result[:page_sizes])
+        scans = VivlioStarter::PDF::StructureReader.new(::PDF::Reader.new(pdf_path)).page_scans
+        pages = scans.each_with_index.map do |scan, index|
+          next scan unless words[index]
+
+          boxes = placements.select { it.page == index }.map do |image|
+            VivlioStarter::PDF::MarkedContentReceiver::ImageBox.new(page: index, left: image.left, bottom: image.bottom,
+                                                                     right: image.right, top: image.top)
+          end
+          VivlioStarter::PDF::OcrPage.new(words[index], page: index, size: sizes[index] || scan.page_size, images: boxes)
+        end
+
+        CLI::Common.log_info('[pdf:read] OCR で読んだ文字の大きさと位置から、見出し・段落・表・コードを推定します')
+        root = VivlioStarter::PDF::LayoutStructure.new(pages, text_area: specified_text_area).root
+        markdown = VivlioStarter::PDF::OcrCorrections.apply(VivlioStarter::PDF::StructureMarkdown.new(root, images: placements).render)
+        ensure_text_extracted!(markdown, pages.size, :enhanced)
+
+        markdown_path = File.join(contents_dir, "#{entry.basename}.md")
+        FileUtils.mkdir_p(File.dirname(markdown_path))
+        File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
+        CLI::Common.log_info("[pdf:read] ページ数: #{pages.size}")
+        { markdown_path:, pages: pages.size }
+      rescue Error
+        raise
+      rescue StandardError => e
+        CLI::Common.log_warn("[pdf:read] OCR の結果から構造を戻せなかったので、ページごとの文字列で書きます: #{e.message}")
+        nil
       end
 
       # Standard Mode: PDF::Reader でテキストを抽出し Markdown に変換する
@@ -399,6 +443,9 @@ module VivlioStarter
         FileUtils.mkdir_p(File.dirname(markdown_path))
 
         result = enhanced_result(pdf_path, entry)
+        layout = convert_ocr_layout(pdf_path, entry, result)
+        return layout if layout
+
         page_texts = enhanced_page_texts(result)
         pages_text = if enhanced_page_chunks(result).length == page_texts.length && !page_texts.empty?
                        enhanced_page_chunks(result).each_with_index.map do |chunk, index|

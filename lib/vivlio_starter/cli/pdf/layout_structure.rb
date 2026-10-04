@@ -249,6 +249,8 @@ module VivlioStarter
       # --- Phase: かたまりに分ける ---
 
       def page_blocks(lines)
+        @numbered_neighbors ||= {}
+        @numbered_neighbors[lines.first&.page] = lines
         blocks = []
         index = 0
         while index < lines.size
@@ -370,10 +372,33 @@ module VivlioStarter
         length
       end
 
-      # 等幅の字が 9 割を占める行はコード。行内のコードが多い本文の行（8 割台）と分ける
+      # 等幅の字が 9 割を占める行はコード。行内のコードが多い本文の行（8 割台）と分ける。
+      # 書体の分からない行（OCR）は、行頭の番号が前後の行と 1 ずつ続くこと（コードの行番号）で見る
       def code_line?(line)
         visible = line.glyphs.reject { it.text.tr("\u00A0", ' ').strip.empty? }
-        !visible.empty? && visible.count(&:mono?) >= visible.size * 0.9
+        return false if visible.empty?
+        return numbered_code_line?(line) if visible.none?(&:font)
+
+        visible.count(&:mono?) >= visible.size * 0.9
+      end
+
+      def numbered_code_line?(line)
+        number = line_number(line)
+        return false unless number
+
+        lines = @numbered_neighbors.fetch(line.page, [])
+        index = lines.index(line)
+        index && [lines[index - 1], lines[index + 1]].compact.any? { (line_number(it).to_i - number).abs == 1 } &&
+          (index.positive? || lines.size > 1)
+      end
+
+      # 行頭の数字のあとに 0.5 字以上の隙間がある行の、その数字
+      def line_number(line)
+        digits = line.glyphs.take_while { it.text.match?(/\A\d\z/) }
+        following = line.glyphs[digits.size]
+        return nil if digits.empty? || digits.size > 4 || (following && following.x - digits.last.right < line.size * 0.5)
+
+        digits.map(&:text).join.to_i
       end
 
       # コードの直前のファイル名だけの 1 行は、コードのキャプションにする
@@ -485,11 +510,20 @@ module VivlioStarter
       # StructureReader は本ファイルを読み込んでから定義されるので、要素の型は使うときに引く
       def element(type, children) = StructureReader::Element.new(type:, children:, alt: nil, actual_text: nil)
 
-      # 見出しの大きさを大きい順に並べ、4% 以内の差は同じ段階にまとめて # から振る
+      # 見出しの大きさを大きい順に並べ、10% 以内の差は同じ段階にまとめて # から振る。OCR では字の大きさが
+      # 行ごとに揺れるので、細かく分けると段階が増えすぎる（文字の層のある PDF の段階は 3 割以上離れている）
+      #
+      # 見出しが 1 つしかない段階は、いちばん上（章題）を除いてすぐ下の段階にまとめる。図の中の字を
+      # 読んだ OCR の大きな字が段階を作り、本物の節や項を下へ押し下げるため
       def heading_levels(headings)
-        sizes = headings.map { heading_size(it) }.uniq.sort.reverse
-        classes = sizes.slice_when { |a, b| (a - b) > a * 0.04 }.to_a
-        classes.each_with_index.flat_map { |group, index| group.map { [it, [index + 1, 6].min] } }.to_h
+        all_sizes = headings.map { heading_size(it) }
+        classes = all_sizes.uniq.sort.reverse.slice_when { |a, b| (a - b) > a * 0.1 }.to_a
+        counts = classes.map { |group| all_sizes.count { group.include?(it) } }
+        merged = classes.each_with_index.each_with_object([]) do |(group, index), acc|
+          lonely = index.positive? && counts[index] == 1 && index < classes.size - 1
+          lonely ? (classes[index + 1] = group + classes[index + 1]) : acc << group
+        end
+        merged.each_with_index.flat_map { |group, index| group.map { [it, [index + 1, 6].min] } }.to_h
       end
 
       # 見出しの大きさは、いちばん大きい字で見る。番号（A-12）と題の字数が同じだと、多い方の大きさが揺れる

@@ -598,6 +598,30 @@ module VivlioStarter
         end
       end
 
+      # プラグインが OCR の語を返したら、語の大きさと位置から見出しと段落を戻す（経路 B・§6）
+      def test_should_infer_structure_from_ocr_words
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'scan.pdf')
+          write_pdf(pdf_path) { it.stroke_rectangle([72, 700], 200, 100) }
+          entry = Data.define(:basename).new('10-scan')
+          words = [
+            { 'text' => '章の題名', 'x' => 72, 'y' => 760, 'width' => 96, 'size' => 30, 'conf' => 90 },
+            *%w[本文の一行目です 続きの二行目です。].each_with_index.map do |text, index|
+              { 'text' => text, 'x' => 72, 'y' => 700 - (index * 17), 'width' => text.size * 10.0, 'size' => 12, 'conf' => 90 }
+            end
+          ]
+          result = { 'pages' => 1, 'page_words' => [words], 'page_sizes' => [[595.0, 842.0]], 'images' => [] }
+
+          markdown = @command.stub(:contents_dir, dir) do
+            @command.stub(:enhanced_result, result) do
+              File.read(@command.send(:convert_enhanced, pdf_path, entry)[:markdown_path])
+            end
+          end
+
+          assert_equal("# 章の題名\n\n本文の一行目です続きの二行目です。\n", markdown)
+        end
+      end
+
       private
 
       # 見出しと段落だけのタグ付き PDF を Prawn で書く。文字を MCID で囲み、構造ツリーを書き込む

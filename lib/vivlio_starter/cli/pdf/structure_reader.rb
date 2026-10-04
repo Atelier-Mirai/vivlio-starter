@@ -73,6 +73,10 @@ module VivlioStarter
         StructureMarkdown.new(LayoutStructure.new(receivers, text_area:).root, images:).render
       end
 
+      # ページごとに読み終えた受け手。OCR したページと合わせて経路 B に渡すときに使う
+      # @return [Array<MarkedContentReceiver>]
+      def page_scans = receivers
+
       # 文字の層のあるページの割合。スキャンしたページ（文字が 10 字に満たない）を除いて数える
       # @return [Float]
       def text_page_ratio
