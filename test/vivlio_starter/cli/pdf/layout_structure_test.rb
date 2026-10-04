@@ -152,6 +152,34 @@ module VivlioStarter
         refute_includes(markdown, '注釈')
       end
 
+      # 和文のフォント（MS 明朝など）は全角の字がそろう作りで等幅の印を持つが、コードの書体ではない。
+      # 印だけを手がかりにするときは英数字の字に限って等幅とみなす
+      def test_should_not_take_fixed_pitch_japanese_font_for_code
+        mincho = FontInfo.new(name: 'MS-Mincho', bold: false, mono: true)
+        lines = [text('本文の一行目は和文の等幅の書体で組まれています', y: 700, font: mincho),
+                 text('二行目も同じ書体です。', y: 683, font: mincho)]
+
+        assert_equal("本文の一行目は和文の等幅の書体で組まれています二行目も同じ書体です。\n", render([lines]))
+      end
+
+      # TeX の脚注は、本文より小さい字の行が持ち上げた番号で始まる（「¹注の文」）。同じページの脚注は
+      # 番号ごとに分ける
+      def test_should_read_footnotes_with_raised_numbers
+        body = text('本文です', y: 700)
+        reference = Glyph.new(text: '1', x: body.last.right, y: 704, width: 4, size: 6, page: 0, font: BODY)
+        notes = [1, 2].flat_map do |number|
+          y = 80 - ((number - 1) * 12)
+          [Glyph.new(text: number.to_s, x: 60, y: y + 3.5, width: 3, size: 6, page: 0, font: BODY),
+           *text("注#{number}の文。", x: 64, y:, size: 8)]
+        end
+        second = Glyph.new(text: '2', x: 200, y: 704, width: 4, size: 6, page: 0, font: BODY)
+
+        markdown = render([[*body, reference, *text('続く', x: 104, y: 700), second, *body_paragraph(y: 650), *notes]])
+
+        assert_includes(markdown, "本文です[^1]続く[^2]\n")
+        assert_includes(markdown, "[^1]: 注1の文。\n\n[^2]: 注2の文。\n")
+      end
+
       private
 
       def render(pages, images: [], dots: [])

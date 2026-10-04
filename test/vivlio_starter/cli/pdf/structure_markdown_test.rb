@@ -57,6 +57,19 @@ module VivlioStarter
         assert_equal("面積はx2\n", render(element(:P, content(body + [exponent]))))
       end
 
+      # 数字の直後に持ち上がった数字は指数（10²）で、同じ番号の脚注があっても参照にしない
+      def test_should_not_take_exponent_after_digit_for_footnote_reference
+        body = typeset([['基数は10', 0]], y: 700)
+        exponent = Glyph.new(text: '2', x: body.last.right, y: 703, width: 4, size: 7, page: 0)
+        word = typeset([['数', 0]], x: body.last.right + 4, y: 700)
+        reference = Glyph.new(text: '2', x: word.last.right, y: 703, width: 4, size: 7, page: 0)
+        note = typeset([['2.', 0], ['注の文。', 2]], y: 60, size: 8)
+
+        markdown = render(element(:P, content(body + [exponent] + word + [reference])), content(note))
+
+        assert_equal("基数は102数[^2]\n\n[^2]: 注の文。\n", markdown)
+      end
+
       # 1 ずつ増える行番号は外し、1 以外から始まる抜粋は開始番号を #L で書き戻す。字下げは x 座標から戻す
       def test_should_strip_consecutive_line_numbers_and_keep_start_as_anchor
         code = element(:Code, content(

@@ -250,7 +250,7 @@ module VivlioStarter
         glyphs = glyphs_of(line)
         return false if glyphs.empty? || dominant_size(glyphs) >= @body_size * 0.92
 
-        stringify(line).match?(FOOTNOTE_BODY_HEAD)
+        !footnote_head(glyphs, stringify(line)).nil?
       end
 
       # --- Phase: 脚注 ---
@@ -259,13 +259,13 @@ module VivlioStarter
       def footnote_body?(atoms, text)
         # 番号が太字で描かれると「**1.**」になるので、強調などの印を外した文字で見る
         text = stringify(atoms.reject { it.is_a?(Mark) && it.side != :inline }).strip
-        match = text.match(FOOTNOTE_BODY_HEAD)
-        return false unless match
-
         glyphs = glyphs_of(atoms)
         return false if glyphs.empty? || dominant_size(glyphs) >= @body_size * 0.92
 
-        number = match[1]
+        number, rest = footnote_head(glyphs, text)
+        # 番号の後ろに文字の無い段落（ページ番号の並んだ行など）は脚注ではない
+        return false unless number && rest.match?(/[[:alpha:]]/)
+
         page = glyphs.first.page
         @found_bodies << [number, page]
         return false unless @labels
@@ -273,8 +273,23 @@ module VivlioStarter
         label = @labels[:bodies][[number, page]]
         return false unless label
 
-        @pending_notes << "[^#{label}]: #{text[match.end(0)..].strip}"
+        @pending_notes << "[^#{label}]: #{rest}"
         true
+      end
+
+      # 脚注の本文の頭の番号と、その後ろの文字。「1.」「1)」「1 」の形のほか、TeX のように
+      # 持ち上げた小さな番号のすぐ後に本文が続く形（「¹本テキストの…」）も番号とみなす
+      def footnote_head(glyphs, text)
+        match = text.match(FOOTNOTE_BODY_HEAD)
+        return [match[1], text[match.end(0)..].strip] if match
+
+        digits = glyphs.take_while { it.text.match?(/\A\d\z/) }
+        following = glyphs[digits.size]
+        return nil if digits.empty? || digits.size > 3 || following.nil?
+        return nil unless digits.last.y - following.y >= following.size * 0.15
+
+        number = digits.map(&:text).join
+        [number, text.delete_prefix(number).strip]
       end
 
       # 番号が重なったとき（ページごとに 1 から振る PDF など）は、2 つめから「1-2」のように分ける
@@ -719,8 +734,11 @@ module VivlioStarter
         end
       end
 
+      # 数字や数式の字（TeX の CMMI など）の直後に持ち上がった数字は指数（10²・r¹）で、脚注の参照では
+      # ない。参照は語の後に付く
       def superscript_digit?(glyph, base)
         return false unless base && glyph.text.match?(/\A\d+\z/) && glyph.page == base.page
+        return false if base.text.match?(/\d\z/) || base.font&.name.to_s.match?(LayoutStructure::MATH_FONT_NAME)
 
         rise = glyph.y - base.y
         glyph.size <= base.size * 0.9 && rise >= base.size * 0.15 && rise < base.size

@@ -22,8 +22,18 @@ module VivlioStarter
 
         def right = x + width
         def bold? = font&.bold || false
-        def mono? = font&.mono || false
+        # 等幅の印（FixedPitch）は和文のフォント（MS 明朝など）にも付く。全角の字がそろう作りだからで、
+        # コードの書体ではない。印だけで等幅とみなすのは英数字の字に限り、和文の字は名前が等幅の
+        # フォント（HackGen など）のときだけ等幅とする
+        def mono?
+          return false unless font&.mono
+
+          !text.match?(WIDE_TEXT) || font.name.match?(MONO_FONT_NAME)
+        end
       end
+
+      # 全角の字（和文・全角の記号）
+      WIDE_TEXT = /[\p{Han}\p{Hiragana}\p{Katakana}\u3000-\u30FF\uFF00-\uFFEF]/
 
       # 名前で見分ける等幅と太字。フォントの記述子に印が無い PDF も多いので、名前でも見る
       MONO_FONT_NAME = /Mono|Code|Console|Courier|Consol|Menlo|Monaco|Inconsolata|HackGen|Cica|Ricty|Typewriter|CMTT|SFMono/i

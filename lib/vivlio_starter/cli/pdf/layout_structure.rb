@@ -104,13 +104,20 @@ module VivlioStarter
       def build_lines(glyphs)
         rows = []
         glyphs.sort_by { [-it.y, it.x] }.each do |glyph|
-          row = rows.last(2).find do |candidate|
-            base = candidate.max_by(&:size)
-            (base.y - glyph.y).abs <= [base.size, glyph.size].min * 0.5
-          end
+          row = rows.last(2).find { |candidate| same_row?(candidate.max_by(&:size), glyph) }
           row ? row << glyph : rows << [glyph]
         end
         rows.map { make_line(it.sort_by(&:x)) }.sort_by { -it.baseline }
+      end
+
+      # ベースラインがそろうか、小さな字が大きな字の 0.6 倍以内に持ち上がっている（上付きの番号）。
+      # TeX の脚注の番号は本文の 0.45 倍ほど持ち上がる。ルビは 1 字ぶん以上離れているので入らない
+      def same_row?(base, glyph)
+        return true if (base.y - glyph.y).abs <= [base.size, glyph.size].min * 0.5
+
+        small, large = [base, glyph].sort_by(&:size)
+        rise = small.y - large.y
+        small.size < large.size * 0.9 && rise.positive? && rise <= large.size * 0.6
       end
 
       def make_line(glyphs, rubies: [])
@@ -312,7 +319,7 @@ module VivlioStarter
       def paragraph_break?(paragraph, following, ahead, large: false)
         previous = paragraph.last
         return true if code_line?(following) || (!large && heading_candidate?(following)) || list_start?(following)
-        return true if (previous.size - following.size).abs > 0.5
+        return true if (previous.size - following.size).abs > 0.5 || footnote_start?(following)
         return true if previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
 
         # 右端と左端は、この段落の行と次の行で測る。左端には、次の行と右端がそろい、左へ 1.5 字以内に
@@ -327,6 +334,18 @@ module VivlioStarter
 
         column = paragraph + [following] + ahead.select { (it.right - following.right).abs <= 1 && it.x >= following.x - (size * 1.5) }
         following.x - column.map(&:x).min > size * 0.5
+      end
+
+      # 脚注の本文の頭。本文より小さい字の行が、持ち上げた番号（TeX の「¹本テキストの…」）か
+      # 「1.」で始まる。同じページの脚注が 1 つの段落につながらないよう、この行の前で切る
+      def footnote_start?(line)
+        return false if line.size >= @body_size * 0.92
+
+        digits = line.glyphs.take_while { it.text.match?(/\A\d\z/) }
+        following = line.glyphs[digits.size]
+        return false if digits.empty? || digits.size > 3 || following.nil?
+
+        digits.last.y - following.y >= following.size * 0.15 || following.text.match?(/\A[.．)）]\z/)
       end
 
       # リストの頭（・や 1.）のあとに少し隙間がある行。本文より小さい字（脚注の「1.」）は除く
