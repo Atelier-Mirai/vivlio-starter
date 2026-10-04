@@ -6,6 +6,7 @@ require 'open3'
 require 'pdf/reader'
 
 require_relative 'mecab_newline_cleaner'
+require_relative 'structure_reader'
 
 require_relative '../common'
 require_relative '../token_resolver'
@@ -63,7 +64,8 @@ module VivlioStarter
 
         CLI::Common.log_action("[pdf:read] PDF からテキストを抽出します (#{entry.basename}, mode=#{mode})")
 
-        result = mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry)
+        result = convert_structured(pdf_path, entry, mode) ||
+                 (mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry))
 
         # catalog.yml へは変換が済んでから載せる。文字を取り出せずに止まったとき、
         # 中身の無い章が目次に残らないように
@@ -282,6 +284,61 @@ module VivlioStarter
       # 原稿出力先ディレクトリ（contents/）
       def contents_dir
         CLI::Common::CONTENTS_DIR
+      end
+
+      # 経路 A: タグ付き PDF の構造ツリーから、見出し・段落・リスト・表・コード・脚注を戻す
+      # （pdf-read-structure-spec.md §3）。どちらのモードでも pdf-reader（MIT）だけで読む。
+      # 構造ツリーが本文の 9 割を覆っていなければ nil を返し、これまでの読み方（文字の並び）に任せる。
+      # 経路 A は構造でページをまたぐ段落をつなぐので、page_separator の区切りは入れない
+      # @return [Hash, nil] :markdown_path, :pages
+      def convert_structured(pdf_path, entry, mode)
+        # 無い PDF・壊れた PDF は、これまでの読み方が理由を添えて止める
+        return nil unless File.file?(pdf_path)
+
+        reader = ::PDF::Reader.new(pdf_path)
+        structure = VivlioStarter::PDF::StructureReader.new(reader)
+        coverage = structure.coverage
+        CLI::Common.log_debug(format('[pdf:read] 構造ツリーが覆う本文: %.1f%%', coverage * 100))
+        return nil unless structure.usable?
+
+        CLI::Common.log_info('[pdf:read] 構造ツリー（タグ）から、見出し・段落・表・コードを戻します')
+        images = mode == :enhanced ? structured_images(pdf_path, entry) : []
+        markdown = structure.markdown(images:)
+        pages = reader.page_count
+        ensure_text_extracted!(markdown, pages, mode)
+
+        markdown_path = File.join(contents_dir, "#{entry.basename}.md")
+        FileUtils.mkdir_p(File.dirname(markdown_path))
+        File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
+        CLI::Common.log_info("[pdf:read] ページ数: #{pages}")
+
+        { markdown_path:, pages: }
+      rescue Error
+        raise
+      rescue ::PDF::Reader::MalformedPDFError, ::PDF::Reader::UnsupportedFeatureError
+        nil
+      rescue StandardError => e
+        # 構造ツリーの読み違いで止めず、これまでの読み方で原稿を作る
+        CLI::Common.log_warn("[pdf:read] 構造ツリーから戻せなかったので、文字の並びから読みます: #{e.message}")
+        nil
+      end
+
+      # Enhanced Mode で画像を抜き出し、構造ツリーの Figure と位置で結ぶための一覧にする。
+      # 文字は構造ツリーから読むので、プラグインの OCR は切る。抜き出しに失敗しても、
+      # 画像の参照を書かないだけで原稿は作る
+      def structured_images(pdf_path, entry)
+        result = enhanced_result(pdf_path, entry, ocr: { mode: 'disable' })
+        enhanced_images(result).filter_map do |asset|
+          left, bottom, right, top = %w[left bottom right top].map { (asset[it.to_sym] || asset[it]).to_f }
+          path = asset[:reference_path] || asset['reference_path']
+          page = (asset[:page] || asset['page']).to_i - 1
+          next if path.to_s.empty? || page.negative?
+
+          VivlioStarter::PDF::StructureMarkdown::ImagePlacement.new(page:, left:, bottom:, right:, top:, path:)
+        end
+      rescue Error, LoadError => e
+        CLI::Common.log_warn("[pdf:read] 画像を抜き出せなかったので、画像の参照は書きません: #{e.message}")
+        []
       end
 
       # Standard Mode: PDF::Reader でテキストを抽出し Markdown に変換する
@@ -683,10 +740,10 @@ module VivlioStarter
       # vivlio-starter-pdf を外部プロセスで実行し、JSON 形式の解析結果を取得する。
       # JSON は標準出力だけから読む。OCR 中に libvips などが標準エラーへ警告を出すと、
       # 混ぜて受けた出力は JSON として壊れるため
-      def enhanced_result(pdf_path, entry)
+      def enhanced_result(pdf_path, entry, ocr: enhanced_ocr_settings)
         ensure_enhanced_plugin_loaded!
 
-        stdout, stderr, status = with_plugin_env { Open3.capture3(*enhanced_command(pdf_path, entry)) }
+        stdout, stderr, status = with_plugin_env { Open3.capture3(*enhanced_command(pdf_path, entry, ocr:)) }
         raise Error, enhanced_failure_message(stderr) unless status.success?
 
         JSON.parse(stdout)
@@ -789,7 +846,7 @@ module VivlioStarter
 
       # vivlio-starter-pdf へ渡すコマンド引数を組み立てる
       # OCR 設定・マージン・画像出力先などを JSON エンコードして引き渡す
-      def enhanced_command(pdf_path, entry)
+      def enhanced_command(pdf_path, entry, ocr: enhanced_ocr_settings)
         [
           *enhanced_plugin_command,
           'read',
@@ -799,7 +856,7 @@ module VivlioStarter
           "line_merge_tolerance=#{line_merge_tolerance}",
           "images_dir=#{enhanced_images_output_dir(entry)}",
           "image_reference_dir=#{enhanced_images_reference_dir(entry)}",
-          "ocr=#{JSON.generate(enhanced_ocr_settings)}"
+          "ocr=#{JSON.generate(ocr)}"
         ]
       end
 

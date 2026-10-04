@@ -529,7 +529,69 @@ module VivlioStarter
         end
       end
 
+      # タグ付き PDF は構造ツリーから見出しと段落を戻す（pdf-read-structure-spec.md の経路 A）
+      def test_should_rebuild_structure_from_tagged_pdf
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'tagged.pdf')
+          write_tagged_pdf(pdf_path)
+          entry = Data.define(:basename).new('10-tagged')
+
+          result = @command.stub(:contents_dir, dir) { @command.send(:convert_structured, pdf_path, entry, :standard) }
+
+          assert_equal({ markdown_path: File.join(dir, '10-tagged.md'), pages: 1 }, result)
+          assert_equal("# Tagged Title\n\nBody paragraph.\n", File.read(result[:markdown_path]))
+        end
+      end
+
+      # 構造ツリーの無い PDF は経路 A を使わず、これまでの読み方に任せる
+      def test_should_leave_untagged_pdf_to_text_reading
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'plain.pdf')
+          write_pdf(pdf_path) { it.draw_text 'No tags', at: [72, 700] }
+          entry = Data.define(:basename).new('10-plain')
+
+          result = @command.stub(:contents_dir, dir) { @command.send(:convert_structured, pdf_path, entry, :standard) }
+
+          assert_nil(result)
+          refute(File.exist?(File.join(dir, '10-plain.md')))
+        end
+      end
+
+      # Enhanced Mode の経路 A は、文字を構造ツリーから読むので、プラグインには OCR を切って画像だけを頼む
+      def test_should_ask_plugin_for_images_without_ocr_when_reading_structure
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'tagged.pdf')
+          write_tagged_pdf(pdf_path)
+          entry = Data.define(:basename).new('10-tagged')
+          requested = []
+          plugin = lambda do |_path, _entry, ocr:|
+            requested << ocr
+            { 'images' => [{ 'page' => 1, 'left' => 0, 'bottom' => 0, 'right' => 10, 'top' => 10, 'reference_path' => 'a.webp' }] }
+          end
+
+          @command.stub(:contents_dir, dir) do
+            @command.stub(:enhanced_result, plugin) { @command.send(:convert_structured, pdf_path, entry, :enhanced) }
+          end
+
+          assert_equal([{ mode: 'disable' }], requested)
+        end
+      end
+
       private
+
+      # 見出しと段落だけのタグ付き PDF を Prawn で書く。文字を MCID で囲み、構造ツリーを書き込む
+      def write_tagged_pdf(path)
+        write_pdf(path) do |pdf|
+          page = pdf.state.page.dictionary
+          kids = [['H1', 'Tagged Title', 760, 20], ['P', 'Body paragraph.', 720, 12]].each_with_index.map do |(type, text, y, size), mcid|
+            pdf.add_content("/Span <</MCID #{mcid}>> BDC")
+            pdf.draw_text(text, at: [72, y], size:)
+            pdf.add_content('EMC')
+            pdf.ref!(Type: :StructElem, S: type.to_sym, K: mcid, Pg: page)
+          end
+          pdf.state.store.root.data[:StructTreeRoot] = pdf.ref!(Type: :StructTreeRoot, K: kids)
+        end
+      end
 
       # VIVLIO_PDF_PLUGIN を一時的に設定し、ブロックを抜けたら元へ戻す。nil なら消す
       def with_plugin_env(value)

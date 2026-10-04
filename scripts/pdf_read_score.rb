@@ -33,8 +33,10 @@ def expand_includes(markdown, codes_dir)
   end
 end
 
-# 記法を外して文字だけを残す。数式は紙面で画像になり文字として取れないので、両側から除く
-def manuscript_plain(markdown, codes_dir)
+# 記法を外して文字だけを残す。数式は紙面で画像になり文字として取れないので、両側から除く。
+# 原稿だけでなく出力にもかける。出力の記法（# や | や ```）を文字として数えると、構造を戻すほど
+# 適合率が下がってしまうため
+def plain_text(markdown, codes_dir)
   text = expand_includes(markdown, codes_dir)
          .gsub(/<!--.*?-->/m, '').gsub('<br>', '')
          .gsub(/^\$\$\n.*?\n\$\$$/m, '').gsub(/\$[^$\n]+\$/, '')
@@ -73,8 +75,19 @@ end
 # 英字 3 文字以上の語がどれだけ戻ったか。コードの識別子の崩れ（metal → metat）を拾う
 def ascii_words(text) = text.unicode_normalize(:nfkc).scan(/[A-Za-z_][A-Za-z0-9_]{2,}/).tally
 
+# コードの囲みの中の行は、見出しや表として数えない（# のコメントが見出しに見える）
+def outside_code(lines)
+  inside = false
+  lines.reject do |line|
+    fence = line.start_with?('```') && !line.match?(/\A```include:/)
+    inside = !inside if fence
+    inside && !fence
+  end
+end
+
+# コメントにした原稿（<!-- … -->）は紙面に出ないので数えない
 def structure_counts(markdown)
-  lines = markdown.lines
+  lines = outside_code(markdown.gsub(/<!--.*?-->/m, '').lines)
   {
     '見出し' => lines.count { it.match?(/\A#+ /) },
     # ```include:file``` は 1 行で 1 ブロック。ほかは開きと閉じの 2 行で 1 ブロック
@@ -82,16 +95,16 @@ def structure_counts(markdown)
                       (lines.count { it.start_with?('```') && !it.match?(/\A```include:/) } / 2),
     '表の行' => lines.count { it.start_with?('|') },
     ':::ブロック' => lines.count { it.match?(/\A:::\s*\{/) },
-    '脚注の参照' => markdown.scan(/\[\^\w+\](?!:)/).size,
+    '脚注の参照' => lines.join.scan(/\[\^\w+\](?!:)/).size,
     '脚注の本文' => lines.count { it.match?(/\A\[\^\w+\]:/) },
-    '画像' => markdown.scan(/!\[[^\]]*\]\([^)]+\)/).size,
+    '画像' => lines.join.scan(/!\[[^\]]*\]\([^)]+\)/).size,
     'リストの項目' => lines.count { it.match?(/\A(?:\d+\.|[-*]) /) }
   }
 end
 
-def score(label, markdown, reference_plain)
+def score(label, markdown, reference_plain, codes_dir)
   reference = normalize(reference_plain)
-  output = normalize(markdown)
+  output = normalize(plain_text(markdown, codes_dir))
   lcs = output.empty? ? 0 : lcs_length(reference, output)
   ref_words = ascii_words(reference_plain)
   out_words = ascii_words(markdown)
@@ -133,12 +146,12 @@ manuscript_path, *output_paths = ARGV
 manuscript = File.read(manuscript_path)
 # 原稿は contents/ の下にある前提で、その親を本のプロジェクトとみなして codes/ を探す
 codes_dir = File.expand_path('../../codes', manuscript_path)
-reference_plain = manuscript_plain(manuscript, codes_dir)
+reference_plain = plain_text(manuscript, codes_dir)
 
 scores = output_paths.map do |path|
   # contents/ の下の出力なら、その上の作業ディレクトリ名（std-born など）をラベルにする
   label = File.basename(File.dirname(path)) == 'contents' ? File.basename(File.dirname(path, 2)) : File.basename(path, '.md')
-  score(label, File.read(path), reference_plain)
+  score(label, File.read(path), reference_plain, codes_dir)
 end
 
 print_report(manuscript_path, normalize(reference_plain).length, scores, structure_counts(manuscript))

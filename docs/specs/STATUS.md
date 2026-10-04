@@ -13,8 +13,8 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| `pdf-read-structure-spec.md` | `vs pdf:read` で見出し・段落・リスト・コード・表を戻す（構造ツリー／紙面の推定） | 検討中（論点 8 件中 5 件決定） |
-| `pdf-read-ocr-postprocess-spec.md` | `vs pdf:read` の OCR の言語設定・後処理・速さ | 速さ（§4）は実装済み。論点 6 件中 4 件決定 |
+| `pdf-read-structure-spec.md` | `vs pdf:read` で見出し・段落・リスト・コード・表を戻す（構造ツリー／紙面の推定） | 経路 A（構造ツリー）は実装済み。経路 B（紙面の推定）は未着手。論点 8 件はすべて決定 |
+| `pdf-read-ocr-postprocess-spec.md` | `vs pdf:read` の OCR の言語設定・後処理・速さ | 速さ（§4）は実装済み。後処理（§3）と二度読みは未着手。論点 6 件はすべて決定 |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
