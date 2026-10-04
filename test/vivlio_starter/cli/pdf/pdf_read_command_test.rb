@@ -61,8 +61,11 @@ module VivlioStarter
       def test_resolved_mode_uses_enhanced_when_plugin_is_available_in_auto_mode
         command = PdfReadCommand.new("dummy.pdf", mode: "auto")
 
-        command.stub :plugin_available?, true do
-          assert_equal(:enhanced, command.send(:resolved_mode))
+        # rake test:standard は VIVLIO_PDF_PLUGIN=disable で走るので、指定の無い状態を作る
+        with_plugin_env(nil) do
+          command.stub :plugin_available?, true do
+            assert_equal(:enhanced, command.send(:resolved_mode))
+          end
         end
       end
 
@@ -148,7 +151,7 @@ module VivlioStarter
       def test_normalize_ocr_languages_accepts_user_friendly_aliases
         assert_equal(
           %w[jpn jpn_vert eng],
-          @command.send(:normalize_ocr_languages, %w[japanese japanese_vertical eng])
+          @command.send(:normalize_ocr_languages, %w[japanese japanese_vertical english])
         )
       end
 
@@ -397,6 +400,153 @@ module VivlioStarter
           VivlioStarter::PDF.send(:remove_const, :MecabNewlineCleaner)
           VivlioStarter::PDF.const_set(:MecabNewlineCleaner, original_cleaner)
         end
+      end
+
+      # VIVLIO_PDF_PLUGIN=disable なら、プラグインがあっても Standard Mode で読む。
+      # 以前は pdf:read だけがこの指定を見ず、94 章の説明と食い違っていた
+      def test_should_use_standard_mode_when_plugin_is_disabled_by_env
+        with_plugin_env('disable') do
+          @command.stub :plugin_available?, true do
+            assert_equal(:standard, @command.send(:resolved_mode))
+          end
+        end
+      end
+
+      # 自分から disable で切ったときは、入れてある gem の導入を勧めない
+      def test_should_not_suggest_plugin_install_when_plugin_is_disabled_by_env
+        logged = []
+
+        with_plugin_env('disable') do
+          VivlioStarter::CLI::Common.stub :log_info, ->(message) { logged << message } do
+            @command.send(:log_enhanced_install_hint)
+          end
+        end
+
+        assert_empty(logged)
+      end
+
+      # Standard Mode は座標で版面の外を除く。柱とノンブルは落とし、版面の下端近くの
+      # 脚注は残す。以前は pdf-reader に無い `text_runs` を問い合わせて毎回 fallback へ
+      # 落ち、下端の行を比率で捨てる処理で脚注が消えていた
+      def test_should_keep_footnote_and_drop_running_head_when_reading_by_coordinates
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'book.pdf')
+          write_pdf(pdf_path) do |pdf|
+            pdf.draw_text 'Front page body', at: [72, 700]
+            pdf.start_new_page
+            pdf.draw_text 'RUNNING HEAD', at: [72, 815]
+            30.times { pdf.draw_text "Body line #{it + 1}", at: [72, 760 - (it * 20)] }
+            pdf.draw_text 'Footnote text sits near the bottom', at: [72, 70]
+            pdf.draw_text '12', at: [290, 30]
+          end
+          entry = Data.define(:basename).new('10-book')
+
+          markdown = @command.stub(:contents_dir, dir) do
+            @command.stub(:newline_cleaner, identity_cleaner) do
+              @command.stub(:pdf_read_page_separator?, false) do
+                @command.stub(:text_area_margin_points, { top: 51.0, bottom: 56.7, inner: 42.5, outer: 34.0 }) do
+                  File.read(@command.send(:convert_standard, pdf_path, entry)[:markdown_path])
+                end
+              end
+            end
+          end
+
+          assert_includes(markdown, 'Body line 30')
+          assert_includes(markdown, 'Footnote text sits near the bottom')
+          refute_includes(markdown, 'RUNNING HEAD')
+          refute_match(/^12$/, markdown)
+        end
+      end
+
+      # 文字の層が無い PDF（スキャンなど）は、空の原稿を書かずに止めて OCR を案内する。
+      # 以前は 0 バイトの Markdown を作って「変換しました」と報告していた
+      def test_should_stop_without_writing_markdown_when_pdf_has_no_text
+        Dir.mktmpdir do |dir|
+          pdf_path = File.join(dir, 'scan.pdf')
+          write_pdf(pdf_path) { it.stroke_rectangle([72, 700], 200, 100) }
+          entry = Data.define(:basename).new('10-scan')
+
+          error = @command.stub(:contents_dir, dir) do
+            assert_raises(PdfReadCommand::Error) { @command.send(:convert_standard, pdf_path, entry) }
+          end
+
+          assert_includes(error.message, 'PDF から文字を一つも取り出せませんでした（1 ページ）')
+          assert_includes(error.message, 'gem install vivlio-starter-pdf')
+          refute(File.exist?(File.join(dir, '10-scan.md')))
+        end
+      end
+
+      # 変換が失敗したら catalog.yml に章を載せない。中身の無い章が目次に残らないように
+      def test_should_not_register_catalog_entry_when_conversion_fails
+        entry = VivlioStarter::CLI::TokenResolver::Entry.new(
+          number: '10', slug: 'scan', kind: :chapter, label: nil, path: 'contents/10-scan.md',
+          exists: false, in_catalog: false, valid: true
+        )
+        registered = []
+
+        @command.stub :resolve_entry_and_pdf, [entry, 'sources/scan.pdf'] do
+          @command.stub :ensure_unique_output_entry, entry do
+            @command.stub :add_catalog_entry_if_needed, ->(e) { registered << e } do
+              @command.stub :resolved_mode, :standard do
+                @command.stub :convert_standard, ->(*) { raise PdfReadCommand::Error, '文字がありません' } do
+                  assert_raises(PdfReadCommand::Error) { @command.call }
+                end
+              end
+            end
+          end
+        end
+
+        assert_empty(registered)
+      end
+
+      # `read` を持たない 1.1.x のプラグインが失敗したら、更新の手順と Standard への切り替えを案内する
+      def test_should_explain_plugin_update_when_plugin_does_not_know_read
+        failed = Data.define(:success?).new(false)
+        stderr = "Error: Unknown option 'read'\nUse 'vivlio-starter-pdf --help' for usage information.\n"
+
+        @command.stub :ensure_enhanced_plugin_loaded!, nil do
+          @command.stub :enhanced_command, ['vivlio-starter-pdf', 'read', 'dummy.pdf'] do
+            Open3.stub :capture3, ['', stderr, failed] do
+              error = assert_raises(PdfReadCommand::Error) { @command.send(:enhanced_result, 'dummy.pdf', nil) }
+
+              assert_includes(error.message, 'gem update vivlio-starter-pdf')
+              assert_includes(error.message, 'VIVLIO_PDF_PLUGIN=disable vs pdf:read dummy.pdf')
+            end
+          end
+        end
+      end
+
+      # JSON は標準出力だけから読む。標準エラーの警告が混ざっても壊れない
+      def test_should_parse_json_from_stdout_even_when_plugin_warns_on_stderr
+        succeeded = Data.define(:success?).new(true)
+
+        @command.stub :ensure_enhanced_plugin_loaded!, nil do
+          @command.stub :enhanced_command, ['vivlio-starter-pdf', 'read', 'dummy.pdf'] do
+            Open3.stub :capture3, ['{"pages":3}', "(process:1): GLib-WARNING **: noise\n", succeeded] do
+              assert_equal({ 'pages' => 3 }, @command.send(:enhanced_result, 'dummy.pdf', nil))
+            end
+          end
+        end
+      end
+
+      private
+
+      # VIVLIO_PDF_PLUGIN を一時的に設定し、ブロックを抜けたら元へ戻す。nil なら消す
+      def with_plugin_env(value)
+        original = ENV.fetch('VIVLIO_PDF_PLUGIN', nil)
+        ENV['VIVLIO_PDF_PLUGIN'] = value
+        yield
+      ensure
+        ENV['VIVLIO_PDF_PLUGIN'] = original
+      end
+
+      def identity_cleaner
+        Object.new.tap { it.define_singleton_method(:clean) { |text| text } }
+      end
+
+      def write_pdf(path, &)
+        require 'prawn'
+        Prawn::Document.generate(path, page_size: 'A4', margin: 0, &)
       end
     end
   end

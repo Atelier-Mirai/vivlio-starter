@@ -194,6 +194,7 @@ module VivlioStarter
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
         # 章トークン（target）として消費してしまう（契約テスト CL-01 で検出）
         options do
+          option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -244,10 +245,13 @@ module VivlioStarter
             vs pdf:read - PDF を Markdown へ変換します
 
             Usage:
-              vs pdf:read FILE
+              vs pdf:read FILE [--log[=LEVEL]]
 
             引数:
               FILE 章トークン (01-foo) または PDF ファイルパス
+
+            オプション:
+              --log[=LEVEL] ページ数などの経過を表示（既定 info。debug で詳細）
           USAGE
         end
       end

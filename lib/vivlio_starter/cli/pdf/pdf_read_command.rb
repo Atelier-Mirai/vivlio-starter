@@ -60,11 +60,14 @@ module VivlioStarter
         log_enhanced_install_hint if mode == :standard
 
         ensure_entry_has_slug!(entry)
-        add_catalog_entry_if_needed(entry)
 
         CLI::Common.log_action("[pdf:read] PDF からテキストを抽出します (#{entry.basename}, mode=#{mode})")
 
         result = mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry)
+
+        # catalog.yml へは変換が済んでから載せる。文字を取り出せずに止まったとき、
+        # 中身の無い章が目次に残らないように
+        add_catalog_entry_if_needed(entry)
 
         CLI::Common.log_result("Markdown に変換しました: #{result[:markdown_path]}", status: :success)
 
@@ -179,13 +182,13 @@ module VivlioStarter
         build_entry_from_basename(entry, new_basename)
       end
 
-      # Entry が catalog.yml 未登録なら CatalogUpdater で自動追記する
+      # Entry が catalog.yml 未登録なら CatalogUpdater で自動追記する。
+      # 追加の知らせは CatalogUpdater が節名つきで出すので、ここでは重ねない
       def add_catalog_entry_if_needed(entry)
         return if entry.in_catalog?
 
         CLI::Build::CatalogUpdater.add_chapter(entry.basename)
         @catalog_entries = nil
-        CLI::Common.log_info("[pdf:read] catalog.yml に #{entry.basename} を追加しました")
       rescue StandardError => e
         raise Error, "catalog.yml の更新に失敗しました: #{e.message}"
       end
@@ -297,6 +300,7 @@ module VivlioStarter
         end
         pages = reader.page_count
         markdown = build_markdown(pages_text)
+        ensure_text_extracted!(markdown, pages, :standard)
 
         File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
 
@@ -333,6 +337,7 @@ module VivlioStarter
                      end
         pages = enhanced_page_count(result, page_texts)
         markdown = build_markdown(pages_text)
+        ensure_text_extracted!(markdown, pages, :enhanced)
 
         File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
 
@@ -341,8 +346,36 @@ module VivlioStarter
         { markdown_path:, pages: }
       rescue LoadError
         raise InvalidInputError, missing_enhanced_plugin_message
+      rescue Error
+        # 自前の Error は案内まで書き終えているので、包まずにそのまま渡す
+        raise
       rescue StandardError => e
         raise Error, "Enhanced mode の解析に失敗しました: #{e.message}"
+      end
+
+      # 1 文字も取り出せなかったら、原稿を書かずに止める。
+      # 空の Markdown を「変換しました」と報告すると、スキャンした PDF を Standard Mode で
+      # 読んだ著者は、OCR が要ることに気づけない
+      def ensure_text_extracted!(markdown, pages, mode)
+        return unless markdown.strip.empty?
+
+        hint = case mode
+               in :standard
+                 <<~HINT
+                   スキャンした PDF のように文字の層が無いと、Standard Mode では読めません。
+                   OCR で読む Enhanced Mode を使うには、次を入れてから実行し直してください。
+                     gem install vivlio-starter-pdf
+                     brew install tesseract tesseract-lang poppler vips
+                 HINT
+               in :enhanced
+                 <<~HINT
+                   文字の層が無い PDF は OCR で読みます。次を確かめてください。
+                   - config/book.yml の pdf_read.ocr.mode が disable になっていないか
+                   - vs doctor で tesseract と日本語の学習データ（tesseract-lang）が入っているか
+                 HINT
+               end
+
+        raise Error, "PDF から文字を一つも取り出せませんでした（#{pages} ページ）。原稿と catalog.yml には何も書いていません。\n#{hint.chomp}"
       end
 
       # ページごとのテキストチャンクを結合して最終 Markdown を組み立てる
@@ -416,12 +449,15 @@ module VivlioStarter
         extract_with_fallback(page, index)
       end
 
-      # PDF::Reader::Page から text_runs を安全に取得する
-      # 未対応や例外時は nil を返して fallback に委ねる
+      # PDF::Reader::Page から座標付きの文字列（runs）を安全に取得する
+      # 未対応や例外時は nil を返して fallback に委ねる。
+      # pdf-reader のメソッド名は `runs` で、`text_runs` ではない。以前は `text_runs` を
+      # 問い合わせていたため毎回 fallback へ落ち、版面の外を座標で除けず、脚注が消え、
+      # 重なった字が欠けていた
       def fetch_text_runs(page)
-        return nil unless page.respond_to?(:text_runs)
+        return nil unless page.respond_to?(:runs)
 
-        page.text_runs
+        page.runs
       rescue StandardError => e
         CLI::Common.log_warn("[pdf:read] text_runs の取得に失敗: #{e.message}. fallback モードに切り替えます。")
         nil
@@ -635,21 +671,43 @@ module VivlioStarter
       # book.yml の pdf_read 設定全体を取得する（プロジェクト外では nil）
       def pdf_read_settings = CLI::Common::CONFIG&.pdf_read
 
-      # vivlio-starter-pdf の有無に応じて :enhanced / :standard を返す
-      def resolved_mode = plugin_available? ? :enhanced : :standard
+      # vivlio-starter-pdf の有無に応じて :enhanced / :standard を返す。
+      # VIVLIO_PDF_PLUGIN=disable なら、プラグインがあっても Standard にする
+      # （Pdf.provider と同じ取り決め。以前は pdf:read だけがこの指定を見ていなかった）
+      def resolved_mode
+        return :standard if ENV['VIVLIO_PDF_PLUGIN'] == 'disable'
 
-      # vivlio-starter-pdf を外部プロセスで実行し、JSON 形式の解析結果を取得する
+        plugin_available? ? :enhanced : :standard
+      end
+
+      # vivlio-starter-pdf を外部プロセスで実行し、JSON 形式の解析結果を取得する。
+      # JSON は標準出力だけから読む。OCR 中に libvips などが標準エラーへ警告を出すと、
+      # 混ぜて受けた出力は JSON として壊れるため
       def enhanced_result(pdf_path, entry)
         ensure_enhanced_plugin_loaded!
 
-        stdout, status = capture_enhanced_command(*enhanced_command(pdf_path, entry))
-        raise Error, stdout.strip unless status.success?
+        stdout, stderr, status = with_plugin_env { Open3.capture3(*enhanced_command(pdf_path, entry)) }
+        raise Error, enhanced_failure_message(stderr) unless status.success?
 
         JSON.parse(stdout)
       rescue Errno::ENOENT
         raise LoadError, missing_enhanced_plugin_message
       rescue JSON::ParserError => e
         raise Error, "Enhanced mode の応答解析に失敗しました: #{e.message}"
+      end
+
+      # プラグインが失敗したときの知らせ。`read` を持たない 1.1.x のプラグインは
+      # 「Unknown option 'read'」で終わるので、更新の手順を添える
+      def enhanced_failure_message(stderr)
+        detail = stderr.to_s.strip
+        return "Enhanced mode の解析に失敗しました: #{detail}" unless detail.include?("Unknown option 'read'")
+
+        <<~MSG.chomp
+          vivlio-starter-pdf が古く、PDF の読み取り（read）に対応していません。1.2.0 以降へ更新してください。
+            gem update vivlio-starter-pdf
+          更新せずに読むなら、Standard Mode に切り替えます。
+            VIVLIO_PDF_PLUGIN=disable vs pdf:read #{input}
+        MSG
       end
 
       # Enhanced Mode の結果からページごとのテキスト配列を取り出す
@@ -773,6 +831,7 @@ module VivlioStarter
         in '' then ''
         in 'japanese' then 'jpn'
         in 'japanese_vertical' then 'jpn_vert'
+        in 'english' then 'eng'
         else value.to_s.strip
         end
       end
@@ -810,8 +869,11 @@ module VivlioStarter
         'Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください'
       end
 
-      # Standard Mode での実行時に Enhanced Mode への切り替え方法を案内する
+      # Standard Mode での実行時に Enhanced Mode への切り替え方法を案内する。
+      # VIVLIO_PDF_PLUGIN=disable で自分から切ったときは、入れてある gem の導入を勧めない
       def log_enhanced_install_hint
+        return if ENV['VIVLIO_PDF_PLUGIN'] == 'disable'
+
         CLI::Common.log_info('[pdf:read] Enhanced Mode を利用するには `gem install vivlio-starter-pdf` を実行してください。')
       end
 
@@ -846,11 +908,14 @@ module VivlioStarter
       # vivlio-starter-pdf を外部プロセスとして実行し、stdout と status を返す
       # Bundler 環境下では with_unbundled_env で実行する
       def capture_enhanced_command(*command)
-        return Open3.capture2e(*command) unless defined?(Bundler)
+        with_plugin_env { Open3.capture2e(*command) }
+      end
 
-        Bundler.with_unbundled_env do
-          Open3.capture2e(*command)
-        end
+      # プラグインは書籍プロジェクトの Gemfile の外にあるので、Bundler 環境を外して起動する
+      def with_plugin_env(&)
+        return yield unless defined?(Bundler)
+
+        Bundler.with_unbundled_env(&)
       end
 
       # Enhanced Mode のプラグインが利用可能でなければ LoadError を送出する

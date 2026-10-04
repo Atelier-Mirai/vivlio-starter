@@ -66,9 +66,16 @@ PDF を `sources/three-elements.pdf` に置いた場合は、ファイル名の 
 
 ```shell-session
 $ vs pdf:read three-elements
-[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
-[pdf:read] ページ数: 7
-[pdf:read] 変換が完了しました -> contents/12-three-elements.md
+✅ Markdown に変換しました: contents/12-three-elements.md
+```
+
+`--log` を付けると、どちらのモードで読んだかとページ数も表示されます。
+
+```shell-session
+$ vs pdf:read three-elements --log
+🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔵 [pdf:read] ページ数: 7
+✅ Markdown に変換しました: contents/12-three-elements.md
 ```
 
 ### 出力されるファイル
@@ -126,7 +133,8 @@ pdf_read:
   ocr:
     mode: auto            # auto / force / disable
     languages:
-      - japanese          # japanese / japanese_vertical / eng
+      - japanese          # japanese / japanese_vertical / english
+      - english
     dpi: 300              # OCR 用の解像度
     psm: 3                # Tesseract の PSM (ページセグメントモード)
     inline_image_text: include  # include / exclude / captionize
@@ -150,8 +158,8 @@ pdf_read:
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
 | `mode` | `auto`（スキャン PDF を自動検出）/ `force`（全ページ OCR）/ `disable`（OCR 無効） | `auto` |
-| `languages` | Tesseract に渡す言語。`japanese` は `jpn` に自動変換 | `[japanese]` |
-| `dpi` | OCR 前の画像変換解像度。高いほど精度が上がるが処理時間も増える | `300` |
+| `languages` | Tesseract に渡す言語。`japanese` は `jpn`、`english` は `eng` に自動変換。英語を並べると、コードや英字の語の読み違いが大きく減る | `[japanese, english]` |
+| `dpi` | ページを画像に描き直して読むときの解像度。スキャンした画像はそのまま読む（幅が 1,600px に満たなければ拡大する）ので、この値は使わない | `300` |
 | `psm` | Tesseract のページセグメントモード。`3`（自動）が一般的 | `3` |
 | `inline_image_text` | イラスト内テキストの扱い。`include` / `exclude` / `captionize` | `include` |
 
@@ -241,20 +249,28 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 
 ### 実行中のログ例
 
-変換中は、処理の進み具合がログに表示されます。Standard Mode と Enhanced Mode で出る内容の違いも、次の例で確かめられます。
+`--log` を付けると、処理の進み具合が表示されます。どちらのモードで読んだかもここで確かめられます。
 
 ```
 # Standard Mode
-[pdf:read] PDF からテキストを抽出します (11-intro, mode=standard)
-[pdf:read] ページ数: 12
-[pdf:read] 変換が完了しました -> contents/11-intro.md
+🔧 [pdf:read] PDF からテキストを抽出します (11-intro, mode=standard)
+🔵 [pdf:read] ページ数: 12
+✅ Markdown に変換しました: contents/11-intro.md
 
-# Enhanced Mode（OCR あり）
-[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
-[Reader] ページ 1: テキスト埋め込みなし。OCR を実行します (dpi=300, psm=3)
-[Reader] ページ 2: テキスト品質不良。OCR で補完します
-[Reader] 画像抽出: page-003-image-01.webp (524x381)
-[pdf:read] 変換が完了しました -> contents/12-three-elements.md
+# Enhanced Mode
+🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔵 [pdf:read] ページ数: 7
+✅ Markdown に変換しました: contents/12-three-elements.md
+```
+
+文字を一つも取り出せなかったときは、原稿も `catalog.yml` も書かずに止まります。スキャンした PDF を Standard Mode で読むと、次のように案内されます。
+
+```
+🔴 [pdf:read] 実行中にエラー: PDF から文字を一つも取り出せませんでした（24 ページ）。原稿と catalog.yml には何も書いていません。
+スキャンした PDF のように文字の層が無いと、Standard Mode では読めません。
+OCR で読む Enhanced Mode を使うには、次を入れてから実行し直してください。
+  gem install vivlio-starter-pdf
+  brew install tesseract tesseract-lang poppler vips
 ```
 
 ### よくある問題と解決策
@@ -264,7 +280,7 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 | テキストが空 / 文字化け | スキャン PDF でテキストが埋め込まれていない | Enhanced Mode + OCR を有効にする |
 | ヘッダー / フッターが残る | `text_area` の余白設定が不足 | `book.yml` の `pdf_read.text_area` を調整 |
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
-| OCR 結果が悪い | DPI が低い / 言語設定が不適切 | `ocr.dpi` を `400` に、`languages` を確認 |
+| OCR 結果が悪い | 言語設定が不適切 / スキャンの解像度が低い | `languages` を確認（英字が多い本は `eng` を足す）。スキャンし直すなら 300dpi 以上で |
 | `Tesseract not found` | Tesseract 未インストール | `brew install tesseract tesseract-lang` |
 | 日本語の間にスペースが残る | 補正表にない誤読 | `ocr_corrections.yml` にパターンを追加 |
 | 画像にテキストが混入する | イラスト領域検出のパラメータ | `inline_image_text: exclude` を試す |
@@ -275,7 +291,7 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 gem install vivlio-starter-pdf
 ```
 
-インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
+インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。Enhanced Mode には 1.2.0 以降が要ります。それより古い版が入っていると、`vs pdf:read` が `gem update vivlio-starter-pdf` を案内します。
 
 :::{.tip}
 **ヒント**  
