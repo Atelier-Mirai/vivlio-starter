@@ -66,9 +66,16 @@ PDF を `sources/three-elements.pdf` に置いた場合は、ファイル名の 
 
 ```shell-session
 $ vs pdf:read three-elements
-[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
-[pdf:read] ページ数: 7
-[pdf:read] 変換が完了しました -> contents/12-three-elements.md
+✅ Markdown に変換しました: contents/12-three-elements.md
+```
+
+`--log` を付けると、どちらのモードで読んだかとページ数も表示されます。
+
+```shell-session
+$ vs pdf:read three-elements --log
+🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔵 [pdf:read] ページ数: 7
+✅ Markdown に変換しました: contents/12-three-elements.md
 ```
 
 ### 出力されるファイル
@@ -91,6 +98,36 @@ images/
 ```
 
 取り出した画像は、Markdown から `![](page-003-image-01.webp)` のように参照されます。変換後は原本と見比べ、本文と画像の位置を確かめてください。
+
+### 見出し・表・コードまで戻る
+
+文字の層のある PDF からは、文字だけでなく原稿の構造も戻ります。どちらのモードでも同じです。
+
+| 原本 | 戻る Markdown |
+| --- | --- |
+| 見出し | `#`・`##`・`###` |
+| 段落・箇条書き・番号付きリスト | 段落・`-`・`1.` |
+| 表 | パイプの表。ページで分かれた表は一つにつなぐ |
+| コード | ```` ```ruby:ファイル名 ```` の囲み。行番号は外し、途中から始まる抜粋には `#L28` を添える |
+| 脚注 | `[^1]` と `[^1]: …` |
+| 数式 | `$…$`・`$$…$$`（タグ付き PDF で、図の代替テキストに TeX が入っている場合） |
+| ルビ・強調・行内コード | ルビの記法・`**…**`・`` `…` `` |
+| 画像 | Enhanced Mode は `![代替テキスト](page-003-image-01.webp)`、Standard Mode は `<!-- 画像: 代替テキスト -->` |
+
+構造の読み方は、PDF に応じて自動で決まります。
+
+- **タグ付き PDF**：`vs build` で作った PDF のように、見出しや段落の区切りを「タグ」として持つ PDF です。本文の 9 割以上をタグが覆っていれば、タグから読みます。Word や InDesign が書き出した PDF も、タグが本文を覆っていればここに入ります。
+- **タグのない PDF**：文字の大きさ・位置・書体から推定します。本文より大きく別の書体の短い行を見出しに、等幅の書体の行をコードに、縦の隙間で列がそろう行を表にします。推定して組んだ表には、確かめるよう促すコメント（`<!-- pdf:read: 列を推定して組んだ表です。… -->`）が付きます。
+- **スキャンした PDF**：文字の層がないので構造は戻らず、Enhanced Mode の OCR で文字を読みます。
+
+`--log` を付けると、どちらで読んだかが出ます。
+
+```shell-session
+🔵 [pdf:read] 構造ツリー（タグ）から、見出し・段落・表・コードを戻します
+🔵 [pdf:read] 文字の大きさと位置から、見出し・段落・表・コードを推定します
+```
+
+柱とノンブルは、ページをまたいで同じ位置に繰り返し出る行として見分け、取り込みません。`:::{.memo}` などの囲みは戻らず、紙面のラベル（`MEMO`・`COLUMN`）が 1 行の段落として残ります。囲みに戻すかどうかは、原本を見て決めてください。タグのない PDF では、数式（紙面では図形）と引用の区切りも戻りません。
 
 ### 動作モードの切り替え
 
@@ -118,15 +155,16 @@ VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf
 ```yaml
 pdf_read:
   text_area:
-    top_margin: 18        # 上端からの除外幅 (mm)
-    bottom_margin: 20     # 下端からの除外幅 (mm)
-    inner_margin: 15      # 綴じ側の除外幅 (mm)
-    outer_margin: 12      # 小口側の除外幅 (mm)
+    top_margin:           # 上端からの除外幅 (mm)。既定では書かない
+    bottom_margin:        # 下端からの除外幅 (mm)
+    inner_margin:         # 綴じ側の除外幅 (mm)
+    outer_margin:         # 小口側の除外幅 (mm)
   page_separator: false   # ページ間に "---" を挿入するか
   ocr:
     mode: auto            # auto / force / disable
     languages:
-      - japanese          # japanese / japanese_vertical / eng
+      - japanese          # japanese / japanese_vertical / english
+      - english
     dpi: 300              # OCR 用の解像度
     psm: 3                # Tesseract の PSM (ページセグメントモード)
     inline_image_text: include  # include / exclude / captionize
@@ -134,24 +172,24 @@ pdf_read:
 
 ### テキスト領域（`text_area`）
 
-ページ端のヘッダー、フッター、ノンブルを本文として取り込まないための設定です。除外する幅を mm 単位で指定します。
+柱とノンブルは繰り返しから見分けるので、既定では書きません。見分けが外れて柱やノンブルが本文に混ざるときだけ、除く幅を mm 単位で書きます。書いた辺だけが効きます。
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
-| `top_margin` | 上端から除外する幅 | 18mm |
-| `bottom_margin` | 下端から除外する幅 | 20mm |
-| `inner_margin` | 綴じ側（ノド）から除外する幅 | 15mm |
-| `outer_margin` | 小口側から除外する幅 | 12mm |
+| `top_margin` | 上端から除外する幅 | なし |
+| `bottom_margin` | 下端から除外する幅 | なし |
+| `inner_margin` | 綴じ側（ノド）から除外する幅 | なし |
+| `outer_margin` | 小口側から除外する幅 | なし |
 
-`page_separator: true` にすると、元の PDF のページ境界に `---` が挿入されます。この記法は Vivlio Starter では改ページになるので、ページを分けて残したい場合に使います。`false` ならページ間のテキストは連結されます。
+`page_separator: true` にすると、元の PDF のページ境界に `---` が挿入されます。この記法は Vivlio Starter では改ページになるので、ページを分けて残したい場合に使います。`false` ならページ間のテキストは連結されます。文字の層のある PDF では、ページをまたぐ段落を構造からつなぐので、この設定は使いません（スキャンした PDF を OCR で読むときだけ効きます）。
 
 ### OCR 設定（Enhanced Mode のみ）
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
 | `mode` | `auto`（スキャン PDF を自動検出）/ `force`（全ページ OCR）/ `disable`（OCR 無効） | `auto` |
-| `languages` | Tesseract に渡す言語。`japanese` は `jpn` に自動変換 | `[japanese]` |
-| `dpi` | OCR 前の画像変換解像度。高いほど精度が上がるが処理時間も増える | `300` |
+| `languages` | Tesseract に渡す言語。`japanese` は `jpn`、`english` は `eng` に自動変換。英語を並べると、コードや英字の語の読み違いが大きく減る | `[japanese, english]` |
+| `dpi` | ページを画像に描き直して読むときの解像度。スキャンした画像はそのまま読む（幅が 1,600px に満たなければ拡大する）ので、この値は使わない | `300` |
 | `psm` | Tesseract のページセグメントモード。`3`（自動）が一般的 | `3` |
 | `inline_image_text` | イラスト内テキストの扱い。`include` / `exclude` / `captionize` | `include` |
 
@@ -241,20 +279,28 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 
 ### 実行中のログ例
 
-変換中は、処理の進み具合がログに表示されます。Standard Mode と Enhanced Mode で出る内容の違いも、次の例で確かめられます。
+`--log` を付けると、処理の進み具合が表示されます。どちらのモードで読んだかもここで確かめられます。
 
 ```
 # Standard Mode
-[pdf:read] PDF からテキストを抽出します (11-intro, mode=standard)
-[pdf:read] ページ数: 12
-[pdf:read] 変換が完了しました -> contents/11-intro.md
+🔧 [pdf:read] PDF からテキストを抽出します (11-intro, mode=standard)
+🔵 [pdf:read] ページ数: 12
+✅ Markdown に変換しました: contents/11-intro.md
 
-# Enhanced Mode（OCR あり）
-[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
-[Reader] ページ 1: テキスト埋め込みなし。OCR を実行します (dpi=300, psm=3)
-[Reader] ページ 2: テキスト品質不良。OCR で補完します
-[Reader] 画像抽出: page-003-image-01.webp (524x381)
-[pdf:read] 変換が完了しました -> contents/12-three-elements.md
+# Enhanced Mode
+🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔵 [pdf:read] ページ数: 7
+✅ Markdown に変換しました: contents/12-three-elements.md
+```
+
+文字を一つも取り出せなかったときは、原稿も `catalog.yml` も書かずに止まります。スキャンした PDF を Standard Mode で読むと、次のように案内されます。
+
+```
+🔴 [pdf:read] 実行中にエラー: PDF から文字を一つも取り出せませんでした（24 ページ）。原稿と catalog.yml には何も書いていません。
+スキャンした PDF のように文字の層が無いと、Standard Mode では読めません。
+OCR で読む Enhanced Mode を使うには、次を入れてから実行し直してください。
+  gem install vivlio-starter-pdf
+  brew install tesseract tesseract-lang poppler vips
 ```
 
 ### よくある問題と解決策
@@ -262,9 +308,9 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
 | テキストが空 / 文字化け | スキャン PDF でテキストが埋め込まれていない | Enhanced Mode + OCR を有効にする |
-| ヘッダー / フッターが残る | `text_area` の余白設定が不足 | `book.yml` の `pdf_read.text_area` を調整 |
+| ヘッダー / フッターが残る | 繰り返しから見分けられなかった | `book.yml` の `pdf_read.text_area` に除く幅を書く |
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
-| OCR 結果が悪い | DPI が低い / 言語設定が不適切 | `ocr.dpi` を `400` に、`languages` を確認 |
+| OCR 結果が悪い | 言語設定が不適切 / スキャンの解像度が低い | `languages` を確認（英字が多い本は `eng` を足す）。スキャンし直すなら 300dpi 以上で |
 | `Tesseract not found` | Tesseract 未インストール | `brew install tesseract tesseract-lang` |
 | 日本語の間にスペースが残る | 補正表にない誤読 | `ocr_corrections.yml` にパターンを追加 |
 | 画像にテキストが混入する | イラスト領域検出のパラメータ | `inline_image_text: exclude` を試す |
@@ -275,7 +321,7 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 gem install vivlio-starter-pdf
 ```
 
-インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
+インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。Enhanced Mode には 1.2.0 以降が要ります。それより古い版が入っていると、`vs pdf:read` が `gem update vivlio-starter-pdf` を案内します。
 
 :::{.tip}
 **ヒント**  
