@@ -261,6 +261,40 @@ module VivlioStarter
             end
           end
         end
+
+      end
+
+      # PDF のコードの行番号（PdfBuilder.convert_code_pre_lines!）
+      class CodeLineNumberTest < Minitest::Test
+        # コードの行番号は実際の要素 span.vs-code-ln で入れ、aria-hidden を付ける。
+        # Chrome は aria-hidden の要素を PDF の構造ツリーから外すので、読み上げにも
+        # PDF からの読み戻しにも番号が混ざらない。抜粋（#L28）は data-start から数え始める
+        def test_should_number_code_lines_with_aria_hidden_spans_from_data_start
+          doc = PostProcessCommands::HtmlParser.parse_html_document(<<~HTML)
+            <html><body><pre class="language-ruby line-numbers" data-start="28"><code class="language-ruby">a = 1
+            b = 2</code></pre></body></html>
+          HTML
+          pre = doc.at_css("pre")
+
+          assert PdfBuilder.convert_code_pre_lines!(pre, doc)
+
+          numbers = pre.css("code > .vs-code-line > .vs-code-ln")
+          assert_equal %w[28 29], numbers.map(&:text)
+          assert(numbers.all? { it["aria-hidden"] == "true" })
+          assert_equal ["a = 1", "b = 2"], pre.css(".vs-code-line").map { it.children.reject { |c| c["class"] == "vs-code-ln" }.map(&:text).join }
+        end
+
+        # data-start が無ければ 1 から数える
+        def test_should_number_code_lines_from_one_without_data_start
+          doc = PostProcessCommands::HtmlParser.parse_html_document(<<~HTML)
+            <html><body><pre class="line-numbers"><code>x</code></pre></body></html>
+          HTML
+          pre = doc.at_css("pre")
+
+          PdfBuilder.convert_code_pre_lines!(pre, doc)
+
+          assert_equal %w[1], pre.css(".vs-code-ln").map(&:text)
+        end
       end
 
     end

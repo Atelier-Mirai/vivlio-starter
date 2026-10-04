@@ -129,6 +129,19 @@ module VivlioStarter
         refute_equal Common::BUILD_VIVLIOSTYLE_PDF_DIR, Common::BUILD_VIVLIOSTYLE_EPUB_DIR
       end
 
+      # PDF 枝は素材を workspaceDir へ写さない。描画はルートの実物を読み、写しは使われない
+      # （写すとルート配下の画像・CSS・フォントが 1 回の起動ごとに 15,600 ファイル複製された）。
+      # EPUB 枝は entryContext の中身を同梱するので、写す指定を入れない
+      def test_should_skip_asset_copy_only_for_pdf_workspace
+        write_book_yml(book: { 'main_title' => 'T' })
+
+        pdf_config  = Writer.config_content(entries_basename: 'entries.sections.js', output: 'x.pdf')
+        epub_config = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: '.'))
+
+        assert_match(/copyAsset: \{ excludeFileExtensions: \['css', 'css\.map', 'png', 'jpg', .*'woff2'\] \},/, pdf_config)
+        refute_includes epub_config, 'copyAsset'
+      end
+
       # 資産への相対プレフィックス（ASSET_PREFIX）は消費者 dir の深さに依存するため、
       # workspaceDir も同じ 4 階層に置く。`.vivliostyle/pdf` のように 1 段深くすると壊れる。
       def test_should_keep_both_workspaces_at_the_same_depth_as_consumer_dirs

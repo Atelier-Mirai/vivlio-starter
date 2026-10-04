@@ -165,10 +165,17 @@ module VivlioStarter
           lines = CodeLineBlocks.split(code)
           return false if lines.empty?
 
-          code.inner_html = lines.map do |line_html|
+          # 行番号は CSS の ::before ではなく実際の要素で描き、aria-hidden を付ける。
+          # Chrome は aria-hidden の要素を PDF の構造ツリーから外すので、読み上げで
+          # 行番号が読まれず、構造ツリーから戻したコードにも番号が混ざらない
+          # （::before の連番は Code の文字に入り、代替テキストを空にしても外れなかった）。
+          # 開始番号は範囲 include（#L28）の data-start から取る
+          start = [pre['data-start'].to_i, 1].max
+          code.inner_html = lines.each_with_index.map do |line_html, index|
             # 空行も 1 行ぶんの高さを保つ（空ブロックの潰れ防止）
             body = line_html.strip.empty? ? " " : line_html
-            %(<span class="vs-code-line">#{body}</span>)
+            number = %(<span class="vs-code-ln" aria-hidden="true">#{start + index}</span>)
+            %(<span class="vs-code-line">#{number}#{body}</span>)
           end.join
           true
         rescue StandardError => e

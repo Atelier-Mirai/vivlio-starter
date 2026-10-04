@@ -42,6 +42,14 @@ module VivlioStarter
       module VivliostyleConfigWriter
         module_function
 
+        # vivliostyle が workspaceDir へ写す素材の拡張子（CLI の DEFAULT_ASSET_EXTENSIONS）。
+        # PDF 枝ではすべて写さない。entryContext を使わない PDF 枝では、描画は cwd（ルート）の
+        # 実物を読み、写しは使われない。それなのに CLI はルート配下の画像・CSS・フォントを
+        # 丸ごと写していた（lib/ の雛形や配布用の画像まで 15,600 ファイル・532MB、1 回の
+        # vivliostyle 起動ごと）。写さずに組んだ PDF は全ページの見た目が一致した。
+        # EPUB 枝は entryContext に必要物だけを置いて同梱するので、こちらは触らない
+        SKIPPED_ASSET_EXTENSIONS = %w[css css.map png jpg jpeg svg gif webp apng ttf otf woff woff2].freeze
+
         # entries と config をペアで生成する。
         # @param name [String] 用途名（'sections' / 'front' / 'colophon' / 'single' 等）
         # @param entry_htmls [Array<String>] エントリ HTML（cwd 相対パス・結合順）
@@ -106,6 +114,7 @@ module VivlioStarter
               readingProgression: 'ltr',
               workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',
               entry: entries,
+              copyAsset: { excludeFileExtensions: [#{SKIPPED_ASSET_EXTENSIONS.map { "'#{it}'" }.join(', ')}] },
               output: [
                 './#{output}'
               ]

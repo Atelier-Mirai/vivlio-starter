@@ -63,8 +63,9 @@ module VivlioStarter
       BUILD_KINDLE_DIR = "#{BUILD_DIR}/kindle"
 
       # vivliostyle の作業ディレクトリ（生成 config の workspaceDir）。
-      # 中身はプロジェクトの木の写し（実測 15,263 ファイル）で、直下の
-      # publication.json は各ビルドが自分のエントリ一覧で上書きする。1 つを共有した
+      # 中身はエントリ HTML の写しと publication.json で、publication.json は各ビルドが
+      # 自分のエントリ一覧で上書きする。PDF 枝は素材（画像・CSS・フォント）を写さない
+      # （VivliostyleConfigWriter::SKIPPED_ASSET_EXTENSIONS。以前は 15,600 ファイル写していた）。1 つを共有した
       # まま 2 つの vivliostyle が同時に走れば確実に踏み合うため、PDF 枝と EPUB 枝で
       # 分ける（build-target-parallelization-spec.md §3.1）。
       # **消費者 dir と同じ 4 階層に置くこと**——`.vivliostyle/pdf` のように 1 段
