@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'yaml'
-
 require_relative 'marked_content_receiver'
 require_relative 'structure_markdown'
 
@@ -67,54 +65,5 @@ module VivlioStarter
       end
     end
 
-    # OCR の誤認識を config/ocr_corrections.yml の表で直す。
-    #
-    # **当てるのは OCR したページから組んだ原稿だけ**で、著者が自分で書いた原稿には触れない。
-    # 走査の誤りと表記の方針は別物なので、校正辞書（prh）とは表を分けている。コードの囲みの中は直さない
-    module OcrCorrections
-      # 補正表の置き場。プロジェクトごとに育てるものなので gem には持たせない
-      FILE = File.join('config', 'ocr_corrections.yml')
-
-      module_function
-
-      # @param markdown [String]
-      # @param path [String] 補正表のパス
-      # @return [String]
-      def apply(markdown, path: File.join(Dir.pwd, FILE))
-        rules = load_rules(path)
-        return markdown if rules.empty?
-
-        markdown.split(/^(```.*?^```[^\n]*\n?)/m).map do |part|
-          next part if part.start_with?('```')
-
-          rules.reduce(part) { |text, (matcher, expected)| text.gsub(matcher, expected) }
-        end.join
-      end
-
-      # 表が無いプロジェクト（1.0 より前の雛形）や読めない表では、直さずに素通りさせる
-      def load_rules(path)
-        return [] unless File.file?(path)
-
-        data = YAML.safe_load_file(path, aliases: true) || {}
-        Array(data['rules']).flat_map do |rule|
-          expected = rule['expected'].to_s
-          next [] if expected.empty?
-
-          Array(rule['patterns']).filter_map { (matcher = compile(it)) && [matcher, expected] }
-        end
-      rescue StandardError
-        []
-      end
-
-      # 「/…/」で囲んだものは正規表現、それ以外は文字どおりに探す
-      def compile(pattern)
-        value = pattern.to_s.strip
-        return nil if value.empty?
-
-        value.match?(%r{\A/.+/\z}) ? Regexp.new(value[1...-1]) : Regexp.new(Regexp.escape(value))
-      rescue RegexpError
-        nil
-      end
-    end
   end
 end

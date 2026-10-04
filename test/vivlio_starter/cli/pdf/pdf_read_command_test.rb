@@ -506,7 +506,7 @@ module VivlioStarter
 
         @command.stub :ensure_enhanced_plugin_loaded!, nil do
           @command.stub :enhanced_command, ['vivlio-starter-pdf', 'read', 'dummy.pdf'] do
-            Open3.stub :capture3, ['', stderr, failed] do
+            @command.stub :run_plugin, ['', stderr, failed] do
               error = assert_raises(PdfReadCommand::Error) { @command.send(:enhanced_result, 'dummy.pdf', nil) }
 
               assert_includes(error.message, 'gem update vivlio-starter-pdf')
@@ -522,7 +522,7 @@ module VivlioStarter
 
         @command.stub :ensure_enhanced_plugin_loaded!, nil do
           @command.stub :enhanced_command, ['vivlio-starter-pdf', 'read', 'dummy.pdf'] do
-            Open3.stub :capture3, ['{"pages":3}', "(process:1): GLib-WARNING **: noise\n", succeeded] do
+            @command.stub :run_plugin, ['{"pages":3}', "(process:1): GLib-WARNING **: noise\n", succeeded] do
               assert_equal({ 'pages' => 3 }, @command.send(:enhanced_result, 'dummy.pdf', nil))
             end
           end
@@ -596,6 +596,21 @@ module VivlioStarter
 
           assert_equal([{ mode: 'disable' }], requested)
         end
+      end
+
+      # プラグインの経過の行（progress: ocr 5/24）は中継し、失敗の知らせには混ぜない。標準出力は JSON のまま受ける
+      def test_should_relay_plugin_progress_and_keep_other_stderr
+        script = '$stderr.puts "progress: ocr 1/2"; $stderr.puts "GLib-WARNING"; $stderr.puts "progress: ocr 2/2"; print "{}"'
+        logged = []
+
+        stdout, stderr, status = CLI::Common.stub(:log_info, ->(message) { logged << message }) do
+          @command.send(:run_plugin, ['ruby', '-e', script])
+        end
+
+        assert(status.success?)
+        assert_equal('{}', stdout)
+        assert_equal("GLib-WARNING\n", stderr)
+        assert_equal(['[pdf:read] OCR しています（1/2 ページ）', '[pdf:read] OCR しています（2/2 ページ）'], logged)
       end
 
       # プラグインが OCR の語を返したら、語の大きさと位置から見出しと段落を戻す（経路 B・§6）

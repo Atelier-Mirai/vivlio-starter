@@ -8,6 +8,7 @@ require 'pdf/reader'
 require_relative 'mecab_newline_cleaner'
 require_relative 'structure_reader'
 require_relative 'ocr_page'
+require_relative 'ocr_postprocess'
 
 require_relative '../common'
 require_relative '../token_resolver'
@@ -366,8 +367,8 @@ module VivlioStarter
       end
 
       # OCR したページを含む PDF も、紙面の推定（経路 B）で構造を戻す（pdf-read-structure-spec.md §6）。
-      # プラグインが返す OCR の語を字に割り、文字の層のあるページと合わせて読む。OCR の誤認識は
-      # config/ocr_corrections.yml の表で直す。語を返さない 1.2.0 より前のプラグインなら nil を返し、
+      # プラグインが返す OCR の語を字に割り、文字の層のあるページと合わせて読む。組み上がった原稿には
+      # OCR の後処理（数字の前後の空白・形の似た字・括弧・補正表。pdf-read-ocr-postprocess-spec.md §3）をかける。語を返さない 1.2.0 より前のプラグインなら nil を返し、
       # これまでの読み方（ページごとの文字列）に任せる
       # @return [Hash, nil] :markdown_path, :pages
       def convert_ocr_layout(pdf_path, entry, result)
@@ -389,7 +390,7 @@ module VivlioStarter
 
         CLI::Common.log_info('[pdf:read] OCR で読んだ文字の大きさと位置から、見出し・段落・表・コードを推定します')
         root = VivlioStarter::PDF::LayoutStructure.new(pages, text_area: specified_text_area).root
-        markdown = VivlioStarter::PDF::OcrCorrections.apply(VivlioStarter::PDF::StructureMarkdown.new(root, images: placements).render)
+        markdown = VivlioStarter::PDF::OcrPostprocess.apply(VivlioStarter::PDF::StructureMarkdown.new(root, images: placements).render)
         ensure_text_extracted!(markdown, pages.size, :enhanced)
 
         markdown_path = File.join(contents_dir, "#{entry.basename}.md")
@@ -809,7 +810,7 @@ module VivlioStarter
       def enhanced_result(pdf_path, entry, ocr: enhanced_ocr_settings)
         ensure_enhanced_plugin_loaded!
 
-        stdout, stderr, status = with_plugin_env { Open3.capture3(*enhanced_command(pdf_path, entry, ocr:)) }
+        stdout, stderr, status = run_plugin(enhanced_command(pdf_path, entry, ocr:))
         raise Error, enhanced_failure_message(stderr) unless status.success?
 
         JSON.parse(stdout)
@@ -817,6 +818,31 @@ module VivlioStarter
         raise LoadError, missing_enhanced_plugin_message
       rescue JSON::ParserError => e
         raise Error, "Enhanced mode の応答解析に失敗しました: #{e.message}"
+      end
+
+      # プラグインを起動し、[標準出力, 標準エラー, 終了状態] を返す。標準エラーは流しながら読み、
+      # 経過の行（progress: ocr 5/24）は --log のときに「OCR しています」と中継する。OCR は 24 ページで
+      # 3 分ほどかかるので、黙って待たせない（pdf-read-ocr-postprocess-spec.md §4.3）。
+      # ほかの行は、これまでどおり失敗の知らせに使う
+      def run_plugin(command)
+        with_plugin_env do
+          Open3.popen3(*command) do |stdin, stdout, stderr, wait|
+            stdin.close
+            errors = +''
+            relay = Thread.new do
+              stderr.each_line do |line|
+                if (page, total = line.match(%r{\Aprogress: ocr (\d+)/(\d+)})&.captures)
+                  CLI::Common.log_info("[pdf:read] OCR しています（#{page}/#{total} ページ）")
+                else
+                  errors << line
+                end
+              end
+            end
+            output = stdout.read
+            relay.join
+            [output, errors, wait.value]
+          end
+        end
       end
 
       # プラグインが失敗したときの知らせ。`read` を持たない 1.1.x のプラグインは
@@ -922,7 +948,8 @@ module VivlioStarter
           "line_merge_tolerance=#{line_merge_tolerance}",
           "images_dir=#{enhanced_images_output_dir(entry)}",
           "image_reference_dir=#{enhanced_images_reference_dir(entry)}",
-          "ocr=#{JSON.generate(ocr)}"
+          "ocr=#{JSON.generate(ocr)}",
+          'progress=true'
         ]
       end
 
