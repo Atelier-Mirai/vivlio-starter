@@ -1,15 +1,18 @@
 # frozen_string_literal: true
 
 require 'open3'
+require 'set'
 require 'yaml'
+
+require_relative '../lint/dict_manager'
 
 module VivlioStarter
   module PDF
     # OCR で読んだ原稿の後処理（pdf-read-ocr-postprocess-spec.md §3）。
     #
-    # 当てる順は §3.3 のとおり: 和文と数字のあいだの空白 → 形の似た字 → 括弧 → 補正表。
+    # 当てる順は §3.3 のとおり: 和文と数字のあいだの空白 → 形の似た字 → 英字の語 → 括弧 → 補正表。
     # 形の似た字の判定は前後の空白を詰めてからのほうが単純になり、補正表は利用者の上書きなので
-    # 最後に当てる。コードの囲みの中には何もしない。
+    # 最後に当てる。英字の語（OcrLatinWords）だけはコードの囲みの中にもかけ、ほかは囲みの外だけにかける。
     module OcrPostprocess
       # 和文の文字（約物を含む）
       WIDE = /[\p{Han}\p{Hiragana}\p{Katakana}ー々〆、。，．・「」『』（）！？：；…—―〜]/
@@ -35,14 +38,12 @@ module VivlioStarter
       # @param corrections_path [String] 補正表（config/ocr_corrections.yml）のパス
       # @param mecab [String] MeCab のコマンド。無ければ形の似た字の補正だけを飛ばす
       # @return [String]
-      def apply(markdown, corrections_path: OcrCorrections.default_path, mecab: 'mecab')
+      # @param vocabulary [Set<String>, nil] 英字の語の辞書（小文字）。nil なら OcrLatinWords.vocabulary を読む
+      def apply(markdown, corrections_path: OcrCorrections.default_path, mecab: 'mecab', vocabulary: nil)
         rules = OcrCorrections.load_rules(corrections_path)
-        outside_code(markdown) do |text|
-          text = collapse_digit_spacing(text)
-          text = fix_confusables(text, mecab)
-          text = normalize_brackets(text)
-          OcrCorrections.correct(text, rules)
-        end
+        text = outside_code(markdown) { fix_confusables(collapse_digit_spacing(it), mecab) }
+        text = OcrLatinWords.fix_markdown(text, vocabulary || OcrLatinWords.vocabulary)
+        outside_code(text) { OcrCorrections.correct(normalize_brackets(it), rules) }
       end
 
       # コードの囲みの外だけをブロックに渡して書き換える
@@ -137,6 +138,80 @@ module VivlioStarter
         costs.size >= lines.size ? costs.first(lines.size) : nil
       rescue Errno::ENOENT
         nil
+      end
+    end
+
+    # OCR が取り違えた英字の語を、`vs lint` のスペルチェックの辞書で直す
+    # （pdf-read-ocr-improvement-notes.md §4.3）。
+    #
+    # 語を `_` と大文字の境目で部品に分け、辞書に無い部品だけ、OCR が取り違えやすい字を入れ替える。
+    # 辞書に当たる形が 1 つだけのときに直す（`Ftoat` → `Float`、`threshotd_frequency` →
+    # `threshold_frequency`）。97 章のスキャンで英字の語が 185 → 205（原稿に 250）、誤りの無い原稿
+    # 29 章の 1,575 語にかけて書き換わるのは 1 語。コードの識別子こそ直したいので、囲みの中にもかける
+    module OcrLatinWords
+      # OCR が取り違えやすい英字の組。左の字を右の字に戻す候補にする
+      SWAPS = {
+        't' => %w[l i f], 'l' => %w[t i], 'i' => %w[l t], 'f' => %w[t], 'c' => %w[e], 'e' => %w[c],
+        'h' => %w[b], 'b' => %w[h], 'n' => %w[u], 'u' => %w[n], 'rn' => %w[m], 'm' => %w[rn], 'H' => %w[R]
+      }.freeze
+      # この長さに満たない部品は直さない（`stp` → `sip` のような 3 字の語の取り違えを防ぐ）
+      MIN_PART = 4
+      # t を l・i に戻すのは、t がこの数までの部品だけ。Tesseract は細い字体で l・i をほとんど t と読み、
+      # `velocity` が `vetoctty` になるので、1 か所の入れ替えでは足りない
+      MAX_T = 5
+      # 英語の単語表。lint の辞書に無い一般の語（trajectory・deflection・brownian）を補う。無い環境では使わない
+      SYSTEM_WORDS = '/usr/share/dict/words'
+      # 書き換えない範囲: 画像の参照（ファイル名）と HTML のコメント
+      PROTECTED = /(!\[[^\]]*\]\([^)]*\)|<!--.*?-->)/m
+      WORD = /[A-Za-z_][A-Za-z0-9_]{2,}/
+
+      module_function
+
+      # `vs lint` の辞書（プロジェクトの config/spellcheck_dictionaries・用語集・除外リスト）と単語表
+      # @return [Set<String>] 小文字の語
+      def vocabulary
+        words = CLI::Lint::DictManager.new.build_word_map(nil).keys.to_set
+        return words unless File.file?(SYSTEM_WORDS)
+
+        File.foreach(SYSTEM_WORDS, chomp: true) { words << it.downcase }
+        words
+      end
+
+      def fix_markdown(markdown, vocabulary)
+        # 区切りを括弧で取るので、奇数番目の部品が保護する範囲になる
+        markdown.split(PROTECTED).each_with_index.map { |part, index| index.odd? ? part : fix(part, vocabulary) }.join
+      end
+
+      def fix(text, vocabulary) = text.gsub(WORD) { fix_word(it, vocabulary) }
+
+      def fix_word(word, vocabulary)
+        word.split(/(_|(?<=[a-z])(?=[A-Z]))/).map do |part|
+          next part if part.size < MIN_PART || part.match?(/\d/) || vocabulary.include?(part.downcase)
+
+          hits = single_swaps(part).select { vocabulary.include?(it.downcase) }
+          hits = t_swaps(part).select { vocabulary.include?(it.downcase) } if hits.empty?
+          hits.uniq.size == 1 ? hits.first : part
+        end.join
+      end
+
+      # 1 か所だけ入れ替えた形
+      def single_swaps(part)
+        SWAPS.flat_map do |from, targets|
+          positions = (0..(part.size - from.size)).select { part[it, from.size] == from }
+          positions.flat_map { |at| targets.map { "#{part[0...at]}#{it}#{part[(at + from.size)..]}" } }
+        end.uniq
+      end
+
+      # t を l・i に戻す入れ替えを、複数か所まで組み合わせた形
+      def t_swaps(part)
+        positions = (0...part.size).select { part[it] == 't' }
+        return [] if positions.empty? || positions.size > MAX_T
+
+        %w[t l i].repeated_permutation(positions.size).filter_map do |choice|
+          candidate = part.dup
+          positions.zip(choice).each { |at, char| candidate[at] = char }
+          candidate unless candidate == part
+        end
       end
     end
 

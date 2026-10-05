@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "open3"
+require "set"
 require "tmpdir"
 
 require "test_helper"
@@ -45,7 +46,7 @@ module VivlioStarter
           File.write(path, { 'rules' => [{ 'expected' => '人工知能', 'patterns' => ['入工知能'] }] }.to_yaml)
           markdown = "入工知能は 2026 年に。\n\n```\nputs 2026 年\n```\n"
 
-          result = OcrPostprocess.apply(markdown, corrections_path: path, mecab: 'no-such-mecab-command')
+          result = OcrPostprocess.apply(markdown, corrections_path: path, mecab: 'no-such-mecab-command', vocabulary: Set[])
 
           assert_equal("人工知能は2026年に。\n\n```\nputs 2026 年\n```\n", result)
         end
@@ -62,6 +63,33 @@ module VivlioStarter
 
           assert_equal("人工知能の話。\n\n```\nputs '入工知能'\n```\n\n人工知能で終わる。\n", corrected)
         end
+      end
+
+      # 英字の語は、部品ごとに辞書に無ければ取り違えやすい字を入れ替え、辞書に当たる形が 1 つだけのときに
+      # 直す。t を l・i に戻す入れ替えは複数か所まで許す（`vetoctty` → `velocity`）
+      def test_should_fix_misread_latin_words_with_dictionary
+        vocabulary = Set['float', 'threshold', 'frequency', 'velocity', 'ratio', 'delta']
+
+        fixed = OcrLatinWords.fix('Ftoat threshotd_frequency vetoctty_ratto detta', vocabulary)
+
+        assert_equal('Float threshold_frequency velocity_ratio delta', fixed)
+      end
+
+      # 3 字以下の部品・数字を含む部品・辞書に当たる形が 2 つ以上ある部品は直さない
+      def test_should_keep_latin_words_that_cannot_be_decided
+        vocabulary = Set['sip', 'lilt', 'lift'] # litt は lilt にも lift にも戻せる
+
+        assert_equal('stp x2tt litt', OcrLatinWords.fix('stp x2tt litt', vocabulary))
+      end
+
+      # 英字の語はコードの囲みの中にもかける。画像の参照と HTML のコメントは書き換えない
+      def test_should_fix_latin_words_inside_code_but_not_in_image_references
+        markdown = "![](ptctures.webp) <!-- ptctures -->\n\n```ruby\nx = Ftoat(1)\n```\n"
+
+        result = OcrPostprocess.apply(markdown, corrections_path: '/no/such/file', mecab: 'no-such-mecab-command',
+                                                vocabulary: Set['float', 'pictures'])
+
+        assert_equal("![](ptctures.webp) <!-- ptctures -->\n\n```ruby\nx = Float(1)\n```\n", result)
       end
 
       private
