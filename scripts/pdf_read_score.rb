@@ -29,7 +29,8 @@ def expand_includes(markdown, codes_dir)
 
     lines = File.readlines(path)
     lines = lines[(first.to_i - 1)..(last.to_i - 1)] if first
-    lines.join
+    # 囲みのまま展開する。囲みの中は記法を外さない（`**2` の * を消すと語がつながる）
+    "```\n#{lines.join.chomp}\n```"
   end
 end
 
@@ -41,18 +42,42 @@ def plain_text(markdown, codes_dir)
          .gsub(/<!--.*?-->/m, '').gsub('<br>', '')
          .gsub(/^\$\$\n.*?\n\$\$$/m, '').gsub(/\$[^$\n]+\$/, '')
 
+  in_code = false
+  in_talk = false
   text.lines.filter_map do |line|
-    next if line.match?(/\A(?::::|```)/)
+    if line.start_with?('```')
+      in_code = !in_code
+      next
+    end
+    # コードの中は紙面のとおりなので、記法を外さない
+    next line if in_code
+
+    in_talk = line.match?(/\A:::\s*\{\.talk/) if line.start_with?(':::')
+    next if line.match?(/\A:::/)
     next if line.match?(/\A(?:rect|pointer|circle|arrow):/)
     next if line.match?(/\A\|\s*:?-+/)
     next if line.match?(/\A!\[[^\]]*\]\([^)]*\)(\{[^}]*\})?\s*\z/)
+    # QueryStream の展開の指示（= physics_books）は、本のカードに置き換わって紙面に出ない
+    next if line.match?(/\A= \w+\s*\z/)
 
-    line.sub(/\A#+\s*/, '').sub(/\A[-*]\s+/, '').sub(/\A>\s?/, '').sub(/\A\[\^\w+\]:\s*/, '')
-        .gsub(/\[\^\w+\]/, '')
-        .gsub(/\{([^|{}]+)\|([^{}]+)\}/, '\2\1')
-        .gsub(/@\w+:[\w-]+/, '')
-        .delete('*`').tr('|', ' ')
+    # 会話文の話者（einstein:）は、紙面では表示名（アインシュタイン）になる
+    line = line.sub(/\A[\w-]+:\s*/, '') if in_talk
+    plain_line(line)
   end.join
+end
+
+# 1 行の記法を外す。行内のコード（`…`）の中は紙面のとおりなので残す
+def plain_line(line)
+  line = line.sub(/\A#+\s*/, '').sub(/\A[-*]\s+/, '').sub(/\A>\s?/, '').sub(/\A\[\^\w+\]:\s*/, '')
+  line.split(/(`+[^`]*`+)/).map do |part|
+    next part.delete('`') if part.start_with?('`')
+
+    # 参照（@chapref:ch-x・@ch-x）とラベル（**表題 @id**）は、紙面では番号や題に置き換わる
+    part.gsub(/\[\^\w+\]/, '')
+        .gsub(/\{([^|{}]+)\|([^{}]+)\}/, '\2\1')
+        .gsub(/@\w+:[\w-]+/, '').gsub(/@[a-z][\w-]*/, '')
+        .delete('*')
+  end.join.tr('|', ' ')
 end
 
 # 比べる前の正規化。全角英数を半角へ寄せ、空白と節の記号（♣）を落とす
