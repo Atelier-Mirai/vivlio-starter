@@ -36,8 +36,9 @@ end
 
 # 記法を外して文字だけを残す。数式は紙面で画像になり文字として取れないので、両側から除く。
 # 原稿だけでなく出力にもかける。出力の記法（# や | や ```）を文字として数えると、構造を戻すほど
-# 適合率が下がってしまうため
-def plain_text(markdown, codes_dir)
+# 適合率が下がってしまうため。紙面に出ない原稿の記法（ラベルと参照・会話文の話者・QueryStream の指示）は
+# 原稿の側（manuscript: true）からだけ外す。出力にある `@param` などは紙面から読んだ文字である
+def plain_text(markdown, codes_dir, manuscript: false)
   text = expand_includes(markdown, codes_dir)
          .gsub(/<!--.*?-->/m, '').gsub('<br>', '')
          .gsub(/^\$\$\n.*?\n\$\$$/m, '').gsub(/\$[^$\n]+\$/, '')
@@ -58,25 +59,24 @@ def plain_text(markdown, codes_dir)
     next if line.match?(/\A\|\s*:?-+/)
     next if line.match?(/\A!\[[^\]]*\]\([^)]*\)(\{[^}]*\})?\s*\z/)
     # QueryStream の展開の指示（= physics_books）は、本のカードに置き換わって紙面に出ない
-    next if line.match?(/\A= \w+\s*\z/)
+    next if manuscript && line.match?(/\A= \w+\s*\z/)
 
     # 会話文の話者（einstein:）は、紙面では表示名（アインシュタイン）になる
     line = line.sub(/\A[\w-]+:\s*/, '') if in_talk
-    plain_line(line)
+    plain_line(line, manuscript:)
   end.join
 end
 
 # 1 行の記法を外す。行内のコード（`…`）の中は紙面のとおりなので残す
-def plain_line(line)
+def plain_line(line, manuscript:)
   line = line.sub(/\A#+\s*/, '').sub(/\A[-*]\s+/, '').sub(/\A>\s?/, '').sub(/\A\[\^\w+\]:\s*/, '')
   line.split(/(`+[^`]*`+)/).map do |part|
     next part.delete('`') if part.start_with?('`')
 
+    part = part.gsub(/\[\^\w+\]/, '').gsub(/\{([^|{}]+)\|([^{}]+)\}/, '\2\1')
     # 参照（@chapref:ch-x・@ch-x）とラベル（**表題 @id**）は、紙面では番号や題に置き換わる
-    part.gsub(/\[\^\w+\]/, '')
-        .gsub(/\{([^|{}]+)\|([^{}]+)\}/, '\2\1')
-        .gsub(/@\w+:[\w-]+/, '').gsub(/@[a-z][\w-]*/, '')
-        .delete('*')
+    part = part.gsub(/@\w+:[\w-]+/, '').gsub(/@[a-z][\w-]*/, '') if manuscript
+    part.delete('*')
   end.join.tr('|', ' ')
 end
 
@@ -171,7 +171,7 @@ manuscript_path, *output_paths = ARGV
 manuscript = File.read(manuscript_path)
 # 原稿は contents/ の下にある前提で、その親を本のプロジェクトとみなして codes/ を探す
 codes_dir = File.expand_path('../../codes', manuscript_path)
-reference_plain = plain_text(manuscript, codes_dir)
+reference_plain = plain_text(manuscript, codes_dir, manuscript: true)
 
 scores = output_paths.map do |path|
   # contents/ の下の出力なら、その上の作業ディレクトリ名（std-born など）をラベルにする
