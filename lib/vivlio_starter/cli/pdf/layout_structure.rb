@@ -36,6 +36,10 @@ module VivlioStarter
       # 切れ目が 139 から 53 に減った。15〜35% のどこでも文字の一致は変わらない
       OCR_SIZE_TOLERANCE = 0.25
       # 文末とみなす OCR の行末（wrapped_mid_sentence?）
+      # OCR のコードの行の手がかり（中身）。コメント・よく使う語で始まる行、末尾の do・end、コードの記号
+      OCR_CODE_TEXT = /\A(?:#|def|end|class|module|puts|return|require|if|else|elsif|while)|(?:do|end)\z|[={}\[\]|<>]|\.\w+\(/
+      # コードの行にはさまれて含める、手がかりの無い行の数
+      OCR_CODE_FILLER = 2
       OCR_SENTENCE_END = /[。．.!?！？」』）):：]\z/
       # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
       TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
@@ -280,7 +284,8 @@ module VivlioStarter
         index = 0
         while index < lines.size
           line = lines[index]
-          kind, length = if code_line?(line) then [:code, run_length(lines, index) { code_line?(it) }]
+          kind, length = if line.glyphs.first.font.nil? && (code = ocr_code_length(lines, index)).positive? then [:code, code]
+                         elsif code_line?(line) then [:code, run_length(lines, index) { code_line?(it) }]
                          elsif heading_candidate?(line) then heading_or_paragraph(lines, index)
                          elsif list_start?(line) then [:list_item, list_item_length(lines, index)]
                          elsif (rows = table_length(lines, index)).positive? then [:table, rows]
@@ -294,6 +299,57 @@ module VivlioStarter
 
       def block(kind, lines, data = nil)
         Block.new(kind:, lines:, top: lines.first.top, page: lines.first.page, data:)
+      end
+
+      # --- OCR のコード（pdf-read-ocr-improvement-notes.md §4.12） ---
+
+      # OCR の行から始まるコードの行数（コードでなければ 0）。OCR の字には書体の情報が無いので、等幅かどうかでは
+      # 見分けられない。行番号で始まる行を強い手がかり、中身がコードらしい行を弱い手がかりとして、どちらかの
+      # 行が続く範囲をコードにする。間にはさまる「。」の無い 2 行までの行（崩れて読めた行）も含める。
+      # 強い手がかりの行を 2 行以上含むことを求める（番号付きの箇条書きや、記号を含む本文の 1 行を除くため）
+      def ocr_code_length(lines, start)
+        strong = 0
+        length = 0
+        index = start
+        while index < lines.size
+          line = lines[index]
+          signal = ocr_code_signal(lines, index)
+          # 手がかりの無い行は、コードの行の後で、「。」が無く、OCR_CODE_FILLER 行以内にコードの行が続くときだけ含める
+          break unless signal || (index > start && !line.text.include?('。') &&
+                                  lines[index + 1, OCR_CODE_FILLER].to_a.each_index.any? { ocr_code_signal(lines, index + 1 + it) })
+          # 行間は、コードの中の空行（行番号を読めていない）をはさむ字の大きさの 4.5 倍まで。字の大きさは揺れる
+          # ので、前後の行と本文の大きいほうで測る
+          break if index > start && (lines[index - 1].baseline - line.baseline) > [line.size, lines[index - 1].size, @body_size].max * 4.5
+          strong += 1 if signal == :strong
+          length = index - start + 1 if signal
+          index += 1
+        end
+        strong >= 2 ? length : 0
+      end
+
+      # :strong（行番号で始まり、近くに番号の続く行がある）、:weak（中身がコードらしい）、nil
+      def ocr_code_signal(lines, index)
+        line = lines[index]
+        return nil if line.text.empty?
+
+        number = ocr_line_number(line)
+        if number
+          nearby = lines[[index - 3, 0].max..(index + 3)].each_with_index.filter_map do |other, offset|
+            other_number = ocr_line_number(other) unless other.equal?(line)
+            other_number && [other_number - number, offset - [index, 3].min]
+          end
+          return :strong if nearby.any? { |gap, position| gap.abs.between?(1, 4) && (gap.positive? == position.positive?) }
+        end
+        text = line.text.sub(/\A\d{1,3}/, '')
+        return :weak if text.start_with?('#')
+
+        OCR_CODE_TEXT.match?(text) && text.count("\x21-\x7E") * 2 >= text.size ? :weak : nil
+      end
+
+      # 行頭の行番号。番号の後に隙間がある行（line_number）のほか、OCR が番号と字をつなげて読んだ行
+      # （「2#v0」「33puts」）も数える。「1827年」「16歳」のように和文が続くものは番号ではない
+      def ocr_line_number(line)
+        line_number(line) || line.text[/\A(\d{1,3})(?=[#A-Za-z_])/, 1]&.to_i
       end
 
       # 条件を満たす行が、行送りの 2.5 倍より離れずに続く数

@@ -131,6 +131,27 @@ module VivlioStarter
         assert_includes(markdown, "| 金属 | 仕事関数 | しきい周波数 |\n| --- | --- | --- |\n| カリウム | 2.2 | 5.32 |")
       end
 
+      # OCR のコードは、行番号を読み違えても（字につながる・1 違いにならない）、番号の無い字下げの行や和文の
+      # コメント、コードの中の空行をはさんでも、1 つの囲みにする。和文で始まる番号（「1827年」）は行番号ではない
+      def test_should_find_ocr_code_with_misread_line_numbers
+        code = [['2#v0 = phi / h', 0], ['3 PLANCK = 6.626e-34', 0], ['1 EV = 1.602e-19', 0], ['6 def threshold(phi)', 1.0],
+                ['phi * EV / PLANCK', 0], ['9 end', 0], ['11 # 代表的な金属', 1.0], ['12 metals.each do |metal|', 0],
+                ['puts metal', 0], ['16 end', 0]]
+        y = 720.0
+        lines = code.map do |source, blank|
+          y -= 16 * (1 + blank)
+          text(source, x: source.match?(/\A\d/) ? 90 : 110, y:, font: nil)
+        end
+
+        markdown = render([[text('1827年、植物学者ロバート・ブラウンは、花粉から出た微粒子を観察しました。', y: 740, font: nil), *lines,
+                            text('各金属のしきい周波数を比較すると次のようになります。', y: y - 30, font: nil)]])
+
+        assert_equal(1, markdown.scan(/^```/).size / 2)
+        assert_match(/\A1827年、植物学者.*観察しました。\n\n```\n/, markdown)
+        assert_includes(markdown, "phi * EV / PLANCK")
+        assert_match(/16 end\n```\n\n各金属の/, markdown)
+      end
+
       # ページの最後の目次の項目に、次のページの頭の行をつなげない（柱の「CONTENTS」がつながっていた）
       def test_should_not_continue_table_of_contents_entry_on_next_page
         entry = [*text('まとめ', y: 100), *(80.step(440, 5).flat_map { text('.', x: it, y: 100) }), *text('161', x: 455, y: 100)]
