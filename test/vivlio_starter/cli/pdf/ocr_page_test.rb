@@ -25,6 +25,17 @@ module VivlioStarter
         assert_equal('言葉の遅い', page.page_glyphs.sort_by(&:x).map(&:text).join)
       end
 
+      # 横に大きく取った語の枠（「重い」2 字に 70pt）で後ろの字が押し出されても、行は語の枠の右端を
+      # 越えない。越えると、行の右の図の枠に入って本文から消えた
+      def test_should_fit_pushed_glyphs_within_word_boxes
+        page = OcrPage.new([word('重い', x: 100, width: 70), word('球を', x: 125, width: 20), word('載せた', x: 145, width: 30)],
+                           page: 0, size: [595.0, 842.0])
+
+        assert_equal('重い球を載せた', page.page_glyphs.map(&:text).join)
+        assert_in_delta(175.0, page.page_glyphs.last.right)
+        assert(page.page_glyphs.each_cons(2).all? { |a, b| a.right <= b.x + 0.001 })
+      end
+
       # 確信度の低い語（図や罫線の模様を字と読んだもの）は捨てる
       def test_should_drop_words_with_low_confidence
         page = OcrPage.new([word('本文', x: 100, width: 20), word('~|~', x: 130, width: 10, conf: 5)], page: 0, size: [595.0, 842.0])

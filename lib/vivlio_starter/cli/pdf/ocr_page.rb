@@ -39,11 +39,14 @@ module VivlioStarter
 
       # 1 行の語を字に割る。語の幅は字数で等しく割る（OCR は字ごとの位置を返さない）。
       # 語の枠は重なることがあり、そのまま左から並べ直すと「言葉の遅い」が「言の遅葉い」になるので、
-      # OCR が返した順を保つよう、前の字の右端より左へは戻さない
+      # OCR が返した順を保つよう、前の字の右端より左へは戻さない。
+      # 押し出した字が語の枠の右端を越えたら、行を枠の範囲へ縮めて並べ直す。Tesseract は語の枠を横に
+      # 大きく取ることがあり（「重い」2 字に 70pt）、後ろの字が 47pt 右へ押し出されて、行の右の図の枠に
+      # 入って消えた
       def line_glyphs(words, page)
         size = line_size(words)
         cursor = -Float::INFINITY
-        words.flat_map do |word|
+        glyphs = words.flat_map do |word|
           chars = word['text'].to_s.grapheme_clusters
           width = word['width'].to_f / chars.size
           start = [word['x'].to_f, cursor].max
@@ -51,6 +54,16 @@ module VivlioStarter
             Glyph.new(text: char, x: start + (index * width), y: word['y'].to_f, width:, size:, page:).tap { cursor = it.right }
           end
         end
+        fit_line(glyphs, words.map { it['x'].to_f + it['width'].to_f }.max)
+      end
+
+      # 字の並びを、行の左端から right までに縮める（はみ出していなければそのまま）
+      def fit_line(glyphs, right)
+        left = glyphs.first.x
+        scale = (right - left) / (glyphs.last.right - left)
+        return glyphs if scale >= 1.0 || !scale.positive?
+
+        glyphs.map { it.with(x: left + ((it.x - left) * scale), width: it.width * scale) }
       end
 
       # 字の大きさ。行の枠の高さは括弧・ルビ・下に伸びる字で揺れるので、和文の字（ほぼ正方形）の
