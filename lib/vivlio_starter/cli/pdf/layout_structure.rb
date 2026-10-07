@@ -253,11 +253,22 @@ module VivlioStarter
         steps.empty? ? @body_size * 1.6 : steps[steps.size / 2]
       end
 
-      # ページごとの本文の右端（本文の大きさの行の右端で、いちばん多い位置）
+      # ページごとの本文の右端（本文の大きさの行の右端で、いちばん多い位置）。OCR のページは ocr_right_edge
       def right_edges(page_lines)
         page_lines.each_with_index.to_h do |lines, page|
+          next [page, ocr_right_edge(lines, @pages[page].page_size&.first.to_f)] if lines.any? && lines.none? { it.glyphs.first.font }
+
           [page, dominant(lines.select { body_sized?(it) }.map { it.right.round })]
         end.compact
+      end
+
+      # OCR のページの本文の右端。ページの幅の 4 割を超える行の右端を右から見て、6pt 以内にもう 1 行の右端が
+      # そろういちばん右の位置にする。OCR の行は字の大きさの見積もりが揺れて「本文の大きさの行」がページに
+      # 数行しか残らず、右端も 1〜2pt 揺れるので、いちばん多い位置では決まらない（コードの多いページで
+      # 本当は 516pt の右端を 323pt としていた）
+      def ocr_right_edge(lines, page_width)
+        rights = lines.select { it.right - it.x > page_width * 0.4 }.map(&:right).sort.reverse
+        rights.find { |right| rights.count { (right - it).between?(0, 6) } >= 2 } || rights.first
       end
 
       # --- Phase: かたまりに分ける ---
@@ -490,7 +501,7 @@ module VivlioStarter
       # 目次の項目は、ページ番号の前の隙間が縦にそろうが、表にはしない
       def table_row?(line)
         !code_line?(line) && !list_start?(line) && !heading_candidate?(line) && !math_line?(line) && !line.text.match?(TOC_ENTRY_END) &&
-          (line.size - @body_size).abs <= @body_size * 0.15 && segments(line).size >= 2
+          (line.size - @body_size).abs <= (line.glyphs.first.font ? @body_size * 0.15 : [line.size, @body_size].max * OCR_SIZE_TOLERANCE) && segments(line).size >= 2
       end
 
       # 数式のフォント（TeX の CMMI・CMSY など）の字が 3 割を超える行

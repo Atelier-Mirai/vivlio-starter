@@ -113,6 +113,24 @@ module VivlioStarter
         assert_includes(render([lines.(BODY, '本文の一行目は版面の右端まで届いて折り返')]), "届いて折り返\n\n下がって見える")
       end
 
+      # OCR の表は、行ごとに字の大きさの見積もりが揺れても表に組む。表題の短い行は表に入れない。
+      # OCR のページの右端は、長い行の右端がそろう所で決める（右端が揺れて決まらず、表題の行の右端を
+      # 本文の右端と取り違えて、表題を「右端まで届いた文の途中の行」とみなし、表とつなげていた）
+      def test_should_find_ocr_table_under_short_caption
+        cells = [%w[金属 仕事関数 しきい周波数], %w[カリウム 2.2 5.32], %w[ナトリウム 2.3 5.56], %w[金 5.1 1.23]]
+        sizes = [10.2, 8.3, 9.5, 9.0]
+        rows = cells.each_with_index.map do |(metal, work, frequency), index|
+          y = 700 - (index * 18)
+          [*text(metal, x: 100, y:, size: sizes[index], font: nil), *text(work, x: 260, y:, size: sizes[index], font: nil),
+           *text(frequency, x: 400 + (index * 0.7), y:, size: sizes[index], font: nil)]
+        end
+
+        markdown = render([[text('表 H-1: 光電効果のしきい周波数', x: 200, y: 722, font: nil), *rows]])
+
+        assert_includes(markdown, "表 H-1: 光電効果のしきい周波数\n\n")
+        assert_includes(markdown, "| 金属 | 仕事関数 | しきい周波数 |\n| --- | --- | --- |\n| カリウム | 2.2 | 5.32 |")
+      end
+
       # ページの最後の目次の項目に、次のページの頭の行をつなげない（柱の「CONTENTS」がつながっていた）
       def test_should_not_continue_table_of_contents_entry_on_next_page
         entry = [*text('まとめ', y: 100), *(80.step(440, 5).flat_map { text('.', x: it, y: 100) }), *text('161', x: 455, y: 100)]
