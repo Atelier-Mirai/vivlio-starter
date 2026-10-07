@@ -73,6 +73,31 @@ module VivlioStarter
         MARKDOWN
       end
 
+      # 目次の項目は、リーダーが右端まで届いても 1 項目ずつ切る（TeX の目次が 2〜3 項目ずつつながっていた）
+      def test_should_split_table_of_contents_entries
+        lines = [['数の表現', '1', 700], ['ブール代数の基本公式', '20', 683], ['半導体', '24', 666]].map do |title, number, y|
+          leader = (((60 + (title.size * 10) + 5) / 5.0).ceil * 5).step(440, 5).flat_map { text('.', x: it, y:) }
+          [*text(title, y:), *leader, *text(number, x: 470 - (number.size * 5), y:)]
+        end
+
+        assert_equal(<<~MARKDOWN, render([lines]).gsub(/ *(?:\. *){3,}/, ' … '))
+          数の表現 … 1
+
+          ブール代数の基本公式 … 20
+
+          半導体 … 24
+        MARKDOWN
+      end
+
+      # ページの最後の目次の項目に、次のページの頭の行をつなげない（柱の「CONTENTS」がつながっていた）
+      def test_should_not_continue_table_of_contents_entry_on_next_page
+        entry = [*text('まとめ', y: 100), *(80.step(440, 5).flat_map { text('.', x: it, y: 100) }), *text('161', x: 455, y: 100)]
+
+        markdown = render([[*body_paragraph(y: 700), entry], [text('次のページの頭の行', y: 780), *body_paragraph(y: 700)]])
+
+        assert_match(/^まとめ[ .]+161\n\n次のページの頭の行/, markdown)
+      end
+
       # 番号の頭（1.）と、行の左に描かれた点（Chrome は • を図形で描く）でリストにする
       def test_should_find_numbered_and_dotted_lists
         lines = [text('1. 一つめ', y: 700), text('2. 二つめ', y: 683), text('点の項目', x: 70, y: 640)]

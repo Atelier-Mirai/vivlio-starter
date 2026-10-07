@@ -32,6 +32,8 @@ module VivlioStarter
       COLUMN_GAP = 4.0
       # 数式に使うフォント
       MATH_FONT_NAME = /\ACM(?:MI|SY|EX)|Symbol|Math|MSAM|MSBM|rsfs|esint/i
+      # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
+      TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
 
       # @param pages [Array<MarkedContentReceiver>] ページごとに読み終えた受け手
       # @param text_area [Hash, nil] { top:, bottom:, inner:, outer: }（pt）。指定したときだけ版面の外を除く
@@ -318,6 +320,8 @@ module VivlioStarter
       # paragraph はここまでの段落の行、ahead は次の行の先の 2 行
       def paragraph_break?(paragraph, following, ahead, large: false)
         previous = paragraph.last
+        # 目次の項目は、リーダーが版面の右端まで届くので、下の右端の比べ方では次の項目とつながる
+        return true if previous.text.match?(TOC_ENTRY_END)
         return true if code_line?(following) || (!large && heading_candidate?(following)) || list_start?(following)
         return true if (previous.size - following.size).abs > 0.5 || footnote_start?(following)
         return true if previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
@@ -457,8 +461,9 @@ module VivlioStarter
         length >= 3 ? length : 0
       end
 
+      # 目次の項目は、ページ番号の前の隙間が縦にそろうが、表にはしない
       def table_row?(line)
-        !code_line?(line) && !list_start?(line) && !heading_candidate?(line) && !math_line?(line) &&
+        !code_line?(line) && !list_start?(line) && !heading_candidate?(line) && !math_line?(line) && !line.text.match?(TOC_ENTRY_END) &&
           (line.size - @body_size).abs <= @body_size * 0.15 && segments(line).size >= 2
       end
 
