@@ -54,7 +54,30 @@ module VivlioStarter
             Glyph.new(text: char, x: start + (index * width), y: word['y'].to_f, width:, size:, page:).tap { cursor = it.right }
           end
         end
-        fit_line(glyphs, words.map { it['x'].to_f + it['width'].to_f }.max)
+        widen_wide_glyphs(fit_line(glyphs, words.map { it['x'].to_f + it['width'].to_f }.max), size)
+      end
+
+      # 全角の字を、字の大きさいっぱいの幅に広げる。Tesseract の語の枠は字の形にぴったりで、
+      # 「、」「。」「」」や小さな仮名の前後に 4〜8pt の隙間ができる。升目に並ぶ和文ではその隙間が
+      # 縦にそろい、本文を表の列と取り違えた（97 章のスキャンで誤った表 6 つ）。字の間では余計な
+      # 空白にもなった（「経過 した と き」）。広げるのは隣も全角の字である側だけにする（英字との
+      # あいだの空白「が Ruby を」を残す）。左端は前の字の左端を越えない（行の字は左端の順に
+      # 並べ直されるので、越えると「キログラム」が「ロキグラム」になった）
+      def widen_wide_glyphs(glyphs, size)
+        wide = glyphs.map { it.text.match?(StructureMarkdown::WIDE_CHAR) }
+        previous_x = -Float::INFINITY
+        glyphs.each_with_index.map do |glyph, index|
+          extra = size - glyph.width
+          widened = if wide[index] && extra.positive?
+                      left = index.positive? && wide[index - 1] ? extra / 2 : 0.0
+                      right = wide[index + 1] ? extra / 2 : 0.0
+                      x = [glyph.x - left, previous_x + 0.01].max
+                      glyph.with(x:, width: glyph.right + right - x)
+                    else
+                      glyph
+                    end
+          widened.tap { previous_x = it.x }
+        end
       end
 
       # 字の並びを、行の左端から right までに縮める（はみ出していなければそのまま）

@@ -33,7 +33,20 @@ module VivlioStarter
 
         assert_equal('重い球を載せた', page.page_glyphs.map(&:text).join)
         assert_in_delta(175.0, page.page_glyphs.last.right)
-        assert(page.page_glyphs.each_cons(2).all? { |a, b| a.right <= b.x + 0.001 })
+        assert(page.page_glyphs.each_cons(2).all? { |a, b| a.x < b.x })
+      end
+
+      # 全角の字は、隣も全角の字である側へ、字の大きさいっぱいまで広げる。Tesseract の枠は字の形に
+      # ぴったりで、細い字（「し」「、」）の前後の隙間が、表の列や余計な空白と取り違えられた。
+      # 英字の語との間は広げない（「た Ruby」の空白を残す）
+      def test_should_widen_wide_glyphs_only_toward_wide_neighbors
+        page = OcrPage.new([word('経過', x: 100, width: 18), word('し', x: 121, width: 5), word('た', x: 131, width: 6),
+                            word('Ruby', x: 145, width: 20)], page: 0, size: [595.0, 842.0])
+        shi, ta, r = page.page_glyphs.values_at(2, 3, 4)
+
+        assert_equal([119.0, 128.0], [shi.x, shi.right]) # 字の大きさ 9pt（和文の字の幅の中央値）まで、左右へ 2pt ずつ
+        assert_equal([129.5, 137.0], [ta.x, ta.right])   # 右の Ruby の側へは広げない
+        assert_equal(145.0, r.x)
       end
 
       # 確信度の低い語（図や罫線の模様を字と読んだもの）は捨てる
