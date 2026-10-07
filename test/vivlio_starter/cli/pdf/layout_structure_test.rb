@@ -89,6 +89,30 @@ module VivlioStarter
         MARKDOWN
       end
 
+      # OCR の字（書体の情報が無い）は字の大きさの見積もりが行ごとに揺れるので、25% までの差では段落を
+      # 切らない（「乗客／にとっては」が 7.8pt と 6.2pt に出て切れていた）。文字の層のある PDF の字は、
+      # 0.5pt を超える差で切る
+      def test_should_tolerate_size_jitter_only_for_ocr_lines
+        lines = ->(font) { [text('本文の一行目は版面の右端まで届きます', y: 700, font:, last_x: 470), text('続きの行で終わります。', y: 683, size: 8.4, font:)] }
+
+        assert_equal("本文の一行目は版面の右端まで届きます続きの行で終わります。\n", render([lines.(nil)]))
+        assert_equal("本文の一行目は版面の右端まで届きます\n\n続きの行で終わります。\n", render([lines.(BODY)]))
+      end
+
+      # OCR の行が版面の右端まで届き、文末で終わらなければ、文の途中の折り返しとみなして、次の行の頭が
+      # 下がって見えても段落を切らない（OCR の行頭の位置は揺れる）。文末で終わる行の後と、文字の層の
+      # ある PDF の字では、これまでどおり切る
+      def test_should_join_ocr_line_wrapped_mid_sentence
+        lines = lambda do |font, first|
+          [*body_paragraph(y: 740, first: '前の段落の一行目も版面の右端まで届きます'),
+           text(first, y: 700, font:, last_x: 470), text('下がって見える続きの行で終わります。', x: 72, y: 683, font:)]
+        end
+
+        assert_includes(render([lines.(nil, '本文の一行目は版面の右端まで届いて折り返')]), '届いて折り返下がって見える')
+        assert_includes(render([lines.(nil, '本文の一行目は版面の右端まで届きました。')]), "届きました。\n\n下がって見える")
+        assert_includes(render([lines.(BODY, '本文の一行目は版面の右端まで届いて折り返')]), "届いて折り返\n\n下がって見える")
+      end
+
       # ページの最後の目次の項目に、次のページの頭の行をつなげない（柱の「CONTENTS」がつながっていた）
       def test_should_not_continue_table_of_contents_entry_on_next_page
         entry = [*text('まとめ', y: 100), *(80.step(440, 5).flat_map { text('.', x: it, y: 100) }), *text('161', x: 455, y: 100)]

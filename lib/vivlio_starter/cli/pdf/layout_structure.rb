@@ -32,6 +32,11 @@ module VivlioStarter
       COLUMN_GAP = 4.0
       # 数式に使うフォント
       MATH_FONT_NAME = /\ACM(?:MI|SY|EX)|Symbol|Math|MSAM|MSBM|rsfs|esint/i
+      # OCR の字で、同じ段落とみなす字の大きさの差（大きいほうに対する割合）。97 章のスキャンで、段落の途中の
+      # 切れ目が 139 から 53 に減った。15〜35% のどこでも文字の一致は変わらない
+      OCR_SIZE_TOLERANCE = 0.25
+      # 文末とみなす OCR の行末（wrapped_mid_sentence?）
+      OCR_SENTENCE_END = /[。．.!?！？」』）):：]\z/
       # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
       TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
 
@@ -323,8 +328,10 @@ module VivlioStarter
         # 目次の項目は、リーダーが版面の右端まで届くので、下の右端の比べ方では次の項目とつながる
         return true if previous.text.match?(TOC_ENTRY_END)
         return true if code_line?(following) || (!large && heading_candidate?(following)) || list_start?(following)
-        return true if (previous.size - following.size).abs > 0.5 || footnote_start?(following)
-        return true if previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
+        wide_gap = previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
+        return footnote_start?(following) || wide_gap if wrapped_mid_sentence?(previous)
+        return true if (previous.size - following.size).abs > size_tolerance(previous, following) || footnote_start?(following)
+        return true if wide_gap
 
         # 右端と左端は、この段落の行と次の行で測る。左端には、次の行と右端がそろい、左へ 1.5 字以内に
         # ある先の行（字下げした 1 行目の続き）も使う。先の段落の幅の広い行（囲みの外・画像の下）まで
@@ -338,6 +345,25 @@ module VivlioStarter
 
         column = paragraph + [following] + ahead.select { (it.right - following.right).abs <= 1 && it.x >= following.x - (size * 1.5) }
         following.x - column.map(&:x).min > size * 0.5
+      end
+
+      # 文の途中で折り返した OCR の行か。版面の右端まで届き、文末（「。」や閉じ括弧）で終わらない行は、
+      # 次の行と同じ段落とみなし、字の大きさ・右端・字下げの比べ方では切らない。OCR の行は字の大きさも
+      # 行頭の位置も揺れるので、それらの比べ方だけでは「1903年に結婚／します。」のように切れた。
+      # 右端まで届くことを求めるのは、文末で終わらない題・札・コードの行（短い）を巻き込まないため。
+      # 文字の層のある PDF の字には当てない
+      def wrapped_mid_sentence?(line)
+        line.glyphs.first.font.nil? && !line.text.match?(OCR_SENTENCE_END) &&
+          line.right >= @right_edges.fetch(line.page, line.right) - line.size
+      end
+
+      # 段落を切る字の大きさの差。文字の層のある PDF では字の大きさが正確なので 0.5pt。OCR の字（書体の
+      # 情報が無い）は、行の和文の字の幅から大きさを見積もるので、仮名の多い行は小さく出て、同じ段落の
+      # 行どうしでも 1〜2pt 揺れる（「乗客／にとっては」が 7.8pt と 6.2pt）。OCR の字では 25% まで許す
+      def size_tolerance(previous, following)
+        return 0.5 if previous.glyphs.first.font
+
+        [previous.size, following.size].max * OCR_SIZE_TOLERANCE
       end
 
       # 脚注の本文の頭。本文より小さい字の行が、持ち上げた番号（TeX の「¹本テキストの…」）か
