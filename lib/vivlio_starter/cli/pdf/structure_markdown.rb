@@ -294,18 +294,19 @@ module VivlioStarter
         [number, text.delete_prefix(number).strip]
       end
 
-      # 番号が重なったとき（ページごとに 1 から振る PDF など）は、2 つめから「1-2」のように分ける
+      # 番号が重なったとき（ページごとに 1 から振る PDF など）は、2 つめから「1-2」のように分ける。
+      # 参照の見つかった番号の本文だけを脚注にする。OCR の参照（ページを記録してある）は同じページの本文に限る
       def footnote_labels
-        referenced = @found_refs.keys
         counts = Hash.new(0)
-        bodies = @found_bodies.uniq.select { |number, _page| referenced.include?(number) }.to_h do |number, page|
+        bodies = @found_bodies.uniq.select { |number, page| @found_refs.fetch(number, []).any? { it == :any || it == page } }.to_h do |number, page|
           counts[number] += 1
           [[number, page], counts[number] == 1 ? number : "#{number}-#{counts[number]}"]
         end
         { bodies: }
       end
 
-      # 参照は、同じページの本文、なければ手前のページで最後の本文、なければ後ろの本文へ結ぶ
+      # 参照は、同じページの本文、なければ手前のページで最後の本文、なければ後ろの本文へ結ぶ。
+      # OCR の参照（ocr_note_digit?）は同じページの本文にだけ結ぶ。本文の中のただの数字を参照にしないため
       def footnote_label_for(ref)
         return nil unless @labels
 
@@ -313,6 +314,7 @@ module VivlioStarter
         return nil if candidates.empty?
 
         same = candidates.find { |(_number, page), _label| page == ref.page }
+        return same&.last if ref.glyphs.first.font.nil?
         before = candidates.select { |(_number, page), _label| page < ref.page }.max_by { |(_number, page), _label| page }
         (same || before || candidates.first).last
       end
@@ -508,7 +510,11 @@ module VivlioStarter
         lines, start = strip_line_numbers(lines, char_width)
         lines, start = strip_margin_numbers(glyphs, char_width) || [lines, start] unless start
         origin = lines.filter_map { |line| line.find { !blank_glyph?(it) }&.x }.min || 0
-        text_lines = lines.map { code_line_text(it, origin, char_width) }
+        # OCR のコードは、番号の読み違いで連番にならない。番号の欄の位置で外し、左端も行ごとに測る
+        if start.nil? && glyphs.first.font.nil?
+          lines, origins = strip_gutter_numbers(lines, char_width) || strip_stray_numbers(lines, char_width) || [lines, nil]
+        end
+        text_lines = lines.map { code_line_text(it, origins&.fetch(it, origin) || origin, char_width) }
         text_lines.shift while text_lines.first&.empty?
         text_lines.pop while text_lines.last&.empty?
         return if text_lines.empty?
@@ -613,6 +619,77 @@ module VivlioStarter
         ordered = (glyphs + numbers).sort_by { [it.page, -it.y.round(1), it.x] }
         lines, start = strip_line_numbers(code_lines(ordered), char_width)
         start ? [lines, start] : nil
+      end
+
+      # OCR のコードの行番号を、番号の欄の位置で外す（pdf-read-ocr-improvement-notes.md §4.13）。番号は欄の右端に
+      # そろえて描かれ、コードはその右の決まった位置から始まる。読み違えた番号（11 を「1」、17 を「L}」）も、
+      # 番号の欄を縦に読んだ崩れ（「ee2」「まき」）も、この欄に収まる。欄の右端はスキャンの傾きでページの
+      # 上と下で数 pt ずれるので、番号の行の右端に直線を当てはめて測る。
+      # 欄だけの行（番号だけの空行と崩れ）は捨て、空行は残った行の間隔から補い直す。番号が 3 行未満なら外さない
+      # @return [Array(Array<Array<Glyph>>, Hash{Array<Glyph> => Float}), nil] 行と、行ごとの左端
+      def strip_gutter_numbers(lines, char_width)
+        rows = lines.reject(&:empty?)
+        heads = rows.filter_map do |row|
+          head = leading_number(row, char_width)
+          head && { row:, right: head[:right], code: head[:rest].find { !blank_glyph?(it) } }
+        end
+        return nil if heads.size < 3
+
+        edges = heads.group_by { it[:row].first.page }.transform_values { gutter_edge(it, char_width) }
+        edge_at = ->(row) { edges.fetch(row.first.page, edges.values.first).call(row.first.y) }
+        # 番号とコードの間は、行頭から書いた行（字下げの無い行）で狭い。いちばん狭い 1 行は読みの揺れで
+        # 外れることがあるので、そこから 0.6 字以内に集まる行の中央値をとる
+        gaps = heads.filter_map { it[:code] && (it[:code].x - edge_at.(it[:row])) }.select { it >= char_width * 0.3 }.sort
+        return nil if gaps.empty?
+
+        unindented = gaps.take_while { it <= gaps.first + (char_width * 0.6) }
+        offset = unindented[unindented.size / 2]
+
+        origins = {}.compare_by_identity
+        stripped = rows.filter_map do |row|
+          rest = row.drop_while { it.x + (it.width / 2) < edge_at.(row) + (offset / 2) }
+          next if rest.all? { blank_glyph?(it) }
+
+          rest.tap { origins[it] = edge_at.(row) + offset }
+        end
+        [insert_blank_lines(stripped), origins]
+      end
+
+      # 番号の欄を読めなかった OCR のコード（高い解像度では、薄い番号を読み落とす）。左端は、2 行以上が
+      # そろういちばん左の位置にする。そこより左へ飛び出した行頭の数字（コードとつなげて読んだ番号「2#」）は外す
+      # @return [Array(Array<Array<Glyph>>, Hash{Array<Glyph> => Float}), nil]
+      def strip_stray_numbers(lines, char_width)
+        lefts = lines.filter_map { |line| line.find { !blank_glyph?(it) }&.x }.sort
+        origin = lefts.find { |left| lefts.count { (it - left).between?(0, char_width * 0.5) } >= 2 }
+        return nil unless origin
+
+        origins = {}.compare_by_identity
+        stripped = lines.map do |line|
+          digits = line.take_while { it.text.match?(/\A\d\z/) && it.right <= origin }
+          line.drop(digits.size).tap { origins[it] = origin }
+        end
+        [stripped, origins]
+      end
+
+      # 番号の欄の右端を、縦の位置から求める式。番号の行の右端に直線を当てはめ、1 字より外れた行（番号の
+      # 読み違い）を除いて当てはめ直す。番号の行が 3 行未満のページは傾きを見ず、右端の中央値を使う
+      def gutter_edge(heads, char_width)
+        points = heads.map { [it[:row].first.y, it[:right]] }
+        fit = lambda do |pairs|
+          if pairs.size < 3
+            median = pairs.map(&:last).sort[pairs.size / 2]
+            next ->(_y) { median }
+          end
+
+          mean_y = pairs.sum(&:first) / pairs.size
+          mean_right = pairs.sum(&:last) / pairs.size
+          spread = pairs.sum { (it.first - mean_y)**2 }
+          slope = spread.zero? ? 0.0 : pairs.sum { (it.first - mean_y) * (it.last - mean_right) } / spread
+          ->(y) { mean_right + (slope * (y - mean_y)) }
+        end
+        first = fit.(points)
+        kept = points.select { |y, right| (right - first.(y)).abs <= char_width }
+        fit.(kept.size >= 3 ? kept : points)
       end
 
       def leading_number(line, char_width)
@@ -722,13 +799,13 @@ module VivlioStarter
 
       # 小さく持ち上がった数字は脚注の参照の候補にする
       def add_glyphs(glyphs, atoms)
-        glyphs.each do |glyph|
+        glyphs.each_with_index do |glyph, index|
           base = atoms.reverse_each.find { it.is_a?(Glyph) }
           last = atoms.last
           if last.is_a?(FootnoteRef) && glyph.text.match?(/\A\d+\z/) && glyph.x - last.glyphs.last.right < glyph.size * 0.3 &&
              (glyph.y - last.glyphs.last.y).abs < 0.5
             atoms[-1] = last.with(number: last.number + glyph.text, glyphs: last.glyphs + [glyph])
-          elsif superscript_digit?(glyph, base)
+          elsif superscript_digit?(glyph, base) || ocr_note_digit?(glyph, base, glyphs[index + 1])
             atoms << FootnoteRef.new(number: glyph.text, page: glyph.page, glyphs: [glyph])
           else
             atoms << glyph
@@ -744,6 +821,14 @@ module VivlioStarter
 
         rise = glyph.y - base.y
         glyph.size <= base.size * 0.9 && rise >= base.size * 0.15 && rise < base.size
+      end
+
+      # OCR の字は行の中で高さがそろう（Tesseract は語の位置しか返さない）ので、持ち上がりでは参照を見分け
+      # られない。和文の直後の 1 桁の数字で、後ろが句読点・閉じ括弧（「!」と読み違えたものも）か段落の終わりのものを
+      # 候補にする（「記しています1。」）。同じページに同じ番号の脚注の本文があるときだけ参照になる（footnote_label_for）
+      def ocr_note_digit?(glyph, base, following)
+        glyph.font.nil? && base && glyph.page == base.page && glyph.text.match?(/\A\d\z/) &&
+          wide?(base.text[-1]) && (following.nil? || following.text.match?(/\A[。、．，」』）)!！]/))
       end
 
       # 原子の列を文字列にする。行の変わり目は、和文なら詰め、欧文なら空白にする
@@ -772,7 +857,7 @@ module VivlioStarter
             previous = nil
             after_inline = true
           in FootnoteRef
-            @found_refs[atom.number] = true
+            (@found_refs[atom.number] ||= []) << (atom.glyphs.first.font.nil? ? atom.page : :any)
             label = footnote_label_for(atom)
             text << (label ? "[^#{label}]" : atom.number)
             previous = atom.glyphs.last

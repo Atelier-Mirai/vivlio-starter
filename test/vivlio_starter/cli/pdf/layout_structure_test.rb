@@ -132,24 +132,75 @@ module VivlioStarter
       end
 
       # OCR のコードは、行番号を読み違えても（字につながる・1 違いにならない）、番号の無い字下げの行や和文の
-      # コメント、コードの中の空行をはさんでも、1 つの囲みにする。和文で始まる番号（「1827年」）は行番号ではない
+      # コメント、コードの中の空行をはさんでも、1 つの囲みにする。和文で始まる番号（「1827年」）は行番号ではない。
+      # 番号は、欄の位置で外す。欄だけの崩れ（「まき」）は捨て、空行は行の間隔から補い直す
       def test_should_find_ocr_code_with_misread_line_numbers
-        code = [['2#v0 = phi / h', 0], ['3 PLANCK = 6.626e-34', 0], ['1 EV = 1.602e-19', 0], ['6 def threshold(phi)', 1.0],
-                ['phi * EV / PLANCK', 0], ['9 end', 0], ['11 # 代表的な金属', 1.0], ['12 metals.each do |metal|', 0],
-                ['puts metal', 0], ['16 end', 0]]
+        # 番号は欄の右端（97pt）にそろえ、コードは 100pt から書く。:glued は番号を字につなげて読んだ行、
+        # :gutter は番号の欄を縦に読んだ崩れ
+        code = [[:glued, '2#v0 = phi / h', 0], ['3', 'PLANCK = 6.626e-34', 0], ['1', 'EV = 1.602e-19', 0], ['6', 'def threshold(phi)', 1],
+                [nil, '  phi * EV / PLANCK', 0], ['9', 'end', 0], [:gutter, 'まき', 0], ['11', '# 代表的な金属', 0],
+                ['12', 'metals.each do |metal|', 0], [nil, '  puts metal', 0], ['16', 'end', 0]]
         y = 720.0
-        lines = code.map do |source, blank|
+        lines = code.map do |number, source, blank|
           y -= 16 * (1 + blank)
-          text(source, x: source.match?(/\A\d/) ? 90 : 110, y:, font: nil)
+          case number
+          in :glued then text(source, x: 92, y:, font: nil)
+          in :gutter then text(source, x: 88, y: y + 8, size: 5, font: nil)
+          else [*(number && text(number, x: 97 - (number.size * 5), y:, font: nil)),
+                *text(source.strip, x: 100 + (source[/\A */].size * 5), y:, font: nil)]
+          end
         end
 
         markdown = render([[text('1827年、植物学者ロバート・ブラウンは、花粉から出た微粒子を観察しました。', y: 740, font: nil), *lines,
                             text('各金属のしきい周波数を比較すると次のようになります。', y: y - 30, font: nil)]])
 
-        assert_equal(1, markdown.scan(/^```/).size / 2)
-        assert_match(/\A1827年、植物学者.*観察しました。\n\n```\n/, markdown)
-        assert_includes(markdown, "phi * EV / PLANCK")
-        assert_match(/16 end\n```\n\n各金属の/, markdown)
+        assert_equal(<<~MARKDOWN, markdown)
+          1827年、植物学者ロバート・ブラウンは、花粉から出た微粒子を観察しました。
+
+          ```
+          #v0 = phi / h
+          PLANCK = 6.626e-34
+          EV = 1.602e-19
+
+          def threshold(phi)
+            phi * EV / PLANCK
+          end
+
+          # 代表的な金属
+          metals.each do |metal|
+            puts metal
+          end
+          ```
+
+          各金属のしきい周波数を比較すると次のようになります。
+        MARKDOWN
+      end
+
+      # ページの頭のファイル名だけの行は、コードの 1 行目が崩れて読めても、行番号を読めなくても、コードの
+      # キャプションにする。前のページの末尾の段落にはつなげない。番号の欄を読めないコードでは、コードに
+      # つなげて読んだ番号（「2#」）だけが左へ飛び出す。左端はほかの行でそろう位置にし、その番号は外す
+      def test_should_attach_ocr_file_name_to_code_below
+        code = ['Pb oe', '2# 高速で移動する物体', 'SPEED = 2.99e8', 'def lorentz(v)', '  1.0 / v', 'end']
+        lines = code.each_with_index.map do |source, index|
+          x = source.start_with?('2#') ? 95 : 100 + (source[/\A */].size * 5)
+          text(source.strip, x:, y: 690 - (index * 14), font: nil)
+        end
+        ocr_paragraph = body_paragraph(y: 700).map { |line| line.map { it.with(font: nil) } }
+
+        markdown = render([ocr_paragraph, [text('time_dilation.rb', x: 84, y: 712, font: nil), *lines]])
+
+        assert_includes(markdown, "続きの行で終わります。\n\n```ruby:time_dilation.rb\nPb oe\n# 高速で移動する物体\n")
+        assert_includes(markdown, "def lorentz(v)\n  1.0 / v\nend\n```\n")
+      end
+
+      # 番号の後が数と記号だけの行（九九の「3 = 27」）は、頭の数が 1 ずつ増えても行番号とみなさず、コードにしない
+      def test_should_not_take_multiplication_table_for_ocr_code
+        rows = (1..5).map { |n| [*text(n.to_s, x: 290, y: 600 - (n * 13), font: nil), *text("= #{n * 9}", x: 301, y: 600 - (n * 13), font: nil)] }
+
+        markdown = render([rows])
+
+        refute_includes(markdown, '```')
+        assert_match(/\b3\b.*= 27/, markdown) # 表にも組まれうる。頭の数を消さない
       end
 
       # ページの最後の目次の項目に、次のページの頭の行をつなげない（柱の「CONTENTS」がつながっていた）
@@ -266,6 +317,43 @@ module VivlioStarter
 
         assert_includes(markdown, "本文です[^1]続く[^2]\n")
         assert_includes(markdown, "[^1]: 注1の文。\n\n[^2]: 注2の文。\n")
+      end
+
+      # OCR の柱は、高さが数 pt 揺れ、字を読み違えても（「贈り物」を「り物」）、字の 6 割以上が共通すれば落とす
+      def test_should_drop_ocr_running_heads_that_drift_and_misread
+        heads = [[810, '付録A挑戦することの贈り物'], [811.6, '付録A挑戦することのり物'], [808.7, '付録 A 挑戦することの贈り物']]
+        pages = heads.each_with_index.map do |(y, head), page|
+          [text(head, x: 420, y:, size: 5, font: nil), *body_paragraph(y: 700, page:).map { |line| line.map { it.with(font: nil) } }]
+        end
+
+        markdown = render(pages)
+
+        refute_includes(markdown, '挑戦すること')
+        assert_equal(3, markdown.scan('本文の一行目').size)
+      end
+
+      # OCR が箇条書きの点を英字や記号と読んだ行（「e 1879年」「© 1895年」）も、点と続く字の位置がそろって
+      # 3 行以上並べば箇条書きにする。項目の続きの行は、字の大きさの見積もりが揺れてもつなぐ
+      def test_should_read_ocr_bullets_misread_as_letters
+        lines = [text('e 1879年:ドイツに誕生', y: 700, font: nil), text('© 1895年:入学試験に不', y: 684, font: nil),
+                 text('合格', x: 67.8, y: 668, size: 14, font: nil), text('es 1896年:入学', y: 652, font: nil)]
+
+        assert_equal("- 1879年:ドイツに誕生\n- 1895年:入学試験に不合格\n- 1896年:入学\n", render([lines]))
+        assert_includes(render([lines.first(2)]), 'e 1879年')
+      end
+
+      # OCR の脚注の参照は持ち上がりで見分けられないので、和文の直後で句読点の前の 1 桁の数字を候補にし、
+      # 同じページに同じ番号の脚注の本文があるときだけ参照にする
+      def test_should_link_ocr_footnote_digit_on_same_page
+        note = [text('本文の一行目は版面の右端まで届きます', x: 70, y: 700, last_x: 470, font: nil),
+                text('と記しています1。', y: 683, font: nil), text('1. 自伝ノートより。', y: 80, size: 8, font: nil)]
+        plain = [text('本文の一行目は版面の右端まで届きます', x: 70, y: 700, last_x: 470, font: nil), text('その1、2日後です。', y: 683, font: nil)]
+
+        markdown = render([note, plain])
+
+        assert_includes(markdown, "記しています[^1]。\n")
+        assert(markdown.end_with?("[^1]: 自伝ノートより。\n"))
+        assert_includes(markdown, 'その1、2日後です。')
       end
 
       private

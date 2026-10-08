@@ -24,6 +24,9 @@ module VivlioStarter
 
       # 箇条書きと番号付きリストの頭
       LIST_MARKER = /\A(?:[・•●○■□◆◇▪‣◦]|[-–*]|\d{1,3}[.．)）]|[(（]\d{1,3}[)）])/
+      # OCR が箇条書きの点を読み違えた字（「•」を「e」「©」「es」など）。単独では本文の字と見分けられない
+      # ので、ocr_bullet_markers で並びを見る
+      OCR_BULLET = /\A[eocs©®°•・●○◦*]{1,2}\z/i
       # 本文の 1.15 倍以上で、本文と違うフォント（太字・ゴシック）なら見出しの候補にする。
       # フォントが本文と同じなら 1.4 倍以上を求める（本のカードの書名のような、大きいだけの字を除く）
       HEADING_RATIO = 1.15
@@ -36,11 +39,15 @@ module VivlioStarter
       # 切れ目が 139 から 53 に減った。15〜35% のどこでも文字の一致は変わらない
       OCR_SIZE_TOLERANCE = 0.25
       # 文末とみなす OCR の行末（wrapped_mid_sentence?）
+      OCR_SENTENCE_END = /[。．.!?！？」』）):：]\z/
       # OCR のコードの行の手がかり（中身）。コメント・よく使う語で始まる行、末尾の do・end、コードの記号
       OCR_CODE_TEXT = /\A(?:#|def|end|class|module|puts|return|require|if|else|elsif|while)|(?:do|end)\z|[={}\[\]|<>]|\.\w+\(/
       # コードの行にはさまれて含める、手がかりの無い行の数
       OCR_CODE_FILLER = 2
-      OCR_SENTENCE_END = /[。．.!?！？」』）):：]\z/
+      # コードのキャプションになるファイル名だけの行
+      CODE_FILE_NAME = %r{\A[\w.\-/]+\.\w+\z}
+      # キャプションとコードの 1 行目の間（字の大きさの倍）。OCR ではコードの 1 行目が読めず、2 行目までの間になる
+      CODE_CAPTION_GAP = 4.5
       # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
       TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
 
@@ -122,9 +129,12 @@ module VivlioStarter
       end
 
       # ベースラインがそろうか、小さな字が大きな字の 0.6 倍以内に持ち上がっている（上付きの番号）。
-      # TeX の脚注の番号は本文の 0.45 倍ほど持ち上がる。ルビは 1 字ぶん以上離れているので入らない
+      # TeX の脚注の番号は本文の 0.45 倍ほど持ち上がる。ルビは 1 字ぶん以上離れているので入らない。
+      # OCR の字には持ち上がりを当てない。語の高さは行でそろい（上付きの番号も行の高さになる）、コードの左の
+      # 欄を縦に読んだ崩れた語は大きさを 27pt と見積もられて、上の行（8pt）を持ち上がった字として取り込んだ
       def same_row?(base, glyph)
         return true if (base.y - glyph.y).abs <= [base.size, glyph.size].min * 0.5
+        return false if base.font.nil? || glyph.font.nil?
 
         small, large = [base, glyph].sort_by(&:size)
         rise = small.y - large.y
@@ -181,12 +191,43 @@ module VivlioStarter
           margins = margin_lines(lines)
           lines.reject do |line|
             next false unless margins.include?(line)
+            next ocr_running_head?(line, candidates, needed) if line.glyphs.first.font.nil?
 
             key = line.baseline.round
             heights.fetch(key, 0) >= needed &&
               (line.text.match?(/\A[\divxlcdm\-–— ]+\z/i) || repeats[[key, normalize_running(line.text)]].to_i >= 2)
           end
         end
+      end
+
+      # OCR の柱とノンブル。OCR の行は、高さがスキャンの傾きや行の枠の取り方で数 pt 揺れ、字も読み違える
+      # （「贈り物」を「り物」）ので、同じ高さ・同じ文字列では見つからない（97 章のスキャンで柱が 9 回残った）。
+      # 高さの差が字の大きさ以内で、字の 6 割以上が共通する行が、ほかのページと合わせて needed ページ以上に
+      # あれば柱とする。数字だけの行は、同じ高さに並ぶ行の数で見る
+      def ocr_running_head?(line, candidates, needed)
+        nearby = candidates.select { |other| (other.baseline - line.baseline).abs <= [line.size, other.size].max }
+        return nearby.size >= needed if line.text.match?(/\A[\divxlcdm\-–— ]+\z/i)
+
+        text = normalize_running(line.text)
+        nearby.map(&:page).uniq.count do |page|
+          nearby.any? { it.page == page && common_ratio(text, normalize_running(it.text)) >= 0.6 }
+        end >= needed
+      end
+
+      # 2 つの文字列に共通する字の割合（最長共通部分列の長さ × 2 ÷ 両方の長さ）
+      def common_ratio(a, b)
+        return 0.0 if a.empty? || b.empty?
+
+        row = Array.new(b.size + 1, 0)
+        a.each_char do |char|
+          diagonal = 0
+          b.each_char.with_index(1) do |other, index|
+            above = row[index]
+            row[index] = char == other ? diagonal + 1 : [row[index], row[index - 1]].max
+            diagonal = above
+          end
+        end
+        row.last * 2.0 / (a.size + b.size)
       end
 
       # 版面の左右の外に置いた柱・ノンブル・つめ（章の見出しを縦に並べた印）は、本文と同じ高さに
@@ -280,6 +321,7 @@ module VivlioStarter
       def page_blocks(lines)
         @numbered_neighbors ||= {}
         @numbered_neighbors[lines.first&.page] = lines
+        (@ocr_bullets ||= {}.compare_by_identity).merge!(ocr_bullet_markers(lines))
         blocks = []
         index = 0
         while index < lines.size
@@ -306,16 +348,19 @@ module VivlioStarter
       # OCR の行から始まるコードの行数（コードでなければ 0）。OCR の字には書体の情報が無いので、等幅かどうかでは
       # 見分けられない。行番号で始まる行を強い手がかり、中身がコードらしい行を弱い手がかりとして、どちらかの
       # 行が続く範囲をコードにする。間にはさまる「。」の無い 2 行までの行（崩れて読めた行）も含める。
-      # 強い手がかりの行を 2 行以上含むことを求める（番号付きの箇条書きや、記号を含む本文の 1 行を除くため）
+      # 強い手がかりの行を 2 行以上含むことを求める（番号付きの箇条書きや、記号を含む本文の 1 行を除くため）。
+      # 直前にファイル名だけの行（キャプション）があれば、それを強い手がかり 2 行分とみなす。行番号を読めな
+      # かったコードや、1 行目が崩れて読めたコードも拾える
       def ocr_code_length(lines, start)
-        strong = 0
+        captioned = start.positive? && ocr_file_caption?(lines[start - 1], lines[start])
+        strong = captioned ? 2 : 0
         length = 0
         index = start
         while index < lines.size
           line = lines[index]
           signal = ocr_code_signal(lines, index)
           # 手がかりの無い行は、コードの行の後で、「。」が無く、OCR_CODE_FILLER 行以内にコードの行が続くときだけ含める
-          break unless signal || (index > start && !line.text.include?('。') &&
+          break unless signal || ((index > start || captioned) && !line.text.include?('。') &&
                                   lines[index + 1, OCR_CODE_FILLER].to_a.each_index.any? { ocr_code_signal(lines, index + 1 + it) })
           # 行間は、コードの中の空行（行番号を読めていない）をはさむ字の大きさの 4.5 倍まで。字の大きさは揺れる
           # ので、前後の行と本文の大きいほうで測る
@@ -333,9 +378,9 @@ module VivlioStarter
         return nil if line.text.empty?
 
         number = ocr_line_number(line)
-        if number
+        if number && code_after_number?(line)
           nearby = lines[[index - 3, 0].max..(index + 3)].each_with_index.filter_map do |other, offset|
-            other_number = ocr_line_number(other) unless other.equal?(line)
+            other_number = ocr_line_number(other) unless other.equal?(line) || !code_after_number?(other)
             other_number && [other_number - number, offset - [index, 3].min]
           end
           return :strong if nearby.any? { |gap, position| gap.abs.between?(1, 4) && (gap.positive? == position.positive?) }
@@ -344,6 +389,16 @@ module VivlioStarter
         return :weak if text.start_with?('#')
 
         OCR_CODE_TEXT.match?(text) && text.count("\x21-\x7E") * 2 >= text.size ? :weak : nil
+      end
+
+      # 行番号の後が空（空行）か、英字・# を含む（コード）。数と記号だけが続く行（九九の「3 = 27」）の
+      # 頭の数は、行番号ではなく数式の左辺
+      def code_after_number?(line) = line.text.sub(/\A\d{1,4}/, '').then { it.strip.empty? || it.match?(/[A-Za-z_#]/) }
+
+      # OCR のファイル名だけの行が、すぐ下の行の上にある（コードの 1 行目が読めず、間が開くことがある）
+      def ocr_file_caption?(caption, line)
+        caption.glyphs.first.font.nil? && caption.text.match?(CODE_FILE_NAME) && caption.page == line.page &&
+          caption.baseline - line.baseline <= [caption.size, line.size].max * CODE_CAPTION_GAP
       end
 
       # 行頭の行番号。番号の後に隙間がある行（line_number）のほか、OCR が番号と字をつなげて読んだ行
@@ -394,6 +449,8 @@ module VivlioStarter
         previous = paragraph.last
         # 目次の項目は、リーダーが版面の右端まで届くので、下の右端の比べ方では次の項目とつながる
         return true if previous.text.match?(TOC_ENTRY_END)
+        # OCR のファイル名だけの行は、下のコードのキャプションになる（ocr_code_length）
+        return true if ocr_file_caption?(previous, following)
         return true if code_line?(following) || (!large && heading_candidate?(following)) || list_start?(following)
         wide_gap = previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
         return footnote_start?(following) || wide_gap if wrapped_mid_sentence?(previous)
@@ -447,6 +504,7 @@ module VivlioStarter
 
       # リストの頭（・や 1.）のあとに少し隙間がある行。本文より小さい字（脚注の「1.」）は除く
       def list_start?(line)
+        return true if @ocr_bullets&.key?(line)
         return false if line.size < @body_size * 0.92
         return true if dot_before?(line)
 
@@ -464,23 +522,49 @@ module VivlioStarter
         end
       end
 
+      # OCR の行のうち、頭が箇条書きの点を読み違えた字で始まるもの（行 => 点の字数）。点の字の後に隙間が
+      # あり、点と続く字の位置がそろう行が 3 行以上あるときだけ採る。97 章のスキャンの年譜（13 項目）は、
+      # 点を「e 1879年:」「© 1895年」と読み、箇条書きにならず、一部は表と取り違えた
+      def ocr_bullet_markers(lines)
+        candidates = lines.filter_map do |line|
+          next if line.glyphs.first.font
+
+          marker = line.glyphs.take(3).chunk_while { |a, b| b.x - a.right < line.size * 0.15 }.first
+          following = line.glyphs[marker.size]
+          next unless following && marker.map(&:text).join.match?(OCR_BULLET) && following.text.match?(/[\p{Han}\p{Hiragana}\p{Katakana}\d]/)
+
+          [line, marker.size]
+        end
+        candidates.select do |line, size|
+          candidates.count do |other, other_size|
+            (other.x - line.x).abs <= line.size && (other.glyphs[other_size].x - line.glyphs[size].x).abs <= line.size
+          end >= 3
+        end.to_h
+      end
+
       def list_marker_glyphs(line)
+        return line.glyphs.take(@ocr_bullets[line]) if @ocr_bullets&.key?(line)
+
         text = line.text[LIST_MARKER].to_s
         count = 0
         glyphs = line.glyphs.take_while { (count += it.text.length) <= text.length }
         glyphs.map(&:text).join == text ? glyphs : []
       end
 
-      # 項目の続きの行は、頭の記号の後ろの文字の位置にそろう
+      # 項目の続きの行は、頭の記号の後ろの文字の位置にそろう。
+      # OCR の行は、字の大きさを比べず（短い行の大きさの見積もりは本文の 1.2〜1.8 倍に揺れ、見出しの候補にもなる）、
+      # 版面の右端の代わりに文末で項目の終わりを見る。年譜のように図の横の狭い欄に組んだ項目は、版面の右端まで
+      # 届かずに折り返す
       def list_item_length(lines, start)
         text_x = lines[start].glyphs[list_marker_glyphs(lines[start]).size].x
         length = 1
         while (following = lines[start + length])
           previous = lines[start + length - 1]
-          break if list_start?(following) || code_line?(following) || heading_candidate?(following)
-          break if (following.x - text_x).abs > following.size * 0.6 || (previous.size - following.size).abs > 0.5
+          ocr = previous.glyphs.first.font.nil?
+          break if list_start?(following) || code_line?(following) || (!ocr && heading_candidate?(following))
+          break if (following.x - text_x).abs > following.size * 0.6 || (!ocr && (previous.size - following.size).abs > 0.5)
           # 版面の右端より手前で止まった行で、項目は終わる
-          break if previous.right < @right_edges.fetch(previous.page, previous.right) - (following.size * 2)
+          break if ocr ? previous.text.match?(/[。．]\z/) : previous.right < @right_edges.fetch(previous.page, previous.right) - (following.size * 2)
           break if previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
 
           length += 1
@@ -500,11 +584,11 @@ module VivlioStarter
 
       def numbered_code_line?(line)
         number = line_number(line)
-        return false unless number
+        return false unless number && code_after_number?(line)
 
         lines = @numbered_neighbors.fetch(line.page, [])
         index = lines.index(line)
-        index && [lines[index - 1], lines[index + 1]].compact.any? { (line_number(it).to_i - number).abs == 1 } &&
+        index && [lines[index - 1], lines[index + 1]].compact.any? { code_after_number?(it) && (line_number(it).to_i - number).abs == 1 } &&
           (index.positive? || lines.size > 1)
       end
 
@@ -533,8 +617,8 @@ module VivlioStarter
 
       def caption_for?(candidate, code)
         candidate.kind == :paragraph && code&.kind == :code && candidate.lines.size == 1 &&
-          candidate.lines.first.text.match?(/\A[\w.\-\/]+\.\w+\z/) &&
-          candidate.lines.first.baseline - code.lines.first.baseline <= code.lines.first.size * 3
+          candidate.lines.first.text.match?(CODE_FILE_NAME) &&
+          candidate.lines.first.baseline - code.lines.first.baseline <= [candidate.lines.first.size, code.lines.first.size].max * CODE_CAPTION_GAP
       end
 
       # --- Phase: 表 ---

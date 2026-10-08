@@ -13,6 +13,8 @@ module VivlioStarter
       MarkedContent = MarkedContentReceiver::MarkedContent
       ImageBox = MarkedContentReceiver::ImageBox
       Element = StructureReader::Element
+      # コードの字の書体。書体の無い字は OCR の字として扱う（行番号を番号の欄の位置で外す）
+      MONO = MarkedContentReceiver::FontInfo.new(name: 'HackGen-Regular', bold: false, mono: true)
 
       # 両端揃えで広がった字間や和欧間のアキは空白にせず、本物の空白（0.28 字）だけを空白にする
       def test_should_not_turn_justified_spacing_into_spaces
@@ -204,7 +206,7 @@ module VivlioStarter
       # 等幅の字（幅 5pt）。空白は 1 字ぶん進める
       def monospace(text, x:, y:, page: 0)
         text.each_char.with_index.filter_map do |char, index|
-          Glyph.new(text: char, x: x + (index * 5.0), y:, width: 5.0, size: 9.0, page:) unless char == ' '
+          Glyph.new(text: char, x: x + (index * 5.0), y:, width: 5.0, size: 9.0, page:, font: MONO) unless char == ' '
         end
       end
     end
