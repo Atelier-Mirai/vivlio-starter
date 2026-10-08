@@ -68,8 +68,17 @@ module VivlioStarter
       #   図形で描くので、行の左にあれば箇条書きの頭とみなす手がかりにする
       attr_reader :page_dots
 
+      # @return [Array<ImageBox>] 細い横線（線引きと塗り）。TeX は論理式の否定（Ā）の上の線を線で描くので、
+      #   紙面の推定（LayoutStructure）が線の下の字を $\overline{…}$ に戻す手がかりにする
+      attr_reader :page_rules
+
       # 箇条書きの点とみなす図形の大きさ（pt）
       DOT_SIZE = (1.0..8.0)
+      # 細い横線とみなす図形の高さの上限と幅の下限（pt）
+      RULE_MAX_HEIGHT = 1.2
+      RULE_MIN_WIDTH = 2.0
+      # 1 本の線にまとめる、上下に接するサブパスの間（pt）。二重の否定の線は 2pt ほど離れる
+      RULE_JOIN = 0.6
 
       # @param page_number [Integer] 0 から数えたページの番号。Glyph に持たせる
       def initialize(page_number)
@@ -88,16 +97,22 @@ module VivlioStarter
         @fonts = {}
         @page_size = [page.width, page.height]
         @page_dots = []
+        @page_rules = []
         @path = []
+        @subpath_starts = []
       end
 
       # --- 図形（箇条書きの点を拾うためだけに、塗りつぶした小さな図形の外接矩形を取る） ---
 
       def append_rectangle(x, y, width, height)
+        @subpath_starts << @path.size
         @path.push(device_point(x, y), device_point(x + width, y + height))
       end
 
-      def begin_new_subpath(x, y) = @path << device_point(x, y)
+      def begin_new_subpath(x, y)
+        @subpath_starts << @path.size
+        @path << device_point(x, y)
+      end
 
       def append_line(x, y) = @path << device_point(x, y)
 
@@ -112,9 +127,9 @@ module VivlioStarter
       def fill_stroke_with_even_odd = record_dot
       def close_fill_stroke = record_dot
       def close_fill_stroke_with_even_odd = record_dot
-      def stroke_path = @path.clear
-      def close_and_stroke_path = @path.clear
-      def end_path = @path.clear
+      def stroke_path = record_rule
+      def close_and_stroke_path = record_rule
+      def end_path = clear_path
 
       # 本文として数える文字の数（Artifact の中の文字を除く）
       def body_glyph_count = @page_glyphs.size
@@ -207,7 +222,40 @@ module VivlioStarter
             @page_dots << ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max)
           end
         end
+        record_rule
+      end
+
+      # 描いた図形のうち、細い横線のサブパスを page_rules に足す。線引きは線の太さを見ず、通った点の外接矩形で
+      # 見る。サブパスごとに見るのは、TeX が二重・三重の否定の線を 1 回の線引きにまとめて描くため（まとめた
+      # 外接矩形は 2pt ほどの高さになり、細い横線から外れた）。両端がそろい上下に接するサブパスは 1 本にまとめる。
+      # dvipdfmx は 1 本の線を、0.1pt ずつずらした 4 本の線で描く
+      def record_rule
+        unless @path.empty? || inside_artifact?
+          rules = ([0] | @subpath_starts).sort.push(@path.size).each_cons(2).filter_map do |from, to|
+            points = @path[from...to]
+            next if points.empty?
+
+            xs = points.map(&:x)
+            ys = points.map(&:y)
+            ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max) if ys.max - ys.min <= RULE_MAX_HEIGHT
+          end
+          @page_rules.concat(merge_rules(rules).select { it.right - it.left >= RULE_MIN_WIDTH && it.top - it.bottom <= RULE_MAX_HEIGHT })
+        end
+        clear_path
+      end
+
+      def merge_rules(rules)
+        rules.sort_by(&:bottom).each_with_object([]) do |rule, merged|
+          index = merged.index do |other|
+            (other.left - rule.left).abs < 0.5 && (other.right - rule.right).abs < 0.5 && rule.bottom - other.top <= RULE_JOIN
+          end
+          index ? merged[index] = merged[index].with(top: [merged[index].top, rule.top].max) : merged << rule
+        end
+      end
+
+      def clear_path
         @path.clear
+        @subpath_starts.clear
       end
 
       def record_image(label)

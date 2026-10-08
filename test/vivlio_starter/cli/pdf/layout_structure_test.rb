@@ -12,11 +12,12 @@ module VivlioStarter
       FontInfo = MarkedContentReceiver::FontInfo
       ImageBox = MarkedContentReceiver::ImageBox
       # 受け手（MarkedContentReceiver）のうち、経路 B が読むところだけを持つ
-      Page = Data.define(:page_glyphs, :page_images, :page_dots, :page_size)
+      Page = Data.define(:page_glyphs, :page_images, :page_dots, :page_size, :page_rules)
 
       BODY = FontInfo.new(name: 'Mincho-Regular', bold: false, mono: false)
       GOTHIC = FontInfo.new(name: 'Gothic-Bold', bold: true, mono: false)
       MONO = FontInfo.new(name: 'HackGen-Regular', bold: false, mono: true)
+      MATH = FontInfo.new(name: 'CMMI10', bold: false, mono: false)
 
       # 本文と違う書体で大きい短い行は見出し。大きさの順に段階を振る。本文と同じ書体で少し大きいだけの
       # 行（本のカードの書名）と、4 行以上続く大きな字（章のリード）は段落にする
@@ -356,12 +357,30 @@ module VivlioStarter
         assert_includes(markdown, 'その1、2日後です。')
       end
 
+      # TeX は論理式の否定（Ā）の上の線を字ではなく細い横線で描く。数式の書体の字の真上の線を $\overline{…}$ に
+      # 戻し、重なった線（二重否定）は入れ子にする。本文の書体の字の上の罫線と、すぐ上に分子のある分数の線は
+      # 否定の線ではない
+      def test_should_restore_overline_of_negation_as_tex
+        rule = ->(left, right, y) { ImageBox.new(page: 0, left:, bottom: y, right:, top: y + 0.4) }
+        formula = [text('A+B', x: 100, y: 700, font: MATH), text('C', x: 130, y: 700, font: MATH)]
+        others = [text('Name', x: 100, y: 650), text('1', x: 202.5, y: 609, font: MATH), text('n', x: 202.5, y: 590, font: MATH)]
+        rules = [rule.(100, 115, 708), rule.(130, 135, 708), rule.(130, 135, 710), rule.(100, 120, 658), rule.(200, 210, 600)]
+
+        markdown = render([formula + others], rules: [rules])
+
+        assert_includes(markdown, '$\overline{A+B}$')
+        assert_includes(markdown, '$\overline{\overline{C}}$')
+        assert_equal(3, markdown.scan('\overline{').size)
+        assert_includes(markdown, 'Name')
+        refute_includes(markdown, '\overline{n}')
+      end
+
       private
 
-      def render(pages, images: [], dots: [])
+      def render(pages, images: [], dots: [], rules: [])
         scans = pages.each_with_index.map do |glyphs, index|
           Page.new(page_glyphs: glyphs.flatten.map { it.with(page: index) }, page_images: Array(images[index]),
-                   page_dots: Array(dots[index]), page_size: [595.0, 842.0])
+                   page_dots: Array(dots[index]), page_size: [595.0, 842.0], page_rules: Array(rules[index]))
         end
         StructureMarkdown.new(LayoutStructure.new(scans).root).render
       end

@@ -32,8 +32,9 @@ module VivlioStarter
         @page_size = size
       end
 
-      # OCR のページには、箇条書きの点（図形）の手がかりが無い
+      # OCR のページには、箇条書きの点や否定の線（図形）の手がかりが無い
       def page_dots = []
+      def page_rules = []
 
       private
 

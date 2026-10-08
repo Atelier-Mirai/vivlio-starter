@@ -153,6 +153,26 @@ module VivlioStarter
         assert_equal("```ruby:lensing.rb#L28\nangle = 1\n  arc = 2\n```\n", markdown)
       end
 
+      # 細い横線は、図形の中の区切り（サブパス）ごとに拾う。TeX は二重否定の 2 本の線を 1 回の線引きで描く。
+      # 両端がそろって上下に接する線は 1 本にまとめる（dvipdfmx は 1 本の線を 0.1pt ずつずらした 4 本で描く）
+      def test_should_collect_thin_rules_by_subpath
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'rules.pdf')
+          Prawn::Document.generate(path, page_size: 'A4', margin: 0) do |document|
+            document.stroke do
+              [700, 702].each { |y| document.move_to(100, y) && document.line_to(150, y) }
+            end
+            document.stroke do
+              [600, 600.1, 600.2, 600.3].each { |y| document.move_to(100, y) && document.line_to(150, y) }
+            end
+          end
+          receiver = MarkedContentReceiver.new(0)
+          ::PDF::Reader.new(path).pages.first.walk(receiver)
+
+          assert_equal([[600.0, 600.3], [700.0, 700.0], [702.0, 702.0]], receiver.page_rules.map { [it.bottom.round(1), it.top.round(1)] }.sort)
+        end
+      end
+
       private
 
       def read_tagged_pdf(role_map: nil, &) = tagged_reader(role_map:, &).markdown

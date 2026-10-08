@@ -48,6 +48,9 @@ module VivlioStarter
       CODE_FILE_NAME = %r{\A[\w.\-/]+\.\w+\z}
       # キャプションとコードの 1 行目の間（字の大きさの倍）。OCR ではコードの 1 行目が読めず、2 行目までの間になる
       CODE_CAPTION_GAP = 4.5
+      # 否定の線の下の字を TeX にするときの置き換え（overline_tex）
+      OVERLINE_TEX = { '·' => '\cdot ', '⋅' => '\cdot ', '×' => '\times ', '⊕' => '\oplus ', '↑' => '\uparrow ', '↓' => '\downarrow ',
+                       '∨' => '\lor ', '∧' => '\land ', '{' => '\{', '}' => '\}' }.freeze
       # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
       TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
 
@@ -68,6 +71,7 @@ module VivlioStarter
         @right_edges = right_edges(page_lines)
 
         page_lines = drop_running_heads(drop_margin_labels(page_lines))
+        @overlines = overline_marks(page_lines)
         blocks = page_lines.each_with_index.flat_map do |lines, index|
           place_images(page_blocks(attach_rubies(lines)), @pages[index].page_images)
         end
@@ -314,6 +318,79 @@ module VivlioStarter
       def ocr_right_edge(lines, page_width)
         rights = lines.select { it.right - it.x > page_width * 0.4 }.map(&:right).sort.reverse
         rights.find { |right| rights.count { (right - it).between?(0, 6) } >= 2 } || rights.first
+      end
+
+      # --- Phase: 否定の線（pdf-read-structure-spec.md §4・pdf-read-ocr-improvement-notes.md §4.21） ---
+
+      # 論理式の否定（Ā・(A+B) の上の線）は、TeX では字ではなく細い横線で描かれ、読み取ると消えて式の意味が
+      # 変わる（ド・モルガンの定理が「A + B = A · B」になる）。横線の真下の字の並びを見つけ、字ごとに、
+      # かかる線を外側から並べて覚える（{字 => [線]}）。外側は幅の広い線、同じ幅なら高い線（二重否定）
+      def overline_marks(page_lines)
+        marks = {}.compare_by_identity
+        page_lines.each_with_index do |lines, index|
+          rules = @pages[index].page_rules
+          next if rules.empty?
+
+          glyphs = lines.flat_map(&:glyphs)
+          lines.product(rules).each do |line, rule|
+            overlined_glyphs(line, rule, glyphs)&.each { (marks[it] ||= []) << rule }
+          end
+        end
+        marks.each_value { |list| list.sort_by! { |rule| [-(rule.right - rule.left), -rule.bottom] } }
+      end
+
+      # 横線が否定の線なら、その下の字の並びを返す。線は行の字の上端の少し上にあり、両端が下の字の並びの
+      # 両端とそろう。和文の字や、大きく空いた所（表の罫線は升目をまたぐ）を含まない。英数字を含み（記号「▲」
+      # だけの飾りを除く）、半分以上が数式の書体で、平方根の横棒（根号がくっつく）でも分数の線でもないこと
+      def overlined_glyphs(line, rule, page_glyphs)
+        size = line.size
+        return nil unless (rule.bottom - line.baseline).between?(size * 0.5, size * 1.6)
+
+        covered = line.glyphs.select { ((it.x + it.right) / 2).between?(rule.left - 0.5, rule.right + 0.5) }
+        return nil if covered.empty? || covered.any? { it.text.match?(StructureMarkdown::WIDE_CHAR) }
+        return nil if covered.none? { it.text.match?(/[A-Za-z0-9]/) } || covered.count { math_glyph?(it) } * 2 < covered.size
+        return nil if page_glyphs.any? { radical?(it, rule) } || covered.any? { radical?(it, rule, inside: true) }
+        return nil if (covered.first.x - rule.left).abs > size * 0.5 || (covered.last.right - rule.right).abs > size * 0.5
+        return nil if covered.each_cons(2).any? { |a, b| b.x - a.right > size * 1.5 }
+        return nil if fraction_bar?(rule, size, page_glyphs)
+
+        covered
+      end
+
+      # 数式の書体（TeX の CMMI・CMSY など）の字。否定の線は数式の中にあり、線の下の字の半分以上がこの書体で
+      # 組まれる。表の升目の上の罫線や見出しの飾りの枠の下の字（本文の書体）を除く（文字の層のある 23 本の
+      # PDF のうち 13 本で取り違えていた）
+      def math_glyph?(glyph) = glyph.font&.name.to_s.sub(/\A[A-Z]{6}\+/, '').match?(MATH_FONT_NAME)
+
+      # 根号（√。TeX の CMSY では「p」、CMEX では「p」〜「t」の字）。線の左端にくっつくか（inside なら線の下に
+      # 入り込むか）すれば、線は平方根の横棒で、否定の線ではない
+      def radical?(glyph, rule, inside: false)
+        return false unless glyph.text.match?(/\A[√pqrst]\z/) && glyph.font&.name.to_s.match?(/CMSY|CMEX|Symbol|Math/i)
+
+        inside || (glyph.right.between?(rule.left - 3, rule.left + 1) && glyph.y < rule.bottom)
+      end
+
+      # 分数の線か。線にほとんど接して（字の大きさの 0.45 倍以内）上に字があるか、線の上の字の大きさ以内に
+      # 中ほどが線の幅に入る字があり、その字の行が線の幅（左右に半字のゆとり）に収まれば、それは分子。
+      # 行の詰まった前の行の本文は、線から 6pt ほど離れ、線より左右に長く伸びる。同じ行に分数が並ぶと
+      # 分子の行は線の外まで伸びるので、接しているかでも見る
+      def fraction_bar?(rule, size, page_glyphs)
+        return true if page_glyphs.any? { (it.y - rule.top).between?(0, size * 0.45) && it.right > rule.left && it.x < rule.right }
+
+        above = page_glyphs.select { (it.y - rule.top).between?(0, size) && ((it.x + it.right) / 2).between?(rule.left, rule.right) }
+        return false if above.empty?
+
+        row = page_glyphs.select { (it.y - above.first.y).abs < 1 }
+        row.all? { it.x >= rule.left - (size * 0.5) && it.right <= rule.right + (size * 0.5) }
+      end
+
+      # 否定の線の下の字を TeX にする。線の入れ子は \overline の入れ子にする（depth は外から数えた線の段）
+      def overline_tex(glyphs, depth = 0)
+        glyphs.chunk_while { |a, b| @overlines[a][depth].equal?(@overlines[b][depth]) }.map do |run|
+          next "\\overline{#{overline_tex(run, depth + 1)}}" if @overlines[run.first][depth]
+
+          run.map { |glyph| glyph.text.each_char.map { OVERLINE_TEX.fetch(it, it) }.join }.join
+        end.join
       end
 
       # --- Phase: かたまりに分ける ---
@@ -709,7 +786,7 @@ module VivlioStarter
       end
 
       # StructureReader は本ファイルを読み込んでから定義されるので、要素の型は使うときに引く
-      def element(type, children) = StructureReader::Element.new(type:, children:, alt: nil, actual_text: nil)
+      def element(type, children, alt: nil) = StructureReader::Element.new(type:, children:, alt:, actual_text: nil)
 
       # 見出しの大きさを大きい順に並べ、10% 以内の差は同じ段階にまとめて # から振る。OCR では字の大きさが
       # 行ごとに揺れるので、細かく分けると段階が増えすぎる（文字の層のある PDF の段階は 3 割以上離れている）
@@ -782,11 +859,14 @@ module VivlioStarter
           in :mono then run.any? { it.text.match?(/[\x21-\x7E]/) } ? element(:Code, [content]) : content
           in :bold then element(:Strong, [content])
           in :plain then content
+          # 否定の線の下の字は、行内の数式（$\overline{…}$）にする。書き出しは Alt に TeX を持つ図と同じ
+          in [:overline, _rule] then element(:Figure, [], alt: "$#{overline_tex(run)}$")
           end
         end
       end
 
       def inline_style(glyph, bases, whole_bold)
+        return [:overline, @overlines[glyph].first] if @overlines&.key?(glyph)
         return [:ruby, bases[glyph]] if bases.key?(glyph)
         return :mono if glyph.mono?
         return :bold if glyph.bold? && !whole_bold
