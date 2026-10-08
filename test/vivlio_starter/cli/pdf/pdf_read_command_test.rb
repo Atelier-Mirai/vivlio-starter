@@ -637,6 +637,45 @@ module VivlioStarter
         end
       end
 
+      # --images-from を渡すと、抜き出した図のうち見た目の一致したものを元の画像に差し替える。元の画像を
+      # 同じ名前で章の画像のフォルダへ写し、参照をその名前にして、抜き出した画像は消す。一致しない図は
+      # 抜き出したまま残し、どの図とも結び付かなかった元の画像は名前を挙げて知らせる
+      def test_should_substitute_extracted_figures_with_original_images
+        skip 'ImageMagick が無い' unless system('which magick >/dev/null 2>&1')
+
+        Dir.mktmpdir do |dir|
+          originals = File.join(dir, 'originals')
+          extracted = File.join(dir, 'images', '97-sample-ocr')
+          FileUtils.mkdir_p([originals, extracted])
+          system('magick', '-size', '300x150', 'xc:white', '-fill', 'black', '-draw', 'rectangle 0,0 150,150', File.join(originals, 'half.png'))
+          system('magick', '-size', '300x150', 'xc:white', '-fill', 'black', '-draw', 'circle 150,75 150,20', File.join(originals, 'circle.png'))
+          # 印刷とスキャンを経た図（半分の大きさで、コントラストが落ち、ぼやける）と、どれとも似ていない図
+          system('magick', File.join(originals, 'half.png'), '-resize', '50%', '+level', '15%,85%', '-blur', '0x1', File.join(extracted, 'page-001-image-01.webp'))
+          system('magick', '-size', '300x150', 'gradient:white-black', File.join(extracted, 'page-001-image-02.webp'))
+          images = %w[page-001-image-01.webp page-001-image-02.webp].map do |name|
+            { 'page' => 1, 'left' => 72, 'bottom' => 500, 'right' => 372, 'top' => 650, 'reference_path' => name, 'output_path' => File.join(extracted, name) }
+          end
+          command = PdfReadCommand.new('97-sample-ocr.pdf', images_from: originals)
+          warnings = []
+
+          placements = VivlioStarter::CLI::Common.stub(:log_warn, ->(message, **) { warnings << message }) do
+            command.send(:image_placements, { 'images' => images })
+          end
+
+          assert_equal(%w[half.png page-001-image-02.webp], placements.map(&:path))
+          assert_equal(%w[half.png page-001-image-02.webp], Dir.children(extracted).sort)
+          assert_match(/結び付かなかったものが 1 枚.*circle\.png/, warnings.join)
+        end
+      end
+
+      # 元の画像のフォルダが無ければ、読み始める前に止める
+      def test_should_stop_when_images_from_folder_is_missing
+        command = PdfReadCommand.new('97-sample-ocr.pdf', images_from: 'no/such/folder')
+
+        error = assert_raises(PdfReadCommand::InvalidInputError) { command.send(:check_images_from!, :enhanced) }
+        assert_match(%r{--images-from のフォルダが見つかりません: no/such/folder}, error.message)
+      end
+
       private
 
       # 見出しと段落だけのタグ付き PDF を Prawn で書く。文字を MCID で囲み、構造ツリーを書き込む

@@ -195,6 +195,7 @@ module VivlioStarter
         # 章トークン（target）として消費してしまう（契約テスト CL-01 で検出）
         options do
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
+          option '--images-from <dir>', '抜き出した図を、このフォルダの元の画像に差し替える', key: :images_from
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -233,7 +234,7 @@ module VivlioStarter
         end
 
         def build_options
-          { verbose: parent_verbose? }
+          { verbose: parent_verbose?, images_from: options[:images_from] }
         end
 
         def parent_verbose?
@@ -245,12 +246,13 @@ module VivlioStarter
             vs pdf:read - PDF を Markdown へ変換します
 
             Usage:
-              vs pdf:read FILE [--log[=LEVEL]]
+              vs pdf:read FILE [--images-from DIR] [--log[=LEVEL]]
 
             引数:
               FILE 章トークン (01-foo) または PDF ファイルパス
 
             オプション:
+              --images-from DIR  抜き出した図を、DIR の元の画像（見た目の一致するもの）に差し替える（Enhanced Mode）
               --log[=LEVEL] ページ数などの経過を表示（既定 info。debug で詳細）
           USAGE
         end

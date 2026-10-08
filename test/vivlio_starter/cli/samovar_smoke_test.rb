@@ -228,6 +228,19 @@ module VivlioStarter
 
         assert reader_call_invoked, 'PdfReadCommand は Commands::PdfReadCommand を呼び出すべき'
       end
+
+      # --images-from のフォルダを、読み取りの処理（Commands::PdfReadCommand）へ渡す
+      def test_pdf_read_command_passes_images_from_to_reader
+        received = nil
+        fake_reader = Object.new
+        fake_reader.define_singleton_method(:call) { nil }
+
+        Commands::PdfReadCommand.stub :new, ->(_target, options) { received = options; fake_reader } do
+          SamovarCommands::PdfReadCommand.new(%w[samples/sample.pdf --images-from images/originals]).call
+        end
+
+        assert_equal('images/originals', received[:images_from])
+      end
     end
   end
 end
