@@ -112,7 +112,7 @@ $ vs pdf:read 97-sample-ocr --images-from images/97-sample-original
 一致しなかった図は、取り出したまま残します。どの図とも結び付かなかった元の画像は、名前を挙げて知らせます。図を見つけられなかったか、切り出しが図の一部を欠いているので、原本と見比べて書き足してください。
 
 ```shell-session
-🟡 [pdf:read] 元の画像のうち、紙面の図と結び付かなかったものが 2 枚あります: feynman.webp、quantum.webp
+🟡 [pdf:read] 元の画像のうち、紙面の図と結び付かなかったものが 1 枚あります: feynman.webp
 ```
 
 ### 見出し・表・コードまで戻る
