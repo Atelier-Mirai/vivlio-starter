@@ -341,6 +341,19 @@ class MathTransformerTest < Minitest::Test
     end
   end
 
+  # 表の横線（\hline）は、MathJax が太さを CSS に任せる <line data-line> で出す。ビルドは CSS を持たず
+  # 線が消えていたので、太さを SVG に直接書き込む（筆算の横線）
+  def test_should_draw_table_lines_without_mathjax_css
+    skip 'node / mathjax-full 未導入' unless MT.available?
+
+    in_tmp do
+      MT.transform("$$\\begin{array}{r} 1110.011 \\\\ +\\ 101.11\\phantom{0} \\\\ \\hline 10100.001 \\end{array}$$\n", chapter_slug: 'ch')
+
+      svg = File.read(Dir.glob(File.join(MATH_DIR, 'ch', '*.svg')).first)
+      assert_match(/<line data-line="h"[^>]* stroke-width="70" fill="none"/, svg)
+    end
+  end
+
   def test_should_render_with_real_mathjax_when_available
     skip 'node / mathjax-full 未導入' unless MT.available?
 

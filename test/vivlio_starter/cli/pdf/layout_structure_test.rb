@@ -375,6 +375,59 @@ module VivlioStarter
         refute_includes(markdown, '\overline{n}')
       end
 
+      # 左端に根号の字（TeX の CMSY の「p」。横棒の高さから垂れ下がる字）が接する横線は、平方根の横棒。
+      # 下の字の並び（数字だけでもよい）を $\sqrt{…}$ にし、入れ子にする。根号の字は本文から除く
+      def test_should_restore_square_root_from_radical_and_bar
+        root = FontInfo.new(name: 'CMSY10', bold: false, mono: false)
+        roman = FontInfo.new(name: 'CMR12', bold: false, mono: false)
+        bar = ->(left, right, y) { ImageBox.new(page: 0, left:, bottom: y, right:, top: y) }
+        radical = ->(right, y) { Glyph.new(text: 'p', x: right - 10, y:, width: 10, size: 12, page: 0, font: root) }
+        # a = 2√3、b = √(2+√2)
+        glyphs = [text('a = 2', x: 60, y: 700, font: roman), radical.(102, 710.5), text('3', x: 102, y: 700, font: roman),
+                  text('b =', x: 60, y: 650, font: roman), radical.(92, 662), text('2+', x: 92, y: 650, font: roman),
+                  radical.(112, 660.5), text('2', x: 112, y: 650, font: roman)]
+        rules = [bar.(102, 108, 710.5), bar.(92, 118, 662), bar.(112, 118, 660.5)]
+
+        markdown = render([glyphs], rules: [rules])
+
+        assert_includes(markdown, 'a = 2 $\sqrt{3}$')
+        assert_includes(markdown, 'b = $\sqrt{2+\sqrt{2}}$')
+        refute_match(/\bp\b/, markdown)
+      end
+
+      # 数を右そろえで縦に並べ、横線を引いた筆算は、別行立ての数式（array と \hline）にする。数は原本と同じ
+      # 等幅（\mathtt）で書き、行の右端の差を \phantom{0} で埋めて桁をそろえる。升目ごとに字のまとまりが
+      # 幾つもある数の表の罫線は筆算ではない
+      def test_should_turn_written_addition_into_array
+        tt = FontInfo.new(name: 'Cmtt10', bold: false, mono: true)
+        rule = ->(left, right, y) { ImageBox.new(page: 0, left:, bottom: y, right:, top: y + 0.4) }
+        addition = [text('1110.011', x: 70, y: 700, font: tt), text('+', x: 58, y: 685, font: tt), text('101.11', x: 75, y: 685, font: tt),
+                    text('10100.001', x: 65, y: 670, font: tt)]
+        table = [text('1', x: 60, y: 600), text('2', x: 100, y: 600), text('3', x: 140, y: 600), text('4', x: 60, y: 585), text('5', x: 100, y: 585), text('6', x: 140, y: 585)]
+
+        markdown = render([addition + table], rules: [[rule.(55, 112, 681), rule.(55, 150, 596)]])
+
+        assert_includes(markdown, "$$\n\\begin{array}{r} \\mathtt{1110.011}\\mathtt{} \\\\ +\\ \\mathtt{101.11}\\mathtt{\\phantom{0}} " \
+                                  "\\\\ \\hline \\mathtt{10100.001}\\mathtt{} \\end{array}\n$$")
+        assert_equal(1, markdown.scan('begin{array}').size)
+        refute_includes(markdown, '1110.011 ')
+      end
+
+      # 割り算の筆算は、一番上の横線のすぐ下の行が「除数)被除数」になる。「除数\enclose{longdiv}{被除数}」とし、
+      # 引く数の行（すぐ下に横線のある行）に下線を引く
+      def test_should_turn_written_division_into_longdiv
+        tt = FontInfo.new(name: 'Cmtt10', bold: false, mono: true)
+        rule = ->(left, right, y) { ImageBox.new(page: 0, left:, bottom: y, right:, top: y + 0.4) }
+        division = [text('10.1', x: 90, y: 720, font: tt), text('101)', x: 60, y: 705, font: tt), text('1110.1', x: 80, y: 705, font: tt),
+                    text('1010', x: 85, y: 690, font: tt), text('100.1', x: 85, y: 675, font: tt)]
+
+        markdown = render([division], rules: [[rule.(78, 112, 716), rule.(78, 112, 686)]])
+
+        assert_includes(markdown, '\mathtt{101}\enclose{longdiv}{\mathtt{1110.1}}')
+        assert_includes(markdown, '\underline{\mathtt{1010}}')
+        assert_includes(markdown, '\mathtt{10.1}')
+      end
+
       private
 
       def render(pages, images: [], dots: [], rules: [])

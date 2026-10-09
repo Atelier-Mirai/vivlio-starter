@@ -51,6 +51,12 @@ module VivlioStarter
       # 否定の線の下の字を TeX にするときの置き換え（overline_tex）
       OVERLINE_TEX = { '·' => '\cdot ', '⋅' => '\cdot ', '×' => '\times ', '⊕' => '\oplus ', '↑' => '\uparrow ', '↓' => '\downarrow ',
                        '∨' => '\lor ', '∧' => '\land ', '{' => '\{', '}' => '\}' }.freeze
+      # 筆算の 1 行（演算記号と数。16 進の A〜F・基数の「(2)」を含む）
+      CALC_ROW = /\A[+\-−×÷]?[0-9A-Fa-f.]+(?:\(\d{1,2}\))?\z/
+      # 筆算の割り算の行（除数「)」被除数）
+      CALC_DIVISION_ROW = /\A[0-9A-Fa-f.]+\)[0-9A-Fa-f.]+\z/
+      # 筆算の演算記号を TeX にするときの置き換え
+      CALC_TEX = { '−' => '-', '×' => '\times', '÷' => '\div' }.freeze
       # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
       TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
 
@@ -72,8 +78,10 @@ module VivlioStarter
 
         page_lines = drop_running_heads(drop_margin_labels(page_lines))
         @overlines = overline_marks(page_lines)
+        page_lines = drop_radicals(page_lines)
         blocks = page_lines.each_with_index.flat_map do |lines, index|
-          place_images(page_blocks(attach_rubies(lines)), @pages[index].page_images)
+          lines, calculations = written_calculations(lines, index)
+          place_images(insert_by_top(page_blocks(attach_rubies(lines)), calculations), @pages[index].page_images)
         end
         element(:Document, elements(blocks))
       end
@@ -324,19 +332,68 @@ module VivlioStarter
 
       # 論理式の否定（Ā・(A+B) の上の線）は、TeX では字ではなく細い横線で描かれ、読み取ると消えて式の意味が
       # 変わる（ド・モルガンの定理が「A + B = A · B」になる）。横線の真下の字の並びを見つけ、字ごとに、
-      # かかる線を外側から並べて覚える（{字 => [線]}）。外側は幅の広い線、同じ幅なら高い線（二重否定）
+      # かかる線を外側から並べて覚える（{字 => [線]}）。外側は幅の広い線、同じ幅なら高い線（二重否定）。
+      # 左端に根号の字が接する線は平方根の横棒で、下の字の並びを $\sqrt{…}$ にする（§4.22）。根号の字は
+      # @radicals に覚えて本文から除き（drop_radicals）、横棒は @sqrt_rules に覚える
       def overline_marks(page_lines)
         marks = {}.compare_by_identity
+        @radicals = {}.compare_by_identity
+        @sqrt_rules = {}.compare_by_identity
         page_lines.each_with_index do |lines, index|
           rules = @pages[index].page_rules
           next if rules.empty?
 
           glyphs = lines.flat_map(&:glyphs)
-          lines.product(rules).each do |line, rule|
-            overlined_glyphs(line, rule, glyphs)&.each { (marks[it] ||= []) << rule }
+          rules.each do |rule|
+            radical = glyphs.find { radical_of?(it, rule) }
+            # 行は上から並ぶ。線の下でいちばん近い、条件に合う行だけを採る（平方根の横棒の高さの許容は広く、
+            # 中身の行の下の本文の行まで当てはまった）
+            covered = lines.lazy.filter_map { radical ? radicand_glyphs(it, rule) : overlined_glyphs(it, rule, glyphs) }.first
+            next unless covered
+
+            covered.each { (marks[it] ||= []) << rule }
+            (@radicals[radical] = true) && (@sqrt_rules[rule] = true) if radical
           end
         end
         marks.each_value { |list| list.sort_by! { |rule| [-(rule.right - rule.left), -rule.bottom] } }
+      end
+
+      # 平方根の横棒の根号の字か。TeX の根号は横棒の高さから下へ垂れ下がる字で、右端が横棒の左端に接し、
+      # 字の基準の高さが横棒とそろう（H21-takase.pdf で差は 0.3pt 以内）。「√」の字は基準の高さを問わない
+      def radical_of?(glyph, rule)
+        return false unless radical?(glyph, rule, inside: true) && (glyph.right - rule.left).abs <= 0.6
+
+        glyph.text == '√' ? glyph.y < rule.bottom : (glyph.y - rule.bottom).abs <= 1.0
+      end
+
+      # 平方根の横棒の下の字の並び（中身）。横棒は中身の行の上の字の大きさの 2.5 倍まで（入れ子の外側の横棒は
+      # 内側の根号の分だけ高い）。両端が中身の並びとそろい、和文の字と大きな隙間を含まない。中身は数字だけの
+      # こともあるので、数式の書体は求めない（根号が十分な手がかり）
+      def radicand_glyphs(line, rule)
+        size = line.size
+        return nil unless (rule.bottom - line.baseline).between?(size * 0.3, size * 2.5)
+
+        covered = line.glyphs.select { ((it.x + it.right) / 2).between?(rule.left - 0.5, rule.right + 0.5) && !radical?(it, rule, inside: true) }
+        return nil if covered.empty? || covered.any? { it.text.match?(StructureMarkdown::WIDE_CHAR) }
+        return nil if (covered.first.x - rule.left).abs > size * 0.6 || (covered.last.right - rule.right).abs > size * 0.6
+        return nil if covered.each_cons(2).any? { |a, b| b.x - a.right > size * 1.5 }
+
+        covered
+      end
+
+      # 平方根に置き換えた根号の字を、行から除く（字だけの行は行ごと落とす）
+      def drop_radicals(page_lines)
+        return page_lines if @radicals.empty?
+
+        page_lines.map do |lines|
+          lines.filter_map do |line|
+            kept = line.glyphs.reject { @radicals.key?(it) }
+            next line if kept.size == line.glyphs.size
+            next nil if kept.empty?
+
+            make_line(kept, rubies: line.rubies)
+          end
+        end
       end
 
       # 横線が否定の線なら、その下の字の並びを返す。線は行の字の上端の少し上にあり、両端が下の字の並びの
@@ -384,13 +441,169 @@ module VivlioStarter
         row.all? { it.x >= rule.left - (size * 0.5) && it.right <= rule.right + (size * 0.5) }
       end
 
-      # 否定の線の下の字を TeX にする。線の入れ子は \overline の入れ子にする（depth は外から数えた線の段）
+      # 否定の線と平方根の横棒の下の字を TeX にする。線の入れ子は \overline・\sqrt の入れ子にする
+      # （depth は外から数えた線の段）
       def overline_tex(glyphs, depth = 0)
         glyphs.chunk_while { |a, b| @overlines[a][depth].equal?(@overlines[b][depth]) }.map do |run|
-          next "\\overline{#{overline_tex(run, depth + 1)}}" if @overlines[run.first][depth]
+          rule = @overlines[run.first][depth]
+          next "#{@sqrt_rules.key?(rule) ? '\sqrt' : '\overline'}{#{overline_tex(run, depth + 1)}}" if rule
 
           run.map { |glyph| glyph.text.each_char.map { OVERLINE_TEX.fetch(it, it) }.join }.join
         end.join
+      end
+
+      # --- Phase: 筆算（pdf-read-structure-spec.md §4.9・pdf-read-ocr-improvement-notes.md §4.23） ---
+
+      # 筆算（数を右そろえで縦に並べ、横線を引いた計算）を見つけ、別行立ての数式（$$\begin{array}{r}…$$）の
+      # かたまりにする。筆算の字は行から除く。横線は字ではないので、読み取ると線が消え、数が段落やコードに
+      # ばらけていた（fundamentals-of-system-design.pdf の例題）。否定の線・平方根に使った線は見ない
+      # @return [Array(Array<Line>, Array<Block>)] 筆算の字を除いた行と、筆算のかたまり
+      def written_calculations(lines, index)
+        marked = @overlines.values.flatten.to_h { [it, true] }.compare_by_identity
+        rules = @pages[index].page_rules.reject { marked.key?(it) }.sort_by { -it.bottom }
+        consumed = {}.compare_by_identity
+        used = {}.compare_by_identity
+        blocks = rules.filter_map do |rule|
+          next if used.key?(rule)
+
+          calculation = calculation_at(lines, rule, rules)
+          next unless calculation
+
+          rows, chain = calculation
+          chain.each { used[it] = true }
+          rows.flatten.each { consumed[it] = true }
+          [rows.first.first.x, Block.new(kind: :math, lines: [], top: rows.first.map { it.y + it.size }.max, page: index, data: calculation_tex(rows, chain))]
+        end
+        return [lines, []] if blocks.empty?
+
+        # 横に並んだ筆算（2 進・8 進・16 進）は、上端の高さ、続いて左から順に読む
+        blocks = blocks.sort_by { |left, block| [-block.top.round, left] }.map(&:last)
+
+        kept = lines.filter_map do |line|
+          glyphs = line.glyphs.reject { consumed.key?(it) }
+          next line if glyphs.size == line.glyphs.size
+          next nil if glyphs.empty?
+
+          make_line(glyphs, rubies: line.rubies)
+        end
+        [kept, blocks]
+      end
+
+      # rule を一番上の横線とする筆算の行（上から。行は字の並び）と横線の並び。筆算でなければ nil。
+      # 横線の幅の中の字を行ごとに拾い、上の横線の上に 2 行まで（割り算は商の 1 行）、下の横線の下に 1 行を
+      # 求める。幅がほぼ重なり、字の大きさの 10 倍以内で続く横線は 1 つの筆算の横線（掛け算・割り算。2 進の
+      # 掛け算は部分積が 5 行あり、横線が 77pt 離れる）。
+      # 行はどれも数と演算記号だけ（calculation_row）
+      def calculation_at(lines, rule, rules)
+        line = lines.min_by { (it.baseline - rule.bottom).abs }
+        return nil unless line
+
+        size = line.size
+        left = rule.left - (size * 0.6)
+        right = rule.right + (size * 0.6)
+        # 横線のすぐ上が数の行でなければ筆算ではない。ほとんどの横線（表の罫線・囲みの枠）はここで外れる
+        above = lines.select { it.baseline > rule.bottom && it.baseline - rule.bottom <= size * 1.9 }.min_by(&:baseline)
+        return nil unless above && calculation_row(above, left, right, size, below_top: false)
+
+        chain = [rule]
+        rules.drop(rules.index { it.equal?(rule) } + 1).each do |other|
+          last = chain.last
+          break if last.bottom - other.bottom > size * 10
+          next unless other.bottom < last.bottom && overlap?(other, rule)
+
+          # 間の行がすべて数の行のときだけつなぐ（次の例題の筆算の横線まで続けない）
+          between = lines.select { it.baseline < last.bottom && it.baseline > other.bottom && line_in_span?(it, left, right) }
+          chain << other if between.any? && between.all? { calculation_row(it, left, right, size, below_top: below_top?(it, rule, size)) }
+        end
+        candidates = lines.select { it.baseline.between?(chain.last.bottom - (size * 2), rule.bottom + (size * 3.2)) }
+        rows = candidates.filter_map { calculation_row(it, left, right, size, below_top: below_top?(it, rule, size)) }
+        above = rows.count { it.first.y > rule.bottom }
+        below = rows.count { it.first.y < chain.last.bottom }
+        return nil unless above.between?(1, 2) && below >= 1 && rows.size == candidates.count { line_in_span?(it, left, right) }
+        # 演算記号が数から離れて置かれた行（「+　101.11」）か、割り算の行があること。表の結果の列の
+        # 負の数（「-10」）は記号が数にくっついている
+        return nil unless rows.size >= 3 && rows.any? { separate_operator?(it, size) || it.map(&:text).join.match?(CALC_DIVISION_ROW) }
+
+        [rows, chain]
+      end
+
+      # 同じ筆算の横線か。幅の 6 割以上が重なり、幅が近い（0.6〜1.6 倍。筆算の下の表の罫線は幅が違う）
+      def overlap?(a, b)
+        widths = [a.right - a.left, b.right - b.left]
+        [a.right, b.right].min - [a.left, b.left].max >= widths.min * 0.6 && widths.max <= widths.min * 1.6
+      end
+
+      def separate_operator?(row, size)
+        operator, number = row.chunk_while { |a, b| b.x - a.right < size * 0.3 }.to_a
+        number && operator.map(&:text).join.match?(/\A[+\-−×÷]\z/)
+      end
+
+      # 一番上の横線のすぐ下の行か（割り算なら「除数)被除数」の行）
+      def below_top?(line, rule, size) = line.baseline < rule.bottom && line.baseline > rule.bottom - (size * 1.9)
+
+      def line_in_span?(line, left, right) = line.glyphs.any? { ((it.x + it.right) / 2).between?(left, right) }
+
+      # 筆算の 1 行の字。横線の幅の中の字で、数と演算記号だけのもの。一番上の横線のすぐ下の行（below_top）は、
+      # 割り算なら左に除数と「)」が横線の外へ出るので、行の「)」から左の数も含める
+      def calculation_row(line, left, right, size, below_top:)
+        inside = line.glyphs.select { ((it.x + it.right) / 2).between?(left, right) }
+        return nil if inside.empty?
+
+        if below_top && (bracket = line.glyphs.find { it.text == ')' && it.x.between?(left - (size * 6), left + (size * 2)) })
+          divisor = line.glyphs.select { it.right <= bracket.x + 0.5 && it.x >= bracket.x - (size * 8) }
+          row = (divisor + [bracket] + inside).uniq.sort_by(&:x)
+          return row if row.map(&:text).join.match?(CALC_DIVISION_ROW)
+        end
+        # 字のまとまりは 1 つ。2 つは、1 つ目が演算記号 1 字のときだけ（「+ 101.11」。表の行は升目ごとに分かれる）
+        chunks = inside.chunk_while { |a, b| b.x - a.right < size * 0.8 }.to_a
+        return nil if chunks.size > 2 || (chunks.size == 2 && !chunks.first.map(&:text).join.match?(/\A[+\-−×÷]\z/))
+        return nil unless inside.map(&:text).join.match?(CALC_ROW)
+
+        inside
+      end
+
+      # 筆算を TeX にする。数は原本と同じ等幅（\mathtt）で書き、行の右端をそろえるため、右に足りない桁を
+      # \phantom{0} で埋める（字の位置から測る）。横線は \hline。割り算は「除数\enclose{longdiv}{被除数}」とし、
+      # 引く数の行（すぐ下に横線のある行）に下線を引く
+      def calculation_tex(rows, chain)
+        digits = rows.flatten.select { it.text.match?(/\A\d\z/) }.map(&:width).sort
+        width = digits.empty? ? rows.first.first.size * 0.5 : digits[digits.size / 2]
+        right = rows.map { it.last.right }.max
+        division = rows.index { |row| row.map(&:text).join.match?(CALC_DIVISION_ROW) }
+        body = rows.each_with_index.map do |row, number|
+          pad = '\phantom{0}' * ((right - row.last.right) / width).round
+          rule_below = chain.any? { |rule| rule.bottom < row.first.y && (number == rows.size - 1 || rule.bottom > rows[number + 1].first.y) }
+          if division
+            text = number == division ? division_tex(row) : calculation_text(row)
+            text = "\\underline{#{text}}" if number > division && rule_below
+            "#{text}\\mathtt{#{pad}}"
+          else
+            hline = number.positive? && chain.any? { |rule| rule.bottom < rows[number - 1].first.y && rule.bottom > row.first.y }
+            "#{'\hline ' if hline}#{calculation_text(row)}\\mathtt{#{pad}}"
+          end
+        end
+        "$$\\begin{array}{r} #{body.join(' \\\\ ')} \\end{array}$$"
+      end
+
+      def calculation_text(row)
+        text = row.map(&:text).join
+        operator = text[/\A[+\-−×÷]/]
+        number = "\\mathtt{#{operator ? text[1..] : text}}"
+        operator ? "#{CALC_TEX.fetch(operator, operator)}\\ #{number}" : number
+      end
+
+      def division_tex(row)
+        divisor, dividend = row.map(&:text).join.split(')', 2)
+        "\\mathtt{#{divisor}}\\enclose{longdiv}{\\mathtt{#{dividend}}}"
+      end
+
+      # 筆算のかたまりを、上端の高さで読む順に差し込む。同じ行の字（「解答例」）の後ろに入るよう、半字の
+      # ゆとりを持たせる（字の大きさの違いで上端が 0.5pt ずれた）
+      def insert_by_top(blocks, inserted)
+        inserted.reduce(blocks) do |list, block|
+          position = list.index { it.top < block.top - (@body_size * 0.5) } || list.size
+          list.dup.insert(position, block)
+        end
       end
 
       # --- Phase: かたまりに分ける ---
@@ -781,6 +994,7 @@ module VivlioStarter
         in :paragraph then element(:P, inline_children(block.lines))
         in :code then code_element(block)
         in :table then table_element(block)
+        in :math then element(:Figure, [], alt: block.data)
         in :image then element(:Figure, [MarkedContent.new(glyphs: [], images: [block.data])])
         end
       end
