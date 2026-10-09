@@ -40,9 +40,16 @@ module VivlioStarter
       # ToUnicode が漢字を康熙部首の字（⾏ U+2F8F など）に、英字の合字を「ﬀ」のような 1 字に当てる PDF がある
       # （`practicaltests-jp-3.pdf` など）。紙面の字としてはふつうの漢字・英字なので、NFKC で戻す（pdf-read-structure-spec.md §2.3）
       COMPATIBILITY_CHARS = /[\u2F00-\u2FD5\uFB00-\uFB06]/
+      # TeX の等幅（CMTT・SFTT・ECTT）は、紙面ではまっすぐな「'」「`」を「quoteright」「quoteleft」の名前で持つので、
+      # Unicode では「’」「‘」になる。コードの引用符なので、まっすぐな字に戻す（pdf-read-structure-spec.md §4.6）
+      TEX_TYPEWRITER_FONT = /CMTT|SFTT|ECTT/
+      # 字ではなく模様を描く書体。pLaTeX の ascmac は、網掛けの地を TeX-ascgrp の「A」を敷き詰めて、
+      # 囲みの角を TeX-ascmac の字で描く。拾うとコードの字の間に「A」が挟まる（pdf-read-structure-spec.md §4.6）
+      DECORATION_FONT_NAME = /\ATeX-asc(?:grp|mac)\z/
 
-      # 名前で見分ける等幅と太字。フォントの記述子に印が無い PDF も多いので、名前でも見る
-      MONO_FONT_NAME = /Mono|Code|Console|Courier|Consol|Menlo|Monaco|Inconsolata|HackGen|Cica|Ricty|Typewriter|CMTT|SFMono/i
+      # 名前で見分ける等幅と太字。フォントの記述子に印が無い PDF も多いので、名前でも見る。
+      # TeX の等幅は CMTT（OT1）と、T1 符号の SFTT（cm-super）・ECTT（EC）。pLaTeX の本は SFTT が多い
+      MONO_FONT_NAME = /Mono|Code|Console|Courier|Consol|Menlo|Monaco|Inconsolata|HackGen|Cica|Ricty|Typewriter|CMTT|SFTT|ECTT|SFMono/i
       BOLD_FONT_NAME = /Bold|Black|Heavy|Semibold|Demi|W[6-9]\b|CMBX/i
       # PDF のフォント記述子の印（FixedPitch は 1 ビット目、ForceBold は 19 ビット目）
       FIXED_PITCH_FLAG = 1
@@ -193,14 +200,21 @@ module VivlioStarter
         before = runs(ALL_RUNS).size
         yield
         font = font_info(@state.current_font)
+        return if font&.name&.match?(DECORATION_FONT_NAME)
+
         added = runs(ALL_RUNS)[before..].map do |run|
-          Glyph.new(text: run.text.gsub(COMPATIBILITY_CHARS) { it.unicode_normalize(:nfkc) }, x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
+          Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
         end
         return if added.empty?
 
         mcid = current_mcid
         @page_glyphs.concat(added) unless inside_artifact?
         mcid && !inside_artifact? ? @glyphs_by_mcid[mcid].concat(added) : @unmarked_glyphs.concat(added)
+      end
+
+      def glyph_text(text, font)
+        text = text.gsub(COMPATIBILITY_CHARS) { it.unicode_normalize(:nfkc) }
+        font&.name&.match?(TEX_TYPEWRITER_FONT) ? text.tr("’‘", "'`") : text
       end
 
       def font_info(font)

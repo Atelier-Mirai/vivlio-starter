@@ -519,7 +519,7 @@ module VivlioStarter
         text_lines.pop while text_lines.last&.empty?
         return if text_lines.empty?
 
-        title = caption && inline_text(caption).gsub(/\s+/, '')
+        title = caption && inline_text(caption).gsub(/\s+/, '').sub(/\A#{LayoutStructure::CODE_CAPTION_LABEL}/, '')
         if flow.last&.dig(:kind) == :code && title.nil? && glyphs.first.page > flow.last[:last_page]
           # ページで分かれたコード。キャプションは最初の 1 つにしか付かない
           body = flow.last[:lines] + text_lines
@@ -701,7 +701,11 @@ module VivlioStarter
         return nil if digits.empty?
 
         rest = line.drop(digits.size)
-        return nil if rest.any? && !blank_glyph?(rest.first) && rest.first.x - digits.last.right < char_width * 0.5
+        # 「1: @import」のように番号の直後にコロンを置く本（pLaTeX の listings など）もある。コロンも番号の側に含める
+        separator = rest.first if rest.first&.text == ':' && rest.first.x - digits.last.right <= char_width * 0.3
+        rest = rest.drop(1) if separator
+        number_end = (separator || digits.last).right
+        return nil if rest.any? && !blank_glyph?(rest.first) && rest.first.x - number_end < char_width * 0.5
 
         { number: digits.map(&:text).join.to_i, rest:, left: digits.first.x, right: digits.last.right }
       end

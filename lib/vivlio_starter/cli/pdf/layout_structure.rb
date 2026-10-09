@@ -44,8 +44,10 @@ module VivlioStarter
       OCR_CODE_TEXT = /\A(?:#|def|end|class|module|puts|return|require|if|else|elsif|while)|(?:do|end)\z|[={}\[\]|<>]|\.\w+\(/
       # コードの行にはさまれて含める、手がかりの無い行の数
       OCR_CODE_FILLER = 2
-      # コードのキャプションになるファイル名だけの行
-      CODE_FILE_NAME = %r{\A[\w.\-/]+\.\w+\z}
+      # コードのキャプションの前に付く番号の見出し（「リスト 1.8:」「List 2-3:」）。キャプションにはファイル名だけを残す
+      CODE_CAPTION_LABEL = /(?:リスト|List(?:ing)?)\s*\d+(?:[.\-]\d+)*\s*[:：]?\s*/i
+      # コードのキャプションになるファイル名だけの行（番号の見出しが前に付いてもよい）
+      CODE_FILE_NAME = %r{\A(?:#{CODE_CAPTION_LABEL})?[\w.\-/]+\.\w+\z}
       # キャプションとコードの 1 行目の間（字の大きさの倍）。OCR ではコードの 1 行目が読めず、2 行目までの間になる
       CODE_CAPTION_GAP = 4.5
       # 否定の線の下の字を TeX にするときの置き換え（overline_tex）
@@ -863,13 +865,17 @@ module VivlioStarter
       end
 
       # 等幅の字が 9 割を占める行はコード。行内のコードが多い本文の行（8 割台）と分ける。
-      # 書体の分からない行（OCR）は、行頭の番号が前後の行と 1 ずつ続くこと（コードの行番号）で見る
+      # 書体の分からない行（OCR）は、行頭の番号が前後の行と 1 ずつ続くこと（コードの行番号）で見る。
+      # pLaTeX はコードの中の和文を和文の書体で描くので（「13: <th>削除</th>」）、和文を除いた字がすべて等幅で、
+      # 行頭が等幅の行番号の行もコードとする。行内のコードで始まる本文の行（「NKF は…」）は行番号が無いので外れる
       def code_line?(line)
         visible = line.glyphs.reject { it.text.tr("\u00A0", ' ').strip.empty? }
         return false if visible.empty?
         return numbered_code_line?(line) if visible.none?(&:font)
+        return true if visible.count(&:mono?) >= visible.size * 0.9
 
-        visible.count(&:mono?) >= visible.size * 0.9
+        latin = visible.reject { it.text.match?(StructureMarkdown::WIDE_CHAR) }
+        latin.any? && latin.all?(&:mono?) && numbered_code_line?(line)
       end
 
       def numbered_code_line?(line)
@@ -878,15 +884,20 @@ module VivlioStarter
 
         lines = @numbered_neighbors.fetch(line.page, [])
         index = lines.index(line)
-        index && [lines[index - 1], lines[index + 1]].compact.any? { code_after_number?(it) && (line_number(it).to_i - number).abs == 1 } &&
+        # 前後の行に番号が無いとき（nil.to_i は 0）に、番号 1 の行を続きと取り違えない
+        index && [lines[index - 1], lines[index + 1]].compact.any? { (other = line_number(it)) && code_after_number?(it) && (other - number).abs == 1 } &&
           (index.positive? || lines.size > 1)
       end
 
-      # 行頭の数字のあとに 0.5 字以上の隙間がある行の、その数字
+      # 行頭の数字のあとに 0.5 字以上の隙間がある行の、その数字。数字の直後のコロン（「13:」）は番号の側に含める
       def line_number(line)
         digits = line.glyphs.take_while { it.text.match?(/\A\d\z/) }
-        following = line.glyphs[digits.size]
-        return nil if digits.empty? || digits.size > 4 || (following && following.x - digits.last.right < line.size * 0.5)
+        return nil if digits.empty? || digits.size > 4
+
+        colon = line.glyphs[digits.size]
+        colon = nil unless colon&.text == ':' && colon.x - digits.last.right < line.size * 0.3
+        following = line.glyphs[digits.size + (colon ? 1 : 0)]
+        return nil if following && following.x - (colon || digits.last).right < line.size * 0.5
 
         digits.map(&:text).join.to_i
       end

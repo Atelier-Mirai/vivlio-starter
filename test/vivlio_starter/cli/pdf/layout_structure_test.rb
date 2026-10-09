@@ -233,6 +233,33 @@ module VivlioStarter
         assert_equal("```ruby:hello.rb\ndef hello\n  puts 1\nend\n```\n", render([lines]))
       end
 
+      # pLaTeX の本のコード。キャプションは「リスト 1.8:」の後のファイル名だけを残し、行番号は「1:」のコロンごと外す。
+      # コードの中の和文は和文の書体で描かれるが、行頭の行番号が前後と続くので、その行もコードに含める
+      def test_should_read_platex_listing_with_label_and_colon_line_numbers
+        japanese_in_code = ->(string, **options) { text(string, font: MONO, **options).map { it.text.match?(StructureMarkdown::WIDE_CHAR) ? it.with(font: BODY) : it } }
+        lines = [
+          text('リスト 1.8: app/views/list.html.erb', y: 720, font: GOTHIC),
+          text('1:', y: 705, size: 9, font: MONO), text('<table>', x: 78, y: 705, size: 9, font: MONO),
+          text('2:', y: 692, size: 9, font: MONO), japanese_in_code.('<th>削除</th>', x: 87, y: 692, size: 9),
+          text('3:', y: 679, size: 9, font: MONO), text('</table>', x: 78, y: 679, size: 9, font: MONO)
+        ]
+
+        assert_equal("```erb:app/views/list.html.erb\n<table>\n  <th>削除</th>\n</table>\n```\n", render([lines]))
+      end
+
+      # 等幅の「1」で始まる和文の行でも、前後の行に番号が無ければコードにしない（番号の無い行を 0 番と数えて、
+      # 「0 と 1 で続く」と取り違えていた）
+      def test_should_not_take_body_line_starting_with_mono_one_for_code
+        lines = [
+          text('全体は stmts です。その中の', y: 720),
+          text('1', y: 705, font: MONO), text('つめの式は', x: 70, y: 705),
+      text('var_assign', x: 122, y: 705, font: MONO), text('です。', x: 174, y: 705),
+          text('代入を表しています。', y: 690)
+        ]
+
+        refute_includes(render([lines]), '```')
+      end
+
       # 列のあいだの縦の隙間が 3 行以上そろえば表に仮組みし、確かめるよう促すコメントを添える
       def test_should_infer_table_from_aligned_gaps
         rows = [%w[金属 仕事関数], %w[カリウム 2.2], %w[金 5.1]].each_with_index.flat_map do |(left, right), index|
