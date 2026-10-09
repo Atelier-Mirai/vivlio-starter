@@ -63,8 +63,9 @@ module VivlioStarter
       CALC_DIVISION_ROW = /\A[0-9A-Fa-f.]+\)[0-9A-Fa-f.]+\z/
       # 筆算の演算記号を TeX にするときの置き換え
       CALC_TEX = { '−' => '-', '×' => '\times', '÷' => '\div' }.freeze
-      # 目次の項目の行末。点線のリーダー（. . . ・ ……）とページ番号で終わる
-      TOC_ENTRY_END = /(?:[.．・…‥]\s*){3,}\d+\z/
+      # 目次の項目の行末。点線のリーダーとページ番号で終わる。点（. ． ・ ･ ·）は 3 字以上、三点リーダー（… ‥ ⋯）は
+      # 1 字で点 3 つぶんなので 1 字以上（「大事なこと … 16」）。GPU の育てかたは半角の中黒（･ U+FF65）で、項目がつながっていた
+      TOC_ENTRY_END = /(?:(?:[.．・･·]\s*){3,}|(?:[…‥⋯]\s*)+)\d+\z/
 
       # @param pages [Array<MarkedContentReceiver>] ページごとに読み終えた受け手
       # @param text_area [Hash, nil] { top:, bottom:, inner:, outer: }（pt）。指定したときだけ版面の外を除く

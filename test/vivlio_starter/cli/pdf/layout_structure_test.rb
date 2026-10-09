@@ -90,6 +90,21 @@ module VivlioStarter
         MARKDOWN
       end
 
+      # リーダーは半角の中黒（･）の並びや、三点リーダー 1〜2 字（「大事なこと … 16」）のこともある
+      def test_should_split_table_of_contents_entries_with_other_leaders
+        lines = [['ココロの準備', '･' * 40, '16', 700], ['いちばん大事なこと', '…', '16', 683], ['楽しむために', '……', '19', 666]].map do |title, leader, number, y|
+          [*text(title, y:), *text(leader, x: 70 + (title.size * 10), y:), *text(number, x: 470 - (number.size * 5), y:)]
+        end
+
+        assert_equal(<<~MARKDOWN, render([lines]).gsub(/ *(?:･ *){3,}| *[…]+ */, ' … '))
+          ココロの準備 … 16
+
+          いちばん大事なこと … 16
+
+          楽しむために … 19
+        MARKDOWN
+      end
+
       # OCR の字（書体の情報が無い）は字の大きさの見積もりが行ごとに揺れるので、25% までの差では段落を
       # 切らない（「乗客／にとっては」が 7.8pt と 6.2pt に出て切れていた）。文字の層のある PDF の字は、
       # 0.5pt を超える差で切る
