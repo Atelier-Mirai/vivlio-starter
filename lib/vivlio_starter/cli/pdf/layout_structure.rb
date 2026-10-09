@@ -48,6 +48,10 @@ module VivlioStarter
       CODE_CAPTION_LABEL = /(?:リスト|List(?:ing)?)\s*\d+(?:[.\-]\d+)*\s*[:：]?\s*/i
       # コードのキャプションになるファイル名だけの行（番号の見出しが前に付いてもよい）
       CODE_FILE_NAME = %r{\A(?:#{CODE_CAPTION_LABEL})?[\w.\-/]+\.\w+\z}
+      # 2 段組みとみなすのに要る、段の境目で左右に分かれる行の数
+      COLUMN_MIN_LINES = 3
+      # 2 段の区間に要る、段の境目で左右に分かれる行の数（境目はページ全体の 3 行以上で確かめてある）
+      COLUMN_MIN_BAND_LINES = 2
       # キャプションとコードの 1 行目の間（字の大きさの倍）。OCR ではコードの 1 行目が読めず、2 行目までの間になる
       CODE_CAPTION_GAP = 4.5
       # 否定の線の下の字を TeX にするときの置き換え（overline_tex）
@@ -71,6 +75,8 @@ module VivlioStarter
 
       # @return [StructureReader::Element]
       def root
+        @column_right_edges = {}.compare_by_identity
+        @column_left_edges = {}.compare_by_identity
         page_lines = @pages.each_with_index.map { |page, index| build_lines(visible_glyphs(page, index) - figure_labels(page)) }
         all_lines = page_lines.flatten
         @body_size = dominant(all_lines.flat_map(&:glyphs).map { it.size.round(1) }) || 10.0
@@ -79,6 +85,7 @@ module VivlioStarter
         @right_edges = right_edges(page_lines)
 
         page_lines = drop_running_heads(drop_margin_labels(page_lines))
+        page_lines = page_lines.zip(column_gutters(page_lines)).map { |lines, gutter| split_columns(lines, gutter) }
         @overlines = overline_marks(page_lines)
         page_lines = drop_radicals(page_lines)
         blocks = page_lines.each_with_index.flat_map do |lines, index|
@@ -141,6 +148,155 @@ module VivlioStarter
         end
         rows.map { make_line(it.sort_by(&:x)) }.sort_by { -it.baseline }
       end
+
+      # --- Phase: 2 段組み（pdf-read-structure-spec.md §4.10） ---
+
+      # 2 段に組んだ区間の行を、段の境目で左右に分け、左の段を読み終えてから右の段を読む順に並べる。
+      # 分けないと、同じ高さの左右の行が 1 行につながり、段の間の隙間が表の列の境目になる（gitlab.pdf で 194 個）。
+      # 区間は、段の境目で分かれる行（:split）が 2 行以上続くところ。その上下には、同じ段の行頭にあって行送りの
+      # 1.5 倍以内に続く片側だけの行（段の長さの違い・段落の終わり）を足す。全幅の見出しや囲みは区間に入らない
+      def split_columns(lines, gutter)
+        return lines unless gutter
+
+        sides = lines.map { column_side(it, gutter) }
+        bands = column_bands(lines, sides, gutter)
+        return lines if bands.empty?
+
+        order = lines.each_index.to_a
+        bands.reverse_each { |band| order[band] = [band] } # 区間の添字を、その範囲（Range）1 つに置き換える
+        order.flat_map do |entry|
+          next [lines[entry]] if entry.is_a?(Integer)
+
+          lefts, rights = entry.each_with_object([[], []]) do |index, (left, right)|
+            line = lines[index]
+            case sides[index]
+            in :left then left << line
+            in :right then right << line
+            in Integer => cut
+              left << make_line(line.glyphs.take(cut))
+              right << make_line(line.glyphs.drop(cut))
+            end
+          end
+          lefts.each { @column_right_edges[it] = gutter[:left_edge] }
+          rights.each { @column_left_edges[it] = gutter[:right_start] }
+          lefts + rights
+        end
+      end
+
+      # ページごとの段の境目。2 段の区間が 2 行しかないページは、ページの中では境目が決まらない（3 行で確かめる）。
+      # 同じ側（偶数・奇数）のページの 3 割以上で境目が見つかる本なら、同じ側で 3 回以上見つかった境目（紙面の型が
+      # いくつかあると位置が違う）を試し、そのページでいちばん多くの行を左右に分けるものを借りる。1 段組みの本の
+      # 数ページだけの段組み（索引など）は、ほかのページへ広げない
+      def column_gutters(page_lines)
+        gutters = page_lines.map { column_gutter(it) }
+        shared = gutters.each_with_index.group_by { |_gutter, page| page % 2 }.transform_values do |pairs|
+          found = pairs.map(&:first).compact
+          found.size >= pairs.size * 0.3 ? found.tally.select { |_gutter, count| count >= 3 }.keys : []
+        end
+        gutters.each_with_index.map do |gutter, page|
+          gutter || shared.fetch(page % 2, []).map { [it, split_count(page_lines[page], it)] }
+                          .select { |_gutter, count| count >= COLUMN_MIN_BAND_LINES }.max_by(&:last)&.first
+        end
+      end
+
+      def split_count(lines, gutter) = lines.count { column_side(it, gutter).is_a?(Integer) }
+
+      # 2 段の区間（行の添字の範囲）。:split の行の並びから、上下へ片側の行を足して広げる
+      def column_bands(lines, sides, gutter)
+        splits = sides.each_index.select { sides[it].is_a?(Integer) }
+        # 境目をまたぐ行、段の幅に収まる見出し（字の大きさが違う行）、行送りの 2.5 倍を超える空きで区間を切る
+        groups = splits.slice_when do |a, b|
+          (a + 1...b).any? { sides[it] == :span || (lines[it].size - lines[a].size).abs > 1 } ||
+            lines[a].baseline - lines[b].baseline > @pitch * 2.5
+        end
+        groups = groups.select { it.size >= COLUMN_MIN_BAND_LINES }
+        groups.map do |group|
+          first, last = group.minmax
+          first -= 1 while first.positive? && column_continues?(lines, sides, gutter, first - 1, first)
+          last += 1 while last + 1 < lines.size && column_continues?(lines, sides, gutter, last + 1, last)
+          first..last
+        end
+      end
+
+      # 片側だけの行が、隣の区間の行と同じ段の続きか。段の行頭（左の段は区間の行頭、右の段は右の段の左端）から
+      # 1.5 字以内で始まり、行送りの 1.5 倍以内にある
+      def column_continues?(lines, sides, gutter, index, neighbor)
+        side = sides[index]
+        return false unless %i[left right].include?(side)
+
+        line = lines[index]
+        start = side == :left ? lines[neighbor].x : gutter[:right_start]
+        (line.x - start).abs <= line.size * 1.5 && (lines[neighbor].baseline - line.baseline).abs <= @pitch * 1.5
+      end
+
+      # 段の境目。字の大きさの 0.8 倍以上の隙間を 1 つだけ持ち、それが同じ位置を挟む 10 字以上の行のうち、左の部分の右端がそろう
+      # （両端揃えの段は境目の手前で止まる）行が 3 行以上あるところ。そろう行の左右の部分は、どちらも 8 字ぶん
+      # 以上の幅がいる。表の升目（右端がそろわない・幅が狭い）、囲みの中の 2 列の一覧や図のラベル（右端がそろわない）は
+      # 数に入らない。隙間の中ほどを候補にし、そろう行のいちばん多いものを採る
+      # @return [Hash{Symbol => Integer}, nil] 左の段の右端と、右の段の左端
+      def column_gutter(lines)
+        # 大きな隙間が 1 つだけの行（左右の段の中は字が詰まっている）。字間を広げた見出しや両端揃えで字間の
+        # 開いた短い行は、隙間がいくつもあるので数えない。行末の句読点を段の外へぶら下げると、隙間は字の 0.9 倍
+        # ほどに縮む
+        gaps = lines.select { it.glyphs.size >= 10 && !mostly_mono?(it) }.filter_map do |line|
+          found = line.glyphs.each_cons(2).filter_map { |a, b| [a.right, b.x, line] if b.x - a.right >= a.size * 0.8 }
+          found.first if found.one?
+        end
+        candidates = gaps.map { |left, right, _line| ((left + right) / 2).round }.uniq
+        candidates.filter_map { column_gutter_at(gaps, it) }.max_by { it[:lines] }&.except(:lines)
+      end
+
+      def column_gutter_at(gaps, x)
+        crossing = gaps.select { |left, right, _line| left <= x && x <= right }.map(&:last).uniq
+        lefts = crossing.to_h { |line| [line, line.glyphs.select { it.right <= x }] }
+        edge = dominant(lefts.values.map { it.last.right.round })
+        aligned = crossing.select { |line| column_end?(lefts[line].last, edge, line.size) }
+        return nil if aligned.size < COLUMN_MIN_LINES
+
+        rights = aligned.map { |line| line.glyphs.select { it.x >= x } }
+        size = aligned.first.size
+        return nil unless [aligned.map { lefts[it] }, rights].all? { |parts| median(parts.map { it.last.right - it.first.x }) >= size * 8 }
+
+        # 2 段組みの段の幅はほぼ等しい。表の列（記法と説明・名前と値）は幅が違うので外れる
+        right_start = dominant(rights.map { it.first.x.round })
+        left_width = edge - dominant(aligned.map { lefts[it].first.x.round })
+        right_width = rights.map { it.last.right }.max - right_start # 段落の終わりの短い行があるので、いちばん右で測る
+        return nil unless left_width.fdiv(right_width).between?(0.75, 1.33)
+
+        { left_edge: edge, right_start:, lines: aligned.size }
+      end
+
+      # 行が段の境目のどちら側にあるか。境目は左の段の右端から右の段の左端までの帯で見る（1 点で見ると、
+      # 帯にかかる句読点の字で外れる）。帯の中に半字以上の隙間がある行は、隙間の右の字の位置（Integer）で
+      # 左右に分ける。ただし左の部分が段の右端にそろうか、文末で終わる（段落の終わり）行に限る。囲みの中の
+      # 2 列の一覧のようにどちらでもない行と、境目をまたぐ行（全幅の見出し・図の注記）は :span
+      def column_side(line, gutter)
+        left_edge, right_start = gutter.values_at(:left_edge, :right_start)
+        return :left if line.right <= right_start - (line.size * 0.5)
+        return :right if line.x >= left_edge + (line.size * 0.5)
+        return :span if mostly_mono?(line)
+
+        cut = line.glyphs.each_cons(2).find_index do |a, b|
+          a.right <= right_start && b.x >= left_edge && b.x - a.right >= line.size * 0.5
+        end
+        return :span unless cut
+
+        last = line.glyphs[cut]
+        column_end?(last, left_edge, line.size) || last.text.match?(/[。．.!?！？」』）)]\z/) ? cut + 1 : :span
+      end
+
+      # 段の右端で終わる字か。行末の句読点は段の外へぶら下げることがあり、そのときは字の左端が段の右端にそろう
+      def column_end?(glyph, edge, size)
+        (glyph.right - edge).abs <= size * 0.5 || (glyph.text.match?(/\A[、。，．,.」』）)]\z/) && (glyph.x - edge).abs <= size * 0.5)
+      end
+
+      def median(values) = values.sort[values.size / 2]
+
+      # 等幅の字が半分以上の行（コード）。コードの中の 2 字以上の空白（ログの欄・そろえたコメント）を段の境目にしない
+      def mostly_mono?(line) = line.glyphs.count(&:mono?) * 2 >= line.glyphs.size
+
+      # 行の右端の基準。2 段組みの左の段の行は段の右端、ほかはページの本文の右端
+      def right_edge(line, fallback) = @column_right_edges[line] || @right_edges.fetch(line.page, fallback)
 
       # ベースラインがそろうか、小さな字が大きな字の 0.6 倍以内に持ち上がっている（上付きの番号）。
       # TeX の脚注の番号は本文の 0.45 倍ほど持ち上がる。ルビは 1 字ぶん以上離れているので入らない。
@@ -248,14 +404,18 @@ module VivlioStarter
       # 並ぶと行に混ざる。版面の外にあり、数字だけか、同じ文字列が同じ位置に何ページも出るまとまりを落とす
       def drop_margin_labels(page_lines)
         columns = page_lines.each_with_index.map { |lines, page| body_column(lines, @pages[page].page_size.first) }
+        # 図や画面写真の多いページは本文の行が少なく版面が決まらない。回した字（つめ）だけは、同じ側（偶数・奇数）の
+        # ページでいちばん多い版面で見る。ほかの字にまで広げると、版面の広い目次のページ番号を落とす
+        by_side = columns.each_with_index.group_by { |_column, page| page % 2 }.transform_values { dominant(it.map(&:first)) }
         segments = page_lines.each_with_index.flat_map do |lines, page|
-          lines.flat_map { |line| outside_segments(line, columns[page]) }.map { [page, it] }
+          lines.flat_map { |line| outside_segments(line, columns[page], columns[page] || by_side[page % 2]) }.map { [page, it] }
         end
         counts = segments.group_by { |_page, run| [(run.first.x / 10).round, normalize_running(run.map(&:text).join)] }
                          .transform_values { it.map(&:first).uniq.size }
         dropped = segments.select do |_page, run|
           text = run.map(&:text).join
-          text.match?(/\A\d+\z/) || counts[[(run.first.x / 10).round, normalize_running(text)]] >= 2
+          # 回して描いた字（縦に並べたつめ）は、1 ページだけでも落とす。字ごとに別の行になり、繰り返しでは見分けにくい
+          text.match?(/\A\d+\z/) || run.all?(&:rotated) || counts[[(run.first.x / 10).round, normalize_running(text)]] >= 2
         end.flat_map(&:last)
         return page_lines if dropped.empty?
 
@@ -277,15 +437,22 @@ module VivlioStarter
         wide = lines.select { body_sized?(it) && it.right - it.x > page_width * 0.4 }
         return nil if wide.empty?
 
-        [dominant(wide.map { it.x.round }), dominant(wide.map { it.right.round })]
+        # 行頭は回して描いた字（つめ）を除いて測る。本文の行頭に接したつめの字で、版面が外へ広がらないように
+        [dominant(wide.map { (it.glyphs.find { !it.rotated } || it.glyphs.first).x.round }), dominant(wide.map { it.right.round })]
       end
 
       # 行のうち、1 字を超える隙間で区切ったまとまりが版面の外にあるもの（本文の字間が 1 字を超えることはまず無い）
-      def outside_segments(line, column)
-        return [] unless column
+      def outside_segments(line, column, rotated_column = column)
+        return [] unless rotated_column
 
-        left, right = column
-        line.glyphs.chunk_while { |a, b| b.x - a.right <= line.size }.select do |run|
+        left, right = column || [-Float::INFINITY, Float::INFINITY]
+        rotated_left, rotated_right = rotated_column
+        # 回して描いた字（縦に組んだつめ）は、本文の行頭に接していても別のまとまりにし、最初の字が版面の端より
+        # 外なら落とす。縦書きの字は pdf-reader が横に進めて位置を出すので、正しいのは最初の字の位置だけ
+        runs = line.glyphs.chunk_while { |a, b| b.x - a.right <= line.size && a.rotated == b.rotated }
+        runs.select do |run|
+          next run.first.right <= rotated_left || run.first.x >= rotated_right if run.all?(&:rotated)
+
           # 等幅の字（コードの行番号）は落とさない
           !run.all?(&:mono?) && (run.map(&:right).max < left - line.size || run.first.x > right + line.size)
         end
@@ -748,6 +915,11 @@ module VivlioStarter
         return footnote_start?(following) || wide_gap if wrapped_mid_sentence?(previous)
         return true if (previous.size - following.size).abs > size_tolerance(previous, following) || footnote_start?(following)
         return true if wide_gap
+        # 2 段組みで左の段の下から右の段の上へ移る所。左の段の右端まで届いた行から、右の段の頭へ字下げせずに続けば
+        # 同じ段落（下の比べ方では、右の段の行の右端と字下げで必ず切れる）
+        if following.baseline > previous.baseline && (start = @column_left_edges[following])
+          return previous.right < right_edge(previous, previous.right) - previous.size || following.x > start + (following.size * 0.5)
+        end
 
         # 右端と左端は、この段落の行と次の行で測る。左端には、次の行と右端がそろい、左へ 1.5 字以内に
         # ある先の行（字下げした 1 行目の続き）も使う。先の段落の幅の広い行（囲みの外・画像の下）まで
@@ -757,10 +929,11 @@ module VivlioStarter
         return true if previous.right < right - (size * 2)
         # 次の行も短い（中央に置いた引用・ファイル名）と上の比べ方では切れないので、文末で終わり
         # ページの本文の右端より手前で止まった行の後でも切る
-        return true if previous.text.match?(/[。．.!?！？」』]\z/) && previous.right < @right_edges.fetch(previous.page, right) - (size * 2)
+        return true if previous.text.match?(/[。．.!?！？」』]\z/) && previous.right < right_edge(previous, right) - (size * 2)
 
         column = paragraph + [following] + ahead.select { (it.right - following.right).abs <= 1 && it.x >= following.x - (size * 1.5) }
-        following.x - column.map(&:x).min > size * 0.5
+        # 2 段組みの右の段の行は、段の左端と比べる（段落の行には左の段の行も入っている）
+        following.x - (@column_left_edges[following] || column.map(&:x).min) > size * 0.5
       end
 
       # 文の途中で折り返した OCR の行か。版面の右端まで届き、文末（「。」や閉じ括弧）で終わらない行は、
@@ -770,7 +943,7 @@ module VivlioStarter
       # 文字の層のある PDF の字には当てない
       def wrapped_mid_sentence?(line)
         line.glyphs.first.font.nil? && !line.text.match?(OCR_SENTENCE_END) &&
-          line.right >= @right_edges.fetch(line.page, line.right) - line.size
+          line.right >= right_edge(line, line.right) - line.size
       end
 
       # 段落を切る字の大きさの差。文字の層のある PDF では字の大きさが正確なので 0.5pt。OCR の字（書体の
@@ -856,7 +1029,7 @@ module VivlioStarter
           break if list_start?(following) || code_line?(following) || (!ocr && heading_candidate?(following))
           break if (following.x - text_x).abs > following.size * 0.6 || (!ocr && (previous.size - following.size).abs > 0.5)
           # 版面の右端より手前で止まった行で、項目は終わる
-          break if ocr ? previous.text.match?(/[。．]\z/) : previous.right < @right_edges.fetch(previous.page, previous.right) - (following.size * 2)
+          break if ocr ? previous.text.match?(/[。．]\z/) : previous.right < right_edge(previous, previous.right) - (following.size * 2)
           break if previous.baseline - following.baseline > following.size * (@pitch / @body_size) * 1.35
 
           length += 1
@@ -980,14 +1153,13 @@ module VivlioStarter
 
       # --- Phase: 画像 ---
 
-      # 画像は、描かれた上端の高さで読む順に差し込む
+      # 画像は、描かれた上端の高さで読む順に差し込む。文のかたまりは並べ直さない（2 段組みでは、右の段の上の
+      # 段落が左の段の下の段落より高い位置にある）
       def place_images(blocks, images)
-        return blocks if images.empty?
-
-        image_blocks = images.map do |box|
-          Block.new(kind: :image, lines: [], top: box.top, page: box.page, data: box)
+        images.sort_by { -it.top }.reduce(blocks) do |list, box|
+          image = Block.new(kind: :image, lines: [], top: box.top, page: box.page, data: box)
+          list.dup.insert(list.index { it.top < image.top } || list.size, image)
         end
-        (blocks + image_blocks).sort_by.with_index { |item, order| [-item.top, order] }
       end
 
       # --- Phase: 要素の木にする ---

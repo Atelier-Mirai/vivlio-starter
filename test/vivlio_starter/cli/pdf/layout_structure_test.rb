@@ -260,6 +260,51 @@ module VivlioStarter
         refute_includes(render([lines]), '```')
       end
 
+      # 版面の外のつめに縦に組んだ章の印は、回して描いた字として 1 ページだけでも落とす（繰り返しを待たない）。
+      # 本文の行頭に接していても、ふつうの字とは別のまとまりにする
+      def test_should_drop_rotated_margin_label_on_single_page
+        tab = text('Chapter', x: 30, y: 700, size: 6).map { it.with(rotated: true) }
+        lines = [tab, *body_paragraph(y: 700), *body_paragraph(y: 660)]
+
+        assert_equal(<<~MARKDOWN, render([lines]))
+          本文の一行目は版面の右端まで届きます続きの行で終わります。
+
+          本文の一行目は版面の右端まで届きます続きの行で終わります。
+        MARKDOWN
+      end
+
+      # 2 段組みは、同じ高さの左右の行が 1 行につながり、段の間の隙間で表に組まれていた。段の境目（左の段の右端が
+      # そろう隙間）で分け、左の段を読み終えてから右の段を読む。段は 19 字（190pt）で、間を 20pt あける
+      def test_should_read_two_columns_left_then_right
+        lines = [
+          text('左の段の文章は段の右端までしっかりと届', y: 700), text('右の段は一字下げて始まり右端まで届い', x: 280, y: 700),
+          text('いて次の行へと続いていく。段落はこの行', y: 685), text('て次の行へと同じように続いていきます。', x: 270, y: 685),
+          text('の後もまだもう少しだけ長く続いていき、', y: 670), text('右の段の段落はこの行の後も続いていき、', x: 270, y: 670),
+          text('ここで終わります。', y: 655), text('ここで終わります。', x: 270, y: 655)
+        ]
+
+        assert_equal(<<~MARKDOWN, render([lines]))
+          左の段の文章は段の右端までしっかりと届いて次の行へと続いていく。段落はこの行の後もまだもう少しだけ長く続いていき、ここで終わります。
+
+          右の段は一字下げて始まり右端まで届いて次の行へと同じように続いていきます。右の段の段落はこの行の後も続いていき、ここで終わります。
+        MARKDOWN
+      end
+
+      # 左の段の下で終わらない段落は、右の段の頭へ字下げせずに続く
+      def test_should_continue_paragraph_from_left_column_to_right_column
+        lines = [
+          text('左の段の文章は段の右端までしっかりと届', y: 700), text('て、ここで段落が終わります。', x: 270, y: 700),
+          text('いて次の行へと続いていくが段落は終わら', y: 685), text('次の段落は一字下げて右の段で始まる。', x: 280, y: 685),
+          text('ないまま右の段の頭へと字下げせずに移っ', y: 670), text('右端まで届いて続いていきます。', x: 270, y: 670)
+        ]
+
+        assert_equal(<<~MARKDOWN, render([lines]))
+          左の段の文章は段の右端までしっかりと届いて次の行へと続いていくが段落は終わらないまま右の段の頭へと字下げせずに移って、ここで段落が終わります。
+
+          次の段落は一字下げて右の段で始まる。右端まで届いて続いていきます。
+        MARKDOWN
+      end
+
       # 列のあいだの縦の隙間が 3 行以上そろえば表に仮組みし、確かめるよう促すコメントを添える
       def test_should_infer_table_from_aligned_gaps
         rows = [%w[金属 仕事関数], %w[カリウム 2.2], %w[金 5.1]].each_with_index.flat_map do |(left, right), index|

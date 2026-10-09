@@ -20,6 +20,8 @@ module VivlioStarter
     #    pdf-reader は標準の符号表で読むので、箇条書きの点（15 番）や ≤・× が「▯」になる。
     #    0〜31 番は標準の符号表では空きなので、CMSY の並びで補う。32 番以降（平方根の根号の「p」など）は変えない。
     #    dvipdfmx が符号を付け直した CMSY（Differences 付きの符号表。2 番が circlecopyrt など）は並びが違うので除く
+    # 4. 縦書きの書体（符号表の名前が -V で終わる）に印を付ける。pdf-reader は縦書きの字も横に進めて位置を出すので、
+    #    版面の外のつめに縦に組んだ「リポジトリを作ってみよう」が本文の行に混ざる（MarkedContentReceiver が回した字として扱う）
     module ToUnicodeFallback
       # pdf-reader が名前の分からない字に当てる字
       UNKNOWN_CHAR = "▯"
@@ -30,8 +32,11 @@ module VivlioStarter
       def initialize(objects, font)
         super
         @builtin_encoding = font[:Encoding].nil?
+        @vertical_writing = objects.deref(font[:Encoding]).to_s.end_with?('-V')
         @differences = ToUnicodeFallback.differences(objects, font) unless subtype == :Type0
       end
+
+      def vertical_writing? = @vertical_writing
 
       def to_utf8(code)
         text = super

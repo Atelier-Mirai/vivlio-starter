@@ -19,8 +19,9 @@ module VivlioStarter
       FontInfo = Data.define(:name, :bold, :mono)
 
       # 1 文字。座標は pdf-reader の TextRun と同じ（左下が原点・単位は pt）
-      Glyph = Data.define(:text, :x, :y, :width, :size, :page, :font) do
-        def initialize(text:, x:, y:, width:, size:, page:, font: nil) = super
+      # rotated は、字を回して描いたもの（版面の外のつめに縦に並べた「Chapter 1」など）
+      Glyph = Data.define(:text, :x, :y, :width, :size, :page, :font, :rotated) do
+        def initialize(text:, x:, y:, width:, size:, page:, font: nil, rotated: false) = super
 
         def right = x + width
         def bold? = font&.bold || false
@@ -202,14 +203,25 @@ module VivlioStarter
         font = font_info(@state.current_font)
         return if font&.name&.match?(DECORATION_FONT_NAME)
 
+        rotated = rotated_text? || @state.current_font.vertical_writing?
+
         added = runs(ALL_RUNS)[before..].map do |run|
-          Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
+          Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:,
+                    rotated:)
         end
         return if added.empty?
 
         mcid = current_mcid
         @page_glyphs.concat(added) unless inside_artifact?
         mcid && !inside_artifact? ? @glyphs_by_mcid[mcid].concat(added) : @unmarked_glyphs.concat(added)
+      end
+
+      # 字の進む向きが横より縦に近いか。字を描く行列で、原点と 1 進んだ点を比べる。縦書きの書体の字は、
+      # pdf-reader が横に進めて位置を出すので行列では分からず、書体の印（vertical_writing?）で見る
+      def rotated_text?
+        origin = @state.trm_transform_point(::PDF::Reader::Point.new(0, 0))
+        step = @state.trm_transform_point(::PDF::Reader::Point.new(1, 0))
+        (step.y - origin.y).abs > (step.x - origin.x).abs
       end
 
       def glyph_text(text, font)
