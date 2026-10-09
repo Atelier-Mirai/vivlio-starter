@@ -315,6 +315,7 @@ module VivlioStarter
         CLI::Common.log_info(route == :tree ? '[pdf:read] 構造ツリー（タグ）から、見出し・段落・表・コードを戻します' :
                                                 '[pdf:read] 文字の大きさと位置から、見出し・段落・表・コードを推定します')
         images = mode == :enhanced ? structured_images(pdf_path, entry) : []
+        images += vector_figure_images(pdf_path, entry, reader, structure) if mode == :enhanced && route == :layout
         markdown = if route == :tree
                      structure.markdown(images:)
                    else
@@ -369,6 +370,48 @@ module VivlioStarter
            asset[:output_path] || asset['output_path']]
         end
         images_from ? substitute_original_images(pairs) : pairs.map(&:first)
+      end
+
+      # --- Phase: 線で描いた図（pdf-read-structure-spec.md §4.11） ---
+
+      # 線で描いた図の範囲を、ページから PNG に切り抜いて描き出し、図と位置で結ぶ一覧にする。埋め込みの画像では
+      # ないのでプラグインは取り出せない。描き出しは poppler の pdftoppm（Enhanced Mode の前提）で、見つからなければ
+      # 画像の参照を書かないだけで原稿は作る
+      def vector_figure_images(pdf_path, entry, reader, structure)
+        dir = enhanced_images_output_dir(entry)
+        FileUtils.mkdir_p(dir)
+        structure.vector_figures.each_with_index.flat_map do |boxes, index|
+          boxes.each_with_index.filter_map do |box, number|
+            name = format('page-%03d-figure-%02d.png', index + 1, number + 1)
+            next unless render_vector_figure(pdf_path, reader.page(index + 1), box, File.join(dir, name))
+
+            VivlioStarter::PDF::StructureMarkdown::ImagePlacement.new(page: index, left: box.left, bottom: box.bottom, right: box.right,
+                                                                      top: box.top, path: name)
+          end
+        end
+      rescue Errno::ENOENT
+        CLI::Common.log_warn('[pdf:read] pdftoppm が見つからないので、線で描いた図は画像にしません（brew install poppler）')
+        []
+      end
+
+      VECTOR_FIGURE_DPI = 300
+      # 図の線が範囲の端で切れないよう、四方に足す余白（pt）
+      VECTOR_FIGURE_PADDING = 4
+
+      # pdftoppm の切り抜きは、メディアボックスの左上を原点にしたピクセルで指定する
+      def render_vector_figure(pdf_path, page, box, output_path)
+        left, _bottom, _right, top = page.attributes[:MediaBox].map(&:to_f)
+        scale = VECTOR_FIGURE_DPI / 72.0
+        pad = VECTOR_FIGURE_PADDING
+        crop = {
+          '-x' => (box.left - pad - left) * scale, '-y' => (top - box.top - pad) * scale,
+          '-W' => (box.right - box.left + (pad * 2)) * scale, '-H' => (box.top - box.bottom + (pad * 2)) * scale
+        }.flat_map { |flag, value| [flag, [value.round, 0].max.to_s] }
+        number = page.number.to_s
+        _out, error, status = Open3.capture3('pdftoppm', '-f', number, '-l', number, '-r', VECTOR_FIGURE_DPI.to_s, *crop, '-png', '-singlefile',
+                                             pdf_path, output_path.delete_suffix('.png'))
+        CLI::Common.log_warn("[pdf:read] #{page.number} ページの線の図を描き出せませんでした: #{error.strip}") unless status.success?
+        status.success?
       end
 
       # --- Phase: 元の画像への差し替え（pdf-read-ocr-improvement-notes.md §4.18） ---

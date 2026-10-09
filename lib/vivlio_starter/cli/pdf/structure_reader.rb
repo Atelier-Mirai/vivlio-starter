@@ -3,6 +3,7 @@
 require 'pdf/reader'
 
 require_relative 'marked_content_receiver'
+require_relative 'vector_figures'
 require_relative 'structure_markdown'
 require_relative 'layout_structure'
 
@@ -72,6 +73,10 @@ module VivlioStarter
       def layout_markdown(images: [], text_area: nil)
         StructureMarkdown.new(LayoutStructure.new(receivers, text_area:).root, images:).render
       end
+
+      # 線で描いた図の範囲（ページごと・pdf-read-structure-spec.md §4.11）。Enhanced Mode で画像に描き出す
+      # @return [Array<Array<MarkedContentReceiver::ImageBox>>]
+      def vector_figures = receivers.map { VectorFigures.find(it) }
 
       # ページごとに読み終えた受け手。OCR したページと合わせて経路 B に渡すときに使う
       # @return [Array<MarkedContentReceiver>]

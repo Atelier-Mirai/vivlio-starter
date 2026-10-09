@@ -59,6 +59,9 @@ module VivlioStarter
       # ページに描かれた画像の外接矩形
       ImageBox = Data.define(:page, :left, :bottom, :right, :top)
 
+      # 描いた図形の外接矩形。curved は曲線を、diagonal は斜めの線を含むもの。線で描いた図（回路図・矢印）を見つける手がかり
+      Shape = Data.define(:page, :left, :bottom, :right, :top, :curved, :diagonal, :filled)
+
       # 1 つの MCID に属する文字と画像
       MarkedContent = Data.define(:glyphs, :images)
 
@@ -86,6 +89,9 @@ module VivlioStarter
       #   紙面の推定（LayoutStructure）が線の下の字を $\overline{…}$ に戻す手がかりにする
       attr_reader :page_rules
 
+      # @return [Array<Shape>] 描いた図形すべて（Artifact の中を除く）。線で描いた図の範囲を見つける手がかり
+      attr_reader :page_shapes
+
       # 箇条書きの点とみなす図形の大きさ（pt）
       DOT_SIZE = (1.0..8.0)
       # 細い横線とみなす図形の高さの上限と幅の下限（pt）
@@ -112,11 +118,12 @@ module VivlioStarter
         @page_size = [page.width, page.height]
         @page_dots = []
         @page_rules = []
+        @page_shapes = []
         @path = []
         @subpath_starts = []
       end
 
-      # --- 図形（箇条書きの点を拾うためだけに、塗りつぶした小さな図形の外接矩形を取る） ---
+      # --- 図形（箇条書きの点・細い横線・線で描いた図を見つけるために、描いた図形の外接矩形を取る） ---
 
       def append_rectangle(x, y, width, height)
         @subpath_starts << @path.size
@@ -128,9 +135,17 @@ module VivlioStarter
         @path << device_point(x, y)
       end
 
-      def append_line(x, y) = @path << device_point(x, y)
+      def append_line(x, y)
+        point = device_point(x, y)
+        previous = @path.last
+        @path_diagonal = true if previous && (point.x - previous.x).abs > 0.5 && (point.y - previous.y).abs > 0.5
+        @path << point
+      end
 
-      def append_curved_segment(*coordinates) = coordinates.each_slice(2) { @path << device_point(*it) }
+      def append_curved_segment(*coordinates)
+        @path_curved = true
+        coordinates.each_slice(2) { @path << device_point(*it) }
+      end
 
       alias append_curved_segment_initial_point_replicated append_curved_segment
       alias append_curved_segment_final_point_replicated append_curved_segment
@@ -254,15 +269,16 @@ module VivlioStarter
             @page_dots << ImageBox.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max)
           end
         end
-        record_rule
+        record_rule(filled: true)
       end
 
       # 描いた図形のうち、細い横線のサブパスを page_rules に足す。線引きは線の太さを見ず、通った点の外接矩形で
       # 見る。サブパスごとに見るのは、TeX が二重・三重の否定の線を 1 回の線引きにまとめて描くため（まとめた
       # 外接矩形は 2pt ほどの高さになり、細い横線から外れた）。両端がそろい上下に接するサブパスは 1 本にまとめる。
       # dvipdfmx は 1 本の線を、0.1pt ずつずらした 4 本の線で描く
-      def record_rule
+      def record_rule(filled: false)
         unless @path.empty? || inside_artifact?
+          record_shape(filled)
           rules = ([0] | @subpath_starts).sort.push(@path.size).each_cons(2).filter_map do |from, to|
             points = @path[from...to]
             next if points.empty?
@@ -285,9 +301,18 @@ module VivlioStarter
         end
       end
 
+      def record_shape(filled)
+        xs = @path.map(&:x)
+        ys = @path.map(&:y)
+        @page_shapes << Shape.new(page: @page_number, left: xs.min, bottom: ys.min, right: xs.max, top: ys.max,
+                                  curved: @path_curved || false, diagonal: @path_diagonal || false, filled:)
+      end
+
       def clear_path
         @path.clear
         @subpath_starts.clear
+        @path_curved = false
+        @path_diagonal = false
       end
 
       def record_image(label)

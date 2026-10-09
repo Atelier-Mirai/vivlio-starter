@@ -78,7 +78,8 @@ module VivlioStarter
       def root
         @column_right_edges = {}.compare_by_identity
         @column_left_edges = {}.compare_by_identity
-        page_lines = @pages.each_with_index.map { |page, index| build_lines(visible_glyphs(page, index) - figure_labels(page)) }
+        @figures = @pages.map { page_figures(it) }
+        page_lines = @pages.each_with_index.map { |page, index| build_lines(visible_glyphs(page, index) - figure_labels(page, index)) }
         all_lines = page_lines.flatten
         @body_size = dominant(all_lines.flat_map(&:glyphs).map { it.size.round(1) }) || 10.0
         @body_font = dominant(all_lines.flat_map(&:glyphs).select { (it.size - @body_size).abs < 0.2 }.map { it.font&.name })
@@ -91,7 +92,7 @@ module VivlioStarter
         page_lines = drop_radicals(page_lines)
         blocks = page_lines.each_with_index.flat_map do |lines, index|
           lines, calculations = written_calculations(lines, index)
-          place_images(insert_by_top(page_blocks(attach_rubies(lines)), calculations), @pages[index].page_images)
+          place_images(insert_by_top(page_blocks(attach_rubies(lines)), calculations), @figures[index])
         end
         element(:Document, elements(blocks))
       end
@@ -126,11 +127,18 @@ module VivlioStarter
         end
       end
 
+      # ページの図。埋め込みの画像と、線で描いた図（§4.11）。線で描いた図は、図形を読んだページ（文字の層のある
+      # ページ）だけで探す（OCR したページとテストのページは図形を持たない）
+      def page_figures(page)
+        vector = page.respond_to?(:page_shapes) ? VectorFigures.find(page) : []
+        page.page_images + vector
+      end
+
       # 図の上に描かれた文字（図解の番号や注釈）は図の一部なので、本文から除く。ページを覆う画像
       # （背景・スキャン）の上の文字は本文として残す
-      def figure_labels(page)
+      def figure_labels(page, index)
         width, height = page.page_size
-        figures = page.page_images.select { (it.right - it.left) * (it.top - it.bottom) < width * height * 0.6 }
+        figures = @figures[index].select { (it.right - it.left) * (it.top - it.bottom) < width * height * 0.6 }
         return [] if figures.empty?
 
         page.page_glyphs.select do |glyph|
