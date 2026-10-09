@@ -235,6 +235,7 @@
 
 ### Fixed
 
+- **`vs pdf:read` が、市販の日本語の PDF の多くで本文を丸ごと文字化けさせ、英字の語を消していた**（`pdf-read-structure-spec.md` §2.3・`pdf-read-ocr-improvement-notes.md` §4.24）。ヒラギノや新ゴを、字の番号（CID）を Unicode に戻す表（ToUnicode）なしで埋め込んだ PDF では、pdf-reader が字の番号をそのまま文字とみなし、「MOSFET」が「.04'&5」に、「図」が「ਤ」になっていた。PDF の仕様（ISO 32000-1 9.10.2）どおり、Adobe-Japan1 の書体は Adobe の対応表（`Adobe-Japan1-UCS2`・BSD 3 条項・`THIRD-PARTY-LICENSES.md` に記載）で字に戻し、ToUnicode が一部の字を欠くときも表で補う。あわせて、pLaTeX の英字の書体のように ToUnicode が合字しか持たないときは書体の符号表で読み（英字の語とコードが消えていた）、康熙部首の字（「⾏」）と英字の合字（「ﬀ」）はふつうの字に戻す。題材 23 本のうち 16 本で字が戻り（日本語のほぼすべてが化けていた 11 本を含む）、ほかの 7 本の出力は変わらない。
 - **数式の中の表の横線（`\hline`・`\cline`・列の縦線）が、ビルドした紙面に出ていなかった**（`pdf-read-ocr-improvement-notes.md` §4.23）。MathJax はこれらの線の太さを CSS に任せるが、ビルドは SVG だけを焼き込むので、線の太さが 0 になっていた。SVG に線の太さを直接書き込む。表の線を含む式だけ焼き直す（ほかの式のキャッシュは使い続ける）。
 - **`vs pdf:read` が、筆算（数を縦に並べて横線を引いた計算）を段落やコードにばらしていた**（`pdf-read-structure-spec.md` §4.9・`pdf-read-ocr-improvement-notes.md` §4.23）。横線の幅の中の数の行をまとめ、`$$\begin{array}{r} … \\ \hline … \end{array}$$` に戻す。割り算は `\enclose{longdiv}{…}` と下線で書く。数は等幅で書き、桁を `\phantom{0}` でそろえる。`fundamentals-of-system-design.pdf` の例題 12 個と補数の筆算 2 個が戻り、ほかの文字の層のある 21 本の出力は変わらない。
 - **`vs pdf:read` が、TeX で作った PDF の平方根（√）を落とし、「2√3」を「2 3」にしていた**（`pdf-read-structure-spec.md` §4.8・`pdf-read-ocr-improvement-notes.md` §4.22）。TeX は平方根を根号の字と細い横棒で描くので、横棒が消え、根号は「p」「q」の字として別の行に残っていた。根号の字が左端に接する横棒の下の字の並びを `$\sqrt{3}$` に戻し、入れ子（`$\sqrt{2+\sqrt{2}}$`）と否定の線との組み合わせも扱う。根号の字は本文から除く。`H21-takase.pdf` で平方根が戻り、ほかの文字の層のある 22 本の出力は変わらない。

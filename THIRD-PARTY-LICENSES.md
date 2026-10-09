@@ -443,3 +443,21 @@ SudachiDict は UniDic および NEologd の一部を含みます。
 
 ================================================================================
 ```
+
+## Adobe mapping-resources-pdf（Adobe-Japan1-UCS2）
+- License: BSD 3-Clause
+- Project: https://github.com/adobe-type-tools/mapping-resources-pdf
+- Copyright: Copyright 1990-2023 Adobe. All rights reserved.
+- License Text: https://github.com/adobe-type-tools/mapping-resources-pdf/blob/master/LICENSE.txt (also reproduced at the head of the bundled file)
+
+Notes:
+- `lib/vivlio_starter/cli/pdf/data/Adobe-Japan1-UCS2` is the unmodified `pdf2unicode/Adobe-Japan1-UCS2` CMap (Adobe-Japan1-7, version 10.002). `vs pdf:read` uses it to map character IDs to Unicode for Japanese fonts whose ToUnicode table is missing (as ISO 32000-1 9.10.2 prescribes) or lacks some characters.
+
+### 参考訳（日本語・非公式）
+- ライセンス: BSD 3 条項
+- プロジェクト: https://github.com/adobe-type-tools/mapping-resources-pdf
+- 著作権表示: Copyright 1990-2023 Adobe. All rights reserved.
+- ライセンス本文: https://github.com/adobe-type-tools/mapping-resources-pdf/blob/master/LICENSE.txt（同梱ファイルの先頭にも収録）
+
+補足:
+- `lib/vivlio_starter/cli/pdf/data/Adobe-Japan1-UCS2` は、`pdf2unicode/Adobe-Japan1-UCS2`（Adobe-Japan1-7・版 10.002）を手を加えずに同梱したものです。`vs pdf:read` が、日本語の書体の字の番号（CID）を Unicode に戻すのに使います。ToUnicode を持たない書体（ISO 32000-1 9.10.2 の定める方法）と、ToUnicode が一部の字を欠く書体が対象です。

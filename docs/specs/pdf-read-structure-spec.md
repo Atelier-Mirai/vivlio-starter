@@ -67,6 +67,19 @@ Ruby 3 / RT 3 / H1 1 / Document 1（ほかに NonStruct 3,182）
 
 HexaPDF で構造ツリーを辿るときは、子の配列が `Array` ではなく `HexaPDF::PDFArray` で来る。`is_a?(Array)` で分岐すると根の直下で止まり、「`Document` と `NonStruct` しかない」と誤って結論する（2026-10-04 に一度そう判定した）。
 
+### 2.3 ToUnicode を持たない日本語の書体（2026-10-09）
+
+市販の技術書の PDF には、ヒラギノや新ゴを、字の番号（CID）をそのまま符号にする `Identity-H` で埋め込み、Unicode への対応表（ToUnicode）を付けないものが多い。pdf-reader はそのとき CID をそのまま Unicode とみなすので、本文が丸ごと化ける（「MOSFET」が「.04'&5」、「図」が「ਤ」）。題材 23 本のうち 11 本は日本語のほぼすべてが、ほかに 3 本は一部がこれで化けており、経路 A・B の推定は化けた字の上で動いていた。
+
+PDF の仕様（ISO 32000-1 9.10.2）は、ToUnicode が無く、子の書体の `CIDSystemInfo` が Adobe の既定の字の集まり（Adobe-Japan1 など）なら、その集まりの CID → Unicode の表で字を求めると定めている。HexaPDF（プラグインの OCR の要否の判定）はそうしているが、pdf-reader はしていない。
+
+- **方法**: pdf-reader が書体を作るところ（`PDF::Reader::Font#initialize`）に割り込み、`Type0`・符号が `Identity-H`/`Identity-V`・子の書体が `Adobe`/`Japan1` の書体に表を当てる（`AdobeJapan1Unicode`）。ToUnicode が無ければ表を ToUnicode の代わりにし、あれば ToUnicode で引けなかった字だけを表で補う（`Exercise D` の ToUnicode は「小」「整」「設」「値」などを欠き、poppler も落とす。HexaPDF と同じ順）。Font は元の辞書を持ち歩かないので、後から `CIDSystemInfo` を見られない。
+- **単純な書体の ToUnicode の欠け**: pLaTeX（dvipdfmx）の英字の書体（`SFRM1000` など）は、ToUnicode に合字「ff」の 1 字だけを書き、ほかの字は書体の符号表（Encoding）で読ませる。pdf-reader は ToUnicode があると符号表を見ないので、『実践 Rust Web 開発 5』の「Axum は Tokio（非同期の実行 環境）の上に作られた」から英字の語とコードがすべて消えていた。Type 0 以外の書体では、ToUnicode で引けなかった字だけを符号表で読む（`ToUnicodeFallback`。poppler と同じ）。Type 0 の符号は字形の番号なので、符号表からは読まない。
+- **表**: Adobe の `mapping-resources-pdf` の `pdf2unicode/Adobe-Japan1-UCS2`（BSD 3 条項）を手を加えずに同梱する。`cmap-resources` の `cid2code.txt` は、新ゴ・ヒラギノの `90msp`（比例幅）が使う仮名（CID 12063 以降）に Unicode を持たず、仮名がすべて消えるので使わない（poppler の `pdftotext` も同じ理由で仮名を落とす）。
+- **異体字セレクタ**: 表は斜線の無い「0」などを「0」+ U+FE00 のように書くが、本文の字としては要らないので外す。
+- **康熙部首と合字**: ToUnicode を持つ PDF でも、漢字を康熙部首の字（「行」を U+2F8F「⾏」）に、英字の合字を 1 字（「ff」を U+FB00「ﬀ」）に当てるものがある（`practicaltests-jp-3.pdf` は「行」「一」「方」など 2,500 字あまり）。見た目は同じでも検索や `vs lint` の辞書に掛からないので、字を受け取るところ（`MarkedContentReceiver`）で U+2F00〜2FD5 と U+FB00〜FB06 だけを NFKC で戻す。
+- 日本語以外の字の集まり（Adobe-GB1・CNS1・Korea1・KR）は、題材が無いので扱わない。同じ表が同じリポジトリにあり、足すのは表と名前の対応だけで済む。
+
 ## 3. 経路 A: 構造ツリーから戻す
 
 ### 3.1 要素と Markdown の対応

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'pdf/reader'
+require_relative 'adobe_japan1_unicode'
+require_relative 'to_unicode_fallback'
 
 module VivlioStarter
   module PDF
@@ -34,6 +36,10 @@ module VivlioStarter
 
       # 全角の字（和文・全角の記号）
       WIDE_TEXT = /[\p{Han}\p{Hiragana}\p{Katakana}\u3000-\u30FF\uFF00-\uFFEF]/
+
+      # ToUnicode が漢字を康熙部首の字（⾏ U+2F8F など）に、英字の合字を「ﬀ」のような 1 字に当てる PDF がある
+      # （`practicaltests-jp-3.pdf` など）。紙面の字としてはふつうの漢字・英字なので、NFKC で戻す（pdf-read-structure-spec.md §2.3）
+      COMPATIBILITY_CHARS = /[\u2F00-\u2FD5\uFB00-\uFB06]/
 
       # 名前で見分ける等幅と太字。フォントの記述子に印が無い PDF も多いので、名前でも見る
       MONO_FONT_NAME = /Mono|Code|Console|Courier|Consol|Menlo|Monaco|Inconsolata|HackGen|Cica|Ricty|Typewriter|CMTT|SFMono/i
@@ -188,7 +194,7 @@ module VivlioStarter
         yield
         font = font_info(@state.current_font)
         added = runs(ALL_RUNS)[before..].map do |run|
-          Glyph.new(text: run.text, x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
+          Glyph.new(text: run.text.gsub(COMPATIBILITY_CHARS) { it.unicode_normalize(:nfkc) }, x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:)
         end
         return if added.empty?
 
