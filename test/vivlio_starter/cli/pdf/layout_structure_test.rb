@@ -50,6 +50,36 @@ module VivlioStarter
         MARKDOWN
       end
 
+      # 2 行の柱（本文より小さい字）も落とす。IPSJ の論文は「Vol.2014-ARC-208 No.19」の下に「2014/1/24」を置く
+      def test_should_drop_two_line_running_heads
+        pages = (0..2).map do |page|
+          [text('Vol.2014-ARC-208 No.19', x: 380, y: 806, size: 8), text('2014/1/24', x: 430, y: 798, size: 8),
+           *body_paragraph(y: 700, page:), *body_paragraph(y: 660, page:)]
+        end
+
+        markdown = render(pages)
+
+        refute_includes(markdown, 'Vol.2014')
+        refute_includes(markdown, '2014/1/24')
+        assert_equal(6, markdown.scan('本文の一行目').size)
+      end
+
+      # 英文のピリオドで終わる行は、書体が違って大きくても見出しにしない（OCR の字の層で段落の最後の短い行が大きく出る）
+      def test_should_not_take_line_ending_with_period_for_heading
+        lines = [*body_paragraph(y: 700), text('We call this the storage independence goal.', y: 660, size: 12, font: GOTHIC),
+                 *body_paragraph(y: 630)]
+
+        refute_match(/^#/, render([lines]))
+      end
+
+      # ページの下の図のキャプションは、文末の「。」が無くても次のページの段落につなげない
+      def test_should_not_continue_figure_caption_on_next_page
+        first = [*body_paragraph(y: 700), *body_paragraph(y: 660), text('図 1-1 開発の流れ', x: 150, y: 400)]
+        second = [text('次のページの段落は字下げせずに始まり、ここで終わります。', y: 700, page: 1), *body_paragraph(y: 660, page: 1)]
+
+        assert_includes(render([first, second]), "図 1-1 開発の流れ\n\n次のページの段落")
+      end
+
       # 柱とノンブルは、ページの上下の端で本文から離れ、同じ高さに何ページも出る行として落とす
       def test_should_drop_running_heads_and_page_numbers
         pages = (1..3).map do |number|

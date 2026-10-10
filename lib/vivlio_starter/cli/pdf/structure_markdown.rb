@@ -195,12 +195,15 @@ module VivlioStarter
       # 1 つの段落が 2 つの P に分かれる。段落の頭を 1 字下げる組み方なら、次のページの頭が
       # 下がっていないことで続きと分かる（文末の「。」で切れていてもよい）。下げない組み方なら、
       # 前の段落が文末で終わっていないことで見る。目次の項目（リーダーとページ番号で終わる）は続かない。
-      # 文末の「。」が無いので、次のページの頭の柱（CONTENTS）がつながっていた
+      # 文末の「。」が無いので、次のページの頭の柱（CONTENTS）がつながっていた。図や表のキャプションも続かない
+      # （Rust-tutorial のページの下の「図 9-8 所有権を移す関数の呼び出し」が、次のページの段落の頭につながっていた）
       def continues_on_next_page?(previous, following)
         last_page = glyphs_of(previous).last&.page
         first_page = glyphs_of(following).first&.page
         return false unless last_page && first_page && first_page > last_page
-        return false if glyphs_of(previous).map(&:text).join.match?(LayoutStructure::TOC_ENTRY_END)
+
+        text = glyphs_of(previous).map(&:text).join
+        return false if text.match?(LayoutStructure::TOC_ENTRY_END) || text.match?(LayoutStructure::FIGURE_CAPTION)
         return !indented?(following) if @indent_style
 
         !stringify(previous).strip.match?(SENTENCE_END)

@@ -51,10 +51,14 @@ module VivlioStarter
       CODE_FILE_NAME = %r{\A(?:#{CODE_CAPTION_LABEL})?[\w.\-/]+\.\w+\z}
       # 2 段組みとみなすのに要る、段の境目で左右に分かれる行の数
       COLUMN_MIN_LINES = 3
+      # 柱とみなすページの端のかたまりの行の数の上限（edge_block）
+      MARGIN_BLOCK = 2
       # 2 段の区間に要る、段の境目で左右に分かれる行の数（境目はページ全体の 3 行以上で確かめてある）
       COLUMN_MIN_BAND_LINES = 2
       # キャプションとコードの 1 行目の間（字の大きさの倍）。OCR ではコードの 1 行目が読めず、2 行目までの間になる
       CODE_CAPTION_GAP = 4.5
+      # 図や表のキャプションの頭（「図 9-8」「表 1」「Figure 3」）。番号の後に助詞や読点が続く本文の文（「図 5.4 は、」「図 5–6 の例では」）は除く
+      FIGURE_CAPTION = /\A(?:[図表]|Fig(?:ure|\.)|Table)\s*\d++(?:[.．\-–—‐]\d++)*+(?!\s*[はのにをがでとも、，])/
       # 否定の線の下の字を TeX にするときの置き換え（overline_tex）
       OVERLINE_TEX = { '·' => '\cdot ', '⋅' => '\cdot ', '×' => '\times ', '⊕' => '\oplus ', '↑' => '\uparrow ', '↓' => '\downarrow ',
                        '∨' => '\lor ', '∧' => '\land ', '{' => '\{', '}' => '\}' }.freeze
@@ -517,9 +521,21 @@ module VivlioStarter
       def margin_lines(lines)
         return lines if lines.size <= 1
 
-        top = lines.first.baseline - lines[1].baseline > @pitch * 1.8 ? [lines.first] : []
-        bottom = lines[-2].baseline - lines.last.baseline > @pitch * 1.8 ? [lines.last] : []
-        top + bottom
+        (edge_block(lines) + edge_block(lines.reverse)).uniq
+      end
+
+      # ページの端から MARGIN_BLOCK 行までのかたまりで、次の行から行送りの 1.8 倍より離れるもの。柱は 2 行のこともある
+      # （IPSJ の論文の「Vol.2014-ARC-208 No.19」と、その下の「2014/1/24」）。2 行のかたまりは、どちらも本文より小さい字で、
+      # ほかに 3 行以上あるページに限る（数学クイズの各ページの下の「答え」と答えの字・本文が 2 行だけのページは柱ではない）
+      def edge_block(lines)
+        (1..MARGIN_BLOCK).each do |size|
+          break if size >= lines.size
+          next unless (lines[size - 1].baseline - lines[size].baseline).abs > @pitch * 1.8
+          return lines.first(size) if size == 1 || (lines.size >= size + 3 && lines.first(size).all? { it.size < @body_size * 0.95 })
+
+          break
+        end
+        []
       end
 
       def normalize_running(text) = text.gsub(/\s+/, '').gsub(/\d+/, '#')
@@ -940,7 +956,8 @@ module VivlioStarter
 
       def heading_candidate?(line)
         ratio = line.size / @body_size
-        return false if ratio < HEADING_RATIO || line.text.match?(/[。．]\z/)
+        # 文末で終わる行は見出しにしない。英文のピリオドも見る（Smith の論文の段落の最後の短い行「We call this the storage independence goal.」）
+        return false if ratio < HEADING_RATIO || line.text.match?(/(?:[。．]|[a-z]\.)\z/)
 
         ratio >= PLAIN_HEADING_RATIO || line.glyphs.count(&:bold?) * 2 > line.glyphs.size ||
           dominant(line.glyphs.map { it.font&.name }) != @body_font
