@@ -42,6 +42,11 @@ module VivlioStarter
       LAYOUT_TEXT_PAGE_RATIO = 0.9
       # 自動割り当て章番号の上限（01〜98）
       MAX_AUTO_CHAPTER = 98
+      # 章として解決してよい PDF のファイル名（「10-intro」「heidelberg」）。論文のファイル名（「73-4-218」「Vol.53_09_482」
+      # 「130」）は章の番号・範囲・拡張子と読まれるので、空き番号を割り当てる
+      CHAPTER_FILE_NAME = /\A(?:\d{2}-)?[a-z][a-z0-9_-]*\z/i
+      # 数字で始まる slug の前に付ける語。「01-245」は章の範囲（1〜245 章）と読まれる
+      NUMERIC_SLUG_PREFIX = 'pdf'
 
       # @param input [String] 章トークンまたは PDF ファイルパス
       # @param options [Hash] CLI から渡されるオプション
@@ -106,10 +111,10 @@ module VivlioStarter
       end
 
       # PDF ファイルパスから Entry を生成する
-      # TokenResolver で解決できない場合は新しい章番号を自動割り当てする
+      # 章の名前の形のファイル名だけを TokenResolver で解決し、解決できないときと、ほかの形のときは新しい章番号を自動割り当てする
       def entry_from_pdf_path
         base = normalized_basename(expanded_input_path)
-        entry = resolve_with_single_token(base)
+        entry = resolve_with_single_token(base) if base.match?(CHAPTER_FILE_NAME)
 
         return entry if entry&.valid? && entry.slug
 
@@ -1127,15 +1132,17 @@ module VivlioStarter
         @newline_cleaner ||= VivlioStarter::PDF::MecabNewlineCleaner.new
       end
 
-      # 任意文字列を URL 安全な slug に正規化する（小文字化・記号除去・ハイフン化）
+      # 任意文字列を URL 安全な slug に正規化する（小文字化・記号除去・ハイフン化）。
+      # 数字で始まる slug は、番号と続けると章の範囲や番号に読まれるので、前に語を付ける（「130」→「pdf-245」）
       def normalize_slug(value)
         slug = value.to_s.downcase
                     .tr(' ', '-')
                     .gsub(/[^a-z0-9-]+/, '-')
                     .gsub(/-+/, '-')
                     .gsub(/\A-+|-+\z/, '')
-        slug = 'imported' if slug.empty?
-        slug
+        return 'imported' if slug.empty?
+
+        slug.match?(/\A\d/) ? "#{NUMERIC_SLUG_PREFIX}-#{slug}" : slug
       end
 
       # vivlio-starter-pdf がインストール済みで実行可能かどうかを判定する（結果をキャッシュ）

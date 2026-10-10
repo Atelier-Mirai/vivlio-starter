@@ -3,6 +3,7 @@
 require 'pdf/reader'
 require_relative 'adobe_japan1_unicode'
 require_relative 'to_unicode_fallback'
+require_relative 'predefined_cmap'
 
 module VivlioStarter
   module PDF

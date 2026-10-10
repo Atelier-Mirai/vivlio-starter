@@ -389,6 +389,53 @@ module VivlioStarter
         assert_equal("本文の一行目は和文の等幅の書体で組まれています二行目も同じ書体です。\n", render([lines]))
       end
 
+      # 本文の書体が太字の名前（論文の「FutoMinA101Pro-Bold」）でも、本文を強調や見出しにしない。本文の大きさは字の幅の
+      # 合計で決める（英語の参考文献の小さな字は、字の数では和文の本文を上回る）
+      def test_should_not_take_bold_named_body_font_for_emphasis
+        body = FontInfo.new(name: 'FutoMinA101Pro-Bold', bold: true, mono: false)
+        roman = FontInfo.new(name: 'CMR8', bold: false, mono: false)
+        paragraphs = [700, 660, 620, 580].flat_map do |y|
+          [text('本文の一行目は版面の右端まで届きます', x: 70, y:, size: 9.2, font: body, last_x: 470),
+           text('続きの行で終わります。', y: y - 15, size: 9.2, font: body)]
+        end
+        references = [500, 490, 480].map do |y|
+          text('Sugiyama, M. and Kawanabe, M. Machine Learning in Non-Stationary Environments.', y:, size: 8, font: roman)
+        end
+
+        markdown = render([paragraphs + references])
+
+        assert_includes(markdown, "本文の一行目は版面の右端まで届きます続きの行で終わります。\n")
+        refute_includes(markdown, '**')
+        refute_match(/^#/, markdown)
+      end
+
+      # 本文の書体が等幅の印を持つ和文の書体（Word の論文の MS ゴシック）なら、本文の英数字を行内のコードにしない
+      def test_should_not_take_latin_of_fixed_pitch_body_font_for_code
+        gothic = FontInfo.new(name: 'MSGothic', bold: false, mono: true)
+        lines = [text('AICは1973年に導入された統計モデルの評価の規準で', y: 700, font: gothic),
+                 text('ある。', y: 683, font: gothic)]
+
+        assert_equal("AICは1973年に導入された統計モデルの評価の規準である。\n", render([lines]))
+      end
+
+      # 和文は両端をそろえて組むので、全角の文末で右端より 1 字を超えて手前に止まった行の後で段落を切る。
+      # 次の段落の 1 行目は同じだけ字下げしているので、字下げの比べ方では切れない
+      def test_should_break_paragraph_after_japanese_sentence_end_short_of_right_edge
+        lines = [text('クッキーの有効期限は二十年後に設定されます。', x: 70, y: 700, last_x: 455),
+                 text('テストを実行してすべてのエグザンプルが成功するこ', x: 70, y: 683, last_x: 470),
+                 text('とを確かめてください。', y: 666)]
+
+        assert_equal("クッキーの有効期限は二十年後に設定されます。\n\nテストを実行してすべてのエグザンプルが成功することを確かめてください。\n",
+                     render([lines]))
+      end
+
+      # 本文より大きな字の行（「■コラム: …」の題）は、頭の「■」を箇条書きの点とみなさない
+      def test_should_not_take_large_line_with_square_for_list_item
+        lines = [text('■コラム: テストを書くのが難しいケース', y: 760, size: 12), *body_paragraph(y: 730), *body_paragraph(y: 690)]
+
+        assert_match(/\A■コラム: テストを書くのが難しいケース\n\n本文/, render([lines]))
+      end
+
       # TeX の脚注は、本文より小さい字の行が持ち上げた番号で始まる（「¹注の文」）。同じページの脚注は
       # 番号ごとに分ける
       def test_should_read_footnotes_with_raised_numbers

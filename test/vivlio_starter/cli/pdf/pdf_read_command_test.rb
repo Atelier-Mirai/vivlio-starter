@@ -176,6 +176,29 @@ module VivlioStarter
         assert_equal(markdown, @command.send(:normalize_image_reference_blocks, markdown))
       end
 
+      # 論文のファイル名は章の番号・範囲・拡張子と読まず、空き番号に続けた slug にする。
+      # 「73-4-218」は 73 章に、「130」は「18-245」で 18〜245 章の範囲に、「Vol.53_09_482」は「vol」になっていた
+      def test_entry_from_pdf_path_allocates_number_for_paper_file_names
+        basenames = { "73-4-218" => "18-pdf-73-4-218", "245" => "18-pdf-245", "Vol.53_09_482" => "18-vol-53-09-482" }
+
+        basenames.each do |file, expected|
+          command = PdfReadCommand.new("#{file}.pdf")
+          command.stub :expanded_input_path, "/papers/#{file}.pdf" do
+            command.stub :next_available_number, "18" do
+              assert_equal(expected, command.send(:entry_from_pdf_path).basename, file)
+            end
+          end
+        end
+      end
+
+      # 章の名前の形のファイル名（「97-sample」）は、その章として読む
+      def test_entry_from_pdf_path_resolves_chapter_file_name
+        command = PdfReadCommand.new("97-sample.pdf")
+        command.stub :expanded_input_path, "/sources/97-sample.pdf" do
+          assert_equal("97-sample", command.send(:entry_from_pdf_path).basename)
+        end
+      end
+
       # ensure_unique_output_entry が既存カタログエントリに対して新しい basename を割り当てることを検証する
       def test_ensure_unique_output_entry_allocates_new_basename_for_existing_catalog_entry
         entry = VivlioStarter::CLI::TokenResolver::Entry.new(

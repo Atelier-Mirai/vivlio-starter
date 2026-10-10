@@ -69,6 +69,29 @@ module VivlioStarter
         assert_equal("```\nrequire 'nkf'\nputs 'ok'\n```\n", markdown)
       end
 
+      # 既定の符号表の名前を符号にした書体（Word が書き出した論文の MS ゴシック）は、Shift_JIS の 1〜2 バイトを 1 字として読む。
+      # 半角の字は半分の幅で進むので、続けて描いた数字との間に空白が入らない。pdf-reader のままでは 1 バイトずつ化けた字になる
+      def test_should_read_shift_jis_coded_font
+        markdown = layout_markdown(
+          "BT /F1 12 Tf 72 700 Td <41494382C6834783938367838D8373815B> Tj ET BT /F1 12 Tf 174 700 Td <31393835> Tj ET",
+          fonts: [japanese_font("90ms-RKSJ-H")],
+          others: [descendant_font]
+        )
+
+        assert_equal("AICとエントロピー1985\n", markdown)
+      end
+
+      # UTF-16 の符号表（UniJIS-UTF16-H）は 2 バイトずつ、サロゲートの組は 4 バイトで 1 字として読む
+      def test_should_read_utf16_coded_font
+        markdown = layout_markdown(
+          "BT /F1 12 Tf 72 700 Td <7D718A0865707406D842DFB791CE5BB600200031003900380035> Tj ET",
+          fonts: [japanese_font("UniJIS-UTF16-H")],
+          others: [descendant_font]
+        )
+
+        assert_equal("統計数理𠮷野家 1985\n", markdown)
+      end
+
       private
 
       # 書体を F1・F2…（5 番から）として持ち、その後ろに others（ToUnicode など）を置いた 1 ページの PDF を読む
@@ -82,6 +105,14 @@ module VivlioStarter
           *fonts, *others
         )
         StructureReader.new(::PDF::Reader.new(StringIO.new(pdf))).layout_markdown
+      end
+
+      # MS ゴシックを埋め込まず、ToUnicode も持たない Type 0 の書体（子の書体は 6 番）
+      def japanese_font(encoding) = "<< /Type /Font /Subtype /Type0 /BaseFont /MS-Gothic /Encoding /#{encoding} /DescendantFonts [6 0 R] >>"
+
+      def descendant_font
+        "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /MS-Gothic " \
+          "/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 2 >> /DW 1000 /W [231 389 500] >>"
       end
 
       # 番号 1 から順にオブジェクトを並べ、相互参照表を付ける

@@ -79,10 +79,17 @@ module VivlioStarter
         @column_right_edges = {}.compare_by_identity
         @column_left_edges = {}.compare_by_identity
         @figures = @pages.map { page_figures(it) }
-        page_lines = @pages.each_with_index.map { |page, index| build_lines(visible_glyphs(page, index) - figure_labels(page, index)) }
+        page_glyphs = @pages.each_with_index.map { |page, index| visible_glyphs(page, index) - figure_labels(page, index) }
+        page_lines = page_glyphs.map { build_lines(it) }
         all_lines = page_lines.flatten
-        @body_size = dominant(all_lines.flat_map(&:glyphs).map { it.size.round(1) }) || 10.0
-        @body_font = dominant(all_lines.flat_map(&:glyphs).select { (it.size - @body_size).abs < 0.2 }.map { it.font&.name })
+        # 本文の大きさは、字の数でなく字の幅の合計で決める。和文の論文は英語の参考文献や数式の小さな字が字の数で本文を上回る
+        # （73-4-218 は 8pt の英字が 8,456 字、9.2pt の本文が 6,649 字）。和文の 1 字は英字の 2 字分の幅を取る
+        @body_size = all_lines.flat_map(&:glyphs).group_by { it.size.round(1) }.max_by { |_size, glyphs| glyphs.sum(&:width) }&.first || 10.0
+        body_glyphs = all_lines.flat_map(&:glyphs).select { (it.size - @body_size).abs < 0.2 }
+        @body_font = dominant(body_glyphs.map { it.font&.name })
+        if (plain = plain_body_font(body_glyphs.find { it.font&.name == @body_font }&.font))
+          page_lines = page_glyphs.map { |glyphs| build_lines(glyphs.map { it.font&.name == @body_font ? it.with(font: plain) : it }) }
+        end
         @pitch = line_pitch(page_lines)
         @right_edges = right_edges(page_lines)
 
@@ -100,6 +107,16 @@ module VivlioStarter
       private
 
       # --- Phase: 行を組む ---
+
+      # 本文の書体が太字の名前（論文の本文の「FutoMinA101Pro-Bold」）や等幅の印（Word の論文の本文の MS ゴシック）を
+      # 持つときは、印を外した書体を返す。本文の字がすべて強調（**）や見出しに、英数字がすべて行内のコードになるため。
+      # 等幅は名前が等幅の書体（Courier・HackGen など）なら残す（コードの多い本では、コードの書体が最も多いことがある）
+      def plain_body_font(font)
+        return nil unless font
+
+        mono = font.mono && !font.name.match?(MarkedContentReceiver::MONO_FONT_NAME)
+        font.with(bold: false, mono: font.mono && !mono) if font.bold || mono
+      end
 
       # text_area を指定したときだけ、版面の外の文字を除く（論点 6）。奇数ページは左が綴じ側
       def visible_glyphs(page, index)
@@ -939,6 +956,10 @@ module VivlioStarter
         # 次の行も短い（中央に置いた引用・ファイル名）と上の比べ方では切れないので、文末で終わり
         # ページの本文の右端より手前で止まった行の後でも切る
         return true if previous.text.match?(/[。．.!?！？」』]\z/) && previous.right < right_edge(previous, right) - (size * 2)
+        # 和文は両端をそろえて組むので、段落の途中の行は右端まで届く。全角の文末で、この段落と次の行の右端より 1 字を超えて
+        # 手前に止まれば段落の終わり。ページの本文の右端とは比べない（囲みの中の行は囲みの右端で折り返す）
+        # （『実践 Rust Web 開発 5』の「…保存期間は 30 日です。」は英字の幅の端数で 1.9 字手前に止まり、次の段落とつながった）
+        return true if previous.glyphs.first.font && previous.text.match?(/[。．！？」』]\z/) && previous.right < right - size
 
         column = paragraph + [following] + ahead.select { (it.right - following.right).abs <= 1 && it.x >= following.x - (size * 1.5) }
         # 2 段組みの右の段の行は、段の左端と比べる（段落の行には左の段の行も入っている）
@@ -979,7 +1000,8 @@ module VivlioStarter
       # リストの頭（・や 1.）のあとに少し隙間がある行。本文より小さい字（脚注の「1.」）は除く
       def list_start?(line)
         return true if @ocr_bullets&.key?(line)
-        return false if line.size < @body_size * 0.92
+        # 本文より大きな字の行（「■コラム: …」の題）は箇条書きにしない
+        return false if line.size < @body_size * 0.92 || line.size >= @body_size * HEADING_RATIO
         return true if dot_before?(line)
 
         marker = list_marker_glyphs(line)
