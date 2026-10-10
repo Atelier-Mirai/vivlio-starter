@@ -306,6 +306,29 @@ module VivlioStarter
       end
 
       # 左の段の下で終わらない段落は、右の段の頭へ字下げせずに続く
+      # 左右の段で行の高さがずれるページ（論文の 1 ページ目）は、境目で分かれる行が無く、ページの中では境目が決まらない。
+      # 左右の余白を入れ替えない短い論文なので、ほかのページ（両側を合わせて 3 回）の境目を借り、左右が交互に続く行を
+      # 2 段の区間として左の段から読む
+      def test_should_read_two_columns_with_staggered_baselines_by_borrowed_gutter
+        staggered = [
+          text('左の段の文章は段の右端までしっかりと届', y: 700), text('右の段は一字下げて始まり右端まで届い', x: 280, y: 692),
+          text('いて次の行へと続いていく。段落はこの行', y: 685), text('て次の行へと同じように続いていきます。', x: 270, y: 677),
+          text('の後もまだもう少しだけ長く続いていき、', y: 670), text('右の段の段落はこの行の後も続いていき、', x: 270, y: 662),
+          text('ここで終わります。', y: 655), text('ここで終わります。', x: 270, y: 647)
+        ]
+        aligned = [700, 685, 670, 655].flat_map do |y|
+          [text('二段組みの本文の行は段の右端まで届いて', y:), text('右の段の本文の行も段の右端まで届いて', x: 270, y:)]
+        end
+
+        markdown = render([staggered, aligned, aligned, aligned])
+
+        assert(markdown.start_with?(<<~MARKDOWN.chomp), markdown)
+          左の段の文章は段の右端までしっかりと届いて次の行へと続いていく。段落はこの行の後もまだもう少しだけ長く続いていき、ここで終わります。
+
+          右の段は一字下げて始まり右端まで届いて次の行へと同じように続いていきます。右の段の段落はこの行の後も続いていき、ここで終わります。
+        MARKDOWN
+      end
+
       def test_should_continue_paragraph_from_left_column_to_right_column
         lines = [
           text('左の段の文章は段の右端までしっかりと届', y: 700), text('て、ここで段落が終わります。', x: 270, y: 700),
@@ -434,6 +457,19 @@ module VivlioStarter
         lines = [text('■コラム: テストを書くのが難しいケース', y: 760, size: 12), *body_paragraph(y: 730), *body_paragraph(y: 690)]
 
         assert_match(/\A■コラム: テストを書くのが難しいケース\n\n本文/, render([lines]))
+      end
+
+      # モリサワの数式の書体（MMaCentury-Italic など）の字の上の小さな数字は指数で、同じ番号の脚注があっても参照にしない
+      # （IPSJ の論文の「1/x²」が「1/x[^2-2]」になった）
+      def test_should_not_take_exponent_on_morisawa_math_font_for_footnote_reference
+        italic = FontInfo.new(name: 'MMaCentury-Italic', bold: false, mono: false)
+        body = text('解は', y: 700) + text('x', x: 80, y: 700, font: italic)
+        exponent = Glyph.new(text: '2', x: body.last.right, y: 704, width: 4, size: 6, page: 0, font: BODY)
+        note = [Glyph.new(text: '2', x: 60, y: 83.5, width: 3, size: 6, page: 0, font: BODY), *text('注の文。', x: 64, y: 80, size: 8)]
+
+        markdown = render([[*body, exponent, *text('となる', x: 90, y: 700), *body_paragraph(y: 650), *note]])
+
+        refute_includes(markdown, '[^2]')
       end
 
       # TeX の脚注は、本文より小さい字の行が持ち上げた番号で始まる（「¹注の文」）。同じページの脚注は

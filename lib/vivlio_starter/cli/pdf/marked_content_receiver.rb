@@ -116,6 +116,7 @@ module VivlioStarter
         @page_glyphs = []
         @page_images = []
         @fonts = {}
+        @size_scales = {}
         @page_size = [page.width, page.height]
         @page_dots = []
         @page_rules = []
@@ -220,9 +221,10 @@ module VivlioStarter
         return if font&.name&.match?(DECORATION_FONT_NAME)
 
         rotated = rotated_text? || @state.current_font.vertical_writing?
+        scale = size_scale(@state.current_font)
 
         added = runs(ALL_RUNS)[before..].map do |run|
-          Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size, page: @page_number, font:,
+          Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size * scale, page: @page_number, font:,
                     rotated:)
         end
         return if added.empty?
@@ -231,6 +233,29 @@ module VivlioStarter
         @page_glyphs.concat(added) unless inside_artifact?
         mcid && !inside_artifact? ? @glyphs_by_mcid[mcid].concat(added) : @unmarked_glyphs.concat(added)
       end
+
+      # 字の大きさに掛ける倍率。pdf-reader は字の大きさ（Tf）に書体の行列（FontMatrix）を入れない。dvips がビットマップで
+      # 埋め込んだ TeX の Type 3 の書体は、字形をビットマップの単位で描いて Tf を 0.18 ほどにするので、字の大きさが 0.2pt に
+      # なり、語の中のわずかな空き（「b」と「o」の 0.36pt）を空白とみなして「b orn」「Lab oratory」と読んでいた（heidelberg）。
+      # Type 3 の書体に限り、小文字（無ければ数字）の幅の中央値を字の大きさの半分とみなして大きさを見積もる。見積もりが
+      # Tf の 0.5〜2 倍に収まる書体（ふつうの作りの Type 3）は Tf のまま。小文字も数字も無い書体（記号 1 字）は、
+      # このページで最後に見積もった倍率を使う
+      def size_scale(font)
+        return 1.0 unless font&.subtype == :Type3
+
+        @size_scales[font.object_id] ||= begin
+          widths = [('a'..'z'), ('0'..'9')].lazy.map do |chars|
+            (0..255).filter_map { |code| font.glyph_width_in_text_space(code) if chars.cover?(font.to_utf8(code)) }.select(&:positive?)
+          end.find(&:any?)
+          estimate = widths && (median(widths) * 2)
+          if estimate.nil? then @last_size_scale || 1.0
+          elsif estimate.between?(0.5, 2.0) then 1.0
+          else @last_size_scale = estimate
+          end
+        end
+      end
+
+      def median(values) = values.sort[values.size / 2]
 
       # 字の進む向きが横より縦に近いか。字を描く行列で、原点と 1 進んだ点を比べる。縦書きの書体の字は、
       # pdf-reader が横に進めて位置を出すので行列では分からず、書体の印（vertical_writing?）で見る

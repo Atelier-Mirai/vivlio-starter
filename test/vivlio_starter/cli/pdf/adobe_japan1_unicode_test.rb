@@ -30,12 +30,20 @@ module VivlioStarter
       end
 
       # ToUnicode が漢字を康熙部首の字に、英字の合字を 1 字に当てる PDF は、
-      # ふつうの漢字と英字に戻す。部首の「⾏」（U+2F8F）は見た目が同じでも検索や辞書に掛からない
+      # ふつうの漢字と英字に戻す。部首の「⾏」（U+2F8F）は見た目が同じでも検索や辞書に掛からない（CID 2022 は表でも「行」）
       def test_should_normalize_kangxi_radicals_and_ligatures_from_to_unicode
-        to_unicode = { "04b0" => "2f8f", "0002" => "fb00" }
-        markdown = layout_markdown(ordering: "Japan1", cids: %w[04b0 0002], to_unicode:)
+        to_unicode = { "07e6" => "2f8f", "0002" => "fb00" }
+        markdown = layout_markdown(ordering: "Japan1", cids: %w[07e6 0002], to_unicode:)
 
         assert_equal("行ff\n", markdown)
+      end
+
+      # ToUnicode が表と違う字を康熙部首に当てるときは表で読む。IPSJ の論文は見出しの頭の「◼」（CID 12238）を「⿎」に
+      # 当てていて、NFKC で戻すと「鼓」になった
+      def test_should_prefer_table_when_to_unicode_maps_other_glyph_to_kangxi_radical
+        markdown = layout_markdown(ordering: "Japan1", cids: %w[2fce 07e6], to_unicode: { "2fce" => "2fce", "07e6" => "884c" })
+
+        assert_equal("◼行\n", markdown)
       end
 
       private

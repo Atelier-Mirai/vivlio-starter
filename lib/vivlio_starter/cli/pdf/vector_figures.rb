@@ -31,6 +31,9 @@ module VivlioStarter
       # 図にしない、埋め込みの画像（画面写真）と重なる割合（over_image?）
       IMAGE_OVERLAP = 0.3
       CAPTION = /\A[図表]/
+      SENTENCE_END = /[。．.!?！？」』]\z/
+      # 2 段組みのページで、隣の段の本文の行と同じ高さに並んでもラベルとみなす字数（column_line?）
+      SHORT_LABEL = 6
 
       module_function
 
@@ -60,13 +63,34 @@ module VivlioStarter
         # --- Phase: 近くの短いラベルを含め、並べた図をまとめ、文や見出しを含むものを除く ---
         # ラベルは短い行。隙間で切った行の切れ端ではなく 1 行まるごとで見て、本文の行（body_line?）の切れ端はラベルにしない。式を線で描いた行は字数が減り、式の周りの空きで切れる。
         # 図の両側に置いたラベルの行は、間に図が挟まって空く。回して描いた字（版面の外のつめ）・キャプションもラベルにしない
-        body_lines = text_lines(glyphs).select { body_line?(it, width) }
+        # 2 段組みでは、図のラベル（「U0」「si」）が隣の段の本文の行と同じ高さに並び、本文の行の字とみなされてラベルから外れる。
+        # 2 段組みのページに限り、ページの真ん中をまたぐ隙間で行を分け、段の行らしい切れ端（column_line?）だけを本文の行の字とする
+        # （1 段組みのページでは、式の空きが真ん中をまたぐ本文の行の切れ端がラベルになる）
+        lines = text_lines(glyphs)
+        two_columns = two_column_page?(lines, width)
+        body_lines = lines.flat_map do |line|
+          next [] unless body_line?(line, width)
+
+          two_columns ? split_at_center(line, width).select { column_line?(it) } : [line]
+        end
         long = body_lines.flatten.to_h { [it, true] }.compare_by_identity
         labels = rows.select do |row|
           row.size < TEXT_ROW && row.none? { long[it] || it.rotated } && row.first.size <= body_size * 1.3 && !row.map(&:text).join.match?(CAPTION)
         end
-        figures = merge_near(figures.map { with_labels(it, labels) }, FIGURE_GAP).filter_map { without_body_lines(it, body_lines) }
-        figures.reject { text_box?(it, glyphs, body_size) || over_image?(it, receiver.page_images) }
+        rejection = ->(box) { over_image?(box, receiver.page_images) ? :image : text_rejection(box, glyphs, body_size) }
+        labeled = merge_near(figures.map { with_labels(it, labels) }, FIGURE_GAP).filter_map { without_body_lines(it, body_lines) }
+        # 2 段組みのページで、ラベルを入れて字が多くなりすぎただけの図（「the nearest reference vector」のような長いラベルを
+        # 散らした図）は、ラベルを入れる前の範囲で確かめ直す。ラベルはその範囲の外で本文に残る。文・見出し・コードを含んで
+        # 除いた図（コードと実行結果を矢印でつないだ組）は確かめ直さない（矢印だけが図になる）。1 段組みのページでは確かめ
+        # 直さない（式を線で描いた本の記号の一覧表や、式の空きで切れた本文の行を含む範囲が図になる）
+        labeled.flat_map do |box|
+          case rejection.(box)
+          in nil then [box]
+          in :crowded if two_columns
+            merge_near(figures.select { inside?(box, it) }, FIGURE_GAP).filter_map { without_body_lines(it, body_lines) }.select { rejection.(it).nil? }
+          else []
+          end
+        end
       end
 
       # 図形を、SHAPE_GAP 以内で接するものどうしでつなぐ（左端の順に並べ、届く範囲だけを比べる）
@@ -123,16 +147,16 @@ module VivlioStarter
         end
       end
 
-      # 文（25 字以上の行）・見出し（本文の 1.5 倍以上の字）・コード（2 行以上）・表（20 を超える行）を含むか、字が範囲の 15% を
-      # 超えて占める。
-      # 章の題の飾り枠、吹き出しの文、コードと実行結果を矢印でつないだ組を図にしない
-      def text_box?(box, glyphs, body_size)
+      # 範囲の中の字で図にしない理由。文（25 字以上の行）・見出し（本文の 1.5 倍以上の字）・コード（2 行以上）を含めば :content
+      # （章の題の飾り枠、吹き出しの文、コードと実行結果を矢印でつないだ組）、表（20 を超える行）を含むか字が範囲の 15% を
+      # 超えて占めれば :crowded。図にしてよければ nil
+      def text_rejection(box, glyphs, body_size)
         inside = glyphs.select { (it.x + it.right) / 2 >= box.left && (it.x + it.right) / 2 <= box.right && it.y >= box.bottom && it.y <= box.top }
         area = (box.right - box.left) * (box.top - box.bottom)
         rows = text_rows(inside)
-        inside.any? { it.size >= body_size * HEADING_SCALE } || rows.any? { it.size >= TEXT_ROW } || rows.count { code_row?(it) } >= 2 ||
-          rows.size > LABEL_ROWS ||
-          inside.sum { it.width * it.size } > area * TEXT_RATIO
+        return :content if inside.any? { it.size >= body_size * HEADING_SCALE } || rows.any? { it.size >= TEXT_ROW } || rows.count { code_row?(it) } >= 2
+
+        :crowded if rows.size > LABEL_ROWS || inside.sum { it.width * it.size } > area * TEXT_RATIO
       end
 
       # 埋め込みの画像と重なる図は除く。画面写真の上に引いた注記の枠と矢印（範囲の 3 割を超えて重なる）と、
@@ -156,6 +180,27 @@ module VivlioStarter
       def body_line?(line, page_width)
         extent = line.last.right - line.first.x
         line.size >= 10 && extent >= page_width * 0.4 && line.sum(&:width) >= extent * 0.7
+      end
+
+      # 2 段組みのページか。ページの真ん中で分けた 8 字以上の切れ端のうち、左半分に収まるものの右端と、右半分に収まるものの
+      # 左端が、どちらも 3 つ以上同じ位置（2pt 以内）にそろう（両端そろえの段）。1 段組みのページの行は全幅にわたり、式の空きで
+      # 切れた切れ端の端はそろわない
+      def two_column_page?(lines, page_width)
+        center = page_width / 2
+        parts = lines.flat_map { split_at_center(it, page_width) }.select { it.size >= 8 }
+        rights = parts.select { it.last.right < center }.map { (it.last.right / 2).round }
+        lefts = parts.select { it.first.x > center }.map { (it.first.x / 2).round }
+        [rights, lefts].all? { it.tally.values.max.to_i >= 3 }
+      end
+
+      # 2 段組みの段の行の切れ端か。図のラベル（「U0」「si」「splane」）は SHORT_LABEL 字以下で、文末で終わらない。段落の最後の
+      # 短い行（「追加されません。」）は文末で終わる。段の幅に足りない行（本文の横の吹き出しの文）もラベルにしない
+      def column_line?(part) = part.size > SHORT_LABEL || part.last.text.match?(SENTENCE_END)
+
+      # 1 行を、ページの真ん中をまたぐ字の大きさの 1.5 倍を超える隙間（2 段組みの段の間）で左右に分ける
+      def split_at_center(line, page_width)
+        center = page_width / 2
+        line.slice_when { |a, b| b.x - a.right > a.size * 1.5 && a.right < center && b.x > center }.to_a
       end
 
       # 1 行を、字の大きさの 1.5 倍を超える隙間で分ける（図の中の離れたラベルは別の行）

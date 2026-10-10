@@ -92,6 +92,35 @@ module VivlioStarter
         assert_equal("統計数理𠮷野家 1985\n", markdown)
       end
 
+      # dvips がビットマップで埋め込んだ TeX の Type 3 の書体（字の名前が番号）は、0〜31 番を TeX の並びで読み（本文の書体の
+      # 12 番は合字の「fi」、記号の書体の 0 番は「−」）、字の大きさを小文字や数字の幅から見積もる。字の大きさ（Tf）は 0.18 で、
+      # そのままでは「b」と「o」の 0.36pt の空きを空白とみなして「b orn」になった
+      def test_should_read_tex_bitmap_type3_fonts
+        roman = (12..116).map { it == 12 || [98, 101, 105, 110, 111, 114, 116].include?(it) ? 25 : 0 }
+        markdown = layout_markdown(
+          "BT /F1 0.18 Tf 1 0 0 -1 72 700 Tm [(in\\014nite) -12000 (b) -2000 (orn) -12000] TJ /F2 0.18 Tf (\\0002) Tj ET",
+          fonts: [type3_font(12, roman, [12, 98, 101, 105, 110, 111, 114, 116]), type3_font(0, Array.new(51, 25), [0, 50])]
+        )
+
+        assert_equal("infinite born −2\n", markdown)
+      end
+
+      # Linotype の数式記号の書体（Mathematical Pi）は、ToUnicode より先に字の名前で読む。IPSJ の論文の ToUnicode は π（H9266）を
+      # 「p」に、=（H11005）を名前の末尾の「5」に当てていて、「f(x) = 1/x − a」が「f(x) 5 1/x 2 a」になった
+      def test_should_read_mathematical_pi_by_glyph_names
+        cmap = "begincmap\n1 begincodespacerange\n<00> <FF>\nendcodespacerange\n" \
+               "3 beginbfchar\n<1D> <0032>\n<1E> <0035>\n<1F> <0070>\nendbfchar\nendcmap"
+        markdown = layout_markdown(
+          "BT /F1 12 Tf 72 700 Td (x) Tj /F2 12 Tf <1E1F1D> Tj /F1 12 Tf (a) Tj ET",
+          fonts: ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+                  "<< /Type /Font /Subtype /Type1 /BaseFont /ABCDEF+MathematicalPi-One /FirstChar 29 /LastChar 31 /Widths [600 600 600] " \
+                  "/Encoding << /BaseEncoding /WinAnsiEncoding /Differences [29 /H11002 /H11005 /H9266] >> /ToUnicode 7 0 R >>"],
+          others: ["<< /Length #{cmap.bytesize} >>\nstream\n#{cmap}\nendstream"]
+        )
+
+        assert_equal("x=π−a\n", markdown)
+      end
+
       private
 
       # 書体を F1・F2…（5 番から）として持ち、その後ろに others（ToUnicode など）を置いた 1 ページの PDF を読む
@@ -105,6 +134,14 @@ module VivlioStarter
           *fonts, *others
         )
         StructureReader.new(::PDF::Reader.new(StringIO.new(pdf))).layout_markdown
+      end
+
+      # 字の名前が番号の Type 3 の書体（dvips のビットマップの TeX の書体）。字形の単位で幅を持ち、行列は上下を返す
+      def type3_font(first, widths, codes)
+        differences = codes.flat_map { [it, "/#{it}"] }.join(' ')
+        "<< /Type /Font /Subtype /Type3 /FontMatrix [1 0 0 -1 0 0] /FontBBox [0 0 1 1] /CharProcs << >> " \
+          "/Encoding << /Type /Encoding /Differences [#{differences}] >> " \
+          "/FirstChar #{first} /LastChar #{first + widths.size - 1} /Widths [#{widths.join(' ')}] >>"
       end
 
       # MS ゴシックを埋め込まず、ToUnicode も持たない Type 0 の書体（子の書体は 6 番）

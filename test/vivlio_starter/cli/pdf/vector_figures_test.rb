@@ -57,6 +57,34 @@ module VivlioStarter
         assert_equal("前の段落の文です。\n\n<!-- 画像 -->\n\n後の段落の文です。\n", markdown)
       end
 
+      # 2 段組みのページでは、右の段の図の端のラベル（「U0」）が左の段の本文の行と同じ高さに並んでも、ラベルとして範囲に入れる。
+      # 1 行にまとめると本文の行の字とみなされ、そこから上へ続くラベル（「C1」）の鎖も切れて本文に散らばった（論文 245 の 1 ページ目）
+      def test_should_take_label_beside_other_column_body_line
+        left = "左の段の本文の行は段の右端まで届く長い文です"
+        columns = [760, 745, 730].flat_map { |y| text(left, x: 60, y:) + text("右の段の本文の行も右端まで届く", x: 320, y:) }
+        shapes = [shape(330, 560, 390, 620, curved: true), shape(360, 620, 360, 640), shape(360, 530, 360, 560), shape(300, 590, 330, 590),
+                  shape(395, 590, 430, 590), shape(395, 585, 401, 595, diagonal: true, filled: true)]
+        labels = text(left, x: 60, y: 643) + text("U0", x: 352, y: 643, size: 7.4) + text("C1", x: 352, y: 655, size: 7.4)
+        boxes = VectorFigures.find(page(columns + shapes + labels))
+
+        assert_equal(1, boxes.size)
+        assert_operator(boxes.first.top, :>=, 660, "U0 と、その上の C1 が入る")
+      end
+
+      # 2 段組みのページで、ラベルを入れて字が多くなりすぎただけの図（小さなラベルを多く散らした図）は、ラベルを入れる前の範囲で
+      # 図にする（ラベルは範囲の外で本文に残る）
+      def test_should_keep_figure_without_labels_when_labels_crowd_it_in_two_columns
+        left = "左の段の本文の行は段の右端まで届く長い文です"
+        columns = [760, 745, 730].flat_map { |y| text(left, x: 60, y:) + text("右の段の本文の行も右端まで届く", x: 320, y:) }
+        shapes = [shape(330, 560, 390, 620, curved: true), shape(360, 620, 360, 640), shape(360, 530, 360, 560), shape(300, 590, 330, 590),
+                  shape(395, 590, 430, 590), shape(395, 585, 401, 595, diagonal: true, filled: true)]
+        labels = (0..20).flat_map { |index| text("x#{index % 10}", x: 440, y: 500 + (index * 7), size: 7.4) }
+        boxes = VectorFigures.find(page(columns + shapes + labels))
+
+        assert_equal(1, boxes.size)
+        assert_operator(boxes.first.right, :<=, 432, "ラベルは入らない")
+      end
+
       private
 
       # 円（曲線）・3 本の端子の線・円の右の矢印（線と斜めの線の頭）

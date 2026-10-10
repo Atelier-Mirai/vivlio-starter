@@ -33,8 +33,9 @@ module VivlioStarter
       PLAIN_HEADING_RATIO = 1.4
       # 表の列のあいだとみなす隙間（pt）。和文の両端揃えの字間は 2.5pt、欧文の空白は 3pt ほど
       COLUMN_GAP = 4.0
-      # 数式に使うフォント
-      MATH_FONT_NAME = /\ACM(?:MI|SY|EX)|Symbol|Math|MSAM|MSBM|rsfs|esint/i
+      # 数式に使うフォント。MMa（MMaCentury-Italic・MMaVariable など）はモリサワの数式の書体（IPSJ の論文）。立体の Century
+      # （MMaCentury-Regular）は数式の中の数字のほか表の数字にも使うので除く（罫線の下の年を否定の線と取り違える）
+      MATH_FONT_NAME = /\ACM(?:MI|SY|EX)|Symbol|Math|MSAM|MSBM|rsfs|esint|\AMMa(?!Century[A-Z]?-Regular)/i
       # OCR の字で、同じ段落とみなす字の大きさの差（大きいほうに対する割合）。97 章のスキャンで、段落の途中の
       # 切れ目が 139 から 53 に減った。15〜35% のどこでも文字の一致は変わらない
       OCR_SIZE_TOLERANCE = 0.25
@@ -210,22 +211,26 @@ module VivlioStarter
       end
 
       # ページごとの段の境目。2 段の区間が 2 行しかないページは、ページの中では境目が決まらない（3 行で確かめる）。
-      # 同じ側（偶数・奇数）のページの 3 割以上で境目が見つかる本なら、同じ側で 3 回以上見つかった境目（紙面の型が
-      # いくつかあると位置が違う）を試し、そのページでいちばん多くの行を左右に分けるものを借りる。1 段組みの本の
-      # 数ページだけの段組み（索引など）は、ほかのページへ広げない
+      # 同じ側（偶数・奇数）のページの 3 割以上で境目が見つかる本なら、その側で見つかり、両側を合わせて 3 回以上
+      # 見つかった境目（紙面の型がいくつかあると位置が違う）を試し、そのページでいちばん多くの行を左右に分けるものを
+      # 借りる。数を両側で合わせるのは、左右の余白を入れ替えない短い論文のため（4 ページの論文は奇数ページが 2 枚で、
+      # 題と要旨のある 1 ページ目は自分では境目が決まらない）。1 段組みの本の数ページだけの段組み（索引など）は、
+      # ほかのページへ広げない
       def column_gutters(page_lines)
         gutters = page_lines.map { column_gutter(it) }
+        counts = gutters.compact.tally
         shared = gutters.each_with_index.group_by { |_gutter, page| page % 2 }.transform_values do |pairs|
           found = pairs.map(&:first).compact
-          found.size >= pairs.size * 0.3 ? found.tally.select { |_gutter, count| count >= 3 }.keys : []
+          found.size >= pairs.size * 0.3 ? found.uniq.select { counts[it] >= 3 } : []
         end
         gutters.each_with_index.map do |gutter, page|
-          gutter || shared.fetch(page % 2, []).map { [it, split_count(page_lines[page], it)] }
-                          .select { |_gutter, count| count >= COLUMN_MIN_BAND_LINES }.max_by(&:last)&.first
+          gutter || shared.fetch(page % 2, []).map { [it, banded_count(page_lines[page], it)] }
+                          .select { |_gutter, count| count.positive? }.max_by(&:last)&.first
         end
       end
 
-      def split_count(lines, gutter) = lines.count { column_side(it, gutter).is_a?(Integer) }
+      # 借りた境目で 2 段の区間に入る行の数
+      def banded_count(lines, gutter) = column_bands(lines, lines.map { column_side(it, gutter) }, gutter).sum(&:size)
 
       # 2 段の区間（行の添字の範囲）。:split の行の並びから、上下へ片側の行を足して広げる
       def column_bands(lines, sides, gutter)
@@ -236,11 +241,36 @@ module VivlioStarter
             lines[a].baseline - lines[b].baseline > @pitch * 2.5
         end
         groups = groups.select { it.size >= COLUMN_MIN_BAND_LINES }
-        groups.map do |group|
+        bands = groups.map do |group|
           first, last = group.minmax
           first -= 1 while first.positive? && column_continues?(lines, sides, gutter, first - 1, first)
           last += 1 while last + 1 < lines.size && column_continues?(lines, sides, gutter, last + 1, last)
           first..last
+        end
+        merge_ranges(bands + interleaved_bands(lines, sides))
+      end
+
+      # 左右の段で行の高さ（ベースライン）がずれる紙面では、境目で分かれる行（:split）が 1 行も無い（論文の 1 ページ目は、
+      # 全幅の題と要旨の下で右の段の行が左の段の行の間の高さに並ぶ）。片側だけの行が全幅の行を挟まずに続き、左右とも
+      # COLUMN_MIN_LINES 行以上あって、左右が COLUMN_MIN_LINES 回以上入れ替わるところも 2 段の区間にする
+      def interleaved_bands(lines, sides)
+        one_side = ->(index) { %i[left right].include?(sides[index]) }
+        runs = lines.each_index.chunk_while do |a, b|
+          one_side.(a) && one_side.(b) && lines[a].baseline - lines[b].baseline <= @pitch * 2.5
+        end
+        runs.select do |run|
+          run.count { sides[it] == :left } >= COLUMN_MIN_LINES && run.count { sides[it] == :right } >= COLUMN_MIN_LINES &&
+            run.each_cons(2).count { |a, b| sides[a] != sides[b] } >= COLUMN_MIN_LINES
+        end.map { it.first..it.last }
+      end
+
+      def merge_ranges(ranges)
+        ranges.sort_by(&:first).each_with_object([]) do |range, merged|
+          if merged.any? && range.first <= merged.last.last + 1
+            merged[-1] = merged.last.first..[merged.last.last, range.last].max
+          else
+            merged << range
+          end
         end
       end
 

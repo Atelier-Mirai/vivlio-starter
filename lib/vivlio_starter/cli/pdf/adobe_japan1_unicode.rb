@@ -41,10 +41,21 @@ module VivlioStarter
       end
 
       # ToUnicode を持つのに、一部の字の対応を欠く PDF がある（Exercise D の「小」「整」「設」。poppler も落とす）。
-      # 仕様は ToUnicode を先に見ると定めるので、ToUnicode で引けなかった字だけを表で補う（HexaPDF と同じ）
+      # 仕様は ToUnicode を先に見ると定めるので、ToUnicode で引けなかった字だけを表で補う（HexaPDF と同じ）。
+      # ToUnicode が康熙部首の字（U+2F00〜2FD5）を返し、表の字がそれを NFKC で戻した字と違うときも表を使う。IPSJ の論文は
+      # 見出しの頭の「◼」（CID 12238）と空白（CID 1）を「⿎」に当てていて、受け手が NFKC で戻すと「鼓鼓」になった。
+      # 「行」を「⾏」に当てる PDF（practicaltests）は、表の字と NFKC で戻した字が同じなので ToUnicode のまま
       WithFallback = Data.define(:to_unicode) do
-        def decode(cid) = to_unicode.decode(cid).then { it.empty? ? AdobeJapan1Unicode.decode(cid) : it }
+        def decode(cid)
+          mapped = to_unicode.decode(cid)
+          return AdobeJapan1Unicode.decode(cid) if mapped.empty?
+          return mapped unless mapped.one? && KANGXI_RADICALS.cover?(mapped.first)
+
+          table = AdobeJapan1Unicode.decode(cid)
+          table.empty? || table.pack('U*') == mapped.pack('U*').unicode_normalize(:nfkc) ? mapped : table
+        end
       end
+      KANGXI_RADICALS = (0x2F00..0x2FD5)
 
       # pdf-reader は書体の辞書をページの読み取りの奥で Font にするので、作るところで表を当てる。
       # Font は元の辞書を持ち歩かない（CIDSystemInfo を後から見られない）ため、初期化に割り込むしかない
