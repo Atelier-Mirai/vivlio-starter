@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-10-04 00:42:30'
+generated_at: '2026-10-11 22:50:57'
 terms:
 - term: Amazon
   yomi: Amazon
@@ -101,7 +101,7 @@ terms:
   approved_at: '2026-10-01 01:26:09'
   pattern: "/Enhanced\\ Mode/"
   main:
-  - 94-pdf-read
+  - 13-pdf-read
   updated_at: '2026-10-04 00:05:46'
 - term: GFM
   yomi: GFM
@@ -183,7 +183,7 @@ terms:
   pattern: "/\\bHexaPDF\\b/"
   updated_at: '2026-10-04 00:05:46'
   main:
-  - 94-pdf-read
+  - 13-pdf-read
 - term: Homebrew
   yomi: Homebrew
   flags: i
@@ -346,7 +346,7 @@ terms:
   pattern: "/\\bOCR\\b/"
   updated_at: '2026-10-04 00:05:46'
   main:
-  - 94-pdf-read
+  - 13-pdf-read
 - term: PDF
   yomi: PDF
   flags: ig
@@ -440,7 +440,7 @@ terms:
   approved_at: '2026-10-01 01:26:09'
   pattern: "/Re:VIEW/"
   main:
-  - 95-import
+  - 14-import
   updated_at: '2026-10-04 00:05:46'
 - term: Re:VIEW Starter
   yomi: Re:VIEW Starter
@@ -450,7 +450,7 @@ terms:
   approved_at: '2026-10-02 17:25:38'
   pattern: "/Re:VIEW\\ Starter/"
   main:
-  - 95-import
+  - 14-import
   updated_at: '2026-10-04 00:05:46'
 - term: Rosetta
   yomi: Rosetta
@@ -490,7 +490,7 @@ terms:
   approved_at: '2026-10-04 00:05:46'
   pattern: "/Standard\\ Mode/"
   main:
-  - 94-pdf-read
+  - 13-pdf-read
   updated_at: '2026-10-04 00:05:46'
 - term: TTR
   yomi: TTR
@@ -510,7 +510,7 @@ terms:
   approved_at: '2026-10-01 01:26:09'
   pattern: "/\\bTesseract\\b/"
   main:
-  - 94-pdf-read
+  - 13-pdf-read
   updated_at: '2026-10-04 00:05:46'
 - term: Twemoji
   yomi: Twemoji
@@ -634,7 +634,7 @@ terms:
   pattern: "/アウトライン/"
   updated_at: '2026-10-04 00:05:46'
   main:
-  - 94-pdf-read
+  - 13-pdf-read
 - term: 青コメ
   yomi: あおこめ
   flags: i
@@ -2193,6 +2193,8 @@ scanned_chapters:
 - 00-preface
 - 11-workflow
 - 12-new
+- 13-pdf-read
+- 14-import
 - 21-markdown-tutorial
 - 22-extensions
 - 23-figures
@@ -2213,8 +2215,5 @@ scanned_chapters:
 - 91-command-cheatsheet
 - 92-latex-cheatsheet
 - 93-install
-- 94-pdf-read
-- 95-import
-- 96-further-inspiration
-- 97-sample
+- 94-further-inspiration
 - 99-postface

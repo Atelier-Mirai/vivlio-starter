@@ -15,6 +15,8 @@ CHAPTERS:
   - 【第一部：はじめる】:
       - 11-workflow
       - 12-new
+      - 13-pdf-read
+      - 14-import
   - 【第二部：書く】:
       - 21-markdown-tutorial
       - 22-extensions
@@ -43,10 +45,8 @@ APPENDICES:
   - 91-command-cheatsheet
   - 92-latex-cheatsheet
   - 93-install
-  - 94-pdf-read
-  - 95-import
-  - 96-further-inspiration
-  - 97-sample
+  - 94-further-inspiration
+  - 95-sample
 
 # あとがき
 POSTFACE:

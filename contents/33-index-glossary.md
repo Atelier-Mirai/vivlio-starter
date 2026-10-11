@@ -142,8 +142,8 @@ vs index:auto 21-23,25     # 範囲・複数指定も可
   印刷物の裁断位置や見当合わせを示すマーク。
 
 ## 2. 推奨する語（96語）
-- [m?95] `NEW!` **Re:VIEW Starter** (Re:VIEW Starter) - スコア: 413.8
-  - 95-import: Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、vs import を使います。
+- [m?14] `NEW!` **Re:VIEW Starter** (Re:VIEW Starter) - スコア: 413.8
+  - 14-import: Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、vs import を使います。
 
 ## 3. 残りの語（353語）
 - [m?21] `NEW!` **fancy list** (fancy list) - スコア: 315.4
