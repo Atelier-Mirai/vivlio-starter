@@ -92,6 +92,76 @@ module VivlioStarter
         end
       end
 
+      # 変更先の番号をほかの章が使っていれば止める。変更先とまったく同じ名前の章しか見ていなかったので、
+      # 20 番の章があっても 31-beta を 20-gamma に変えられた
+      def test_rename_refuses_a_number_used_by_another_chapter
+        within_temp_dir do
+          executor = build_rename_executor(force: true)
+          setup_single_chapter_fixture('31-beta')
+          setup_single_chapter_fixture('20')
+
+          out, = capture_io { assert_raises(SystemExit) { executor.call('31-beta', '20-gamma') } }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '20-gamma.md'))
+          assert_includes out, '20 番は 20 が使っています'
+          assert_includes out, '→ vs rename 31-beta 01-gamma'
+        end
+      end
+
+      # 変更先の名前をほかの章が使っていれば、番号が違っても止める
+      def test_rename_refuses_a_name_used_by_another_chapter
+        within_temp_dir do
+          executor = build_rename_executor(force: true)
+          setup_single_chapter_fixture('31-beta')
+          setup_single_chapter_fixture('11-alpha')
+
+          out, = capture_io { assert_raises(SystemExit) { executor.call('31-beta', '32-alpha') } }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
+          assert_includes out, 'スラッグ alpha は 11-alpha が使っています'
+          assert_includes out, '→ vs rename 31-beta 32-alpha-2'
+        end
+      end
+
+      # 変更先の名前が決まりの外（点を含む）なら止め、直した名前のコマンドを示す
+      def test_rename_refuses_a_name_outside_the_rule
+        within_temp_dir do
+          executor = build_rename_executor(force: true)
+          setup_single_chapter_fixture('31-beta')
+
+          out, = capture_io { assert_raises(SystemExit) { executor.call('31-beta', '32-beta.v2') } }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
+          assert_includes out, '→ vs rename 31-beta 32-beta-v2'
+        end
+      end
+
+      # 大文字と `_` は整えて変える
+      def test_rename_normalizes_capitals_and_underscores
+        within_temp_dir do
+          executor = build_rename_executor(force: true)
+          setup_single_chapter_fixture('31-beta')
+
+          capture_io { executor.call('31-beta', '32-Beta_Two') }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '32-beta-two.md'))
+        end
+      end
+
+      # 既にある重なりを解く rename は止めない（番号 11 が重なった 11-old の名前だけを変える）
+      def test_rename_allows_resolving_an_existing_duplicate
+        within_temp_dir do
+          executor = build_rename_executor(force: true)
+          setup_single_chapter_fixture('11-old')
+          setup_single_chapter_fixture('11-alpha')
+
+          capture_io { executor.call('11-old', '12-old') }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '12-old.md'))
+        end
+      end
+
       # 引数なしで実行した際に章番号が再割り当てされることを確認
       def test_rename_without_arguments_performs_renumber
         within_temp_dir do

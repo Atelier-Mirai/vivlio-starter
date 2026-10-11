@@ -49,6 +49,7 @@
 require 'fileutils'
 require_relative 'build/pdf_merger'
 require_relative 'build/cmyk_converter'
+require_relative 'chapter_names'
 require_relative 'cover'
 
 module VivlioStarter
@@ -125,7 +126,7 @@ module VivlioStarter
         ensure_names_present!(names)
 
         resolver = TokenResolver::Resolver.new
-        normalized_names = normalize_name_inputs(names, resolver)
+        normalized_names = enforce_name_rule!(normalize_name_inputs(names, resolver))
         entries = resolver.resolve(normalized_names)
 
         # 1. 不正な形式をチェック
@@ -143,7 +144,16 @@ module VivlioStarter
           exit 1
         end
 
-        # 3. すべてクリアしたら、一括で作成
+        # 3. 番号と名前の重なりをチェック。同じ番号・同じ名前の別の章があると、
+        #    vs build 97・vs build sample・章のラベル ID（@ch-sample）がどちらを指すか決められない
+        conflicts = name_conflicts(entries)
+        if conflicts.any?
+          Common.log_error('エラー: 以下の章は、番号かスラッグが既に使われています:')
+          conflicts.each { Common.log_error("  - #{it}") }
+          exit 1
+        end
+
+        # 4. すべてクリアしたら、一括で作成
         errors = false
         created = []
         entries.each do |entry|
@@ -1242,6 +1252,49 @@ module VivlioStarter
           File.basename(path, '.md')[/\A(\d{2})/, 1]
         end
         (catalog_numbers + markdown_numbers).uniq
+      end
+
+      # 章の名前を決まりの形（ChapterNames::VALID_BASENAME）に整える。大文字と `_` は整えて知らせ、
+      # 点・空白・日本語を含む名前は作らずに止める。点を含む名前は章の解決が別の章を指し、ビルドを壊していた
+      # @return [Array<String>] 整えた名前
+      def enforce_name_rule!(names)
+        taken = ChapterNames.existing_basenames
+        rejected = []
+        fixed = names.map do |name|
+          base = strip_token_basename(name)
+          normalized = ChapterNames.normalize(base)
+          rejected << base unless normalized
+          Common.log_info("[create] #{base} -> #{normalized}") if normalized && normalized != base
+          normalized || base
+        end
+        return fixed if rejected.empty?
+
+        Common.log_error('エラー: 以下の名前は章の名前に使えません（2 桁の番号と、英小文字・数字・ハイフンのスラッグで付けます）:')
+        rejected.each do |base|
+          suggested = ChapterNames.suggestion(base, taken)
+          Common.log_error("  - #{base}#{" → vs create #{suggested}" if suggested}")
+        end
+        exit 1
+      end
+
+      # 作ろうとする章のうち、番号か名前を別の章（contents/ の原稿か catalog.yml の章）が使っているもの。
+      # 一度に作る章どうしの重なりも数える。重ならない番号・名前で打ち直すコマンドを添える
+      # （勧めた名前どうしも重ならないよう、reserved に溜める）
+      # @return [Array<String>] 知らせる行
+      def name_conflicts(entries)
+        taken = ChapterNames.existing_basenames
+        reserved = []
+
+        entries.filter_map do |entry|
+          problems = ChapterNames.conflicts(entry.basename, taken)
+          taken << entry.basename
+          next if problems.empty?
+
+          suggested = ChapterNames.suggestion(entry.basename, taken + reserved)
+          reserved << suggested if suggested
+          hint = suggested ? " → vs create #{suggested}" : ''
+          "#{entry.basename}（#{problems.join('、')}）#{hint}"
+        end
       end
 
       def next_available_number!(used_numbers)

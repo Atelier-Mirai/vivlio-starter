@@ -177,7 +177,7 @@ module VivlioStarter
       end
 
       # 論文のファイル名は章の番号・範囲・拡張子と読まず、空き番号に続けた slug にする。
-      # 「73-4-218」は 73 章に、「130」は「18-245」で 18〜245 章の範囲に、「Vol.53_09_482」は「vol」になっていた
+      # 「73-4-218」は 73 章に、「245」は「18-245」で 18〜245 章の範囲に、「Vol.53_09_482」は「vol」になっていた
       def test_entry_from_pdf_path_allocates_number_for_paper_file_names
         basenames = { "73-4-218" => "18-pdf-73-4-218", "245" => "18-pdf-245", "Vol.53_09_482" => "18-vol-53-09-482" }
 
@@ -199,91 +199,82 @@ module VivlioStarter
         end
       end
 
-      # ensure_unique_output_entry が既存カタログエントリに対して新しい basename を割り当てることを検証する
-      def test_ensure_unique_output_entry_allocates_new_basename_for_existing_catalog_entry
-        entry = VivlioStarter::CLI::TokenResolver::Entry.new(
-          number: "10",
-          slug: "three-elements-pages",
-          kind: :chapter,
-          label: "歴史篇",
-          path: "contents/10-three-elements-pages.md",
-          exists: true,
-          in_catalog: true,
-          valid: true
-        )
+      # sources/ の PDF は、打ったとおりの名前で探す。小文字にした slug だけで探すと、大文字と小文字を
+      # 区別するファイルシステム（Linux・WSL）で見つからず、案内にも実在しない名前が出ていた
+      def test_should_look_up_sources_by_the_name_as_typed
+        in_project do
+          File.write('sources/Vol.53_09_482.pdf', '')
+          command = PdfReadCommand.new('Vol.53_09_482.pdf')
 
-        @command.stub :markdown_exists?, true do
-          @command.stub :next_available_basename, "11-three-elements-pages" do
-            resolved = @command.send(:ensure_unique_output_entry, entry)
-
-            assert_equal("11-three-elements-pages", resolved.basename)
-            refute(resolved.exists?)
-            refute(resolved.in_catalog?)
-          end
+          assert_equal('sources/Vol.53_09_482.pdf', command.send(:determine_pdf_path, chapter_entry('01-vol.53_09_482')))
         end
       end
 
-      # ensure_unique_output_entry が既存の未カタログエントリに対して新しい basename を割り当てることを検証する
-      def test_ensure_unique_output_entry_allocates_new_basename_for_existing_uncatalogued_entry
-        entry = VivlioStarter::CLI::TokenResolver::Entry.new(
-          number: "10",
-          slug: "three-elements-pages",
-          kind: :chapter,
-          label: "UNCATALOGED",
-          path: "contents/10-three-elements-pages.md",
-          exists: true,
-          in_catalog: false,
-          valid: true
-        )
+      # 大文字と `_` は、vs create と同じく整えて読む（Hajimete_no_Rust.pdf）
+      def test_should_normalize_capitals_and_underscores_in_chapter_name
+        in_project do
+          resolved = @command.send(:ensure_chapter_name!, chapter_entry('01-Hajimete_no_Rust'), 'sources/Hajimete_no_Rust.pdf')
 
-        @command.stub :markdown_exists?, true do
-          @command.stub :next_available_basename, "11-three-elements-pages" do
-            resolved = @command.send(:ensure_unique_output_entry, entry)
-
-            assert_equal("11-three-elements-pages", resolved.basename)
-            refute(resolved.exists?)
-            refute(resolved.in_catalog?)
-          end
+          assert_equal('01-hajimete-no-rust', resolved.basename)
         end
       end
 
-      # call が既存 Markdown に対して自動採番を行うことを検証する
-      def test_call_auto_numbers_for_chapter_token_input_when_markdown_exists
-        entry = VivlioStarter::CLI::TokenResolver::Entry.new(
-          number: "10",
-          slug: "three-elements-ocr",
-          kind: :chapter,
-          label: "歴史篇",
-          path: "contents/10-three-elements-ocr.md",
-          exists: true,
-          in_catalog: true,
-          valid: true
-        )
-        new_entry = VivlioStarter::CLI::TokenResolver::Entry.new(
-          number: "11",
-          slug: "three-elements-ocr",
-          kind: :chapter,
-          label: nil,
-          path: "contents/11-three-elements-ocr.md",
-          exists: false,
-          in_catalog: false,
-          valid: true
-        )
-        result = { markdown_path: "contents/11-three-elements-ocr.md", pages: 7 }
-
-        @command.stub :resolve_entry_and_pdf, [entry, "sources/three-elements-ocr.pdf"] do
-          @command.stub :ensure_unique_output_entry, new_entry do
-            @command.stub :add_catalog_entry_if_needed, nil do
-              @command.stub :resolved_mode, :enhanced do
-                @command.stub :convert_enhanced, result do
-                  resolved = @command.call
-
-                  assert_equal("contents/11-three-elements-ocr.md", resolved[:markdown_path])
-                  assert_equal("11-three-elements-ocr", resolved[:entry].basename)
-                end
-              end
-            end
+      # 点を含む名前は作らない。章の解決が「01-vol」と読み、全体ビルドが Errno::ENOENT で止まっていた。
+      # PDF の名前を直した名前に変えて読み直すコマンドを示す
+      def test_should_refuse_a_chapter_name_with_a_dot
+        in_project do
+          error = assert_raises(PdfReadCommand::InvalidInputError) do
+            @command.send(:ensure_chapter_name!, chapter_entry('01-vol.53_09_482'), 'sources/Vol.53_09_482.pdf')
           end
+
+          assert_includes(error.message, '01-vol.53_09_482 は章の名前に使えません')
+          assert_includes(error.message, '→ mv sources/Vol.53_09_482.pdf sources/01-vol-53-09-482.pdf')
+          assert_includes(error.message, '→ vs pdf:read 01-vol-53-09-482')
+        end
+      end
+
+      # 同じ章が既にあれば止める。別の番号でもう一章作り、スラッグの重なった章を増やしていた
+      def test_should_stop_when_the_chapter_already_exists
+        in_project do
+          File.write('contents/97-sample.md', "# sample\n")
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) do
+            @command.send(:ensure_chapter_name!, chapter_entry('97-sample'), 'sources/97-sample.pdf')
+          end
+
+          assert_includes(error.message, 'contents/97-sample.md は既にあります')
+          assert_includes(error.message, '→ vs delete 97-sample')
+          assert_includes(error.message, '→ 残すなら名前を変える: vs rename 97-sample 90-sample-old')
+        end
+      end
+
+      # 番号を別の章が使っていれば止める（vs pdf:read 97-sample-ocr が 97-sample と同じ番号で作っていた）。
+      # sources/ の外の PDF は、写して読み直すコマンドにする
+      def test_should_refuse_a_number_used_by_another_chapter
+        in_project do
+          File.write('contents/97-sample.md', "# sample\n")
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) do
+            @command.send(:ensure_chapter_name!, chapter_entry('97-sample-ocr'), '/scans/97-sample-ocr.pdf')
+          end
+
+          assert_includes(error.message, '97-sample-ocr は作れません（97 番は 97-sample が使っています）')
+          assert_includes(error.message, '→ cp /scans/97-sample-ocr.pdf sources/90-sample-ocr.pdf')
+          assert_includes(error.message, '→ vs pdf:read 90-sample-ocr')
+        end
+      end
+
+      # スラッグを別の章が使っていれば、番号が違っても止める
+      def test_should_refuse_a_slug_used_by_another_chapter
+        in_project do
+          File.write('contents/97-sample.md', "# sample\n")
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) do
+            @command.send(:ensure_chapter_name!, chapter_entry('01-sample'), 'sources/sample.pdf')
+          end
+
+          assert_includes(error.message, 'スラッグ sample は 97-sample が使っています')
+          assert_includes(error.message, '→ vs pdf:read 01-sample-2')
         end
       end
 
@@ -508,7 +499,7 @@ module VivlioStarter
         registered = []
 
         @command.stub :resolve_entry_and_pdf, [entry, 'sources/scan.pdf'] do
-          @command.stub :ensure_unique_output_entry, entry do
+          @command.stub :ensure_chapter_name!, entry do
             @command.stub :add_catalog_entry_if_needed, ->(e) { registered << e } do
               @command.stub :resolved_mode, :standard do
                 @command.stub :convert_standard, ->(*) { raise PdfReadCommand::Error, '文字がありません' } do
@@ -731,6 +722,24 @@ module VivlioStarter
       def write_pdf(path, &)
         require 'prawn'
         Prawn::Document.generate(path, page_size: 'A4', margin: 0, &)
+      end
+
+      # contents/ と sources/ を備えた一時プロジェクトで実行する
+      def in_project(&)
+        Dir.mktmpdir('vs-pdf-read') do |dir|
+          Dir.chdir(dir) do
+            FileUtils.mkdir_p(%w[config contents sources])
+            yield
+          end
+        end
+      end
+
+      def chapter_entry(basename)
+        number, slug = basename.match(/\A(\d+)[-_](.+)\z/).captures
+        VivlioStarter::CLI::TokenResolver::Entry.new(
+          number:, slug:, kind: :chapter, label: 'NEW', path: "contents/#{basename}.md",
+          exists: false, in_catalog: false, valid: true
+        )
       end
     end
   end

@@ -77,6 +77,64 @@ module VivlioStarter
           assert_equal %w[01 02 03], result.map(&:number)
         end
 
+        # 番号が同じ別の章を、目次から黙って外さない。外すと全体ビルドがその章を抜いて組み上がり、
+        # vs preflight も「未登録の原稿」と誤って案内していた（重なりは DuplicateNumberCheck が止める）
+        def test_keeps_both_chapters_sharing_a_number
+          resolver = build_resolver_with_catalog(%w[97-sample 97-sample-ocr])
+
+          result = resolver.resolve([])
+
+          assert_equal %w[97-sample 97-sample-ocr], result.map(&:basename)
+        end
+
+        # 同じ章を二度書いた行は 1 章にまとめる
+        def test_merges_the_same_chapter_listed_twice
+          resolver = build_resolver_with_catalog(%w[01-a 01-a 02-b])
+
+          result = resolver.resolve([])
+
+          assert_equal %w[01-a 02-b], result.map(&:basename)
+        end
+
+        # 番号だけの指定は、番号の重なった章があると、どちらを指すか決められないので解決しない
+        def test_does_not_resolve_a_number_shared_by_two_chapters
+          resolver = build_resolver_with_catalog(%w[97-sample 97-sample-ocr])
+
+          entry = resolver.resolve(['97']).first
+
+          refute_predicate entry, :valid?
+        end
+
+        # catalog.yml に無く contents/ に同じ番号の原稿が 2 つあるときも同じ
+        def test_does_not_resolve_a_number_shared_by_two_files
+          resolver = build_resolver_with_catalog(['01-a'])
+          contents_dir = File.join(File.dirname(resolver.send(:catalog_path)), 'contents')
+          File.write(File.join(contents_dir, '05-x.md'), '# x')
+          File.write(File.join(contents_dir, '05-y.md'), '# y')
+
+          entry = resolver.resolve(['5']).first
+
+          refute_predicate entry, :valid?
+        end
+
+        # 名前だけの指定は、名前が同じ章が 2 つあれば解決しない。片方（先に載っている 01-sample）を黙って選んでいた
+        def test_does_not_resolve_a_name_shared_by_two_chapters
+          resolver = build_resolver_with_catalog(%w[01-sample 97-sample])
+
+          entry = resolver.resolve(['sample']).first
+
+          refute_predicate entry, :valid?
+        end
+
+        # 除く拡張子は章のファイルのものだけ。点から後ろを何でも拡張子とみなすと、`01-vol.53_09_482` を
+        # `01-vol` と読み、存在しない原稿を開いてビルドが異常終了していた
+        def test_keeps_dots_that_are_not_file_extensions
+          resolver = build_resolver_with_catalog(['01-vol.53_09_482'])
+
+          assert_equal ['01-vol.53_09_482'], resolver.resolve(['01-vol.53_09_482']).map(&:basename)
+          assert_equal ['01-vol.53_09_482'], resolver.resolve(['01-vol.53_09_482.md']).map(&:basename)
+        end
+
         def test_loads_nested_yaml_structure
           Dir.mktmpdir do |dir|
             catalog_path = File.join(dir, 'catalog.yml')

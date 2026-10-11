@@ -33,6 +33,7 @@
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'chapter_names'
 require_relative 'chapter_rename'
 require_relative 'clean'
 require_relative 'token_resolver'
@@ -354,8 +355,10 @@ module VivlioStarter
           old_md = markdown_path_for(old_number, old_slug)
         end
 
+        new_slug = enforce_name_rule!(build_basename(old_number, old_slug), new_number, new_slug)
         new_md = markdown_path_for(new_number, new_slug)
         validate_markdown_paths(old_md, new_md)
+        refuse_name_conflicts!(build_basename(old_number, old_slug), build_basename(new_number, new_slug))
 
         # 実行予定は既定ログレベルで見せてから確認を求める（何が変わるか分からないまま
         # y/N に答えることにならないように）
@@ -366,6 +369,37 @@ module VivlioStarter
         confirm_or_exit('章名・番号変更') unless options[:force]
 
         execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
+      end
+
+      # 変更先の名前を決まりの形（ChapterNames::VALID_BASENAME）に整え、整えたスラッグを返す。
+      # 大文字と `_` は整えて知らせ（番号だけ変えるとき、元のスラッグの大文字も直る）、
+      # 点・空白・日本語を含む名前は止めて、直した名前のコマンドを示す
+      def enforce_name_rule!(old_basename, new_number, new_slug)
+        new_basename = build_basename(new_number, new_slug)
+        normalized = ChapterNames.normalize(new_basename)
+        if normalized
+          Common.log_info("変更先の名前を整えます: #{new_basename} -> #{normalized}") if normalized != new_basename
+          return ChapterNames.slug_of(normalized)
+        end
+
+        suggested = ChapterNames.suggestion(new_basename, ChapterNames.existing_basenames, except: old_basename)
+        Common.log_error("変更先の #{new_basename} は章の名前に使えません（2 桁の番号と、英小文字・数字・ハイフンのスラッグで付けます）",
+                         detail: suggested && "→ vs rename #{ChapterNames.shell_word(old_basename)} #{suggested}")
+        exit 1
+      end
+
+      # 変更先の番号か名前を、ほかの章（contents/ の原稿か catalog.yml の章）が使っていれば止める。
+      # 上の in_catalog の確かめは、変更先とまったく同じ名前の章しか見ないので、`vs rename 97-a 98-b` は
+      # 98-c があっても通り、`vs rename 98-x 98-sample` は 97-sample があっても通っていた
+      def refuse_name_conflicts!(old_basename, new_basename)
+        taken = ChapterNames.existing_basenames
+        problems = ChapterNames.conflicts(new_basename, taken, except: old_basename)
+        return if problems.empty?
+
+        suggested = ChapterNames.suggestion(new_basename, taken, except: old_basename)
+        Common.log_error("変更先の #{new_basename} は使えません（#{problems.join('、')}）",
+                         detail: suggested && "→ vs rename #{old_basename} #{suggested}")
+        exit 1
       end
 
       # 新しい章指定を Entry 化し、必要なら仮想 Entry を生成する

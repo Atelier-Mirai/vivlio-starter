@@ -156,6 +156,30 @@ module VivlioStarter
         end
       end
 
+      # 番号の重なった章を番号で指したときは、「見つかりません（もしかして片方）」と重ねて言わない。
+      # 重なりは DuplicateNumberCheck が振り直すコマンドを添えて止める
+      def test_should_leave_a_duplicated_number_to_duplicate_number_check
+        with_project do
+          write_content('11-other')
+          File.write('config/catalog.yml',
+                     "PREFACE:\nCHAPTERS:\n  - 11-install\n  - 11-other\n  - 12-tutorial\nAPPENDICES:\nPOSTFACE:\n")
+
+          assert_empty validate(%w[11])
+          assert_empty validate(%w[11-12])
+        end
+      end
+
+      # 名前の重なった章を名前で指したときも同じ。重なりは DuplicateSlugCheck が止める
+      def test_should_leave_a_duplicated_name_to_duplicate_slug_check
+        with_project do
+          write_content('31-install')
+          File.write('config/catalog.yml',
+                     "PREFACE:\nCHAPTERS:\n  - 11-install\n  - 12-tutorial\n  - 31-install\nAPPENDICES:\nPOSTFACE:\n")
+
+          assert_empty validate(%w[install])
+        end
+      end
+
       # catalog.yml 未登録は綴りが合っているので、候補ではなく登録を促す
       def test_should_not_suggest_for_uncataloged_chapter
         with_project do

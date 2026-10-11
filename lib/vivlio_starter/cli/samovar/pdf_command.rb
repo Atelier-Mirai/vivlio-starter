@@ -215,11 +215,10 @@ module VivlioStarter
 
           pdf_reader.call
           0
-        rescue Commands::PdfReadCommand::InvalidInputError => e
-          Common.log_error("[pdf:read] #{e.message}")
-          1
-        rescue Commands::PdfReadCommand::MissingPdfError => e
-          Common.log_error("[pdf:read] #{e.message}")
+        rescue Commands::PdfReadCommand::InvalidInputError, Commands::PdfReadCommand::MissingPdfError => e
+          # 2 行目以降（探したパス・打ち直すコマンド）は字下げして、エラーの本文と見分けられるようにする
+          headline, *detail = e.message.lines(chomp: true)
+          Common.log_error("[pdf:read] #{headline}", detail: detail.empty? ? nil : detail.join("\n"))
           1
         rescue StandardError => e
           Common.log_error("[pdf:read] 実行中にエラー: #{e.message}")

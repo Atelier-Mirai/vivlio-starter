@@ -13,6 +13,7 @@ require_relative 'image_matcher'
 
 require_relative '../common'
 require_relative '../token_resolver'
+require_relative '../chapter_names'
 require_relative '../build/catalog_updater'
 
 module VivlioStarter
@@ -43,7 +44,7 @@ module VivlioStarter
       # 自動割り当て章番号の上限（01〜98）
       MAX_AUTO_CHAPTER = 98
       # 章として解決してよい PDF のファイル名（「10-intro」「heidelberg」）。論文のファイル名（「73-4-218」「Vol.53_09_482」
-      # 「130」）は章の番号・範囲・拡張子と読まれるので、空き番号を割り当てる
+      # 「245」）は章の番号・範囲・拡張子と読まれるので、空き番号を割り当てる
       CHAPTER_FILE_NAME = /\A(?:\d{2}-)?[a-z][a-z0-9_-]*\z/i
       # 数字で始まる slug の前に付ける語。「01-245」は章の範囲（1〜245 章）と読まれる
       NUMERIC_SLUG_PREFIX = 'pdf'
@@ -66,7 +67,7 @@ module VivlioStarter
         raise InvalidInputError, 'PDF を指定してください' if input.empty?
 
         entry, pdf_path = resolve_entry_and_pdf
-        entry = ensure_unique_output_entry(entry)
+        entry = ensure_chapter_name!(entry, pdf_path)
         mode = resolved_mode
         log_enhanced_install_hint if mode == :standard
         check_images_from!(mode)
@@ -183,16 +184,59 @@ module VivlioStarter
         raise InvalidInputError, 'slug を含む章トークンを指定してください (例: 10-foo)'
       end
 
-      # 出力先 Markdown が既存なら、上書きを避けて新しい章番号を割り当てる
-      def ensure_unique_output_entry(entry)
-        return entry unless markdown_exists?(entry.basename)
+      # 読み込み先の章の名前を決まりの形（ChapterNames::VALID_BASENAME）に整え、ほかの章と重ならないか確かめる
+      # （pdf-read-file-naming-spec.md §4.1・§5・§7）。大文字と `_` は整えて知らせる（「Hajimete_no_Rust」→
+      # 「hajimete-no-rust」）。次のときは章を作らずに止め、そのまま打てるコマンドを示す。
+      # - 決まりの形にできない（点を含む「01-vol.53_09_482」は、章の解決が「01-vol」と読み、ビルドを壊していた）
+      # - 同じ章が既にある。これまでは別の番号でもう一章作り、スラッグの重なった章が増えていた
+      # - 番号かスラッグを別の章が使っている（`vs pdf:read 97-sample-ocr` が 97-sample と同じ番号で作っていた）
+      # @return [CLI::TokenResolver::Entry]
+      def ensure_chapter_name!(entry, pdf_path)
+        taken = CLI::ChapterNames.existing_basenames
+        normalized = CLI::ChapterNames.normalize(entry.basename)
+        unless normalized
+          raise InvalidInputError, name_problem_message("#{entry.basename} は章の名前に使えません" \
+                                                        '（2 桁の番号と、英小文字・数字・ハイフンのスラッグで付けます）',
+                                                        entry.basename, taken, pdf_path)
+        end
 
-        CLI::Common.log_info("[pdf:read] #{entry.basename}.md を上書きしないため、新しい章番号を割り当てます。")
+        if normalized != entry.basename
+          CLI::Common.log_info("[pdf:read] 章の名前を整えます: #{entry.basename} -> #{normalized}")
+          entry = build_entry_from_basename(entry, normalized)
+        end
+        raise InvalidInputError, reread_message(entry.basename, taken) if markdown_exists?(entry.basename)
 
-        slug_source = entry.slug.to_s.empty? ? entry.basename : entry.slug
-        new_basename = next_available_basename(slug_source)
+        problems = CLI::ChapterNames.conflicts(entry.basename, taken)
+        return entry if problems.empty?
 
-        build_entry_from_basename(entry, new_basename)
+        raise InvalidInputError, name_problem_message("#{entry.basename} は作れません（#{problems.join('、')}）",
+                                                      entry.basename, taken, pdf_path)
+      end
+
+      # 名前の問題と、PDF の名前を直した名前に変えて読み直すコマンド。今の pdf:read は章の名前を
+      # PDF のファイル名から決めるので、PDF の名前を変えてもらう（sources/ の外の PDF は写す）
+      def name_problem_message(problem, basename, taken, pdf_path)
+        suggested = CLI::ChapterNames.suggestion(basename, taken)
+        return problem unless suggested
+
+        source = File.expand_path(pdf_path)
+        verb = File.dirname(source) == File.expand_path(sources_dir) ? 'mv' : 'cp'
+        shown = source.delete_prefix("#{Dir.pwd}/")
+        [problem,
+         "→ #{verb} #{CLI::ChapterNames.shell_word(shown)} #{File.join(sources_dir, "#{suggested}.pdf")}",
+         "→ vs pdf:read #{suggested}"].join("\n")
+      end
+
+      # 同じ章が既にあるとき。読み直すなら先に消してもらう（置き換えは --force で行う予定。§5）。
+      # 残したいときは、番号もスラッグも変えておかないと、読み直した章と重なる
+      def reread_message(basename, taken)
+        number = CLI::ChapterNames.number_of(basename)
+        slug = CLI::ChapterNames.slug_of(basename)
+        free = number && CLI::ChapterNames.free_number(number, taken)
+        keep = "#{free}-#{slug}-old" if free && slug
+        ["contents/#{basename}.md は既にあります。読み直すときは、先にこの章を消してください",
+         "→ vs delete #{basename}",
+         *(keep && "→ 残すなら名前を変える: vs rename #{basename} #{keep}")].join("\n")
       end
 
       # Entry が catalog.yml 未登録なら CatalogUpdater で自動追記する。
@@ -262,10 +306,12 @@ module VivlioStarter
       end
 
       # Entry の slug / basename から sources/ 内の PDF パスを探索する
-      # 見つからなければ MissingPdfError を送出
+      # 見つからなければ MissingPdfError を送出。
+      # 打ったとおりの名前（「Vol.53_09_482」）を先に探す。slug は小文字に整えた名前なので、大文字と小文字を
+      # 区別するファイルシステム（Linux・WSL）では、それだけでは見つからない（pdf-read-file-naming-spec.md §2.1）
       def determine_pdf_path(entry)
         slug = entry.slug.to_s.strip
-        candidates = []
+        candidates = [File.join(sources_dir, "#{File.basename(input).sub(/\.pdf\z/i, '')}.pdf")]
         candidates << File.join(sources_dir, "#{slug}.pdf") unless slug.empty?
         candidates << File.join(sources_dir, "#{entry.basename}.pdf")
         candidates.uniq!
@@ -1133,7 +1179,7 @@ module VivlioStarter
       end
 
       # 任意文字列を URL 安全な slug に正規化する（小文字化・記号除去・ハイフン化）。
-      # 数字で始まる slug は、番号と続けると章の範囲や番号に読まれるので、前に語を付ける（「130」→「pdf-245」）
+      # 数字で始まる slug は、番号と続けると章の範囲や番号に読まれるので、前に語を付ける（「245」→「pdf-245」）
       def normalize_slug(value)
         slug = value.to_s.downcase
                     .tr(' ', '-')

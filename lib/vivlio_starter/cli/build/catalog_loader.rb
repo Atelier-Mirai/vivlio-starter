@@ -320,6 +320,17 @@ module VivlioStarter
           match ? match[1].to_i : nil
         end
 
+        # number と同じ区分（まえがき・本文・付録・あとがき）で、used に無い一番小さい番号（「98」）。
+        # 番号の重なりを知らせるとき、振り直す先を添えるのに使う。空きが無ければ nil
+        # @param number [Integer]
+        # @param used [Array<Integer>] 使われている番号
+        # @return [String, nil]
+        def free_number_in_section(number, used)
+          range = [PREFACE_RANGE, MAIN_RANGE, APPX_RANGE, POSTFACE_RANGE].find { it.cover?(number) } || MAIN_RANGE
+          free = range.find { !used.include?(it) }
+          free && format('%02d', free)
+        end
+
       end
     end
   end

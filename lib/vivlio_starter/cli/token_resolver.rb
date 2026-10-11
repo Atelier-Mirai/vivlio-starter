@@ -105,8 +105,9 @@ module VivlioStarter
         def normalize(tokens)
           prefix = %r{\A#{Regexp.escape(contents_dir)}/}
           Array(tokens).compact.flat_map { it.to_s.split(',') }.map(&:strip).flat_map do |raw|
-            # contents/ プレフィクスと拡張子を除去
-            n = raw.sub(prefix, '').then { File.basename(it, '.*') }
+            # contents/ プレフィクスと拡張子を除去。除くのは章のファイルの拡張子だけにする。点から後ろを何でも
+            # 拡張子とみなすと、`01-vol.53_09_482` を `01-vol` と読み、存在しない原稿を開いてビルドが異常終了していた
+            n = File.basename(raw.sub(prefix, '')).sub(/\.(?:md|markdown|html|pdf)\z/i, '')
             case n
             in /\A(\d+)\z/
               # 数字のみ: ゼロ埋め
@@ -131,11 +132,14 @@ module VivlioStarter
         # （仕様: catalog-parser-unification-spec.md）。ここでは
         # CatalogEntry（basename/label/section）→ Entry への変換のみを行う。
         # instantiate_entry は常に Entry を返すため compact は不要。
+        # 同じ章を二度書いた行だけをまとめ、番号が同じ別の章は残す。番号でまとめると、
+        # 重なった片方がビルドから黙って外れ、vs preflight も「未登録の原稿」と誤って案内していた
+        # （重なりはビルドの前に DuplicateNumberCheck が止める）
         def load_catalog_entries
           Build::CatalogLoader
             .load_labeled_entries(catalog_path:, contents_dir:)
             .map { instantiate_entry(it.basename, it.label, section_to_kind(it.section), in_catalog: true) }
-            .uniq(&:number)
+            .uniq(&:basename)
         end
 
         # セクション名を kind シンボルに変換する。
@@ -166,15 +170,18 @@ module VivlioStarter
 
             # カタログにない場合、新規エントリとして生成
           else
-            # 番号のみ形式: 番号でマッチ
+            # 番号のみ形式: 番号でマッチ。番号の重なった章があれば、どちらを指すか決められないので解決しない
             token_num = format('%02d', token.to_i)
-            found = catalog.find { it.number == token_num }
-            return found if found
+            found = catalog.select { it.number == token_num }
+            return instantiate_invalid_entry(token) if found.size > 1
+            return found.first if found.any?
 
             # カタログにない場合、ファイルシステムからスラッグを補完する。
             # 優先順位: スラッグ付き (NN-slug.md) > 数字のみ (NN.md)
             # 例: "2" → contents/02-history.md が存在すれば "02-history" として解決。
             fs_matches = Dir.glob(File.join(contents_dir, "#{token_num}-*.md"))
+            return instantiate_invalid_entry(token) if fs_matches.size > 1
+
             if fs_matches.any?
               fs_basename = File.basename(fs_matches.first, '.md')
               return instantiate_entry(fs_basename, 'UNCATALOGED', :chapter, in_catalog: false)
@@ -196,9 +203,10 @@ module VivlioStarter
           slug = normalize_slug_token(token)
           return instantiate_invalid_entry(token) unless slug
 
-          if (found = catalog.find { |entry| entry.slug&.downcase == slug })
-            return found
-          end
+          # 名前が同じ章が 2 つ以上あれば、どちらを指すか決められないので解決しない（片方を黙って選ばない）
+          found = catalog.select { |entry| entry.slug&.downcase == slug }
+          return instantiate_invalid_entry(token) if found.size > 1
+          return found.first if found.any?
 
           matches = Dir.glob(File.join(contents_dir, '*.md')).filter_map do |path|
             base = File.basename(path, '.md')

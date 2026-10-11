@@ -41,7 +41,9 @@ module VivlioStarter
         # 通ったものは nil。
         def unresolved_labels_for(token)
           entries = TokenResolver::Resolver.new.resolve([token])
-          bad = entries.reject(&:in_catalog?)
+          # 番号・名前の重なった章を指す指定は解決されないが、DuplicateNumberCheck・DuplicateSlugCheck が
+          # 直すコマンドを添えて止めるので、ここでは数えない
+          bad = entries.reject { it.in_catalog? || (!it.valid? && duplicated_names.include?(it.slug.to_s.downcase)) }
           return nil if bad.empty?
 
           # contents/ に実在するのに未登録なら、直し方は「catalog.yml へ追加」になる。
@@ -69,6 +71,10 @@ module VivlioStarter
 
           prefix = "#{format('%02d', number.to_i)}-"
           catalog_basenames.find { it.start_with?(prefix) }
+        end
+
+        def duplicated_names
+          @duplicated_names ||= DuplicateNumberCheck.new.duplicated_numbers + DuplicateSlugCheck.new.duplicated_slugs
         end
 
         # catalog.yml に載っている本文・付録等の basename（システムページは番号を持たない）

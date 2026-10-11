@@ -11,7 +11,7 @@
 #   GC-02: CatalogEntriesCheck - 1 件欠落 → :error 1 件・detail に該当パス
 #   GC-03: CatalogEntriesCheck - catalog.yml なし → 違反 0 件
 #   GC-04: OrphanFileCheck - 未登録ファイル → :warn 1 件・detail に該当パス
-#   GC-04b: DuplicateNumberCheck - 章番号の重複 → :warn 1 件・重なった番号とファイルを列挙
+#   GC-04b: DuplicateNumberCheck - 章番号の重複 → :error 1 件・重なった番号とファイル・振り直すコマンドを列挙
 #   GC-05: CatalogFileCheck - catalog.yml なし → :error 1 件
 #   GC-06: NodeCheck - node なし（runner DI） → :error 1 件
 #   GC-07: VfmCheck  - vfm なし（runner DI） → :error 1 件・正しいパッケージ名を案内
@@ -359,9 +359,9 @@ module VivlioStarter
       #
       # vs create / vs rename / vs renumber を通していれば起きないが、著者が
       # ファイル名を手で変えたときに起こる。番号が重なると、その番号でどちらを
-      # 指すか決められず単章ビルドが止まる。
+      # 指すか決められない（vs build 02 でどちらを組むか）ので、ビルドを止める。
       # ------------------------------------------------------------------
-      def test_should_warn_when_chapter_numbers_are_duplicated
+      def test_should_stop_when_chapter_numbers_are_duplicated
         with_temp_project do
           write_content('02-dltest')
           write_content('02-vivlio')
@@ -370,10 +370,144 @@ module VivlioStarter
           violations = Guards::DuplicateNumberCheck.new.validate
 
           assert_equal 1, violations.size
-          assert_predicate violations.first, :warn?
+          assert_predicate violations.first, :error?
           assert violations.first.detail.any? { it.include?('contents/02-dltest.md') }
           assert violations.first.detail.any? { it.include?('contents/02-vivlio.md') }
           refute violations.first.detail.any? { it.include?('03-other') }, '重複していない章は挙げない'
+        end
+      end
+
+      # 2 つめ以降を、同じ区分（ここでは付録）の空き番号へ振り直すコマンドを添える
+      def test_should_suggest_rename_to_a_free_number_in_the_same_section
+        with_temp_project do
+          write_catalog(chapters: %w[97-sample 97-sample-ocr])
+          write_content('97-sample')
+          write_content('97-sample-ocr')
+
+          detail = Guards::DuplicateNumberCheck.new.validate.first.detail
+
+          assert_includes detail, '  → vs rename 97-sample-ocr 90-sample-ocr'
+          refute detail.any? { it.include?('vs rename 97-sample ') }, '1 つめは振り直さない'
+        end
+      end
+
+      # Finder で複製した原稿（catalog.yml に無い）は vs rename が扱わないので mv を示す。
+      # 使えない字は直し、空白はエスケープして引用符を求めない。残すのは決まりの形の名前
+      def test_should_suggest_mv_with_a_repaired_name_for_a_finder_copy
+        with_temp_project do
+          write_catalog(chapters: %w[97-sample])
+          write_content('97-sample')
+          write_content('97-sample のコピー')
+
+          detail = Guards::DuplicateNumberCheck.new.validate.first.detail
+
+          assert_includes detail, '- 97: contents/97-sample.md、contents/97-sample のコピー.md'
+          assert_includes detail, '  → mv contents/97-sample\ のコピー.md contents/90-sample-2.md'
+        end
+      end
+
+      # `_` で番号を区切った原稿も、章の解決と同じく番号の重なりとして数える（すり抜けていた）
+      def test_should_count_an_underscore_after_the_number
+        with_temp_project do
+          write_content('97-sample')
+          write_content('97_sample-x')
+
+          assert_equal 1, Guards::DuplicateNumberCheck.new.validate.size
+        end
+      end
+
+      # ------------------------------------------------------------------
+      # GC-04d: ChapterFileNameCheck
+      #
+      # 章のファイル名は vs create の作る形（2 桁の番号と英小文字・数字・ハイフン）に限る。
+      # 点を含む名前は章の解決が別の章を指し、全体ビルドを Errno::ENOENT で止めていた。
+      # ------------------------------------------------------------------
+      def test_should_stop_on_chapter_file_names_outside_the_rule
+        with_temp_project do
+          write_catalog(chapters: %w[01-vol.53_09_482 02-Intro 03_draft])
+          %w[01-vol.53_09_482 02-Intro 03_draft 04-memo\ copy 11-good 15 memo].each { write_content(it) }
+
+          violations = Guards::ChapterFileNameCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :error?
+          detail = violations.first.detail
+          assert_includes detail, '  → vs rename 01-vol.53_09_482 01-vol-53-09-482'
+          assert_includes detail, '  → vs rename 02-Intro 02-intro'
+          assert_includes detail, '  → mv contents/03_draft.md contents/03-draft.md（config/catalog.yml の 03_draft も 03-draft に書き換える）'
+          assert_includes detail, '  → mv contents/04-memo\ copy.md contents/04-memo-copy.md'
+          refute detail.any? { it.include?('11-good') || it.include?('contents/15.md') || it.include?('memo.md') },
+                 '決まりの形の章と、番号で始まらない原稿は挙げない'
+        end
+      end
+
+      # 3 桁の番号と、数字だけのスラッグ（章の範囲と読まれる）も決まりの外
+      def test_should_reject_three_digit_numbers_and_numeric_slugs
+        with_temp_project do
+          write_content('999-sample-original')
+          write_content('01-245')
+
+          detail = Guards::ChapterFileNameCheck.new.validate.first.detail
+
+          assert_includes detail, '  → mv contents/999-sample-original.md contents/02-sample-original.md'
+          assert_includes detail, '  → mv contents/01-245.md contents/01-chapter-245.md'
+        end
+      end
+
+      # catalog.yml に載っている章も数える。目次の読み込みが番号の重なった片方を外し、
+      # 全体ビルドがその章を抜いて組み上がっていた
+      def test_should_count_chapters_listed_in_catalog
+        with_temp_project do
+          write_catalog(chapters: %w[05-alpha 05-beta])
+          write_content('05-alpha')
+
+          violations = Guards::DuplicateNumberCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert violations.first.detail.any? { it.include?('contents/05-beta.md') }
+        end
+      end
+
+      # ------------------------------------------------------------------
+      # GC-04c: DuplicateSlugCheck
+      #
+      # 01-sample と 97-sample は番号で指せば組めるが、vs build sample が片方だけを組み、
+      # 章のラベル ID（@ch-sample）が重なる。止めて、2 つめ以降の名前を変えるコマンドを添える。
+      # ------------------------------------------------------------------
+      def test_should_stop_when_two_chapters_share_a_name
+        with_temp_project do
+          write_catalog(chapters: %w[01-sample 97-sample])
+          write_content('01-sample')
+          write_content('97-sample')
+          write_content('11-other')
+
+          violations = Guards::DuplicateSlugCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :error?
+          assert_includes violations.first.detail, '- sample: contents/01-sample.md、contents/97-sample.md'
+          assert_includes violations.first.detail, '  → vs rename 97-sample 97-sample-2'
+          refute violations.first.detail.any? { it.include?('11-other') }, '重なっていない章は挙げない'
+        end
+      end
+
+      # 大文字と小文字の違いだけの名前も同じとみなす
+      def test_should_treat_names_differing_only_in_case_as_the_same
+        with_temp_project do
+          write_content('01-Sample')
+          write_content('97-sample')
+
+          assert_equal 1, Guards::DuplicateSlugCheck.new.validate.size
+        end
+      end
+
+      def test_should_pass_when_chapter_names_are_unique
+        with_temp_project do
+          write_content('01-sample')
+          write_content('02-sample-ocr')
+          write_content('15')
+
+          assert_empty Guards::DuplicateSlugCheck.new.validate
         end
       end
 

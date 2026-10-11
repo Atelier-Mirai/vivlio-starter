@@ -61,6 +61,84 @@ module VivlioStarter
         end
       end
 
+      # 番号を別の章が使っていれば作らずに止め、同じ区分の空き番号で打ち直すコマンドを示す。
+      # 作ってしまうと、vs build 97 で 97-sample と 97-foo のどちらを組むか決められない
+      def test_should_refuse_a_number_used_by_another_chapter
+        within_temp_dir do
+          File.write(File.join(Common::CONTENTS_DIR, '97-sample.md'), "# sample\n")
+
+          out, = capture_io do
+            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['97-foo']) }
+          end
+
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '97-foo.md'))
+          assert_includes out, '97 番は 97-sample が使っています'
+          assert_includes out, 'vs create 90-foo'
+        end
+      end
+
+      # catalog.yml にだけ載っている章（原稿がまだ無い）の番号も使われているとみなす
+      def test_should_refuse_a_number_listed_only_in_catalog
+        within_temp_dir do
+          out, = capture_io do
+            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['01-other']) }
+          end
+
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '01-other.md'))
+          assert_includes out, '01 番は 01-intro が使っています'
+          assert_includes out, 'vs create 02-other'
+        end
+      end
+
+      # 名前が同じ章があれば、番号が違っても止める。vs build sample と章のラベル ID（@ch-sample）が
+      # どちらを指すか決められず、著者もどちらを書けばよいか迷う
+      def test_should_refuse_a_name_used_by_another_chapter
+        within_temp_dir do
+          File.write(File.join(Common::CONTENTS_DIR, '97-sample.md'), "# sample\n")
+
+          out, = capture_io do
+            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['02-sample']) }
+          end
+
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '02-sample.md'))
+          assert_includes out, 'スラッグ sample は 97-sample が使っています'
+          assert_includes out, 'vs create 02-sample-2'
+        end
+      end
+
+      # 大文字と `_` は整えて作る（ビルド前の検査が止める形の章を作らない）
+      def test_should_normalize_capitals_and_underscores
+        within_temp_dir do
+          capture_io { CreateCommands.execute_create(command_context, ['12-My_Chapter']) }
+
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '12-my-chapter.md'))
+        end
+      end
+
+      # 点・空白・日本語を含む名前は作らずに止め、直した名前を示す。点を含む章は章の解決が別の章を指していた
+      def test_should_refuse_a_name_outside_the_rule
+        within_temp_dir do
+          out, = capture_io do
+            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['12-notes.v2']) }
+          end
+
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '12-notes.v2.md'))
+          assert_includes out, '12-notes.v2 → vs create 12-notes-v2'
+        end
+      end
+
+      # 一度に作る章どうしで番号が重なるときも止める
+      def test_should_refuse_duplicated_numbers_in_one_command
+        within_temp_dir do
+          out, = capture_io do
+            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, %w[30-a 30-b]) }
+          end
+
+          refute File.exist?(File.join(Common::CONTENTS_DIR, '30-a.md'))
+          assert_includes out, '30 番は 30-a が使っています'
+        end
+      end
+
       # vs create 引数省略時はエラー終了することを確認
       def test_create_without_arguments_exits_with_usage
         within_temp_dir do
