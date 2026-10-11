@@ -311,6 +311,20 @@ module VivlioStarter
           refute_includes output, '10 alpha'
         end
 
+        # 範囲外の章に積まれた指摘も、catalog.yml にある章なら「番号＋章タイトル」で表に出す
+        # （basename の 95-omega のままだと、同じ表で章の書き方が二通りになる）
+        def test_should_label_untargeted_chapter_by_number_and_title
+          output, = run_preflight(entries: fixture_entries('12-alpha'), targets: ['12'],
+                                  catalog: fixture_entries('12-alpha', '95-omega')) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '95-omega.md', severity: :warn, category: :image, message: '存在しない画像: a.webp'
+            )
+          end
+
+          assert_match(/^\s+95 omega\s+🟡 警告 1 件$/, output)
+          refute_match(/^\s+95-omega\s/, output)
+        end
+
         private
 
         # contents/ に実在しない basename を使い、章タイトルがスラッグへ縮退する形で固定する
@@ -326,21 +340,23 @@ module VivlioStarter
         # pipeline.run のタイミングで recorder を呼び、各発生源が指摘を積んだ状態を作る。
         # 終了コードは IssueRegistry の severity だけで決まるため、
         # LinkImageValidator.any_issues? はスタブしない（呼ばれない）。
-        def run_preflight(entries:, targets: [], &recorder)
+        # catalog は catalog.yml 全体の章（省略時は entries と同じ）。
+        # 章の指定つきの解決には entries を、指定なしの解決には catalog を返す。
+        def run_preflight(entries:, targets: [], catalog: entries, &recorder)
           status = nil
           output, = capture_io do
-            with_stubs(entries, recorder) do
+            with_stubs(ResolverStub.new(entries, catalog), recorder) do
               status = PreflightCommand.new(targets).call
             end
           end
           [output, status]
         end
 
-        def with_stubs(entries, recorder, &block)
+        def with_stubs(resolver, recorder, &block)
           validator = PreProcessCommands::LinkImageValidator
           Guards::Guard.stub(:run!, nil) do
             CleanCommands.stub(:execute_clean, nil) do
-              TokenResolver::Resolver.stub(:new, -> { ResolverStub.new(entries) }) do
+              TokenResolver::Resolver.stub(:new, -> { resolver }) do
                 BuildCommands::UnifiedBuildPipeline.stub(:new, ->(*, **) { RecordingPipelineStub.new(recorder) }) do
                   validator.stub(:reset!, nil) do
                     validator.stub(:check_external_urls!, nil) do
@@ -354,11 +370,12 @@ module VivlioStarter
         end
 
         class ResolverStub
-          def initialize(entries)
+          def initialize(entries, catalog)
             @entries = entries
+            @catalog = catalog
           end
 
-          def resolve(*_tokens) = @entries
+          def resolve(*tokens) = tokens.empty? ? @catalog : @entries
         end
 
         # run の中で指摘を積む pipeline スタブ（実際の前処理は走らせない）

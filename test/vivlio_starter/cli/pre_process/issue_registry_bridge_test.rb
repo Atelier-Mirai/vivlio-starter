@@ -155,18 +155,85 @@ module VivlioStarter
           end
         end
 
+        # 章を絞った処理（vs preflight 12）では、範囲外の章の重複・孤立ラベルを知らせない。
+        # 全章を処理すれば同じ指摘が出ることも併せて確かめ、検出そのものは失われていないと示す
+        def test_should_not_report_label_issues_of_untargeted_chapters
+          chapters = {
+            '12-new' => "# 新規作成\n\n本文です。\n",
+            '95-sample' => <<~MD
+              # 見本
+
+              **表 ひとつめ @dup**
+
+              | a |
+              | - |
+              | 1 |
+
+              **表 ふたつめ @dup**
+
+              | b |
+              | - |
+              | 2 |
+
+              **表 だれも参照しない @lonely**
+
+              | c |
+              | - |
+              | 3 |
+
+              @dup を参照します。
+            MD
+          }
+
+          in_project_with(chapters) do
+            out, = capture_io { PreProcessCommands.process_cross_references_for_files(['12-new.md']) }
+
+            assert_empty IssueRegistry.issues.select { it.category == :cross_reference }
+            refute_includes out, '95-sample'
+
+            capture_io { PreProcessCommands.process_cross_references_for_files(%w[12-new.md 95-sample.md]) }
+
+            issues = IssueRegistry.issues.select { it.category == :cross_reference }
+            assert_equal %i[error warn], issues.map(&:severity).sort
+            assert_equal ['95-sample'], issues.map(&:chapter).uniq
+          end
+        end
+
+        # 範囲外の章とぶつかる重複は、対象章の側に立って知らせる（直す場所が対象章にもあるため）
+        def test_should_report_duplicate_shared_with_untargeted_chapter_on_targeted_side
+          chapters = {
+            '12-new' => "# 新規作成\n\n**表 こちら @shared**\n\n| a |\n| - |\n| 1 |\n\n@shared を参照します。\n",
+            '95-sample' => "# 見本\n\n**表 あちら @shared**\n\n| b |\n| - |\n| 2 |\n"
+          }
+
+          in_project_with(chapters) do
+            out, = capture_io { PreProcessCommands.process_cross_references_for_files(['12-new.md']) }
+
+            errors = IssueRegistry.issues.select { it.severity == :error }
+            assert_equal 1, errors.size
+            assert_pattern { errors.first => { chapter: '12-new', category: :cross_reference } }
+            assert_includes out, "12-new.md:3 - ラベルID '表 こちら @shared' は重複しています"
+            assert_includes out, '95-sample.md: 3', '重複の相手の場所も示す'
+          end
+        end
+
         private
 
         # catalog.yml・contents/・html/ ワークスペースを備えた最小プロジェクトを組む
-        def in_project(chapter_body)
+        def in_project(chapter_body, &) = in_project_with({ '21-images' => chapter_body }, &)
+
+        # 複数章版。chapters は { basename => 本文 }（catalog.yml には書いた順で載る）
+        def in_project_with(chapters)
           Dir.mktmpdir('vs-xref-bridge-') do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p('config')
-              File.write('config/catalog.yml', "CHAPTERS:\n  - 21-images\n")
+              File.write('config/catalog.yml', "CHAPTERS:\n#{chapters.keys.map { "  - #{it}\n" }.join}")
               FileUtils.mkdir_p(Common::CONTENTS_DIR)
-              File.write(File.join(Common::CONTENTS_DIR, '21-images.md'), chapter_body)
               FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
-              File.write(File.join(Common::BUILD_HTML_DIR, '21-images.md'), chapter_body)
+              chapters.each do |basename, body|
+                File.write(File.join(Common::CONTENTS_DIR, "#{basename}.md"), body)
+                File.write(File.join(Common::BUILD_HTML_DIR, "#{basename}.md"), body)
+              end
               yield
             end
           end

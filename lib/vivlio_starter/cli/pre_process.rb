@@ -304,9 +304,17 @@ module VivlioStarter
         labels_map = map_result[:labels_map]
         duplicates_by_id = map_result[:duplicates_by_id]
 
+        # ラベルは章をまたいで参照されるので、重複・孤立の判定には全章が要る（Phase 1・4）。
+        # ただし知らせるのは処理対象の章に関わるものだけにする。vs build 12 / vs preflight 12 で
+        # 範囲外の 95 章の指摘まで出ると、著者は 12 章のどこが悪いのか探し回ることになる。
+        target_files = md_files.to_set { File.basename(it) }
+
         if duplicates_by_id.any?
           duplicates_by_id.each do |_id, labels|
-            first = labels.first
+            # 重複の片方が範囲外の章にあっても、対象章の側に立って知らせる
+            first = labels.find { target_files.include?(it.source_file) }
+            next unless first
+
             by_file = labels.group_by(&:source_file)
             detail_lines = by_file.map do |file, file_labels|
               "#{file}: #{file_labels.map(&:line).join(', ')}"
@@ -389,9 +397,11 @@ module VivlioStarter
           all_used_ids.merge(result[:used_ids])
         end
 
-        # 暗黙の章ラベルは全章に付くので、参照されていなくても知らせない（chapter-reference-spec.md §2.6）
-        orphan_labels = labels_map.values.reject do |label|
-          all_used_ids.include?(label.id) || label.auto || label.type == :chap
+        # 暗黙の章ラベルは全章に付くので、参照されていなくても知らせない（chapter-reference-spec.md §2.6）。
+        # 参照は全章から数えるが、知らせるのは対象章で定義されたラベルだけ（Phase 2 と同じ理由）
+        orphan_labels = labels_map.values.select do |label|
+          target_files.include?(label.source_file) &&
+            !all_used_ids.include?(label.id) && !label.auto && label.type != :chap
         end
         orphan_labels.each do |label|
           Common.log_warn(

@@ -184,12 +184,17 @@ module VivlioStarter
         # 表の行（[ラベル, Counts]）を章番号順に組み立てる。
         # registry のキーが entries に無い場合（コードインクルードの '(不明)' 等）も
         # 末尾へ足し、集計した指摘を表から取りこぼさない。
+        # 範囲外でも catalog.yml にある章なら、ほかの行と同じ「番号＋章タイトル」で出す
+        # （basename のままだと、同じ表の中で章の書き方が二通りになる）。
         def chapter_summary_rows(entries, by_chapter)
           sorted = entries.sort_by { it.number.to_i }
           rows = sorted.map { [chapter_summary_label(it), by_chapter[it.basename] || NO_ISSUES] }
 
           extras = by_chapter.keys.compact - sorted.map(&:basename)
-          rows + extras.sort.map { [it, by_chapter[it]] }
+          return rows if extras.empty?
+
+          catalog = TokenResolver::Resolver.new.resolve.select(&:in_catalog?).to_h { [it.basename, it] }
+          rows + extras.sort.map { [catalog[it] ? chapter_summary_label(catalog[it]) : it, by_chapter[it]] }
         end
 
         # 「21 画像」のように番号＋章タイトルで表示する
