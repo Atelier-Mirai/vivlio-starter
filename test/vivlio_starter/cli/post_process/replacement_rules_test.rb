@@ -322,6 +322,12 @@ module VivlioStarter
           assert_includes out, '<p class="small"><code>to_f</code> は<strong>先に</strong>丸めます</p>'
         end
 
+        def test_should_classify_references_paragraph
+          out = apply('<p>写真：<a href="https://example.com/">富士通</a>撮影。{.references}</p>')
+
+          assert_includes out, '<p class="references">写真：<a href="https://example.com/">富士通</a>撮影。</p>'
+        end
+
         # =============================================================
         # 廃止した記法（会話記法）は変換されない
         # =============================================================
@@ -362,9 +368,9 @@ module VivlioStarter
           assert_equal expected, ReplacementRules::ALL
           # 旧 yml 34 ルールから @nega/@posi/@comment の 3 本を撤去して 31 本。
           # そこへ @hspace（2 本）・@pagebreak（2 本）を追加して 35 本、
-          # 段落末 {.small} の 1 本を追加して 36 本
+          # 段落末 {.small} の 1 本を追加して 36 本、段落末 {.references} の 1 本で 37 本
           # （@version/@title/@today は CONFIG 依存のため ALL ではなく value_macro_rules）。
-          assert_equal 36, ReplacementRules::ALL.size
+          assert_equal 37, ReplacementRules::ALL.size
         end
 
         def test_should_apply_multiline_mode_to_all_patterns

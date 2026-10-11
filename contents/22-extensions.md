@@ -204,6 +204,36 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 
 脚注は前章の「脚注」で説明しています。
 
+### `.references` — 出典・参考資料を小さめに組む
+
+章や節の終わりに、出典や参考資料、写真の提供元を書き添えるときは、`:::{.references}` で囲みます。組み方は `.small` と同じで、本文より一段小さな文字にし、左右を内側へ寄せます。名前を分けてあるのは、原稿を読んだときに「ここは出典」と分かるようにするためです。
+
+```markdown
+:::{.references}
+**参考資料**
+
+- 「[CSS Paged Media Module Level 3](https://www.w3.org/TR/css-page-3/)」W3C（令和8年（2026年）10月閲覧）
+- 「[Vivliostyle ドキュメント](https://docs.vivliostyle.org/ja/)」Vivliostyle 財団（令和8年（2026年）10月閲覧）
+:::
+```
+
+表示結果は次のようになります。{.aki}
+
+:::{.references}
+**参考資料**
+
+- 「[CSS Paged Media Module Level 3](https://www.w3.org/TR/css-page-3/)」W3C（令和8年（2026年）10月閲覧）
+- 「[Vivliostyle ドキュメント](https://docs.vivliostyle.org/ja/)」Vivliostyle 財団（令和8年（2026年）10月閲覧）
+:::
+
+「参考資料」のような見出しは自動では付きません。「出典」「参考文献」「写真提供」など、使う言葉は本によって違うため、上の例のように `**参考資料**` と書き添えてください。中のリンクは、本文と同じように URL が脚注になります。{.aki}
+
+写真 1 枚の提供元のように 1 段落で済むときは、段落の末尾へ `{.references}` と書くこともできます。
+
+```markdown
+写真：著者撮影。{.references}
+```
+
 ## テキストの配置
 
 ### `.align-left` / `.align-center` / `.align-right`
