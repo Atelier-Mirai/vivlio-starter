@@ -56,39 +56,47 @@ vs preflight intro   # スラッグが intro の章をチェック
 | 裸URL | 🟡 |
 | 孤立ラベル | 🟡 |
 
-具体的には、次のように出力されます。
+たとえば `vs preflight 11 95` で二つの章を点検すると、次のように出力されます。
 
 :::{.output}
 ```text
-🔴 12-new.md:157 - ソースコード 'sample.rb' が見つかりません
-        コードの場所: codes/sample.rb
-🔴 11-workflow.md:20 - 画像 'workflow.svg' が見つかりません（代替画像を使用します）
+🟡 95-sample.md:201 - 裸 URL を検出しました
+        URL: https://www.nobelprize.org/prizes/physics/1926/perrin/lecture/
+🔴 95-sample.md:571 - 雛形ファイル '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
+        雛形の場所: templates/_physics_book.full.md
+        ヒント: templates/_physics_book.md は存在します。スタイル名を確認してください。
+🔴 11-workflow.md:56 - 画像 'workflow.svg' が見つかりません（代替画像を使用します）
         画像の場所: images/11-workflow/workflow.svg
-🔴 22-extensions.md:427 - 雛形ファイル '_book.full.md' が見つかりません（記法: = books | :full）
-        雛形の場所: templates/_book.full.md
-        ヒント: templates/_book.md は存在します。スタイル名を確認してください。
-🔴 24-cross-reference.md:361 - ラベルID '画像(左寄せ) @img-left' は重複しています
-        重複箇所: 24-cross-reference.md: 361, 381
-                  25-querystream.md: 25, 30
-🟡 95-sample.md:461 - 裸 URL を検出しました
-        URL: https://onlinelibrary.wiley.com/journal/15213889
-🟡 24-cross-reference.md:329 - 孤立ラベル 'Prime2 @prime2' は未参照です
+🔴 95-sample.md:246 - ソースコード 'mass_energy.rb' が見つかりません
+        コードの場所: codes/mass_energy.rb
+🔴 95-sample.md:160 - ラベルID '仕事関数の目安 @photoelectric-table' は重複しています
+        重複箇所: 95-sample.md: 160, 166
+🟡 95-sample.md:203 - 孤立ラベル '拡散係数の測定値 @diffusion-table' は未参照です
 🔍 リンク・画像検証の結果:
-        画像: 15 件の課題（存在しない画像: 15）
-        ソースコード: 6 件の課題（存在しないファイル: 6）
-        リンク: 3 件の問題（裸 URL: 3）
+        画像: 1 件の課題（存在しない画像: 1）
+        ソースコード: 1 件の課題（存在しないファイル: 1）
+        リンク: 1 件の問題（裸 URL: 1）
         外部URL到達性チェック: スキップ（--verify-links で有効化）
-❌ Preflight 完了: 課題あり — 詳細は上記を確認してください
+
+📋 章別サマリー
+   11 執筆ワークフローとクイック… 🔴 エラー 1 件
+   95 挑戦することの贈り物        🔴 エラー 3 件・🟡 警告 2 件
+❌ Preflight 完了: エラー 4 件・警告 2 件 — 詳細は上記を確認してください
+   文章校正（表記揺れ・スペル）は vs lint で行えます。
 ```
 :::
 
-課題がない場合には、次のように出力されます。
+最後の章別サマリーで、どの章に何件の課題があるかを確かめられます。課題がない場合には、次のように出力されます。
 
 :::{.output}
 ```text
+✅ 全 28 章: 問題なし
 ✅ Preflight 完了: 良好な状態です
+   文章校正（表記揺れ・スペル）は vs lint で行えます。
 ```
 :::
+
+警告だけのときは「❗ Preflight 完了: 警告 2 件（ビルドは可能です）」のように出力され、そのままビルドへ進めます。
 
 ### オプション
 
