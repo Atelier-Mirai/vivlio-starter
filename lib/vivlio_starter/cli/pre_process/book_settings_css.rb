@@ -625,11 +625,28 @@ module VivlioStarter
         # 生成側が持つ（P3「生成 1 枚がカスケードで勝つ」方式）。色未指定・不在なら何も出さない。
 
         # :root に置く --talk-c-<key> の宣言行。色を明示した話者のみ（未指定はテーマ色を使う）。
+        # display.avatar_size があれば、アバターの直径 --talk-icon-size と、名前を積む列の幅
+        # --talk-speaker-size（直径＋TALK_SPEAKER_EXTRA_MM）も置く（talk-avatar-initial-spec.md §7.3）。
+        # 列の幅を CSS の calc(var() + 2mm) にしないのは、Vivliostyle が calc と var の組み合わせを
+        # 宣言ごと捨てることがあるため。無ければ出さず、components.css の var() の既定に任せる。
         def talk_variable_declarations(registry)
-          registry.with_color.map do |char|
+          colors = registry.with_color.map do |char|
             "--talk-c-#{char.key}: #{CssUpdater.normalize_color_value(char.color)};"
           end
+          size = registry.display.avatar_size
+          return colors unless size
+
+          colors + talk_size_declarations(size)
         end
+
+        # アバターの直径と、名前を積む列の幅（直径＋TALK_SPEAKER_EXTRA_MM）の宣言 2 行。
+        def talk_size_declarations(size)
+          ["--talk-icon-size: #{format_mm(size)};",
+           "--talk-speaker-size: #{format_mm(size + TALK_SPEAKER_EXTRA_MM)};"]
+        end
+
+        # 名前を積む列をアバターより広くする幅。components.css の既定（12mm と 14mm）の差と同じ。
+        TALK_SPEAKER_EXTRA_MM = 2
 
         # .talk-c-<key> の --talk-accent 差し替えと、Kindle 用リテラル色。
         # PDF/クリーン EPUB は var() 経由で色を当て、Kindle は KFX が var() を解さないため
@@ -640,11 +657,16 @@ module VivlioStarter
         # 吹き出しの枠線は Kindle には存在しないのでリテラル化しない。
         # `strong` は base_kindle_accent_rules の `body.vs-kindle strong`（テーマ色・特異度 0,1,2）
         # に落ちてしまうため話者色で塗り直す。セレクタは (0,2,2) でその既定に勝つ。
+        #
+        # 話者の avatar_size は、同じ .talk-c-<key> に --talk-icon-size と --talk-speaker-size を
+        # 置いて :root（display.avatar_size）の値を覆う（talk-avatar-initial-spec.md §7.3）。
+        # Kindle はアバターを出さないので、大きさにリテラルは要らない。
         def talk_class_rules(registry)
-          chars = registry.with_color
-          return '' if chars.empty?
+          colored = registry.with_color
+          sized = registry.with_avatar_size
+          return '' if colored.empty? && sized.empty?
 
-          lines = chars.flat_map do |char|
+          color_lines = colored.flat_map do |char|
             hex = ThemeColor.to_hex6(char.color)
             [
               ".talk-c-#{char.key} { --talk-accent: var(--talk-c-#{char.key}); }",
@@ -653,10 +675,13 @@ module VivlioStarter
               "body.vs-kindle .talk-c-#{char.key} strong { color: #{hex}; }"
             ]
           end
-          <<~CSS.chomp
-            /* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */
-            #{lines.join("\n")}
-          CSS
+          size_lines = sized.map do |char|
+            ".talk-c-#{char.key} { #{talk_size_declarations(char.avatar_size).join(' ')} }"
+          end
+          [
+            ("/* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */\n#{color_lines.join("\n")}" if color_lines.any?),
+            ("/* 会話文キャラクターのアバターの直径 */\n#{size_lines.join("\n")}" if size_lines.any?)
+          ].compact.join("\n")
         end
 
         # ================================================================

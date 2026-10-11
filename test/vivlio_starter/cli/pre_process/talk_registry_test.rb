@@ -154,6 +154,98 @@ module VivlioStarter
           assert_equal 'right', char.side
         end
 
+        # initial: は 1〜2 文字を書記素クラスタで数えて受け取る。省略・簡易形は nil
+        # （talk-avatar-initial-spec.md §1.1）。
+        def test_should_read_initial_of_one_or_two_graphemes
+          reg = Registry.from_hash({
+            'sato' => { 'name' => '佐藤', 'initial' => '佐藤' },
+            'einstein' => { 'name' => 'アインシュタイン', 'initial' => ' AE ' },
+            'one' => { 'initial' => 'A' },
+            'emoji' => { 'initial' => '👩‍🎓★' },
+            'plain' => { 'name' => '遙香' },
+            'simple' => 'teal'
+          })
+
+          assert_equal '佐藤', reg['sato'].initial
+          assert_equal 'AE', reg['einstein'].initial, '前後の空白は落とす'
+          assert_equal 'A', reg['one'].initial
+          assert_equal '👩‍🎓★', reg['emoji'].initial, '結合絵文字は 1 文字と数える'
+          assert_nil reg['plain'].initial
+          assert_nil reg['simple'].initial
+        end
+
+        # avatar_size は mm で読む。単位なしは mm、15mm・1.5cm も受け付ける（book.yml と同じ読み方）。
+        # 省略は nil（CSS の既定 12mm）。
+        def test_should_read_avatar_size_in_mm
+          size = ->(raw) { Registry.from_hash({ 'display' => { 'avatar_size' => raw } }).display.avatar_size }
+
+          assert_in_delta 15.0, size.(15)
+          assert_in_delta 15.0, size.('15mm')
+          assert_in_delta 15.0, size.('15 mm')
+          assert_in_delta 15.0, size.('1.5cm')
+          assert_nil Registry.from_hash({ 'display' => { 'style' => 'chat' } }).display.avatar_size
+          assert_nil Registry.from_hash({}).display.avatar_size
+        end
+
+        # 話者ごとの avatar_size。似顔絵の話者だけ大きくし、1 文字の簡易アバターは既定のままにできる。
+        # 読めない値は、どの話者のものかと戻り先（display の値か既定）を添えて 🟡。
+        def test_should_read_avatar_size_per_character
+          saved = Common.method(:log_warn)
+          warnings = []
+          Common.define_singleton_method(:log_warn) { |msg, **| warnings << msg }
+          reg = Registry.from_hash({
+            'haruka' => { 'name' => '遙香', 'avatar' => 'haruka.webp', 'avatar_size' => '15mm' },
+            'einstein' => { 'name' => 'アインシュタイン', 'avatar' => 'auto' },
+            'broken' => { 'avatar_size' => '15em' },
+            'simple' => 'teal'
+          })
+          Common.define_singleton_method(:log_warn, saved)
+
+          assert_in_delta 15.0, reg['haruka'].avatar_size
+          assert_nil reg['einstein'].avatar_size, '省略した話者は display の値か既定に任せる'
+          assert_nil reg['broken'].avatar_size
+          assert_nil reg['simple'].avatar_size
+          assert_equal ['haruka'], reg.with_avatar_size.map(&:key)
+          assert_equal 1, warnings.size
+          assert_includes warnings.first, "話者 'broken' の avatar_size '15em' は読めない大きさです"
+          assert_includes warnings.first, 'display.avatar_size（無ければ既定の 12mm） で続行します'
+        end
+
+        # 読めない大きさ（em・px・数でない値・0 以下）は 🟡 で知らせて nil。直し方の例を添える。
+        def test_should_warn_and_drop_unreadable_avatar_size
+          saved = Common.method(:log_warn)
+          warnings = []
+          Common.define_singleton_method(:log_warn) { |msg, detail: nil, **| warnings << [msg, detail] }
+          sizes = ['15em', '15px', 'abc', 0, -3].map do
+            Registry.from_hash({ 'display' => { 'avatar_size' => it } }).display.avatar_size
+          end
+          Common.define_singleton_method(:log_warn, saved)
+
+          assert_equal [nil] * 5, sizes
+          assert_equal 5, warnings.size
+          assert_includes warnings[0][0], "display.avatar_size '15em' は読めない大きさです。既定の 12mm で続行します"
+          assert_includes warnings[0][1], 'avatar_size: 15mm'
+        end
+
+        # 3 文字以上・空は 🟡 で知らせて nil（表示名の頭 1 文字へ戻す）。直し方の例を添える。
+        def test_should_warn_and_drop_initial_out_of_range
+          saved = Common.method(:log_warn)
+          warnings = []
+          Common.define_singleton_method(:log_warn) { |msg, detail: nil, **| warnings << [msg, detail] }
+          reg = Registry.from_hash({
+            'einstein' => { 'name' => 'アインシュタイン', 'initial' => 'アインシュタイン' },
+            'blank' => { 'initial' => '' }
+          })
+          Common.define_singleton_method(:log_warn, saved)
+
+          assert_nil reg['einstein'].initial
+          assert_nil reg['blank'].initial
+          assert_equal 2, warnings.size
+          assert_includes warnings[0][0], "話者 'einstein' の initial 'アインシュタイン' は 8 文字です"
+          assert_includes warnings[0][1], 'initial: AE'
+          assert_includes warnings[1][0], "話者 'blank' の initial が空です"
+        end
+
         # 表示名省略時はキーをそのまま表示名にする。
         def test_should_default_name_to_key_when_omitted
           reg = Registry.from_hash({ 'yamada' => { 'color' => '#1565c0' } })

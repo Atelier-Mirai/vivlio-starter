@@ -678,6 +678,35 @@ class BookSettingsCssTalkTest < Minitest::Test
     refute_includes css, 'border-left-color', 'Kindle に吹き出しの枠線は無い'
   end
 
+  # display.avatar_size があれば直径と、名前を積む列の幅（直径＋2mm）を :root に置く。
+  # 列の幅を CSS の calc(var() + 2mm) にせず生成側で足すのは、Vivliostyle が
+  # calc と var の組み合わせを捨てることがあるため（talk-avatar-initial-spec.md §7.3）。
+  def test_should_declare_avatar_size_only_when_given
+    sized = TalkRegistry.from_hash({ 'display' => { 'avatar_size' => 15 } })
+    lines = BSC.talk_variable_declarations(sized)
+
+    assert_includes lines, '--talk-icon-size: 15mm;'
+    assert_includes lines, '--talk-speaker-size: 17mm;'
+    refute(BSC.talk_variable_declarations(registry).any? { it.include?('--talk-icon-size') },
+           '指定が無ければ components.css の既定（12mm）に任せる')
+  end
+
+  # 話者の avatar_size は .talk-c-<key> に直径と列の幅を置き、:root の値を覆う。
+  # 色を指定していない話者でも、大きさだけのルールを出す。
+  def test_should_emit_avatar_size_rules_per_character
+    sized = TalkRegistry.from_hash({
+      'haruka' => { 'color' => 'purple', 'avatar_size' => 15 },
+      'bohr' => { 'avatar' => 'auto', 'avatar_size' => '13.5mm' },
+      'mirai' => { 'color' => 'blue' }
+    })
+    css = BSC.talk_class_rules(sized)
+
+    assert_includes css, '.talk-c-haruka { --talk-icon-size: 15mm; --talk-speaker-size: 17mm; }'
+    assert_includes css, '.talk-c-bohr { --talk-icon-size: 13.5mm; --talk-speaker-size: 15.5mm; }'
+    refute_match(/\.talk-c-mirai \{ --talk-icon-size/, css, '大きさを書いていない話者には出さない')
+    assert_includes css, '.talk-c-haruka { --talk-accent: var(--talk-c-haruka); }', '色のルールも残る'
+  end
+
   # characters.yml 不在（空 registry）なら talk の宣言・ルールを一切出さない。
   def test_should_emit_nothing_when_registry_empty
     empty = TalkRegistry.from_hash({})

@@ -14,10 +14,12 @@
 #     name: true
 #     avatar: on
 #     separator: "："
+#     avatar_size: 12     ← アバターの直径（mm）。全話者の既定
 #   haruka:               ← 以降のトップレベルキーはすべて話者
 #     name: 遙香
 #     color: purple
 #     avatar: haruka.webp
+#     avatar_size: 15     ← この話者だけの直径（display の値より優先）
 #     side: left
 #
 # なぜ話者をネストせず平置きするのか:
@@ -36,6 +38,7 @@
 
 require 'yaml'
 require_relative '../common'
+require_relative '../units'
 # theme_validator / frontmatter_generator は色検証に使うが、これらを top で require すると
 # frontmatter_generator → book_settings_css → talk_registry → theme_validator の
 # ロード循環に入り、theme_validator の load 時 FrontmatterGenerator::ALLOWED_COLORS 参照が
@@ -46,11 +49,20 @@ module VivlioStarter
     module PreProcessCommands
       # config/talk.yml の読み込みと正規化
       module TalkRegistry
-        # 正規化済みのキャラクター 1 人分。color/avatar は省略時 nil。
-        Character = Data.define(:key, :name, :color, :avatar, :side)
+        # 正規化済みのキャラクター 1 人分。color/avatar/initial/avatar_size は省略時 nil。
+        # initial は簡易アバターに入れる字、avatar_size はこの話者のアバターの直径（mm の Float）
+        # （talk-avatar-initial-spec.md）。既定を nil にして、これらを指定しない呼び出し
+        # （テストの組み立てなど）は今までどおり書けるようにする。
+        Character = Data.define(:key, :name, :color, :avatar, :side, :initial, :avatar_size) do
+          def initialize(initial: nil, avatar_size: nil, **) = super
+        end
 
         # 会話文の表示設定。ブロック指定はこの Data の #with で上書きする。
-        TalkDisplay = Data.define(:style, :name, :avatar, :separator)
+        # avatar_size は全話者のアバターの直径の既定（mm の Float）。未指定は nil で、CSS の既定
+        # （12mm）を使う。話者の avatar_size が優先する。大きさは話者の絵に合わせて決めるもので、
+        # 会話のまとまりごとに変える理由がないため、ブロック指定（:::{.talk ...}）では上書きしない
+        # （talk-avatar-initial-spec.md §7.2）。
+        TalkDisplay = Data.define(:style, :name, :avatar, :separator, :avatar_size)
 
         # 表示設定を置くトップレベルの予約キー（これ以外はすべて話者とみなす）。
         DISPLAY_KEY = 'display'
@@ -76,7 +88,12 @@ module VivlioStarter
         AVATAR_AUTO = 'auto'
 
         # 組み込み既定（talk.yml に display: が無い／キーが欠けているときの値）。
-        DEFAULT_DISPLAY = TalkDisplay.new(style: :chat, name: true, avatar: :on, separator: '：').freeze
+        DEFAULT_DISPLAY = TalkDisplay.new(style: :chat, name: true, avatar: :on, separator: '：',
+                                          avatar_size: nil).freeze
+
+        # avatar_size を省略したときの直径。CSS（components.css の var() の既定）と同じ値で、
+        # 警告文で「既定の 12mm」と示すためだけに持つ。
+        DEFAULT_AVATAR_SIZE_MM = 12
 
         # 正規化結果の集合。present はファイルの実在（.talk 使用時のエラー分岐に使う）。
         class Registry
@@ -99,6 +116,9 @@ module VivlioStarter
 
           # 色を明示指定した（有効な）キャラクターのみ（生成 CSS の対象）。
           def with_color = @characters.select(&:color)
+
+          # アバターの直径を指定した話者のみ（生成 CSS の対象）。
+          def with_avatar_size = @characters.select(&:avatar_size)
         end
 
         module_function
@@ -135,8 +155,27 @@ module VivlioStarter
             style: parse_style(raw['style']),
             name: parse_flag(raw, 'name', DEFAULT_DISPLAY.name),
             avatar: raw.key?('avatar') ? parse_config_avatar_mode(raw['avatar']) : DEFAULT_DISPLAY.avatar,
-            separator: raw.key?('separator') ? raw['separator'].to_s : DEFAULT_DISPLAY.separator
+            separator: raw.key?('separator') ? raw['separator'].to_s : DEFAULT_DISPLAY.separator,
+            avatar_size: raw.key?('avatar_size') ? parse_avatar_size(raw['avatar_size']) : nil
           )
+        end
+
+        # アバターの直径を mm で読む。単位なしの数は mm とし、15mm・1.5cm・42pt も
+        # book.yml と同じく Units.length_to_mm で mm に直す（`15` を見て単位に迷った著者が
+        # `15mm` と書いても通るように）。em・%・px・数でない値・0 以下は 🟡 で既定へ戻す。
+        # display と話者の両方から呼ぶので、警告には書いた場所と戻り先を添える。
+        # @param where [String] 警告に出す書いた場所（"display.avatar_size" など）
+        # @param fallback [String] 読めなかったときに使う大きさの説明
+        # @return [Float, nil] 直径（mm）。読めなければ nil
+        def parse_avatar_size(raw, where: 'display.avatar_size', fallback: "既定の #{DEFAULT_AVATAR_SIZE_MM}mm")
+          mm = Units.length_to_mm(raw)
+          return mm if mm&.positive?
+
+          Common.log_warn(
+            "config/talk.yml: #{where} '#{raw}' は読めない大きさです。#{fallback} で続行します。",
+            detail: '→ 直径を mm で書いてください（例: avatar_size: 15 / avatar_size: 15mm）'
+          )
+          nil
         end
 
         # アバターの表示モードを解決する。未知の綴りは nil を返し、呼び出し側が
@@ -191,24 +230,59 @@ module VivlioStarter
             key = key.to_s.strip
             next if key.empty? || key == DISPLAY_KEY
 
-            name, color, avatar, side = extract(spec, key)
+            name, color, avatar, side, initial, avatar_size = extract(spec, key)
             side = position.even? ? 'left' : 'right' unless %w[left right].include?(side)
             position += 1
-            Character.new(key:, name:, color:, avatar:, side:)
+            Character.new(key:, name:, color:, avatar:, side:, initial:, avatar_size:)
           end
         end
 
-        # 1 エントリの値（簡易形＝色文字列 / 詳細形＝マップ）から属性 4 つを取り出す。
-        # @return [Array(String, String, String, String)] name, color, avatar, side（未指定は nil/空）
+        # 1 エントリの値（簡易形＝色文字列 / 詳細形＝マップ）から属性 6 つを取り出す。
+        # @return [Array(String, String, String, String, String, Float)]
+        #   name, color, avatar, side, initial, avatar_size（未指定は nil/空）
         def extract(spec, key)
           if spec.is_a?(Hash)
             name = blank_to_nil(spec['name'] || spec[:name]) || key
             [name, validate_color(spec['color'] || spec[:color], key),
-             blank_to_nil(spec['avatar'] || spec[:avatar]), (spec['side'] || spec[:side]).to_s.strip.downcase]
+             blank_to_nil(spec['avatar'] || spec[:avatar]), (spec['side'] || spec[:side]).to_s.strip.downcase,
+             validate_initial(spec, key), character_avatar_size(spec, key)]
           else
             # 簡易形: 値が色（テーマ色名 or HEX）。表示名はキー、アバターなし、side 自動。
-            [key, validate_color(spec, key), nil, '']
+            [key, validate_color(spec, key), nil, '', nil, nil]
           end
+        end
+
+        # 話者の avatar_size。キーが無ければ nil（display.avatar_size か CSS の既定に任せる）。
+        # 似顔絵の話者と 1 文字の簡易アバターの話者が同じ本にいると、合う大きさが違う
+        # （似顔絵は 12mm では表情が読めず、1 文字は 15mm では大きすぎる）ため話者ごとに持つ。
+        def character_avatar_size(spec, key)
+          return nil unless spec.key?('avatar_size') || spec.key?(:avatar_size)
+
+          parse_avatar_size(spec['avatar_size'] || spec[:avatar_size],
+                            where: "話者 '#{key}' の avatar_size",
+                            fallback: 'display.avatar_size（無ければ既定の 12mm）')
+        end
+
+        # 簡易アバターに入れる字の上限（talk-avatar-initial-spec.md §5）。
+        # 3 文字にすると円の中で 90pt 前後まで縮み、12mm の紙面では読みにくくなる。
+        INITIAL_MAX_GRAPHEMES = 2
+
+        # initial: を確かめる。書記素クラスタで数え（絵文字・結合文字を 1 文字とする）、
+        # 1〜2 文字なら返す。キーが無ければ nil（表示名の頭 1 文字を使う）。
+        # 空や 3 文字以上は 🟡 を出して nil に戻す——アバターは作り続け、ビルドは止めない。
+        def validate_initial(spec, key)
+          return nil unless spec.key?('initial') || spec.key?(:initial)
+
+          raw = (spec['initial'] || spec[:initial]).to_s.strip
+          count = raw.grapheme_clusters.size
+          return raw if count.between?(1, INITIAL_MAX_GRAPHEMES)
+
+          shown = count.zero? ? ' が空' :" '#{raw}' は #{count} 文字"
+          Common.log_warn(
+            "config/talk.yml: 話者 '#{key}' の initial#{shown}です。表示名の頭 1 文字で続行します。",
+            detail: "→ initial: には 1〜#{INITIAL_MAX_GRAPHEMES} 文字を書いてください（例: initial: AE）"
+          )
+          nil
         end
 
         # 色の妥当性を検証する。無効値は 🟡 で警告してテーマ色へフォールバック（nil を返す）。

@@ -5,7 +5,8 @@
 # ================================================================
 # 責務:
 #   会話文の「簡易アバター」（話者色を地に、表示名の頭 1 文字を白抜き）を
-#   自動生成する（talk-auto-avatar-spec.md §2）。
+#   自動生成する（talk-auto-avatar-spec.md §2）。話者の initial: で 1〜2 文字を
+#   指定されたら、その字を円に収まる大きさで描く（talk-avatar-initial-spec.md）。
 #
 # なぜ必要か:
 #   アバターの絵を用意すること自体が執筆の障壁になりやすい。単色地＋1 文字でも
@@ -43,8 +44,15 @@ module VivlioStarter
         # 生成画像の一辺（px）。表示は 12mm 程度なので印刷解像度に対して十分な余裕がある。
         EDGE = 400
 
-        # 1 文字を中央に置くときの文字サイズ。
+        # 1 文字を中央に置くときの文字サイズ。2 文字のときもこれを上限にする。
         POINTSIZE = 200
+
+        # 2 文字を収める箱（一辺 EDGE の画像の中央）。角が中心から約 168px で、
+        # 丸抜きの半径 200px の内側に縁の太さぶんの余白を残す。
+        # 試作（2026-10-11）で、漢字 2 字が 136〜138pt・欧字 2 字が 200pt になり、
+        # どれも欠けず余白がそろうことを確かめた幅と高さ。
+        FIT_WIDTH = 270
+        FIT_HEIGHT = 200
 
         # 同梱フォント（stylesheets/ からの相対）。
         FONT_REL = 'fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf'
@@ -68,33 +76,52 @@ module VivlioStarter
           glyph = avatar_glyph(char)
           return nil if glyph.empty?
 
-          background = background_hex(char)
-          foreground = foreground_hex(background)
-          key = cache_key(glyph, background, foreground)
-
           unless tools.available?
             warn_tools_missing(source_filename)
             return nil
           end
 
+          background = background_hex(char)
+          foreground = foreground_hex(background)
+          pointsize = fit_pointsize(glyph, tools)
+          key = cache_key(glyph, background, foreground, pointsize)
+
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE)
-          return nil unless write_asset!(key, out_dir, glyph:, background:, foreground:, tools:)
+          return nil unless write_asset!(key, out_dir, glyph:, background:, foreground:, pointsize:, tools:)
 
           "images/#{REL_BASE}/#{key}.webp"
         end
 
         # 生成物をワークスペースへ用意する（永続キャッシュ経由）。
         # @return [Boolean] 参照可能な生成物が揃ったか
-        def write_asset!(key, out_dir, glyph:, background:, foreground:, tools:)
+        def write_asset!(key, out_dir, glyph:, background:, foreground:, pointsize:, tools:)
           GeneratedAssetCache.fetch(REL_BASE, ["#{key}.webp"], out_dir:) do |cache_dir|
             tools.render(File.join(cache_dir, "#{key}.webp"),
-                         glyph:, background:, foreground:, font: font_path)
+                         glyph:, background:, foreground:, pointsize:, font: font_path)
           end
         end
 
-        # 表示名の 1 文字目。書記素クラスタ単位で取るため、絵文字や結合文字を割らない。
+        # アバターに入れる字。initial: があればそれ（1〜2 文字・TalkRegistry で確かめ済み）、
+        # 無ければ表示名の 1 文字目。書記素クラスタ単位で取るため、絵文字や結合文字を割らない。
         def avatar_glyph(char)
+          return char.initial if char&.initial
+
           (char&.name.to_s.strip.grapheme_clusters.first || '').to_s
+        end
+
+        # 字の大きさ。1 文字はこれまでどおり POINTSIZE で描き、測らない（見た目もキャッシュも変えない）。
+        # 2 文字は POINTSIZE で一度測り、FIT_WIDTH × FIT_HEIGHT に収まるよう比例で縮める。
+        # 字の寸法は大きさにほぼ比例するので、測るのは 1 回で足りる。漢字と欧字で適した
+        # 大きさが違う（漢字 2 字は 200pt で円からはみ出し、欧字 2 字は 200pt で収まる）ため、
+        # 決め打ちにせず実際の字の幅から決める（talk-avatar-initial-spec.md §2.2）。
+        def fit_pointsize(glyph, tools)
+          return POINTSIZE if glyph.grapheme_clusters.size == 1
+
+          width, height = tools.measure(glyph, pointsize: POINTSIZE, font: font_path)
+          return POINTSIZE unless width&.positive? && height&.positive?
+
+          scale = [FIT_WIDTH.fdiv(width), FIT_HEIGHT.fdiv(height), 1.0].min
+          (POINTSIZE * scale).floor
         end
 
         # 地色。話者の color 未指定なら本のテーマ色を使う（PDF の --talk-accent 既定と一致）。
@@ -117,8 +144,10 @@ module VivlioStarter
         end
 
         # 内容アドレス。文字・色・寸法・フォントが同じなら再生成しない。
-        def cache_key(glyph, background, foreground)
-          payload = ['v1', glyph, background, foreground, EDGE, POINTSIZE, FONT_REL].join('|')
+        # 1 文字の大きさは POINTSIZE なので、キーは字を指定できるようになる前と変わらない
+        # （既存のキャッシュをそのまま使える）。
+        def cache_key(glyph, background, foreground, pointsize = POINTSIZE)
+          payload = ['v1', glyph, background, foreground, EDGE, pointsize, FONT_REL].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end
 
@@ -126,6 +155,12 @@ module VivlioStarter
         def font_path = File.join(Common.stylesheets_dir, FONT_REL)
 
         def default_tools = (@default_tools ||= AvatarTools.new)
+
+        # -annotate へ渡す字を逃がす。ImageMagick は頭の @ をファイル名として読んで中身を描き、
+        # % を画像の情報の書式（%w は幅）として置き換え、\ で次の字を逃がす。著者が initial: で
+        # 字を選べるので、どの字もそのとおり描かれるよう、\ → \\、% → %%、頭の @ → \@ にする
+        # （talk-avatar-initial-spec.md §2.3）。
+        def magick_text(text) = text.gsub('\\') { '\\\\' }.gsub('%', '%%').sub(/\A@/) { '\\@' }
 
         def warn_tools_missing(source_filename)
           Common.log_warn(
@@ -143,16 +178,29 @@ module VivlioStarter
             @available = system('magick', '-version', out: File::NULL, err: File::NULL) || false
           end
 
-          # 単色地に 1 文字を中央配置した正方形画像を書き出す。
+          # 単色地に字を中央配置した正方形画像を書き出す。
           # @return [Boolean] 生成できたか
-          def render(path, glyph:, background:, foreground:, font:)
+          def render(path, glyph:, background:, foreground:, pointsize:, font:)
             args = ['magick', '-size', "#{EDGE}x#{EDGE}", "xc:#{background}",
                     '-gravity', 'center', '-fill', foreground]
             args += ['-font', font] if File.exist?(font)
-            args += ['-pointsize', POINTSIZE.to_s, '-annotate', '0', glyph, path]
+            args += ['-pointsize', pointsize.to_s, '-annotate', '0', TalkAvatarGenerator.magick_text(glyph), path]
             system(*args, out: File::NULL, err: File::NULL) && File.exist?(path)
           rescue StandardError
             false
+          end
+
+          # 透明な広い下地に字を描き、余白を削った寸法を測る。
+          # @return [Array(Integer, Integer), nil] 幅と高さ（測れなければ nil）
+          def measure(glyph, pointsize:, font:)
+            args = ['magick', '-size', "#{EDGE * 3}x#{EDGE * 2}", 'xc:none', '-gravity', 'center', '-fill', 'black']
+            args += ['-font', font] if File.exist?(font)
+            args += ['-pointsize', pointsize.to_s, '-annotate', '0', TalkAvatarGenerator.magick_text(glyph),
+                     '-trim', '-format', '%w %h', 'info:']
+            out, status = Open3.capture2(*args, err: File::NULL)
+            status.success? ? out.split.map(&:to_i) : nil
+          rescue StandardError
+            nil
           end
         end
       end

@@ -447,17 +447,23 @@ body.vs-epub .section-lead {
   align-items: center;
 
   /* box-size */
-  inline-size: 14mm;
+  /* アバターより 2mm 広くして、下に積む名前の折り返しに余裕を持たせる。
+     calc(var() + 2mm) は Vivliostyle が宣言ごと捨てることがあるため、
+     足した値は生成 CSS が --talk-speaker-size として mm で出す */
+  inline-size: var(--talk-speaker-size, 14mm);
 
   /* spacing */
   gap: 1mm;
 }
 
-/* アバターは丸抜き。話者色の細枠で囲む。 */
+/* アバターは丸抜き。話者色の細枠で囲む。
+   直径は talk.yml の display.avatar_size が生成 CSS の :root に --talk-icon-size を置く
+   （talk-avatar-initial-spec.md §7）。.talk の側で宣言すると :root の値を覆い隠すので、
+   既定の 12mm は var() の第 2 引数にだけ書く。 */
 .talk-icon {
   /* box-size */
-  width: 12mm;
-  height: 12mm;
+  width: var(--talk-icon-size, 12mm);
+  height: var(--talk-icon-size, 12mm);
 
   /* visual */
   object-fit: cover;
