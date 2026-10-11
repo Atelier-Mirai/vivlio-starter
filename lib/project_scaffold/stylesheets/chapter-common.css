@@ -729,10 +729,16 @@ p > img {
    本文より一段小さく組み、左右を内側へ寄せて「本筋から外れた添え書き」に見せる。
    枠もラベルも付かないので、.memo や .notice ほど目立たせたくない補足に使う。
 
+   出典・参考資料（:::{.references}／段落末に {.references}）も同じ組み方にする。
+   見た目は .small と変わらず、原稿で「ここは出典」と読めるように名前だけを分けた。
+   見出しの言葉（参考資料・出典・写真提供…）は本ごとに違うので、::before で
+   ラベルを付けず、著者が **参考資料** のように書く。
+
    line-height を指定しないのは意図的。行送りは --base-line-height（絶対値）が
    版面の行グリッドを作っており、ここで変えるとこの部分だけ行位置がずれて
    隣ページと小口が揃わなくなる。文字だけ小さくすれば行数は保たれる。 */
-.small {
+.small,
+.references {
   font-size: 0.88em;
 }
 
@@ -743,7 +749,9 @@ p > img {
    上下 1 行分あけて本文から切り離す。lh（行送り）の整数倍にするのは
    行グリッドを保つため——mm や em で半端に空けると以降の行位置がずれる。 */
 div.small,
-p.small {
+p.small,
+div.references,
+p.references {
   margin-block: 1lh;
   margin-inline: 2em;
 }
@@ -751,7 +759,9 @@ p.small {
 /* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。
    p.small（段落末 {.small}）と div.small 内の段落の両方に効かせる。 */
 .small,
-.small p {
+.small p,
+.references,
+.references p {
   text-indent: 0;
 }
 

@@ -204,6 +204,36 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 
 脚注は前章の「脚注」で説明しています。
 
+### `.references` — 出典・参考資料を小さめに組む
+
+章や節の終わりに、出典や参考資料、写真の提供元を書き添えるときは、`:::{.references}` で囲みます。組み方は `.small` と同じで、本文より一段小さな文字にし、左右を内側へ寄せます。名前を分けてあるのは、原稿を読んだときに「ここは出典」と分かるようにするためです。
+
+```markdown
+:::{.references}
+**参考資料**
+
+- 「[CSS Paged Media Module Level 3](https://www.w3.org/TR/css-page-3/)」W3C（令和8年（2026年）10月閲覧）
+- 「[Vivliostyle ドキュメント](https://docs.vivliostyle.org/ja/)」Vivliostyle 財団（令和8年（2026年）10月閲覧）
+:::
+```
+
+表示結果は次のようになります。{.aki}
+
+:::{.references}
+**参考資料**
+
+- 「[CSS Paged Media Module Level 3](https://www.w3.org/TR/css-page-3/)」W3C（令和8年（2026年）10月閲覧）
+- 「[Vivliostyle ドキュメント](https://docs.vivliostyle.org/ja/)」Vivliostyle 財団（令和8年（2026年）10月閲覧）
+:::
+
+「参考資料」のような見出しは自動では付きません。「出典」「参考文献」「写真提供」など、使う言葉は本によって違うため、上の例のように `**参考資料**` と書き添えてください。中のリンクは、本文と同じように URL が脚注になります。{.aki}
+
+写真 1 枚の提供元のように 1 段落で済むときは、段落の末尾へ `{.references}` と書くこともできます。
+
+```markdown
+写真：著者撮影。{.references}
+```
+
 ## テキストの配置
 
 ### `.align-left` / `.align-center` / `.align-right`
@@ -353,6 +383,19 @@ haruka: そうです。このガイドブック自体が実例ですよ。
 
 アバター画像をまだ用意していない場合は、`avatar: auto` を指定できます。**話者色の円に表示名の先頭一文字を白抜きした簡易アバター**が生成されるので、会話のレイアウトを先に確認できます。後から画像ファイル名へ差し替えても、本文の発話は変更する必要がありません。`display:` に `avatar: auto` を書くと、画像を指定していないすべての話者へ適用されます。
 
+頭の一文字が同じ話者がいるときや、欧文のイニシャルにしたいときは、`initial:` で円に入れる字を一文字か二文字で指定します。二文字は、円に収まる大きさまで縮めて描かれます。
+
+```yaml
+sato:
+  name: 佐藤
+  avatar: auto
+  initial: 佐藤      # 「佐々木」と見分けるため二文字に
+einstein:
+  name: アインシュタイン
+  avatar: auto
+  initial: AE        # 表示名と違う字も書ける
+```
+
 #### 表示を切り替える
 
 表示は**`style`（形式）・`name`（話者名）・`avatar`（アバター）**の三つで決まります。本全体の既定は `config/talk.yml` の `display:` に書きます。
@@ -363,9 +406,19 @@ display:
   name: true          # 話者名を表示する
   avatar: on          # アバターを表示する
   separator: "："     # inline のときの区切り
+  avatar_size: 12     # 全話者のアバターの直径（mm）
 ```
 
 ブロックごとの上書きも可能です。指定しなかった項目は `display:` の値を引き継ぎます。
+
+アバターの直径は、話者ごとにも `avatar_size` で決められます。一文字の簡易アバターなら既定の 12mm で十分ですが、似顔絵のアバターでは 15mm 前後にすると表情が分かりやすくなります。話者の指定は `display:` の値より優先します。単位を付けずに `15` と書いても、`15mm` と書いても同じです。ブロックごとには変えられません。
+
+```yaml
+haruka:
+  name: 遙香
+  avatar: haruka.webp
+  avatar_size: 15mm   # 似顔絵なので大きめに
+```
 
 ##### `style=inline` — 「名前：発話」の 1 段落
 

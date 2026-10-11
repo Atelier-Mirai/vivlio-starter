@@ -27,9 +27,11 @@
 #              auto … 画像があればそれ、無ければ簡易アバターを自動生成
 #              off  … 表示しない
 #   separator  inline のとき、名前と発話のあいだに置く区切り
+#   avatar_size 全話者のアバターの直径（mm。省略時は 12）。15 とも 15mm とも書けます
+#              話者ごとの avatar_size が優先します（:::{.talk ...} では変えられません）
 #
 # Kindle では表示が次のように自動で劣化します（KFX の制約のため）:
-#   style  → inline 相当へ組み替え     avatar → 非表示
+#   style  → inline 相当へ組み替え     avatar → 非表示（avatar_size も効きません）
 #   name   → 常に表示（話者が分からなくなるため）
 #   separator / 話者の name・color はそのまま有効、side は無視されます。
 
@@ -38,6 +40,7 @@
 #   name: true
 #   avatar: on
 #   separator: "："
+#   avatar_size: 12
 
 # ----------------------------------------
 # 話者定義
@@ -49,6 +52,11 @@
 #   avatar  images/characters/ 内のファイル名（省略時はアバターなし）
 #           auto と書くと、話者色に名前の頭 1 文字を白抜きした簡易アバターを
 #           システムが自動生成します（画像を用意しなくても始められます）
+#   avatar_size
+#           この話者のアバターの直径（mm。15 とも 15mm とも書けます）
+#           似顔絵は 15 前後、1 文字の簡易アバターは既定の 12 が目安です
+#   initial 簡易アバターに入れる 1〜2 文字（省略時は表示名の頭 1 文字）
+#           頭の字が同じ話者を見分けたいときや、欧文のイニシャル（AE）に使います
 #   side    left / right（省略時は出現順に left, right… と自動割当）
 #
 # 色だけを決めたいときは簡易形も使えます（表示名はキーのまま）:
@@ -69,23 +77,27 @@ haruka:
   name: 遙香
   color: purple
   avatar: haruka.webp
+  avatar_size: 15mm
   side: left
 
 mirai:
   name: 未來
   color: blue
   avatar: mirai.webp
+  avatar_size: 15mm
   side: right
 
-# 97 章（アインシュタインの物語）で使う話者
+# 95 章（アインシュタインの物語）で使う話者
 einstein:
   name: アインシュタイン
   color: navy
   avatar: auto
+  initial: AE
   side: left
 
 bohr:
   name: ボーア
   color: teal
   avatar: auto
+  initial: NB
   side: right
