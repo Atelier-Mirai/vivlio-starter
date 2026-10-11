@@ -105,9 +105,9 @@ vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
 番号かスラッグがほかの章と重なるときは、章を作らずに止まります。同じ区分（本文・付録など）の空いている番号で読むコマンドが示されるので、それを打ち直してください。
 
 ```text
-🔴 [pdf:read] 97 番は 97-sample が使っています
-        → 空いている付録の番号: 98
-        → vs pdf:read 97-sample-ocr 98-sample-ocr
+🔴 [pdf:read] 95 番は 95-sample が使っています
+        → 空いている付録の番号: 96
+        → vs pdf:read 95-sample-ocr 96-sample-ocr
 ```
 
 ### 一部のページだけ読む
@@ -164,7 +164,7 @@ images/
 自分の本を印刷してスキャンした場合のように、図の元の画像が手元にあるなら、`--images-from` でそのフォルダを渡します（Enhanced Mode のみ）。
 
 ```shell-session
-$ vs pdf:read 97-sample-ocr 98-sample-ocr --images-from images/97-sample-original
+$ vs pdf:read 95-sample-ocr 96-sample-ocr --images-from images/95-sample
 ```
 
 取り出した図を、元の画像と見た目（縮めた白黒の画像）で突き合わせ、一致したものは元の画像に差し替えます。スキャンから切り出した図は印刷を撮り直したもので、解像度が半分ほどになり、網点も入ります。差し替えれば元の画像そのものになり、参照も `![](prototype_meter.webp)` のように元のファイル名になります。元の画像は `images/{章}/` へ写すので、渡したフォルダはそのまま残ります。

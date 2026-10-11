@@ -693,7 +693,7 @@ rules:
 
 :::{.output}
 ```
-📄 contents/96-further-inspiration.md  (日本語校正)
+📄 contents/94-further-inspiration.md  (日本語校正)
     4件  [prh] CSS組版 => CSS␣組版（空白を追加）
          行: 11, 13
 ```

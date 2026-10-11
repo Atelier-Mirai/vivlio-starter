@@ -70,7 +70,7 @@ vs preflight intro   # スラッグが intro の章をチェック
 🔴 24-cross-reference.md:361 - ラベルID '画像(左寄せ) @img-left' は重複しています
         重複箇所: 24-cross-reference.md: 361, 381
                   25-querystream.md: 25, 30
-🟡 97-sample.md:461 - 裸 URL を検出しました
+🟡 95-sample.md:461 - 裸 URL を検出しました
         URL: https://onlinelibrary.wiley.com/journal/15213889
 🟡 24-cross-reference.md:329 - 孤立ラベル 'Prime2 @prime2' は未参照です
 🔍 リンク・画像検証の結果:
@@ -215,7 +215,7 @@ vs pdf:pages
 別の PDF を画像にしたいときは、引数でファイル名を指定します（`.pdf` は省けます）。
 
 ```bash
-vs pdf:pages 97-sample       # 97 章だけをビルドした 97-sample.pdf を画像にする
+vs pdf:pages 95-sample       # 95 章だけをビルドした 95-sample.pdf を画像にする
 ```
 
 #### 特定のページだけを画像にする
