@@ -192,23 +192,27 @@ module VivlioStarter
         self.description = 'PDF を Markdown へ変換します'
 
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
-        # 章トークン（target）として消費してしまう（契約テスト CL-01 で検出）
+        # PDF の指定（arguments）として消費してしまう（契約テスト CL-01 で検出）
         options do
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '--images-from <dir>', '抜き出した図を、このフォルダの元の画像に差し替える', key: :images_from
+          option '--force', '同じ章が既にあれば、読み直して置き換える', key: :force
+          option '--pages <spec>', '読むページ（例: 12-30、31-48,52、238-）', key: :pages
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        one :target, '章トークンまたは PDF パス', required: false
+        # 読む PDF と章の名前。空白を含むファイル名はシェルが分けて渡すので、三つ目から後も受け取って
+        # 読み取りの処理に止めさせる（pdf-read-file-naming-spec.md §2.3）
+        many :arguments, '読む PDF と章の名前', required: false
 
         def call
-          if options[:help] || target.to_s.strip.empty?
+          if options[:help] || Array(arguments).empty?
             print_usage
             return 0
           end
 
           # 前提条件の検証（ProjectRoot ○）
-          # target は章トークンの場合があるため PdfArtifactCheck は適用せず、
+          # sources/ を省いた指定があるため PdfArtifactCheck は適用せず、
           # PDF パス解決の失敗はドメイン層（MissingPdfError）に委ねる
           guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
           return guard_failure if guard_failure
@@ -229,11 +233,13 @@ module VivlioStarter
         private
 
         def pdf_reader
-          @pdf_reader ||= Commands::PdfReadCommand.new(target, build_options)
+          pdf, chapter_name, *stray_arguments = arguments
+          @pdf_reader ||= Commands::PdfReadCommand.new(pdf, build_options.merge(chapter_name:, stray_arguments:))
         end
 
         def build_options
-          { verbose: parent_verbose?, images_from: options[:images_from] }
+          { verbose: parent_verbose?, images_from: options[:images_from], force: options[:force] || false,
+            pages: options[:pages] }
         end
 
         def parent_verbose?
@@ -245,14 +251,19 @@ module VivlioStarter
             vs pdf:read - PDF を Markdown へ変換します
 
             Usage:
-              vs pdf:read FILE [--images-from DIR] [--log[=LEVEL]]
+              vs pdf:read PDF [CHAPTER] [--pages SPEC] [--force] [--images-from DIR] [--log[=LEVEL]]
 
             引数:
-              FILE 章トークン (01-foo) または PDF ファイルパス
+              PDF      読む PDF。/ を含まなければ sources/ の中を探す（gitlab・gitlab.pdf → sources/gitlab.pdf）
+                       ほかの場所の PDF は / を含むパスで指定する（./gitlab.pdf・~/Downloads/gitlab.pdf）
+              CHAPTER  章の名前（21-git・git）。省くとファイル名から作り、番号は本文の末尾の次にする
 
             オプション:
+              --pages SPEC       読むページ（12-30・31-48,52・-11・238-）。PDF の 1 枚目から数え、紙面のノンブルとはずれることがある
+                                 ページを指定するときは CHAPTER を省けない
+              --force            同じ章が既にあれば、読み直して置き換える（前回の画像は消す）
               --images-from DIR  抜き出した図を、DIR の元の画像（見た目の一致するもの）に差し替える（Enhanced Mode）
-              --log[=LEVEL] ページ数などの経過を表示（既定 info。debug で詳細）
+              --log[=LEVEL]      ページ数などの経過を表示（既定 info。debug で詳細）
           USAGE
         end
       end

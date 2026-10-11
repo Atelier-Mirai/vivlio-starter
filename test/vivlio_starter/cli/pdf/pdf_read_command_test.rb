@@ -176,105 +176,339 @@ module VivlioStarter
         assert_equal(markdown, @command.send(:normalize_image_reference_blocks, markdown))
       end
 
-      # 論文のファイル名は章の番号・範囲・拡張子と読まず、空き番号に続けた slug にする。
-      # 「73-4-218」は 73 章に、「245」は「18-245」で 18〜245 章の範囲に、「Vol.53_09_482」は「vol」になっていた
-      def test_entry_from_pdf_path_allocates_number_for_paper_file_names
-        basenames = { "73-4-218" => "18-pdf-73-4-218", "245" => "18-pdf-245", "Vol.53_09_482" => "18-vol-53-09-482" }
+      # --- 読む PDF と章の名前（pdf-read-file-naming-spec.md §2〜§5） ---
 
-        basenames.each do |file, expected|
-          command = PdfReadCommand.new("#{file}.pdf")
-          command.stub :expanded_input_path, "/papers/#{file}.pdf" do
-            command.stub :next_available_number, "18" do
-              assert_equal(expected, command.send(:entry_from_pdf_path).basename, file)
-            end
+      # `/` を含まなければ sources/ の中を探す。`.pdf` は省ける。`/` を含めばそのパス（§2.1）
+      def test_should_look_in_sources_unless_the_argument_has_a_slash
+        in_project do
+          File.write('sources/gitlab.pdf', '')
+          File.write('gitlab.pdf', '')
+
+          %w[gitlab gitlab.pdf sources/gitlab.pdf].each do |typed|
+            assert_equal(['01-gitlab', 'sources/gitlab.pdf'], resolve(typed), typed)
+          end
+          assert_equal('./gitlab.pdf', resolve('./gitlab.pdf').last)
+        end
+      end
+
+      # 大文字・日本語の名前も打ったとおりに探す。小文字に整えた名前で探すと、大文字と小文字を区別する
+      # ファイルシステム（Linux・WSL）で見つからず、日本語の名前は整えると消えていた（§1 の 5・6）
+      def test_should_look_up_the_file_name_as_typed
+        in_project do
+          File.write('sources/Hajimete_no_Rust.pdf', '')
+          File.write('sources/GPUの育てかた.pdf', '')
+
+          assert_equal(['01-hajimete-no-rust', 'sources/Hajimete_no_Rust.pdf'], resolve('Hajimete_no_Rust.pdf'))
+          assert_equal(['01-gpu-book', 'sources/GPUの育てかた.pdf'], resolve('GPUの育てかた.pdf', chapter_name: 'gpu-book'))
+        end
+      end
+
+      # `/` を含まない指定は、今いるディレクトリを探さない。同じ名前があれば `./` を付けたコマンドを示す（論点 5）
+      def test_should_not_read_the_current_directory_without_a_slash
+        in_project do
+          File.write('gitlab.pdf', '')
+
+          error = assert_raises(PdfReadCommand::MissingPdfError) { resolve('gitlab.pdf') }
+
+          assert_equal("PDF が見つかりません: sources/gitlab.pdf\n" \
+                       '→ 今いるディレクトリの PDF なら: vs pdf:read ./gitlab.pdf', error.message)
+          error = assert_raises(PdfReadCommand::MissingPdfError) { resolve('missing') }
+          assert_equal('PDF が見つかりません: sources/missing.pdf', error.message)
+        end
+      end
+
+      # `&` を含む名前は、シェルが `&` の所で分けて前の部分だけを渡す。打った名前に `&` が続く PDF があれば、
+      # それを示して名前を変えるよう案内する（§2.3）。macOS では、ファイル名の濁点が分かれた形（NFD）のこともある
+      def test_should_explain_a_file_name_split_at_an_ampersand
+        in_project do
+          File.write('sources/データ構造&アルゴリズム.pdf'.unicode_normalize(:nfd), '')
+
+          error = assert_raises(PdfReadCommand::MissingPdfError) { resolve('データ構造') }
+
+          assert_equal(<<~MESSAGE.chomp, error.message.unicode_normalize(:nfc))
+            PDF が見つかりません: sources/データ構造.pdf
+            sources/データ構造&アルゴリズム.pdf があります。& を含むファイル名は、シェルが & の所で分けて渡すので読み込めません
+            ファイル名を、英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）だけの名前に変えてから読んでください
+            （例: awesome.pdf、my-reference_2047.pdf）
+          MESSAGE
+        end
+      end
+
+      # 二つ目の引数で章の名前を決める。番号を省けば本文の末尾の次、大文字と `_` は整える（§2.2）
+      def test_should_name_the_chapter_from_the_second_argument
+        in_project do
+          File.write('sources/gitlab.pdf', '')
+          File.write('contents/61-developer.md', "# developer\n")
+
+          assert_equal('21-git', resolve('gitlab', chapter_name: '21-git').first)
+          assert_equal('62-git', resolve('gitlab', chapter_name: 'git').first)
+          assert_equal('05-git-basics', resolve('gitlab', chapter_name: '5-Git_Basics').first)
+          assert_equal('21-gitlab', resolve('gitlab', chapter_name: '21').first)
+        end
+      end
+
+      # 点・日本語・数字だけの名前は整えずに止め、使える名前の決まりと例を示す
+      def test_should_refuse_a_second_argument_outside_the_rule
+        in_project do
+          File.write('sources/gitlab.pdf', '')
+
+          { '21-git.v2' => '21-awesome', 'ギット' => '01-awesome', '21-245' => '21-awesome' }.each do |name, example|
+            error = assert_raises(PdfReadCommand::InvalidInputError, name) { resolve('gitlab', chapter_name: name) }
+
+            assert_includes(error.message, "#{name} は章の名前に使えません")
+            assert_includes(error.message, '（例: awesome、my-reference_2047）')
+            assert_includes(error.message, "→ vs pdf:read gitlab #{example}")
           end
         end
       end
 
-      # 章の名前の形のファイル名（「97-sample」）は、その章として読む
-      def test_entry_from_pdf_path_resolves_chapter_file_name
-        command = PdfReadCommand.new("97-sample.pdf")
-        command.stub :expanded_input_path, "/sources/97-sample.pdf" do
-          assert_equal("97-sample", command.send(:entry_from_pdf_path).basename)
-        end
-      end
-
-      # sources/ の PDF は、打ったとおりの名前で探す。小文字にした slug だけで探すと、大文字と小文字を
-      # 区別するファイルシステム（Linux・WSL）で見つからず、案内にも実在しない名前が出ていた
-      def test_should_look_up_sources_by_the_name_as_typed
+      # 複製・ダウンロードの印は、章の名前から外す。PDF を探すときは、ファイル名をそのまま使う（§3.2）
+      def test_should_strip_copy_marks_from_the_chapter_name
         in_project do
-          File.write('sources/Vol.53_09_482.pdf', '')
-          command = PdfReadCommand.new('Vol.53_09_482.pdf')
+          ['IPSJ-MGN621105 (1)', 'IPSJ-MGN621105のコピー 2', 'IPSJ-MGN621105 copy 2', 'IPSJ-MGN621105 - Copy (2)',
+           'IPSJ-MGN621105 (1)のコピー'].each do |name|
+            File.write("sources/#{name}.pdf", '')
 
-          assert_equal('sources/Vol.53_09_482.pdf', command.send(:determine_pdf_path, chapter_entry('01-vol.53_09_482')))
-        end
-      end
-
-      # 大文字と `_` は、vs create と同じく整えて読む（Hajimete_no_Rust.pdf）
-      def test_should_normalize_capitals_and_underscores_in_chapter_name
-        in_project do
-          resolved = @command.send(:ensure_chapter_name!, chapter_entry('01-Hajimete_no_Rust'), 'sources/Hajimete_no_Rust.pdf')
-
-          assert_equal('01-hajimete-no-rust', resolved.basename)
-        end
-      end
-
-      # 点を含む名前は作らない。章の解決が「01-vol」と読み、全体ビルドが Errno::ENOENT で止まっていた。
-      # PDF の名前を直した名前に変えて読み直すコマンドを示す
-      def test_should_refuse_a_chapter_name_with_a_dot
-        in_project do
-          error = assert_raises(PdfReadCommand::InvalidInputError) do
-            @command.send(:ensure_chapter_name!, chapter_entry('01-vol.53_09_482'), 'sources/Vol.53_09_482.pdf')
+            assert_equal(['01-ipsj-mgn621105', "sources/#{name}.pdf"], resolve("#{name}.pdf"), name)
           end
-
-          assert_includes(error.message, '01-vol.53_09_482 は章の名前に使えません')
-          assert_includes(error.message, '→ mv sources/Vol.53_09_482.pdf sources/01-vol-53-09-482.pdf')
-          assert_includes(error.message, '→ vs pdf:read 01-vol-53-09-482')
         end
       end
 
-      # 同じ章が既にあれば止める。別の番号でもう一章作り、スラッグの重なった章を増やしていた
-      def test_should_stop_when_the_chapter_already_exists
+      # 印を外して既にある章と同じ名前になれば、別の章は作らず、読み直しとして止める
+      def test_should_treat_a_copy_of_a_read_pdf_as_a_reread
         in_project do
-          File.write('contents/97-sample.md', "# sample\n")
+          File.write('sources/IPSJ-MGN621105 (1).pdf', '')
+          File.write('contents/62-ipsj-mgn621105.md', "# paper\n")
 
-          error = assert_raises(PdfReadCommand::InvalidInputError) do
-            @command.send(:ensure_chapter_name!, chapter_entry('97-sample'), 'sources/97-sample.pdf')
-          end
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('IPSJ-MGN621105 (1).pdf') }
 
-          assert_includes(error.message, 'contents/97-sample.md は既にあります')
-          assert_includes(error.message, '→ vs delete 97-sample')
-          assert_includes(error.message, '→ 残すなら名前を変える: vs rename 97-sample 90-sample-old')
+          assert_includes(error.message, '62-ipsj-mgn621105 は既にあります')
+          assert_includes(error.message, '→ 読み直して置き換えるなら: vs pdf:read IPSJ-MGN621105\ \(1\).pdf --force')
         end
       end
 
-      # 番号を別の章が使っていれば止める（vs pdf:read 97-sample-ocr が 97-sample と同じ番号で作っていた）。
-      # sources/ の外の PDF は、写して読み直すコマンドにする
+      # 整った名前でないファイル名からは章を作らず、名前を変える道と名前を添える道を、打った形で示す（§3.1・§2.4）
+      def test_should_ask_for_a_name_when_the_file_name_cannot_make_one
+        in_project do
+          File.write('contents/61-developer.md', "# developer\n")
+          %w[245 Vol.53_09_482 コンピュータネットワークのエッセンス].each { File.write("sources/#{it}.pdf", '') }
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('コンピュータネットワークのエッセンス.pdf') }
+
+          assert_equal(<<~MESSAGE.chomp, error.message)
+            ファイル名から章の名前を作れません: sources/コンピュータネットワークのエッセンス.pdf
+            使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
+            → ファイル名を変える: awesome.pdf にしてから vs pdf:read awesome.pdf
+            → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 62-awesome
+            （番号を省くと 62 番になります）
+          MESSAGE
+          %w[245 Vol.53_09_482].each do |name|
+            error = assert_raises(PdfReadCommand::InvalidInputError, name) { resolve(name) }
+            assert_includes(error.message, "→ 章の名前を添える:   vs pdf:read #{name} 62-awesome")
+          end
+        end
+      end
+
+      # 案内のコマンドは打った形で返す。sources/ 付きで打てば sources/ 付き、パスで打てば同じパス（§2.4）
+      def test_should_echo_the_pdf_as_typed_in_suggested_commands
+        in_project do
+          dir = Dir.pwd
+          File.write('sources/講座.pdf', '')
+          FileUtils.mkdir_p('downloads')
+          File.write('downloads/講座.pdf', '')
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('sources/講座.pdf') }
+          assert_includes(error.message, '→ ファイル名を変える: awesome.pdf にしてから vs pdf:read sources/awesome.pdf')
+          assert_includes(error.message, '→ 章の名前を添える:   vs pdf:read sources/講座.pdf 01-awesome')
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve("#{dir}/downloads/講座.pdf") }
+          assert_includes(error.message, "ファイル名から章の名前を作れません: downloads/講座.pdf")
+          assert_includes(error.message, "→ 章の名前を添える:   vs pdf:read #{dir}/downloads/講座.pdf 01-awesome")
+        end
+      end
+
+      # 番号を別の章が使っていれば止め、同じ区分の空いている番号で読むコマンドを示す（§4.1）。
+      # `vs pdf:read 97-sample-ocr` が 97-sample と同じ番号で章を作り、ビルドを止めていた
       def test_should_refuse_a_number_used_by_another_chapter
         in_project do
+          File.write('sources/97-sample-ocr.pdf', '')
           File.write('contents/97-sample.md', "# sample\n")
 
-          error = assert_raises(PdfReadCommand::InvalidInputError) do
-            @command.send(:ensure_chapter_name!, chapter_entry('97-sample-ocr'), '/scans/97-sample-ocr.pdf')
-          end
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('97-sample-ocr') }
 
-          assert_includes(error.message, '97-sample-ocr は作れません（97 番は 97-sample が使っています）')
-          assert_includes(error.message, '→ cp /scans/97-sample-ocr.pdf sources/90-sample-ocr.pdf')
-          assert_includes(error.message, '→ vs pdf:read 90-sample-ocr')
+          assert_equal("97 番は 97-sample が使っています\n" \
+                       "→ 空いている付録の番号: 90\n" \
+                       '→ vs pdf:read 97-sample-ocr 90-sample-ocr', error.message)
         end
       end
 
-      # スラッグを別の章が使っていれば、番号が違っても止める
-      def test_should_refuse_a_slug_used_by_another_chapter
+      # 名前を別の章が使っていれば、番号が違っても止める。その章を読み直すコマンドと、別の名前を示す
+      def test_should_refuse_a_name_used_by_another_chapter
         in_project do
+          File.write('sources/sample.pdf', '')
           File.write('contents/97-sample.md', "# sample\n")
 
-          error = assert_raises(PdfReadCommand::InvalidInputError) do
-            @command.send(:ensure_chapter_name!, chapter_entry('01-sample'), 'sources/sample.pdf')
-          end
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('sample', chapter_name: '01-sample') }
 
-          assert_includes(error.message, 'スラッグ sample は 97-sample が使っています')
-          assert_includes(error.message, '→ vs pdf:read 01-sample-2')
+          assert_equal("スラッグ sample は 97-sample が使っています\n" \
+                       "→ その章を読み直すなら: vs pdf:read sample 97-sample --force\n" \
+                       '→ 別の章として読むなら: vs pdf:read sample 01-sample-2', error.message)
+        end
+      end
+
+      # 番号を省けば本文の一番大きい番号の次。89 まで使われていれば、空いている一番小さい番号（§4.2）
+      def test_should_number_after_the_last_body_chapter
+        in_project do
+          File.write('sources/gitlab.pdf', '')
+          %w[01-intro 30-guide 97-sample].each { File.write("contents/#{it}.md", "# #{it}\n") }
+          assert_equal('31-gitlab', resolve('gitlab').first)
+
+          File.write('contents/89-last.md', "# last\n")
+          assert_equal('02-gitlab', resolve('gitlab').first)
+        end
+      end
+
+      # 空白で分かれて届いた引数はつなぎ直さず、つなげた名前と使える名前の決まりを示して止める（§2.3）
+      def test_should_stop_on_a_file_name_split_by_spaces
+        in_project do
+          error = assert_raises(PdfReadCommand::InvalidInputError) do
+            resolve('2026-06-10', chapter_name: 'at', stray_arguments: %w[10-08-42 AI活用講座.pdf])
+          end
+          assert_equal(<<~MESSAGE.chomp, error.message)
+            ファイル名に空白があるため、読み込めません: sources/2026-06-10 at 10-08-42 AI活用講座.pdf
+            ファイル名を、英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）だけの名前に変えてから読んでください
+            （例: awesome.pdf、my-reference_2047.pdf）
+          MESSAGE
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('my', chapter_name: 'notes.pdf') }
+          assert_includes(error.message, 'ファイル名に空白があるため、読み込めません: sources/my notes.pdf')
+        end
+      end
+
+      # 同じ章を読み直すときは止める。--force で置き換え、前回の画像を消す。原稿の頭にどの PDF から読んだかを
+      # 残し、二度目の案内に出す（§5）
+      def test_should_replace_a_chapter_only_with_force
+        in_project do
+          write_pdf('sources/gitlab.pdf') { it.draw_text 'First reading', at: [72, 700] }
+          read_pdf('gitlab')
+          FileUtils.mkdir_p('images/01-gitlab')
+          File.write('images/01-gitlab/old.png', '')
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { read_pdf('gitlab') }
+          assert_includes(error.message, '01-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）')
+          assert_includes(error.message, '→ 読み直して置き換えるなら: vs pdf:read gitlab --force')
+          assert_includes(error.message, '→ 別の章として読むなら: vs pdf:read gitlab 02-gitlab-2')
+
+          read_pdf('gitlab', force: true)
+
+          digest = Digest::SHA256.file('sources/gitlab.pdf').hexdigest
+          assert_equal("<!-- pdf:read: sources/gitlab.pdf（sha256: #{digest}） -->", File.readlines('contents/01-gitlab.md', chomp: true).first)
+          refute(File.exist?('images/01-gitlab/old.png'))
+          assert_equal(['01-gitlab'], File.read('config/catalog.yml').scan(/01-gitlab/))
+        end
+      end
+
+      # 中身が同じ PDF を別の章として読むときは知らせる。名前を変えて読むのは意図してのことなので、止めない
+      def test_should_warn_when_the_same_pdf_was_read_as_another_chapter
+        in_project do
+          write_pdf('sources/gitlab.pdf') { it.draw_text 'Same content', at: [72, 700] }
+          FileUtils.cp('sources/gitlab.pdf', 'sources/copied.pdf')
+          read_pdf('gitlab')
+
+          out = read_pdf('copied')
+
+          assert_includes(out, 'この PDF は 01-gitlab として読み込み済みです（中身が同じです）')
+          assert(File.exist?('contents/02-copied.md'))
+        end
+      end
+
+      # --- ページを指定して読む（pdf-read-file-naming-spec.md §10） ---
+
+      # 指定のページだけを原稿に入れる。1 ページだけでも、前後のページを手がかりに柱とノンブルを落とす（§10.3）
+      def test_should_read_only_the_given_pages
+        in_project do
+          write_book_pdf('sources/book.pdf')
+
+          read_pdf('book', chapter_name: 'second', pages: '2')
+
+          text = File.read('contents/01-second.md')
+          assert_match(/\A<!-- pdf:read: sources\/book\.pdf p\.2（sha256: \h{64}） -->/, text)
+          assert_includes(text, 'Body text of page 2.')
+          refute_match(/page [13]\.|RUNNING HEAD|^2$/, text)
+        end
+      end
+
+      # 飛んだ範囲の境目では段落をつながない。間のページを読んでいないので、続きかどうか分からない
+      def test_should_not_join_a_paragraph_across_skipped_pages
+        in_project do
+          write_book_pdf('sources/book.pdf')
+
+          read_pdf('book', chapter_name: 'skipped', pages: '3,5')
+          read_pdf('book', chapter_name: 'joined', pages: '3-4')
+
+          assert_includes(File.read('contents/01-skipped.md'), "This sentence continues\n\nBody text of page 5.")
+          assert_includes(File.read('contents/02-joined.md'), 'This sentence continues on the next page and ends here.')
+        end
+      end
+
+      # ページを指定したときは章の名前を求める。ファイル名から作ると、同じ PDF のどの範囲も同じ名前になる（§10.2）
+      def test_should_ask_for_a_chapter_name_when_pages_are_given
+        in_project do
+          write_book_pdf('sources/book.pdf')
+          File.write('contents/61-developer.md', "# developer\n")
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('book.pdf', pages: '31-48,52') }
+
+          assert_equal(<<~MESSAGE.chomp, error.message)
+            ページを指定して読むときは、章の名前を添えてください: sources/book.pdf
+            使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
+            → vs pdf:read book.pdf 62-awesome --pages 31-48,52
+            （番号を省くと 62 番になります）
+          MESSAGE
+        end
+      end
+
+      # 範囲の端は省ける。最後のページを越えた分は外して読み、知らせる（§10.1・§10.2）
+      def test_should_open_ranges_and_drop_pages_beyond_the_last
+        in_project do
+          write_book_pdf('sources/book.pdf')
+
+          read_pdf('book', chapter_name: 'head', pages: '-2')
+          read_pdf('book', chapter_name: 'tail', pages: '5-')
+          out = read_pdf('book', chapter_name: 'beyond', pages: '5-9')
+
+          assert_includes(File.read('contents/01-head.md'), 'p.1-2（')
+          assert_includes(File.read('contents/02-tail.md'), 'p.5-6（')
+          assert_includes(File.read('contents/03-beyond.md'), 'p.5-6（')
+          assert_includes(out, 'ページ 7〜9 はありません。5〜6 を読みます（sources/book.pdf は 6 ページです）')
+        end
+      end
+
+      # 読めるページが残らないときと、書き方の誤りは、読む前に止める
+      def test_should_stop_when_no_given_page_can_be_read
+        in_project do
+          write_book_pdf('sources/book.pdf')
+
+          error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('book', chapter_name: 'none', pages: '7-9') }
+          assert_equal('ページ 7〜9 はありません（sources/book.pdf は 6 ページです）', error.message)
+
+          { '5-3' => 'ページ範囲が逆順です', '0' => '1 以上', 'a' => 'ページ指定が不正です', '-' => 'ページ指定が不正です' }.each do |spec, reason|
+            error = assert_raises(PdfReadCommand::InvalidInputError, spec) { resolve('book', chapter_name: 'bad', pages: spec) }
+            assert_includes(error.message, "--pages #{spec} を読めません")
+            assert_includes(error.message, reason)
+          end
+          refute(File.exist?('contents/01-none.md'))
+        end
+      end
+
+      # 同じ PDF から読んだ章があっても、ページが重ならなければ知らせない。章ごとに分けて読むのはふつうの使い方（§10.4）
+      def test_should_warn_only_when_pages_of_the_same_pdf_overlap
+        in_project do
+          write_book_pdf('sources/book.pdf')
+          read_pdf('book', chapter_name: 'first', pages: '1-2')
+
+          refute_includes(read_pdf('book', chapter_name: 'second', pages: '3-4'), '読み込み済み')
+          assert_includes(read_pdf('book', chapter_name: 'third', pages: '2-3'), 'この PDF は 01-first として読み込み済みです')
         end
       end
 
@@ -498,8 +732,9 @@ module VivlioStarter
         )
         registered = []
 
-        @command.stub :resolve_entry_and_pdf, [entry, 'sources/scan.pdf'] do
-          @command.stub :ensure_chapter_name!, entry do
+        in_project do
+          File.write('sources/scan.pdf', '')
+          @command.stub :resolve_entry_and_pdf, [entry, 'sources/scan.pdf'] do
             @command.stub :add_catalog_entry_if_needed, ->(e) { registered << e } do
               @command.stub :resolved_mode, :standard do
                 @command.stub :convert_standard, ->(*) { raise PdfReadCommand::Error, '文字がありません' } do
@@ -599,8 +834,9 @@ module VivlioStarter
           write_tagged_pdf(pdf_path)
           entry = Data.define(:basename).new('10-tagged')
           requested = []
-          plugin = lambda do |_path, _entry, ocr:|
+          plugin = lambda do |_path, _entry, ocr:, pages: nil|
             requested << ocr
+            requested << pages
             { 'images' => [{ 'page' => 1, 'left' => 0, 'bottom' => 0, 'right' => 10, 'top' => 10, 'reference_path' => 'a.webp' }] }
           end
 
@@ -608,7 +844,7 @@ module VivlioStarter
             @command.stub(:enhanced_result, plugin) { @command.send(:convert_structured, pdf_path, entry, :enhanced) }
           end
 
-          assert_equal([{ mode: 'disable' }], requested)
+          assert_equal([{ mode: 'disable' }, nil], requested)
         end
       end
 
@@ -734,12 +970,34 @@ module VivlioStarter
         end
       end
 
-      def chapter_entry(basename)
-        number, slug = basename.match(/\A(\d+)[-_](.+)\z/).captures
-        VivlioStarter::CLI::TokenResolver::Entry.new(
-          number:, slug:, kind: :chapter, label: 'NEW', path: "contents/#{basename}.md",
-          exists: false, in_catalog: false, valid: true
-        )
+      # 6 ページの PDF。どのページにも柱（RUNNING HEAD）とノンブルがある。3 ページの末尾の文が 4 ページへ続く
+      def write_book_pdf(path)
+        write_pdf(path) do |pdf|
+          6.times do |index|
+            pdf.start_new_page unless index.zero?
+            pdf.draw_text 'RUNNING HEAD', at: [72, 800]
+            pdf.draw_text "Body text of page #{index + 1}.", at: [72, 700]
+            pdf.draw_text 'This sentence continues', at: [72, 100] if index == 2
+            pdf.draw_text 'on the next page and ends here.', at: [72, 740] if index == 3
+            pdf.draw_text (index + 1).to_s, at: [290, 30]
+          end
+        end
+      end
+
+      # 読む PDF と章の名前を決めるところまで（変換はしない）
+      # @return [Array(String, String)] 章の basename と PDF のパス
+      def resolve(typed, **options)
+        entry, pdf_path = PdfReadCommand.new(typed, options).send(:resolve_entry_and_pdf)
+        [entry.basename, pdf_path]
+      end
+
+      # Standard Mode で読み、表示を返す
+      def read_pdf(typed, **options)
+        command = PdfReadCommand.new(typed, options)
+        out, = capture_io do
+          command.stub(:resolved_mode, :standard) { command.stub(:newline_cleaner, identity_cleaner) { command.call } }
+        end
+        out
       end
     end
   end

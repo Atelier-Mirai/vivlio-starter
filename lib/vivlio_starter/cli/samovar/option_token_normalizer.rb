@@ -141,11 +141,15 @@ module VivlioStarter
             if inline_value # --opt=value 形式（空値は既定へ倒す）
               option_tokens << (inline_value.empty? ? fallback.to_s : inline_value)
               idx += 1
-            elsif value_flags.include?(name) && following && !following.to_s.start_with?('-') # --opt value 形式
+            elsif value_flags.include?(name) && following && option_value?(following) # --opt value 形式
               option_tokens << following
               idx += 2
             else # 値なし（ブールフラグ・末尾・次が別オプション）
               option_tokens << fallback if fallback
+              # 値を取るオプションに値が続かないときは、オプションごと渡さない（指定しなかったのと同じ）。
+              # 渡すと Samovar は次の語を値として取り、`--output -h` の `-h` が値になって使い方が出ない。
+              # `-h` を値にしたいときは `--output=-h` と書く
+              option_tokens.pop if value_flags.include?(name) && !fallback
               idx += 1
             end
           end
@@ -156,6 +160,11 @@ module VivlioStarter
             argument_tokens + option_tokens
           end
         end
+
+        # 値を取るオプションの次の語を、値として受け取るか。`-` で始まる語は次のオプションとみなすが、
+        # `-` と数字で始まる語（`--pages -11`）は値にする。始めを省いたページの範囲を、`=` なしでも打てるように
+        # （pdf-read-file-naming-spec.md §10.1）。`-h` などのフラグは数字で始まらないので、これまでどおりフラグとして読む
+        def option_value?(token) = !token.to_s.start_with?('-') || token.to_s.match?(/\A-\d/)
       end
     end
   end

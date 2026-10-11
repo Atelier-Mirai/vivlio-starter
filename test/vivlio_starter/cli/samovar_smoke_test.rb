@@ -190,15 +190,22 @@ module VivlioStarter
         assert execute_called, 'DoctorCommand は DoctorCommands.execute_doctor を呼び出すべき'
       end
 
+      # 差し替えた execute_clean も、本物と同じく削除の内訳（CleanSummary）を返す。以前は true を返していたので、
+      # 報告の summary.none? が NoMethodError になり、「clean コマンド実行中にエラー」が表示されていた
       def test_clean_command_can_invoke_execute_clean
         execute_called = false
+        summary = CleanCommands::CleanSummary.new(cache: 0, cover: 0, generated_images: 0, artifacts: 0, dictionaries: 0)
+        status = nil
 
-        CleanCommands.stub :execute_clean, ->(*_args) { execute_called = true } do
-          cmd = SamovarCommands::CleanCommand.new([])
-          cmd.call
+        out, = capture_io do
+          CleanCommands.stub :execute_clean, ->(*_args) { execute_called = true and summary } do
+            status = SamovarCommands::CleanCommand.new([]).call
+          end
         end
 
         assert execute_called, 'CleanCommand は CleanCommands.execute_clean を呼び出すべき'
+        assert_equal 0, status
+        refute_includes out, 'clean コマンド実行中にエラー'
       end
 
       def test_rename_command_can_invoke_executor

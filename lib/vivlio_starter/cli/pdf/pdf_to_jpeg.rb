@@ -45,13 +45,16 @@ module VivlioStarter
         filter_pages!(images, pages)
       end
 
-      # ページ指定文字列をページ番号配列に展開する（例: "1,3-5" → [1, 3, 4, 5]）
-      def parse_page_spec(spec)
+      # ページ指定文字列をページ番号配列に展開する（例: "1,3-5" → [1, 3, 4, 5]）。
+      # 範囲の端は省ける。始めを省けば 1 ページから（"-11"）、終わりを省けば最後のページまで（"238-"）。
+      # 終わりを省いた範囲を開くには last_page が要る（pdf-read-file-naming-spec.md §10.1）
+      # @param last_page [Integer, nil] PDF の最後のページ番号
+      def parse_page_spec(spec, last_page: nil)
         text = spec.to_s.strip
         raise Error, 'ページ指定が空です' if text.empty?
 
         text.split(',').flat_map do |part|
-          parse_page_part(part.strip)
+          parse_page_part(part.strip, last_page:)
         end.uniq.sort
       end
 
@@ -82,7 +85,7 @@ module VivlioStarter
       def filter_pages!(images, pages)
         return images if pages.nil? || pages.to_s.strip.empty?
 
-        requested_pages = parse_page_spec(pages)
+        requested_pages = parse_page_spec(pages, last_page: images.map { page_number_from_path(it) }.max)
         selected = images.select { requested_pages.include?(page_number_from_path(it)) }
         (images - selected).each { FileUtils.rm_f(it) }
         selected
@@ -100,11 +103,18 @@ module VivlioStarter
         end
       end
 
-      # ページ指定の1要素（"3" または "3-5"）をページ番号配列へ展開する
-      def parse_page_part(part)
+      # ページ指定の1要素（"3"・"3-5"・"-5"・"3-"）をページ番号配列へ展開する
+      def parse_page_part(part, last_page: nil)
         raise Error, "ページ指定が不正です: #{part.inspect}" if part.empty?
 
         case part
+        when /\A-(\d+)\z/
+          parse_page_part("1-#{::Regexp.last_match(1)}")
+        when /\A(\d+)-\z/
+          raise Error, "ページ範囲の終わりを決められません: #{part.inspect}" unless last_page
+
+          start_page = ::Regexp.last_match(1).to_i
+          parse_page_part("#{start_page}-#{[start_page, last_page].max}")
         when /\A\d+\z/
           page = part.to_i
           raise Error, 'ページ番号は 1 以上で指定してください' if page < 1

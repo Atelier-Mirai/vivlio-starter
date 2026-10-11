@@ -74,9 +74,14 @@ module VivlioStarter
 
       # @param pages [Array<MarkedContentReceiver>] ページごとに読み終えた受け手
       # @param text_area [Hash, nil] { top:, bottom:, inner:, outer: }（pt）。指定したときだけ版面の外を除く
-      def initialize(pages, text_area: nil)
+      # @param page_numbers [Array<Integer>, nil] pages のそれぞれの、0 から数えたページの番号。一部のページだけを渡すときに要る
+      # @param output_pages [Array<Integer>, nil] 原稿に出すページの番号。ほかのページは、柱・ノンブル・本文の字の大きさなどの
+      #   ページをまたいで見る手がかりにだけ使う（vs pdf:read --pages の前後のページ。pdf-read-file-naming-spec.md §10.3）
+      def initialize(pages, text_area: nil, page_numbers: nil, output_pages: nil)
         @pages = pages
         @text_area = text_area
+        @page_numbers = page_numbers || pages.each_index.to_a
+        @output_pages = output_pages&.to_set
       end
 
       # @return [StructureReader::Element]
@@ -99,17 +104,20 @@ module VivlioStarter
         @right_edges = right_edges(page_lines)
 
         page_lines = drop_running_heads(drop_margin_labels(page_lines))
+        page_lines = page_lines.each_with_index.map { |lines, index| output_page?(index) ? lines : [] }
         page_lines = page_lines.zip(column_gutters(page_lines)).map { |lines, gutter| split_columns(lines, gutter) }
         @overlines = overline_marks(page_lines)
         page_lines = drop_radicals(page_lines)
         blocks = page_lines.each_with_index.flat_map do |lines, index|
           lines, calculations = written_calculations(lines, index)
-          place_images(insert_by_top(page_blocks(attach_rubies(lines)), calculations), @figures[index])
+          place_images(insert_by_top(page_blocks(attach_rubies(lines)), calculations), output_page?(index) ? @figures[index] : [])
         end
         element(:Document, elements(blocks))
       end
 
       private
+
+      def output_page?(index) = @output_pages.nil? || @output_pages.include?(@page_numbers[index])
 
       # --- Phase: 行を組む ---
 
@@ -130,7 +138,7 @@ module VivlioStarter
 
         width, height = page.page_size
         inner, outer = @text_area.values_at(:inner, :outer)
-        left, right = index.even? ? [inner, width - outer] : [outer, width - inner]
+        left, right = @page_numbers[index].even? ? [inner, width - outer] : [outer, width - inner]
         glyphs.select { it.x.between?(left, right) && it.y.between?(@text_area[:bottom], height - @text_area[:top]) }
       end
 

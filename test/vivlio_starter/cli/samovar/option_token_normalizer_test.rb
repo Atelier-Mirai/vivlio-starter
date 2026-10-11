@@ -86,6 +86,28 @@ module VivlioStarter
           assert_equal 'blue', command.options[:theme]
           assert_equal ['x.md'], command.targets
         end
+
+        # `-` と数字で始まる値（始めを省いたページの範囲）は、空白で区切っても値として受け取る。
+        # 以前は次のオプションとみなし、`-11` を位置引数へ回していた（pdf-read-file-naming-spec.md §10.1）
+        def test_should_take_a_value_starting_with_a_dash_and_a_digit
+          command = PdfPagesCommand.new(['a.pdf', '--pages', '-11'])
+
+          assert_equal '-11', command.options[:pages]
+          assert_equal 'a.pdf', command.input
+        end
+
+        # 値を取るオプションの次がフラグなら、二つのオプションとして読む。以前は Samovar が `-h` を
+        # `--output` の値として取り、使い方が出なかった。`-h` を値にしたいときは `=` で書く
+        def test_should_read_a_flag_after_a_value_option_as_another_option
+          command = PdfPagesCommand.new(['a.pdf', '--output', '-h'])
+          assert command.options[:help]
+          assert_nil command.options[:output]
+          assert_equal 'a.pdf', command.input
+
+          assert_equal '-h', PdfPagesCommand.new(['a.pdf', '--output=-h']).options[:output]
+          assert_equal 'blue', BuildCommand.new(['x.md', '--theme', '--no-clean', '--theme', 'blue']).options[:theme]
+          refute BuildCommand.new(['x.md', '--theme', '--no-clean']).options[:clean]
+        end
       end
 
       # 値が省略されたときの扱い

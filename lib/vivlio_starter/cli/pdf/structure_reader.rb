@@ -33,9 +33,14 @@ module VivlioStarter
       ].freeze
 
       # @param reader [PDF::Reader]
-      def initialize(reader)
+      # @param pages [Array<Integer>, nil] 読むページ（0 から数える）。省けば全ページ
+      # @param output_pages [Array<Integer>, nil] 原稿に出すページ。pages のうち、ここに無いページは、紙面の推定（経路 B）が
+      #   柱やノンブルを見分ける手がかりにだけ使う（vs pdf:read --pages。pdf-read-file-naming-spec.md §10.3）
+      def initialize(reader, pages: nil, output_pages: nil)
         @reader = reader
         @objects = reader.objects
+        @read_pages = pages&.to_set
+        @output_pages = (output_pages || pages)&.to_set
       end
 
       # 構造ツリーが無ければ nil
@@ -53,7 +58,7 @@ module VivlioStarter
         # 構造ツリーの無い PDF では、ページを読む前に返す（500 ページで 50 秒かかる）
         return 0.0 if root.nil?
 
-        total = receivers.sum(&:body_glyph_count)
+        total = output_receivers.sum(&:body_glyph_count)
         return 0.0 if total.zero?
 
         covered_glyph_count(root, false).fdiv(total)
@@ -64,19 +69,22 @@ module VivlioStarter
       # @param images [Array<StructureMarkdown::ImagePlacement>] Enhanced Mode で抜き出した画像
       # @return [String]
       def markdown(images: [])
-        StructureMarkdown.new(root, images:, unmarked: receivers.map(&:unmarked_glyphs)).render
+        unmarked = receivers.each_with_index.map { |receiver, index| output_page?(index) ? receiver.unmarked_glyphs : [] }
+        StructureMarkdown.new(root, images:, unmarked:, read_pages: @output_pages&.to_a).render
       end
 
       # 経路 B: 構造ツリーを使わず、紙面の文字の大きさ・位置・フォントから構造を推定する（§4）
       # @param text_area [Hash, nil] { top:, bottom:, inner:, outer: }（pt）。指定したときだけ版面の外を除く
       # @return [String]
       def layout_markdown(images: [], text_area: nil)
-        StructureMarkdown.new(LayoutStructure.new(receivers, text_area:).root, images:).render
+        numbers = receivers.each_index.select { read_page?(it) }
+        layout = LayoutStructure.new(receivers.values_at(*numbers), text_area:, page_numbers: numbers, output_pages: @output_pages&.to_a)
+        StructureMarkdown.new(layout.root, images:, read_pages: @output_pages&.to_a).render
       end
 
       # 線で描いた図の範囲（ページごと・pdf-read-structure-spec.md §4.11）。Enhanced Mode で画像に描き出す
       # @return [Array<Array<MarkedContentReceiver::ImageBox>>]
-      def vector_figures = receivers.map { VectorFigures.find(it) }
+      def vector_figures = receivers.each_with_index.map { |receiver, index| output_page?(index) ? VectorFigures.find(receiver) : [] }
 
       # ページごとに読み終えた受け手。OCR したページと合わせて経路 B に渡すときに使う
       # @return [Array<MarkedContentReceiver>]
@@ -85,19 +93,26 @@ module VivlioStarter
       # 文字の層のあるページの割合。スキャンしたページ（文字が 10 字に満たない）を除いて数える
       # @return [Float]
       def text_page_ratio
-        return 0.0 if receivers.empty?
+        return 0.0 if output_receivers.empty?
 
-        receivers.count { it.page_glyphs.size >= 10 }.fdiv(receivers.size)
+        output_receivers.count { it.page_glyphs.size >= 10 }.fdiv(output_receivers.size)
       end
 
       private
 
       def catalog = @objects.deref_hash(@objects.trailer[:Root]) || {}
 
-      # ページごとに MCID の中身を集める。読めないページは空として扱い、ほかのページを活かす
+      def read_page?(index) = @read_pages.nil? || @read_pages.include?(index)
+      def output_page?(index) = @output_pages.nil? || @output_pages.include?(index)
+      def output_receivers = receivers.each_with_index.filter_map { |receiver, index| receiver if output_page?(index) }
+
+      # ページごとに MCID の中身を集める。読めないページは空として扱い、ほかのページを活かす。
+      # 読まないページ（pages の外）も、添字をそろえるために空の受け手を置く
       def receivers
         @receivers ||= @reader.pages.each_with_index.map do |page, index|
           receiver = MarkedContentReceiver.new(index)
+          next receiver.tap { it.page = page } unless read_page?(index)
+
           begin
             page.walk(receiver)
           rescue ::PDF::Reader::MalformedPDFError, ::PDF::Reader::UnsupportedFeatureError
@@ -108,7 +123,7 @@ module VivlioStarter
       end
 
       def marked_contents
-        @marked_contents ||= receivers.map(&:marked_contents)
+        @marked_contents ||= receivers.each_with_index.map { |receiver, index| output_page?(index) ? receiver.marked_contents : {} }
       end
 
       def page_index

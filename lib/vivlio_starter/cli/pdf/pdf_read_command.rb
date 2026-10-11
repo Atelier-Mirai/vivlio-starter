@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'digest'
 require 'json'
 require 'open3'
 require 'pdf/reader'
@@ -10,6 +11,7 @@ require_relative 'structure_reader'
 require_relative 'ocr_page'
 require_relative 'ocr_postprocess'
 require_relative 'image_matcher'
+require_relative 'pdf_to_jpeg'
 
 require_relative '../common'
 require_relative '../token_resolver'
@@ -37,47 +39,56 @@ module VivlioStarter
       class MissingPdfError < Error
       end
 
-      # PDF 格納ディレクトリの既定名
+      # PDF の置き場。一つ目の引数が `/` を含まなければ、ここだけを探す（pdf-read-file-naming-spec.md §2.1）
       SOURCES_DIR = 'sources'
       # 経路 B（紙面の推定）に入るのに要る、文字の層のあるページの割合。下回ればスキャンとみなして OCR に任せる
       LAYOUT_TEXT_PAGE_RATIO = 0.9
-      # 自動割り当て章番号の上限（01〜98）
-      MAX_AUTO_CHAPTER = 98
-      # 章として解決してよい PDF のファイル名（「10-intro」「heidelberg」）。論文のファイル名（「73-4-218」「Vol.53_09_482」
-      # 「245」）は章の番号・範囲・拡張子と読まれるので、空き番号を割り当てる
+      # 章の名前を作ってよいファイル名（「整った名前」。§3.1）。英字で始まり、英字・数字・`-`・`_` だけ。頭の `NN-` は番号。
+      # 論文のファイル名（「73-4-218」「Vol.53_09_482」「245」）や日本語の名前からは作らず、著者に名前を求める
       CHAPTER_FILE_NAME = /\A(?:\d{2}-)?[a-z][a-z0-9_-]*\z/i
-      # 数字で始まる slug の前に付ける語。「01-245」は章の範囲（1〜245 章）と読まれる
-      NUMERIC_SLUG_PREFIX = 'pdf'
+      # 使える名前の決まり。名前を作れないとき・空白で分かれたときの案内で、同じ言葉を使う（論点 2）
+      NAME_RULE = '英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）'
+      NAME_EXAMPLES = %w[awesome my-reference_2047].freeze
+      # 複製・ダウンロードでファイル名の末尾に付く印（§3.2）。「 (1)」「のコピー 2」「 copy 2」「 - コピー」「 - Copy (2)」
+      FILE_NAME_DECORATION = /(?:\s*\(\d+\)|\s*のコピー(?:\s*\d+)?|\s+copy(?:\s+\d+)?|\s+-\s+(?:コピー|copy))\z/i
+      # 原稿の頭に書く、どの PDF から読んだかの注記（§5）
+      SOURCE_NOTE = /\A<!-- pdf:read: (?<source>.+?)(?: p\.(?<pages>[\d,-]+))?（sha256: (?<digest>\h{64})） -->/
+      # 柱とノンブルを見分けるのに、--pages で指定したページの前後から読み足すページの数（§10.3・論点 6）
+      CLUE_PAGE_MARGIN = 2
+      # 番号の区分の呼び名（空いている番号を示す案内で使う）
+      SECTION_NAMES = { 0..0 => 'まえがき', 1..89 => '本文', 90..98 => '付録', 99..99 => 'あとがき' }.freeze
+      BODY_NUMBERS = 1..89
 
-      # @param input [String] 章トークンまたは PDF ファイルパス
-      # @param options [Hash] CLI から渡されるオプション
+      # @param input [String] 読む PDF。`/` を含まなければ sources/ の中のファイル名（`.pdf` は省ける）
+      # @param options [Hash] CLI から渡されるオプション。:chapter_name（二つ目の引数）、:stray_arguments（三つ目から後）、
+      #   :force、:pages（読むページ。「31-48,52」）、:images_from
       def initialize(input, options = {})
         @input = input.to_s.strip
         @options = options || {}
-        @resolver = CLI::TokenResolver::Resolver.new
-        @catalog_entries = nil
         @plugin_checked = false
         @plugin_available = false
       end
 
       # PDF → Markdown 変換を実行する
-      # 入力を解決し、モードに応じて Standard / Enhanced の変換パイプラインを呼び出す
+      # 読む PDF と章の名前を決め、モードに応じて Standard / Enhanced の変換パイプラインを呼び出す
       # @return [Hash] :mode, :entry, :markdown_path, :source_pdf_path, :pages を含む結果
       def call
         raise InvalidInputError, 'PDF を指定してください' if input.empty?
 
         entry, pdf_path = resolve_entry_and_pdf
-        entry = ensure_chapter_name!(entry, pdf_path)
         mode = resolved_mode
         log_enhanced_install_hint if mode == :standard
         check_images_from!(mode)
 
-        ensure_entry_has_slug!(entry)
+        digest = Digest::SHA256.file(pdf_path).hexdigest
+        warn_same_pdf_already_read(entry, digest)
+        clear_previous_images(entry) if replacing?(entry)
 
         CLI::Common.log_action("[pdf:read] PDF からテキストを抽出します (#{entry.basename}, mode=#{mode})")
 
         result = convert_structured(pdf_path, entry, mode) ||
                  (mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry))
+        write_source_note(result[:markdown_path], pdf_path, digest)
 
         # catalog.yml へは変換が済んでから載せる。文字を取り出せずに止まったとき、
         # 中身の無い章が目次に残らないように
@@ -96,147 +107,323 @@ module VivlioStarter
 
       private
 
-      attr_reader :input, :options, :resolver
+      attr_reader :input, :options
 
-      # --- Phase: Entry & PDF resolution ---
+      # --- Phase: 読む PDF と章の名前（pdf-read-file-naming-spec.md §2〜§5） ---
 
-      # 入力が PDF パスか章トークンかを判定し、Entry と PDF パスの組を返す
+      # 読む PDF を探し、読み込み先の章を決める。章を作れないとき・ほかの章と重なるときは、
+      # 何も書かずに止め、そのまま打てるコマンドを示す
+      # @return [Array(CLI::TokenResolver::Entry, String)] 読み込み先の章と、PDF のパス
       def resolve_entry_and_pdf
-        if pdf_path_argument?
-          entry = entry_from_pdf_path
-          [entry, expanded_input_path]
-        else
-          entry = entry_from_token
-          [entry, determine_pdf_path(entry)]
+        check_split_arguments!
+        pdf_path = locate_pdf
+        entry = decide_chapter(pdf_path)
+        @selected_pages = select_pages(pdf_path)
+        [entry, pdf_path]
+      end
+
+      def chapter_argument = options[:chapter_name]&.to_s&.strip&.then { it.empty? ? nil : it }
+      def stray_arguments = Array(options[:stray_arguments]).map(&:to_s)
+
+      # 空白を含むファイル名を引用符なしで打つと、シェルが空白で分けて渡す。つなぎ直さずに止め、名前を変えてもらう（§2.3・論点 1）。
+      # 分かれて届いたと見なすのは、引数が 3 つ以上あるときと、二つ目以降が `.pdf` で終わるとき
+      def check_split_arguments!
+        rest = [chapter_argument, *stray_arguments].compact
+        return if stray_arguments.empty? && rest.none? { it.match?(/\.pdf\z/i) }
+
+        raise InvalidInputError, <<~MESSAGE.chomp
+          ファイル名に空白があるため、読み込めません: #{shown_path(pdf_path_for([input, *rest].join(' ')))}
+          ファイル名を、#{NAME_RULE}だけの名前に変えてから読んでください
+          （例: #{NAME_EXAMPLES.map { "#{it}.pdf" }.join('、')}）
+        MESSAGE
+      end
+
+      # 一つ目の引数が指す PDF。`/` を含めばそのパス、含まなければ sources/ の中（§2.1）
+      def pdf_path_for(argument)
+        return argument if argument.include?('/')
+
+        File.join(SOURCES_DIR, argument.match?(/\.pdf\z/i) ? argument : "#{argument}.pdf")
+      end
+
+      # 打ったとおりの名前で探す。`/` を含まない引数は、今いるディレクトリを探さない（論点 5）。
+      # 同じ名前の PDF が今いるディレクトリにあれば、`./` を付けたコマンドを添える
+      def locate_pdf
+        path = pdf_path_for(input)
+        return path if File.file?(File.expand_path(path))
+
+        here = File.basename(path)
+        hint = "→ 今いるディレクトリの PDF なら: #{retyped(pdf: "./#{here}")}" if !input.include?('/') && File.file?(here)
+        raise MissingPdfError, ["PDF が見つかりません: #{shown_path(path)}", *hint, *ampersand_hint(path)].join("\n")
+      end
+
+      # `&` を含むファイル名を引用符なしで打つと、シェルが `&` の所で分け、前の部分だけを渡す
+      # （`vs pdf:read データ構造&アルゴリズム.pdf` は `データ構造` を探し、`アルゴリズム.pdf` をコマンドとして実行する）。
+      # 打った名前に `&` が続く PDF が同じフォルダにあれば、それを示して名前を変えるよう案内する（§2.3）
+      def ampersand_hint(path)
+        directory = File.dirname(File.expand_path(path))
+        # 打った名前と、フォルダの中の名前の濁点の表し方（NFC・NFD）がそろうとは限らないので、そろえて比べる
+        stem = File.basename(path).sub(/\.pdf\z/i, '').unicode_normalize(:nfc)
+        found = Dir.exist?(directory) && Dir.children(directory).sort.find do |name|
+          name.unicode_normalize(:nfc).start_with?("#{stem}&") && name.match?(/\.pdf\z/i)
         end
+        return [] unless found
+
+        ["#{shown_path(File.join(directory, found))} があります。& を含むファイル名は、シェルが & の所で分けて渡すので読み込めません",
+         "ファイル名を、#{NAME_RULE}だけの名前に変えてから読んでください",
+         "（例: #{NAME_EXAMPLES.map { "#{it}.pdf" }.join('、')}）"]
       end
 
-      # PDF ファイルパスから Entry を生成する
-      # 章の名前の形のファイル名だけを TokenResolver で解決し、解決できないときと、ほかの形のときは新しい章番号を自動割り当てする
-      def entry_from_pdf_path
-        base = normalized_basename(expanded_input_path)
-        entry = resolve_with_single_token(base) if base.match?(CHAPTER_FILE_NAME)
-
-        return entry if entry&.valid? && entry.slug
-
-        allocate_entry_for(base)
-      end
-
-      # 章トークン文字列から Entry を解決する
-      # 新規登録時は slug 必須とし、不足時は InvalidInputError を送出
-      def entry_from_token
-        entry = resolve_with_single_token(token_candidate)
-        raise InvalidInputError, "章トークンを解決できません: #{input.inspect}" unless entry&.valid?
-
-        if !entry.in_catalog? && entry.slug.to_s.empty?
-          raise InvalidInputError, '新規 PDF 登録時は slug を含む章トークンを指定してください (例: 10-foo)'
-        end
-
-        entry
-      end
-
-      # 単一トークンを TokenResolver で解決し、最初の Entry を返す
-      def resolve_with_single_token(token)
-        resolver.resolve([token]).first
-      end
-
-      # 空き章番号を自動割り当てし、新規 Entry を生成する
-      def allocate_entry_for(slug_source)
-        basename = next_available_basename(slug_source)
-        resolve_with_single_token(basename)
-      end
-
-      # slug を正規化し、空き番号と結合して「NN-slug」形式の basename を生成する
-      def next_available_basename(slug_source)
-        slug = normalize_slug(slug_source)
-        number = next_available_number
-        "#{number}-#{slug}"
-      end
-
-      # catalog.yml と contents/ の既存章を調べ、01〜98 の空き番号を返す
-      def next_available_number
-        used_numbers = (catalog_entries.map(&:number) + existing_markdown_numbers).uniq
-
-        (1..MAX_AUTO_CHAPTER).each do |candidate|
-          number = format('%02d', candidate)
-          return number unless used_numbers.include?(number)
-        end
-
-        raise Error, "01-#{format('%02d', MAX_AUTO_CHAPTER)} までの章番号がすべて使用済みです"
-      end
-
-      # catalog.yml に登録されている全章エントリを取得する（結果をメモ化）
-      def catalog_entries
-        @catalog_entries ||= resolver.resolve([])
-      end
-
-      # contents/ に存在する Markdown から使用済み章番号（2桁）を抽出する
-      def existing_markdown_numbers
-        Dir.glob(File.join(contents_dir, '*.md')).filter_map do |path|
-          File.basename(path, '.md')[/\A(\d{2})/, 1]
-        end
-      end
-
-      # Entry に slug が設定されていなければ InvalidInputError を送出する
-      def ensure_entry_has_slug!(entry)
-        return unless entry.slug.to_s.empty?
-
-        raise InvalidInputError, 'slug を含む章トークンを指定してください (例: 10-foo)'
-      end
-
-      # 読み込み先の章の名前を決まりの形（ChapterNames::VALID_BASENAME）に整え、ほかの章と重ならないか確かめる
-      # （pdf-read-file-naming-spec.md §4.1・§5・§7）。大文字と `_` は整えて知らせる（「Hajimete_no_Rust」→
-      # 「hajimete-no-rust」）。次のときは章を作らずに止め、そのまま打てるコマンドを示す。
-      # - 決まりの形にできない（点を含む「01-vol.53_09_482」は、章の解決が「01-vol」と読み、ビルドを壊していた）
-      # - 同じ章が既にある。これまでは別の番号でもう一章作り、スラッグの重なった章が増えていた
-      # - 番号かスラッグを別の章が使っている（`vs pdf:read 97-sample-ocr` が 97-sample と同じ番号で作っていた）
+      # 読み込み先の章を決める（§3〜§5）。名前は二つ目の引数か、PDF のファイル名から作る。番号を省いたときは、
+      # 名前が同じ章があればその章（読み直し）、無ければ本文の末尾の番号にする
       # @return [CLI::TokenResolver::Entry]
-      def ensure_chapter_name!(entry, pdf_path)
+      def decide_chapter(pdf_path)
         taken = CLI::ChapterNames.existing_basenames
-        normalized = CLI::ChapterNames.normalize(entry.basename)
-        unless normalized
-          raise InvalidInputError, name_problem_message("#{entry.basename} は章の名前に使えません" \
-                                                        '（2 桁の番号と、英小文字・数字・ハイフンのスラッグで付けます）',
-                                                        entry.basename, taken, pdf_path)
+        raise InvalidInputError, unnamed_pages_message(pdf_path, taken) if options[:pages] && !chapter_argument
+
+        number, slug = chapter_argument ? parts_from_argument(pdf_path, taken) : parts_from_file_name(pdf_path, taken)
+        basename = if number then "#{number}-#{slug}"
+                   else taken.find { CLI::ChapterNames.slug_of(it) == slug } || "#{next_body_number(taken)}-#{slug}"
+                   end
+
+        if markdown_exists?(basename)
+          raise InvalidInputError, reread_message(basename, taken) unless options[:force]
+        else
+          problems = CLI::ChapterNames.conflicts(basename, taken)
+          raise InvalidInputError, conflict_message(basename, problems, taken) if problems.any?
         end
-
-        if normalized != entry.basename
-          CLI::Common.log_info("[pdf:read] 章の名前を整えます: #{entry.basename} -> #{normalized}")
-          entry = build_entry_from_basename(entry, normalized)
-        end
-        raise InvalidInputError, reread_message(entry.basename, taken) if markdown_exists?(entry.basename)
-
-        problems = CLI::ChapterNames.conflicts(entry.basename, taken)
-        return entry if problems.empty?
-
-        raise InvalidInputError, name_problem_message("#{entry.basename} は作れません（#{problems.join('、')}）",
-                                                      entry.basename, taken, pdf_path)
+        chapter_entry(basename)
       end
 
-      # 名前の問題と、PDF の名前を直した名前に変えて読み直すコマンド。今の pdf:read は章の名前を
-      # PDF のファイル名から決めるので、PDF の名前を変えてもらう（sources/ の外の PDF は写す）
-      def name_problem_message(problem, basename, taken, pdf_path)
-        suggested = CLI::ChapterNames.suggestion(basename, taken)
-        return problem unless suggested
+      # 二つ目の引数を、`vs create` と同じく整える（§2.2）。番号だけ（「21」）なら、名前はファイル名から作る。
+      # 点・空白・日本語を含む名前は整えずに止める
+      # @return [Array(String, String), Array(nil, String)] 番号（省けば nil）と名前
+      def parts_from_argument(pdf_path, taken)
+        argument = chapter_argument
+        normalized = if argument.match?(/\A\d/) then CLI::ChapterNames.normalize(argument)
+                     else argument.downcase.tr('_', '-').then { CLI::ChapterNames.valid?("01-#{it}") ? it : nil }
+                     end
+        raise InvalidInputError, invalid_argument_message(argument, taken) unless normalized
 
-        source = File.expand_path(pdf_path)
-        verb = File.dirname(source) == File.expand_path(sources_dir) ? 'mv' : 'cp'
-        shown = source.delete_prefix("#{Dir.pwd}/")
-        [problem,
-         "→ #{verb} #{CLI::ChapterNames.shell_word(shown)} #{File.join(sources_dir, "#{suggested}.pdf")}",
-         "→ vs pdf:read #{suggested}"].join("\n")
+        CLI::Common.log_info("[pdf:read] 章の名前を整えます: #{argument} -> #{normalized}") if normalized != argument
+        number = CLI::ChapterNames.number_of(normalized) if normalized.match?(/\A\d/)
+        slug = CLI::ChapterNames.slug_of(normalized) if number
+        slug ||= number ? parts_from_file_name(pdf_path, taken, number:).last : normalized
+        [number, slug]
       end
 
-      # 同じ章が既にあるとき。読み直すなら先に消してもらう（置き換えは --force で行う予定。§5）。
-      # 残したいときは、番号もスラッグも変えておかないと、読み直した章と重なる
-      def reread_message(basename, taken)
+      # PDF のファイル名から章の名前を作る（§3.1）。複製の印を外し（§3.2）、残りが整った名前なら整えて使う。
+      # 整った名前でなければ、名前を変える道と、章の名前を添える道を示して止める
+      # @param number [String, nil] 二つ目の引数で番号だけを決めたときの番号
+      def parts_from_file_name(pdf_path, taken, number: nil)
+        stem = File.basename(pdf_path).sub(/\.pdf\z/i, '')
+        bare = stem.dup
+        bare = bare.sub(FILE_NAME_DECORATION, '') while bare.match?(FILE_NAME_DECORATION)
+        CLI::Common.log_info("[pdf:read] ファイル名の複製の印を外します: #{stem} -> #{bare}") if bare != stem
+
+        named_number, slug = bare.downcase.tr('_', '-').match(/\A(?:(\d{2})-)?(.+)\z/).captures
+        unless bare.match?(CHAPTER_FILE_NAME) && CLI::ChapterNames.valid?("01-#{slug}")
+          raise InvalidInputError, unnamed_file_message(pdf_path, number, taken)
+        end
+
+        [number || named_number, slug]
+      end
+
+      # 本文（01〜89）でいま使われている一番大きい番号の次。89 まで使われていれば空いている一番小さい番号（§4.2）
+      def next_body_number(taken)
+        used = taken.filter_map { CLI::ChapterNames.number_of(it)&.to_i }.select { BODY_NUMBERS.cover?(it) }
+        candidate = used.empty? ? BODY_NUMBERS.first : used.max + 1
+        candidate = BODY_NUMBERS.find { !used.include?(it) } if candidate > BODY_NUMBERS.last
+        raise InvalidInputError, '本文の番号（01〜89）がすべて使われています。付録などの番号を付けて読んでください' unless candidate
+
+        format('%02d', candidate)
+      end
+
+      # number と同じ区分で空いている番号。本文は末尾の次（§4.2）、ほかの区分は空いている一番小さい番号
+      def free_number_for(number, taken)
+        return next_body_number(taken) if BODY_NUMBERS.cover?(number.to_i)
+
+        CLI::ChapterNames.free_number(number, taken)
+      end
+
+      def section_name(number) = SECTION_NAMES.find { |range, _| range.cover?(number.to_i) }&.last
+
+      # 案内に出す `vs pdf:read …`。著者が打った形を保ち、変えるところだけ差し替える（§2.4）。
+      # sources/ を省いて打った人には省いた形で、パスで打った人には同じパスで返す
+      def retyped(pdf: input, chapter: chapter_argument, force: options[:force])
+        ['vs pdf:read', CLI::ChapterNames.shell_word(pdf), chapter, ('--force' if force),
+         (options[:pages] && "--pages #{options[:pages]}"),
+         (options[:images_from] && "--images-from #{CLI::ChapterNames.shell_word(options[:images_from].to_s)}")].compact.join(' ')
+      end
+
+      # 打った PDF の指定の、ファイル名だけを差し替えたもの（「~/Downloads/講座.pdf」→「~/Downloads/awesome.pdf」）
+      def input_renamed_to(name)
+        directory = input[0..input.rindex('/')] if input.include?('/')
+        "#{directory}#{name}#{'.pdf' if input.match?(/\.pdf\z/i)}"
+      end
+
+      # どのファイルのことかを示す行に書く、実際の場所。プロジェクトの中は相対パス、ホームの下は「~/」で書く
+      def shown_path(path)
+        expanded = File.expand_path(path)
+        return expanded.delete_prefix("#{Dir.pwd}/") if expanded.start_with?("#{Dir.pwd}/")
+
+        expanded.sub(/\A#{Regexp.escape(Dir.home)}(?=\/)/, '~')
+      end
+
+      def name_rule_line = "使える名前: #{NAME_RULE}（例: #{NAME_EXAMPLES.join('、')}）"
+
+      # ファイル名から章の名前を作れないとき（§3.1）。名前を変える道と、章の名前を添える道の両方を示す
+      def unnamed_file_message(pdf_path, number, taken)
+        suggested = number || next_body_number(taken)
+        example = NAME_EXAMPLES.first
+        ["ファイル名から章の名前を作れません: #{shown_path(pdf_path)}",
+         name_rule_line,
+         "→ ファイル名を変える: #{example}.pdf にしてから #{retyped(pdf: input_renamed_to(example))}",
+         "→ 章の名前を添える:   #{retyped(chapter: "#{suggested}-#{example}")}",
+         *("（番号を省くと #{suggested} 番になります）" unless number)].join("\n")
+      end
+
+      # 二つ目の引数が章の名前に使えないとき（§2.2）
+      def invalid_argument_message(argument, taken)
+        number = CLI::ChapterNames.number_of(argument) if argument.match?(/\A\d{1,2}(?:[-_]|\z)/)
+        ["#{argument} は章の名前に使えません",
+         name_rule_line,
+         "→ #{retyped(chapter: "#{number || next_body_number(taken)}-#{NAME_EXAMPLES.first}")}"].join("\n")
+      end
+
+      # 番号か名前を別の章が使っているとき（§4.1）。番号だけなら同じ区分の空いている番号を、名前だけなら
+      # その章を読み直すコマンドと別の名前を示す
+      def conflict_message(basename, problems, taken)
         number = CLI::ChapterNames.number_of(basename)
         slug = CLI::ChapterNames.slug_of(basename)
-        free = number && CLI::ChapterNames.free_number(number, taken)
-        keep = "#{free}-#{slug}-old" if free && slug
-        ["contents/#{basename}.md は既にあります。読み直すときは、先にこの章を消してください",
-         "→ vs delete #{basename}",
-         *(keep && "→ 残すなら名前を変える: vs rename #{basename} #{keep}")].join("\n")
+        others = taken - [basename]
+        number_owner = others.find { CLI::ChapterNames.number_of(it) == number }
+        slug_owner = others.find { CLI::ChapterNames.slug_of(it) == slug }
+        free = free_number_for(number, taken) if number_owner && !slug_owner
+
+        hints = if free
+                  ["→ 空いている#{section_name(number)}の番号: #{free}", "→ #{retyped(chapter: "#{free}-#{slug}")}"]
+                elsif slug_owner && !number_owner
+                  ["→ その章を読み直すなら: #{retyped(chapter: slug_owner, force: markdown_exists?(slug_owner))}",
+                   "→ 別の章として読むなら: #{retyped(chapter: "#{number}-#{CLI::ChapterNames.free_slug(slug, taken)}")}"]
+                else
+                  [CLI::ChapterNames.suggestion(basename, taken)&.then { "→ #{retyped(chapter: it)}" }].compact
+                end
+        [problems.join('。'), *hints].join("\n")
+      end
+
+      # 読む先の章が既にあるとき（§5）。--force で置き換えるコマンドと、別の章として読むコマンドを示す
+      def reread_message(basename, taken)
+        source = source_note(basename)&.[](:source)
+        number = CLI::ChapterNames.number_of(basename)
+        slug = CLI::ChapterNames.slug_of(basename)
+        another = "#{free_number_for(number, taken)}-#{CLI::ChapterNames.free_slug(slug, taken)}" if number && slug
+        ["#{basename} は既にあります#{"（前回 #{source} から読みました）" if source}",
+         "→ 読み直して置き換えるなら: #{retyped(force: true)}",
+         *(another && "→ 別の章として読むなら: #{retyped(chapter: another, force: false)}")].join("\n")
+      end
+
+      def replacing?(entry) = options[:force] && markdown_exists?(entry.basename)
+
+      # 置き換える前に、前回の画像（images/<章>/）を消す。今回の画像に前回の画像が混ざらないように
+      def clear_previous_images(entry)
+        dir = File.join(CLI::Common.images_dir, entry.basename)
+        return unless File.directory?(dir)
+
+        FileUtils.rm_rf(dir)
+        CLI::Common.log_info("[pdf:read] 前回の画像を消しました: #{dir}/")
+      end
+
+      # 原稿の頭に、どの PDF から読んだかを残す（§5）。ページを指定したときはページも（§10.4）。
+      # 前処理が HTML コメントを除くので、組版には出ない
+      def write_source_note(markdown_path, pdf_path, digest)
+        body = File.read(markdown_path, encoding: 'UTF-8')
+        pages = " p.#{page_label(selected_pages.map { it + 1 }, '-')}" if selected_pages
+        File.write(markdown_path, "<!-- pdf:read: #{shown_path(pdf_path)}#{pages}（sha256: #{digest}） -->\n\n#{body}", encoding: 'UTF-8')
+      end
+
+      # 原稿の頭の注記を読む。無ければ nil
+      # @return [MatchData, nil] :source と :digest
+      def source_note(basename)
+        path = File.join(contents_dir, "#{basename}.md")
+        File.file?(path) ? File.open(path, encoding: 'UTF-8', &:gets).to_s.match(SOURCE_NOTE) : nil
+      end
+
+      # 中身が同じ PDF（sha256 が一致）から読んだ別の章があれば知らせる。著者が名前を変えて読んでいるなら意図してのことなので、止めない。
+      # ページを指定したときは、ページが重なるときだけ知らせる。同じ本を章ごとに分けて読むのは、ふつうの使い方なので（§10.4）
+      def warn_same_pdf_already_read(entry, digest)
+        mine = selected_pages&.map { it + 1 }
+        other = CLI::ChapterNames.existing_basenames.find do |basename|
+          note = source_note(basename) if basename != entry.basename
+          next false unless note && note[:digest] == digest
+
+          theirs = note[:pages] && Pdf::PdfToJpeg.parse_page_spec(note[:pages])
+          mine.nil? || theirs.nil? || mine.intersect?(theirs)
+        end
+        CLI::Common.log_warn("[pdf:read] この PDF は #{other} として読み込み済みです（中身が同じです）") if other
+      end
+
+      # --- Phase: 読むページ（§10） ---
+
+      # --pages で読むページ（0 から数える）。省けば nil（全ページ）。最後のページを越えた分は外して知らせ、
+      # 一枚も残らなければ止める（§10.2・論点 7）
+      # @return [Array<Integer>, nil]
+      def select_pages(pdf_path)
+        return nil unless options[:pages]
+
+        last = @pdf_page_count = ::PDF::Reader.new(pdf_path).page_count
+        requested = Pdf::PdfToJpeg.parse_page_spec(options[:pages], last_page: last)
+        inside, beyond = requested.partition { it <= last }
+        raise InvalidInputError, "ページ #{page_label(beyond, '〜')} はありません（#{shown_path(pdf_path)} は #{last} ページです）" if inside.empty?
+
+        if beyond.any?
+          CLI::Common.log_warn("[pdf:read] ページ #{page_label(beyond, '〜')} はありません。#{page_label(inside, '〜')} を読みます" \
+                               "（#{shown_path(pdf_path)} は #{last} ページです）")
+        end
+        inside.map { it - 1 }
+      rescue Pdf::PdfToJpeg::Error => e
+        raise InvalidInputError, "--pages #{options[:pages]} を読めません: #{e.message}（例: --pages 12-30、--pages 31-48,52、--pages 238-）"
+      rescue ::PDF::Reader::MalformedPDFError, ::PDF::Reader::UnsupportedFeatureError => e
+        raise Error, "PDF の解析に失敗しました: #{e.message}"
+      end
+
+      def selected_pages = @selected_pages
+
+      # 指定のページと、その前後 CLUE_PAGE_MARGIN ページ。柱とノンブルを見分ける手がかりにだけ使う（§10.3）
+      # @return [Array<Integer>, nil]
+      def clue_pages
+        return nil unless selected_pages
+
+        selected_pages.flat_map { ((it - CLUE_PAGE_MARGIN)..(it + CLUE_PAGE_MARGIN)).to_a }.uniq.sort.select { it.between?(0, @pdf_page_count - 1) }
+      end
+
+      # ページ番号の並びを、続く番号をまとめて書く（[31, 32, 33, 52] → 「31-33,52」。dash を「〜」にすれば「31〜33、52」）
+      def page_label(numbers, dash)
+        runs = numbers.slice_when { |a, b| b != a + 1 }.map { it.size == 1 ? it.first.to_s : "#{it.first}#{dash}#{it.last}" }
+        runs.join(dash == '-' ? ',' : '、')
+      end
+
+      # --pages を付けて、章の名前を省いたとき（§10.2）。ファイル名から作ると、同じ PDF のどの範囲も同じ名前になる
+      def unnamed_pages_message(pdf_path, taken)
+        number = next_body_number(taken)
+        ["ページを指定して読むときは、章の名前を添えてください: #{shown_path(pdf_path)}",
+         name_rule_line,
+         "→ #{retyped(chapter: "#{number}-#{NAME_EXAMPLES.first}")}",
+         "（番号を省くと #{number} 番になります）"].join("\n")
+      end
+
+      # 決めた basename の章。区分は番号から決める
+      def chapter_entry(basename)
+        number = CLI::ChapterNames.number_of(basename)
+        CLI::TokenResolver::Entry.new(
+          number:,
+          slug: CLI::ChapterNames.slug_of(basename),
+          kind: CLI::TokenResolver::Resolver::KIND_RANGES.find { |_, range| range.cover?(number.to_i) }&.first,
+          label: nil,
+          path: File.join(contents_dir, "#{basename}.md"),
+          exists: markdown_exists?(basename),
+          in_catalog: CLI::ChapterNames.catalog_basenames.include?(basename),
+          valid: true
+        )
       end
 
       # Entry が catalog.yml 未登録なら CatalogUpdater で自動追記する。
@@ -245,7 +432,6 @@ module VivlioStarter
         return if entry.in_catalog?
 
         CLI::Build::CatalogUpdater.add_chapter(entry.basename)
-        @catalog_entries = nil
       rescue StandardError => e
         raise Error, "catalog.yml の更新に失敗しました: #{e.message}"
       end
@@ -253,89 +439,6 @@ module VivlioStarter
       # contents/ に指定 basename の Markdown ファイルが存在するか
       def markdown_exists?(basename)
         File.exist?(File.join(contents_dir, "#{basename}.md"))
-      end
-
-      # basename（「NN-slug」形式）から新しい Entry を構築する
-      # kind / label は元の Entry から引き継ぐ
-      def build_entry_from_basename(original_entry, basename)
-        number, slug = parse_basename(basename)
-        CLI::TokenResolver::Entry.new(
-          number:,
-          slug:,
-          kind: original_entry.kind,
-          label: original_entry.label,
-          path: File.join(contents_dir, "#{basename}.md"),
-          exists: false,
-          in_catalog: false,
-          valid: true
-        )
-      end
-
-      # 「NN-slug」形式の basename を [number, slug] に分解する
-      def parse_basename(basename)
-        if basename =~ /(\A\d{2})(?:[-_](.+))?\z/
-          [::Regexp.last_match(1), ::Regexp.last_match(2)]
-        else
-          [basename, nil]
-        end
-      end
-
-      # 章トークンの候補（ユーザー入力そのもの）
-      def token_candidate = input
-
-      # ファイルパスから拡張子を除いたベース名を返す
-      def normalized_basename(path)
-        File.basename(path, File.extname(path))
-      end
-
-      # ユーザー入力が実在する PDF ファイルのパスかどうか
-      def pdf_path_argument?
-        File.file?(expanded_input_path) && pdf_extension?(expanded_input_path)
-      rescue Errno::ENOENT
-        false
-      end
-
-      # パスの拡張子が .pdf であるか（大文字小文字不問）
-      def pdf_extension?(path)
-        File.extname(path).casecmp('.pdf').zero?
-      end
-
-      # ユーザー入力を絶対パスに展開する（メモ化）
-      def expanded_input_path
-        @expanded_input_path ||= File.expand_path(input)
-      end
-
-      # Entry の slug / basename から sources/ 内の PDF パスを探索する
-      # 見つからなければ MissingPdfError を送出。
-      # 打ったとおりの名前（「Vol.53_09_482」）を先に探す。slug は小文字に整えた名前なので、大文字と小文字を
-      # 区別するファイルシステム（Linux・WSL）では、それだけでは見つからない（pdf-read-file-naming-spec.md §2.1）
-      def determine_pdf_path(entry)
-        slug = entry.slug.to_s.strip
-        candidates = [File.join(sources_dir, "#{File.basename(input).sub(/\.pdf\z/i, '')}.pdf")]
-        candidates << File.join(sources_dir, "#{slug}.pdf") unless slug.empty?
-        candidates << File.join(sources_dir, "#{entry.basename}.pdf")
-        candidates.uniq!
-
-        return candidates.find { File.exist?(it) } if candidates.any? { File.exist?(it) }
-
-        details = candidates.map { "- 探索パス: #{it}" }.join("\n")
-
-        raise MissingPdfError, <<~MSG.strip
-          PDF ファイルが見つかりませんでした。
-          - 指定トークン: #{entry.basename}
-          #{details}
-          sources ディレクトリに PDF を配置するか、ファイルパスを直接指定してください。
-        MSG
-      end
-
-      # 入力 PDF の置き場。存在しなければ自動作成する。
-      # かつては book.yml の directories.sources で変更できたが、他の directories.* と
-      # ともに 2026-08-08 にシステム定数へ戻した。
-      def sources_dir
-        return @sources_dir if defined?(@sources_dir)
-
-        FileUtils.mkdir_p(SOURCES_DIR)
-        @sources_dir = SOURCES_DIR
       end
 
       # 原稿出力先ディレクトリ（contents/）
@@ -356,7 +459,7 @@ module VivlioStarter
         return nil unless File.file?(pdf_path)
 
         reader = ::PDF::Reader.new(pdf_path)
-        structure = VivlioStarter::PDF::StructureReader.new(reader)
+        structure = VivlioStarter::PDF::StructureReader.new(reader, pages: clue_pages, output_pages: selected_pages)
         CLI::Common.log_debug(format('[pdf:read] 構造ツリーが覆う本文: %.1f%%', structure.coverage * 100))
         route = if structure.usable? then :tree
                 elsif structure.text_page_ratio >= LAYOUT_TEXT_PAGE_RATIO then :layout
@@ -372,7 +475,7 @@ module VivlioStarter
                    else
                      structure.layout_markdown(images:, text_area: specified_text_area)
                    end
-        pages = reader.page_count
+        pages = selected_pages&.size || reader.page_count
         ensure_text_extracted!(markdown, pages, mode)
 
         markdown_path = File.join(contents_dir, "#{entry.basename}.md")
@@ -402,7 +505,7 @@ module VivlioStarter
       # 文字は構造ツリーから読むので、プラグインの OCR は切る。抜き出しに失敗しても、
       # 画像の参照を書かないだけで原稿は作る
       def structured_images(pdf_path, entry)
-        image_placements(enhanced_result(pdf_path, entry, ocr: { mode: 'disable' }))
+        image_placements(enhanced_result(pdf_path, entry, ocr: { mode: 'disable' }, pages: selected_pages))
       rescue Error, LoadError => e
         CLI::Common.log_warn("[pdf:read] 画像を抜き出せなかったので、画像の参照は書きません: #{e.message}")
         []
@@ -523,8 +626,10 @@ module VivlioStarter
 
         placements = image_placements(result)
         sizes = Array(result['page_sizes'] || result[:page_sizes])
-        scans = VivlioStarter::PDF::StructureReader.new(::PDF::Reader.new(pdf_path)).page_scans
-        pages = scans.each_with_index.map do |scan, index|
+        scans = VivlioStarter::PDF::StructureReader.new(::PDF::Reader.new(pdf_path), pages: clue_pages).page_scans
+        numbers = clue_pages || scans.each_index.to_a
+        pages = numbers.map do |index|
+          scan = scans[index]
           next scan unless words[index]
 
           boxes = placements.select { it.page == index }.map do |image|
@@ -535,15 +640,17 @@ module VivlioStarter
         end
 
         CLI::Common.log_info('[pdf:read] OCR で読んだ文字の大きさと位置から、見出し・段落・表・コードを推定します')
-        root = VivlioStarter::PDF::LayoutStructure.new(pages, text_area: specified_text_area).root
-        markdown = VivlioStarter::PDF::OcrPostprocess.apply(VivlioStarter::PDF::StructureMarkdown.new(root, images: placements).render)
-        ensure_text_extracted!(markdown, pages.size, :enhanced)
+        root = VivlioStarter::PDF::LayoutStructure.new(pages, text_area: specified_text_area, page_numbers: numbers, output_pages: selected_pages).root
+        markdown = VivlioStarter::PDF::StructureMarkdown.new(root, images: placements, read_pages: selected_pages).render
+        markdown = VivlioStarter::PDF::OcrPostprocess.apply(markdown)
+        count = selected_pages&.size || pages.size
+        ensure_text_extracted!(markdown, count, :enhanced)
 
         markdown_path = File.join(contents_dir, "#{entry.basename}.md")
         FileUtils.mkdir_p(File.dirname(markdown_path))
         File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
-        CLI::Common.log_info("[pdf:read] ページ数: #{pages.size}")
-        { markdown_path:, pages: pages.size }
+        CLI::Common.log_info("[pdf:read] ページ数: #{count}")
+        { markdown_path:, pages: count }
       rescue Error
         raise
       rescue StandardError => e
@@ -560,12 +667,13 @@ module VivlioStarter
         FileUtils.mkdir_p(File.dirname(markdown_path))
 
         reader = ::PDF::Reader.new(pdf_path)
-        pages_text = reader.pages.each_with_index.map do |page, idx|
-          extracted = extract_text_from_page(page, idx)
+        indexes = selected_pages || (0...reader.page_count).to_a
+        pages_text = indexes.map do |idx|
+          extracted = extract_text_from_page(reader.page(idx + 1), idx)
           cleaned = newline_cleaner.clean(extracted)
           sanitize(cleaned)
         end
-        pages = reader.page_count
+        pages = indexes.size
         markdown = build_markdown(pages_text)
         ensure_text_extracted!(markdown, pages, :standard)
 
@@ -589,23 +697,23 @@ module VivlioStarter
         markdown_path = File.join(contents_dir, "#{entry.basename}.md")
         FileUtils.mkdir_p(File.dirname(markdown_path))
 
-        result = enhanced_result(pdf_path, entry)
+        result = enhanced_result(pdf_path, entry, pages: clue_pages)
         layout = convert_ocr_layout(pdf_path, entry, result)
         return layout if layout
 
         page_texts = enhanced_page_texts(result)
-        pages_text = if enhanced_page_chunks(result).length == page_texts.length && !page_texts.empty?
-                       enhanced_page_chunks(result).each_with_index.map do |chunk, index|
-                         process_extracted_page_text(chunk, index)
-                       end
+        chunks = enhanced_page_chunks(result)
+        indexes = selected_pages || page_texts.each_index.to_a
+        pages_text = if chunks.length == page_texts.length && !page_texts.empty?
+                       indexes.map { process_extracted_page_text(chunks[it].to_s, it) }
                      else
                        image_references = enhanced_image_reference_map(result)
-                       page_texts.each_with_index.map do |text, index|
-                         cleaned = process_extracted_page_text(text, index)
+                       indexes.map do |index|
+                         cleaned = process_extracted_page_text(page_texts[index].to_s, index)
                          append_image_references(cleaned, image_references[index + 1])
                        end
                      end
-        pages = enhanced_page_count(result, page_texts)
+        pages = selected_pages&.size || enhanced_page_count(result, page_texts)
         markdown = build_markdown(pages_text)
         ensure_text_extracted!(markdown, pages, :enhanced)
 
@@ -953,13 +1061,24 @@ module VivlioStarter
       # vivlio-starter-pdf を外部プロセスで実行し、JSON 形式の解析結果を取得する。
       # JSON は標準出力だけから読む。OCR 中に libvips などが標準エラーへ警告を出すと、
       # 混ぜて受けた出力は JSON として壊れるため
-      def enhanced_result(pdf_path, entry, ocr: enhanced_ocr_settings)
+      # 前後のページ（柱を見分ける手がかりにだけ読んだページ。§10.3）からプラグインが抜き出した画像は、原稿に使わないので消す
+      def drop_clue_page_images(result)
+        return result unless selected_pages
+
+        key = result.key?('images') ? 'images' : :images
+        kept, dropped = Array(result[key]).partition { selected_pages.include?((it['page'] || it[:page]).to_i - 1) }
+        dropped.each { FileUtils.rm_f(it['output_path'] || it[:output_path]) }
+        result.merge(key => kept)
+      end
+
+      # @param pages [Array<Integer>, nil] プラグインに読ませるページ（0 から数える）。省けば全ページ
+      def enhanced_result(pdf_path, entry, ocr: enhanced_ocr_settings, pages: nil)
         ensure_enhanced_plugin_loaded!
 
-        stdout, stderr, status = run_plugin(enhanced_command(pdf_path, entry, ocr:))
+        stdout, stderr, status = run_plugin(enhanced_command(pdf_path, entry, ocr:, pages:))
         raise Error, enhanced_failure_message(stderr) unless status.success?
 
-        JSON.parse(stdout)
+        drop_clue_page_images(JSON.parse(stdout))
       rescue Errno::ENOENT
         raise LoadError, missing_enhanced_plugin_message
       rescue JSON::ParserError => e
@@ -1084,7 +1203,7 @@ module VivlioStarter
 
       # vivlio-starter-pdf へ渡すコマンド引数を組み立てる
       # OCR 設定・マージン・画像出力先などを JSON エンコードして引き渡す
-      def enhanced_command(pdf_path, entry, ocr: enhanced_ocr_settings)
+      def enhanced_command(pdf_path, entry, ocr: enhanced_ocr_settings, pages: nil)
         [
           *enhanced_plugin_command,
           'read',
@@ -1095,7 +1214,8 @@ module VivlioStarter
           "images_dir=#{enhanced_images_output_dir(entry)}",
           "image_reference_dir=#{enhanced_images_reference_dir(entry)}",
           "ocr=#{JSON.generate(ocr)}",
-          'progress=true'
+          'progress=true',
+          *(pages && "pages=#{JSON.generate(pages.map { it + 1 })}")
         ]
       end
 
@@ -1176,19 +1296,6 @@ module VivlioStarter
       # MeCab を使った日本語改行補正器（メモ化）
       def newline_cleaner
         @newline_cleaner ||= VivlioStarter::PDF::MecabNewlineCleaner.new
-      end
-
-      # 任意文字列を URL 安全な slug に正規化する（小文字化・記号除去・ハイフン化）。
-      # 数字で始まる slug は、番号と続けると章の範囲や番号に読まれるので、前に語を付ける（「245」→「pdf-245」）
-      def normalize_slug(value)
-        slug = value.to_s.downcase
-                    .tr(' ', '-')
-                    .gsub(/[^a-z0-9-]+/, '-')
-                    .gsub(/-+/, '-')
-                    .gsub(/\A-+|-+\z/, '')
-        return 'imported' if slug.empty?
-
-        slug.match?(/\A\d/) ? "#{NUMERIC_SLUG_PREFIX}-#{slug}" : slug
       end
 
       # vivlio-starter-pdf がインストール済みで実行可能かどうかを判定する（結果をキャッシュ）

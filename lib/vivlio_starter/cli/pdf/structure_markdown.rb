@@ -81,8 +81,11 @@ module VivlioStarter
       # @param root [StructureReader::Element]
       # @param images [Array<ImagePlacement>]
       # @param unmarked [Array<Array<Glyph>>] ページごとの、構造ツリーの外の文字
-      def initialize(root, images: [], unmarked: [])
+      # @param read_pages [Array<Integer>, nil] 読んだページ（0 から数える）。--pages で絞ったときだけ渡す。間に読まなかった
+      #   ページがあれば、段落・表・コードをページをまたいでつながない（pdf-read-file-naming-spec.md §10.3）
+      def initialize(root, images: [], unmarked: [], read_pages: nil)
         @root = root
+        @read_pages = read_pages&.to_set
         @images = images
         @unmarked = unmarked
         glyphs = all_glyphs(root)
@@ -200,7 +203,7 @@ module VivlioStarter
       def continues_on_next_page?(previous, following)
         last_page = glyphs_of(previous).last&.page
         first_page = glyphs_of(following).first&.page
-        return false unless last_page && first_page && first_page > last_page
+        return false unless last_page && first_page && first_page > last_page && !skipped_between?(last_page, first_page)
 
         text = glyphs_of(previous).map(&:text).join
         return false if text.match?(LayoutStructure::TOC_ENTRY_END) || text.match?(LayoutStructure::FIGURE_CAPTION)
@@ -208,6 +211,9 @@ module VivlioStarter
 
         !stringify(previous).strip.match?(SENTENCE_END)
       end
+
+      # earlier と later のページの間に、読まなかったページがあるか。続きかどうか分からないので、つながない
+      def skipped_between?(earlier, later) = @read_pages && ((earlier + 1)...later).any? { !@read_pages.include?(it) }
 
       # 段落の 1 行目が、本文の左端より半字以上下がっているか。2 行目以降が無ければ、
       # そのページの本文の行頭でいちばん多い位置を左端とする
@@ -407,7 +413,7 @@ module VivlioStarter
         pages = glyphs_of_element(element).map(&:page)
 
         if (previous = flow.last) && previous[:kind] == :table && previous[:width] == width &&
-           pages.first.to_i > previous[:last_page].to_i
+           pages.first.to_i > previous[:last_page].to_i && !skipped_between?(previous[:last_page].to_i, pages.first.to_i)
           # ページで分かれた表。繰り返された見出しの行は落とす
           lines.shift if header_first && lines.first == previous[:header]
           flow.replace_last("#{flow.blocks.last}\n#{lines.join("\n")}", last_page: pages.last)
@@ -523,7 +529,8 @@ module VivlioStarter
         return if text_lines.empty?
 
         title = caption && inline_text(caption).gsub(/\s+/, '').sub(/\A#{LayoutStructure::CODE_CAPTION_LABEL}/, '')
-        if flow.last&.dig(:kind) == :code && title.nil? && glyphs.first.page > flow.last[:last_page]
+        if flow.last&.dig(:kind) == :code && title.nil? && glyphs.first.page > flow.last[:last_page] &&
+           !skipped_between?(flow.last[:last_page], glyphs.first.page)
           # ページで分かれたコード。キャプションは最初の 1 つにしか付かない
           body = flow.last[:lines] + text_lines
           flow.replace_last(code_fence(flow.last[:info], body), lines: body, last_page: glyphs.last.page)

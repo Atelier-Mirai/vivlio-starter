@@ -46,46 +46,96 @@ brew install tesseract tesseract-lang poppler vips
 
 ## 使い方
 
-### PDF ファイルを直接指定する
+### PDF を指定する
 
 ```zsh
-vs pdf:read path/to/document.pdf
+vs pdf:read gitlab.pdf
 ```
 
-PDF のパスを直接渡すと、空いている章番号が割り当てられ、変換した Markdown が `contents/` に作られます。
+資料の PDF は `sources/` に置きます。`sources/` の中の PDF は、ファイル名だけで指定できます（`.pdf` も省けます）。ほかの場所の PDF は、`/` を含むパスで指定します。
 
-Markdown の名前は PDF のファイル名から作ります。`97-sample.pdf` のように章の名前の形をしていれば、その章（`97-sample.md`）になります。論文の `73-4-218.pdf` や `Vol.53_09_482.pdf` のような名前は、空いている章番号に続けて `18-pdf-73-4-218.md`・`18-vol-53-09-482.md` とします。数字で始まる名前には `pdf-` を前に付けます。大文字とアンダースコアは、章のファイル名の決まりに合わせて小文字とハイフンに整えます（`TS42-3_017.pdf` → `18-ts42-3-017.md`）。
+| 打つコマンド | 読む PDF |
+|---|---|
+| `vs pdf:read gitlab` | `sources/gitlab.pdf` |
+| `vs pdf:read gitlab.pdf` | `sources/gitlab.pdf` |
+| `vs pdf:read sources/gitlab.pdf` | `sources/gitlab.pdf` |
+| `vs pdf:read ~/Downloads/gitlab.pdf` | `~/Downloads/gitlab.pdf` |
+| `vs pdf:read ./gitlab.pdf` | プロジェクト直下の `gitlab.pdf` |
 
-番号やスラッグがほかの章と重なるときは、章を作らずに止まります。PDF の名前を変えて読み直すコマンドが示されるので、それを打ち直してください。
+`/` を含まない指定は、`sources/` の中だけを探します。プロジェクト直下に置いた PDF は、`./gitlab.pdf` のように `./` を付けて指定してください。
+
+### 章の名前を付ける
+
+PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`61-developer` の次の `62-gitlab.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `62-hajimete-no-rust.md`）。
+
+二つ目の引数で、章の名前を決めることもできます。番号を付ければその番号の章に、番号だけなら名前はファイル名から作ります。付録にしたいときは、付録の番号（90〜98）を付けてください。
+
+```zsh
+vs pdf:read gitlab.pdf git       # contents/62-git.md
+vs pdf:read gitlab.pdf 21-git    # contents/21-git.md
+vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
+```
+
+日本語の名前や論文の番号のようなファイル名（`コンピュータネットワークのエッセンス.pdf`・`245.pdf`・`Vol.53_09_482.pdf`）からは、章の名前を作りません。名前を添えたコマンドを示して止まるので、`awesome` の所を章の中身に合った名前にして打ち直してください。
 
 ```text
-🔴 [pdf:read] 97-sample-ocr は作れません（97 番は 97-sample が使っています）
-        → mv sources/97-sample-ocr.pdf sources/98-sample-ocr.pdf
-        → vs pdf:read 98-sample-ocr
+🔴 [pdf:read] ファイル名から章の名前を作れません: sources/コンピュータネットワークのエッセンス.pdf
+        使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
+        → ファイル名を変える: awesome.pdf にしてから vs pdf:read awesome.pdf
+        → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 62-awesome
+        （番号を省くと 62 番になります）
 ```
 
-### ファイル名で指定する
+示されるコマンドは、打った形に合わせてあります。`sources/` を付けて打てば `sources/` 付きで、`~/Downloads/` のパスで打てば同じパスで示します。
+
+ブラウザで同じファイルを二度ダウンロードしたときに付く `(1)` と、複製したときに付く `のコピー`・`copy`・`- コピー` は、章の名前から外します。`IPSJ-MGN621105 (1).pdf` は `62-ipsj-mgn621105.md` になります。
+
+### 空白や括弧のあるファイル名は名前を変える
+
+ファイル名に空白があると、シェルが空白で分けて渡すので、`vs pdf:read` はそのファイルを読めません。半角の `&` があると、シェルが `&` の所で分け、前の部分だけを `vs pdf:read` に渡します。括弧があると、シェルが `vs` を起動せずに止めます。どれも、使える名前に変えてから読んでください（`2026-06-10 at 10-08-42 AI活用講座.pdf` → `ai-course.pdf`）。
+
+```text
+🔴 [pdf:read] ファイル名に空白があるため、読み込めません: sources/2026-06-10 at 10-08-42 AI活用講座.pdf
+        ファイル名を、英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）だけの名前に変えてから読んでください
+        （例: awesome.pdf、my-reference_2047.pdf）
+```
+
+### 重なる番号を空いている番号に変える
+
+番号かスラッグがほかの章と重なるときは、章を作らずに止まります。同じ区分（本文・付録など）の空いている番号で読むコマンドが示されるので、それを打ち直してください。
+
+```text
+🔴 [pdf:read] 97 番は 97-sample が使っています
+        → 空いている付録の番号: 98
+        → vs pdf:read 97-sample-ocr 98-sample-ocr
+```
+
+### 一部のページだけ読む
 
 ```zsh
-vs pdf:read three-elements
+vs pdf:read gitlab.pdf 21-git-basics --pages 12-30
+vs pdf:read gitlab.pdf 22-git-branch --pages 31-48,52
+vs pdf:read gitlab.pdf 23-git-appendix --pages 238-
 ```
 
-PDF を `sources/three-elements.pdf` に置いた場合は、ファイル名の `three-elements` で指定できます。すでに `catalog.yml` に登録した章なら、対応する PDF が自動で探されます。
+`--pages` で、読むページを指定できます。書き方は `vs pdf:pages` と同じで、範囲の端は省けます（`-11` は 1〜11 ページ、`238-` は 238 ページから最後まで）。ページ番号は PDF の 1 枚目から数えた番号なので、表紙や前付けのある本では、紙面に印刷されたノンブルとずれます。
+
+ページを指定するときは、章の名前を必ず添えます。ファイル名から作ると、同じ PDF のどの範囲も同じ名前になってしまうためです。最後のページを越えた分（248 ページの PDF に `--pages 238-260`）は外して読み、🟡 で知らせます。柱とノンブルは、指定のページの前後 2 ページも見て見分けるので、1 ページだけ読んでも本文に残りません。
 
 ### 実行例
 
 ```shell-session
 $ vs pdf:read three-elements
-✅ Markdown に変換しました: contents/12-three-elements.md
+✅ Markdown に変換しました: contents/62-three-elements.md
 ```
 
 `--log` を付けると、どちらのモードで読んだかとページ数も表示されます。
 
 ```shell-session
 $ vs pdf:read three-elements --log
-🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔧 [pdf:read] PDF からテキストを抽出します (62-three-elements, mode=enhanced)
 🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/12-three-elements.md
+✅ Markdown に変換しました: contents/62-three-elements.md
 ```
 
 ### 出力されるファイル
@@ -95,13 +145,13 @@ $ vs pdf:read three-elements --log
 ```
 # Standard Mode
 contents/
-  └── 12-three-elements.md
+  └── 62-three-elements.md
 
 # Enhanced Mode
 contents/
-  └── 12-three-elements.md
+  └── 62-three-elements.md
 images/
-  └── 12-three-elements/
+  └── 62-three-elements/
       ├── page-003-image-01.webp
       ├── page-004-image-01.webp
       └── ...
@@ -114,7 +164,7 @@ images/
 自分の本を印刷してスキャンした場合のように、図の元の画像が手元にあるなら、`--images-from` でそのフォルダを渡します（Enhanced Mode のみ）。
 
 ```shell-session
-$ vs pdf:read 97-sample-ocr --images-from images/97-sample-original
+$ vs pdf:read 97-sample-ocr 98-sample-ocr --images-from images/97-sample-original
 ```
 
 取り出した図を、元の画像と見た目（縮めた白黒の画像）で突き合わせ、一致したものは元の画像に差し替えます。スキャンから切り出した図は印刷を撮り直したもので、解像度が半分ほどになり、網点も入ります。差し替えれば元の画像そのものになり、参照も `![](prototype_meter.webp)` のように元のファイル名になります。元の画像は `images/{章}/` へ写すので、渡したフォルダはそのまま残ります。
@@ -183,9 +233,19 @@ $ vs pdf:read 97-sample-ocr --images-from images/97-sample-original
 VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf
 ```
 
-### 既存の原稿を残す
+### 同じ章を読み直す
 
-同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。読み直すときは、先に `vs delete 97-sample` のように章を消してください。前回の原稿も残したいときは、示されるコマンド（`vs rename 97-sample 98-sample-old`）で番号とスラッグを変えてから読み直します。
+同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。
+
+```text
+🔴 [pdf:read] 62-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）
+        → 読み直して置き換えるなら: vs pdf:read gitlab.pdf --force
+        → 別の章として読むなら: vs pdf:read gitlab.pdf 63-gitlab-2
+```
+
+置き換えるときは `--force` を付けます。前回の画像（`images/62-gitlab/`）は、今回の画像と混ざらないよう、消してから書き出します。
+
+どの PDF から読んだかは、原稿の頭のコメント（`<!-- pdf:read: sources/gitlab.pdf（sha256: …） -->`）に残ります。HTML のコメントなので、組版には出ません。中身が同じ PDF を別の章として読もうとすると、🟡 で知らせます（ページを指定したときは、ページが重なるときだけ）。
 
 ## 設定とカスタマイズ
 
@@ -337,9 +397,9 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 ✅ Markdown に変換しました: contents/11-intro.md
 
 # Enhanced Mode
-🔧 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
+🔧 [pdf:read] PDF からテキストを抽出します (62-three-elements, mode=enhanced)
 🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/12-three-elements.md
+✅ Markdown に変換しました: contents/62-three-elements.md
 ```
 
 文字を一つも取り出せなかったときは、原稿も `catalog.yml` も書かずに止まります。スキャンした PDF を Standard Mode で読むと、次のように案内されます。
@@ -356,6 +416,7 @@ OCR で読む Enhanced Mode を使うには、次を入れてから実行し直�
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
+| `PDF が見つかりません` | `/` を含まない指定は `sources/` の中だけを探す | PDF を `sources/` に置く。ほかの場所なら `./gitlab.pdf` のように `/` を含むパスで指定する |
 | テキストが空 / 文字化け | スキャン PDF でテキストが埋め込まれていない | Enhanced Mode + OCR を有効にする |
 | ヘッダー / フッターが残る | 繰り返しから見分けられなかった | `book.yml` の `pdf_read.text_area` に除く幅を書く |
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |

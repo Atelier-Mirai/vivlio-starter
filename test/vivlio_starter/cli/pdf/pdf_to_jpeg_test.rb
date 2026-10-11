@@ -79,6 +79,27 @@ module VivlioStarter
 
         assert_includes error.message, 'ページ範囲が逆順です'
       end
+
+      # 範囲の端は省ける。始めを省けば 1 ページから、終わりを省けば最後のページまで（pdf-read-file-naming-spec.md §10.1）
+      def test_should_open_a_range_with_an_omitted_end
+        assert_equal [1, 2, 3], PdfToJpeg.parse_page_spec('-3')
+        assert_equal [8, 9, 10], PdfToJpeg.parse_page_spec('8-', last_page: 10)
+        assert_equal [2, 9, 10], PdfToJpeg.parse_page_spec('9-,2', last_page: 10)
+        assert_includes assert_raises(PdfToJpeg::Error) { PdfToJpeg.parse_page_spec('8-') }.message, '終わりを決められません'
+        assert_includes assert_raises(PdfToJpeg::Error) { PdfToJpeg.parse_page_spec('-') }.message, 'ページ指定が不正です'
+      end
+
+      # vs pdf:pages --pages 3- で、3 ページから最後のページまでを残す
+      def test_should_keep_pages_to_the_last_with_an_open_range
+        Dir.mktmpdir do |dir|
+          output_dir = File.join(dir, 'book_images')
+          runner = FakeRunner.new(calls: [], output_dir:)
+
+          images = PdfToJpeg.convert('book.pdf', output_dir:, pages: '2-', command_runner: runner)
+
+          assert_equal %w[page-002.jpg page-003.jpg page-004.jpg], images.map { File.basename(it) }
+        end
+      end
     end
   end
 end

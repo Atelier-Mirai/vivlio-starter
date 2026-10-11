@@ -76,7 +76,15 @@
 
 ### `vs pdf:read` — PDF から Markdown を抽出
 
-`vs pdf:read <FILE>`（FILE は章トークン `01-foo` または PDF ファイルパス）
+`vs pdf:read <PDF> [<章の名前>] [オプション]`（PDF は `sources/` の中のファイル名、または `/` を含むパス）
+
+:::{.long-table}
+| オプション | 説明 |
+|:---|:---|
+| `--pages <範囲>` | 読むページ（`12-30`・`31-48,52`・`238-`）。章の名前を添える |
+| `--force` | 同じ章がすでにあれば、読み直して置き換える |
+| `--images-from <DIR>` | 抜き出した図を、DIR の元の画像に差し替える（Enhanced Mode） |
+:::
 
 ### `vs doctor` — 環境診断とセットアップ
 
