@@ -658,6 +658,7 @@
   - 中身の無いモジュール `RenameCommands`・`RenumberCommands`（`renumber.rb`）と、その存在だけを確かめていたテスト。`vs renumber` は `RenameCommandExecutor` が受け持つ。
   - `LinkImageValidator#correct_link_line_number`（呼ぶ所が無かった）。
   - 後処理の 2 つの分岐。`<p class="code-caption" data-xref-id>` を包む分岐と、`<p class="footnote-anchor">` を消す分岐で、どちらもいまの前処理は出力しない。脚注の側は、現役の `<span class="footnote-anchor">` に「旧形式」と注記されていたので、注記も直した。
+  - テストからしか呼ばれていなかった `ReviewQueueManager#clear_terms`・`UnifiedTermsManager#update_flags!` と `#update_definition!`・`TermLine#pending?`・`LinkImageValidator.any_issues?` と、それぞれのテスト。`vs preflight` の終了コードは `IssueRegistry` の 🔴 で決めており、`any_issues?` を使うと書いた古いコメントも直した。
 
 ### Fixed
 

@@ -214,13 +214,6 @@ module VivlioStarter
             end
           end
 
-          # 蓄積されたレポートにエラー（issue）が1件以上あるか判定する
-          def any_issues?
-            @monitor.synchronize do
-              @reports.any? { |r| r.image_issues.any? || r.link_issues.any? }
-            end
-          end
-
           # コードインクルードエラーをレポートに記録する
           # MarkdownTransformer から呼ばれ、preflight の終了コード判定に反映させる
           # @param filename [String] ソースファイル名

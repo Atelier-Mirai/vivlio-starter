@@ -113,9 +113,6 @@ module VivlioStarter
         # 載せる先を i・g・ig の形で（棄却した語から戻すときの登録先）
         def kept_flags = [('i' if index?), ('g' if glossary?)].compact.join
 
-        # 保留（`[ ]` や空欄）
-        def pending? = flags.strip.empty?
-
         # 行末から拾えるスコア
         def score = trailer[/- スコア:\s*([\d.]+)/, 1]&.to_f
 

@@ -154,10 +154,8 @@ module VivlioStarter
           CleanCommands.stub :execute_clean, nil do
             PreProcessCommands::LinkImageValidator.stub :reset!, nil do
               PreProcessCommands::LinkImageValidator.stub :print_summary, nil do
-                PreProcessCommands::LinkImageValidator.stub :any_issues?, false do
-                  Common.stub :log_always, nil do
-                    yield
-                  end
+                Common.stub :log_always, nil do
+                  yield
                 end
               end
             end
@@ -338,8 +336,7 @@ module VivlioStarter
         end
 
         # pipeline.run のタイミングで recorder を呼び、各発生源が指摘を積んだ状態を作る。
-        # 終了コードは IssueRegistry の severity だけで決まるため、
-        # LinkImageValidator.any_issues? はスタブしない（呼ばれない）。
+        # 終了コードは IssueRegistry の severity だけで決まる。
         # catalog は catalog.yml 全体の章（省略時は entries と同じ）。
         # 章の指定つきの解決には entries を、指定なしの解決には catalog を返す。
         def run_preflight(entries:, targets: [], catalog: entries, &recorder)

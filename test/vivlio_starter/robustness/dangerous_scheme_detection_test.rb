@@ -213,20 +213,6 @@ module VivlioStarter
         assert_match(/ch\.md:1/, combined, 'サマリに参照元ファイル名:行番号が表示されること')
       end
 
-      # ----------------------------------------------------------------
-      # any_issues? が危険スキーム検出を含めて true を返す
-      # ----------------------------------------------------------------
-      def test_any_issues_should_be_true_when_only_dangerous_scheme_detected
-        md = %(<img src="file:///etc/passwd">\n)
-
-        stub_common_log_warn do
-          LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
-        end
-
-        assert LinkImageValidator.any_issues?,
-               '危険スキーム検出のみでも any_issues? は true を返すこと'
-      end
-
       private
 
       # 画像・裸URL・外部リンク系をすべて無効化した config

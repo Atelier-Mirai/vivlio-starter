@@ -107,13 +107,6 @@ module VivlioStarter
         assert_nil @manager.find_term('CSS')
       end
 
-      def test_update_flags
-        @manager.merge_terms!([{ 'term' => 'CSS', 'yomi' => 'CSS' }], flags: 'i')
-        @manager.update_flags!('CSS', 'ig')
-
-        assert_equal 'ig', @manager.find_term('CSS')['flags']
-      end
-
       # --- Phase: メタデータ ---
 
       # 索引ライブラリから預かっていた語は、この本で採用したらこの本の語になる。
@@ -185,13 +178,6 @@ module VivlioStarter
         @manager.update_yomi!([{ 'term' => 'CSS', 'yomi' => 'しーえすえす' }])
 
         assert_equal 'しーえすえす', @manager.find_term('CSS')['yomi']
-      end
-
-      def test_update_definition
-        @manager.merge_terms!([{ 'term' => 'CSS', 'yomi' => 'CSS' }], flags: 'g')
-        @manager.update_definition!('CSS', 'スタイルシート言語')
-
-        assert_equal 'スタイルシート言語', @manager.find_term('CSS')['definition']
       end
 
       # R3: 旧辞書に残置した backlink_sources は次の保存の機会に黙って消える
