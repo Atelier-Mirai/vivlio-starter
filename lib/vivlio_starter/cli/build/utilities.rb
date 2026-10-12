@@ -13,7 +13,7 @@
 #
 # 依存:
 #   - pdfinfo: ページ数取得（外部コマンド）
-#   - Provider (Prawn + CombinePDF): PDF 操作（MIT互換）
+#   - Pdf.provider: pdfinfo が無いときのページ数取得（cli/pdf/provider.rb）
 # ================================================================
 
 module VivlioStarter
@@ -23,7 +23,7 @@ module VivlioStarter
       module Utilities
         module_function
 
-        # PDF のページ数を取得（pdfinfo → HexaPDF フォールバック → MIT版へ変更）
+        # PDF のページ数を取得する。pdfinfo を優先し、無ければ Pdf.provider に任せる。
         def page_count(file)
           return nil unless File.exist?(file)
 
@@ -34,7 +34,6 @@ module VivlioStarter
             return pages.to_i if pages
           end
 
-          # 新実装 (MIT版 Provider への委譲)
           require 'vivlio_starter/cli/pdf/provider'
           VivlioStarter::Pdf.provider.page_count(file)
         rescue StandardError
@@ -187,8 +186,6 @@ module VivlioStarter
           end
           [w_pt, h_pt]
         end
-
-        # PDF 操作は Provider 経由で MIT 互換ライブラリ（Prawn + CombinePDF）に委譲
       end
     end
   end

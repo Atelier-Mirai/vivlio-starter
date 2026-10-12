@@ -26,8 +26,41 @@ require 'vivlio_starter/cli/samovar/cover_command'
 
 module VivlioStarter
   module CLI
+    # 3 つのテストクラスが共有する画像の用意。ImageMagick があれば指定の寸法の白い PNG を、
+    # 無ければ 1×1 の最小の PNG を書く。
+    module CoverTestImages
+      def create_dummy_png(path, width: 100, height: 100)
+        if (convert_cmd = imagemagick_convert_command)
+          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
+        else
+          File.binwrite(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00" \
+                              "\x90wS\xde\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
+        end
+      end
+
+      def imagemagick_available? = !imagemagick_convert_command.nil?
+
+      # magick（ImageMagick 7+）を優先する。PATH を直接探すのは、外部コマンドを起動して
+      # 確かめるとハングする環境があったため。
+      def imagemagick_convert_command
+        return ['magick'] if command_in_path?('magick')
+        return ['convert'] if command_in_path?('convert')
+
+        nil
+      end
+
+      def command_in_path?(command)
+        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+          path = File.join(dir, command)
+          File.executable?(path) && !File.directory?(path)
+        end
+      end
+    end
+
     # CoverCommands のユニットテスト
     class CoverCommandsTest < Minitest::Test
+      include CoverTestImages
+
       # setup_config が temp book.yml で CONFIG を上書きするため、テスト後に
       # プロジェクトルートの canonical な book.yml で復旧する（後続テストファイルへの
       # CONFIG 汚染＝metadata / spellcheck キー欠落の波及を防ぐ。CoverConfigTest と同方針）。
@@ -309,42 +342,6 @@ module VivlioStarter
         copy_fixture_master_files(covers_dir, front: front, back: back)
       end
 
-      # ダミーのPNG画像を生成（ImageMagickが必要）
-      # ImageMagickが利用可能な場合は指定サイズで白いPNGを生成
-      # 利用不可な場合は空ファイルを作成してテストを継続
-      def create_dummy_png(path, width: 100, height: 100)
-        if (convert_cmd = imagemagick_convert_command)
-          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
-        else
-          # ImageMagickがない場合は空ファイルを作成
-          FileUtils.touch(path)
-        end
-      end
-
-      # コマンドが利用可能かチェック（PATHを直接探索してハングを防止）
-      def imagemagick_available?
-        !imagemagick_convert_command.nil?
-      end
-
-      # ImageMagickのconvertコマンドを取得
-      # magick（ImageMagick 7+）またはconvert（従来版）を優先
-      def imagemagick_convert_command
-        return ['magick', 'convert'] if command_in_path?('magick')
-        return ['convert'] if command_in_path?('convert')
-        nil
-      end
-
-      # 指定されたコマンドがPATHに存在するかチェック
-      # システムコマンド実行時のハングを防止するためにPATHを直接探索
-      def command_in_path?(command)
-        return false if command.to_s.empty?
-
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, command)
-          File.executable?(path) && !File.directory?(path)
-        end
-      end
-
       # フィクスチャのマスター画像をコピーまたはスタブを作成
       # 実際のフィクスチャが存在しない場合はダミーPNGを生成
       def copy_fixture_master_files(covers_dir, front: true, back: true)
@@ -389,6 +386,8 @@ module VivlioStarter
 
     # Common::Config カバー設定機能のテスト
     class CoverConfigTest < Minitest::Test
+      include CoverTestImages
+
       def setup
         @temp_dir = Dir.mktmpdir
         @original_dir = Dir.pwd
@@ -587,11 +586,6 @@ module VivlioStarter
         create_dummy_png("covers/backcover_#{theme}.png", width: 2894, height: 4092)
       end
 
-      # 簡易的なPNGファイル作成（テスト用）
-      # 実際のPNGバイナリヘッダを書き込んで有効なPNGファイルとして扱われるようにする
-      def create_dummy_png(path, width:, height:)
-        File.write(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
-      end
     end
 
     # ================================================================
@@ -607,6 +601,8 @@ module VivlioStarter
     # P3: print_pdf ターゲット後のファイル存在確認
     # ================================================================
     class CoverCropMarksTest < Minitest::Test
+      include CoverTestImages
+
       # B5 仕上がりサイズ（mm）
       TRIM_W_MM = 182.0
       TRIM_H_MM = 257.0
@@ -745,52 +741,12 @@ module VivlioStarter
         create_dummy_png(File.join(covers_dir, 'backcover_master.png'))
       end
 
-      # ImageMagick で小さな白い PNG を生成する
-      # ImageMagick がない場合は最小限の PNG バイナリを書き込む
-      def create_dummy_png(path, width: 100, height: 100)
-        convert_cmd = imagemagick_convert_command
-        if convert_cmd
-          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path,
-                 out: File::NULL, err: File::NULL)
-        else
-          File.binwrite(path, [
-            "\x89PNG\r\n\x1a\n",
-            "\x00\x00\x00\rIHDR",
-            "\x00\x00\x00\x01\x00\x00\x00\x01",
-            "\x08\x02\x00\x00\x00",
-            "\x90wS\xde",
-            "\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01",
-            "\x00\x00\x00\x00IEND\xaeB`\x82"
-          ].join)
-        end
-      end
-
-      # ImageMagick が利用可能かチェックする
-      def imagemagick_available?
-        !imagemagick_convert_command.nil?
-      end
-
       # PDF 先頭ページの仕上がり寸法（mm）を返す（pdf-reader・MIT）
       def pdf_page_size_mm(pdf_path)
         box = ::PDF::Reader.new(pdf_path).pages.first.attributes[:MediaBox]
         w_pt = box[2].to_f - box[0].to_f
         h_pt = box[3].to_f - box[1].to_f
         [w_pt / 72.0 * 25.4, h_pt / 72.0 * 25.4]
-      end
-
-      # ImageMagick のコマンドを取得する（magick 優先）
-      def imagemagick_convert_command
-        return ['magick'] if command_in_path?('magick')
-        return ['convert'] if command_in_path?('convert')
-        nil
-      end
-
-      # 指定コマンドが PATH に存在するかチェックする
-      def command_in_path?(command)
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, command)
-          File.executable?(path) && !File.directory?(path)
-        end
       end
 
       # 一時ディレクトリ内でテストを実行する
