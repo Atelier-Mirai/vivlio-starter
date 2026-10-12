@@ -652,6 +652,7 @@
 
   `.vivliostyle/` は現行版が作らないことを実測で確かめた。CLI 11.1.0 は `workspaceDir` を省くと今もルート直下へ作るが、当パイプラインの 4 経路はすべて `workspaceDir` をワークスペース内へ向けた生成 config を渡している（`vivliostyle_config_writer.rb` / `epub_builder.rb`）。`.gitignore` の `/.vivliostyle/` だけは残した——著者が手で `npx vivliostyle build` を叩く余地があり、その 1 行に害はないため。
 
+- **`vs delete` の `--yes` / `-y` を外した**（改善案.md #93）。`--force` と同じ意味の互換の名前で、原稿にも書いていなかった。確認を省くときは `--force`（`-f`）を使う。
 - **どこからも使われていないコードを消した**（改善案.md #93）。`lib/` の定義を Prism で洗い、呼び出し・シンボル・文字列としての参照を `lib/`・`test/`・`bin/` から数えて、候補を 1 件ずつ確かめた。
   - `HierarchicalIndex`（`index/hierarchical_index.rb`）とそのテスト。2026-08-06 に「`index-main-reference-spec.md` §R8 で使う」として本番から切り離して残したが、§R8（ページ番号の範囲圧縮）は `BacklinkDeduplicator` の側で実装され、親子項目の予定も `PLANNED.md` に無い。残す理由が無くなった。
   - `vivliostyle.rb`（`VivliostyleCommands.resolve_vivliostyle_size`）。どこからも読み込まれておらず、同じ中身が `EpubBuilder.resolve_page_size` にある。テストは `EpubBuilder` の側へ向け直した。
@@ -659,6 +660,7 @@
   - `LinkImageValidator#correct_link_line_number`（呼ぶ所が無かった）。
   - 後処理の 2 つの分岐。`<p class="code-caption" data-xref-id>` を包む分岐と、`<p class="footnote-anchor">` を消す分岐で、どちらもいまの前処理は出力しない。脚注の側は、現役の `<span class="footnote-anchor">` に「旧形式」と注記されていたので、注記も直した。
   - テストからしか呼ばれていなかった `ReviewQueueManager#clear_terms`・`UnifiedTermsManager#update_flags!` と `#update_definition!`・`TermLine#pending?`・`LinkImageValidator.any_issues?` と、それぞれのテスト。`vs preflight` の終了コードは `IssueRegistry` の 🔴 で決めており、`any_issues?` を使うと書いた古いコメントも直した。
+  - 互換のために残っていた分岐 2 つ。画像の実在と裸 URL を検査するかのフラグ（`verify_images`・`verify_bare_urls`）は、`book.yml` の `verify.images`・`verify.bare_urls` を撤去したあとも本体では常に true で、false を渡すのはテストだけだった。もう 1 つは、旧版がレビューファイルに書いた「（catalog 外）」を剥がす処理。
 
 ### Fixed
 

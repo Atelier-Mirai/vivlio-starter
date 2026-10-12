@@ -57,22 +57,26 @@ module VivlioStarter
         def test_should_always_check_images_and_bare_urls
           with_verify_config(images: false, bare_urls: false)
           Thread.current[:vs_verify_options] = NO_OPTIONS
+          LinkImageValidator.reset!
+          missing = '![図](data:image/svg+xml;charset=utf-8,%3Csvg%3E%3Ctext%3E%3Ctspan%3Emissing.webp%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E)'
 
-          config = LinkImageValidator.send(:resolve_config)
+          report = Common.stub(:log_warn, nil) do
+            LinkImageValidator.validate("https://example.com/bare\n\n#{missing}\n", 'ch.md')
+          end
 
-          assert_equal true, config[:verify_images]
-          assert_equal true, config[:verify_bare_urls]
+          assert_equal [:bare_url], report.link_issues.map(&:issue_type)
+          assert_equal ['missing.webp'], report.image_issues.map(&:image_path)
+        ensure
+          LinkImageValidator.reset!
         end
 
-        # 未設定時の既定（images/bare_urls は有効、external_links は無効）
+        # 未設定時の既定（external_links は無効）
         def test_should_fall_back_to_defaults_when_book_yml_omits_verify
           with_verify_config({})
           Thread.current[:vs_verify_options] = NO_OPTIONS
 
           config = LinkImageValidator.send(:resolve_config)
 
-          assert_equal true, config[:verify_images]
-          assert_equal true, config[:verify_bare_urls]
           assert_equal false, config[:verify_external_links]
           assert_equal 10, config[:timeout]
           assert_equal 5, config[:max_concurrency]

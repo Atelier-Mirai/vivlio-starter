@@ -42,7 +42,7 @@ module VivlioStarter
           LinkImageValidator.reset!
           IssueRegistry.reset!
           Thread.current[:vs_verify_options] = {
-            verify_images: true, verify_bare_urls: true, verify_external_links: false
+            verify_external_links: false
           }
         end
 

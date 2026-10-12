@@ -42,8 +42,7 @@ module VivlioStarter
       # 付かない——章を catalog へ戻すか、語を索引から外すかを決める必要がある。
       OUT_OF_SCOPE_NOTE = '（走査対象外）'
       OUTSIDE_CATALOG_NOTE = '（catalog 未登録）'
-      # 旧版が書いた「（catalog 外）」も剥がす（レビューファイルは版をまたいで残る）
-      CONTEXT_NOTES = [OUTSIDE_CATALOG_NOTE, OUT_OF_SCOPE_NOTE, '（catalog 外）'].freeze
+      CONTEXT_NOTES = [OUTSIDE_CATALOG_NOTE, OUT_OF_SCOPE_NOTE].freeze
 
       # セクションの見出し。走査範囲の境目に使うので綴りを 1 箇所に置く
       TERMS_SECTION = '## 1. 登録済みの語'
