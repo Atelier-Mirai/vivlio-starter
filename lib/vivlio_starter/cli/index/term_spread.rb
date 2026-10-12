@@ -25,6 +25,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative 'chapter_source'
 require_relative 'code_block_stripper'
 require_relative 'term_pattern'
 
@@ -86,21 +87,13 @@ module VivlioStarter
         # 章の本文を読み、コードを除いた状態で返す
         def self.load_bodies(chapters)
           chapters.filter_map do |chapter|
-            path = resolve_path(chapter)
+            path = ChapterSource.path(chapter)
             next unless path
 
             CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
           end
         end
         private_class_method :load_bodies
-
-        def self.resolve_path(chapter)
-          return chapter if File.exist?(chapter.to_s)
-
-          [File.join(Common::CONTENTS_DIR, "#{chapter}.md"),
-           File.join(Common::BUILD_HTML_DIR, "#{chapter}.md")].find { File.exist?(it) }
-        end
-        private_class_method :resolve_path
 
         # 辞書エントリの照合パターン（綴りの解釈は TermPattern が唯一の定義元）
         def self.term_regexp(entry) = TermPattern.for(entry)

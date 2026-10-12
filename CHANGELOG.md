@@ -618,6 +618,12 @@
 
 - **誰からも読まれていなかった `CatalogLoader::SPECIAL_PAGES` を撤去した**。特殊ページの basename を 5 件並べた定数だが、唯一の読み手だった `special_page?` が 2026-06-11 の死んだコード掃除で消えた際に、定数だけが取り残されていた。2026-08-22 の全数調査では「最も網羅的な定義が浮いている＝他所に取りこぼしがある疑い」として残したが、追ってみると**取りこぼしは無かった**。`TokenResolver::CACHED_SYSTEM_FILES`（3 件）は「どのシステム **`.md`** が `.cache/vs/` に生成されるか」という別の問いに答えるもので、`_indexpage` / `_glossarypage` は `.md` を持たない（`UnifiedPageBuilder` が HTML を直接書き出す）ため、足すと存在しないパスを指すだけだった。`clean.rb` の一覧も P4 以前のルート残骸の掃除で、こちらも欠けは無い。
 
+- **同じことをしている処理を 1 か所にまとめた**（改善案.md #93）。
+  - 外部コマンドの有無の確かめ方（5 か所）を `Common.external_command_available?` に。doctor と lint にあった Windows の PATHEXT の扱いもそこへ移し、PATH 上の同名のディレクトリはコマンドとみなさない。`vs doctor` の出力が変更の前後で一致することを確かめた。
+  - 画像の寸法の読み方（`magick identify`・5 か所）を `Common.image_size` に。
+  - techbook の、HTML の地の文だけを書き換える走査と Twemoji のファイル名の作り方を `EmojiReplacer` に（`Processor` に同じ中身があった）。
+  - 索引の見積もり・分布・主要参照の推定が章の Markdown を探す処理（3 か所）を `IndexCommands::ChapterSource.path` に。
+
 ### Removed
 
 - **`vs index:import` の `--prefer-import` を外した**（`index-library-reserve-spec.md` §3.5）。辞書にある語をライブラリの側で上書きするオプションだったが、規則が分かれて分かりにくく、上書きのときに印まで足し合わせ、索引だけの語が用語集にも載っていた。取り込みは追記だけにする。ライブラリの説明文で入れ直したい語は、レビューファイルで `[DELETE]` してから取り込み直す。
