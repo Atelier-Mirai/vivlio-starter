@@ -252,6 +252,9 @@
 
 ### Fixed
 
+- **表が SVG・裏が PNG のテーマで、裏表紙の入稿用 PDF に塗り足しもトンボも付いていなかったのを直した**（改善案.md #93）。PNG を素の PDF に変えただけのものを、入稿用として直下へ複製していた。内部コマンド `vs create:cover` を PNG のテーマで打ったときも同じだった。
+- **PNG の表紙の解像度の警告を、画素数と判型から求めた実効解像度で出すようにした**（改善案.md #93）。PNG に書かれた dpi の値を見ていたため、画像ソフトが 72dpi と書いた PNG は、画素が足りていても「72dpi で不足」と出た（本書の `frontcover_master.png` は A4 で 350dpi ある）。警告は入稿用（`print_pdf`）を作るときに、差し替える画像の画素数を添えて出す。これまでは `vs create:cover` でしか出ていなかった。
+
 - **Kindle Previewer が変換の入口で落ちたとき、KPF の変換を 1 回やり直すようにした**。Kindle Previewer 4（4.0.3）は、変換の本体を起動する `fork` の直後に子プロセスが「os_once_t is corrupt」で止まることがある（macOS の競合で、2026-10-12 には約 12 回に 1 回）。このときは「Kindle 変換に失敗しました」だけが出て、vs の不具合と見分けがつかなかった。本の変換ログ（`Logs/*_log.csv`）を残さずに終わったときだけやり直し、2 回とも落ちたら macOS のクラッシュレポートの場所を添えて、もう一度ビルドするよう案内する。変換を終えて KPF が出なかったとき（エラー・Mobi）はやり直さない。
 - **見出しに異体字セレクタ付きの字（`禰󠄀`）や絵文字があると、PDF のビルドが止まっていたのを直した**。本文 PDF の飛び先の名前から前付・奥付の位置を探すとき、BMP の外の字（2 単位のサロゲートペアで書かれる）を 1 単位ずつ字にしていたため、不正な UTF-8 ができ、`invalid byte sequence in UTF-8` で位置を特定できず「ビルドを中止します」で止まっていた。2 単位を 1 字に戻すようにした。
 - **EPUB に、原稿で使っていない画像まで入っていたのを直した**。ローカライズが `images/` と `stylesheets/` を参照を見ずに丸ごと運んでいたため、雛形の扉絵の花やサンプル章の写真まで入り、1 章だけの本のクリーン EPUB が 19MB になっていた（うち 18.6MB が未参照）。本文・CSS・SVG のどこからも参照されていない画像を、差し替えをすべて終えた後でパッケージから外す。これまで Kindle の SVG にだけ掛けていた回収を、画像全般・両フレーバへ広げた（`sweep_unreferenced_assets!`）。表紙は外さない。1 章の本で EPUB は 19MB → 982KB、KPF は 543KB → 429KB。本書全体では、epubcheck のエラー・警告 0 件のまま 93 件（767KB）を外した。
@@ -445,6 +448,10 @@
 
 ### Changed
 
+- **表紙を作る処理を `CoverCommands` の 1 つの入口にまとめた**（改善案.md #93）。`vs cover` と `vs build` はどちらも同じ処理を通る。表と裏はそれぞれ元の画像を決め（PNG → 著者の SVG → 同梱テンプレート）、PNG なら必ず入稿用の処理（塗り足し・トンボ・CMYK）を通す。SVG の組み立ては `create.rb` から `cover/svg_cover.rb` へ移した（`create.rb` は 1,284 行 → 550 行）。
+  - 入稿用の表紙のトンボを、本文の入稿用 PDF と同じ描き方・重ね方（`CropMarksOverlay`・qpdf）にした。TrimBox・BleedBox は、トンボと同じく実際のページの寸法から決める。PNG の A4 の表紙では、仕上がりの上端と右端が 0.13〜0.5pt 内側になり、トンボとボックスが一致する（以前はボックスだけ判型の寸法ぴったりで、上の余白が 0.5pt ずれていた）。
+  - 表紙の塗り足しの幅を、本文と同じ読み方（`NombreStamper.bleed_mm_from_config`）にした。`bleed: 0mm` と書くと、本文は 3mm、PNG の表紙は 0mm になっていた。
+
 - **電子書籍用の表紙の JPEG を 1 つの作り方にそろえ、KDP へ上げる表紙としてプロジェクト直下へ置くようにした**（`ebook-cover-jpeg-spec.md`・改善案.md #91）。KDP の資料を調べると、Kindle の本（`.kpf`）には表紙を入れず、KDP の登録画面で別に上げる決まりだった（Kindle Publishing Guidelines 2026.3 §4.2 は「KDP には当てはまらない」、KDP の eBook Manuscript Formatting Guide は「本に表紙を入れない。登録時の表紙を KDP が足す」）。`kindle.embed: false` はそのままで、上げる表紙を `<project>_frontcover_v<版>.jpg` として直下に置く（`vs clean --purge` で消える）。
   - これまで作り方が 3 通りあった。PNG の表紙は 1,600 × 2,560 px に切り出していたが、`light`・`dark`・著者の SVG の表紙は判型の寸法を 150dpi で焼いていて、A4 で 1,240 × 1,754 px と KDP の推奨に届かなかった。どれも 1,600 × 2,560 px に縮めて中央を切り出す。同梱の `light`・`dark` は、左右の細い金の縦線が切り落としにかかる。
   - 品質を 90 から 95 に上げた（KDP は「なるべく圧縮しない」）。EPUB と Kindle で同じ 1 枚を使う。
@@ -626,6 +633,8 @@
 
 ### Removed
 
+- **内部コマンド `vs create:cover` と、`vs cover` の引数（`a4`・`b5`・`a5`・`epub`）を外した**（改善案.md #93）。表紙は `vs cover` か `vs build` で作り、判型は `book.yml` の `page.use`、作るものは `output.targets` に従う。判型の引数は、SVG のテーマでは効いておらず（`book.yml` の判型で作っていた）、本と違う判型の表紙は使い道も無かった。
+- **依存 gem の `combine_pdf` を外した**。使っていたのは表紙にトンボを重ねる処理だけで、本文と同じ qpdf の重ね方に替えた。
 - **`vs index:import` の `--prefer-import` を外した**（`index-library-reserve-spec.md` §3.5）。辞書にある語をライブラリの側で上書きするオプションだったが、規則が分かれて分かりにくく、上書きのときに印まで足し合わせ、索引だけの語が用語集にも載っていた。取り込みは追記だけにする。ライブラリの説明文で入れ直したい語は、レビューファイルで `[DELETE]` してから取り込み直す。
 - **依存 gem の Rouge を外した**。使っていたのは `vs import` の言語推定だけで、中身だけからはほぼ `text` しか返さなかった。推定は `vs lint` と同じ仕組み（Guesslang）へ差し替えた。`vs doctor` の診断・導入と、51・93・95 章の記述も外した。
 - **使われていなかった `pre_process/data_render/` の 3 ファイルを消した**（`query_stream_parser.rb`・`singularize.rb`・`template_compiler.rb`）。QueryStream を gem に切り出す前の写しで、どこからも読み込まれていなかった。記法の処理は gem の `QueryStream.render` が担う。

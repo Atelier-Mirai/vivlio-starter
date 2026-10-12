@@ -17,13 +17,11 @@ module VivlioStarter
     module SamovarCommands
       # cover コマンドの Samovar 実装
       class CoverCommand < VsCommand
-        self.description = '表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB）'
+        self.description = '表紙・裏表紙の画像を生成します（book.yml の判型と output.targets に従う）'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
-
-        one :target, '生成対象 (auto, a4, b5, a5, epub)', default: 'auto', required: false
 
         def call
           return print_usage if options[:help]
@@ -35,23 +33,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          case target || 'auto'
-          when 'auto', 'all'
-            CoverCommands.execute_generate(self)
-          when 'a4'
-            CoverCommands.execute_for_size(:a4, self)
-          when 'b5'
-            CoverCommands.execute_for_size(:b5, self)
-          when 'a5'
-            CoverCommands.execute_for_size(:a5, self)
-          when 'epub'
-            CoverCommands.execute_epub(self)
-          else
-            Common.log_error("未知のカバー種別です: #{target}")
-            Common.log_info('指定可能な値: auto, a4, b5, a5, epub')
-            return 1
-          end
-
+          CoverCommands.execute_generate(self)
           0
         end
       end

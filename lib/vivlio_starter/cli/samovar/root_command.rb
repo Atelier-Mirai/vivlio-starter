@@ -75,7 +75,6 @@ module VivlioStarter
           #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
           def internal_commands
             @internal_commands ||= {
-              'create:cover' => CreateCoverCommand,
               'create:titlepage' => CreateTitlepageCommand,
               'create:colophon' => CreateColophonCommand,
               'create:legalpage' => CreateLegalpageCommand,

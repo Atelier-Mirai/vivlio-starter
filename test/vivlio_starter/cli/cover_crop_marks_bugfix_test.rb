@@ -91,7 +91,7 @@ module VivlioStarter
           # 検証2: トンボ要素が存在すること
           # 本文と同じ形式のトンボ（角トンボ + センタートンボ⊕）が付与されているか
           # 注: ImageMagickの-drawコマンドで描画されたトンボは、
-          #     Prawn + CombinePDFで描画されたトンボと形式が異なる可能性がある
+          #     Prawn で描いて qpdf で重ねたトンボと形式が異なる可能性がある
           #
           # **期待される結果**: このテストは未修正コードで失敗する
           # （トンボ形式が本文と異なるため）
@@ -194,12 +194,12 @@ module VivlioStarter
           # PNGテーマ（master）の表紙を生成
           create_dummy_master_files(covers_dir)
 
-          # EPUB用JPEGを生成
-          config = Common.load_config
-          CoverCommands.generate_epub_cover(covers_dir, config)
-
-          # 検証1: JPEGが生成されること（生成物は生成キャッシュに出る・移設仕様 §2）
+          # EPUB用JPEGを生成（生成物は生成キャッシュに出る・移設仕様 §2）
           output_jpg = File.join(Common.cover_cache_dir, 'cover_master.jpg')
+          FileUtils.mkdir_p(Common.cover_cache_dir)
+          CoverCommands.write_ebook_cover!(File.join(covers_dir, 'frontcover_master.png'), output_jpg)
+
+          # 検証1: JPEGが生成されること
           assert File.exist?(output_jpg), "EPUB用JPEGが生成されるべきです: #{output_jpg}"
 
           # 検証2: サイズが1600×2560であること
@@ -292,7 +292,6 @@ module VivlioStarter
       def test_property_bug_condition_svg_theme_cover_crop_marks_format_matches_main_body
         skip 'rsvg-convertが必要です' unless rsvg_convert_available?
         skip 'Prawnが必要です' unless prawn_available?
-        skip 'CombinePDFが必要です' unless combine_pdf_available?
 
         within_temp_dir do
           setup_config_with_print_pdf_svg_theme
@@ -310,10 +309,10 @@ module VivlioStarter
           back_output = File.join(covers_dir, 'backcover_light_b5_cmyk.pdf')
 
           # トンボ付きPDFを生成（convert_svg_to_pdf_with_crop_marks を使用）
-          CreateCommands.convert_svg_to_pdf_with_crop_marks(
+          CoverCommands::SvgCover.convert_svg_to_pdf_with_crop_marks(
             front_svg, front_output, TRIM_W_MM, TRIM_H_MM
           )
-          CreateCommands.convert_svg_to_pdf_with_crop_marks(
+          CoverCommands::SvgCover.convert_svg_to_pdf_with_crop_marks(
             back_svg, back_output, TRIM_W_MM, TRIM_H_MM
           )
 
@@ -390,7 +389,7 @@ module VivlioStarter
         # 2. 円描画コマンド（センタートンボの⊕用）
         #
         # **期待される結果**: 未修正コードでは、ImageMagickの-drawコマンドで描画されたトンボが
-        # 存在するが、Prawn + CombinePDFで描画されたトンボとは形式が異なる可能性がある
+        # 存在するが、Prawn で描いて qpdf で重ねたトンボとは形式が異なる可能性がある
 
         # 直線描画コマンドの存在を確認（簡易チェック）
         # 注: この検証は完全ではなく、実際のトンボ形式を保証するものではない
@@ -399,7 +398,7 @@ module VivlioStarter
 
         # 円描画コマンドの存在を確認（簡易チェック）
         # 注: センタートンボの⊕には円が含まれる
-        # ImageMagickの-drawコマンドで描画された場合と、Prawn + CombinePDFで描画された場合で
+        # ImageMagickの-drawコマンドで描画された場合と、Prawn で描いて qpdf で重ねた場合で
         # PDFの内部表現が異なる可能性がある
         #
         # **期待される結果**: 未修正コードでは、この検証が失敗する可能性がある
@@ -555,21 +554,16 @@ module VivlioStarter
       end
 
       # PDF 先頭ページのコンテンツストリーム（描画コマンド列）を文字列で返す（pdf-reader・MIT）
+      # qpdf --overlay はトンボを Form XObject にして重ねるので、その中身も合わせて返す
       def pdf_page_content(pdf_path)
-        ::PDF::Reader.new(pdf_path).pages.first.raw_content
+        page = ::PDF::Reader.new(pdf_path).pages.first
+        forms = page.xobjects.values.select { it.hash[:Subtype] == :Form }.map(&:unfiltered_data)
+        [page.raw_content, *forms].join("\n")
       end
 
       # Prawn が利用可能かチェックする
       def prawn_available?
         require 'prawn'
-        true
-      rescue LoadError
-        false
-      end
-
-      # CombinePDF が利用可能かチェックする
-      def combine_pdf_available?
-        require 'combine_pdf'
         true
       rescue LoadError
         false

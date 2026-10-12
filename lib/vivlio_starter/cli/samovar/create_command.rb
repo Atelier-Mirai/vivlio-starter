@@ -77,31 +77,6 @@ module VivlioStarter
         end
       end
 
-      # create:cover コマンド（内部コマンド）
-      class CreateCoverCommand < Samovar::Command
-        self.description = '表紙・裏表紙SVGを生成します（内部コマンド）'
-
-        def call
-          CreateCommands.execute_cover(build_options)
-          0
-        rescue SystemExit => e
-          raise e
-        rescue StandardError => e
-          Common.log_error("create:cover 実行中にエラー: #{e.message}")
-          1
-        end
-
-        private
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
-      end
-
       # create:titlepage コマンド（内部コマンド）
       class CreateTitlepageCommand < Samovar::Command
         self.description = 'タイトルページを生成します（内部コマンド）'
