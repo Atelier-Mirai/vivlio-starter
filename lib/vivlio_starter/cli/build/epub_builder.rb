@@ -449,7 +449,7 @@ module VivlioStarter
           author   = VivliostyleConfigWriter.resolve_author
           language = VivliostyleConfigWriter.resolve_language
 
-          # ページサイズを解決（vivliostyle.rb から移植）
+          # ページサイズを解決
           page_size = resolve_page_size(config)
 
           # 表紙画像の埋め込み設定を取得（kindle は二重表紙回避のため embed:false 固定・§1-6）
@@ -649,7 +649,6 @@ module VivlioStarter
         end
 
         # book.yml のページ設定から Vivliostyle CLI 用サイズ文字列を解決する
-        # vivliostyle.rb の resolve_vivliostyle_size から移植
         #
         # @param config [Object] Common::CONFIG
         # @return [String] 'A5', 'B5', 'A4', または '148mm 210mm' 形式

@@ -308,25 +308,6 @@ module VivlioStarter
             issue
           end
 
-          # リンク issue の行番号を元ファイルの行番号に補正する。
-          def correct_link_line_number(issue, source_content)
-            url = issue.url
-            source_content.each_line.with_index(1) do |line, idx|
-              if line.include?(url)
-                return LinkIssue.new(
-                  filename: issue.filename,
-                  line_number: idx,
-                  url: issue.url,
-                  issue_type: issue.issue_type,
-                  status_code: issue.status_code,
-                  message: issue.message
-                )
-              end
-            end
-
-            issue
-          end
-
           # book.yml + CLI オプションから検証設定を解決する。
           # cli_opts に載るのは CLI で**明示された**指定だけ（`setup_verify_options!`）。
           # ここの fetch 第 2 引数が book.yml の既定として効くのは、その前提があってこそ。

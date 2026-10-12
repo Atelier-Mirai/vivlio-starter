@@ -249,7 +249,6 @@ module VivlioStarter
       # pre_process で挿入した "<!--xref:ID-->" コメントを基準に、
       # 直前の <p>（キャプション）と直後の <pre>（Prism済みコード）を
       # <div id="ID" class="cross-ref-list"> で包みます。
-      # 旧スタイルの <p class="code-caption" data-xref-id> にも対応します。
       # 行番号付与 (prism_lines) 後に実行します。
       # ================================================================
       # ================================================================
@@ -349,7 +348,7 @@ module VivlioStarter
         doc = HtmlParser.parse_html_document(content)
         changed = false
 
-        # パターン1: <!--xref:ID--> コメントを基準にラップ
+        # <!--xref:ID--> コメントを基準にラップ
         doc.xpath('//comment()').each do |comment|
           text = comment.text.to_s.strip
           next unless text.start_with?('xref:')
@@ -389,35 +388,6 @@ module VivlioStarter
 
           # マーカーコメントは削除
           comment.remove
-
-          changed = true
-        end
-
-        # パターン2（後方互換）: <p class="code-caption" data-xref-id> + <pre>
-        doc.css('p.code-caption[data-xref-id]').each do |p|
-          id = p['data-xref-id'].to_s
-          next if id.empty?
-
-          node = p.next_sibling
-          pre = nil
-          while node
-            if node.element?
-              pre = node if node.name == 'pre'
-              break
-            end
-            node = node.next_sibling
-          end
-          next unless pre
-
-          wrapper = Nokogiri::XML::Node.new('div', doc)
-          wrapper['id'] = id
-          wrapper['class'] = 'cross-ref-list'
-
-          p.remove_attribute('data-xref-id')
-
-          p.add_previous_sibling(wrapper)
-          wrapper.add_child(p)
-          wrapper.add_child(pre)
 
           changed = true
         end
@@ -1029,15 +999,14 @@ module VivlioStarter
       end
       module_function :update_fnref_link
 
+      # 前処理（MarkdownPreprocessor#expose_container_footnotes!）が囲みの脚注を拾わせるために
+      # 置いた非表示の <span class="footnote-anchor"> を、役目を終えたので外す。
       def remove_footnote_anchors(doc)
-        # 旧形式: <span class="footnote-anchor"> を削除
         doc.css('span.footnote-anchor').each do |anchor|
           parent = anchor.parent
           anchor.remove
           parent.remove if parent&.name == 'p' && parent.content.strip.empty?
         end
-        # 新形式: <p class="footnote-anchor"> を削除（VFM が {.footnote-anchor} から生成）
-        doc.css('p.footnote-anchor').each(&:remove)
       end
       module_function :remove_footnote_anchors
 

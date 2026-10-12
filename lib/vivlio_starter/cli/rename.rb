@@ -40,10 +40,6 @@ require_relative 'token_resolver'
 
 module VivlioStarter
   module CLI
-    # rename コマンドのモジュール（現在は空、実装は RenameCommandExecutor）
-    module RenameCommands
-    end
-
     # 章のリネーム・連番付け直しを実行するクラス
     #
     # 使用方法:

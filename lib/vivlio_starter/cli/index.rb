@@ -26,7 +26,6 @@ require_relative 'index/unified_page_builder'
 require_relative 'index/yomi_inferrer'
 require_relative 'index/index_candidate_extractor'
 require_relative 'index/scoring_engine'
-require_relative 'index/hierarchical_index'
 require_relative 'index/unified_terms_manager'
 require_relative 'token_resolver'
 
