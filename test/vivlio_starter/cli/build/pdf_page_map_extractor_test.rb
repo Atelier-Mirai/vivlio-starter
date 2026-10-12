@@ -46,6 +46,22 @@ class TestPdfPageMapExtractor < Minitest::Test
     assert_equal 'a#gls-src-08-web-ウェブサイト-4', Extractor.decode_destination_name(encoded)
   end
 
+  # BMP の外の字はサロゲートペアの 2 単位で書かれる。1 字に戻さないと不正な UTF-8 になり、
+  # 呼び出し側の split が止まる（見出しに `禰󠄀` があると前付・奥付の位置を特定できなかった）。
+  def test_should_join_surrogate_pairs_into_one_character
+    encoded = 'a:0023:79b0-:79b0:db40:dd00-:d83d:de00'
+    decoded = Extractor.decode_destination_name(encoded)
+
+    assert_predicate decoded, :valid_encoding?
+    assert_equal "a#禰-禰\u{E0100}-\u{1F600}", decoded
+    assert_equal ["a", "禰-禰\u{E0100}-\u{1F600}"], decoded.split('#', 2)
+  end
+
+  # 対になっていないサロゲートは字にできない。例外にせず元の名前を返す（`#` を含まないので捨てられる）。
+  def test_should_return_the_raw_name_for_a_lone_surrogate
+    assert_equal 'a:0023:db40', Extractor.decode_destination_name('a:0023:db40')
+  end
+
   def test_should_pass_through_names_without_escapes
     assert_equal 'plain-name', Extractor.decode_destination_name(:'plain-name')
   end

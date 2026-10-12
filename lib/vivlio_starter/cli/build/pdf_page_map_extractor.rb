@@ -113,6 +113,12 @@ module VivlioStarter
         # 元名前中の `:` や `#` はすべてエスケープされるため、区切りの取り違えは起きない。
         # 想定外の入力では復号せず元文字列を返し、呼び出し側の `#` 判定で自然に捨てられる。
         #
+        # **1 字が 2 単位になることがある。** BMP の外の字（異体字セレクタ U+E0100・絵文字）は
+        # サロゲートペア（`禰󠄀` なら `:79b0:db40:dd00`）で書かれる。単位を 1 つずつ字にすると
+        # 不正な UTF-8 ができ、後の `split` が ArgumentError で止まる——見出しに `禰󠄀` が
+        # あるだけで、前付・奥付の位置を特定できずにビルドが止まっていた。単位を集めてから
+        # UTF-16 としてまとめて UTF-8 へ直す。
+        #
         # @param name [Symbol, String] PDF name
         # @return [String]
         def self.decode_destination_name(name)
@@ -124,11 +130,11 @@ module VivlioStarter
               units << source[i + 1, 4].hex
               i += 5
             else
-              units << source[i].ord
+              units.concat(source[i].encode('UTF-16BE').unpack('n*'))
               i += 1
             end
           end
-          units.pack('U*')
+          units.pack('n*').force_encoding('UTF-16BE').encode('UTF-8')
         rescue StandardError
           name.to_s
         end
