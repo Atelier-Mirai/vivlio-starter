@@ -1778,45 +1778,60 @@ module VivlioStarter
         end
 
         # ================================================================
-        # Kindle パッケージから、参照の切れた SVG を回収する
+        # EPUB パッケージから、参照の切れた画像を回収する
         # ================================================================
-        # **Kindle Previewer 4 は同梱された SVG を KVG へ変換しようとし、1 枚でも
-        # 躓くと Enhanced Typesetting ごと無効にして KPF ではなく Mobi を出す。**
-        # 参照されているかどうかは問わない——manifest に載っているだけで落ちる
-        # （実測 2026-09-22。同じ EPUB が Previewer 3 では KPF になっていた）。
+        # ローカライズは images/・stylesheets/ を**参照を見ずに**丸ごと運ぶ。原稿から
+        # 使っていない雛形の画像（扉絵の花・サンプル章の写真・絵文字の囲み数字）まで
+        # 入り、1 章だけの本のクリーン EPUB が 19MB になっていた（うち 18.6MB が未参照・
+        # 実測 2026-10-12）。差し替えを全部終えた後で、誰も見ていない画像を落とす。
         #
-        # 本文からの参照は、この時点で既に他の形式へ移っている。
+        # **Kindle では SVG を残すと KPF にならない。** Kindle Previewer 4 は同梱された
+        # SVG を KVG へ変換しようとし、1 枚でも躓くと Enhanced Typesetting ごと無効にして
+        # KPF ではなく Mobi を出す。参照されているかどうかは問わない——manifest に
+        # 載っているだけで落ちる（実測 2026-09-22）。本文からの参照は、この時点で既に
+        # 他の形式へ移っている。
         #
         #   ディスプレイ数式 → PNG   （`rasterize_display_math_for_kindle!`）
         #   インライン数式   → テキスト（`textify_simple_math_for_kindle!`）
         #   図版・ロゴ・QR   → ラスタ （`stage_author_svg_for_epub!`）
         #
-        # 残るのは「ローカライズが運んだが、誰も見ていない」SVG である。実測では
-        # 102 枚中 98 枚がこれだった（数式 58・twemoji 25・絵文字 13・その他 2）。
-        #
         # **ローカライズと差し替えの両方より後に呼ぶこと。** 参照の有無で判断するので、
-        # HTML の書き換えが終わっていないと、まだ使われている SVG を落としてしまう。
+        # HTML の書き換えが終わっていないと、まだ使われている画像を落としてしまう。
+        # 表紙（covers/）は Vivliostyle がこの後で作る cover.xhtml から参照されるので対象外。
         # ================================================================
-        def sweep_unreferenced_svg!(dir, flavor:)
-          return unless flavor == :kindle
 
-          svgs = Dir.glob(File.join(dir, '**', '*.svg'))
-          return if svgs.empty?
+        # 回収の対象にする画像の拡張子。
+        SWEPT_IMAGE_GLOB = '*.{svg,png,jpg,jpeg,gif,webp}'
 
-          text = svg_reference_text(dir)
-          kept, orphans = svgs.partition { text.include?(File.basename(it)) }
+        def sweep_unreferenced_assets!(dir, flavor:)
+          covers = File.join(dir, 'covers', '')
+          images = Dir.glob(File.join(dir, '**', SWEPT_IMAGE_GLOB), File::FNM_CASEFOLD).reject { it.start_with?(covers) }
+          return if images.empty?
 
+          text = asset_reference_text(dir)
+          kept, orphans = images.partition { text.include?(File.basename(it)) }
+
+          freed = orphans.sum { File.size(it) }
           orphans.each { FileUtils.rm_f(it) }
           prune_empty_dirs!(dir)
-          Common.log_info("[EPUB] 参照の切れた SVG を Kindle パッケージから外しました: #{orphans.size} 件") if orphans.any?
-          warn_svg_left_in_kindle_package(kept)
+          if orphans.any?
+            Common.log_info("[EPUB] 参照の切れた画像をパッケージから外しました: #{orphans.size} 件" \
+                            "（#{(freed / 1024.0).round} KB・flavor: #{flavor}）")
+          end
+          warn_svg_left_in_kindle_package(kept.grep(/\.svg\z/i)) if flavor == :kindle
         end
 
-        # 参照元になりうるテキスト（章 HTML と CSS）をひとまとめにする。
-        def svg_reference_text(dir)
-          Dir.glob(File.join(dir, '**', '*.{html,xhtml,css}'))
-             .map { File.read(it, encoding: 'utf-8') }
-             .join("\n")
+        # 参照元になりうるテキスト（章 HTML・CSS・SVG）をひとまとめにする。
+        #
+        # 照合はファイル名で行う（CSS の url() は CSS の場所からの相対で、パスでは突き合わせにくい）。
+        # 同じ名前の画像が別の章にあれば両方残るが、消しすぎるより安全である。
+        # 日本語のファイル名は href で %XX に符号化されうるので、復号した形も足しておく。
+        # SVG を含めるのは、図版の中から別の画像を参照することがあるため。
+        def asset_reference_text(dir)
+          text = Dir.glob(File.join(dir, '**', '*.{html,xhtml,css,svg}'))
+                    .map { File.read(it, encoding: 'utf-8') }
+                    .join("\n")
+          "#{text}\n#{CGI.unescapeURIComponent(text.scrub)}"
         end
 
         # 落とせなかった SVG は、そのまま出すと KPF にならない。黙って通さない。
