@@ -100,7 +100,7 @@ header = <<~HEAD
   # SudachiDict の正規化表記から派生したデータ。
   # Copyright (c) 2017-2023 Works Applications Co., Ltd. / Apache License 2.0
   # 帰属表示と改変内容: プロジェクトルートの THIRD-PARTY-LICENSES.md
-  # ライセンス全文: プロジェクトルートの LICENSE-APACHE-2.0.txt
+  # ライセンス全文: 同ディレクトリの LICENSE-APACHE-2.0.txt
   # 元データ・絞り込みの条件と実測値: 同ディレクトリの mazegaki-source.tsv / filter.rb
   #
   # 手で編集しないこと。`rake mazegaki:build` が生成する。

@@ -214,7 +214,7 @@ Notes:
 - License: Apache License, Version 2.0
 - Project: https://github.com/WorksApplications/SudachiDict
 - Copyright: (c) 2017-2023 Works Applications Co., Ltd.
-- License Text: `LICENSE-APACHE-2.0.txt` (bundled) / https://www.apache.org/licenses/LICENSE-2.0
+- License Text: `lib/vivlio_starter/cli/lint/data/LICENSE-APACHE-2.0.txt` (bundled, next to `mazegaki.tsv`) / https://www.apache.org/licenses/LICENSE-2.0
 
 Notes:
 - `lib/vivlio_starter/cli/lint/data/mazegaki.tsv` is a derived work, extracted and filtered from the normalized-form field of SudachiDict. It is used by `vs lint` to detect mixed kana-kanji spellings.
@@ -225,7 +225,7 @@ Notes:
 - ライセンス: Apache License, Version 2.0
 - プロジェクト: https://github.com/WorksApplications/SudachiDict
 - 著作権表示: (c) 2017-2023 Works Applications Co., Ltd.
-- ライセンス本文: `LICENSE-APACHE-2.0.txt`（同梱）／ https://www.apache.org/licenses/LICENSE-2.0
+- ライセンス本文: `lib/vivlio_starter/cli/lint/data/LICENSE-APACHE-2.0.txt`（`mazegaki.tsv` と同じディレクトリに同梱）／ https://www.apache.org/licenses/LICENSE-2.0
 
 補足:
 - `lib/vivlio_starter/cli/lint/data/mazegaki.tsv` は、SudachiDict の「正規化表記」フィールドから抽出・加工した派生物です。`vs lint` の交ぜ書き検出（第 2 層）で使用します。
@@ -266,7 +266,7 @@ Apache License, Version 2.0 が適用されます。
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  Apache License 2.0 の全文は、プロジェクトルートの LICENSE-APACHE-2.0.txt に
+  Apache License 2.0 の全文は、このディレクトリの LICENSE-APACHE-2.0.txt に
   収録しています。
 
   使用した辞書:
