@@ -37,7 +37,7 @@ module VivlioStarter
 
       # 判型ごとの仕上がりサイズ（350 dpi の画素数と mm。塗り足しを含まない）
       SIZES = {
-        a4: { width: 2894, height: 4091, mm: [210, 297] },
+        a4: { width: 2894, height: 4093, mm: [210, 297] },
         b5: { width: 2508, height: 3541, mm: [182, 257] },
         a5: { width: 2039, height: 2894, mm: [148, 210] }
       }.freeze

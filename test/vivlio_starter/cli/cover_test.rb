@@ -707,6 +707,15 @@ module VivlioStarter
         end
       end
 
+      # 判型ごとの画素数は、仕上がりの mm を 350dpi にした値（四捨五入）と一致する。
+      # A4 の高さが 4091 px（正しくは 4093 px）で、A4 の表紙が本文より 0.18mm 低かった
+      def test_should_match_sizes_to_trim_at_350dpi
+        CoverCommands::SIZES.each do |name, size|
+          expected = size[:mm].map { (it / Units::MM_PER_INCH * CoverCommands::DPI).round }
+          assert_equal expected, [size[:width], size[:height]], "#{name} の画素数"
+        end
+      end
+
       # 入稿用の表紙は仕上がりサイズ（SIZES）を generate_pdfx_single へ渡すことを確認する
       # crop_marks: true 時は generate_pdfx_single 内でサイズ拡張が行われる
       def test_should_pass_trim_size_not_bleed_size_to_generate_pdfx_single
