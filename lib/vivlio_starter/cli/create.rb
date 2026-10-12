@@ -584,7 +584,7 @@ module VivlioStarter
 
       # SVG → PDF（rsvg-convert 優先、フォールバック: ImageMagick）
       def convert_svg_to_pdf(input, output, w_mm, h_mm)
-        if CoverCommands.find_executable('rsvg-convert')
+        if Common.external_command_available?('rsvg-convert')
           Common.run_svg_converter!(
             ['rsvg-convert',
              '-f', 'pdf',
@@ -632,7 +632,7 @@ module VivlioStarter
         svg_w_mm = trim_w_mm + (2 * bleed_mm)
         svg_h_mm = trim_h_mm + (2 * bleed_mm)
 
-        unless CoverCommands.find_executable('rsvg-convert')
+        unless Common.external_command_available?('rsvg-convert')
           Common.log_warn('rsvg-convert が見つかりません。トンボなしで生成します')
           convert_svg_to_pdf(input, output, trim_w_mm, trim_h_mm)
           return
@@ -765,7 +765,7 @@ module VivlioStarter
       # 踏んで失敗するため。PDF 経路（convert_svg_to_pdf）と同じエンジンになり、表紙 PDF と JPG の
       # 絵柄も揃う。幅・高さの両指定で仕上がりサイズへ強制フィットさせる。
       def rasterize_svg_to_png(input, output_png, w_px, h_px)
-        if CoverCommands.find_executable('rsvg-convert')
+        if Common.external_command_available?('rsvg-convert')
           return Common.run_svg_converter!(
             ['rsvg-convert', '-f', 'png', '-w', w_px.to_s, '-h', h_px.to_s, '-o', output_png, input],
             input_path: input, output_path: output_png, purpose: 'カバー画像 (SVG→PNG) 変換'

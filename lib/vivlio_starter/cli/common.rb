@@ -504,22 +504,33 @@ module VivlioStarter
       # ------------------------------------------------------------
       # 外部コマンド可用性チェック
       # ------------------------------------------------------------
-      # PATH を走査してコマンドが実行可能か判定する。
-      # @param cmd [String] 実行形式コマンド名（絶対パスも可）
+      # PATH を走査してコマンドが実行可能か判定する。外部コマンドの有無はすべてここで見る
+      # （doctor・lint・表紙・画像生成がそれぞれ持っていた探し方を 1 つにした）。
+      # Windows では PATHEXT の拡張子（.exe など）を補って探し、実行ビットは見ない。
+      # @param cmd [String] 実行形式コマンド名（パスも可）
       # @return [Boolean]
       def external_command_available?(cmd)
         candidate = cmd.to_s.strip
         return false if candidate.empty?
+        return executable_file?(candidate) if candidate.include?(File::SEPARATOR) || candidate.include?('\\')
 
-        if candidate.include?(File::SEPARATOR)
-          return File.executable?(candidate) && !File.directory?(candidate)
-        end
-
+        extensions = windows? ? ENV.fetch('PATHEXT', '').split(';').map(&:downcase) : ['']
         ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, candidate)
-          File.executable?(path) && !File.directory?(path)
+          extensions.any? do |ext|
+            name = ext.empty? || candidate.downcase.end_with?(ext) ? candidate : "#{candidate}#{ext}"
+            executable_file?(File.join(dir, name))
+          end
         end
       end
+
+      def executable_file?(path)
+        File.file?(path) && (windows? || File.executable?(path))
+      end
+
+      def windows?
+        RbConfig::CONFIG['host_os'].match?(/mswin|mingw|cygwin/i)
+      end
+      private_class_method :executable_file?, :windows?
 
       # 外部コマンドが見つからない際の案内メッセージを生成する。
       # `vs doctor` / `vs doctor --fix` への誘導を含む。

@@ -86,7 +86,7 @@ module VivlioStarter
 
           Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 
-          waifu2x_available = waifu2x && !waifu2x.strip.empty? && command_available?(waifu2x)
+          waifu2x_available = waifu2x && !waifu2x.strip.empty? && Common.external_command_available?(waifu2x)
           Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。") unless waifu2x_available
 
           Dir.mktmpdir('frontispiece-one') do |tmpdir|
@@ -128,16 +128,6 @@ module VivlioStarter
           raise 'ImageMagick (magick) が見つかりません。インストールを確認してください。' unless status.success?
         rescue Errno::ENOENT
           raise 'magick コマンドが見つかりません。ImageMagick をインストールしてください。'
-        end
-
-        # コマンドが利用可能かチェック
-        def command_available?(cmd)
-          return File.executable?(cmd) if cmd.include?(File::SEPARATOR)
-
-          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |path|
-            candidate = File.join(path, cmd)
-            File.executable?(candidate)
-          end
         end
 
         # 画像参照を解決

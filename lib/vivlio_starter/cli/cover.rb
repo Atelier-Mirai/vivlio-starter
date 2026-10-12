@@ -655,20 +655,9 @@ module VivlioStarter
       end
 
       def self.imagemagick_convert_command
-        return ['magick'] if find_executable('magick')
+        return ['magick'] if Common.external_command_available?('magick')
 
-        return ['convert'] if find_executable('convert')
-
-        nil
-      end
-
-      def self.find_executable(command)
-        return nil if command.to_s.empty?
-
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).each do |dir|
-          path = File.join(dir, command)
-          return path if File.executable?(path) && !File.directory?(path)
-        end
+        return ['convert'] if Common.external_command_available?('convert')
 
         nil
       end
