@@ -60,14 +60,17 @@ module VivlioStarter
         def generate!(cfg = nil)
           cfg ||= Common::CONFIG
 
+          # --- Phase: book.yml が要求するフォントを準備する ---
+          # CSS を組み立てる前に取得する。render は取得済みの太字の有無で強調の書体を決める
+          # （font_synthesis_rules）ため、後に回すと Google Fonts の書体を初めて使うビルドで
+          # 太字があるのに「無い」と判定され、強調だけがゴシックで組まれる。
+          ensure_fonts_available(cfg)
+
           # --- Phase: CSS 全文を組み立てて書き出す ---
           css = render(cfg)
           path = output_path
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, css, encoding: 'utf-8')
-
-          # --- Phase: CSS 書換とは独立に必要な副作用（旧 update_all_css_files から引越し）---
-          ensure_fonts_available(cfg)
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path

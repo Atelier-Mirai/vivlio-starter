@@ -500,6 +500,31 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     refute_includes BSC.render(enabled), 'break-before: auto;'
   end
 
+  # Google Fonts の書体を初めて使うビルドでも、取得した太字で強調を組む。
+  # 太字の有無は取得済みのファイルで判定するため、CSS を先に組むと「太字なし」と判定され、
+  # 強調だけが見出し書体（ゴシック）へ振られていた（2026-10-12・Noto Serif JP で発覚）。
+  def test_should_fetch_body_font_before_deciding_emphasis_font
+    cfg = Common::CONFIG.with(typography: Common::CONFIG.typography.with(
+      body: Common::CONFIG.typography.body.with(font: 'Test Serif')
+    ))
+    # 取得の代わりに、Google Fonts の置き場へ太字のファイルを置く
+    fetch = lambda do |_names|
+      dir = File.join('stylesheets', 'fonts', 'google', 'Test_Serif')
+      FileUtils.mkdir_p(dir)
+      FileUtils.touch(File.join(dir, 'Test-Serif-700.ttf'))
+    end
+
+    css = Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        VivlioStarter::CLI::FontManager.stub(:ensure_fonts_available, fetch) do
+          File.read(BSC.generate!(cfg))
+        end
+      end
+    end
+
+    refute_includes css, 'strong, b { font-family: var(--font-header); }'
+  end
+
   # theme.color / appendix_color / preface_color を差し替えた Common::CONFIG 相当の Data を組む
   def build_config(theme_color: 'yellow', appendix_color: nil, preface_color: nil)
     Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:, preface_color:))
