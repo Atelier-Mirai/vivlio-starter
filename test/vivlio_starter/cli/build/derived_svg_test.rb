@@ -31,7 +31,7 @@ module VivlioStarter
       DerivedSvg = Build::DerivedSvg
 
       # 同梱書体の実体。サブセットまで通す 1 本だけが使う。
-      REAL_FONT = File.expand_path('../../../../stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf',
+      REAL_FONT = File.expand_path('../../../../stylesheets/fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf',
                                    __dir__)
 
       # 汎用名しか書いていない図は、書籍の見出し書体をスタックの先頭へ足す。
@@ -46,20 +46,20 @@ module VivlioStarter
 
           rewritten, families = DerivedSvg.resolve_families(svg)
 
-          assert_includes rewritten, 'font-family: Zen Kaku Gothic New, sans-serif'
-          assert_equal ['Zen Kaku Gothic New'], families
+          assert_includes rewritten, 'font-family: Noto Sans JP, sans-serif'
+          assert_equal ['Noto Sans JP'], families
         end
       end
 
       # 著者が名指しした書体が手元にあるなら並べ替えない。意図した書体で組むのが正しい。
       def test_should_keep_the_authors_font_when_it_resolves
         with_project do
-          svg = %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="'Zen Old Mincho', serif">春</text></svg>)
+          svg = %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="'Noto Serif JP', serif">春</text></svg>)
 
           rewritten, families = DerivedSvg.resolve_families(svg)
 
           assert_equal svg, rewritten, '解決できる指定は書き換えない'
-          assert_equal ['Zen Old Mincho'], families
+          assert_equal ['Noto Serif JP'], families
         end
       end
 
@@ -67,12 +67,12 @@ module VivlioStarter
       # 手前の名前のままだと、書いた人の PC に入っている OS の書体が選ばれ Type 3 になる。
       def test_should_move_the_authors_font_before_fonts_it_cannot_embed
         with_project do
-          svg = %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family='"Hiragino Sans", "Zen Kaku Gothic New", sans-serif'>春</text></svg>)
+          svg = %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family='"Hiragino Sans", "Noto Sans JP", sans-serif'>春</text></svg>)
 
           rewritten, families = DerivedSvg.resolve_families(svg)
 
-          assert_includes rewritten, %(font-family='Zen Kaku Gothic New, "Hiragino Sans", "Zen Kaku Gothic New", sans-serif')
-          assert_equal ['Zen Kaku Gothic New'], families
+          assert_includes rewritten, %(font-family='Noto Sans JP, "Hiragino Sans", "Noto Sans JP", sans-serif')
+          assert_equal ['Noto Sans JP'], families
         end
       end
 
@@ -80,12 +80,12 @@ module VivlioStarter
       # そこだけ周りの紙面と書体が違って見える。
       def test_should_map_generic_families_to_the_matching_book_font
         with_project do
-          assert_equal 'Zen Old Mincho', DerivedSvg.book_font_for(%w[serif])
+          assert_equal 'Noto Serif JP', DerivedSvg.book_font_for(%w[serif])
           assert_equal 'HackGen35 Console NF', DerivedSvg.book_font_for(%w[monospace])
-          assert_equal 'Zen Kaku Gothic New', DerivedSvg.book_font_for(%w[sans-serif])
+          assert_equal 'Noto Sans JP', DerivedSvg.book_font_for(%w[sans-serif])
           # ui- 接頭辞も同じ扱い。判断がつかないものは見出し書体へ倒す。
-          assert_equal 'Zen Old Mincho', DerivedSvg.book_font_for(%w[ui-serif])
-          assert_equal 'Zen Kaku Gothic New', DerivedSvg.book_font_for(%w[cursive])
+          assert_equal 'Noto Serif JP', DerivedSvg.book_font_for(%w[ui-serif])
+          assert_equal 'Noto Sans JP', DerivedSvg.book_font_for(%w[cursive])
         end
       end
 
@@ -103,10 +103,10 @@ module VivlioStarter
 
           rewritten, families = DerivedSvg.resolve_families(svg)
 
-          assert_includes rewritten, 'font-family: Zen Kaku Gothic New, sans-serif;'
+          assert_includes rewritten, 'font-family: Noto Sans JP, sans-serif;'
           assert_includes rewritten, %(style="font-family: HackGen35 Console NF, monospace")
-          assert_includes rewritten, %(font-family="Zen Old Mincho, serif")
-          assert_equal ['Zen Kaku Gothic New', 'HackGen35 Console NF', 'Zen Old Mincho'], families
+          assert_includes rewritten, %(font-family="Noto Serif JP, serif")
+          assert_equal ['Noto Sans JP', 'HackGen35 Console NF', 'Noto Serif JP'], families
         end
       end
 
@@ -133,7 +133,7 @@ module VivlioStarter
       # プレゼンテーション属性より強いため、著者がルートに書いた指定を上書きしてしまう。
       def test_should_not_force_a_default_family_over_the_root_attribute
         with_project do
-          assert_equal 'Zen Kaku Gothic New', DerivedSvg.default_family(%(<svg xmlns="x"><text>春</text></svg>))
+          assert_equal 'Noto Sans JP', DerivedSvg.default_family(%(<svg xmlns="x"><text>春</text></svg>))
           assert_nil DerivedSvg.default_family(%(<svg xmlns="x" font-family="serif"><text>春</text></svg>))
         end
       end
@@ -159,7 +159,7 @@ module VivlioStarter
           assert_includes embedded, '@font-face'
           assert_includes embedded, 'data:font/ttf;base64,'
           assert_includes embedded, 'font-synthesis-weight:none'
-          assert_includes embedded, 'Zen Kaku Gothic New, sans-serif'
+          assert_includes embedded, 'Noto Sans JP, sans-serif'
           # サブセットなので、和文フォント丸ごと（2〜4MB）と違い実質太らない
           assert_operator File.size(derived), :<, 200_000
         end
@@ -174,11 +174,11 @@ module VivlioStarter
           source = write_svg('coords.svg', %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="sans-serif">座標</text></svg>))
           first = File.read(DerivedSvg.prepare(source))
 
-          install_config(heading: 'Zen Old Mincho')
+          install_config(heading: 'Noto Serif JP')
           second = File.read(DerivedSvg.prepare(source))
 
-          assert_includes first, 'Zen Kaku Gothic New, sans-serif'
-          assert_includes second, 'Zen Old Mincho, sans-serif'
+          assert_includes first, 'Noto Sans JP, sans-serif'
+          assert_includes second, 'Noto Serif JP, sans-serif'
         end
       end
 
@@ -203,8 +203,8 @@ module VivlioStarter
       # （page-settings.css が実ファイルを直に指しているため）ので、実物どおりに置く。
       def place_fonts(real_font)
         {
-          'Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Regular.ttf ZenKakuGothicNew-Bold.ttf],
-          'Zen_Old_Mincho' => %w[ZenOldMincho-Regular.ttf ZenOldMincho-Bold.ttf],
+          'Noto_Sans_JP' => %w[NotoSansJP-Regular.ttf NotoSansJP-Bold.ttf],
+          'Noto_Serif_JP' => %w[NotoSerifJP-Regular.ttf NotoSerifJP-Bold.ttf],
           'hackgen35' => %w[HackGen35ConsoleNF-Regular.ttf HackGen35ConsoleNF-Bold.ttf]
         }.each do |slug, files|
           FileUtils.mkdir_p(File.join('stylesheets', 'fonts', slug))
@@ -215,10 +215,10 @@ module VivlioStarter
         end
       end
 
-      def install_config(heading: 'Zen Kaku Gothic New')
+      def install_config(heading: 'Noto Sans JP')
         Common.install_configuration!(
           Common.build_direct_configuration(
-            typography: { heading: { font: heading }, body: { font: 'Zen Old Mincho' },
+            typography: { heading: { font: heading }, body: { font: 'Noto Serif JP' },
                           code: { font: 'HackGen35 Console NF' } }
           )
         )

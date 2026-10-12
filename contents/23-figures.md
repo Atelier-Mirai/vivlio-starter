@@ -450,7 +450,7 @@ Kindle だけは事情が異なります。KFX 形式は SVG を扱えないた�
   <title>図の内容を一文で。本文の alt と逐語一致させる</title>
   <style>
     /* 字 ------------------------------------- */
-    text   { font-family: "Zen Kaku Gothic New", sans-serif; }
+    text   { font-family: "Noto Sans JP", sans-serif; }
     .label { font-size: 14px; fill: #1a1a1a; }  /* 本文相当 */
     .note  { font-size: 12px; fill: #993c1d; }  /* 注記 */
     .title { font-size: 17px; font-weight: 700;
@@ -520,7 +520,7 @@ Kindle だけは事情が異なります。KFX 形式は SVG を扱えないた�
 
 #### 書体は書籍のものを名指しする
 
-`font-family` には `book.yml` の書体名をそのまま書いてください。`typography.heading.font` の値（既定は `Zen Kaku Gothic New`）が図のラベルに、`typography.body.font` が地の文相当に対応します。
+`font-family` には `book.yml` の書体名をそのまま書いてください。`typography.heading.font` の値（既定は `Noto Sans JP`）が図のラベルに、`typography.body.font` が地の文相当に対応します。
 
 `sans-serif` のような汎用名しか書かなかった場合も、ビルドが書籍の書体へ置き換えます。`sans-serif` は見出し書体、`serif` は本文書体、`monospace` はコード書体です。ただし**名指ししたほうが意図は残る**ので、迷ったら書いてください。
 

@@ -8,40 +8,42 @@
 @import url("fonts/google-fonts.css"); 
 
 /* バンドル済みフォント定義 */
-/* 本文（明朝体）: Zen Old Mincho 静的 TTF
+/* 本文（明朝体）: Noto Serif JP 静的 TTF
    Chromium が CFF ベースの OTF や可変フォント（Variable Font）を
    Type 3 として埋め込む問題を回避するため、TrueType アウトラインの
-   静的 TTF を使用する。 */
+   静的 TTF を使用する（Google Fonts の配信物。源ノ明朝の OTF は CFF なので使わない）。
+   Noto は異体字セレクタ（「禰」の示偏とネ偏など）の表を持つため、字形を
+   書き分けた原稿がそのとおりに組まれる。 */
 @font-face {
-  font-family: "Zen Old Mincho";
+  font-family: "Noto Serif JP";
   font-style: normal;
   font-weight: 400;
-  src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Regular.ttf") format("truetype");
+  src: url("fonts/Noto_Serif_JP/NotoSerifJP-Regular.ttf") format("truetype");
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Zen Old Mincho";
+  font-family: "Noto Serif JP";
   font-style: normal;
   font-weight: 700;
-  src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Bold.ttf") format("truetype");
+  src: url("fonts/Noto_Serif_JP/NotoSerifJP-Bold.ttf") format("truetype");
   font-display: swap;
 }
 
-/* 見出し・UI（ゴシック体）: Zen Kaku Gothic New 静的 TTF */
+/* 見出し・UI（ゴシック体）: Noto Sans JP 静的 TTF */
 @font-face {
-  font-family: "Zen Kaku Gothic New";
+  font-family: "Noto Sans JP";
   font-style: normal;
   font-weight: 400;
-  src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf") format("truetype");
+  src: url("fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf") format("truetype");
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Zen Kaku Gothic New";
+  font-family: "Noto Sans JP";
   font-style: normal;
   font-weight: 700;
-  src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf") format("truetype");
+  src: url("fonts/Noto_Sans_JP/NotoSansJP-Bold.ttf") format("truetype");
   font-display: swap;
 }
 
@@ -64,7 +66,7 @@
 }
 
 /* コード用（等幅）＋記号フォールバック: HackGen35 Console NF Regular
-   Nerd Fonts 版を採用し、Zen フォント非収録の記号（▶ ⁵ 等）の同梱フォールバックも兼ねる。
+   Nerd Fonts 版を採用し、本文・見出しの書体に無い記号（⁵ 等）の同梱フォールバックも兼ねる。
    フォールバック先が Regular/Bold の両字面を持たないと bold 文脈で faux-bold 合成が
    起き Chromium が Type 3 化するため、Regular/Bold を必ず両方宣言する。 */
 @font-face {
@@ -126,13 +128,13 @@
      末尾の generic family（serif/sans-serif/monospace）は EPUB をフォント非埋め込みで
      配布する際のフォールバック。指定書体が無いリーダーでも 明朝=serif / ゴシック=sans-serif /
      コード=monospace の category が保たれる。PDF では実体フォントが常に在るため不発（無害）。 */
-  --font-main-text: "Zen Old Mincho", "HackGen35 Console NF", serif;          /* メイン本文フォント */
-  --font-body:      "Zen Old Mincho", "HackGen35 Console NF", serif;          /* 本文フォント（--font-main-text の別名） */
-  --font-title:     "Zen Kaku Gothic New", sans-serif;   /* タイトルフォント */
-  --font-header:    "Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif;   /* 見出しフォント */
+  --font-main-text: "Noto Serif JP", "HackGen35 Console NF", serif;          /* メイン本文フォント */
+  --font-body:      "Noto Serif JP", "HackGen35 Console NF", serif;          /* 本文フォント（--font-main-text の別名） */
+  --font-title:     "Noto Sans JP", sans-serif;   /* タイトルフォント */
+  --font-header:    "Noto Sans JP", "HackGen35 Console NF", sans-serif;   /* 見出しフォント */
   --font-column:    "Zen Maru Gothic", "HackGen35 Console NF", sans-serif;    /* コラムフォント */
   --font-code:      "HackGen35 Console NF", monospace;           /* コードフォント */
-  --font-folio:     "Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif;   /* ノンブル(ページ番号)フォント */
+  --font-folio:     "Noto Sans JP", "HackGen35 Console NF", sans-serif;   /* ノンブル(ページ番号)フォント */
 
   /* ノンブル（ページ番号）設定 */
   --folio-font-size: calc(var(--base-font-size) * 0.75);

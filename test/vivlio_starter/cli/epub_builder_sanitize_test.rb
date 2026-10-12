@@ -208,7 +208,7 @@ module VivlioStarter
       def test_should_strip_font_face_when_not_embedding_fonts
         css = <<~CSS
           @import url("fonts/google-fonts.css");
-          @font-face { font-family: "Zen Old Mincho"; src: url("fonts/ZenOldMincho-Regular.ttf"); }
+          @font-face { font-family: "Noto Serif JP"; src: url("fonts/NotoSerifJP-Regular.ttf"); }
           @font-face { font-family: keyfont; src: url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf") format("truetype"); }
           body { font-family: var(--font-main-text); }
         CSS
@@ -217,7 +217,7 @@ module VivlioStarter
         Build::EpubBuilder.sanitize_epub_css!(epub)
 
         result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        refute_includes result, 'Zen Old Mincho', '非埋め込み時 @font-face は除去されるべき'
+        refute_includes result, 'Noto Serif JP', '非埋め込み時 @font-face は除去されるべき'
         refute_includes result, 'fonts/google-fonts.css', 'fonts/ への @import も除去されるべき（RSC-007 回避）'
         assert_includes result, 'font-family: keyfont', 'keyfont の @font-face は保持されるべき（実体同梱）'
         assert_includes result, 'font-family: var(--font-main-text)', '通常の font-family 宣言は残すべき'

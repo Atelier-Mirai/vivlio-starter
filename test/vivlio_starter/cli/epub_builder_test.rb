@@ -51,8 +51,8 @@ module VivlioStarter
         {
           frontispiece: 'dummy_portrait.webp',
           ornament: 'dummy_landscape.webp',
-          font_family: "'Zen Kaku Gothic New', sans-serif",
-          lead_font_family: "'Zen Old Mincho', serif",
+          font_family: "'Noto Sans JP', sans-serif",
+          lead_font_family: "'Noto Serif JP', serif",
           lead_ratio: 0.60,
           number_color: '#f0a000',
           flavor:

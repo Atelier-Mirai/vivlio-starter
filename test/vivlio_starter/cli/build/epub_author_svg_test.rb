@@ -35,7 +35,7 @@ module VivlioStarter
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       # 同梱書体の実体（サブセットを実際に作るために要る）。
-      REAL_FONT = File.expand_path('../../../../stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf',
+      REAL_FONT = File.expand_path('../../../../stylesheets/fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf',
                                    __dir__)
 
       FIGURE = <<~SVG
@@ -79,7 +79,7 @@ module VivlioStarter
 
           assert_includes body, '@font-face'
           assert_includes body, 'data:font/ttf;base64,'
-          assert_includes body, 'Zen Kaku Gothic New, sans-serif'
+          assert_includes body, 'Noto Sans JP, sans-serif'
         end
       end
 
@@ -165,10 +165,10 @@ module VivlioStarter
       def in_temp_project
         Dir.mktmpdir('vs-author-svg') do |dir|
           Dir.chdir(dir) do
-            FileUtils.mkdir_p('stylesheets/fonts/Zen_Kaku_Gothic_New')
-            FileUtils.cp(REAL_FONT, 'stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf')
+            FileUtils.mkdir_p('stylesheets/fonts/Noto_Sans_JP')
+            FileUtils.cp(REAL_FONT, 'stylesheets/fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf')
             Common.install_configuration!(
-              Common.build_direct_configuration(typography: { heading: { font: 'Zen Kaku Gothic New' } })
+              Common.build_direct_configuration(typography: { heading: { font: 'Noto Sans JP' } })
             )
             yield
           end

@@ -13,9 +13,9 @@
 
 | 文字 | 対策 |
 |---|---|
-| 〜 波ダッシュ U+301C | techbook 前処理で 全角チルダ U+FF5E → U+301C へ正規化（Zen は U+301C 収録） |
+| 〜 波ダッシュ U+301C | techbook 前処理で 全角チルダ U+FF5E → U+301C へ正規化（Zen 系の書体は U+FF5E を収録しない） |
 | † ダガー U+2020 | `.glossary-link sup` を明朝固定 + `font-weight: normal`（faux-bold 回避） |
-| ▶ ⁵ → 等（Zen 非収録記号） | 同梱 `hackgen35`(HackGen35ConsoleNF) をフォントスタック末尾に（Regular/Bold 両字面） |
+| ⁵ 等（本文・見出しの書体に無い記号） | 同梱 `hackgen35`(HackGen35ConsoleNF) をフォントスタック末尾に（Regular/Bold 両字面） |
 | キーキャップ Ctrl/S（keyfont） | keyfont を OTF→TTF 変換（`otf2ttf.py`） |
 
 ## ファイル

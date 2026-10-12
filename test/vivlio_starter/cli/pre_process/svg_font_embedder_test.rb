@@ -36,17 +36,17 @@ module VivlioStarter
 
       # 同梱書体は Bold 字面があればそれを選ぶ
       def test_should_prefer_bold_face_of_bundled_font
-        with_fonts('Zen Kaku Gothic New',
-                   'fonts/Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Regular.ttf ZenKakuGothicNew-Bold.ttf]) do
-          assert_equal 'ZenKakuGothicNew-Bold.ttf', File.basename(Embedder.heading_font_path)
+        with_fonts('Noto Sans JP',
+                   'fonts/Noto_Sans_JP' => %w[NotoSansJP-Regular.ttf NotoSansJP-Bold.ttf]) do
+          assert_equal 'NotoSansJP-Bold.ttf', File.basename(Embedder.heading_font_path)
         end
       end
 
       # 同梱書体に Bold が無ければ手持ちの 1 本で代替する
       def test_should_fall_back_to_regular_face_of_bundled_font
-        with_fonts('Zen Kaku Gothic New',
-                   'fonts/Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Regular.ttf]) do
-          assert_equal 'ZenKakuGothicNew-Regular.ttf', File.basename(Embedder.heading_font_path)
+        with_fonts('Noto Sans JP',
+                   'fonts/Noto_Sans_JP' => %w[NotoSansJP-Regular.ttf]) do
+          assert_equal 'NotoSansJP-Regular.ttf', File.basename(Embedder.heading_font_path)
         end
       end
 
@@ -68,10 +68,10 @@ module VivlioStarter
 
       # 同梱と Google に同名の書体があれば同梱を優先する（取得物より手元の実体）
       def test_should_prefer_bundled_over_google_for_same_family
-        with_fonts('Zen Kaku Gothic New',
-                   'fonts/Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Bold.ttf],
-                   'fonts/google/Zen_Kaku_Gothic_New' => %w[Zen-Kaku-Gothic-New.ttf]) do
-          assert_equal 'ZenKakuGothicNew-Bold.ttf', File.basename(Embedder.heading_font_path)
+        with_fonts('Noto Sans JP',
+                   'fonts/Noto_Sans_JP' => %w[NotoSansJP-Bold.ttf],
+                   'fonts/google/Noto_Sans_JP' => %w[Noto-Sans-JP.ttf]) do
+          assert_equal 'NotoSansJP-Bold.ttf', File.basename(Embedder.heading_font_path)
         end
       end
 
@@ -81,7 +81,7 @@ module VivlioStarter
       # slug で引けなければ中身のファイル名から引き当てないと、コード書体だけ
       # サブセットを作れず、等幅で組んだ図が OS フォントへ落ちて Type 3 が残る。
       def test_should_find_a_bundled_font_whose_directory_name_differs_from_the_slug
-        with_fonts('Zen Kaku Gothic New',
+        with_fonts('Noto Sans JP',
                    'fonts/hackgen35' => %w[HackGen35ConsoleNF-Regular.ttf HackGen35ConsoleNF-Bold.ttf]) do
           assert_equal 'HackGen35ConsoleNF-Bold.ttf',
                        File.basename(Embedder.font_path('HackGen35 Console NF', weight: :bold))
@@ -91,13 +91,13 @@ module VivlioStarter
       # 図が太字を混ぜたときのために、Regular と Bold を別々に埋められること。
       # 1 面しか渡さないと faux-bold が合成されて Type 3 に戻る（notes §5.2）。
       def test_should_expose_both_faces_when_the_family_has_them
-        with_fonts('Zen Kaku Gothic New',
-                   'fonts/Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Regular.ttf ZenKakuGothicNew-Bold.ttf]) do
-          faces = Embedder.face_paths('Zen Kaku Gothic New')
+        with_fonts('Noto Sans JP',
+                   'fonts/Noto_Sans_JP' => %w[NotoSansJP-Regular.ttf NotoSansJP-Bold.ttf]) do
+          faces = Embedder.face_paths('Noto Sans JP')
 
           assert_equal [400, 700], faces.keys
-          assert_equal 'ZenKakuGothicNew-Regular.ttf', File.basename(faces[400])
-          assert_equal 'ZenKakuGothicNew-Bold.ttf', File.basename(faces[700])
+          assert_equal 'NotoSansJP-Regular.ttf', File.basename(faces[400])
+          assert_equal 'NotoSansJP-Bold.ttf', File.basename(faces[700])
         end
       end
 
@@ -121,7 +121,7 @@ module VivlioStarter
       def test_should_resolve_the_body_font_for_math
         skip '同梱書体が無い環境では検証できない' unless Embedder.body_font_path
 
-        assert_equal 'ZenOldMincho-Regular.ttf', File.basename(Embedder.body_font_path)
+        assert_equal 'NotoSerifJP-Regular.ttf', File.basename(Embedder.body_font_path)
         refute_equal File.basename(Embedder.heading_font_path.to_s),
                      File.basename(Embedder.body_font_path),
                      '本文と見出しで別の実体を返す'

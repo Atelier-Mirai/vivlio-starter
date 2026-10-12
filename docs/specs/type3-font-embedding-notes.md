@@ -5,6 +5,7 @@
 > 対象: PDF へ Type 3 フォントが混入する 2 つの経路——(A) `<img>` 参照の生成 SVG（§2〜§5）と (B) 疑似太字の合成（§6）——の原因・切り分け手順・採った対策。
 > 関連: `fixtures/type3/README.md`（Type 3 を避ける理由と文字別の対策一覧はあちらが正典）, `explanatory-diagram-spec.md`, `mermaid-diagram-spec.md`
 > 実測環境: Vivliostyle cli 11.0.2 / core 2.43.2, macOS
+> 注記（2026-10-12）: 同梱書体は Zen Old Mincho / Zen Kaku Gothic New から Noto Serif JP / Noto Sans JP（Google Fonts 配信の静的 TTF）へ替えた。以下の実測と例は、当時の Zen の名前のまま残している。
 
 ---
 
@@ -338,8 +339,9 @@ rsvg-convert で 350 DPI の WebP へ焼き、`Techbook::Processor#rewrite_svg_r
 
 | 図の書き方 | 派生でどうなるか |
 | :--- | :--- |
-| `font-family="Zen Kaku Gothic New", …`（実体のある書体） | **並べ替えない**。同名の @font-face を注ぐだけ |
-| `font-family: sans-serif` | 先頭へ見出し書体を足す（`Zen Kaku Gothic New, sans-serif`） |
+| `font-family="Noto Sans JP", …`（実体のある書体が先頭） | **並べ替えない**。同名の @font-face を注ぐだけ |
+| `font-family="Hiragino Sans", "Noto Sans JP", …`（実体のある書体の手前に OS の書体） | 実体のある書体を先頭へ出す。手前のままだと書いた人の PC のヒラギノが選ばれ Type 3 になる（2026-10-12・37 章の図 2 枚で 45 件） |
+| `font-family: sans-serif` | 先頭へ見出し書体を足す（`Noto Sans JP, sans-serif`） |
 | `font-family: serif` | 先頭へ本文書体 |
 | `font-family: monospace` | 先頭へコード書体 |
 | 指定なし | `svg{font-family:…}` を注いで見出し書体へ寄せる |

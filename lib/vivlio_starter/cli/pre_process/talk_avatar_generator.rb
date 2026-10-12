@@ -14,7 +14,7 @@
 #   `avatar: haruka.webp` へ差し替えればよい。
 #
 # フォント:
-#   同梱の Zen Kaku Gothic New Bold を使う。CJK もラテンも描画できることを実測済みで、
+#   同梱の Noto Sans JP Bold（見出しの既定書体）を使う。CJK もラテンも描画でき、
 #   gem/雛形に同梱されているため環境差で欠けない。本文フォント設定には追従しない
 #   （システムフォント指定時に実体パスを解決できず破綻するため・§5 未決）。
 #
@@ -55,7 +55,7 @@ module VivlioStarter
         FIT_HEIGHT = 200
 
         # 同梱フォント（stylesheets/ からの相対）。
-        FONT_REL = 'fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf'
+        FONT_REL = 'fonts/Noto_Sans_JP/NotoSansJP-Bold.ttf'
 
         # 地色がこれより明るければ文字を濃色にする（WCAG 相対輝度）。
         # yellow(#f0a000)=0.47 / lime(#65a30d)=0.30 / purple(#7c3aed)=0.14 の実測から、

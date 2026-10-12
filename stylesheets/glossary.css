@@ -192,9 +192,9 @@ body.vs-kindle .glossary-title {
 }
 
 .glossary-link sup {
-  /* † (U+2020) は明朝(Zen Old Mincho)にのみ収録され、ゴシック(Zen Kaku Gothic New)
-     には無い。見出し等のゴシック文脈に置かれると OS フォントへフォールバックして
-     Chrome 149 が Type 3 化するため、常に明朝で描画させる。 */
+  /* † (U+2020) を収録しないゴシック体がある（Zen Kaku Gothic New など、著者が
+     book.yml で選べる書体）。見出し等のゴシック文脈に置かれると OS フォントへ
+     フォールバックして Chrome 149 が Type 3 化するため、常に本文の明朝で描画させる。 */
   font-family: var(--font-main-text);
   font-size: 0.7em;
   color: var(--theme-accent, #0186d8);

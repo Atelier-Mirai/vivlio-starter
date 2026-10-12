@@ -14,8 +14,8 @@
 #   - @font-face を定義した CSS バンドルを生成
 #
 # 標準フォント（ダウンロード不要）:
-#   - Zen Old Mincho: 本文用（明朝体）
-#   - Zen Kaku Gothic New: 見出し・ノンブル用（ゴシック体）
+#   - Noto Serif JP: 本文用（明朝体）
+#   - Noto Sans JP: 見出し・ノンブル用（ゴシック体）
 #   - Zen Maru Gothic: コラム用（丸ゴシック体）
 #   - HackGen35 Console NF: コードブロック用（等幅）＋記号フォールバック（Nerd Fonts）
 #
@@ -40,8 +40,8 @@ module VivlioStarter
       # 標準搭載フォント（ダウンロード不要）
       # page-settings.css の @font-face で静的 TTF が定義されているファミリ名
       STANDARD_FONT_FAMILIES = Set.new([
-                                         'Zen Old Mincho',
-                                         'Zen Kaku Gothic New',
+                                         'Noto Serif JP',
+                                         'Noto Sans JP',
                                          'Zen Maru Gothic',
                                          'HackGen35 Console NF'
                                        ]).freeze
@@ -92,7 +92,7 @@ module VivlioStarter
         unless css && !css.strip.empty?
           Common.log_warn("Google Fonts のCSSが取得できませんでした: #{name}",
                           detail: "→ このままだとお使いの PC のフォントで組まれ、入稿用 PDF に Type 3 フォントが混入します。\n" \
-                                  '→ 同梱書体（Zen Old Mincho / Zen Kaku Gothic New / Zen Maru Gothic）か、' \
+                                  '→ 同梱書体（Noto Serif JP / Noto Sans JP / Zen Maru Gothic）か、' \
                                   'Google Fonts にある書体名を指定してください。')
           return []
         end
@@ -168,7 +168,7 @@ module VivlioStarter
         Common.log_warn("取得したフォントが静的 TrueType ではありません: #{File.basename(path)}（#{reason}）",
                         detail: '→ Chromium がこの書体を Type 3 フォントとして PDF へ埋め込むため、' \
                                 "入稿用 PDF では使えません。\n" \
-                                '→ 同梱書体（Zen Old Mincho / Zen Kaku Gothic New / Zen Maru Gothic）をお使いください。')
+                                '→ 同梱書体（Noto Serif JP / Noto Sans JP / Zen Maru Gothic）をお使いください。')
       end
 
       # sfnt のテーブルディレクトリからタグ一覧を読む（先頭数 KB だけで足りる）。
@@ -277,7 +277,7 @@ module VivlioStarter
         Common.log_warn("#{name} には太字がありません（Google Fonts の配信は標準の太さのみ）",
                         detail: "→ 本文の**強調**は見出し書体（ゴシック）で代用します。\n" \
                                 "→ 疑似太字で組むと入稿用 PDF に Type 3 フォントが混入するため、この代用は外せません。\n" \
-                                '→ 太字を含む書体にするなら Noto Sans JP / Noto Serif JP / Zen 系 / ' \
+                                '→ 太字を含む書体にするなら、同梱の Noto Serif JP / Noto Sans JP のほか、Zen 系 / ' \
                                 'M PLUS 系 / BIZ UD 系などが該当します。')
       end
 

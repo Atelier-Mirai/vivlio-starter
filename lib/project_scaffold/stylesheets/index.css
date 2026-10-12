@@ -150,28 +150,17 @@ body.vs-kindle .index h1 {
    書体をゴシックへ替えるのは、明朝の数字は太らせても他と見分けが付きにくい
    ためで、字幅の差が小さい算用数字ではとくに効かない。索引は拾い読みされる
    ページなので、字面そのものが変わるほうが目印として届く。
-   Zen Kaku Gothic New は 700 の実フォントを @font-face で読んでいる
-   （page-settings.css）ので、合成太字ではなく本来の Bold が出る。 */
+   Noto Sans JP は 700 の実フォントを @font-face で読んでいる
+   （page-settings.css）ので、合成太字ではなく本来の Bold が出る。
+
+   大きさと字間は補わない。em に対する数字の高さは Noto Serif JP（Regular）が
+   74.3%、Noto Sans JP（Bold）が 75.4%、字送りは 54.8% 対 59.0%（ttfunk で実測）で、
+   ゴシックの太字のほうがわずかに大きく、明朝の数字に並べても小さく見えない。
+   （Zen Kaku Gothic New の数字は明朝より低く細かったため、以前は 1.06em に
+   拡大して字間を足していた。） */
 .index-list a.main-ref {
   font-weight: bold;
-  font-family: "Zen Kaku Gothic New", sans-serif;
-  /* font-size は同じでも小さく見えるので 6% 補う。数字のグリフが実際に
-     小さいためで、em に対する数字の高さは Zen Old Mincho が 73.9%、
-     Zen Kaku Gothic New が 71.1%（ttfunk で実測）。高さを揃えるだけなら
-     739/711 ≒ 1.04 で足りるが、字幅が 61.5% 対 50.8% と 17% 細く、
-     その分まだ小さく見えたので 2% 足した。細さは書体の性格そのもので、
-     字幅を埋めようとすると数字を太らせることになる。
-     line-height を打ち消すのは、継承した倍率 1.6 が拡大後の font-size に
-     掛かって行だけ高くなるのを防ぐため。数字に descender は無い。 */
-  font-size: 1.06em;
-  line-height: 1;
-  /* 字送りを明朝に合わせる。数字 1 字の送りは明朝 0.615em に対しゴシックは
-     0.508em で、1.06 倍しても 0.538em にしかならない。残り 0.077em を字間で
-     埋める——letter-spacing は自要素の font-size 基準なので 0.077/1.06 ≒ 0.072em。
-     負のマージンは末尾の 1 字ぶんを戻すもの。letter-spacing は最後の字の
-     後ろにも空きを足すので、そのままだと続くカンマとの間だけ開く。 */
-  letter-spacing: 0.072em;
-  margin-right: -0.072em;
+  font-family: "Noto Sans JP", sans-serif;
 }
 
 /* 前付け（00-preface等）への参照はローマ数字で表示 */

@@ -112,19 +112,19 @@ page:
 # ======= タイポグラフィ設定（書体・色・装飾） =======
 typography:
   # ------- 標準添付書体（page-settings.css の @font-face で定義） -------
-  # - 明朝体:     Zen Old Mincho
-  # - ゴシック体: Zen Kaku Gothic New
+  # - 明朝体:     Noto Serif JP
+  # - ゴシック体: Noto Sans JP
   # - 丸ゴシック体: Zen Maru Gothic
   # - プログラミング用フォント: HackGen35 Console NF
   # ※ 上記以外のフォント名を指定すると Google Fonts から自動取得を試みます。
 
   # ------- 本文 -------
   body:
-    font: Zen Old Mincho
+    font: Noto Serif JP
 
   # ------- 見出し -------
   heading:
-    font: Zen Kaku Gothic New
+    font: Noto Sans JP
 
   # ------- コラム -------
   column:
@@ -137,7 +137,7 @@ typography:
 
   # ------- ノンブル（ページ番号） -------
   folio:
-    font: Zen Kaku Gothic New
+    font: Noto Sans JP
     placement: sides # center / sides
 
 # ======= 出力設定 =======

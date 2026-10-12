@@ -34,7 +34,7 @@ class ManualBuildTest < Minitest::Test
   REQUIRED_TOOLS = %w[node vivliostyle qpdf gs].freeze
 
   # 標準添付書体（PDF にはサブセット接頭辞付きで埋め込まれるため部分一致で照合）
-  STANDARD_FONT_NAMES = ["ZenOldMincho", "ZenKakuGothicNew"].freeze
+  STANDARD_FONT_NAMES = ["NotoSerifJP", "NotoSansJP"].freeze
 
   class << self
     # ビルドは高コスト（2 分強）のため 1 回だけ実行し、結果を全テストで共有する

@@ -131,7 +131,7 @@ module VivlioStarter
           '--font-folio'     => 'sans-serif'
         }.freeze
 
-        # Zen フォント非収録の記号（▶ ⁵ 等）は Chromium が OS フォントへフォールバックし、
+        # 本文・見出しの書体に無い記号（⁵ 等）は Chromium が OS フォントへフォールバックし、
         # Chrome 149 がそれを Type 3 フォントで埋め込む。これを防ぐため、記号被覆の広い
         # 同梱 HackGen35 Console NF（Regular/Bold 両字面）を generic の前に挟む。
         # --font-code は既にこのフォントのため対象外。

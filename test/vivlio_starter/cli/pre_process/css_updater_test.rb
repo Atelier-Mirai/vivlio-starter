@@ -26,8 +26,8 @@ class CssUpdaterFontValueTest < Minitest::Test
 
   # 本文（明朝）は Type3 回避フォールバック（HackGen35 Console NF）＋ serif が付く
   def test_should_append_serif_for_main_text
-    assert_equal '"Zen Old Mincho", "HackGen35 Console NF", serif',
-                 CU.format_font_value('--font-main-text', 'Zen Old Mincho', :font)
+    assert_equal '"Noto Serif JP", "HackGen35 Console NF", serif',
+                 CU.format_font_value('--font-main-text', 'Noto Serif JP', :font)
   end
 
   # コードは Type3 回避フォールバックの本体（HackGen35 Console NF）のため挿入せず、monospace のみ付く
@@ -38,8 +38,8 @@ class CssUpdaterFontValueTest < Minitest::Test
 
   # 見出し・コラム・ノンブル（ゴシック系）は Type3 回避フォールバック＋ sans-serif が付く
   def test_should_append_sans_serif_for_gothic_variables
-    assert_equal '"Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif',
-                 CU.format_font_value('--font-header', 'Zen Kaku Gothic New', :font)
+    assert_equal '"Noto Sans JP", "HackGen35 Console NF", sans-serif',
+                 CU.format_font_value('--font-header', 'Noto Sans JP', :font)
     assert_equal '"Zen Maru Gothic", "HackGen35 Console NF", sans-serif',
                  CU.format_font_value('--font-column', 'Zen Maru Gothic', :font)
   end

@@ -26,7 +26,7 @@ module VivlioStarter
   module CLI
     module Build
       class HeadingImageComposerTest < Minitest::Test
-        FONT = "'Zen Kaku Gothic New', sans-serif"
+        FONT = "'Noto Sans JP', sans-serif"
         DATA_URI = 'data:image/jpeg;base64,AAAA'
         # book.yml の文字数指定（PDF 側 BookSettingsCss::DEFAULT_*_CHARS と同じ既定）
         METRICS = HeadingImageComposer::DEFAULT_METRICS

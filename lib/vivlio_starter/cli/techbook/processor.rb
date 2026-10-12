@@ -27,9 +27,9 @@ module VivlioStarter
           return html unless enabled?
 
           # --- Phase: 全角チルダ → 波ダッシュ正規化 ---
-          # 同梱 Zen フォント（Old Mincho / Kaku Gothic New）は U+301C（波ダッシュ）を
-          # 収録するが U+FF5E（全角チルダ）を収録しない。全角チルダはキーボードから
-          # 入力しやすく原稿に混入するため、Zen が描画できる U+301C へ正規化する。
+          # Zen 系の書体（著者が book.yml で選べる）は U+301C（波ダッシュ）を収録するが
+          # U+FF5E（全角チルダ）を収録しない。全角チルダはキーボードから入力しやすく
+          # 原稿に混入するため、どの書体でも描画できる U+301C へ正規化する（同梱の Noto は両方を収録）。
           # （さもないと Chromium が OS フォントへフォールバックし、Chrome 149 が
           #   それを Type 3 フォントとして埋め込む。字形は同一。）
           html = html.gsub("\uFF5E", "\u301C")

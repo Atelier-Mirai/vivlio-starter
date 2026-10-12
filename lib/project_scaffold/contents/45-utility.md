@@ -391,8 +391,8 @@ vs clean --all
 | `--page-margin-bottom` | `25mm` | 地（下余白） |
 | `--page-margin-inner` | `25mm` | ノド（綴じ側余白） |
 | `--page-margin-outer` | `23mm` | 小口（外側余白） |
-| `--font-main-text` | `"Zen Old Mincho"` | 本文フォント |
-| `--font-header` | `"Zen Kaku Gothic New"` | 見出しフォント |
+| `--font-main-text` | `"Noto Serif JP"` | 本文フォント |
+| `--font-header` | `"Noto Sans JP"` | 見出しフォント |
 | `--font-code` | `"hackgen35"` | コードフォント |
 | `--column-font-size` | `8pt` | コラムの文字サイズ |
 

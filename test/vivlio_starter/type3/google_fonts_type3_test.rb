@@ -6,7 +6,7 @@
 # 同梱書体以外（Google Fonts）を指定したときの Type 3 検証 — 実ビルドを伴う回帰テスト
 #
 # 【背景】
-#   Type 3 対策は同梱書体（Zen 3 種）を前提に組み上げた。だが `typography` は
+#   Type 3 対策は同梱書体（Noto Serif JP・Noto Sans JP・Zen Maru Gothic）を前提に組み上げた。だが `typography` は
 #   任意の書体名を受け付け、同梱以外なら Google Fonts から取得する。**取得経路は
 #   置き場もファイル名も同梱と違う**ため、対策が素通りしうる。
 #

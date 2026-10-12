@@ -181,7 +181,7 @@ module VivlioStarter
         end
 
         # ディレクトリの中に、その書体名の字面が入っているか。
-        # ファイル名は `ZenKakuGothicNew-Bold.ttf` のように「詰めた書体名 + 字面」なので、
+        # ファイル名は `NotoSansJP-Bold.ttf` のように「詰めた書体名 + 字面」なので、
         # 末尾の字面を落として突き合わせる。
         def bundled_faces_named?(dir, key)
           Dir.glob(File.join(dir, '*.ttf')).any? do |file|
@@ -231,8 +231,8 @@ module VivlioStarter
           name.empty? ? DEFAULT_CODE_FONT : name
         end
 
-        DEFAULT_FONT = 'Zen Kaku Gothic New'
-        DEFAULT_BODY_FONT = 'Zen Old Mincho'
+        DEFAULT_FONT = 'Noto Sans JP'
+        DEFAULT_BODY_FONT = 'Noto Serif JP'
         DEFAULT_CODE_FONT = 'HackGen35 Console NF'
 
         # 指定の字だけを含む TTF を作る。フォントが読めない場合は nil。

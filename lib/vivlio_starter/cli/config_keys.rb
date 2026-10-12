@@ -84,12 +84,12 @@ module VivlioStarter
       %i[page chapter_pagebreak]                      => Spec[default: "recto"],
 
       # ------- typography -------
-      %i[typography body font]                        => Spec[default: "Zen Old Mincho"],
-      %i[typography heading font]                     => Spec[default: "Zen Kaku Gothic New"],
+      %i[typography body font]                        => Spec[default: "Noto Serif JP"],
+      %i[typography heading font]                     => Spec[default: "Noto Sans JP"],
       %i[typography column font]                      => Spec[default: "Zen Maru Gothic"],
       %i[typography column font_size]                 => Spec[default: "8pt"],
       %i[typography code font]                        => Spec[default: "HackGen35 Console NF"],
-      %i[typography folio font]                       => Spec[default: "Zen Kaku Gothic New"],
+      %i[typography folio font]                       => Spec[default: "Noto Sans JP"],
       %i[typography folio placement]                  => Spec[default: "sides"],
 
       # ------- output -------

@@ -267,11 +267,11 @@ class BookSettingsCssPageTest < Minitest::Test
 
   # :font 変数はフォントスタック整形（generic フォールバック）を通す
   def test_should_format_font_stack_for_font_variables
-    page_cfg = { main_text_font: 'Zen Old Mincho' }
+    page_cfg = { main_text_font: 'Noto Serif JP' }
 
     lines = BSC.page_declarations(page_cfg)
 
-    assert_includes lines, '--font-main-text: "Zen Old Mincho", "HackGen35 Console NF", serif;'
+    assert_includes lines, '--font-main-text: "Noto Serif JP", "HackGen35 Console NF", serif;'
   end
 
   # --- page.section_pagebreak（page-break-control-spec.md §2.2） ---
