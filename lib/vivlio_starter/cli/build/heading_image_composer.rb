@@ -127,7 +127,7 @@ module VivlioStarter
                     metrics: DEFAULT_METRICS)
           return nil unless image_path && File.exist?(image_path)
 
-          dims = image_dimensions(image_path)
+          dims = Common.image_size(image_path)
           data_uri = raster_data_uri(image_path)
           return nil unless dims && data_uri
 
@@ -545,19 +545,6 @@ module VivlioStarter
           return @rsvg_available unless @rsvg_available.nil?
 
           @rsvg_available = system('rsvg-convert', '--version', out: File::NULL, err: File::NULL) || false
-        end
-
-        # 飾り画像の寸法を取得する（magick identify）。失敗時は nil。
-        def image_dimensions(path)
-          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path)
-          return nil unless status.success?
-
-          tokens = out.split
-          w = tokens[0].to_i
-          h = tokens[1].to_i
-          (w.positive? && h.positive?) ? [w, h] : nil
-        rescue StandardError
-          nil
         end
 
         # 飾り画像を縮小 JPEG へ変換し base64 data URI を返す（埋め込み用）。失敗時は nil。

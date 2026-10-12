@@ -173,13 +173,8 @@ module VivlioStarter
 
         # 対角線分割バリアントを生成
         def generate_diagonal_variant(input_png, output_png, ratio)
-          dims, status = Open3.capture2('magick', 'identify', '-format', '%w %h', input_png)
-          raise "寸法取得に失敗しました: #{input_png}" unless status.success?
-
-          width_str, height_str = dims.strip.split
-          width = width_str.to_i
-          height = height_str.to_i
-          raise "不正な寸法です: #{input_png}" if width <= 0 || height <= 0
+          width, height = Common.image_size(input_png)
+          raise "寸法取得に失敗しました: #{input_png}" unless width
 
           ratio = ratio.to_f
           current_ratio = height.to_f / width

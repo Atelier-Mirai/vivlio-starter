@@ -329,17 +329,8 @@ module VivlioStarter
 
         # 画像のアスペクト比を取得
         def image_ratio(path)
-          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path)
-          return nil unless status.success?
-
-          width_str, height_str = out.strip.split
-          width = width_str.to_f
-          height = height_str.to_f
-          return nil if width <= 0 || height <= 0
-
-          height / width
-        rescue StandardError
-          nil
+          width, height = Common.image_size(path)
+          height.to_f / width if width
         end
 
         # frontispiece 用の許容アスペクト比かチェック

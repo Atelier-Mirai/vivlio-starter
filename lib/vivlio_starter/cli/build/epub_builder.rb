@@ -253,7 +253,7 @@ module VivlioStarter
           return nil unless src.match?(/\.(webp|png|jpe?g)\z/i)
 
           viewport = flavor == :kindle ? KINDLE_IMAGE_MAX_EDGE : EPUB_IMAGE_MAX_EDGE
-          width, height = image_dimensions(src)
+          width, height = Common.image_size(src)
           return nil unless width&.positive?
 
           edge = DerivedImage.viewport_target(width, height, viewport)
@@ -1983,21 +1983,10 @@ module VivlioStarter
 
         # 画面幅に対して要る長辺（px）。寸法が読めなければ画面幅をそのまま返す。
         def target_edge_for(source, viewport_px)
-          width, height = image_dimensions(source)
+          width, height = Common.image_size(source)
           return viewport_px unless width&.positive?
 
           DerivedImage.viewport_target(width, height, viewport_px)
-        end
-
-        # 画像の寸法。読めなければ [nil, nil]。
-        def image_dimensions(path)
-          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path, err: File::NULL)
-          return [nil, nil] unless status.success?
-
-          width, height = out.split.map(&:to_i)
-          [width, height]
-        rescue StandardError
-          [nil, nil]
         end
 
         # HTML 実体参照をデコードしてディスク上のパスへ戻す（&apos; を含む src の解決・§5-4）。
