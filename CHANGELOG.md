@@ -442,6 +442,7 @@
 
 ### Changed
 
+- **奥付の末尾の `(powered by Vivlio Starter)` を `(Powered by Vivlio Starter)` にした**。文の頭なので大文字で始める。
 - **Apache License 2.0 の全文（`LICENSE-APACHE-2.0.txt`）を、リポジトリの直下から、それが当てはまる交ぜ書き辞書の隣（`lib/vivlio_starter/cli/lint/data/`）へ移した**。本体は MIT で、Apache が当てはまるのは SudachiDict 由来の `mazegaki.tsv` だけだが、直下に `LICENSE` と並んでいると、本体が MIT と Apache の両方のライセンスであるかのように見えるため。gem にはこれまでどおり含まれる。あわせて `LICENSE` の著作権の年を `2025-2026` にした
 - **同梱の本文・見出しの書体を、Zen Old Mincho・Zen Kaku Gothic New から Noto Serif JP・Noto Sans JP へ替えた**。Noto は異体字セレクタの表を持つので、「禰」（示偏）と「禰󠄀」（ネ偏）のように字形を書き分けた原稿が、そのとおりに組まれる。Zen はこの表を持たず、セレクタ付きの字だけがコード用の HackGen（ゴシック）で描かれていた。字の大きさと行の送りは変わらず、紙面の印象もほぼ同じ。同梱するのは Google Fonts が配信する静的 TTF（TrueType アウトライン）で、Type 3 にはならない（本書の全章ビルドで 0 件）。コラムの丸ゴシック（Zen Maru Gothic）とコードの HackGen はそのまま。会話文の簡易アバターの字も Noto Sans JP の太字で描く。索引の主要参照の数字は、Zen の細い数字に合わせた拡大と字間の補いをやめた。使われていなかった `stylesheets/fonts/google/` の Zen 2 書体も外し、雛形の書体は 57.5MB から 61.7MB になった。`book.yml` に `font: Zen Old Mincho` などと書いた本は、これまでどおり Zen で組まれる（Google Fonts から取得する）
 - **`vs pdf:read` の `pdf_read.text_area` を、書いたときだけ効かせるようにした**（`pdf-read-structure-spec.md` 論点 6）。既定は 18／20／15／12mm だったが、柱とノンブルはページをまたいだ繰り返しから見分けるようになったので、既定を無しにした。雛形の `book.yml` では値を空にし、見分けが外れたときだけ書くよう注記した。

@@ -957,7 +957,7 @@ module VivlioStarter
 
           <p class="powered-by">
               <small>
-                  (powered by Vivlio Starter)
+                  (Powered by Vivlio Starter)
               </small>
           </p>
         MD
