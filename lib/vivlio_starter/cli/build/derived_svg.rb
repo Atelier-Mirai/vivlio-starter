@@ -46,7 +46,8 @@ module VivlioStarter
         DERIVED_DIR = "#{DerivedImage::DERIVED_ROOT}/svg".freeze
 
         # 派生の版。書体の寄せ方を変えたら上げる（既存の派生を捨てさせるため）。
-        SCHEMA = 'v1'
+        # v2: 名指しした書体の手前に OS の書体があるとき、名指しした書体を先頭へ出す（2026-10-12）。
+        SCHEMA = 'v2'
 
         # 作り直しの要否を見る目印。SVG は XML で、宣言より前には何も置けないので、
         # ファイル先頭ではなくルート（`<svg>`）の直下へ差し込む。
@@ -159,15 +160,17 @@ module VivlioStarter
 
         # フォントスタックの先頭を、実体のある書体にする。
         #
-        # 著者が名指しした書体が手元にあるなら**並べ替えない**——意図した書体で組むのが
-        # 正しく、こちらが差し出がましく先頭へ割り込む理由がない。寄せるのは、汎用名しか
-        # 無いか、書いてある名前の実体がどこにも無いときだけである。
+        # 著者が名指しした書体が手元にあるなら、その書体で組む。先頭にあればそのまま返し、
+        # 手前に別の名前があるときだけ先頭へ出す。手前の名前は埋め込めない書体で、
+        # 書いた人の PC に入っていれば（`"Hiragino Sans", "Noto Sans JP"` の Hiragino）
+        # そちらが選ばれ、Type 3 で埋め込まれる（2026-10-12・見出しを Noto Sans JP にして発覚）。
+        # 寄せ先を足すのは、汎用名しか無いか、書いてある名前の実体がどこにも無いときである。
         def preferred_stack(stack, used, quote:)
           names = stack.split(',').map { it.strip.gsub(/\A["']|["']\z/, '') }.reject(&:empty?)
           named = names.find { !generic?(it) && !Embedder.face_paths(it).empty? }
           if named
             used << named
-            return stack
+            return names.first == named ? stack : "#{quoted(named, quote)}, #{stack.strip}"
           end
 
           fallback = book_font_for(names)

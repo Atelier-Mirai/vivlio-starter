@@ -63,6 +63,19 @@ module VivlioStarter
         end
       end
 
+      # 名指しした書体の手前に埋め込めない書体（OS の書体）があれば、名指しした書体を先頭へ出す。
+      # 手前の名前のままだと、書いた人の PC に入っている OS の書体が選ばれ Type 3 になる。
+      def test_should_move_the_authors_font_before_fonts_it_cannot_embed
+        with_project do
+          svg = %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family='"Hiragino Sans", "Zen Kaku Gothic New", sans-serif'>春</text></svg>)
+
+          rewritten, families = DerivedSvg.resolve_families(svg)
+
+          assert_includes rewritten, %(font-family='Zen Kaku Gothic New, "Hiragino Sans", "Zen Kaku Gothic New", sans-serif')
+          assert_equal ['Zen Kaku Gothic New'], families
+        end
+      end
+
       # 汎用名は役割ごとに寄せ先を変える。明朝の図に見出しゴシックを当てると、
       # そこだけ周りの紙面と書体が違って見える。
       def test_should_map_generic_families_to_the_matching_book_font
