@@ -354,7 +354,7 @@ module VivlioStarter
 
         # Ghostscript コマンドが利用可能かを判定する
         def ghostscript_available?
-          system('which gs >/dev/null 2>&1')
+          Common.external_command_available?('gs')
         end
 
         # Ghostscript を起動し圧縮処理を行う

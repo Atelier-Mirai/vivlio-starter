@@ -249,7 +249,7 @@ module VivlioStarter
         end
 
         def qpdf_available?
-          return true if system('command -v qpdf >/dev/null 2>&1')
+          return true if Common.external_command_available?('qpdf')
 
           Common.log_warn('[Step 10] qpdf が見つかりません。')
           false

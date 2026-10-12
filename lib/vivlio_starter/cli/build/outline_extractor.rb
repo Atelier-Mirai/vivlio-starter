@@ -188,7 +188,7 @@ module VivlioStarter
             Common.log_warn('[Outline] HTML ファイルが存在しません')
             return false
           end
-          unless system('which pdftotext >/dev/null 2>&1')
+          unless Common.external_command_available?('pdftotext')
             Common.log_warn('[Outline] pdftotext が見つかりません。`brew install poppler` を実行してください。')
             return false
           end

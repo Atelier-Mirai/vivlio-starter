@@ -366,7 +366,7 @@ module VivlioStarter
           end
         end
 
-        unless system('which brew >/dev/null 2>&1')
+        unless command_exists?('brew')
           Common.log_always('Homebrew が見つかりません。自動インストールを試みます。')
           proceed = options[:yes]
           if !proceed && $stdin.tty?
@@ -388,7 +388,7 @@ module VivlioStarter
             Common.log_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
             return false
           end
-          unless system('which brew >/dev/null 2>&1')
+          unless command_exists?('brew')
             Common.log_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
             return false
           end
@@ -415,7 +415,7 @@ module VivlioStarter
 
           # mathjax-full（数式の SVG 化用・npm パッケージ）
           if missing.include?('mathjax')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('数式の SVG 化用 mathjax-full をインストールします…')
               system('npm install --loglevel=error -g mathjax-full')
             else
@@ -425,7 +425,7 @@ module VivlioStarter
 
           # @mermaid-js/mermaid-cli（```mermaid の図化用・mmdc・npm パッケージ）
           if missing.include?('mermaid')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('mermaid の図化用 @mermaid-js/mermaid-cli をインストールします…')
               system('npm install --loglevel=error -g @mermaid-js/mermaid-cli')
             else
@@ -435,7 +435,7 @@ module VivlioStarter
 
           # Guesslang（vs lint のコードブロックの言語推定用・npm パッケージ）
           if missing.include?('guesslang')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('コードブロックの言語推定用 Guesslang（@vscode/vscode-languagedetection）をインストールします…')
               system("npm install --loglevel=error -g #{Lint::CodeLanguageGuesser::PACKAGE}")
             else
@@ -455,7 +455,7 @@ module VivlioStarter
         # Vivliostyle CLI / VFM（npm -g）。VFM は CLI に同梱されないため別に入れる
         begin
           if missing.include?('vivliostyle')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
               system('npm install --loglevel=error -g @vivliostyle/cli')
             else
@@ -464,7 +464,7 @@ module VivlioStarter
           end
 
           if missing.include?('vfm')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('VFM(@vivliostyle/vfm) をグローバルインストールします…')
               system('npm install --loglevel=error -g @vivliostyle/vfm')
             else
@@ -478,7 +478,7 @@ module VivlioStarter
         # textlint と推奨ルール
         begin
           if missing.include?('textlint')
-            if system('which npm >/dev/null 2>&1')
+            if command_exists?('npm')
               Common.log_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
               packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
               system("npm install --loglevel=error -g #{packages}")
@@ -916,7 +916,7 @@ module VivlioStarter
       #
       # @return [Boolean] 導入/復旧に成功したか
       def install_inkscape_macos!
-        unless system('which brew >/dev/null 2>&1')
+        unless command_exists?('brew')
           Common.log_warn('Homebrew が見つからないため inkscape を導入できません。')
           return false
         end
@@ -935,7 +935,7 @@ module VivlioStarter
       # 単体では PATH に乗らない CLI を呼ぶラッパーを Homebrew の bin へ作成する
       # （アプリ内の CLI 実行ファイルを引数透過で呼ぶ定石を自動化）。
       def install_kindlepreviewer_macos!
-        unless system('which brew >/dev/null 2>&1')
+        unless command_exists?('brew')
           Common.log_warn('Homebrew が見つからないため kindlepreviewer を導入できません。')
           return false
         end

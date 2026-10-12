@@ -83,7 +83,7 @@ module VivlioStarter
           return
         end
 
-        unless system('which magick >/dev/null 2>&1')
+        unless Common.external_command_available?('magick')
           Common.log_error('Error: ImageMagick (magick) が見つかりません。brew install imagemagick 等で導入してください。')
           return
         end
@@ -228,12 +228,12 @@ module VivlioStarter
       # @param dpi [Integer] rsvg-convert の DPI（既定: 350）
       def convert_svg_to_webp(dirs, dpi: 350)
         # --- Phase: ツール存在チェック ---
-        unless system('which rsvg-convert >/dev/null 2>&1')
+        unless Common.external_command_available?('rsvg-convert')
           Common.log_error('Error: rsvg-convert が見つかりません。brew install librsvg 等で導入してください。')
           return
         end
 
-        unless system('which magick >/dev/null 2>&1')
+        unless Common.external_command_available?('magick')
           Common.log_error('Error: ImageMagick (magick) が見つかりません。brew install imagemagick 等で導入してください。')
           return
         end

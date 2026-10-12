@@ -3320,7 +3320,7 @@ module VivlioStarter
         # @param command [String] チェックするコマンド名
         # @return [Boolean]
         def kindlepreviewer_available?(command = KINDLEPREVIEWER_COMMAND)
-          system('which', command, out: File::NULL, err: File::NULL) || false
+          Common.external_command_available?(command)
         end
 
         # オプションの接頭辞を、導入されている Kindle Previewer の版から決める。

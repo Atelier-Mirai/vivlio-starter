@@ -28,7 +28,7 @@ module VivlioStarter
           return nil unless File.exist?(file)
 
           # pdfinfo を優先
-          if system('which pdfinfo >/dev/null 2>&1')
+          if Common.external_command_available?('pdfinfo')
             info = `pdfinfo "#{file}" 2>/dev/null`
             pages = info[/^Pages:\s+(\d+)/i, 1]
             return pages.to_i if pages
