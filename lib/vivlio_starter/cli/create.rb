@@ -47,10 +47,14 @@
 # ================================================================
 
 require 'fileutils'
+require_relative 'build/catalog_updater'
+require_relative 'build/crop_marks_overlay'
+require_relative 'build/nombre_stamper'
 require_relative 'build/pdf_merger'
 require_relative 'build/cmyk_converter'
 require_relative 'chapter_names'
 require_relative 'cover'
+require_relative 'token_resolver'
 
 module VivlioStarter
   module CLI

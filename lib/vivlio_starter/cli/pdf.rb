@@ -6,6 +6,7 @@ require 'rbconfig'
 require 'fileutils'
 require 'open3'
 
+require_relative 'common'
 require_relative 'pdf/pdf_to_jpeg'
 require_relative 'pdf/jpeg_to_pdf'
 

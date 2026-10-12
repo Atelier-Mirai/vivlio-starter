@@ -81,6 +81,8 @@ module VivlioStarter
             order << 'step5'
           }],
           [Build::PartTitleGenerator, :generate_all!, -> { order << 'step5b' }],
+          # 前付・奥付の生成は前処理と VFM 変換を本当に走らせるので止める（順序の検査対象外）
+          [Build::PdfBuilder, :generate_front_and_back_matter_html!, -> {}],
           [Build::TocGenerator, :generate_toc_html!, lambda { |dir, entries|
             test_case.assert_equal Common::BUILD_HTML_DIR, dir
             test_case.assert_equal [], entries
@@ -207,10 +209,13 @@ module VivlioStarter
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
-                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                          yield
+                    # 前付・奥付の生成は前処理と VFM 変換を本当に走らせるので止める
+                    Build::PdfBuilder.stub :generate_front_and_back_matter_html!, -> {} do
+                      Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
+                        Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                          Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                            yield
+                          end
                         end
                       end
                     end
@@ -628,10 +633,13 @@ module VivlioStarter
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
-                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                          yield
+                    # 前付・奥付の生成は前処理と VFM 変換を本当に走らせるので止める
+                    Build::PdfBuilder.stub :generate_front_and_back_matter_html!, -> {} do
+                      Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
+                        Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                          Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                            yield
+                          end
                         end
                       end
                     end

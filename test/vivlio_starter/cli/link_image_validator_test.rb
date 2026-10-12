@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'minitest/autorun'
+require 'test_helper'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/link_image_validator'
 
 module VivlioStarter
