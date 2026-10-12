@@ -17,6 +17,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/toc'
 require 'vivlio_starter/cli/token_resolver'
+require 'vivlio_starter/cli/post_process/replacement_rules'
 
 module VivlioStarter
   module CLI
@@ -145,6 +146,43 @@ module VivlioStarter
 
         assert_equal 1, headings.size
         assert_equal 'toc-chapter-no-number', headings[0].css_class
+      end
+
+      # 見出しのインラインコードは目次でも <code> のまま載せる。文字だけにすると、目次の HTML を
+      # 後処理が通るときに `〘 〙` がキーキャップ（<kbd>）に、`@pagebreak` が改ページの指示に化けた
+      # （2026-10-12・本書の目次で発覚。<kbd> の空白だけが OS の等幅 Osaka-Mono で埋め込まれていた）。
+      def test_should_keep_inline_code_so_post_processing_leaves_it_alone
+        html_file = create_html_file('11-sample.html', <<~HTML)
+          <html><body>
+            <h1 id="title"><span class="chapter-title">Q&amp;A と &lt;br&gt;</span></h1>
+            <h3 id="kbd"><span class="subsection-marker">♣</span><span class="subsection-title"><code>〘 〙</code> — キーを示す</span></h3>
+            <h3 id="pb"><span class="subsection-marker">♣</span><span class="subsection-title"><code>@pagebreak</code> — 改ページする</span></h3>
+          </body></html>
+        HTML
+      
+        headings = TocCommands::HeadingExtractor.new(html_file, make_entry('11-sample', kind: :chapter)).headings
+        toc_file = create_html_file('_toc.html', headings.map(&:list_markup).join("\n"))
+        PostProcessCommands::HtmlReplacer.process_html_file(toc_file, PostProcessCommands::ReplacementRules::ALL)
+        toc = File.read(toc_file, encoding: 'utf-8')
+      
+        assert_equal 'Q&amp;A と &lt;br&gt;', headings[0].text, '文字は HTML として逃がす'
+        assert_equal '<code>〘 〙</code> — キーを示す', headings[1].text
+        assert_equal '<code>@pagebreak</code> — 改ページする', headings[2].text
+        refute_includes toc, '<kbd>'
+        refute_includes toc, 'vs-break-page'
+      end
+      
+      # 用語集の † リンクは目次に載せない。目次はその語を説明する場所ではなく、記号だけが残る。
+      def test_should_drop_glossary_marks_from_toc
+        html_file = create_html_file('11-sample.html', <<~HTML)
+          <html><body>
+            <h1 id="title"><span class="chapter-title">扉絵<a id="g1" class="glossary-link" href="_glossarypage.html#gls-a"><sup>†</sup></a>と装飾画像<a id="g2" class="glossary-link" href="_glossarypage.html#gls-b"><sup>†</sup></a></span></h1>
+          </body></html>
+        HTML
+
+        headings = TocCommands::HeadingExtractor.new(html_file, make_entry('11-sample', kind: :chapter)).headings
+
+        assert_equal '扉絵と装飾画像', headings[0].text
       end
 
       private

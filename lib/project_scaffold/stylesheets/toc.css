@@ -4,6 +4,14 @@
 @import url("theme.css");
 @import url("page-settings.css");
 
+/* 見出しのインラインコード（`〘 〙`・`@pagebreak` など）は目次でも <code> のまま載る
+   （toc.rb の HeadingTextExtractor）。目次は chapter-common.css を読まないため、そのままだと
+   ブラウザ既定の等幅（Mac では Osaka-Mono）で描かれ、OS の書体が PDF に入る。
+   地の文と同じ書体・大きさで組み、見た目は囲みの無い文字と変えない。 */
+#toc code {
+  font: inherit;
+}
+
 /* 目次タイトルなど */
 #toc-title::before {
   content: none;

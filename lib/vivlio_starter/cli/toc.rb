@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'cgi'
 require 'nokogiri'
 require_relative 'pre_process/book_settings_css'
 module VivlioStarter
@@ -422,10 +423,15 @@ module VivlioStarter
         end
       end
 
-      # 見出しから表示用テキストを抽出する
+      # 見出しから目次に載せる中身（HTML 断片）を抽出する
+      #
+      # 文字だけを取り出すと、インラインコードの囲みが外れる。目次の HTML も後処理
+      # （HtmlReplacer）を通るため、`` `〘 〙` `` はキーキャップ（<kbd>）に、`` `@pagebreak` ``
+      # は改ページの指示に化けていた（:text_only の規則は <code> の中だけを退避する）。
+      # そこで <code> は残し、ほかの要素は文字にして、文字は HTML として逃がす。
       class HeadingTextExtractor
         class << self
-          # 見出しノードから表示用テキストを抽出する
+          # 見出しノードから目次用の HTML 断片を抽出する
           def extract(element)
             return '' unless element
 
@@ -447,17 +453,29 @@ module VivlioStarter
             }
             selector = selector_map[element.name]
             span = selector ? element.at_css(selector) : nil
-            text = span&.text&.strip
-            text unless text.nil? || text.empty?
+            return nil if span.nil? || span.text.strip.empty?
+
+            inline_html(span).strip
           end
 
-          # 見出しノードから番号を除去したテキストを返す
+          # 見出しノードから番号を除去した中身を返す
           def strip_numbers(element)
             clone = element.dup
             clone.css('.chapter-number, .section-number, .subsection-number, .subsection-marker')&.each(&:remove)
-            clone.text.to_s.strip
-          rescue NoMethodError
-            element.text.to_s.strip
+            inline_html(clone).strip
+          end
+
+          # 子ノードをたどり、<code> だけを残して HTML 断片にする。
+          # 用語集の † リンクは落とす。目次はその語を説明する場所ではなく、記号だけが残る
+          # （heading_processor.rb の heading_plain_text と同じ扱い）。
+          def inline_html(node)
+            node.children.map do |child|
+              if child.text? then CGI.escapeHTML(child.text)
+              elsif child.matches?('a.glossary-link') then ''
+              elsif child.name == 'code' then "<code>#{CGI.escapeHTML(child.text)}</code>"
+              else inline_html(child)
+              end
+            end.join
           end
         end
       end
