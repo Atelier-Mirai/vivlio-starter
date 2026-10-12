@@ -8,7 +8,8 @@
 #   - generate_epub_entries!(flavor: :epub)   … Kindle 専用 rewrite を行わない（クリーン）
 #   - generate_epub_entries!(flavor: :kindle) … 全 rewrite を行う（劣化）
 #   - generate_epub_config!(flavor: :kindle)  … 表紙を embed しない（§1-6）
-#   - convert_epub_to_kpf!                     … kindlepreviewer 未導入時は graceful skip（DI）
+#   - convert_epub_to_kpf!                     … kindlepreviewer 未導入時は graceful skip（DI）・
+#                                                変換の入口で落ちたときだけ 1 回やり直す
 #   - 出力ファイル名                           … kindle → .kpf / 中間 -kindle.epub
 # ================================================================
 
@@ -193,6 +194,68 @@ module VivlioStarter
         assert_includes errors.first, 'Kindle 変換に失敗しました'
       end
 
+      # Kindle Previewer 4 はときどき変換の入口で落ちる（本の変換ログを残さずに終わる）。
+      # そのときだけ 1 回やり直し、2 回目で KPF ができれば成功として返す。
+      def test_kpf_conversion_retries_once_when_the_converter_aborts
+        Dir.mktmpdir('vs-kpf-retry') do |dir|
+          epub, kpf = kpf_paths(dir)
+          command = fake_previewer(dir, %w[abort convert])
+          warnings = capture_log(:log_warn) { assert Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+
+          assert_path_exists kpf
+          assert_equal 2, conversion_count(dir), '1 回だけやり直す'
+          assert_equal 1, warnings.count { it[:message].include?('もう一度変換します') }
+        end
+      end
+
+      # 2 回とも落ちたら諦めて失敗を伝える。やり直しは 1 回まで。
+      def test_kpf_conversion_gives_up_after_the_second_abort
+        Dir.mktmpdir('vs-kpf-give-up') do |dir|
+          epub, kpf = kpf_paths(dir)
+          command = fake_previewer(dir, %w[abort abort abort])
+          errors = capture_log(:log_error) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+
+          assert_equal 2, conversion_count(dir), '3 回目は走らせない'
+          assert_equal 1, errors.size
+          assert_path_exists epub, '中間 EPUB は残す'
+        end
+      end
+
+      # 変換を終えて KPF が出なかったとき（本の変換ログはある）は、やり直しても変わらない。
+      def test_kpf_conversion_does_not_retry_when_the_book_was_converted
+        Dir.mktmpdir('vs-kpf-no-retry') do |dir|
+          epub, kpf = kpf_paths(dir)
+          command = fake_previewer(dir, %w[reject convert])
+          capture_log(:log_error) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+
+          assert_equal 1, conversion_count(dir)
+        end
+      end
+
+      # ツールが落ちていれば、クラッシュレポートの場所と「もう一度ビルドすればよい」ことを添える。
+      # vs の不具合と取り違えないためである。変換より前のレポートは添えない。
+      def test_missing_kpf_points_to_the_crash_report_when_the_previewer_crashed
+        Dir.mktmpdir('vs-kpf-crash') do |dir|
+          reports = File.join(dir, 'reports')
+          FileUtils.mkdir_p(reports)
+          old = File.join(reports, 'KindlePreviewer4CLI-2026-10-01-120000.ips')
+          File.write(old, '{}')
+          File.utime(Time.now - 3600, Time.now - 3600, old)
+          since = Time.now - 60
+          crash = File.join(reports, 'KindlePreviewer4CLI-2026-10-12-170957.ips')
+          File.write(crash, '{}')
+
+          errors = capture_log(:log_error) do
+            Builder.report_missing_kpf(File.join(dir, 'out'), 'book-kindle.epub', since:, report_dir: reports)
+          end
+
+          assert_includes errors.first[:message], 'Kindle 変換に失敗しました'
+          assert_includes errors.first[:detail], 'vs の不具合ではありません'
+          assert_includes errors.first[:detail], crash
+          refute_includes errors.first[:detail], old
+        end
+      end
+
       # kindlepreviewer_available? は存在しないコマンドに false を返す（DI 用の存在チェック）
       def test_kindlepreviewer_available_is_false_for_missing_command
         refute Builder.kindlepreviewer_available?('vs-no-such-previewer-xyz')
@@ -228,6 +291,51 @@ module VivlioStarter
       private
 
       # log_error の呼び出しを捕まえる。差し替えは必ず元へ戻す（他のテストへ漏らさない）。
+      # 中間 EPUB と KPF の置き場。
+      def kpf_paths(dir)
+        epub = File.join(dir, 'book-kindle.epub')
+        File.write(epub, 'dummy')
+        [epub, File.join(dir, 'book.kpf')]
+      end
+
+      # 呼ばれるたびに outcomes の順でふるまう偽の kindlepreviewer。
+      #   abort   … Summary_Log.csv だけ残して非 0 で終わる（変換の入口で落ちた形）
+      #   reject  … 本の変換ログを残し、KPF を出さずに非 0 で終わる（変換を終えて弾かれた形）
+      #   convert … 本の変換ログと KPF を出して 0 で終わる
+      def fake_previewer(dir, outcomes)
+        path = File.join(dir, 'fake-kindlepreviewer')
+        File.write(path, <<~SH)
+          #!/bin/sh
+          [ "$1" = "-help" ] && { echo "--convert --output --locale"; exit 0; }
+          count_file="#{dir}/count"
+          n=$(( $(cat "$count_file" 2>/dev/null || echo 0) + 1 ))
+          echo $n > "$count_file"
+          out="$4"
+          mkdir -p "$out"
+          echo "Summary" > "$out/Summary_Log.csv"
+          case $(echo "#{outcomes.join(' ')}" | cut -d' ' -f$n) in
+            abort) exit 1 ;;
+            reject) mkdir -p "$out/Logs"; echo "E21018" > "$out/Logs/book_log.csv"; exit 1 ;;
+            convert) mkdir -p "$out/Logs" "$out/KPF"; echo "" > "$out/Logs/book_log.csv"; echo kpf > "$out/KPF/book.kpf"; exit 0 ;;
+          esac
+        SH
+        File.chmod(0o755, path)
+        path
+      end
+
+      def conversion_count(dir) = File.read(File.join(dir, 'count')).to_i
+
+      # 指定したログ出力を、本文と detail の組で集める。
+      def capture_log(name)
+        messages = []
+        saved = Common.method(name)
+        Common.define_singleton_method(name) { |msg, detail: nil, **| messages << { message: msg, detail: detail.to_s } }
+        yield
+        messages
+      ensure
+        Common.define_singleton_method(name, saved)
+      end
+
       def capture_log_errors
         messages = []
         saved = Common.method(:log_error)

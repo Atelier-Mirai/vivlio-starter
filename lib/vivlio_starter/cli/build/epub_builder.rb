@@ -3296,6 +3296,13 @@ module VivlioStarter
         # Kindle Previewer CLI（kindlepreviewer）コマンド名。3 系・4 系のどちらでもよい。
         KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
 
+        # 変換を試みる回数。Kindle Previewer 4 が変換の入口で落ちたときだけ、1 回やり直す
+        # （kpf_converter_aborted?）。
+        KPF_ATTEMPTS = 2
+
+        # Kindle Previewer が落ちたときに macOS がクラッシュレポートを書く場所。
+        KPF_CRASH_REPORT_DIR = File.expand_path('~/Library/Logs/DiagnosticReports')
+
         # `-locale` が受け付ける綴り（`kindlepreviewer -help` より）。
         # **これは本の言語ではなく、変換ログと Previewer UI の表示言語**である。
         KPF_LOCALES = %w[en de fr it es zh ja pt nl].freeze
@@ -3370,23 +3377,54 @@ module VivlioStarter
           end
 
           Common.log_action("[KPF] #{File.basename(epub_path)} を KPF へ変換しています…")
-          prefix = kpf_option_prefix(command)
-          Dir.mktmpdir('vs-kpf') do |outdir|
-            ok = system(command, File.expand_path(epub_path), "#{prefix}convert", "#{prefix}output", outdir,
-                        "#{prefix}locale", locale, out: File::NULL, err: File::NULL)
-            summarize_kpf_logs(outdir)
+          since = Time.now
+          KPF_ATTEMPTS.times do |attempt|
+            Dir.mktmpdir('vs-kpf') do |outdir|
+              return true if run_kpf_conversion(epub_path, kpf_path, outdir, locale:, command:)
 
-            kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }
-            unless ok && kpf
-              report_missing_kpf(outdir, epub_path)
+              # 本の変換ログすら残さずに終わったときだけやり直す。変換を終えて KPF が出なかった
+              # （Mobi が出た・エラーがあった）ときは、やり直しても結果は変わらない。
+              if kpf_converter_aborted?(outdir) && attempt + 1 < KPF_ATTEMPTS
+                Common.log_warn('[KPF] Kindle Previewer が変換の途中で終了しました。もう一度変換します')
+                next
+              end
+
+              report_missing_kpf(outdir, epub_path, since:)
               return false
             end
-
-            FileUtils.rm_f(kpf_path)
-            FileUtils.mv(kpf, kpf_path)
-            Common.log_success("[KPF] KPF を生成しました: #{kpf_path}")
-            true
           end
+        end
+
+        # 変換を 1 回だけ走らせ、KPF ができたら kpf_path へ移す。
+        # @return [Boolean] KPF を生成できたか
+        def run_kpf_conversion(epub_path, kpf_path, outdir, locale:, command:)
+          prefix = kpf_option_prefix(command)
+          ok = system(command, File.expand_path(epub_path), "#{prefix}convert", "#{prefix}output", outdir,
+                      "#{prefix}locale", locale, out: File::NULL, err: File::NULL)
+          summarize_kpf_logs(outdir)
+
+          kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }
+          return false unless ok && kpf
+
+          FileUtils.rm_f(kpf_path)
+          FileUtils.mv(kpf, kpf_path)
+          Common.log_success("[KPF] KPF を生成しました: #{kpf_path}")
+          true
+        end
+
+        # Kindle Previewer が本を変換する前に終わったか。
+        #
+        # **Kindle Previewer 4（4.0.3）は、ときどき変換の入口で落ちる。** 変換の本体（Java）を
+        # 起動する `fork` の直後、子プロセスが「os_once_t is corrupt」で止まる。複数スレッドの
+        # プロセスから fork したときに起きる macOS の競合で、起きるかどうかは巡り合わせ次第
+        # （実測 2026-10-12: その日のおよそ 12 回の変換で 1 回）。vs からは防げないが、
+        # やり直せば通る。
+        #
+        # 見分けは「本ごとの変換ログ（Logs/*_log.csv）が無い」こと。変換まで進めば、エラーで
+        # KPF が出なかったときでもこのログは残る。落ちたときは Summary_Log.csv しか残らない。
+        def kpf_converter_aborted?(outdir)
+          Dir.glob(File.join(outdir, '**', '*.{kpf,mobi}')).empty? &&
+            Dir.glob(File.join(outdir, 'Logs', '*.csv')).empty?
         end
 
         # KPF が出なかった理由を、次に何をすればよいか分かる形で伝える。
@@ -3395,9 +3433,17 @@ module VivlioStarter
         # Enhanced Typesetting を無効と判定したときで、引き金は**同梱された SVG**
         # （`kindle-css-compatibility-notes.md` §5.5）。ツールが落ちたときと同じ文面で
         # 流すと、原因に辿り着けないまま中間 EPUB だけが残る。
-        def report_missing_kpf(outdir, epub_path)
+        #
+        # ツールが落ちていれば、macOS が残したクラッシュレポートを添える。vs の不具合と
+        # 取り違えないよう、もう一度ビルドすればよいことをはっきり書く。
+        def report_missing_kpf(outdir, epub_path, since: nil, report_dir: KPF_CRASH_REPORT_DIR)
           unless Dir.glob(File.join(outdir, '**', '*.mobi')).any?
-            Common.log_error("[KPF] Kindle 変換に失敗しました。中間 EPUB を残します: #{epub_path}")
+            crash = since && kpf_crash_report(since, report_dir)
+            detail = if crash
+                       "→ Kindle Previewer が落ちました（vs の不具合ではありません）。もう一度 vs build してください。\n" \
+                         "  クラッシュレポート: #{crash}"
+                     end
+            Common.log_error("[KPF] Kindle 変換に失敗しました。中間 EPUB を残します: #{epub_path}", detail:)
             return
           end
 
@@ -3406,6 +3452,13 @@ module VivlioStarter
             detail: '→ 同梱された SVG が引き金になることがあります（Kindle Previewer 4 は SVG が 1 枚でもあると ET を落とします）。' \
                     "次で中身を確かめてください: unzip -l #{epub_path} | grep '\\.svg'"
           )
+        end
+
+        # since 以降に書かれた Kindle Previewer のクラッシュレポート（無ければ nil）。
+        def kpf_crash_report(since, report_dir = KPF_CRASH_REPORT_DIR)
+          Dir.glob(File.join(report_dir, 'KindlePreviewer*.ips'))
+             .select { File.mtime(it) >= since }
+             .max_by { File.mtime(it) }
         end
 
         # kindlepreviewer のログ CSV から Kindle のエラー/警告コード件数を集計して要約表示する。
