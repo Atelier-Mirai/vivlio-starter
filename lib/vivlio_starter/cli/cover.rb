@@ -32,8 +32,22 @@ module VivlioStarter
       # トンボオフセット（Vivliostyle 準拠）
       CROP_MARK_OFFSET_MM = 13.0
 
-      # EPUB用サイズ
+      # 電子書籍用（EPUB・Kindle）の表紙の寸法。KDP の理想の寸法（ebook-cover-jpeg-spec.md §1）。
       EPUB_SIZE = { width: 1600, height: 2560 }.freeze
+
+      # 電子書籍用の表紙の JPEG の品質。KDP は「なるべく圧縮しない」（表示のときに KDP 側でも圧縮する）。
+      EBOOK_COVER_QUALITY = 95
+
+      # 電子書籍のターゲット。EPUB と Kindle は同じ 1 枚の JPEG を使う。
+      EBOOK_TARGETS = %w[epub kindle].freeze
+
+      # sRGB の色の情報を探す場所（ebook-cover-jpeg-spec.md §3.1）。gem には同梱しない。
+      SRGB_PROFILE_CANDIDATES = [
+        '/System/Library/ColorSync/Profiles/sRGB Profile.icc', # macOS
+        '/usr/share/color/icc/colord/sRGB.icc',                 # Linux（colord）
+        '/usr/share/color/icc/sRGB.icc',
+        '/usr/share/ghostscript/*/iccprofiles/srgb.icc'         # Linux（Ghostscript）
+      ].freeze
 
       # 表紙の元を SVG で作るテーマか（改善案.md #65）。
       #
@@ -76,8 +90,7 @@ module VivlioStarter
           # 「生成対象がありません」と誤警告するため、ターゲットで分岐する。
           targets = target_list(config)
           execute_for_size(size, nil) if targets.intersect?(%w[pdf print_pdf])
-          # EPUB/Kindle 表紙の元になる JPG は常に生成する。
-          generate_epub_cover(Common.covers_dir, config)
+          generate_epub_cover(Common.covers_dir, config) if ebook_target?(targets)
         end
       end
 
@@ -119,11 +132,11 @@ module VivlioStarter
 
         generated += generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
 
-        # EPUB用カバー
-        if targets.include?('epub')
-          Common.log_info "\n📱 EPUB用カバー（1600×2560、JPEG）を生成中..."
+        # 電子書籍用カバー（EPUB・Kindle で同じ 1 枚）
+        if ebook_target?(targets)
+          Common.log_info "\n📱 電子書籍用カバー（1600×2560、JPEG）を生成中..."
           CoverCommands.generate_epub_cover(covers_dir, config)
-          generated << 'EPUB用（JPEG）'
+          generated << '電子書籍用（JPEG）'
         end
 
         if generated.empty?
@@ -217,6 +230,9 @@ module VivlioStarter
         list
       end
       module_function :target_list
+
+      # 電子書籍（EPUB・Kindle）のターゲットがあるか。あれば表紙の JPEG を作る。
+      def self.ebook_target?(targets) = targets.intersect?(EBOOK_TARGETS)
 
       def generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
         generated = []
@@ -542,25 +558,75 @@ module VivlioStarter
           return
         end
 
+        write_ebook_cover!(input_file, output_jpg)
+      end
+
+      # 電子書籍用の表紙の JPEG を作る（ebook-cover-jpeg-spec.md §3）。表紙の元が PNG でも SVG でも、
+      # 電子書籍用の JPEG はここでだけ作る（SVG は呼び出し側で PNG に焼いてから渡す）。
+      #
+      # 縦 2,560 px に縮めて中央の横 1,600 px を切り出し、色を sRGB に直して品質 95 で書く。
+      # 書けたら、KDP へ上げる成果品としてプロジェクトの直下へも写す。
+      #
+      # @param source [String] 元の画像（PNG）
+      # @param output [String] 書き出す JPEG（生成キャッシュ側。EPUB へ入れる元）
+      # @return [Boolean] 書けたか
+      def self.write_ebook_cover!(source, output)
         convert_cmd = imagemagick_convert_command
         unless convert_cmd
           Common.log_error 'ImageMagick（magick/convert）が見つかりません'
-          return
+          return false
         end
 
-        Common.log_info "  生成中: #{File.basename(output_jpg)}"
-
+        Common.log_info "  生成中: #{File.basename(output)}"
         cmd = convert_cmd + [
-          input_file,
+          source, *srgb_profile_args,
           '-resize', "x#{EPUB_SIZE[:height]}",
           '-gravity', 'center',
           '-crop', "#{EPUB_SIZE[:width]}x#{EPUB_SIZE[:height]}+0+0",
           '+repage',
-          '-quality', '90',
-          output_jpg
+          '-quality', EBOOK_COVER_QUALITY.to_s,
+          output
         ]
+        unless system(*cmd, out: File::NULL, err: File::NULL)
+          Common.log_error "  失敗: #{File.basename(output)}"
+          return false
+        end
 
-        Common.log_error "  失敗: #{File.basename(output_jpg)}" unless system(*cmd, out: File::NULL, err: File::NULL)
+        publish_ebook_cover!(output)
+        true
+      end
+
+      # 元の色の情報（Display P3 など）から sRGB へ直す ImageMagick の引数。元に色の情報が無ければ
+      # sRGB とみなして付けるだけになる。sRGB の色の情報が OS に無ければ直さない
+      # （KDP の指定は RGB なので、そのままでも上げられる。§3.1）。
+      def self.srgb_profile_args
+        profile = srgb_profile_path
+        return ['-profile', profile] if profile
+
+        Common.log_info '  sRGB の色の情報が見つからないため、表紙の色の情報は元の画像のまま書き出します'
+        []
+      end
+
+      def self.srgb_profile_path
+        SRGB_PROFILE_CANDIDATES.lazy.flat_map { Dir.glob(it) }.find { File.file?(it) }
+      end
+
+      # 電子書籍用の表紙の JPEG を、プロジェクトの直下へ成果品として写す。KDP では表紙を本と別に
+      # 上げるので、著者が .cache を探さずに済むようにする。名前は入稿用の表紙の PDF とそろえる。
+      # キャッシュ側は EPUB へ入れる元なので、move ではなく copy にする。
+      #
+      # @param cache_jpg_path [String] キャッシュ内の JPEG
+      # @return [String] ルート側の成果品のパス
+      def self.publish_ebook_cover!(cache_jpg_path)
+        output = Common.generate_cover_output_filename('front', ext: 'jpg')
+        FileUtils.cp(cache_jpg_path, output)
+        # 1 ビルドの中で表紙の生成は何度か走りうるので、知らせるのは同じ成果品につき 1 回
+        @published_ebook_covers ||= {}
+        unless @published_ebook_covers[output]
+          @published_ebook_covers[output] = true
+          Common.log_result("電子書籍用カバー JPEG: #{output}", status: :artifact)
+        end
+        output
       end
 
       # EPUB カバー用の入力画像パスを解決する

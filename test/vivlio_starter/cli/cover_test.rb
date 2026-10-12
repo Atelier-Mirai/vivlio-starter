@@ -21,6 +21,7 @@ require 'samovar'
 require 'pdf/reader'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/cover'
+require 'vivlio_starter/cli/create'
 require 'vivlio_starter/cli/samovar/cover_command'
 
 module VivlioStarter
@@ -180,7 +181,92 @@ module VivlioStarter
         end
       end
 
+      # --- 電子書籍用の表紙の JPEG（ebook-cover-jpeg-spec.md）---
+
+      # KDP の理想の寸法・品質 95 で書き、KDP へ上げる成果品としてプロジェクトの直下へも写す。
+      def test_should_write_the_ebook_cover_in_kdp_size_and_publish_it_at_the_root
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config
+          FileUtils.mkdir_p(Common.cover_cache_dir)
+          create_dummy_png('front.png', width: 2894, height: 4092) # A4（左右を切り落とす比）
+          output = File.join(Common.cover_cache_dir, 'cover_master.jpg')
+
+          assert CoverCommands.write_ebook_cover!('front.png', output)
+
+          assert_equal '1600x2560 95', jpeg_facts(output, '%wx%h %Q')
+          published = Common.generate_cover_output_filename('front', ext: 'jpg')
+          assert_equal Common.generate_cover_output_filename('front').sub(/\.pdf\z/, '.jpg'), published,
+                       '入稿用の表紙の PDF と同じ名前で、拡張子だけ違う'
+          assert_equal File.binread(output), File.binread(published), 'キャッシュ側（EPUB へ入れる元）と同じもの'
+        end
+      end
+
+      # Display P3 などの色の情報は sRGB に直す。
+      def test_should_convert_the_ebook_cover_to_srgb
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+        skip 'sRGB の色の情報が無い環境では確かめられない' unless CoverCommands.srgb_profile_path
+        display_p3 = '/System/Library/ColorSync/Profiles/Display P3.icc'
+        skip 'Display P3 の色の情報が無い環境では確かめられない' unless File.file?(display_p3)
+
+        within_temp_dir do
+          setup_config
+          FileUtils.mkdir_p(Common.cover_cache_dir)
+          system(*CoverCommands.imagemagick_convert_command, '-size', '320x512', 'xc:rgb(200,100,50)', '-profile', display_p3, 'p3.png')
+          output = File.join(Common.cover_cache_dir, 'cover_master.jpg')
+
+          CoverCommands.write_ebook_cover!('p3.png', output)
+
+          assert_match(/sRGB/, jpeg_facts(output, '%[profile:icc]'))
+        end
+      end
+
+      # 電子書籍のターゲットがあるときだけ作る。Kindle だけのビルドでも作り、PDF だけなら作らない。
+      def test_should_make_the_ebook_cover_only_for_ebook_targets
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        { 'kindle' => true, 'epub' => true, 'pdf' => false }.each do |targets, expected|
+          within_temp_dir do
+            setup_config(targets:)
+            create_dummy_master_files('covers')
+
+            CoverCommands.ensure_cover_files_for_build!
+
+            assert_equal expected, File.exist?(File.join(Common.cover_cache_dir, 'cover_master.jpg')), "targets: #{targets}"
+            assert_equal expected, File.exist?(Common.generate_cover_output_filename('front', ext: 'jpg')), "targets: #{targets}"
+          end
+        end
+      end
+
+      # SVG の表紙（light・dark・著者の SVG）も、PNG の表紙と同じ寸法・品質になる。
+      # 以前は判型の寸法を 150dpi で焼いていて、A4 で 1,240 × 1,754 px だった。
+      def test_should_write_the_same_ebook_cover_from_an_svg
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config
+          FileUtils.mkdir_p(Common.cover_cache_dir)
+          File.write('front.svg', <<~SVG)
+            <svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+              <rect width="210" height="297" fill="#336699"/>
+            </svg>
+          SVG
+          output = File.join(Common.cover_cache_dir, 'cover_light.jpg')
+
+          assert CreateCommands.write_ebook_cover_from_svg('front.svg', output, :a4)
+
+          assert_equal '1600x2560 95', jpeg_facts(output, '%wx%h %Q')
+          assert File.exist?(Common.generate_cover_output_filename('front', ext: 'jpg'))
+        end
+      end
+
       private
+
+      def jpeg_facts(path, format)
+        identify = CoverCommands.imagemagick_convert_command == ['magick'] ? %w[magick identify] : %w[identify]
+        IO.popen([*identify, '-format', format, path], &:read)
+      end
 
       # 一時ディレクトリ配下でテストを実行する
       # テスト実行後に自動的にクリーンアップされる安全な環境を提供
@@ -192,7 +278,7 @@ module VivlioStarter
 
       # テスト用の設定ファイルを生成
       # カバー設定、ページプリセット、置換リストなどの必要な設定を作成
-      def setup_config
+      def setup_config(targets: 'pdf')
         FileUtils.mkdir_p('config')
         config = {
           'directories' => {
@@ -200,7 +286,7 @@ module VivlioStarter
           },
           'output' => {
             'cover' => 'master',
-            'targets' => 'pdf'
+            'targets' => targets
           },
           'page' => {
             'use' => 'b5_standard'

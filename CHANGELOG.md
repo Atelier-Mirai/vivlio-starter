@@ -442,6 +442,12 @@
 
 ### Changed
 
+- **電子書籍用の表紙の JPEG を 1 つの作り方にそろえ、KDP へ上げる表紙としてプロジェクト直下へ置くようにした**（`ebook-cover-jpeg-spec.md`・改善案.md #91）。KDP の資料を調べると、Kindle の本（`.kpf`）には表紙を入れず、KDP の登録画面で別に上げる決まりだった（Kindle Publishing Guidelines 2026.3 §4.2 は「KDP には当てはまらない」、KDP の eBook Manuscript Formatting Guide は「本に表紙を入れない。登録時の表紙を KDP が足す」）。`kindle.embed: false` はそのままで、上げる表紙を `<project>_frontcover_v<版>.jpg` として直下に置く（`vs clean --purge` で消える）。
+  - これまで作り方が 3 通りあった。PNG の表紙は 1,600 × 2,560 px に切り出していたが、`light`・`dark`・著者の SVG の表紙は判型の寸法を 150dpi で焼いていて、A4 で 1,240 × 1,754 px と KDP の推奨に届かなかった。どれも 1,600 × 2,560 px に縮めて中央を切り出す。同梱の `light`・`dark` は、左右の細い金の縦線が切り落としにかかる。
+  - 品質を 90 から 95 に上げた（KDP は「なるべく圧縮しない」）。EPUB と Kindle で同じ 1 枚を使う。
+  - 元の画像の色の情報（Display P3 など）を sRGB に直す。sRGB の色の情報は OS にあるものを使い、見つからなければ元のまま書き出す。
+  - `targets` が `kindle` だけのときも作る（これまでは `epub` があるかしか見ておらず、SVG の表紙では作られなかった）。PDF だけのビルドでは作らない。
+  - 43・44 章に、KDP へ上げる表紙の置き場所と、Kindle の本に表紙を入れない理由を書いた。
 - **奥付の末尾の `(powered by Vivlio Starter)` を `(Powered by Vivlio Starter)` にした**。文の頭なので大文字で始める。
 - **Apache License 2.0 の全文（`LICENSE-APACHE-2.0.txt`）を、リポジトリの直下から、それが当てはまる交ぜ書き辞書の隣（`lib/vivlio_starter/cli/lint/data/`）へ移した**。本体は MIT で、Apache が当てはまるのは SudachiDict 由来の `mazegaki.tsv` だけだが、直下に `LICENSE` と並んでいると、本体が MIT と Apache の両方のライセンスであるかのように見えるため。gem にはこれまでどおり含まれる。あわせて `LICENSE` の著作権の年を `2025-2026` にした
 - **同梱の本文・見出しの書体を、Zen Old Mincho・Zen Kaku Gothic New から Noto Serif JP・Noto Sans JP へ替えた**。Noto は異体字セレクタの表を持つので、「禰」（示偏）と「禰󠄀」（ネ偏）のように字形を書き分けた原稿が、そのとおりに組まれる。Zen はこの表を持たず、セレクタ付きの字だけがコード用の HackGen（ゴシック）で描かれていた。字の大きさと行の送りは変わらず、紙面の印象もほぼ同じ。同梱するのは Google Fonts が配信する静的 TTF（TrueType アウトライン）で、Type 3 にはならない（本書の全章ビルドで 0 件）。コラムの丸ゴシック（Zen Maru Gothic）とコードの HackGen はそのまま。会話文の簡易アバターの字も Noto Sans JP の太字で描く。索引の主要参照の数字は、Zen の細い数字に合わせた拡大と字間の補いをやめた。使われていなかった `stylesheets/fonts/google/` の Zen 2 書体も外し、雛形の書体は 57.5MB から 61.7MB になった。`book.yml` に `font: Zen Old Mincho` などと書いた本は、これまでどおり Zen で組まれる（Google Fonts から取得する）

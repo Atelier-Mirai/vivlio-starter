@@ -482,7 +482,7 @@ module VivlioStarter
       # targets の内容に応じて以下を生成する:
       #   - 'pdf'       → <side>cover_<theme>_<size>_rgb.pdf
       #   - 'print_pdf' → <side>cover_<theme>_<size>_cmyk.pdf  (トンボ付き)
-      #   - 'epub'      → cover_<theme>.jpg  (front のみ)
+      #   - 'epub' / 'kindle' → cover_<theme>.jpg  (front のみ・ebook-cover-jpeg-spec.md)
       #
       # @param svg_path [String] ソースSVGのパス
       # @param side [String] 'front' または 'back'
@@ -504,10 +504,10 @@ module VivlioStarter
           CoverCommands.publish_print_cover!(side, pdf_path)
         end
 
-        return unless targets.include?('epub') && side == 'front'
+        return unless CoverCommands.ebook_target?(targets) && side == 'front'
 
         jpg_path = File.join(cache_dir, "cover_#{theme}.jpg")
-        convert_svg(svg_path, jpg_path, page_size: page_size)
+        write_ebook_cover_from_svg(svg_path, jpg_path, page_size)
       end
 
       # PNGから最終成果物（PDF / JPG）を生成する
@@ -532,20 +532,32 @@ module VivlioStarter
           CoverCommands.publish_print_cover!(side, pdf_path)
         end
 
-        return unless targets.include?('epub') && side == 'front'
+        return unless CoverCommands.ebook_target?(targets) && side == 'front'
 
-        jpg_path = File.join(cache_dir, "cover_#{theme}.jpg")
-        convert_png(png_path, jpg_path)
+        CoverCommands.write_ebook_cover!(png_path, File.join(cache_dir, "cover_#{theme}.jpg"))
+      end
+
+      # SVG の表紙から電子書籍用の JPEG を作る（ebook-cover-jpeg-spec.md §3）。
+      # 判型の比のまま縦 2,560 px の PNG に焼き、あとは PNG の表紙と同じ作り方
+      # （CoverCommands.write_ebook_cover!）に渡す。寸法・色・品質はそちらで決まる。
+      def write_ebook_cover_from_svg(svg_path, jpg_path, page_size)
+        require 'tmpdir'
+        size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
+        h_px = CoverCommands::EPUB_SIZE[:height]
+        w_px = (h_px * size[:width_mm] / size[:height_mm].to_f).round
+
+        Dir.mktmpdir('ebook-cover') do |tmp|
+          png = File.join(tmp, 'cover.png')
+          rasterize_svg_to_png(svg_path, png, w_px, h_px) && CoverCommands.write_ebook_cover!(png, jpg_path)
+        end
       end
 
       # ================================================================
       # SVG 変換（PDF / ラスター）
       # ================================================================
 
-      # SVGを変換する
-      #
-      # PDF出力: rsvg-convert でページサイズを正確に一致させる
-      # JPG/PNG出力: ImageMagick でラスター変換
+      # SVG を PDF へ変換する（rsvg-convert でページサイズを正確に一致させる）。
+      # 電子書籍用の JPEG は write_ebook_cover_from_svg が作る。
       #
       # @param input [String] 入力SVGのパス
       # @param output [String] 出力ファイルのパス
@@ -553,19 +565,14 @@ module VivlioStarter
       # @param crop_marks [Boolean] true で入稿用トンボ・塗り足し付きPDFを生成
       def convert_svg(input, output, page_size: :b5, crop_marks: false)
         # 常に再生成する（book.yml / テンプレート変更を確実に反映するため）
-        ext = File.extname(output).delete('.')
         size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
         w_mm = size[:width_mm]
         h_mm = size[:height_mm]
 
-        if ext == 'pdf'
-          if crop_marks
-            convert_svg_to_pdf_with_crop_marks(input, output, w_mm, h_mm)
-          else
-            convert_svg_to_pdf(input, output, w_mm, h_mm)
-          end
+        if crop_marks
+          convert_svg_to_pdf_with_crop_marks(input, output, w_mm, h_mm)
         else
-          convert_svg_to_raster(input, output, w_mm, h_mm)
+          convert_svg_to_pdf(input, output, w_mm, h_mm)
         end
 
         Common.log_info("カバーを生成しました: #{File.basename(output)}")
@@ -747,30 +754,18 @@ module VivlioStarter
         FileUtils.rm_f(overlay_path) if overlay_path && File.exist?(overlay_path)
       end
 
-      # SVG → JPG/PNG
+      # SVG を指定ピクセル寸法の PNG へ焼く。
       #
-      # ラスタライズは rsvg-convert（librsvg）を優先する。ImageMagick に SVG を直接
-      # 読ませると、環境によっては SVG デコードを inkscape delegate に委譲し、壊れた
-      # inkscape（実体欠落の Homebrew ラッパー等）を踏んで失敗するため。PDF 経路
-      # （convert_svg_to_pdf）と同じエンジンになり、表紙 PDF と JPG の絵柄も揃う。
-      # librsvg は JPEG 出力を持たないため、JPEG は PNG を経由して ImageMagick で
-      # 書き出す（この magick 呼び出しは PNG 入力なので inkscape delegate を踏まない）。
-      def convert_svg_to_raster(input, output, w_mm, h_mm)
-        require 'tmpdir'
-        raster_dpi = 150
-        w_px = (w_mm / MM_PER_INCH * raster_dpi).round
-        h_px = (h_mm / MM_PER_INCH * raster_dpi).round
-
-        # --- Phase: rsvg-convert 優先 ---
+      # rsvg-convert（librsvg）を優先する。ImageMagick に SVG を直接読ませると、環境によっては
+      # SVG のデコードを inkscape delegate に委譲し、壊れた inkscape（実体欠落の Homebrew ラッパー等）を
+      # 踏んで失敗するため。PDF 経路（convert_svg_to_pdf）と同じエンジンになり、表紙 PDF と JPG の
+      # 絵柄も揃う。幅・高さの両指定で仕上がりサイズへ強制フィットさせる。
+      def rasterize_svg_to_png(input, output_png, w_px, h_px)
         if CoverCommands.find_executable('rsvg-convert')
-          return convert_svg_to_png_with_rsvg(input, output, w_px, h_px) if raster_ext(output) == 'png'
-
-          return Dir.mktmpdir('cover-raster') do |tmp|
-            tmp_png = File.join(tmp, 'cover.png')
-            next false unless convert_svg_to_png_with_rsvg(input, tmp_png, w_px, h_px)
-
-            encode_raster_from_png(tmp_png, output)
-          end
+          return Common.run_svg_converter!(
+            ['rsvg-convert', '-f', 'png', '-w', w_px.to_s, '-h', h_px.to_s, '-o', output_png, input],
+            input_path: input, output_path: output_png, purpose: 'カバー画像 (SVG→PNG) 変換'
+          )
         end
 
         # --- Phase: フォールバック（rsvg-convert 不在時は ImageMagick に委ねる）---
@@ -780,33 +775,9 @@ module VivlioStarter
           return false
         end
         Common.run_svg_converter!(
-          [*convert_cmd, '-density', raster_dpi.to_s,
-           input, '-resize', "#{w_px}x#{h_px}!", '-quality', '90', output],
-          input_path: input, output_path: output, purpose: 'カバー画像 (JPG/PNG) 変換'
-        )
-      end
-
-      # 出力パスの拡張子（小文字・ドットなし）
-      def raster_ext(output) = File.extname(output).delete('.').downcase
-
-      # rsvg-convert で SVG を指定ピクセル寸法の PNG へラスタライズする。
-      # 幅・高さの両指定で仕上がりサイズへ強制フィットさせる（従来 magick の -resize "WxH!" と同型）。
-      def convert_svg_to_png_with_rsvg(input, output_png, w_px, h_px)
-        Common.run_svg_converter!(
-          ['rsvg-convert', '-f', 'png', '-w', w_px.to_s, '-h', h_px.to_s, '-o', output_png, input],
+          [*convert_cmd, '-density', '300', input, '-resize', "#{w_px}x#{h_px}!", output_png],
           input_path: input, output_path: output_png, purpose: 'カバー画像 (SVG→PNG) 変換'
         )
-      end
-
-      # 中間 PNG を最終フォーマット（JPEG 等）へ ImageMagick で書き出す。
-      # 入力が PNG なので SVG delegate（inkscape）は介在しない。
-      def encode_raster_from_png(png_path, output)
-        convert_cmd = CoverCommands.imagemagick_convert_command
-        unless convert_cmd
-          Common.log_error('ImageMagick（magick/convert）が見つかりません')
-          return false
-        end
-        system(*convert_cmd, png_path, '-quality', '90', output, out: File::NULL, err: File::NULL)
       end
 
       # PNGを変換（ImageMagick）

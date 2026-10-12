@@ -224,7 +224,7 @@ vs build
 
 ### カバー画像
 
-EPUB の表紙は、ビルドのときに `output.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（@chapref:ch-cover）。
+EPUB の表紙は、ビルドのときに `output.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（@chapref:ch-cover）。同じ JPEG がプロジェクト直下にも置かれます（例: `janken_frontcover_v0.1.0.jpg`）。
 
 | 設定 | 説明 |
 |:---|:---|
@@ -283,6 +283,8 @@ vs build
 ```
 
 ビルドが完了すると、プロジェクトルートに `janken_v0.1.0.kpf` のようなファイルが生成されます。KDP の管理画面では、この `.kpf` をアップロードしてください。
+
+表紙は `.kpf` に入れず、KDP の登録画面で別に上げます。KDP の決まりで、本の中に表紙を入れると、KDP が足す表紙と合わせて二重になります。上げる表紙には、ビルドがプロジェクトルートに置く `janken_frontcover_v0.1.0.jpg` を使ってください。KDP の推奨どおりの 1,600 × 2,560 px・sRGB の JPEG です（@chapref:ch-cover）。
 
 ### クリーン EPUB との違い
 

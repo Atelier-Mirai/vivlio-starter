@@ -770,18 +770,20 @@ module VivlioStarter
 
       def generate_print_pdf_filename = generate_output_filename('print_pdf')
 
-      # 印刷カバー PDF のルート成果品名（generated-assets 移設仕様 §3.4）。
+      # 表紙のルート成果品名。入稿用の PDF（generated-assets 移設仕様 §3.4）と、
+      # KDP へ上げる電子書籍用の JPEG（ebook-cover-jpeg-spec.md §3）で、拡張子だけが違う。
       # generate_output_filename と同じ include_version 規則に従う。
-      # 例: vivlio_starter_frontcover_v1.0.0.pdf
+      # 例: vivlio_starter_frontcover_v1.0.0.pdf / vivlio_starter_frontcover_v1.0.0.jpg
       # @param side [String, Symbol] 'front' | 'back'
+      # @param ext [String] 拡張子（ドットなし）
       # @return [String]
-      def generate_cover_output_filename(side)
+      def generate_cover_output_filename(side, ext: 'pdf')
         project = CONFIG&.project
         include_version = CONFIG&.output&.include_version || false
 
         filename = "#{project&.name || 'vivlio_starter'}_#{side}cover"
         filename += "_v#{project&.version}" if include_version && !blank?(project&.version)
-        "#{filename}.pdf"
+        "#{filename}.#{ext}"
       end
       def generate_epub_filename = generate_output_filename('epub')
       # Kindle の最終成果物（KPF・ルート直下）。例: vivlio_starter_v1.0.0.kpf

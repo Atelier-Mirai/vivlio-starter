@@ -10,6 +10,8 @@ Thumbs.db
 *.pdf
 *.epub
 *.kpf
+# KDP へ上げる電子書籍用の表紙（vs build がプロジェクトの直下へ写す）
+/*_frontcover*.jpg
 
 # Claude Code のローカル設定（settings.local.json は許可済みコマンドの
 # 端末固有リストで、共有する意味がない）。CLAUDE.md はプロジェクトの
