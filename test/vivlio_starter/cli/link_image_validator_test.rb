@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'minitest/autorun'
+require 'test_helper'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/link_image_validator'
 
 module VivlioStarter
@@ -11,8 +11,6 @@ module VivlioStarter
           LinkImageValidator.reset!
           # 検証を全有効にするスレッドローカル設定
           Thread.current[:vs_verify_options] = {
-            verify_images: true,
-            verify_bare_urls: true,
             verify_external_links: false
           }
         end
@@ -204,8 +202,6 @@ module VivlioStarter
         # Markdown リンクから外部 URL が正しく抽出されること
         def test_should_extract_external_urls_from_markdown_links
           Thread.current[:vs_verify_options] = {
-            verify_images: true,
-            verify_bare_urls: true,
             verify_external_links: true
           }
 

@@ -34,7 +34,6 @@ module VivlioStarter
 
         options do
           option '--force/-f', '確認なしで削除を実行', default: false, key: :force
-          option '--yes/-y', '[互換] --force と同じ意味', default: false, key: :yes
           option '--verbose/-v', '冗長ログを表示', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end

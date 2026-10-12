@@ -17,7 +17,6 @@
 #   - glossary_terms: flags に g を含む用語のリスト
 #   - merge_terms!: 用語をマージして保存
 #   - remove_term!: 用語を削除
-#   - update_flags!: flags を更新
 # ================================================================
 
 require 'yaml'
@@ -198,18 +197,6 @@ module VivlioStarter
         dropped
       end
 
-      # flags を更新
-      # @param term_name [String] 用語名
-      # @param new_flags [String] 新しい flags
-      def update_flags!(term_name, new_flags)
-        existing = load_terms.dup
-        term = existing.find { it['term'] == term_name }
-        return unless term
-
-        term['flags'] = new_flags
-        save_terms!(existing)
-      end
-
       # 読みを更新
       # @param yomi_changes [Array<Hash>] 読み変更のリスト
       def update_yomi!(yomi_changes)
@@ -231,20 +218,6 @@ module VivlioStarter
 
         save_terms!(existing)
         Common.log_info("#{updated_count} 件の読みを更新しました")
-      end
-
-      # 説明文を更新
-      # @param term_name [String] 用語名
-      # @param definition [String] 説明文
-      def update_definition!(term_name, definition)
-        existing = load_terms.dup
-        term = existing.find { it['term'] == term_name }
-        return false unless term
-
-        term['definition'] = definition
-        term['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
-        save_terms!(existing)
-        true
       end
 
       # --- Phase: 章走査記録（R7: 章追加の検知） ---

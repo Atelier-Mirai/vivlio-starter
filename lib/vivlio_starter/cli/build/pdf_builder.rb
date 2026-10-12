@@ -2,6 +2,7 @@
 
 require 'fileutils'
 
+require_relative '../create'
 require_relative '../techbook/processor'
 require_relative '../code_line_blocks'
 require_relative 'derived_image'

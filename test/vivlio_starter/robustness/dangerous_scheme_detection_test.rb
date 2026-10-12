@@ -53,7 +53,7 @@ module VivlioStarter
 
         stub_common_log_warn do
           report = LinkImageValidator.validate(md, 'chapter.md',
-                                                config: all_disabled_config)
+                                                config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size, '1 件検出されるべき'
           assert_equal 'file:///etc/passwd', dangerous.first.url
@@ -72,7 +72,7 @@ module VivlioStarter
         md = %q(<a href="javascript:alert('xss')">click</a>) + "\n"
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'evil.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'evil.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size
           assert_match(/\Ajavascript:/, dangerous.first.url)
@@ -86,7 +86,7 @@ module VivlioStarter
         md = "![secret](file:///etc/passwd)\n"
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'ch.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size
           assert_equal 'file:///etc/passwd', dangerous.first.url
@@ -100,7 +100,7 @@ module VivlioStarter
         md = "[click me](javascript:alert(1))\n"
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'ch.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size
           assert_match(/\Ajavascript:alert/, dangerous.first.url)
@@ -123,7 +123,7 @@ module VivlioStarter
         MD
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'doc.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'doc.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_empty dangerous, 'コードブロック内の例示は検出しないこと'
         end
@@ -136,7 +136,7 @@ module VivlioStarter
         md = "例えば `<img src=\"file:///etc/passwd\">` のようなタグは避けてください。\n"
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'doc.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'doc.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_empty dangerous, 'インラインコード内の例示は検出しないこと'
         end
@@ -154,20 +154,19 @@ module VivlioStarter
         MD
 
         stub_common_log_warn do
-          report = LinkImageValidator.validate(md, 'evil.md', config: all_disabled_config)
+          report = LinkImageValidator.validate(md, 'evil.md', config: offline_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 4, dangerous.size, '4 件すべて検出されるべき'
         end
       end
 
       # ----------------------------------------------------------------
-      # H. ほかの検証を全部切った設定でも危険スキーム検出は常時有効
+      # H. 外部 URL の検査を切った設定でも危険スキーム検出は常時有効
+      #    （切り替えられる検査は外部 URL だけ。画像と裸 URL は常に検査する）
       # ----------------------------------------------------------------
-      def test_dangerous_scheme_detection_is_not_disabled_by_other_settings
+      def test_dangerous_scheme_detection_is_not_disabled_with_external_links_off
         md = %(<img src="file:///etc/passwd">\n)
         no_verify_config = {
-          verify_images: false,
-          verify_bare_urls: false,
           verify_external_links: false,
           timeout: 10, max_concurrency: 5
         }
@@ -176,7 +175,7 @@ module VivlioStarter
           report = LinkImageValidator.validate(md, 'ch.md', config: no_verify_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size,
-                       'セキュリティ検証はほかの検証を切っても無効化されないこと'
+                       'セキュリティ検証は外部 URL の検査を切っても無効化されないこと'
         end
       end
 
@@ -187,7 +186,7 @@ module VivlioStarter
         md = %(<img src="file:///etc/passwd">\n)
 
         stub_common_log_warn do
-          LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
+          LinkImageValidator.validate(md, 'ch.md', config: offline_config)
         end
 
         combined = ''
@@ -213,28 +212,11 @@ module VivlioStarter
         assert_match(/ch\.md:1/, combined, 'サマリに参照元ファイル名:行番号が表示されること')
       end
 
-      # ----------------------------------------------------------------
-      # any_issues? が危険スキーム検出を含めて true を返す
-      # ----------------------------------------------------------------
-      def test_any_issues_should_be_true_when_only_dangerous_scheme_detected
-        md = %(<img src="file:///etc/passwd">\n)
-
-        stub_common_log_warn do
-          LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
-        end
-
-        assert LinkImageValidator.any_issues?,
-               '危険スキーム検出のみでも any_issues? は true を返すこと'
-      end
-
       private
 
-      # 画像・裸URL・外部リンク系をすべて無効化した config
-      # （危険スキーム検出のみをピンポイントで検証するため）
-      def all_disabled_config
+      # 外部 URL の検査を切った config（テストからネットワークへ出ないため）
+      def offline_config
         {
-          verify_images: false,
-          verify_bare_urls: false,
           verify_external_links: false,
           timeout: 10, max_concurrency: 5
         }

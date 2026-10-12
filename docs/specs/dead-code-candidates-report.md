@@ -270,6 +270,8 @@ def def_regex(name)   = /^\s*def (?:self\.)?#{Regexp.escape(name)}#{boundary(nam
 「同一ページの重複排除は実際には `BacklinkDeduplicator` が PDF のページマップで行う」
 を明記した。
 
+**2026-10-12 追記**: §R8 は `BacklinkDeduplicator` の側で実装され、残した理由が無くなったので、クラスとテストを消した（改善案.md #93）。
+
 ### 7.4 見送ったもの
 
 - **§3.1 の `find_term`**: 報告書は「テストからのみ参照」に分類したが、

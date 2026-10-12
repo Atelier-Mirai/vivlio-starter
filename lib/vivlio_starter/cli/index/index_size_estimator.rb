@@ -26,6 +26,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative 'chapter_source'
 require_relative '../metrics/analyzer'
 
 module VivlioStarter
@@ -81,19 +82,10 @@ module VivlioStarter
         # @return [Integer] 地の文の文字数（空白を除く）
         def self.prose_chars_of(chapters)
           chapters.sum do |chapter|
-            path = resolve_path(chapter)
+            path = ChapterSource.path(chapter)
             path ? Metrics::Analyzer.prose_length(File.read(path, encoding: 'utf-8')) : 0
           end
         end
-
-        # 章名からファイルパスを解決する（contents/ を優先）
-        def self.resolve_path(chapter)
-          return chapter if File.exist?(chapter.to_s)
-
-          [File.join(Common::CONTENTS_DIR, "#{chapter}.md"),
-           File.join(Common::BUILD_HTML_DIR, "#{chapter}.md")].find { File.exist?(it) }
-        end
-        private_class_method :resolve_path
 
         # @param chars [Integer] 地の文の文字数
         def initialize(chars)

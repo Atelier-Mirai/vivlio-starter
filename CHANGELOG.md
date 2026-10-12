@@ -252,6 +252,9 @@
 
 ### Fixed
 
+- **表が SVG・裏が PNG のテーマで、裏表紙の入稿用 PDF に塗り足しもトンボも付いていなかったのを直した**（改善案.md #93）。PNG を素の PDF に変えただけのものを、入稿用として直下へ複製していた。内部コマンド `vs create:cover` を PNG のテーマで打ったときも同じだった。
+- **PNG の表紙の解像度の警告を、画素数と判型から求めた実効解像度で出すようにした**（改善案.md #93）。PNG に書かれた dpi の値を見ていたため、画像ソフトが 72dpi と書いた PNG は、画素が足りていても「72dpi で不足」と出た（本書の `frontcover_master.png` は A4 で 350dpi ある）。警告は入稿用（`print_pdf`）を作るときに、差し替える画像の画素数を添えて出す。これまでは `vs create:cover` でしか出ていなかった。
+
 - **Kindle Previewer が変換の入口で落ちたとき、KPF の変換を 1 回やり直すようにした**。Kindle Previewer 4（4.0.3）は、変換の本体を起動する `fork` の直後に子プロセスが「os_once_t is corrupt」で止まることがある（macOS の競合で、2026-10-12 には約 12 回に 1 回）。このときは「Kindle 変換に失敗しました」だけが出て、vs の不具合と見分けがつかなかった。本の変換ログ（`Logs/*_log.csv`）を残さずに終わったときだけやり直し、2 回とも落ちたら macOS のクラッシュレポートの場所を添えて、もう一度ビルドするよう案内する。変換を終えて KPF が出なかったとき（エラー・Mobi）はやり直さない。
 - **見出しに異体字セレクタ付きの字（`禰󠄀`）や絵文字があると、PDF のビルドが止まっていたのを直した**。本文 PDF の飛び先の名前から前付・奥付の位置を探すとき、BMP の外の字（2 単位のサロゲートペアで書かれる）を 1 単位ずつ字にしていたため、不正な UTF-8 ができ、`invalid byte sequence in UTF-8` で位置を特定できず「ビルドを中止します」で止まっていた。2 単位を 1 字に戻すようにした。
 - **EPUB に、原稿で使っていない画像まで入っていたのを直した**。ローカライズが `images/` と `stylesheets/` を参照を見ずに丸ごと運んでいたため、雛形の扉絵の花やサンプル章の写真まで入り、1 章だけの本のクリーン EPUB が 19MB になっていた（うち 18.6MB が未参照）。本文・CSS・SVG のどこからも参照されていない画像を、差し替えをすべて終えた後でパッケージから外す。これまで Kindle の SVG にだけ掛けていた回収を、画像全般・両フレーバへ広げた（`sweep_unreferenced_assets!`）。表紙は外さない。1 章の本で EPUB は 19MB → 982KB、KPF は 543KB → 429KB。本書全体では、epubcheck のエラー・警告 0 件のまま 93 件（767KB）を外した。
@@ -445,6 +448,10 @@
 
 ### Changed
 
+- **表紙を作る処理を `CoverCommands` の 1 つの入口にまとめた**（改善案.md #93）。`vs cover` と `vs build` はどちらも同じ処理を通る。表と裏はそれぞれ元の画像を決め（PNG → 著者の SVG → 同梱テンプレート）、PNG なら必ず入稿用の処理（塗り足し・トンボ・CMYK）を通す。SVG の組み立ては `create.rb` から `cover/svg_cover.rb` へ移した（`create.rb` は 1,284 行 → 550 行）。
+  - 入稿用の表紙のトンボを、本文の入稿用 PDF と同じ描き方・重ね方（`CropMarksOverlay`・qpdf）にした。TrimBox・BleedBox は、トンボと同じく実際のページの寸法から決める。PNG の A4 の表紙では、仕上がりの上端と右端が 0.13〜0.5pt 内側になり、トンボとボックスが一致する（以前はボックスだけ判型の寸法ぴったりで、上の余白が 0.5pt ずれていた）。
+  - 表紙の塗り足しの幅を、本文と同じ読み方（`NombreStamper.bleed_mm_from_config`）にした。`bleed: 0mm` と書くと、本文は 3mm、PNG の表紙は 0mm になっていた。
+
 - **電子書籍用の表紙の JPEG を 1 つの作り方にそろえ、KDP へ上げる表紙としてプロジェクト直下へ置くようにした**（`ebook-cover-jpeg-spec.md`・改善案.md #91）。KDP の資料を調べると、Kindle の本（`.kpf`）には表紙を入れず、KDP の登録画面で別に上げる決まりだった（Kindle Publishing Guidelines 2026.3 §4.2 は「KDP には当てはまらない」、KDP の eBook Manuscript Formatting Guide は「本に表紙を入れない。登録時の表紙を KDP が足す」）。`kindle.embed: false` はそのままで、上げる表紙を `<project>_frontcover_v<版>.jpg` として直下に置く（`vs clean --purge` で消える）。
   - これまで作り方が 3 通りあった。PNG の表紙は 1,600 × 2,560 px に切り出していたが、`light`・`dark`・著者の SVG の表紙は判型の寸法を 150dpi で焼いていて、A4 で 1,240 × 1,754 px と KDP の推奨に届かなかった。どれも 1,600 × 2,560 px に縮めて中央を切り出す。同梱の `light`・`dark` は、左右の細い金の縦線が切り落としにかかる。
   - 品質を 90 から 95 に上げた（KDP は「なるべく圧縮しない」）。EPUB と Kindle で同じ 1 枚を使う。
@@ -618,8 +625,16 @@
 
 - **誰からも読まれていなかった `CatalogLoader::SPECIAL_PAGES` を撤去した**。特殊ページの basename を 5 件並べた定数だが、唯一の読み手だった `special_page?` が 2026-06-11 の死んだコード掃除で消えた際に、定数だけが取り残されていた。2026-08-22 の全数調査では「最も網羅的な定義が浮いている＝他所に取りこぼしがある疑い」として残したが、追ってみると**取りこぼしは無かった**。`TokenResolver::CACHED_SYSTEM_FILES`（3 件）は「どのシステム **`.md`** が `.cache/vs/` に生成されるか」という別の問いに答えるもので、`_indexpage` / `_glossarypage` は `.md` を持たない（`UnifiedPageBuilder` が HTML を直接書き出す）ため、足すと存在しないパスを指すだけだった。`clean.rb` の一覧も P4 以前のルート残骸の掃除で、こちらも欠けは無い。
 
+- **同じことをしている処理を 1 か所にまとめた**（改善案.md #93）。
+  - 外部コマンドの有無の確かめ方（5 か所）を `Common.external_command_available?` に。doctor と lint にあった Windows の PATHEXT の扱いもそこへ移し、PATH 上の同名のディレクトリはコマンドとみなさない。`vs doctor` の出力が変更の前後で一致することを確かめた。
+  - 画像の寸法の読み方（`magick identify`・5 か所）を `Common.image_size` に。
+  - techbook の、HTML の地の文だけを書き換える走査と Twemoji のファイル名の作り方を `EmojiReplacer` に（`Processor` に同じ中身があった）。
+  - 索引の見積もり・分布・主要参照の推定が章の Markdown を探す処理（3 か所）を `IndexCommands::ChapterSource.path` に。
+
 ### Removed
 
+- **内部コマンド `vs create:cover` と、`vs cover` の引数（`a4`・`b5`・`a5`・`epub`）を外した**（改善案.md #93）。表紙は `vs cover` か `vs build` で作り、判型は `book.yml` の `page.use`、作るものは `output.targets` に従う。判型の引数は、SVG のテーマでは効いておらず（`book.yml` の判型で作っていた）、本と違う判型の表紙は使い道も無かった。
+- **依存 gem の `combine_pdf` を外した**。使っていたのは表紙にトンボを重ねる処理だけで、本文と同じ qpdf の重ね方に替えた。
 - **`vs index:import` の `--prefer-import` を外した**（`index-library-reserve-spec.md` §3.5）。辞書にある語をライブラリの側で上書きするオプションだったが、規則が分かれて分かりにくく、上書きのときに印まで足し合わせ、索引だけの語が用語集にも載っていた。取り込みは追記だけにする。ライブラリの説明文で入れ直したい語は、レビューファイルで `[DELETE]` してから取り込み直す。
 - **依存 gem の Rouge を外した**。使っていたのは `vs import` の言語推定だけで、中身だけからはほぼ `text` しか返さなかった。推定は `vs lint` と同じ仕組み（Guesslang）へ差し替えた。`vs doctor` の診断・導入と、51・93・95 章の記述も外した。
 - **使われていなかった `pre_process/data_render/` の 3 ファイルを消した**（`query_stream_parser.rb`・`singularize.rb`・`template_compiler.rb`）。QueryStream を gem に切り出す前の写しで、どこからも読み込まれていなかった。記法の処理は gem の `QueryStream.render` が担う。
@@ -651,6 +666,16 @@
   撤去したのは `LEGACY_ROOT_PATTERNS` / `LEGACY_INTERMEDIATE_PDF_PATTERNS`、ルートの `_index_matches.yml`・`_indexpage.html`・`_glossarypage.html` の削除、`images/` 配下 3 ディレクトリの再帰削除、`clean_legacy_variant_images`、`clean_legacy_cover_files`、そして `.vivliostyle/` の削除。**ルートを掃く処理は 1 つも残っていない**——`--purge` のときだけ最終成果物へ手を伸ばす。移行者の手元には旧版の残骸が残るが、それを読むコード（撤去済みの手動フロー）はもう無いので、散らかるだけである。`.gitignore` からも、ルートに出なくなった中間物（`_toc.md` `_part[0-9]*` `_titlepage.*` `_indexpage.html` 等）の行を落とした——**ignore を外せば `git status` に現れる**ので、消すかどうかを著者が自分で決められる。
 
   `.vivliostyle/` は現行版が作らないことを実測で確かめた。CLI 11.1.0 は `workspaceDir` を省くと今もルート直下へ作るが、当パイプラインの 4 経路はすべて `workspaceDir` をワークスペース内へ向けた生成 config を渡している（`vivliostyle_config_writer.rb` / `epub_builder.rb`）。`.gitignore` の `/.vivliostyle/` だけは残した——著者が手で `npx vivliostyle build` を叩く余地があり、その 1 行に害はないため。
+
+- **`vs delete` の `--yes` / `-y` を外した**（改善案.md #93）。`--force` と同じ意味の互換の名前で、原稿にも書いていなかった。確認を省くときは `--force`（`-f`）を使う。
+- **どこからも使われていないコードを消した**（改善案.md #93）。`lib/` の定義を Prism で洗い、呼び出し・シンボル・文字列としての参照を `lib/`・`test/`・`bin/` から数えて、候補を 1 件ずつ確かめた。
+  - `HierarchicalIndex`（`index/hierarchical_index.rb`）とそのテスト。2026-08-06 に「`index-main-reference-spec.md` §R8 で使う」として本番から切り離して残したが、§R8（ページ番号の範囲圧縮）は `BacklinkDeduplicator` の側で実装され、親子項目の予定も `PLANNED.md` に無い。残す理由が無くなった。
+  - `vivliostyle.rb`（`VivliostyleCommands.resolve_vivliostyle_size`）。どこからも読み込まれておらず、同じ中身が `EpubBuilder.resolve_page_size` にある。テストは `EpubBuilder` の側へ向け直した。
+  - 中身の無いモジュール `RenameCommands`・`RenumberCommands`（`renumber.rb`）と、その存在だけを確かめていたテスト。`vs renumber` は `RenameCommandExecutor` が受け持つ。
+  - `LinkImageValidator#correct_link_line_number`（呼ぶ所が無かった）。
+  - 後処理の 2 つの分岐。`<p class="code-caption" data-xref-id>` を包む分岐と、`<p class="footnote-anchor">` を消す分岐で、どちらもいまの前処理は出力しない。脚注の側は、現役の `<span class="footnote-anchor">` に「旧形式」と注記されていたので、注記も直した。
+  - テストからしか呼ばれていなかった `ReviewQueueManager#clear_terms`・`UnifiedTermsManager#update_flags!` と `#update_definition!`・`TermLine#pending?`・`LinkImageValidator.any_issues?` と、それぞれのテスト。`vs preflight` の終了コードは `IssueRegistry` の 🔴 で決めており、`any_issues?` を使うと書いた古いコメントも直した。
+  - 互換のために残っていた分岐 2 つ。画像の実在と裸 URL を検査するかのフラグ（`verify_images`・`verify_bare_urls`）は、`book.yml` の `verify.images`・`verify.bare_urls` を撤去したあとも本体では常に true で、false を渡すのはテストだけだった。もう 1 つは、旧版がレビューファイルに書いた「（catalog 外）」を剥がす処理。
 
 ### Fixed
 

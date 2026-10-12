@@ -253,7 +253,7 @@ module VivlioStarter
           return nil unless src.match?(/\.(webp|png|jpe?g)\z/i)
 
           viewport = flavor == :kindle ? KINDLE_IMAGE_MAX_EDGE : EPUB_IMAGE_MAX_EDGE
-          width, height = image_dimensions(src)
+          width, height = Common.image_size(src)
           return nil unless width&.positive?
 
           edge = DerivedImage.viewport_target(width, height, viewport)
@@ -449,7 +449,7 @@ module VivlioStarter
           author   = VivliostyleConfigWriter.resolve_author
           language = VivliostyleConfigWriter.resolve_language
 
-          # ページサイズを解決（vivliostyle.rb から移植）
+          # ページサイズを解決
           page_size = resolve_page_size(config)
 
           # 表紙画像の埋め込み設定を取得（kindle は二重表紙回避のため embed:false 固定・§1-6）
@@ -649,7 +649,6 @@ module VivlioStarter
         end
 
         # book.yml のページ設定から Vivliostyle CLI 用サイズ文字列を解決する
-        # vivliostyle.rb の resolve_vivliostyle_size から移植
         #
         # @param config [Object] Common::CONFIG
         # @return [String] 'A5', 'B5', 'A4', または '148mm 210mm' 形式
@@ -1984,21 +1983,10 @@ module VivlioStarter
 
         # 画面幅に対して要る長辺（px）。寸法が読めなければ画面幅をそのまま返す。
         def target_edge_for(source, viewport_px)
-          width, height = image_dimensions(source)
+          width, height = Common.image_size(source)
           return viewport_px unless width&.positive?
 
           DerivedImage.viewport_target(width, height, viewport_px)
-        end
-
-        # 画像の寸法。読めなければ [nil, nil]。
-        def image_dimensions(path)
-          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path, err: File::NULL)
-          return [nil, nil] unless status.success?
-
-          width, height = out.split.map(&:to_i)
-          [width, height]
-        rescue StandardError
-          [nil, nil]
         end
 
         # HTML 実体参照をデコードしてディスク上のパスへ戻す（&apos; を含む src の解決・§5-4）。

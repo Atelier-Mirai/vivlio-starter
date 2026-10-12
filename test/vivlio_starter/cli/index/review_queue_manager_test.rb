@@ -45,23 +45,6 @@ module VivlioStarter
         assert_empty queue
       end
 
-      def test_clear_terms_removes_specified_terms
-        candidates = [
-          { 'term' => 'Keep', 'yomi' => 'きーぷ' },
-          { 'term' => 'Remove', 'yomi' => 'りむーぶ' },
-          { 'term' => 'AlsoKeep', 'yomi' => 'おるそきーぷ' }
-        ]
-        @manager.save_queue(candidates)
-
-        @manager.clear_terms(['Remove'])
-
-        queue = @manager.load_queue
-        term_names = queue.map { it['term'] }
-        assert_includes term_names, 'Keep'
-        assert_includes term_names, 'AlsoKeep'
-        refute_includes term_names, 'Remove'
-      end
-
       # --- phase: rejected terms tests ---
 
       def test_save_and_load_rejected_terms

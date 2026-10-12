@@ -29,10 +29,6 @@ module VivlioStarter
           assert_equal 'NEW!', parse('- [ ] `NEW!` **候補** (こうほ)').label
         end
 
-        def test_pending_line
-          assert_predicate parse('- [ ] **候補** (こうほ)'), :pending?
-        end
-
         # --- phase: 主要参照 ---
 
         def test_parses_a_main_reference

@@ -110,8 +110,6 @@ module VivlioStarter
           LinkImageValidator.reset!
           # デフォルト設定（画像・裸URL検証ON、外部URLチェックOFF）
           Thread.current[:vs_verify_options] = {
-            verify_images: true,
-            verify_bare_urls: true,
             verify_external_links: false
           }
         end
@@ -216,8 +214,6 @@ module VivlioStarter
           @server.start
 
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: false,
             verify_external_links: true
           }
 
@@ -240,8 +236,6 @@ module VivlioStarter
           @server.start
 
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: false,
             verify_external_links: true
           }
 
@@ -264,8 +258,6 @@ module VivlioStarter
           @server.start
 
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: false,
             verify_external_links: true
           }
 
@@ -288,8 +280,6 @@ module VivlioStarter
           @server.start
 
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: false,
             verify_external_links: true
           }
 
@@ -312,8 +302,6 @@ module VivlioStarter
         def test_should_report_unreachable_for_invalid_hostname
           # Arrange: 存在しないホスト名
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: false,
             verify_external_links: true
           }
 
@@ -336,8 +324,6 @@ module VivlioStarter
           @server.start
 
           Thread.current[:vs_verify_options] = {
-            verify_images: false,
-            verify_bare_urls: true,
             verify_external_links: true
           }
 

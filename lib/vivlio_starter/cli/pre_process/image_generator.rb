@@ -86,7 +86,7 @@ module VivlioStarter
 
           Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 
-          waifu2x_available = waifu2x && !waifu2x.strip.empty? && command_available?(waifu2x)
+          waifu2x_available = waifu2x && !waifu2x.strip.empty? && Common.external_command_available?(waifu2x)
           Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。") unless waifu2x_available
 
           Dir.mktmpdir('frontispiece-one') do |tmpdir|
@@ -128,16 +128,6 @@ module VivlioStarter
           raise 'ImageMagick (magick) が見つかりません。インストールを確認してください。' unless status.success?
         rescue Errno::ENOENT
           raise 'magick コマンドが見つかりません。ImageMagick をインストールしてください。'
-        end
-
-        # コマンドが利用可能かチェック
-        def command_available?(cmd)
-          return File.executable?(cmd) if cmd.include?(File::SEPARATOR)
-
-          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |path|
-            candidate = File.join(path, cmd)
-            File.executable?(candidate)
-          end
         end
 
         # 画像参照を解決
@@ -183,13 +173,8 @@ module VivlioStarter
 
         # 対角線分割バリアントを生成
         def generate_diagonal_variant(input_png, output_png, ratio)
-          dims, status = Open3.capture2('magick', 'identify', '-format', '%w %h', input_png)
-          raise "寸法取得に失敗しました: #{input_png}" unless status.success?
-
-          width_str, height_str = dims.strip.split
-          width = width_str.to_i
-          height = height_str.to_i
-          raise "不正な寸法です: #{input_png}" if width <= 0 || height <= 0
+          width, height = Common.image_size(input_png)
+          raise "寸法取得に失敗しました: #{input_png}" unless width
 
           ratio = ratio.to_f
           current_ratio = height.to_f / width

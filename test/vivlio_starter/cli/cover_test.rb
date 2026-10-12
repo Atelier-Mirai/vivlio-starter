@@ -26,8 +26,41 @@ require 'vivlio_starter/cli/samovar/cover_command'
 
 module VivlioStarter
   module CLI
+    # 3 つのテストクラスが共有する画像の用意。ImageMagick があれば指定の寸法の白い PNG を、
+    # 無ければ 1×1 の最小の PNG を書く。
+    module CoverTestImages
+      def create_dummy_png(path, width: 100, height: 100)
+        if (convert_cmd = imagemagick_convert_command)
+          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
+        else
+          File.binwrite(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00" \
+                              "\x90wS\xde\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
+        end
+      end
+
+      def imagemagick_available? = !imagemagick_convert_command.nil?
+
+      # magick（ImageMagick 7+）を優先する。PATH を直接探すのは、外部コマンドを起動して
+      # 確かめるとハングする環境があったため。
+      def imagemagick_convert_command
+        return ['magick'] if command_in_path?('magick')
+        return ['convert'] if command_in_path?('convert')
+
+        nil
+      end
+
+      def command_in_path?(command)
+        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+          path = File.join(dir, command)
+          File.executable?(path) && !File.directory?(path)
+        end
+      end
+    end
+
     # CoverCommands のユニットテスト
     class CoverCommandsTest < Minitest::Test
+      include CoverTestImages
+
       # setup_config が temp book.yml で CONFIG を上書きするため、テスト後に
       # プロジェクトルートの canonical な book.yml で復旧する（後続テストファイルへの
       # CONFIG 汚染＝metadata / spellcheck キー欠落の波及を防ぐ。CoverConfigTest と同方針）。
@@ -130,9 +163,7 @@ module VivlioStarter
 
           create_dummy_png(input_png, width: 2894, height: 4092)
 
-          # 本番と同じシンボルキーで読み込む（文字列キーは Phase 3 で廃止）
-          config = YAML.load_file('config/book.yml', symbolize_names: true)
-          CoverCommands.generate_epub_cover(covers_dir, config)
+          CoverCommands.generate!(targets: ['epub'])
 
           # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
           output_jpg = File.join(Common.cover_cache_dir, 'cover_master.jpg')
@@ -141,43 +172,22 @@ module VivlioStarter
         end
       end
 
-      # Samovar cover コマンド（a4）のテスト
-      def test_execute_a4
+      # vs cover は引数を取らず、book.yml の判型（b5_standard）と targets に従って作る
+      def test_execute_generates_covers_for_the_book_page_size_and_targets
         skip 'ImageMagickが必要です' unless imagemagick_available?
 
         within_temp_dir do
-          setup_config
+          setup_config(targets: 'pdf, epub')
           covers_dir = 'covers'
           FileUtils.mkdir_p(covers_dir)
           create_dummy_master_files(covers_dir)
 
-          command = SamovarCommands::CoverCommand.new(['a4'])
-          command.call
+          assert_equal 0, SamovarCommands::CoverCommand.new([]).call
 
           # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
-          assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_a4_rgb.pdf')),
-                 'A4表紙PDFが生成されるべきです'
-          assert File.exist?(File.join(Common.cover_cache_dir, 'backcover_master_a4_rgb.pdf')),
-                 'A4裏表紙PDFが生成されるべきです'
-        end
-      end
-
-      # Samovar cover コマンド（epub）のテスト
-      def test_execute_epub
-        skip 'ImageMagickが必要です' unless imagemagick_available?
-
-        within_temp_dir do
-          setup_config
-          covers_dir = 'covers'
-          FileUtils.mkdir_p(covers_dir)
-          create_dummy_master_files(covers_dir)
-
-          command = SamovarCommands::CoverCommand.new(['epub'])
-          command.call
-
-          # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
-          assert File.exist?(File.join(Common.cover_cache_dir, 'cover_master.jpg')),
-                 'EPUB用JPEGが生成されるべきです'
+          %w[frontcover_master_b5_rgb.pdf backcover_master_b5_rgb.pdf cover_master.jpg].each do |name|
+            assert File.exist?(File.join(Common.cover_cache_dir, name)), "#{name} が生成されるべきです"
+          end
         end
       end
 
@@ -239,6 +249,31 @@ module VivlioStarter
         end
       end
 
+      # 表と裏はそれぞれ元の画像を決める。表が SVG・裏が PNG でも、裏の入稿用は PNG の経路
+      # （塗り足し・トンボ）で作る。以前は SVG の処理が PNG を素の PDF に変えるだけで、
+      # 塗り足しもトンボも無い PDF を入稿用として直下へ複製していた。
+      def test_should_make_the_png_side_print_ready_when_the_other_side_is_svg
+        skip 'ImageMagick と rsvg-convert が必要です' unless imagemagick_available? && command_in_path?('rsvg-convert')
+
+        within_temp_dir do
+          setup_config(targets: 'print_pdf', theme: 'mix')
+          FileUtils.mkdir_p('covers')
+          File.write('covers/frontcover_mix.svg', <<~SVG)
+            <svg xmlns="http://www.w3.org/2000/svg" width="182mm" height="257mm" viewBox="0 0 182 257">
+              <rect width="182" height="257" fill="#336699"/>
+            </svg>
+          SVG
+          create_dummy_png('covers/backcover_mix.png', width: 2508, height: 3541)
+
+          CoverCommands.generate!
+
+          back = ::PDF::Reader.new(File.join(Common.cover_cache_dir, 'backcover_mix_b5_cmyk.pdf')).pages.first
+          margin_pt = (3 + CoverCommands::CROP_MARK_OFFSET_MM) * Units::PT_PER_MM
+          assert_in_delta margin_pt, back.attributes[:TrimBox][0].to_f, 0.5, '裏表紙にも塗り足しとトンボ代があるべきです'
+          assert_match(%r{/Fx\d+ Do}, back.raw_content, '裏表紙にもトンボが重ねられているべきです')
+        end
+      end
+
       # SVG の表紙（light・dark・著者の SVG）も、PNG の表紙と同じ寸法・品質になる。
       # 以前は判型の寸法を 150dpi で焼いていて、A4 で 1,240 × 1,754 px だった。
       def test_should_write_the_same_ebook_cover_from_an_svg
@@ -254,7 +289,7 @@ module VivlioStarter
           SVG
           output = File.join(Common.cover_cache_dir, 'cover_light.jpg')
 
-          assert CreateCommands.write_ebook_cover_from_svg('front.svg', output, :a4)
+          assert CoverCommands::SvgCover.write_ebook_cover('front.svg', output, :a4)
 
           assert_equal '1600x2560 95', jpeg_facts(output, '%wx%h %Q')
           assert File.exist?(Common.generate_cover_output_filename('front', ext: 'jpg'))
@@ -278,14 +313,14 @@ module VivlioStarter
 
       # テスト用の設定ファイルを生成
       # カバー設定、ページプリセット、置換リストなどの必要な設定を作成
-      def setup_config(targets: 'pdf')
+      def setup_config(targets: 'pdf', theme: 'master')
         FileUtils.mkdir_p('config')
         config = {
           'directories' => {
             'covers' => 'covers'
           },
           'output' => {
-            'cover' => 'master',
+            'cover' => theme,
             'targets' => targets
           },
           'page' => {
@@ -307,42 +342,6 @@ module VivlioStarter
       # テスト用のマスター画像を配置
       def create_dummy_master_files(covers_dir, front: true, back: true)
         copy_fixture_master_files(covers_dir, front: front, back: back)
-      end
-
-      # ダミーのPNG画像を生成（ImageMagickが必要）
-      # ImageMagickが利用可能な場合は指定サイズで白いPNGを生成
-      # 利用不可な場合は空ファイルを作成してテストを継続
-      def create_dummy_png(path, width: 100, height: 100)
-        if (convert_cmd = imagemagick_convert_command)
-          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
-        else
-          # ImageMagickがない場合は空ファイルを作成
-          FileUtils.touch(path)
-        end
-      end
-
-      # コマンドが利用可能かチェック（PATHを直接探索してハングを防止）
-      def imagemagick_available?
-        !imagemagick_convert_command.nil?
-      end
-
-      # ImageMagickのconvertコマンドを取得
-      # magick（ImageMagick 7+）またはconvert（従来版）を優先
-      def imagemagick_convert_command
-        return ['magick', 'convert'] if command_in_path?('magick')
-        return ['convert'] if command_in_path?('convert')
-        nil
-      end
-
-      # 指定されたコマンドがPATHに存在するかチェック
-      # システムコマンド実行時のハングを防止するためにPATHを直接探索
-      def command_in_path?(command)
-        return false if command.to_s.empty?
-
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, command)
-          File.executable?(path) && !File.directory?(path)
-        end
       end
 
       # フィクスチャのマスター画像をコピーまたはスタブを作成
@@ -389,6 +388,8 @@ module VivlioStarter
 
     # Common::Config カバー設定機能のテスト
     class CoverConfigTest < Minitest::Test
+      include CoverTestImages
+
       def setup
         @temp_dir = Dir.mktmpdir
         @original_dir = Dir.pwd
@@ -499,17 +500,21 @@ module VivlioStarter
         assert Common.validate_cover_settings, 'SVG を置いたカスタムテーマは有効であるべきです'
       end
 
-      # 表紙の元を SVG で作るかは PNG の有無で決まる。master は常に PNG（改善案.md #65）
-      def test_should_route_theme_to_svg_only_without_png
+      # 表紙の元は面ごとに PNG → 著者の SVG → 同梱テンプレートの順で決まる。master は PNG だけ（改善案.md #65）
+      def test_should_resolve_each_side_png_then_svg_then_bundled
         setup_basic_config('floral')
         File.write('covers/frontcover_floral.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        FileUtils.mkdir_p('covers/bundled')
+        File.write('covers/bundled/backcover.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
 
-        assert CoverCommands.svg_source?('floral')
-        assert CoverCommands.svg_source?('dark')
-        refute CoverCommands.svg_source?('master')
+        assert_pattern { CoverCommands.resolve_source('front', 'floral') => { type: :svg, bundled: false } }
+        back = Common.stub(:log_warn, nil) { CoverCommands.resolve_source('back', 'floral') }
+        assert_pattern { back => { type: :svg, bundled: true } }
+        assert_equal({ type: :missing }, CoverCommands.resolve_source('front', 'master'))
 
         create_custom_theme_files('floral')
-        refute CoverCommands.svg_source?('floral'), 'PNG があれば PNG の処理（PDF/X-1a・塗り足し）へ回す'
+        assert_equal :png, CoverCommands.resolve_source('front', 'floral')[:type],
+                     'PNG があれば PNG の処理（PDF/X-1a・塗り足し）へ回す'
       end
 
       # カバー設定バリデーション：カスタムテーマ（PNGファイルなし）が無効であることを確認
@@ -587,11 +592,6 @@ module VivlioStarter
         create_dummy_png("covers/backcover_#{theme}.png", width: 2894, height: 4092)
       end
 
-      # 簡易的なPNGファイル作成（テスト用）
-      # 実際のPNGバイナリヘッダを書き込んで有効なPNGファイルとして扱われるようにする
-      def create_dummy_png(path, width:, height:)
-        File.write(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
-      end
     end
 
     # ================================================================
@@ -607,6 +607,8 @@ module VivlioStarter
     # P3: print_pdf ターゲット後のファイル存在確認
     # ================================================================
     class CoverCropMarksTest < Minitest::Test
+      include CoverTestImages
+
       # B5 仕上がりサイズ（mm）
       TRIM_W_MM = 182.0
       TRIM_H_MM = 257.0
@@ -691,8 +693,7 @@ module VivlioStarter
           FileUtils.mkdir_p(covers_dir)
           create_dummy_master_files(covers_dir)
 
-          config = YAML.load_file('config/book.yml', symbolize_names: true)
-          CoverCommands.generate_cmyk_pdf(covers_dir, :b5, config)
+          CoverCommands.generate!(targets: ['print_pdf'], page_size: :b5)
 
           # 生成は生成キャッシュ・入稿用の成果品はルート直下へ複製（移設仕様 §2/§3.4）
           assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_b5_cmyk.pdf')),
@@ -706,7 +707,7 @@ module VivlioStarter
         end
       end
 
-      # generate_cmyk_pdf が仕上がりサイズ（base_size）を使うことを確認する
+      # 入稿用の表紙は仕上がりサイズ（SIZES）を generate_pdfx_single へ渡すことを確認する
       # crop_marks: true 時は generate_pdfx_single 内でサイズ拡張が行われる
       def test_should_pass_trim_size_not_bleed_size_to_generate_pdfx_single
         base_size = CoverCommands::SIZES[:b5]
@@ -745,52 +746,12 @@ module VivlioStarter
         create_dummy_png(File.join(covers_dir, 'backcover_master.png'))
       end
 
-      # ImageMagick で小さな白い PNG を生成する
-      # ImageMagick がない場合は最小限の PNG バイナリを書き込む
-      def create_dummy_png(path, width: 100, height: 100)
-        convert_cmd = imagemagick_convert_command
-        if convert_cmd
-          system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path,
-                 out: File::NULL, err: File::NULL)
-        else
-          File.binwrite(path, [
-            "\x89PNG\r\n\x1a\n",
-            "\x00\x00\x00\rIHDR",
-            "\x00\x00\x00\x01\x00\x00\x00\x01",
-            "\x08\x02\x00\x00\x00",
-            "\x90wS\xde",
-            "\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01",
-            "\x00\x00\x00\x00IEND\xaeB`\x82"
-          ].join)
-        end
-      end
-
-      # ImageMagick が利用可能かチェックする
-      def imagemagick_available?
-        !imagemagick_convert_command.nil?
-      end
-
       # PDF 先頭ページの仕上がり寸法（mm）を返す（pdf-reader・MIT）
       def pdf_page_size_mm(pdf_path)
         box = ::PDF::Reader.new(pdf_path).pages.first.attributes[:MediaBox]
         w_pt = box[2].to_f - box[0].to_f
         h_pt = box[3].to_f - box[1].to_f
         [w_pt / 72.0 * 25.4, h_pt / 72.0 * 25.4]
-      end
-
-      # ImageMagick のコマンドを取得する（magick 優先）
-      def imagemagick_convert_command
-        return ['magick'] if command_in_path?('magick')
-        return ['convert'] if command_in_path?('convert')
-        nil
-      end
-
-      # 指定コマンドが PATH に存在するかチェックする
-      def command_in_path?(command)
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, command)
-          File.executable?(path) && !File.directory?(path)
-        end
       end
 
       # 一時ディレクトリ内でテストを実行する

@@ -1013,21 +1013,9 @@ module VivlioStarter
         keys.uniq.map { |key| label_map[key] || key }
       end
 
-      def command_exists?(cmd)
-        return false if cmd.nil? || cmd.strip.empty?
-
-        candidate = cmd.strip
-        return file_executable?(candidate) if candidate.include?(File::SEPARATOR) || candidate.include?('\\')
-
-        pathext = windows_platform? ? ENV.fetch('PATHEXT', '').split(';').map(&:downcase) : ['']
-        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |path|
-          pathext.any? do |ext|
-            extname = ext.empty? || candidate.downcase.end_with?(ext) ? candidate : "#{candidate}#{ext.downcase}"
-            resolved = File.join(path, extname)
-            file_executable?(resolved)
-          end
-        end
-      end
+      # 探し方は Common に 1 つだけある。ここに名前を残すのは、テストが診断の各経路を
+      # DoctorCommands.stub :command_exists? で差し替えるため。
+      def command_exists?(cmd) = Common.external_command_available?(cmd)
 
       # コマンドが存在し、かつ実際に起動できるかを検証する。
       # presence チェック（command_exists?）は「ファイルが在り実行ビットが立つ」だけを見るため、
@@ -1278,10 +1266,6 @@ module VivlioStarter
         candidates.compact.any? { |cmd| command_exists?(cmd) }
       end
 
-      def windows_platform?
-        RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/i
-      end
-
       def detect_os_family(host_os)
         case host_os
         when /mswin|mingw|cygwin/i then :windows
@@ -1478,12 +1462,6 @@ module VivlioStarter
       rescue StandardError => e
         Common.log_warn("PATH 追記に失敗しました: #{e.class}: #{e.message}")
         false
-      end
-
-      def file_executable?(path)
-        return false unless File.exist?(path)
-
-        windows_platform? || File.executable?(path)
       end
 
       def path_included?(dir)

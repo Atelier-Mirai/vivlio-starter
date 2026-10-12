@@ -9,7 +9,6 @@
 # 主要メソッド:
 #   - save_queue: レビューキューを保存
 #   - load_queue: レビューキューを読み込み
-#   - clear_terms: 指定した用語をキューから削除
 #   - save_rejected_terms: リジェクト済み候補を保存
 #   - load_rejected_terms: リジェクト済み用語名のリストを取得
 #   - unreject_term!: リジェクト解除
@@ -65,14 +64,6 @@ module VivlioStarter
         end
 
         @queue_cache
-      end
-
-      # 指定した用語をキューから削除
-      # @param term_names [Array<String>] 削除する用語名のリスト
-      def clear_terms(term_names)
-        queue = load_queue
-        remaining = queue.reject { |c| term_names.include?(c['term']) }
-        save_queue(remaining)
       end
 
       # リジェクト済み候補を保存

@@ -390,7 +390,7 @@ module VivlioStarter
         # LinkImageValidator が resolve_config で参照する
         #
         # **明示された指定だけを載せる。** resolve_config は
-        # `cli_opts.fetch(:verify_images, 設定側の既定)` の形で book.yml をフォールバックに
+        # `cli_opts.fetch(:verify_external_links, 設定側の既定)` の形で book.yml をフォールバックに
         # 置くため、キーを常に立てると既定値が一度も発火せず verify.external_links が
         # 丸ごと無視される（2026-08-07 修正）。
         def setup_verify_options!

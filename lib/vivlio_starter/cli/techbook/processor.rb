@@ -94,7 +94,7 @@ module VivlioStarter
         PREFACE_H3_MARKER = '📚'
 
         def replace_circled_numbers(html)
-          replace_text_segments(html) do |text|
+          EmojiReplacer.map_text_segments(html) do |text|
             text.gsub(CIRCLED_NUMBER_REGEX) do |char|
               number = CIRCLED_NUMBER_TEXT.fetch(char)
               # src はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
@@ -104,47 +104,23 @@ module VivlioStarter
           end
         end
 
-        def replace_text_segments(html)
-          in_ignored_element = nil
-
-          html.split(/(<[^>]+>)/).map do |part|
-            if part.start_with?('<')
-              in_ignored_element = update_ignored_element_state(part, in_ignored_element)
-              part
-            elsif in_ignored_element
-              part
-            else
-              yield part
-            end
-          end.join
-        end
-
-        def update_ignored_element_state(tag, current)
-          normalized = tag.downcase
-          return nil if current && normalized.match?(%r{\A</\s*#{Regexp.escape(current)}\s*>})
-          return current if current
-
-          matched = normalized.match(%r{\A<\s*(script|style|svg)\b})
-          matched ? matched[1] : nil
-        end
-
         def ensure_generated_assets!
           FileUtils.mkdir_p(GENERATED_ASSET_DIR)
           accent = theme_color_hex
 
           h3_char = @config.dig(:theme, :markers, :h3).to_s.strip
           h3_char = '♣' if h3_char.empty?
-          h3_codepoint = marker_codepoint(h3_char)
+          h3_codepoint = EmojiReplacer.emoji_codepoint(h3_char)
 
           h4_char = @config.dig(:theme, :markers, :h4).to_s.strip
           h4_char = '♦' if h4_char.empty?
-          h4_codepoint = marker_codepoint(h4_char)
+          h4_codepoint = EmojiReplacer.emoji_codepoint(h4_char)
 
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h3.svg'), recolored_twemoji_svg(h3_codepoint, h3_char, accent))
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h4.svg'), recolored_twemoji_svg(h4_codepoint, h4_char, accent))
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'wave.svg'), wave_svg)
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-preface-h3.svg'),
-                                recolored_twemoji_svg(marker_codepoint(PREFACE_H3_MARKER), PREFACE_H3_MARKER, accent))
+                                recolored_twemoji_svg(EmojiReplacer.emoji_codepoint(PREFACE_H3_MARKER), PREFACE_H3_MARKER, accent))
 
           CIRCLED_NUMBER_TEXT.values.uniq.each do |number|
             write_file_if_changed(File.join(GENERATED_ASSET_DIR, "circled-#{number}.svg"), circled_number_svg(number))
@@ -157,13 +133,6 @@ module VivlioStarter
 
         # theme.color を hex へ解決する（パレット・解決規則は ThemeColor に一元化）。未解決は既定色。
         def theme_color_hex = ThemeColor.resolve(@config.dig(:theme, :color)) || ThemeColor.resolve(ThemeColor::DEFAULT_NAME)
-
-        def marker_codepoint(char)
-          char.codepoints
-              .reject { it == 0xFE0F }
-              .map { it.to_s(16).downcase }
-              .join("-")
-        end
 
         def recolored_twemoji_svg(codepoint, char, color)
           svg_path = File.join('stylesheets', 'twemoji', "#{codepoint}.svg")

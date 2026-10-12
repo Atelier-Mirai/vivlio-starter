@@ -34,6 +34,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative 'chapter_source'
 require_relative 'code_block_stripper'
 require_relative 'term_pattern'
 
@@ -94,7 +95,7 @@ module VivlioStarter
         private
 
         def load_chapters(chapters)
-          chapters.filter_map { resolve_path(it) }
+          chapters.filter_map { ChapterSource.path(it) }
                   .sort_by { File.basename(it, '.md') }
                   .map do |path|
             body = CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
@@ -115,13 +116,6 @@ module VivlioStarter
           return nil if scored.empty?
 
           scored.max_by { |chapter, score| [score, -chapter.number] }.first.basename
-        end
-
-        def resolve_path(chapter)
-          return chapter if File.exist?(chapter.to_s)
-
-          [File.join(Common::CONTENTS_DIR, "#{chapter}.md"),
-           File.join(Common::BUILD_HTML_DIR, "#{chapter}.md")].find { File.exist?(it) }
         end
       end
     end

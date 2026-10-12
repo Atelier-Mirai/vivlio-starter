@@ -66,17 +66,14 @@ module VivlioStarter
         end
 
         def test_should_handle_compound_emoji
-          replacer = EmojiReplacer.new(FIXTURES_DIR)
-
           # テスト対象は emoji_codepoint の変換ロジック
-          # send で private メソッドを直接テストする
           # 👨‍💻 = U+1F468 U+200D U+1F4BB
-          codepoint = replacer.send(:emoji_codepoint, "👨‍💻")
+          codepoint = EmojiReplacer.emoji_codepoint("👨‍💻")
           assert_equal "1f468-200d-1f4bb", codepoint
 
           # Variation Selector-16 (U+FE0F) が除外されることを検証
           # ✅️ = U+2705 U+FE0F
-          codepoint_with_vs16 = replacer.send(:emoji_codepoint, "✅\uFE0F")
+          codepoint_with_vs16 = EmojiReplacer.emoji_codepoint("✅\uFE0F")
           assert_equal "2705", codepoint_with_vs16
         end
 

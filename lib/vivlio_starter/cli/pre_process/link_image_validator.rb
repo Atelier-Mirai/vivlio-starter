@@ -68,10 +68,10 @@ module VivlioStarter
           #
           # @param content [String] Markdown テキスト（前処理前の原稿）
           # @param filename [String] 対象ファイル名
-          # @param config [Hash] 検証設定（verify_bare_urls, verify_external_links）
+          # @param config [Hash] 検証設定（verify_external_links）
           # @return [Array<LinkIssue>]
           def validate_links(content, filename, config: resolve_config)
-            link_issues = config[:verify_bare_urls] ? scan_bare_urls(content, filename) : []
+            link_issues = scan_bare_urls(content, filename)
 
             link_issues.each do |issue|
               Common.log_warn(
@@ -105,10 +105,9 @@ module VivlioStarter
           # @param content [String] Markdown テキスト（画像パス正規化済み）
           # @param filename [String] 対象ファイル名
           # @param source_path [String, nil] 元ファイルのパス（行番号の付け替え用）
-          # @param config [Hash] 検証設定（verify_images）
           # @return [Array<ImageIssue>]
-          def validate_images(content, filename, source_path: nil, config: resolve_config)
-            image_issues = config[:verify_images] ? scan_missing_images(content, filename) : []
+          def validate_images(content, filename, source_path: nil)
+            image_issues = scan_missing_images(content, filename)
 
             source_content = source_path && File.exist?(source_path) ? File.read(source_path, encoding: 'utf-8') : nil
             image_issues = image_issues.map { correct_line_number(it, source_content) } if source_content
@@ -122,7 +121,7 @@ module VivlioStarter
           # ビルドの前処理は、それぞれを正しい段階で呼ぶために分けて使う。
           # @return [ValidationReport]
           def validate(content, filename, source_path: nil, config: resolve_config)
-            image_issues = validate_images(content, filename, source_path:, config:)
+            image_issues = validate_images(content, filename, source_path:)
             link_issues = validate_links(content, filename, config:)
             ValidationReport.new(filename:, image_issues:, link_issues:)
           end
@@ -214,13 +213,6 @@ module VivlioStarter
             end
           end
 
-          # 蓄積されたレポートにエラー（issue）が1件以上あるか判定する
-          def any_issues?
-            @monitor.synchronize do
-              @reports.any? { |r| r.image_issues.any? || r.link_issues.any? }
-            end
-          end
-
           # コードインクルードエラーをレポートに記録する
           # MarkdownTransformer から呼ばれ、preflight の終了コード判定に反映させる
           # @param filename [String] ソースファイル名
@@ -308,25 +300,6 @@ module VivlioStarter
             issue
           end
 
-          # リンク issue の行番号を元ファイルの行番号に補正する。
-          def correct_link_line_number(issue, source_content)
-            url = issue.url
-            source_content.each_line.with_index(1) do |line, idx|
-              if line.include?(url)
-                return LinkIssue.new(
-                  filename: issue.filename,
-                  line_number: idx,
-                  url: issue.url,
-                  issue_type: issue.issue_type,
-                  status_code: issue.status_code,
-                  message: issue.message
-                )
-              end
-            end
-
-            issue
-          end
-
           # book.yml + CLI オプションから検証設定を解決する。
           # cli_opts に載るのは CLI で**明示された**指定だけ（`setup_verify_options!`）。
           # ここの fetch 第 2 引数が book.yml の既定として効くのは、その前提があってこそ。
@@ -339,8 +312,6 @@ module VivlioStarter
             cli_opts = Thread.current[:vs_verify_options] || {}
 
             {
-              verify_images: true,
-              verify_bare_urls: true,
               verify_external_links: cli_opts.fetch(:verify_external_links, verify_cfg.external_links == true),
               timeout: verify_cfg.timeout || 10,
               max_concurrency: verify_cfg.max_concurrency || 5

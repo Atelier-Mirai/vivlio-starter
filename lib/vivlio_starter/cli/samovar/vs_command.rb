@@ -17,7 +17,7 @@
 #   踏まえて判断すること。
 #
 # 適用範囲:
-#   公開コマンドのみ。内部コマンド（create:cover / create:titlepage /
+#   公開コマンドのみ。内部コマンド（create:titlepage /
 #   create:colophon / create:legalpage）は位置引数を持たず並べ替えの余地が
 #   ないため、`Samovar::Command` を直接継承したままとする。
 # ================================================================

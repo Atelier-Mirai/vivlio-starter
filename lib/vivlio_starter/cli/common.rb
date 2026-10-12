@@ -504,21 +504,47 @@ module VivlioStarter
       # ------------------------------------------------------------
       # 外部コマンド可用性チェック
       # ------------------------------------------------------------
-      # PATH を走査してコマンドが実行可能か判定する。
-      # @param cmd [String] 実行形式コマンド名（絶対パスも可）
+      # PATH を走査してコマンドが実行可能か判定する。外部コマンドの有無はすべてここで見る
+      # （doctor・lint・表紙・画像生成がそれぞれ持っていた探し方を 1 つにした）。
+      # Windows では PATHEXT の拡張子（.exe など）を補って探し、実行ビットは見ない。
+      # @param cmd [String] 実行形式コマンド名（パスも可）
       # @return [Boolean]
       def external_command_available?(cmd)
         candidate = cmd.to_s.strip
         return false if candidate.empty?
+        return executable_file?(candidate) if candidate.include?(File::SEPARATOR) || candidate.include?('\\')
 
-        if candidate.include?(File::SEPARATOR)
-          return File.executable?(candidate) && !File.directory?(candidate)
-        end
-
+        extensions = windows? ? ENV.fetch('PATHEXT', '').split(';').map(&:downcase) : ['']
         ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
-          path = File.join(dir, candidate)
-          File.executable?(path) && !File.directory?(path)
+          extensions.any? do |ext|
+            name = ext.empty? || candidate.downcase.end_with?(ext) ? candidate : "#{candidate}#{ext}"
+            executable_file?(File.join(dir, name))
+          end
         end
+      end
+
+      def executable_file?(path)
+        File.file?(path) && (windows? || File.executable?(path))
+      end
+
+      def windows?
+        RbConfig::CONFIG['host_os'].match?(/mswin|mingw|cygwin/i)
+      end
+      private_class_method :executable_file?, :windows?
+
+      # 画像の寸法（px）を magick identify で読む。読めない・0 以下なら nil。
+      # 寸法を読む所はすべてここを通す（EPUB の縮小・見出し画像・showcase・テーマ画像）。
+      # @param path [String]
+      # @return [Array(Integer, Integer), nil] [幅, 高さ]
+      def image_size(path)
+        require 'open3'
+        out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path.to_s, err: File::NULL)
+        return nil unless status.success?
+
+        width, height = out.split.map(&:to_i)
+        [width, height] if width.to_i.positive? && height.to_i.positive?
+      rescue StandardError
+        nil
       end
 
       # 外部コマンドが見つからない際の案内メッセージを生成する。
@@ -1102,7 +1128,7 @@ module VivlioStarter
       # エンドレスメソッド定義を module_function として明示的に公開
       module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
                       :warn_retired_config_keys, :collect_key_paths,
-                      :ensure_external_command!, :external_command_available?,
+                      :ensure_external_command!, :external_command_available?, :image_size,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_dir, :cache_enabled?,
                       :cover_cache_dir, :theme_images_cache_dir, :generate_cover_output_filename,

@@ -260,8 +260,7 @@ module VivlioStarter
 
         # preflight 完了サマリーを表示する。
         # 🔴 エラーあり / 🟡 警告のみ / ✅ 指摘なし の 3 段階（同 spec §1・§2.3）。
-        # 終了コードは従来判定（LinkImageValidator.any_issues?）のままで、
-        # ここで変えるのは文言だけ（警告件数を拾う）。
+        # 終了コードは call が同じ IssueRegistry の 🔴 の有無で決める。ここは文言だけを担う。
         def print_preflight_summary
           counts = PreProcessCommands::IssueRegistry.counts
 

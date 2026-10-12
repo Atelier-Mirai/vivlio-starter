@@ -306,15 +306,7 @@ module VivlioStarter
 
           # 元画像の実寸（px→パーミル変換・viewBox 計算に使う）。
           # @return [Array(Integer, Integer), nil]
-          def image_dimensions(path)
-            out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path)
-            return nil unless status.success?
-
-            width, height = out.split.map(&:to_i)
-            (width.to_i.positive? && height.to_i.positive?) ? [width, height] : nil
-          rescue StandardError
-            nil
-          end
+          def image_dimensions(path) = Common.image_size(path)
 
           # 元画像が写真か（＝ユニーク色数が多いか）。スクリーンショットは平坦色で色数が
           # 桁違いに少ない（冒頭コメントの実測値）。判定はキャッシュ未ヒット時のみ走り、

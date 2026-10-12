@@ -430,7 +430,7 @@ module VivlioStarter
         end
 
         def ensure_textlint_available!
-          return if command_exists?(textlint_command)
+          return if Common.external_command_available?(textlint_command)
 
           raise LintError, <<~MSG.strip
             textlint コマンドが見つかりません。npm などで textlint をインストールしてください。
@@ -860,38 +860,6 @@ module VivlioStarter
 
         def textlint_command
           ENV.fetch(TEXTLINT_ENV_VAR, 'textlint')
-        end
-
-        def command_exists?(cmd)
-          return false if cmd.nil? || cmd.strip.empty?
-
-          candidate = cmd.strip
-          return file_executable?(candidate) if path_like?(candidate)
-
-          pathext = windows_platform? ? ENV.fetch('PATHEXT', '').split(';').map(&:downcase) : ['']
-          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |path|
-            pathext.any? do |ext|
-              extname = ext.empty? || candidate.downcase.end_with?(ext) ? candidate : "#{candidate}#{ext.downcase}"
-              resolved = File.join(path, extname)
-              file_executable?(resolved)
-            end
-          end
-        end
-
-        def file_executable?(path)
-          if Common.respond_to?(:file_executable?)
-            Common.file_executable?(path)
-          else
-            File.exist?(path) && File.executable?(path)
-          end
-        end
-
-        def path_like?(candidate)
-          candidate.include?(File::SEPARATOR) || candidate.include?('\\')
-        end
-
-        def windows_platform?
-          !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
         end
 
         # `<!-- vs-lint-disable-next-line -->` の直後の行番号を、原稿ごとに集める。
