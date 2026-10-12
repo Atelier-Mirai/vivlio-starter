@@ -110,7 +110,7 @@ output:
 
 ### 基本的な使い方
 
-設定したテーマのカバーをまとめて作るには、引数を付けずに実行します。
+設定したテーマのカバーは、次のコマンドでまとめて作ります。
 
 ```bash
 vs cover
@@ -118,18 +118,11 @@ vs cover
 
 `vs cover` は `book.yml` のテーマ・判型・`output.targets` を読み、必要な表紙を作ります。`pdf` があれば閲覧用（RGB）、`print_pdf` があれば入稿用（CMYK）、`epub` か `kindle` があれば電子書籍用（JPEG）です。入稿用と電子書籍用の表紙はプロジェクト直下に置かれるので、それを開いて確かめてください。閲覧用は、`vs build` で本に組み込んだ姿で確かめます。
 
-### 判型や形式を指定して作り直す
+### 表紙だけを作り直す
 
-一つの判型や形式だけを作り直すときは、引数で指定します。
+表紙の判型は `page.use`、作る形式は `output.targets` で決まります。`vs cover` に引数はありません。別の判型や形式で作りたいときは、`book.yml` を書き換えてから実行します。
 
-```bash
-vs cover a4     # A4 判の表紙（RGB 版・CMYK 版は output.targets に従う）
-vs cover b5     # B5 判の表紙
-vs cover a5     # A5 判の表紙
-vs cover epub   # 電子書籍用の JPEG だけ
-```
-
-引数を省いたときは、`page.use` の判型で作ります。判型の引数で作る表紙が RGB 版か CMYK 版かは、引数ではなく `output.targets`（`pdf` / `print_pdf`）で決まります。
+表紙のデザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときは、本文を組み直さずに `vs cover` だけを実行すれば足ります。`vs build` も表紙を作り直すので、本を組むときに `vs cover` を先に実行しておく必要はありません。
 
 ## 設定のカスタマイズ
 
@@ -332,7 +325,7 @@ open vivlio_starter_backcover_v1.0.0.pdf
 
 - ソース画像の準備（判型に合わせたサイズ・350 dpi・PNG または SVG）
 - `book.yml` の `output.cover` によるテーマの選択
-- `vs cover` による一括生成と形式別の生成（RGB 版・CMYK 版・EPUB 用）
+- `vs cover` による生成（`output.targets` に応じて RGB 版・CMYK 版・EPUB 用）
 - `vs clean --cover` による生成物の削除
 - 生成できないときや色が変わるときの確認
 
