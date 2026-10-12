@@ -65,31 +65,36 @@ QueryStream は、データ・テンプレート・原稿内の展開指示と�
 
 ### 実際の展開例
 
-三つの要素を、書籍紹介の例でつないでみます。`data/books.yml` には Ruby と C の入門書を用意し、各項目に `title`・`author.name`・`desc`・`cover` を持たせます。
+三つの要素を、書籍紹介の例でつないでみます。`data/books.yml` には Ruby と C の入門書を用意し、各項目に `title`・`author.name`・`publisher`・`year`・`desc`・`cover` を持たせます。
 
 ```yaml
 # data/books.yml（抜粋）
 - title: 楽しいRuby
   author:
     name: 高橋征義
+  publisher: SBクリエイティブ
+  year: 2019
   desc: Rubyを楽しく学べる入門書。
   cover: joyful_ruby.webp
 
 - title: はじめてのC
   author:
     name: 椋田 實
+  publisher: 技術評論社
+  year: 2008
   desc: C言語の定番入門書。
   cover: first_c.webp
 ```
 
-一件分の見せ方は、データ名の単数形に先頭の `_` を付けた `templates/_book.md` で定義します。ここでは、前章の `.book-card` と組み合わせます。
+一件分の見せ方は、データ名の単数形に先頭の `_` を付けた `templates/_book.md` で定義します。ここでは、前章の `.book-card` と組み合わせます。書名の後の 1 段落目が書誌、空行の後が説明になります。
 
 ```markdown
 <!-- templates/_book.md -->
 :::{.book-card}
 ![](cover)
 **= title**
-= author.name 著
+= author.name 著／= publisher／= year 年
+
 = desc
 :::
 ```
@@ -229,6 +234,21 @@ AND 条件は `&&` / `AND` / `and` のいずれでも書けます。カンマ区
 ```
 
 著者名（`author`）などの値が設定されていない項目では、そのキーを含む行が省略されます。値のない項目のために空行や「著者:」だけが残らないので、同じテンプレートを情報量の異なるデータへ使えます。
+
+1 行に `= key` が二つ以上ある行では、**値のない項目の部分だけ**が省略されます。行は区切り（`／`・`・`・`、`・`,`）と、`= key` を含む括弧（`（…）`）で部品に分かれ、値のない項目を含む部品だけが、区切りを詰めて消えます。`著` や `年` のように `= key` に付けた言葉は、値と一緒に残るか、一緒に消えます。
+
+```markdown
+= author.name 著／= publisher／= year 年
+```
+
+| データ | 出力 |
+|:---|:---|
+| すべてある | 高橋征義 著／SBクリエイティブ／2019 年 |
+| 発行年がない | 高橋征義 著／SBクリエイティブ |
+| 著者だけ | 高橋征義 著 |
+| すべてない | 行ごと省略 |
+
+表の行（`|` で始まる行）は列がずれないよう、値のない項目があれば今までどおり行ごと省略されます。
 
 ### 画像の記法
 

@@ -581,17 +581,30 @@ module VivlioStarter
           title_text = title_match[1].strip
           html.sub!(title_match[0], '')
 
-          description_html = html.strip
+          meta_html, description_html = split_book_meta(html.strip)
 
           parts = []
           parts << "  #{img_tag}"
           parts << '  <div class="book-info">'
           parts << "    <p class=\"book-title\">#{title_text}</p>"
+          parts << "    <p class=\"book-meta\">#{meta_html}</p>" if meta_html
           parts << '    <div class="book-description">'
           parts << "      #{description_html}"
           parts << '    </div>'
           parts << '  </div>'
           parts.join("\n")
+        end
+
+        # 書名の後に段落が 2 つ以上あれば、最初の段落を書誌（著者・出版社・発行年など）として分ける
+        # （book-card-bibliography-spec.md §3.1）。段落が 1 つだけのカードは、今までどおり全部を説明にする。
+        # @param html [String] 書名を除いた残りの HTML
+        # @return [Array(String, String), Array(nil, String)] [書誌の中身 or nil, 説明の HTML]
+        def split_book_meta(html)
+          first = html.match(%r{\A<p>(.*?)</p>\s*}m)
+          return [nil, html] unless first
+
+          rest = first.post_match
+          rest.empty? ? [nil, html] : [first[1].strip, rest.strip]
         end
 
         # ::: {.class ...} 記法で囲まれたコンテナを div に変換。

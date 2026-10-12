@@ -265,6 +265,11 @@ module VivlioStarter
           assert_match(%r{高橋征義 著<br\s*/?>}, html, '著者と説明が <br> で改行される')
         end
 
+        def book_card_html(md)
+          out, = convert_container_blocks(md, class_name: 'book-card')
+          convert_book_card_inner_markdown(out)
+        end
+
         # 「フェンス入りコンテナの直後の book-card」が正しく変換される回帰テスト。
         # 旧 Masking はフェンス終端の改行までプレースホルダへ飲み込み、直後の閉じ ::: が
         # 同一行へ癒着 → 前のコンテナの閉じを見失った変換が book-card ごと飲み込んで
@@ -291,6 +296,41 @@ module VivlioStarter
           assert_includes out, '<div class="book-card">'
           assert_includes out, '<p class="book-title">はじめての技術書づくり</p>', 'タイトルが book-info へ抽出される'
           assert_includes out, ':::{.output}', '前のコンテナ（対象外クラス）は素通しのまま'
+        end
+
+        # 書名の後に段落が 2 つ以上あれば、最初の段落が書誌（book-meta）になる。
+        # 書誌の中は 1 行ずつ改行し、説明は book-description に入る（book-card-bibliography-spec.md §3.1）。
+        def test_convert_book_card_with_bibliography_paragraph
+          out = book_card_html(<<~MD)
+            :::{.book-card}
+            ![](images/x.webp)
+            **Web技術で「本」が作れるCSS組版Vivliostyle入門**
+            リブロワークス 著／Vivliostyle 監修
+            C&R研究所・2023 年
+
+            CSS組版とは、Webページの技術を使って本を作ることです。
+            :::
+          MD
+
+          meta = out[%r{<p class="book-meta">(.*?)</p>}m, 1]
+          assert_match(%r{\Aリブロワークス 著／Vivliostyle 監修<br\s*/?>\s*C&amp;R研究所・2023 年\z}, meta)
+          assert_match(%r{<div class="book-description">\s*<p>CSS組版とは}, out)
+          refute_includes out[%r{<div class="book-description">.*}m], 'リブロワークス', '書誌は説明に入らない'
+        end
+
+        # 段落が 1 つだけのカードは今までどおり、全部を説明として組む（書誌は作らない）。
+        def test_convert_book_card_with_single_paragraph_has_no_bibliography
+          out = book_card_html(<<~MD)
+            :::{.book-card}
+            ![](images/x.webp)
+            **はじめての技術書づくり**
+            高橋征義 著
+            はじめて技術書を書く方にお勧め。
+            :::
+          MD
+
+          refute_includes out, 'book-meta'
+          assert_match(%r{<div class="book-description">\s*<p>高橋征義 著<br\s*/?>\s*はじめて技術書を書く方にお勧め。</p>}, out)
         end
 
         # =================================================================

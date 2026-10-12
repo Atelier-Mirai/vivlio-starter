@@ -86,6 +86,16 @@
   font-size: 14pt;
 }
 
+/* 書誌（著者・出版社・発行年など）。書名の後に段落が 2 つ以上あるとき、最初の段落がこれになる
+   （book-card-bibliography-spec.md §3.2）。説明より一回り小さく薄く。色は var() でなく実際の値で
+   書き、Kindle（var() を解さない）でも同じ色にする。 */
+.book-meta {
+  margin-block: 0;
+  font-size: 10pt;
+  line-height: 1.4;
+  color: #555;
+}
+
 .book-description {
   margin-block-end: 0;
   font-size: 11pt;
@@ -605,6 +615,8 @@ body.vs-kindle .book-card img {
   margin: 0 1em 0.5em 0;
 }
 body.vs-kindle .book-card::after { content: ""; display: block; clear: both; }
+/* Kindle では .book-info が grid でなく row-gap が効かないので、書誌と説明の間を余白で空ける */
+body.vs-kindle .book-meta { margin-block: 0 0.8em; }
 
 /* 数式: ex→em は EpubBuilder が inline style を変換する。ここは万一 inline style が
    無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */

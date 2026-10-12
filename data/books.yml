@@ -1,7 +1,9 @@
-- title: 楽しいRuby
+- title: たのしいRuby
   author:
     name: 高橋征義
     bio: Rubyist。
+  publisher: SBクリエイティブ
+  year: 2019
   desc: Rubyを楽しく学べる入門書。
   cover: joyful_ruby.webp
 
@@ -9,5 +11,7 @@
   author:
     name: 椋田 實
     bio: C プログラマ
+  publisher: 技術評論社
+  year: 2008
   desc: C言語の定番入門書。
   cover: first_c.webp
