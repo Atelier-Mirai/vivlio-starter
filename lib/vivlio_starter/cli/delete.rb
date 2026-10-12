@@ -104,9 +104,9 @@ module VivlioStarter
           ENV['VERBOSE'] = '1' if verbose?
         end
 
-        # @return [Boolean] force モードが有効か（--yes も同義）
+        # @return [Boolean] force モードが有効か
         def force?
-          !!(option_values[:force] || option_values[:yes])
+          !!option_values[:force]
         end
 
         # @return [Boolean] verbose モードが有効か
