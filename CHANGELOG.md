@@ -450,6 +450,10 @@
 
 ### Changed
 
+- **雛形の `package.json` から stylelint を外し、脆弱性の指摘を 18 件から 3 件にした**。`vs new` で作った本で `npm install` すると、`npm audit` が 18 件（critical 2・high 7）を報告していた。勧められる `npm audit fix --force` は Vivliostyle CLI を 11.2.0 へ、stylelint を 7.7.0 へ格下げするので使えない。
+  - Vivliostyle CLI と VFM が使う handlebars・dompurify・valibot を、`overrides` で直った版へ上げた（`^4.7.10`・`^3.4.16`・`^1.4.2`。メジャー版は上げない）。
+  - high 7 件は stylelint が使う braces（最新の 3.0.3 も対象で、直った版が無い）から来ていた。stylelint は `lint:css` スクリプトのためだけに入っていて、`vs` からは使っていないので、スクリプト・devDependencies・リポジトリの `.stylelintrc.json` ごと外した。
+  - 残る 3 件（moderate）は press-ready が使う uuid 8.3.2 で、直った版（11.1.1 以上）はメジャー版が 3 つ上になるため上げていない。該当するのは v3/v5/v6 の UUID を、渡したバッファーへ書き込む使い方だけ。
 - **表紙を作る処理を `CoverCommands` の 1 つの入口にまとめた**（改善案.md #93）。`vs cover` と `vs build` はどちらも同じ処理を通る。表と裏はそれぞれ元の画像を決め（PNG → 著者の SVG → 同梱テンプレート）、PNG なら必ず入稿用の処理（塗り足し・トンボ・CMYK）を通す。SVG の組み立ては `create.rb` から `cover/svg_cover.rb` へ移した（`create.rb` は 1,284 行 → 550 行）。
   - 入稿用の表紙のトンボを、本文の入稿用 PDF と同じ描き方・重ね方（`CropMarksOverlay`・qpdf）にした。TrimBox・BleedBox は、トンボと同じく実際のページの寸法から決める。PNG の A4 の表紙では、仕上がりの上端と右端が 0.13〜0.5pt 内側になり、トンボとボックスが一致する（以前はボックスだけ判型の寸法ぴったりで、上の余白が 0.5pt ずれていた）。
   - 表紙の塗り足しの幅を、本文と同じ読み方（`NombreStamper.bleed_mm_from_config`）にした。`bleed: 0mm` と書くと、本文は 3mm、PNG の表紙は 0mm になっていた。
