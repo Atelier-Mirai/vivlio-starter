@@ -572,6 +572,10 @@ module VivlioStarter
         # ことになる。Rake のテストタスクが立てる（Rakefile の test:no_preview）。
         SUPPRESS_ENV = 'VS_NO_PDF_PREVIEW'
 
+        # Preview への指示 1 つを待つ上限（秒）。Preview が応答しなくなると、osascript も
+        # `open -a Preview` も AppleEvent の既定（約 2 分）まで戻らず、ビルドが止まって見える。
+        PREVIEW_TIMEOUT_SEC = 10
+
         def initialize(options, path)
           @options = options || {}
           @explicit_path = path
@@ -594,8 +598,12 @@ module VivlioStarter
           end
 
           ensure_pdf_exists(pdf_path)
-          close_existing_windows_if_needed
-          open_pdf(pdf_path)
+          # ウィンドウを閉じられなくても開くことはできるので続ける。応答が無いときだけは止める
+          return warn_preview_unresponsive(pdf_path) if close_existing_windows_if_needed == :timeout
+
+          opened = open_pdf(pdf_path)
+          return warn_preview_unresponsive(pdf_path) if %i[timeout failed].include?(opened)
+
           position_window
           # どのファイルを開いたかを既定ログレベルでも報告する（省略時は自動選択のため）
           Common.log_result("#{File.basename(pdf_path)} を開きました", status: :success)
@@ -714,31 +722,59 @@ module VivlioStarter
         end
 
         # 既存の Preview ウィンドウを閉じる
+        # @return [Symbol, nil] run_preview_command の結果（閉じない設定なら nil）
         def close_existing_windows_if_needed
           return unless close_existing_windows?
 
-          begin
-            system('osascript', '-e', 'tell application "Preview" to close every window')
-          rescue StandardError
-            # 失敗しても処理続行
-          end
+          run_preview_command('osascript', '-e', 'tell application "Preview" to close every window')
         end
 
         # Preview.app で PDF を開く
+        # @return [Symbol] run_preview_command の結果
         def open_pdf(path)
-          system("open -a Preview \"#{path}\"")
+          run_preview_command('open', '-a', 'Preview', path)
         end
 
-        # Preview ウィンドウを設定された位置に移動する
+        # Preview ウィンドウを設定された位置に移動する。PDF はもう開いているので、結果は問わない
         def position_window
-          bounds = resolved_window_bounds
-          system <<~APPLE_SCRIPT
-            osascript -e '
-              tell application "Preview"
-                activate
-                set bounds of front window to #{bounds}
-              end tell'
+          script = <<~APPLE_SCRIPT
+            tell application "Preview"
+              activate
+              set bounds of front window to #{resolved_window_bounds}
+            end tell
           APPLE_SCRIPT
+          run_preview_command('osascript', '-e', script)
+        end
+
+        # Preview への指示を 1 つ、timeout 秒（既定 PREVIEW_TIMEOUT_SEC）を上限に実行する。
+        # 応答の無い Preview を待ち続けず、時間切れなら指示したプロセスを止める。
+        # @return [Symbol] :ok / :failed / :timeout
+        def run_preview_command(*argv, timeout: PREVIEW_TIMEOUT_SEC)
+          pid = Process.spawn(*argv, out: File::NULL, err: File::NULL)
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+          loop do
+            _, status = Process.wait2(pid, Process::WNOHANG)
+            return status.success? ? :ok : :failed if status
+
+            if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+              Process.kill('TERM', pid)
+              Process.wait(pid)
+              return :timeout
+            end
+            sleep 0.1
+          end
+        rescue SystemCallError
+          :failed
+        end
+
+        # Preview が応答しないときの案内。PDF はできているので、ビルドは失敗させない。
+        def warn_preview_unresponsive(pdf_path)
+          Common.log_warn(
+            'Preview が応答しないため、PDF を開けませんでした',
+            detail: "PDF はできています: #{pdf_path}\n" \
+                    "→ Preview を終了してから（終了しなければ ⌥⌘⎋ で強制終了）、" \
+                    "vs open #{File.basename(pdf_path, '.pdf')} で開いてください"
+          )
         end
 
         # 既存 PDF ウィンドウを閉じるか。未設定（nil）は true（既定）、false は明示的な無効化
