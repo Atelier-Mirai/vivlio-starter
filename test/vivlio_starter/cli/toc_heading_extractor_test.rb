@@ -87,6 +87,54 @@ module VivlioStarter
         assert_equal 'Preface Title', headings[0].text
       end
 
+      # page.toc_depth: 2 では本文の章も節（h2）までにする。目次が 16 ページあった本書を
+      # 節までにして詰めるための設定（改善案 #107）
+      def test_should_stop_at_sections_when_depth_is_two
+        html_file = create_html_file('11-sample.html', <<~HTML)
+          <html><body>
+            <h1 id="title">Chapter Title</h1>
+            <h2 id="sec1">Section 1</h2>
+            <h3 id="sub1">Subsection 1</h3>
+          </body></html>
+        HTML
+
+        chapter = TocCommands::HeadingExtractor.new(html_file, make_entry('11-sample', kind: :chapter), depth: 2)
+        only_h1 = TocCommands::HeadingExtractor.new(html_file, make_entry('11-sample', kind: :chapter), depth: 1)
+
+        assert_equal ['Chapter Title', 'Section 1'], chapter.headings.map(&:text)
+        assert_equal ['Chapter Title'], only_h1.headings.map(&:text)
+      end
+
+      # 付録は toc_depth: 3 でも節までのまま。深さを上げても項は載らない
+      def test_should_keep_appendix_at_sections_even_when_depth_is_three
+        html_file = create_html_file('91-appendix.html', <<~HTML)
+          <html><body>
+            <h1 id="title">Appendix Title</h1>
+            <h2 id="sec1">Section 1</h2>
+            <h3 id="sub1">Subsection 1</h3>
+          </body></html>
+        HTML
+
+        appendix = TocCommands::HeadingExtractor.new(html_file, make_entry('91-appendix', kind: :appendix), depth: 3)
+        only_h1 = TocCommands::HeadingExtractor.new(html_file, make_entry('91-appendix', kind: :appendix), depth: 1)
+
+        assert_equal ['Appendix Title', 'Section 1'], appendix.headings.map(&:text)
+        assert_equal ['Appendix Title'], only_h1.headings.map(&:text)
+      end
+
+      # 不正な値は既定の 3 に戻し、直し方を添えて知らせる
+      def test_should_fall_back_to_default_depth_with_warning_for_invalid_value
+        warnings = []
+
+        depths = Common.stub(:log_warn, ->(msg) { warnings << msg }) do
+          [4, 'two', 2, '2', nil].map { TocCommands::HeadingExtractor.configured_depth(it) }
+        end
+
+        assert_equal [3, 3, 2, 2, 3], depths
+        assert_equal 2, warnings.size, '空欄は既定で黙って通し、4 と two だけ知らせる'
+        assert_includes warnings.first, 'after : toc_depth: 3'
+      end
+
       # chapter の h1 は toc-chapter クラスを持つ
       def test_chapter_h1_has_toc_chapter_class
         html_file = create_html_file('11-sample.html', <<~HTML)

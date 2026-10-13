@@ -172,6 +172,7 @@ if File.exist?(book_yml)
   content.sub!(/^(\s+exclude_chapters:\s*)\[[^\]]*\](\s*# 索引・用語集の対象から外す章)/, '\1[]\2')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
+  content.gsub!(/^(\s+toc_depth:\s*)\S+(\s*#.*)?$/, '\13\2')
   # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、
   # 値だけ替えると配布物で値と説明が食い違う）
   content.gsub!(/^(\s+window_bounds:\s*)(['"].+?['"])(\s*#.*)?$/,

@@ -82,6 +82,7 @@ module VivlioStarter
       %i[page use]                                    => Spec[default: "b5_standard"],
       %i[page section_pagebreak]                      => Spec[default: true],
       %i[page chapter_pagebreak]                      => Spec[default: "recto"],
+      %i[page toc_depth]                              => Spec[default: 3],
 
       # ------- typography -------
       %i[typography body font]                        => Spec[default: "Noto Serif JP"],

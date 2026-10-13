@@ -156,10 +156,12 @@ module VivlioStarter
 
         # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
         # @param base_dir [Pathname] ベースディレクトリ
-        def initialize(entry_map, base_dir:)
+        # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
+        def initialize(entry_map, base_dir:, depth: HeadingExtractor.configured_depth)
           @entry_map = entry_map
           @targets = entry_map.keys.sort
           @base_dir = Pathname.new(base_dir)
+          @depth = depth
         end
 
         # TOC の Markdown 文字列を構築する
@@ -174,7 +176,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :entry_map, :targets, :base_dir
+        attr_reader :entry_map, :targets, :base_dir, :depth
 
         # 前書きエントリを必要に応じて追加する（新仕様: 00-preface）
         def append_preface(buffer)
@@ -200,7 +202,7 @@ module VivlioStarter
 
           filtered_targets.each do |target|
             entry = entry_map[target]
-            HeadingExtractor.new(target, entry).headings.each do |heading|
+            HeadingExtractor.new(target, entry, depth:).headings.each do |heading|
               list_state.transition_to(heading.level)
               list_state.open_item(heading.list_markup)
             end
@@ -345,12 +347,37 @@ module VivlioStarter
       # HTML 見出しから TOC 用項目を生成する
       class HeadingExtractor
         LEVEL_BY_TAG = { 'h1' => 1, 'h2' => 2, 'h3' => 3 }.freeze
+        DEPTHS = LEVEL_BY_TAG.values.freeze
+        DEFAULT_DEPTH = ConfigKeys::KEYS[%i[page toc_depth]].default
+        # 付録は節（h2）まで。早見表などは項が細かく、目次を埋めるだけになる
+        APPENDIX_MAX_DEPTH = 2
+
+        # page.toc_depth を読む。目次はビルドごとに 1 回だけ組むので、警告もここで 1 回だけ鳴る。
+        # 綴り間違いが黙って既定へ戻ると著者は気づけないので知らせる（chapter_pagebreak と同じ扱い）。
+        # @param raw [Object] book.yml の値（テストからは直接渡す）
+        def self.configured_depth(raw = Common::CONFIG&.page&.toc_depth)
+          return DEFAULT_DEPTH if raw.to_s.strip.empty?
+
+          depth = Integer(raw.to_s.strip, exception: false)
+          return depth if DEPTHS.include?(depth)
+
+          Common.log_warn(
+            "config/book.yml の page.toc_depth の値が不正です（#{raw}）\n" \
+            "   使える値: #{DEPTHS.join(' / ')}（1 … 章だけ / 2 … 節（##）まで / 3 … 項（###）まで）\n" \
+            "   before: toc_depth: #{raw}\n" \
+            "   after : toc_depth: #{DEFAULT_DEPTH}\n" \
+            "   今回は既定の #{DEFAULT_DEPTH} で処理しました。"
+          )
+          DEFAULT_DEPTH
+        end
 
         # @param target [String] HTML ファイルパス
         # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
-        def initialize(target, entry)
+        # @param depth [Integer] 本文の章で載せる見出しの深さ（1〜3）
+        def initialize(target, entry, depth: DEFAULT_DEPTH)
           @target = target
           @entry = entry
+          @depth = depth
         end
 
         # ターゲット HTML から見出し情報を配列で返す
@@ -360,18 +387,16 @@ module VivlioStarter
 
         private
 
-        attr_reader :target, :entry
+        attr_reader :target, :entry, :depth
 
         # ファイル種別に応じて取り出す見出しタグを制御する
         def nodes
-          case entry.kind
-          when :chapter
-            document.css('h1, h2, h3')
-          when :appendix
-            document.css('h1, h2')
-          else
-            document.css('h1')
-          end
+          levels = case entry.kind
+                   when :chapter then depth
+                   when :appendix then [depth, APPENDIX_MAX_DEPTH].min
+                   else 1
+                   end
+          document.css(LEVEL_BY_TAG.keys.first(levels).join(', '))
         end
 
         # Nokogiri ドキュメントを生成する（失敗時は空ドキュメント）
