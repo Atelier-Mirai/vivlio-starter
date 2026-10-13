@@ -114,7 +114,7 @@ rc.3 の公開に合わせて **rc.2 を yank した**。単に新しい版が�
 
 #### `rubygems_mfa_required` は `false` のままにする
 
-**当初は「3 本まとめて 1.0.0 で `true`」の方針だったが、見送ることにした。** 3 本とも `false` 相当のまま（`vivlio-starter` / `query-stream` は `'false'`、`vivlio-starter-pdf` は未設定）。
+**当初は「3 本まとめて 1.0.0 で `true`」の方針だったが、見送ることにした。** 3 本とも `'false'` を明記している（`vivlio-starter-pdf` は未設定だったのを、2026-10-14 にそろえた）。
 
 理由は 3 つ。
 
