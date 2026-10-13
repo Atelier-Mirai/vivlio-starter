@@ -572,21 +572,15 @@ Kindle だけは事情が異なります。KFX 形式は SVG を扱えないた�
 | `.frame` | 細い実線 | — |
 | `.alert` | 太い実線 | 他の線より 1mm 太い |
 
-:::{.memo}
-系列名を線の終端へ直接置ける図では、凡例よりも直接ラベルが適しています。凡例を使うと、読者は線の見た目と名前を行き来して照合します。線の色が白黒印刷で近くなるほど、この照合は難しくなります。線の近くに名前を置けば、その対応を図の中で直接読めます。
-:::
-
 `.s3`（170）と `.area-pale`（208）は白地の上では薄く、細い線にすると印刷で飛びます。この二つは**面か太い線にだけ**使ってください。線の上に文字を重ねるときは、`.plate`（白）を下に敷くと読めます。
 
-作図後は PDF を開き、プレビューや印刷ダイアログで白黒表示を確認します。区別しにくい線があれば、色の差を広げるだけでなく、実線・破線・点線など線種にも違いを持たせます。
+作図後は、PDF を白黒で表示して、線を見分けられるかを確かめてください。
 
 ## ダイアグラム（mermaid）
 
 ### ` ```mermaid ` — フローチャート・シーケンス図など
 
-[mermaid](https://mermaid.js.org/)のコードフェンスで記述した図は、ビルド時に画像へ変換されます。標準の mermaid 記法をそのまま使い、Vivlio Starter 独自の書き方は加えていません。**PDF にはベクター形式、EPUB・Kindle にはラスター形式**で収録されます。フローチャートやシーケンス図など、要素の関係で構成される図をテキストとして管理できます。
-
-言語名に `mermaid` を指定したコードフェンスに、mermaid の図ソースを書きます。
+言語名に `mermaid` を指定したコードフェンスに mermaid の図ソースを書くと、ビルド時に画像へ変換されます。記法は標準の mermaid のままで、**PDF にはベクター形式、EPUB・Kindle にはラスター形式**で収録されます。
 
 ````markdown
 ```mermaid
@@ -606,16 +600,10 @@ graph LR
   B -->|No| D[処理B]
 ```
 
-@ch-markdown-tutorial の章にあるフレーバー系統図も、この mermaid 記法で描いています。
-
 ### 使える図の種類
 
-`mmdc` が対応する範囲の全ダイアグラム種別を受け付けます（flowchart / sequenceDiagram / classDiagram / stateDiagram / erDiagram / gantt / pie など）。図ソースの 1 行目に種別を書きます。各図の記法と例は、[Mermaid ドキュメント日本語訳の「ダイアグラム構文」](https://mermaid.dokyumento.jp/intro/syntax-reference.html)を参照してください。最新の仕様は、[公式ドキュメントの「Diagram Syntax」](https://mermaid.js.org/intro/syntax-reference.html)で確認できます。
+mermaid の図の種類は、すべて使えます（flowchart / sequenceDiagram / classDiagram / stateDiagram / erDiagram / gantt / pie など）。図ソースの 1 行目に種別を書きます。各図の記法と例は、[Mermaid ドキュメント日本語訳の「ダイアグラム構文」](https://mermaid.dokyumento.jp/intro/syntax-reference.html)を参照してください。
 
-### 見た目の調整
+図中の文字は**書籍の見出し書体で組まれ**、テーマ色はライトで固定です。曲線の形など mermaid 固有の見た目は、図ソースの `%%{init: …}%%` で指定します。
 
-図中テキストのフォントは**本書の設定に自動で従います**（`config/book.yml` の見出しフォント）。図だけに特殊なフォントを使うことはできません。テーマ色はライトで固定です。曲線の形など mermaid 固有の見た目は、図ソース側の `%%{init: {'flowchart': {'curve': 'stepBefore'}}}%%` で著者が制御します（Vivlio Starter は関与しません）。
-
-:::{.memo}
-mermaid の描画には `mmdc`（`@mermaid-js/mermaid-cli`）が必要です。未導入の環境では `mermaid` は**コードブロックのまま出力**され、ビルドが止まることはありません（そのときは警告でお知らせします）。`vs doctor --fix` で導入できます。図 1 枚ごとに Chromium の起動コストがかかりますが、生成物がキャッシュされるため、再ビルドは高速です。
-:::
+描画には `mmdc`（`@mermaid-js/mermaid-cli`）が必要で、`vs doctor --fix` で導入できます。未導入の環境では、図は**コードブロックのまま出力**され、警告が出ます。

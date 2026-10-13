@@ -238,9 +238,3 @@ vs --version
 
 ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは @chapref:ch-doctor で説明しています。
 :::
-
-:::{.note}
-**GitHub の 100MB 制約について**
-
-GitHub には 100MB を超えるファイルを通常の Git でプッシュできません。生成する PDF の名前は `project.name` と `project.version` で決まり、`output.pdf.compress: true` の場合は末尾に `_compressed` が付きます。PDF をリポジトリに含めるなら、`.gitignore` の末尾に `!*.pdf` を追記します。容量が大きくなる場合は、リリースページへの添付や手元での保管も検討してください。
-:::
