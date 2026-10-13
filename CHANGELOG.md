@@ -454,6 +454,10 @@
   - Vivliostyle CLI と VFM が使う handlebars・dompurify・valibot を、`overrides` で直った版へ上げた（`^4.7.10`・`^3.4.16`・`^1.4.2`。メジャー版は上げない）。
   - high 7 件は stylelint が使う braces（最新の 3.0.3 も対象で、直った版が無い）から来ていた。stylelint は `lint:css` スクリプトのためだけに入っていて、`vs` からは使っていないので、スクリプト・devDependencies・リポジトリの `.stylelintrc.json` ごと外した。
   - 残る 3 件（moderate）は press-ready が使う uuid 8.3.2 で、直った版（11.1.1 以上）はメジャー版が 3 つ上になるため上げていない。該当するのは v3/v5/v6 の UUID を、渡したバッファーへ書き込む使い方だけ。
+- **`vs doctor --fix` が Kindle Previewer を Homebrew で入れるのをやめ、Amazon KDP の配布ページを案内するようにした**。Homebrew の cask は Amazon の配布より遅れる（2026-10-13 に cask は 4.0.1、Amazon は 4.0.3）。cask で入れてもインストーラーが管理者のパスワードを求めるので自動では入らず、入れたあとはアプリに付いている更新機能が新しい版へ追随する。アプリが入っていてコマンドだけが無いときは、これまでどおり `--fix` が `kindlepreviewer` のラッパーを作る。Previewer 3 のときの更新の案内も、`brew reinstall --cask` から配布ページに替えた。
+  - `vs doctor` の診断に、入っている版を出す（`✅ kindlepreviewer (Kindle Previewer 4.0.3): OK`）。配布ページの最新版と見比べられる。
+  - `vs upgrade` は Kindle Previewer を cask で上げず、計画に「対象外（手動・アプリの更新機能で上がる）」と出す。
+  - 44・51・93 章の入れ方の記述を直した。
 - **表紙を作る処理を `CoverCommands` の 1 つの入口にまとめた**（改善案.md #93）。`vs cover` と `vs build` はどちらも同じ処理を通る。表と裏はそれぞれ元の画像を決め（PNG → 著者の SVG → 同梱テンプレート）、PNG なら必ず入稿用の処理（塗り足し・トンボ・CMYK）を通す。SVG の組み立ては `create.rb` から `cover/svg_cover.rb` へ移した（`create.rb` は 1,284 行 → 550 行）。
   - 入稿用の表紙のトンボを、本文の入稿用 PDF と同じ描き方・重ね方（`CropMarksOverlay`・qpdf）にした。TrimBox・BleedBox は、トンボと同じく実際のページの寸法から決める。PNG の A4 の表紙では、仕上がりの上端と右端が 0.13〜0.5pt 内側になり、トンボとボックスが一致する（以前はボックスだけ判型の寸法ぴったりで、上の余白が 0.5pt ずれていた）。
   - 表紙の塗り足しの幅を、本文と同じ読み方（`NombreStamper.bleed_mm_from_config`）にした。`bleed: 0mm` と書くと、本文は 3mm、PNG の表紙は 0mm になっていた。

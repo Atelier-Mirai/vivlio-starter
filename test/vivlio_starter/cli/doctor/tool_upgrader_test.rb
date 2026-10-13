@@ -101,6 +101,23 @@ module VivlioStarter
           refute_includes plan.updates.map(&:label), 'waifu2x'
         end
 
+        # Kindle Previewer は cask で上げない（cask は Amazon の配布より遅れる）。
+        # cask の記録が古くても更新対象に入れず、対象外としてアプリの更新機能に任せる
+        def test_should_leave_kindle_previewer_to_its_own_updater
+          cask_outdated = {
+            formulae: [],
+            casks: [{ name: 'kindle-previewer', installed_versions: ['3.104.0'], current_version: '4.0.1' }]
+          }.to_json
+          deps = stub_deps(capture: capture_map(cask_outdated:))
+
+          plan = DoctorCommands.stub(:pdf_plugin_installed?, false) { ToolUpgrader.build_plan(deps) }
+
+          entry = plan.entries.find { it.label == 'kindle-previewer' }
+          assert_equal :manual, entry.action
+          assert_equal 'アプリの更新機能で上がる', entry.note
+          refute_includes plan.updates.map(&:label), 'kindle-previewer'
+        end
+
         # 版を固定して指定したパッケージは、上流に新版が出ても更新対象にしない。
         #
         # 実測（2026-08-12）: `textlint-rule-no-doubled-conjunction@3.0.0` と固定して

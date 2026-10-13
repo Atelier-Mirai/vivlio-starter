@@ -38,6 +38,7 @@
 #   - macOS + Homebrew 環境でのみ対応
 #   - --fix オプションで不足ツールを自動インストール
 #   - Node.js ツール（vivliostyle, textlint）は npm -g でインストール
+#   - Kindle Previewer は入れない（Amazon の配布ページを案内し、--fix はコマンドのラッパーだけを作る）
 #
 # 依存:
 #   - Common: ログ出力
@@ -99,6 +100,14 @@ module VivlioStarter
         '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI',
         '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
       ].freeze
+
+      # Kindle Previewer の配布ページ（Amazon KDP）。
+      #
+      # 入れ方はここに一本化し、doctor はアプリを入れずにこのページを示す。Homebrew の
+      # cask は Amazon の配布より遅れる（2026-10-13 に cask は 4.0.1、Amazon は 4.0.3）。
+      # インストーラーは管理者のパスワードを求めるので `--fix` でも自動では入らず、
+      # 入れたあとはアプリに付いている更新機能が新しい版へ追随する。
+      KINDLE_PREVIEWER_DOWNLOAD_URL = 'https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170'
 
       # Vivliostyle CLI が要求する Node.js の下限の**予備**。
       #
@@ -284,13 +293,15 @@ module VivlioStarter
         # --fix 時は OCR ツールも従来どおり先回りインストールする（spec §5.1）
         missing.concat(ocr_optional_missing) if options[:fix]
 
-        # kindlepreviewer が不足の場合、--fix(macOS) ならインストール対象に積み（後段で導入）、
-        # それ以外は 🟡 案内に留める（OCR ツールと同じ「任意ツールは fix 時だけ missing に積む」方式）。
+        # kindlepreviewer が不足の場合、アプリが入っていれば --fix(macOS) で対象に積み、
+        # 後段でコマンドのラッパーだけを作る。アプリ自体は配布元から入れてもらうので
+        # （KINDLE_PREVIEWER_DOWNLOAD_URL）、無ければ 🟡 で配布ページを案内するに留める。
         unless kindle_previewer_present
-          if options[:fix] && is_macos
+          app_installed = !kindle_previewer_app_bin.nil?
+          if options[:fix] && is_macos && app_installed
             missing << KINDLEPREVIEWER_COMMAND
           else
-            report_kindle_previewer_optional(is_macos)
+            report_kindle_previewer_optional(is_macos, app_installed:)
           end
         end
 
@@ -444,8 +455,8 @@ module VivlioStarter
             end
           end
 
-          # Kindle Previewer（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
-          install_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
+          # Kindle Previewer（kindlepreviewer）: 入っているアプリの CLI を呼ぶラッパーを作る
+          link_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
 
           install_ssl_certificates! if missing.include?('ssl-certificates')
         rescue StandardError => e
@@ -842,12 +853,17 @@ module VivlioStarter
                         detail: lines.join("\n"))
       end
 
-      # kindlepreviewer 未導入時の案内（targets: kindle の KPF 変換時のみ必要・不足はエラーにしない）
-      def report_kindle_previewer_optional(is_macos)
-        detail = if is_macos
-                   'macOS では vs doctor --fix で自動導入できます（Homebrew cask kindle-previewer ＋ PATH ラッパー作成）。'
+      # kindlepreviewer 未導入時の案内（targets: kindle の KPF 変換時のみ必要・不足はエラーにしない）。
+      # アプリが入っていてコマンドだけが無い macOS では、--fix でラッパーを作れることを示す。
+      def report_kindle_previewer_optional(is_macos, app_installed: false)
+        detail = if is_macos && app_installed
+                   'vs doctor --fix で kindlepreviewer コマンドを作れます（アプリ内の CLI を呼ぶラッパー）。'
+                 elsif is_macos
+                   "Amazon KDP の配布ページから Kindle Previewer 4 を入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
+                     '入れたあとに vs doctor --fix を実行すると、kindlepreviewer コマンドを作ります。'
                  else
-                   'Amazon KDP のサイトから Kindle Previewer 4 を導入し、kindlepreviewer に PATH を通してください。'
+                   "Amazon KDP の配布ページから Kindle Previewer 4 を入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
+                     'kindlepreviewer コマンドに PATH を通してください。'
                  end
         Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer・targets: kindle の KPF 変換時のみ必要）:',
                         detail:)
@@ -865,7 +881,7 @@ module VivlioStarter
       def report_kindle_previewer_outdated
         Common.log_warn(
           'Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）',
-          detail: "→ brew reinstall --cask kindle-previewer\n" \
+          detail: "→ Amazon KDP の配布ページから入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
                   "  更新後に vs doctor --fix を実行してください" \
                   "（kindlepreviewer ラッパーの向き先が 3 の実行ファイルのままになります）。"
         )
@@ -930,19 +946,10 @@ module VivlioStarter
         system('brew reinstall --cask --force inkscape')
       end
 
-      # Kindle Previewer（kindlepreviewer）を macOS へ導入する。
-      # cask でアプリ本体（Pkg・管理者パスワードを求められることがある）を入れた後、
-      # 単体では PATH に乗らない CLI を呼ぶラッパーを Homebrew の bin へ作成する
-      # （アプリ内の CLI 実行ファイルを引数透過で呼ぶ定石を自動化）。
-      def install_kindlepreviewer_macos!
-        unless command_exists?('brew')
-          Common.log_warn('Homebrew が見つからないため kindlepreviewer を導入できません。')
-          return false
-        end
-
-        Common.log_always('Kindle Previewer（kindlepreviewer）を導入します（Homebrew cask）…')
-        system('brew install --cask kindle-previewer')
-
+      # 入っている Kindle Previewer のアプリ内 CLI を呼ぶ kindlepreviewer コマンドを、
+      # Homebrew の bin へ作る（アプリ単体では CLI が PATH に乗らないため）。
+      # アプリ本体は入れない——配布元から入れてもらう（KINDLE_PREVIEWER_DOWNLOAD_URL）。
+      def link_kindlepreviewer_macos!
         app_bin = kindle_previewer_app_bin
         unless app_bin
           Common.log_warn("Kindle Previewer の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BINS.join(' / ')}")
@@ -1049,11 +1056,26 @@ module VivlioStarter
       end
 
       # 導入済みの Kindle Previewer を人が読む名前で返す（診断表示用）。
+      # 版まで出すのは、配布元の最新版より古いことに著者が気づけるようにするため
+      # （Homebrew の cask から入れた 4.0.1 が、Amazon の 4.0.3 より古いままだった）。
       def kindle_previewer_label
         bin = kindle_previewer_app_bin
         return 'Kindle Previewer' unless bin
 
+        version = kindle_previewer_version(bin)
+        return "Kindle Previewer #{version}" if version
+
         bin.include?('Previewer 4') ? 'Kindle Previewer 4' : 'Kindle Previewer 3'
+      end
+
+      # アプリの Info.plist から版（`4.0.3` など）を読む。読めなければ nil。
+      def kindle_previewer_version(app_bin)
+        require 'open3'
+        plist = File.join(app_bin[/\A.*?\.app/], 'Contents', 'Info.plist')
+        out, status = Open3.capture2('plutil', '-extract', 'CFBundleShortVersionString', 'raw', '-o', '-', plist)
+        status.success? && !out.strip.empty? ? out.strip : nil
+      rescue StandardError
+        nil
       end
 
       # 導入済みの Kindle Previewer の実行ファイルを返す（新しい版を優先）。無ければ nil。

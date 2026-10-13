@@ -398,15 +398,29 @@ module VivlioStarter
         end
       end
 
-      # macOS では --fix での自動導入を案内する
-      def test_report_kindle_previewer_optional_hints_fix_on_macos
+      # macOS でアプリが無いときは、Amazon の配布ページと、入れたあとの --fix を案内する。
+      # doctor はアプリを入れない（Homebrew の cask は配布より遅れるため）
+      def test_should_point_to_amazon_download_when_app_is_missing_on_macos
         captured = nil
         Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
           DoctorCommands.report_kindle_previewer_optional(true)
         end
 
         assert_includes captured[0], 'kindlepreviewer'
+        assert_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
         assert_includes captured[1], 'vs doctor --fix'
+        refute_includes captured[1], 'brew'
+      end
+
+      # macOS でアプリはあるがコマンドだけが無いときは、--fix でラッパーを作れることだけを示す
+      def test_should_hint_fix_for_wrapper_when_app_is_installed_on_macos
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_optional(true, app_installed: true)
+        end
+
+        assert_includes captured[1], 'vs doctor --fix'
+        refute_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
       end
 
       # macOS 以外では手動セットアップ（KDP からの導入）を案内する
@@ -442,8 +456,22 @@ module VivlioStarter
         end
 
         assert_includes captured[0], 'Kindle Previewer 3'
-        assert_includes captured[1], 'brew reinstall --cask kindle-previewer'
+        assert_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
         assert_includes captured[1], 'vs doctor --fix'
+      end
+
+      # 診断の表示に版を出す（配布元の最新版より古いことに気づけるように）。
+      # 版が読めなければ、従来どおり 3 / 4 の別だけを出す
+      def test_should_show_kindle_previewer_version_in_label
+        bin = '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI'
+        DoctorCommands.stub :kindle_previewer_app_bin, bin do
+          DoctorCommands.stub :kindle_previewer_version, '4.0.3' do
+            assert_equal 'Kindle Previewer 4.0.3', DoctorCommands.kindle_previewer_label
+          end
+          DoctorCommands.stub :kindle_previewer_version, nil do
+            assert_equal 'Kindle Previewer 4', DoctorCommands.kindle_previewer_label
+          end
+        end
       end
 
       # Rosetta の判定が要るのは Apple Silicon の macOS だけ。

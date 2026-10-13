@@ -102,14 +102,17 @@ module VivlioStarter
           Tool.new(label: 'mecab', kind: :brew, package: 'mecab', checks: %w[mecab]),
           Tool.new(label: 'mecab-ipadic', kind: :brew, package: 'mecab-ipadic', checks: %w[mecab]),
           Tool.new(label: 'inkscape', kind: :cask, package: 'inkscape', checks: %w[inkscape]),
-          Tool.new(label: 'kindle-previewer', kind: :cask, package: 'kindle-previewer', checks: %w[kindlepreviewer]),
           # Enhanced Mode プラグイン（gem 名は provider.rb / doctor.rb と同値。導入済みの場合のみ更新対象）
           Tool.new(label: 'vivlio-starter-pdf', kind: :gem, package: 'vivlio-starter-pdf', checks: []),
+          # Kindle Previewer は Amazon の配布ページから入れ、アプリの更新機能で上げる。
+          # Homebrew の cask は配布より遅れる（doctor.rb の KINDLE_PREVIEWER_DOWNLOAD_URL）
+          Tool.new(label: 'kindle-previewer', kind: :manual, package: nil, checks: []),
           Tool.new(label: 'waifu2x', kind: :manual, package: nil, checks: [])
         ].freeze
 
         # 更新対象外（:manual）の理由（計画表の注記）
         MANUAL_NOTES = {
+          'kindle-previewer' => 'アプリの更新機能で上がる',
           'waifu2x' => '導入経路が多様'
         }.freeze
 
