@@ -121,7 +121,10 @@ class WorkspaceStructureTest < Minitest::Test
   end
 
   # WS-02b: 数式 SVG はワークスペース html/images/math/ に生成され、
-  #         pdf/ へミラー・epub/kindle/ へローカライズされる（P4b §2.1〜2.3）
+  #         pdf/ へミラー・epub/ へローカライズされる（P4b §2.1〜2.3）。
+  #         kindle/ には SVG を置かない——Kindle Previewer は SVG が 1 枚でも残ると KPF を
+  #         作れないので、ディスプレイ数式は PNG に、インライン数式はテキストに置き換え、
+  #         使われなくなった SVG はパッケージから外す（EpubBuilder.sweep_unreferenced_assets!）
   def test_should_workspace_math_svgs_and_stage_to_consumers
     skip_unless_built!
 
@@ -131,11 +134,17 @@ class WorkspaceStructureTest < Minitest::Test
     # pdf/ へミラーされ、消費者 dir 相対の images/math/… 参照が解決される（§2.2）
     refute_empty Dir.glob(File.join(BUILD_DIR, "pdf", "images", "math", "**", "*.svg")),
                  "数式 SVG が pdf/ へミラーされていません（P4b §2.2）"
-    # epub/・kindle/ へもローカライズされる（EPUB 内部パスは images/math/… で現行と同一・§2.3）
-    %w[epub kindle].each do |consumer|
-      refute_empty Dir.glob(File.join(BUILD_DIR, consumer, "images", "math", "**", "*.svg")),
-                   "#{consumer}/ に数式 SVG がローカライズされていません（P4b §2.3）"
-    end
+    # epub/ へもローカライズされる（EPUB 内部パスは images/math/… で現行と同一・§2.3）
+    refute_empty Dir.glob(File.join(BUILD_DIR, "epub", "images", "math", "**", "*.svg")),
+                 "epub/ に数式 SVG がローカライズされていません（P4b §2.3）"
+
+    kindle_math = File.join(BUILD_DIR, "kindle", "images", "math")
+    return unless File.directory?(File.join(BUILD_DIR, "kindle"))
+
+    refute_empty Dir.glob(File.join(kindle_math, "**", "*.png")),
+                 "kindle/ にディスプレイ数式の PNG がありません"
+    assert_empty Dir.glob(File.join(kindle_math, "**", "*.svg")),
+                 "kindle/ に数式 SVG が残っています（Kindle Previewer が KPF を作れなくなる）"
   end
 
   # WS-03: ビルド後もプロジェクトルートに旧方式の中間物が現れない

@@ -216,14 +216,18 @@ class TargetConsistencyTest < Minitest::Test
       assert_equal pages.sort, pages, "「#{key}」/#{fmt}: 章しおりの飛び先が章順（昇順）になっていません"
       assert_equal pages.uniq, pages, "「#{key}」/#{fmt}: 章しおりの飛び先ページが重複（目次集中の疑い）"
 
-      # 最も「章番号が密」なページ＝目次。各章の飛び先はそれより疎（＝目次でない）であるべき。
-      toc_density = snap.texts.map { chapter_token_count(it) }.max
+      # 章の題名が最も多く並ぶページ＝目次。各章の飛び先はそれより少ない（＝目次でない）べき。
+      # 「第N章」の断片ではなく、しおりの題名全体で数える。本文にも「第14章「ビルド」」のような
+      # 参照や `vs metrics` の出力例（「第33章 35.2%」）が多く、断片で数えると A4 の目次の
+      # 1 ページ（章は 2 つほど）より本文のページのほうが多くなるため。
+      titles = chapters.map { strip_spaces(it[:title]) }
+      toc_density = snap.texts.map { chapter_title_count(it, titles) }.max
       chapters.each do |ch|
         num = ch[:title][/\A第\d+章/]
         page_text = snap.texts[ch[:page] - 1].to_s
         assert_includes strip_spaces(page_text), num,
                         "「#{key}」/#{fmt}: しおり「#{ch[:title]}」の飛び先 p#{ch[:page]} に #{num} がありません"
-        assert_operator chapter_token_count(page_text), :<, toc_density,
+        assert_operator chapter_title_count(page_text, titles), :<, toc_density,
                         "「#{key}」/#{fmt}: しおり「#{ch[:title]}」の飛び先 p#{ch[:page]} が目次相当（章一覧）のページです"
       end
     end
@@ -457,9 +461,10 @@ class TargetConsistencyTest < Minitest::Test
     snap.outline_dests.select { |d| d[:title] =~ /\A第\d+章/ }.uniq { |d| d[:title] }
   end
 
-  # テキスト中に現れる相異なる「第N章」トークン数（目次ページは多く、本文ページは少ない）
-  def chapter_token_count(text)
-    strip_spaces(text).scan(/第\d+章/).uniq.size
+  # ページに現れる章の題名（空白を除いた「第13章索引・用語集機能」）の数
+  def chapter_title_count(text, titles)
+    page = strip_spaces(text)
+    titles.count { page.include?(it) }
   end
 
   def strip_spaces(text)
