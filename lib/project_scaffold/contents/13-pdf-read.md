@@ -66,12 +66,12 @@ vs pdf:read gitlab.pdf
 
 ### 章の名前を付ける
 
-PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`61-developer` の次の `62-gitlab.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `62-hajimete-no-rust.md`）。
+PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`51-doctor` の次の `52-gitlab.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `52-hajimete-no-rust.md`）。
 
 二つ目の引数で、章の名前を決めることもできます。番号を付ければその番号の章に、番号だけなら名前はファイル名から作ります。付録にしたいときは、付録の番号（90〜98）を付けてください。
 
 ```zsh
-vs pdf:read gitlab.pdf git       # contents/62-git.md
+vs pdf:read gitlab.pdf git       # contents/52-git.md
 vs pdf:read gitlab.pdf 21-git    # contents/21-git.md
 vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
 ```
@@ -82,13 +82,13 @@ vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
 🔴 [pdf:read] ファイル名から章の名前を作れません: sources/コンピュータネットワークのエッセンス.pdf
         使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
         → ファイル名を変える: awesome.pdf にしてから vs pdf:read awesome.pdf
-        → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 62-awesome
-        （番号を省くと 62 番になります）
+        → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 52-awesome
+        （番号を省くと 52 番になります）
 ```
 
 示されるコマンドは、打った形に合わせてあります。`sources/` を付けて打てば `sources/` 付きで、`~/Downloads/` のパスで打てば同じパスで示します。
 
-ブラウザで同じファイルを二度ダウンロードしたときに付く `(1)` と、複製したときに付く `のコピー`・`copy`・`- コピー` は、章の名前から外します。`IPSJ-MGN621105 (1).pdf` は `62-ipsj-mgn621105.md` になります。
+ブラウザで同じファイルを二度ダウンロードしたときに付く `(1)` と、複製したときに付く `のコピー`・`copy`・`- コピー` は、章の名前から外します。`IPSJ-MGN621105 (1).pdf` は `52-ipsj-mgn621105.md` になります。
 
 ### 空白や括弧のあるファイル名は名前を変える
 
@@ -126,16 +126,16 @@ vs pdf:read gitlab.pdf 23-git-appendix --pages 238-
 
 ```shell-session
 $ vs pdf:read three-elements
-✅ Markdown に変換しました: contents/62-three-elements.md
+✅ Markdown に変換しました: contents/52-three-elements.md
 ```
 
 `--log` を付けると、どちらのモードで読んだかとページ数も表示されます。
 
 ```shell-session
 $ vs pdf:read three-elements --log
-🔧 [pdf:read] PDF からテキストを抽出します (62-three-elements, mode=enhanced)
+🔧 [pdf:read] PDF からテキストを抽出します (52-three-elements, mode=enhanced)
 🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/62-three-elements.md
+✅ Markdown に変換しました: contents/52-three-elements.md
 ```
 
 ### 出力されるファイル
@@ -145,13 +145,13 @@ $ vs pdf:read three-elements --log
 ```
 # Standard Mode
 contents/
-  └── 62-three-elements.md
+  └── 52-three-elements.md
 
 # Enhanced Mode
 contents/
-  └── 62-three-elements.md
+  └── 52-three-elements.md
 images/
-  └── 62-three-elements/
+  └── 52-three-elements/
       ├── page-003-image-01.webp
       ├── page-004-image-01.webp
       └── ...
@@ -238,12 +238,12 @@ VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf
 同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。
 
 ```text
-🔴 [pdf:read] 62-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）
+🔴 [pdf:read] 52-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）
         → 読み直して置き換えるなら: vs pdf:read gitlab.pdf --force
-        → 別の章として読むなら: vs pdf:read gitlab.pdf 63-gitlab-2
+        → 別の章として読むなら: vs pdf:read gitlab.pdf 53-gitlab-2
 ```
 
-置き換えるときは `--force` を付けます。前回の画像（`images/62-gitlab/`）は、今回の画像と混ざらないよう、消してから書き出します。
+置き換えるときは `--force` を付けます。前回の画像（`images/52-gitlab/`）は、今回の画像と混ざらないよう、消してから書き出します。
 
 どの PDF から読んだかは、原稿の頭のコメント（`<!-- pdf:read: sources/gitlab.pdf（sha256: …） -->`）に残ります。HTML のコメントなので、組版には出ません。中身が同じ PDF を別の章として読もうとすると、🟡 で知らせます（ページを指定したときは、ページが重なるときだけ）。
 
@@ -364,9 +364,9 @@ rules:
 ✅ Markdown に変換しました: contents/11-intro.md
 
 # Enhanced Mode
-🔧 [pdf:read] PDF からテキストを抽出します (62-three-elements, mode=enhanced)
+🔧 [pdf:read] PDF からテキストを抽出します (52-three-elements, mode=enhanced)
 🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/62-three-elements.md
+✅ Markdown に変換しました: contents/52-three-elements.md
 ```
 
 文字を一つも取り出せなかったときは、原稿も `catalog.yml` も書かずに止まります。スキャンした PDF を Standard Mode で読むと、次のように案内されます。

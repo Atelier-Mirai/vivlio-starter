@@ -451,6 +451,7 @@
 
 ### Changed
 
+- **開発者向けガイド（旧 61 章）を本から外し、リポジトリの `docs/developer-guide.md`・`docs/developer-guide.pdf` に移した**（改善案 #107）。読むのは本を書く人ではなく、フォークして手を入れる人なので。PDF は `vs build docs/developer-guide.md` で組み直せる。`vs new` の雛形からもこの章は無くなる。本は 395 → 369 ページ。32 章の JSON 出力の形への参照はガイドを指す文に、13 章の「本文の最後の章の次」の例は `51-doctor` の次の `52-…` に直した。README の「開発者向け情報」にガイドへのリンクを足した。
 - **雛形の `package.json` から stylelint を外し、脆弱性の指摘を 18 件から 3 件にした**。`vs new` で作った本で `npm install` すると、`npm audit` が 18 件（critical 2・high 7）を報告していた。勧められる `npm audit fix --force` は Vivliostyle CLI を 11.2.0 へ、stylelint を 7.7.0 へ格下げするので使えない。
   - Vivliostyle CLI と VFM が使う handlebars・dompurify・valibot を、`overrides` で直った版へ上げた（`^4.7.10`・`^3.4.16`・`^1.4.2`。メジャー版は上げない）。
   - high 7 件は stylelint が使う braces（最新の 3.0.3 も対象で、直った版が無い）から来ていた。stylelint は `lint:css` スクリプトのためだけに入っていて、`vs` からは使っていないので、スクリプト・devDependencies・リポジトリの `.stylelintrc.json` ごと外した。

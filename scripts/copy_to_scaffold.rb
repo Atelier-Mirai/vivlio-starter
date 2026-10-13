@@ -105,12 +105,12 @@ end
 # ルートの README.md は gem のリポジトリを訪れた人へ向けたもので、ライセンスや
 # 開発者向け情報まで載っている。`vs new` した著者の手元に置かれるのは「あなたの
 # 本のプロジェクト」なので、別に用意した README を配る。
-scaffold_readme = File.join(ROOT, 'docs', 'scaffold-README.md')
+scaffold_readme = File.join(__dir__, 'scaffold-README.md')
 if File.exist?(scaffold_readme)
   FileUtils.cp(scaffold_readme, File.join(SCAFFOLD, 'README.md'), verbose: false)
-  puts 'COPY  docs/scaffold-README.md -> lib/project_scaffold/README.md'
+  puts 'COPY  scripts/scaffold-README.md -> lib/project_scaffold/README.md'
 else
-  puts 'SKIP  docs/scaffold-README.md (not found)'
+  puts 'SKIP  scripts/scaffold-README.md (not found)'
 end
 
 # ================================================================

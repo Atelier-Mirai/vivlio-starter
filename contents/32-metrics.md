@@ -85,7 +85,7 @@ vs metrics --json
 vs metrics --yaml
 ```
 
-JSON/YAML 出力時は章別リストの逐次表示を省き、結果を一括で返します。出力の全体の形は @ch-developer の章の @pageref:metrics-json に載せています。
+JSON/YAML 出力時は章別リストの逐次表示を省き、結果を一括で返します。出力の全体の形は、開発者向けガイド（リポジトリの `docs/developer-guide.pdf`）の「メトリクス」の項に載せています。
 
 ## 実行結果の見方
 

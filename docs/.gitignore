@@ -1,0 +1,7 @@
+# このリポジトリだけの規則。ルートの .gitignore は vs new の雛形へ写されるので、
+# 著者のプロジェクトに関係しない規則はここに置く
+
+# 開発者向けガイド（developer-guide.md を vs build で組んだもの）は、ルートの *.pdf の例外として配る
+!/developer-guide.pdf
+# vs pdf:read の題材（市販書・論文の PDF）。手元にだけ置き、リポジトリには載せない
+/pdf-samples/

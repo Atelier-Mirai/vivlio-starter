@@ -374,6 +374,7 @@ PDF しおり（アウトライン）付与など一部の高度な機能は、`
 ## 開発者向け情報
 
 開発・コントリビューションに関しては [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
+どこに何があり、手を入れるならどこを触るかは、開発者向けガイド（[PDF](./docs/developer-guide.pdf)・[原稿](./docs/developer-guide.md)）にまとめています。
 
 ## Changelog
 
