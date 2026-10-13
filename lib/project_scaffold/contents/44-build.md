@@ -313,9 +313,11 @@ Kindle 版は既定で `embed: false`（表紙を埋め込まない）です。K
 
 現在配布されているのは **Kindle Previewer 4** です。3 をお使いでしたら、4 へ更新してください。Amazon公式も、3 はサポートしていません。
 
-macOS であれば、`vs doctor --fix` で Kindle Previewer の導入（Homebrew cask）と `kindlepreviewer` コマンドのパス通し（アプリ内 CLI を呼ぶラッパー作成）をまとめて自動実行できます。`vs doctor` は導入の有無に加えて、版が古くないか、変換に必要な環境が揃っているかも確かめます。
+Kindle Previewer は、[Amazon KDP の配布ページ](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から入れてください。Homebrew にも配布がありますが、Amazon の最新版より遅れることがあるため、`vs doctor --fix` は Kindle Previewer そのものは入れません。入れたあとは、アプリに付いている更新機能が新しい版へ追随します。
 
-手動で導入する場合は、[Amazon KDP のサイト](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から Kindle Previewer をダウンロードしてください。インストール後、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認できます。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 4.app` 配下）にパスを通してください。
+macOS では、入れたあとに `vs doctor --fix` を実行すると、`kindlepreviewer` コマンドを使えるようにします（アプリ内の CLI を呼ぶラッパーを作ります）。`vs doctor` は導入の有無に加えて、入っている版と、変換に必要な環境が揃っているかも確かめます。
+
+`vs doctor --fix` を使わない場合は、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認してください。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 4.app` 配下）にパスを通してください。
 
 Kindle Previewer は macOS 版と Windows 版だけが配布されており、Linux（WSL を含む）では `.kpf` への変換を行えません。Linux で執筆する場合は、Kindle 用の中間 EPUB までを生成し、変換は macOS か Windows で行ってください。
 

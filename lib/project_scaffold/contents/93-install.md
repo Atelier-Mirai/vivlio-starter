@@ -64,12 +64,12 @@ gem install query-stream        # データ展開機能
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
-| Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
+| Kindle Previewer（kindlepreviewer） | Amazon KDP の配布ページから手動で導入（`--fix` はラッパーだけを作成） | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
 Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
 
-Kindle Previewer を使う場合、Apple Silicon の Mac では **Rosetta 2 も必要**です。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれます。Rosetta がないと `.kpf` への変換時に `bad CPU type in executable` と表示されます。`vs doctor` で導入状況を確認し、必要なら `sudo softwareupdate --install-rosetta --agree-to-license` を実行してください。
+Kindle Previewer を使う場合は、[Amazon KDP の配布ページ](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から入れてから `vs doctor --fix` を実行してください。`kindlepreviewer` コマンドのラッパーを作ります。Apple Silicon の Mac では **Rosetta 2 も必要**です。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれます。Rosetta がないと `.kpf` への変換時に `bad CPU type in executable` と表示されます。`vs doctor` で導入状況を確認し、必要なら `sudo softwareupdate --install-rosetta --agree-to-license` を実行してください。
 
 <!-- no-lint -->
 **`vs doctor --fix` による自動インストールは、macOS と Homebrew の組み合わせに対応しています。** Linux と Windows は現時点で動作検証を行えておらず、公式のサポート対象外です。手動で環境を整えたい場合は、以降の手順をお使いの環境に読み替えてください。必要なツールが揃えば動作する見込みはありますが、手順や結果は環境によって異なります。

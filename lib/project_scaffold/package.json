@@ -5,15 +5,11 @@
   "type": "module",
   "scripts": {
     "viv:version": "vivliostyle --version",
-    "vfm:version": "vfm --version",
-    "lint:css": "stylelint \"stylesheets/**/*.css\"",
-    "lint:css:fix": "stylelint --fix \"stylesheets/**/*.css\""
+    "vfm:version": "vfm --version"
   },
   "devDependencies": {
     "@vivliostyle/cli": "11.3.3",
-    "@vivliostyle/vfm": "^2.7.2",
-    "stylelint": "^17.15.0",
-    "stylelint-config-standard": "^40.0.0"
+    "@vivliostyle/vfm": "^2.7.2"
   },
   "overrides": {
     "prismjs": ">=1.30.0",
@@ -29,7 +25,10 @@
     "ip-address": ">=10.7.2",
     "fast-uri": ">=4.2.1",
     "pacote": ">=22.0.0",
-    "sigstore": ">=5.0.0"
+    "sigstore": ">=5.0.0",
+    "handlebars": "^4.7.10",
+    "dompurify": "^3.4.16",
+    "valibot": "^1.4.2"
   },
   "dependencies": {
     "@vivliostyle/core": "^2.45.1",

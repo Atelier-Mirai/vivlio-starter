@@ -48,14 +48,14 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 
 :::{.output}
 ```text
-✅ kindlepreviewer (Kindle Previewer 3): OK
+✅ kindlepreviewer (Kindle Previewer 3.104.0): OK
 🟡 Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）
-        → brew reinstall --cask kindle-previewer
+        → Amazon KDP の配布ページから入れてください: https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170
           更新後に vs doctor --fix を実行してください
 ```
 :::
 
-案内どおりに更新したら、`vs doctor --fix` を実行してください。`kindlepreviewer` コマンドが新しい版を呼ぶように整えます。
+案内どおりに更新したら、`vs doctor --fix` を実行してください。`kindlepreviewer` コマンドが新しい版を呼ぶように整えます。診断の行には入っている版（`4.0.3` など）が出るので、配布ページの最新版と見比べられます。
 
 **Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると更新を案内します。
 
@@ -190,7 +190,7 @@ npm で導入するツールには Node.js が必要です。まだ入ってい�
 - **Xcode Command Line Tools**（`xcode-select --install`）と **Homebrew**（公式インストーラ）— 入っていない場合は、導入前に確認を求められます
 - **textlint** — 本体と一緒に日本語技術書向けのルールセットを導入し、設定ファイルを `config/` に配置します
 - **`waifu2x-ncnn-vulkan`** — Homebrew では配布されていないため、GitHub Releases からダウンロードします
-- **Kindle Previewer** — `brew install --cask kindle-previewer` で導入し、コマンドから呼び出すためのラッパーも作ります。`targets: kindle` で Kindle 用ファイルを作る場合に必要な任意ツールです
+- **Kindle Previewer** — アプリそのものは入れず、Amazon KDP の配布ページを案内します（Homebrew の配布は Amazon の最新版より遅れることがあるため）。アプリが入っていれば、コマンドから呼び出すためのラッパーを作ります。`targets: kindle` で Kindle 用ファイルを作る場合に必要な任意ツールです
 
 インストール手順や対応する版は変わることがあります。ここにない方法で導入するときや、案内どおりに進まないときは、各ツールの公式ドキュメントで現在の手順を確認してください。
 
@@ -202,7 +202,7 @@ npm で導入するツールには Node.js が必要です。まだ入ってい�
 
 1. **`vivlio-starter` 本体の更新** — 新版があれば、確認後に `gem update vivlio-starter` を実行します。その後の処理は**新しい版で自動的に続行**するため、雛形の取り込みをやり直す必要はありません
 2. **プロジェクトの雛形追従** — 新しい版のスタイルシートやテンプレートを既存プロジェクトへ取り込み、最後に `Gemfile.lock` が指す版も合わせます
-3. **外部ツールの一括更新** — Homebrew（formula / cask）、npm、gem で導入したツールの更新計画を示し、確認後にまとめて更新します
+3. **外部ツールの一括更新** — Homebrew（formula / cask）、npm、gem で導入したツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer はアプリの更新機能で上がるので、計画では対象外と表示します
 
 ```bash
 vs upgrade                    # 計画を提示 → 確認しながら適用
