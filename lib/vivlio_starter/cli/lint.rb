@@ -87,6 +87,8 @@ module VivlioStarter
             return 0
           end
 
+          warn_retired_suppression_markers(files)
+
           lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_files: [] }
           prose_info = { exit: 0, prose_count: 0, fixed_files: [] }
           spell_info = { exit: 0, spell_count: 0 }
@@ -109,6 +111,24 @@ module VivlioStarter
         rescue LintError => e
           Common.log_error(e.message)
           1
+        end
+
+        # 1.0 の前の抑止コメント（`<!-- vs-lint-disable -->` など）が原稿に残っていたら、
+        # 置き換え先を添えて知らせる。もう指摘は止めないので、黙っていると抑えていたつもりの
+        # 指摘が理由もわからず出てくる。コードブロックの中（記法の例示）は見ない。
+        def warn_retired_suppression_markers(files)
+          files.each do |path|
+            found = Masking.each_prose_line(File.read(path, encoding: 'UTF-8')).filter_map do |line, lineno|
+              replacement = Lint::NotationGuard.retired_suppression_replacement(line)
+              "L#{lineno}: #{line.strip} → #{replacement}" if replacement
+            end
+            next if found.empty?
+
+            Common.log_warn(
+              "#{Common.relative_path_from_root(path) || path}: 廃止した抑止コメントが #{found.size} か所あります（指摘は抑止されません）",
+              detail: "#{found.join("\n")}\n→ 右の書き方に置き換えてください"
+            )
+          end
         end
 
         # textlint 本体を実行して結果サマリーを返す。
@@ -862,7 +882,7 @@ module VivlioStarter
           ENV.fetch(TEXTLINT_ENV_VAR, 'textlint')
         end
 
-        # `<!-- vs-lint-disable-next-line -->` の直後の行番号を、原稿ごとに集める。
+        # `<!-- no-lint -->` の直後の行番号を、原稿ごとに集める。
         #
         # **textlint 側でこの記法は効かない。** 変換先の `<!-- textlint-disable-next-line -->` を
         # `textlint-filter-rule-comments`（v1.3.0）が実装しておらず、無効なコメントとして
@@ -907,7 +927,7 @@ module VivlioStarter
           hushed
         end
 
-        # vs-lint コメントを textlint ネイティブ記法に変換する
+        # 抑止コメントを textlint ネイティブ記法に変換する
         # @param files [Array<String>] 対象ファイルパスの配列
         # @param guard [Boolean] VFM 記法を中和するか（解析パスは true、修正パスは false）
         # @return [Array<String>] 変換後のファイルパスの配列（一時ファイル）
@@ -927,7 +947,7 @@ module VivlioStarter
           end
         end
 
-        # vs-lint コメントを textlint コメントに置換する。
+        # 抑止コメントを textlint コメントに置換する。
         # あわせて VFM 記法を中和する（guard: true）。記法は機械データであって文ではなく、
         # textlint に読ませると誤検出になるため、textlint へ渡す前にここで落とす。
         # 中和は非可逆なので、原稿へ書き戻す修正パス（--fix）は guard: false で呼ぶ。
@@ -977,7 +997,7 @@ module VivlioStarter
         # textlint が実際に書き換えた一時ファイルだけを原稿へ書き戻す。
         # 未変更のファイルへは触れない（原稿の mtime とコメント書式を無用に変えない）。
         # @return [Array<String>] 書き戻した原稿パス
-        # `<!-- vs-lint-disable-next-line -->` が守る行を、修正パスの間だけ目印へ退避する。
+        # `<!-- no-lint -->` が守る行を、修正パスの間だけ目印へ退避する。
         #
         # **textlint のコメントフィルタは `-next-line` を実装していない**
         # （textlint-filter-rule-comments v1.3.0）。解析パスは出力段で行ごと落として辻褄を
@@ -1023,15 +1043,15 @@ module VivlioStarter
 
             restored = Lint::NotationGuard.restore_masked(fixed, spans)
             restored = restore_marker_lines(original, restored)
-            atomic_write(original, rewrite_textlint_to_vs_lint(restored))
+            atomic_write(original, rewrite_textlint_to_no_lint(restored))
             original
           end
         end
 
         # 抑止コメントを、著者が書いた綴りへ戻す。
         #
-        # **文字列だけでは戻せない。** 変換は多対一で（`no-lint-start` も `vs-lint-disable` も
-        # `textlint-disable` になる）、逆変換では新しい短い記法が古い記法へ書き換わってしまう。
+        # **文字列だけでは戻せない。** 著者が textlint の記法（`<!-- textlint-disable -->`）を
+        # 直に書いていることもあり、どちらから来た行かは文字列からは分からない。
         # 著者の原稿を勝手に別の綴りへ直すことになるので、原稿側の行を控えて行番号で戻す。
         #
         # 置き換えるのは、書き換え後もマーカー行のままの行だけにする——`--fix` が行数を
@@ -1052,17 +1072,17 @@ module VivlioStarter
           lines.join
         end
 
-        # textlint ネイティブ記法を vs-lint コメントへ戻す（rewrite_vs_lint_to_textlint の逆）。
-        # next-line を先に処理する（後続の disable パターンが next-line 形を食わないように）。
-        # 著者が素の textlint コメントを直書きしていた場合も vs-lint 形へ正規化されるが、
-        # 機能は等価であり vs-lint 形が本プロジェクトの正典記法なので許容する。
+        # 行番号で戻せなかった textlint の記法を、本書の抑止コメントへ戻す
+        # （rewrite_vs_lint_to_textlint の逆）。next-line を先に処理する（後続の disable
+        # パターンが next-line 形を食わないように）。著者が textlint の記法を直に書いていた
+        # 場合も `no-lint` 系へそろうが、働きは同じなので許容する。
         # @param source [String] textlint が修正した内容
         # @return [String] 原稿へ書き戻す内容
-        def rewrite_textlint_to_vs_lint(source)
+        def rewrite_textlint_to_no_lint(source)
           source
-            .gsub(/<!--\s*textlint-disable-next-line\s*-->/, '<!-- vs-lint-disable-next-line -->')
-            .gsub(/<!--\s*textlint-disable\s*-->/, '<!-- vs-lint-disable -->')
-            .gsub(/<!--\s*textlint-enable\s*-->/, '<!-- vs-lint-enable -->')
+            .gsub(/<!--\s*textlint-disable-next-line\s*-->/, '<!-- no-lint -->')
+            .gsub(/<!--\s*textlint-disable\s*-->/, '<!-- no-lint-start -->')
+            .gsub(/<!--\s*textlint-enable\s*-->/, '<!-- no-lint-end -->')
         end
 
         # 原稿を同一ディレクトリの一時ファイル経由で置換する。

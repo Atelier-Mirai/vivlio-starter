@@ -316,14 +316,14 @@ class TestProseChecker < Minitest::Test
   # 校正について書いた章は自らの例文が指摘される。textlint と同じコメントで抑止できること
   def test_should_honour_vs_lint_disable_comments
     body = <<~MD
-      <!-- vs-lint-disable-next-line -->
+      <!-- no-lint -->
       だ円は交ぜ書きです。
       完ぺきは交ぜ書きです。
 
-      <!-- vs-lint-disable -->
+      <!-- no-lint-start -->
       Ractor はスレッドと同様に共有しない。
       ばん回もここでは指摘されません。
-      <!-- vs-lint-enable -->
+      <!-- no-lint-end -->
     MD
 
     assert_equal ['完ぺき => 完璧'], labels(check(body))
@@ -333,7 +333,7 @@ class TestProseChecker < Minitest::Test
   def test_should_not_treat_comments_inside_code_fences_as_directives
     body = <<~MD
       ````markdown
-      <!-- vs-lint-disable -->
+      <!-- no-lint-start -->
       ````
 
       だ円を描きます。
@@ -344,7 +344,7 @@ class TestProseChecker < Minitest::Test
 
   # 抑止した行は --fix の置換対象からも外れる（指摘しないものを直すのは筋が通らない）
   def test_should_not_fix_disabled_lines
-    body = "<!-- vs-lint-disable-next-line -->\nだ円は交ぜ書きです。\n完ぺきです。\n"
+    body = "<!-- no-lint -->\nだ円は交ぜ書きです。\n完ぺきです。\n"
 
     fixed = PC.fix_mazegaki(body)
 
@@ -521,7 +521,7 @@ class TestProseChecker < Minitest::Test
   end
 
   # 窓の外にある `・` の並びは見えないので指摘する。**意図した誤検出**である——
-  # 見逃すより検出して著者に委ね、まれな誤検出は vs-lint-disable-next-line で受ける。
+  # 見逃すより検出して著者に委ね、まれな誤検出は no-lint で受ける。
   # 文単位の判定へ「直す」前に、上の見逃しが生じることを確かめること
   def test_should_report_slash_when_nakaguro_is_beyond_the_window
     body = "運転免許・IT資格（基本情報技術者/応用情報技術者）などを持っています。\n"
@@ -769,12 +769,10 @@ class TestProseChecker < Minitest::Test
     assert_empty check("<!-- no-lint-start -->\nだ円を描きます。\n<!-- no-lint-end -->\n")
   end
 
-  # 旧記法も受け続ける（既存の原稿を書き換えさせない）
-  def test_should_honour_the_legacy_suppression_markers
-    assert_empty check("<!-- vs-lint-disable-next-line -->\nだ円を描きます。\n")
-    assert_empty check("<!-- vs-lint-disable -->\nだ円を描きます。\n<!-- vs-lint-enable -->\n")
-    assert_empty check("<!-- no-lint-start -->\nだ円を描きます。\n<!-- vs-lint-enable -->\n"),
-                 '新旧が混ざっても対になる'
+  # 1.0 の前の記法（vs-lint-*）は廃止した。指摘は止めない（案内は LintRunner が出す）
+  def test_should_not_honour_the_retired_suppression_markers
+    refute_empty check("<!-- vs-lint-disable-next-line -->\nだ円を描きます。\n")
+    refute_empty check("<!-- vs-lint-disable -->\nだ円を描きます。\n<!-- vs-lint-enable -->\n")
   end
 
   # **記法を説明した文で lint を止めない。** 部分一致で見ていた頃は、インラインコードの

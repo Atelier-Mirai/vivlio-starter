@@ -634,6 +634,7 @@
 
 ### Removed
 
+- **1.0 より前の抑止コメント `<!-- vs-lint-disable-next-line -->`・`<!-- vs-lint-disable -->`・`<!-- vs-lint-enable -->` を廃止した**。`<!-- no-lint -->`・`<!-- no-lint-start -->`・`<!-- no-lint-end -->` に一本化する。原稿に旧形式が残っていると、もう指摘は止めず、`vs lint` が行番号と置き換え先を添えて 🟡 で知らせる（`L3: <!-- vs-lint-disable --> → <!-- no-lint-start -->`）。あわせて、`vs lint --fix` が textlint の記法を書き戻すときに旧形式を書いていたのを `no-lint` 系に、閉じ忘れの警告の文言も新しい書き方に直した。31 章の「旧形式も受け付けます」の注記を外した。
 - **内部コマンド `vs create:cover` と、`vs cover` の引数（`a4`・`b5`・`a5`・`epub`）を外した**（改善案.md #93）。表紙は `vs cover` か `vs build` で作り、判型は `book.yml` の `page.use`、作るものは `output.targets` に従う。判型の引数は、SVG のテーマでは効いておらず（`book.yml` の判型で作っていた）、本と違う判型の表紙は使い道も無かった。
 - **依存 gem の `combine_pdf` を外した**。使っていたのは表紙にトンボを重ねる処理だけで、本文と同じ qpdf の重ね方に替えた。
 - **`vs index:import` の `--prefer-import` を外した**（`index-library-reserve-spec.md` §3.5）。辞書にある語をライブラリの側で上書きするオプションだったが、規則が分かれて分かりにくく、上書きのときに印まで足し合わせ、索引だけの語が用語集にも載っていた。取り込みは追記だけにする。ライブラリの説明文で入れ直したい語は、レビューファイルで `[DELETE]` してから取り込み直す。

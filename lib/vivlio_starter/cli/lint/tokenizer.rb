@@ -13,8 +13,7 @@ module VivlioStarter
 
         FRONTMATTER_SEP  = /^---\s*$/
 
-        # 抑止コメントの定義。正典は NotationGuard 側に一本化してある
-        # （短い `no-lint` 系と、後方互換の `vs-lint-*` 系の両方を受ける）。
+        # 抑止コメントの定義。正典は NotationGuard 側に一本化してある。
         VS_LINT_DISABLE           = NotationGuard::SUPPRESS_START
         VS_LINT_ENABLE            = NotationGuard::SUPPRESS_END
         VS_LINT_DISABLE_NEXT_LINE = NotationGuard::SUPPRESS_NEXT_LINE
@@ -33,7 +32,7 @@ module VivlioStarter
           in_frontmatter   = false
           line_no          = 0
 
-          # vs-lint コメントによる除外行番号セットを構築
+          # 抑止コメントによる除外行番号セットを構築
           excluded_lines, unclosed_disable_at = build_excluded_lines(content)
           warn_unclosed_disable(path, unclosed_disable_at) if unclosed_disable_at
 
@@ -60,7 +59,7 @@ module VivlioStarter
             # コードブロック内のスキップ
             next if code_lines.include?(line_no)
 
-            # vs-lint コメントによる除外
+            # 抑止コメントによる除外
             next if excluded_lines.include?(line_no)
 
             extract_words(line).each { |word| tokens << [word, line_no] }
@@ -77,10 +76,10 @@ module VivlioStarter
           (1..total).reject { prose.include?(it) }.to_set
         end
 
-        # vs-lint コメントに基づいて除外すべき行番号のセットを構築する
+        # 抑止コメントに基づいて除外すべき行番号のセットを構築する
         #
         # **コード領域の中は見ない。** 校正の使い方を解説する原稿は、フェンスの中へ
-        # `<!-- vs-lint-disable -->` を書き写す。それを本物の指示として解釈すると、
+        # `<!-- no-lint-start -->` を書き写す。それを本物の指示として解釈すると、
         # 例示のつもりの 1 行がファイル末尾までの抑止になる（実測: ```markdown の中に
         # 閉じない disable を置くと、その下の本文の綴り誤りが検出されなくなった）。
         # 記法かどうかの判定は Masking へ委ね、ProseChecker と同じ扱いに揃える。
@@ -99,21 +98,21 @@ module VivlioStarter
             line_no += 1
             next unless prose.include?(line_no)
 
-            # vs-lint-disable コメント行自体を除外
+            # no-lint-start コメント行自体を除外
             if line.match?(VS_LINT_DISABLE)
               disable_opened_at ||= line_no
               excluded_lines.add(line_no)
               next
             end
 
-            # vs-lint-enable コメント行自体を除外
+            # no-lint-end コメント行自体を除外
             if line.match?(VS_LINT_ENABLE)
               disable_opened_at = nil
               excluded_lines.add(line_no)
               next
             end
 
-            # vs-lint-disable-next-line コメント行自体を除外し、次の行も除外
+            # no-lint コメント行自体を除外し、次の行も除外
             if line.match?(VS_LINT_DISABLE_NEXT_LINE)
               excluded_lines.add(line_no)
               excluded_lines.add(line_no + 1)
@@ -127,7 +126,7 @@ module VivlioStarter
           [excluded_lines, disable_opened_at]
         end
 
-        # vs-lint-disable が閉じられないままファイル末尾に達した場合に警告を出す。
+        # no-lint-start が閉じられないままファイル末尾に達した場合に警告を出す。
         # 著者が誤って enable を書き忘れたケースを検知するためのガード。
         #
         # **`Kernel#warn` を使ってはならない。** `bin/vs` は起動時に `RUBYOPT=-W0` を
@@ -140,8 +139,8 @@ module VivlioStarter
         # @param opened_at [Integer] disable が開始された行番号
         def warn_unclosed_disable(path, opened_at)
           location = path ? "#{path}:#{opened_at}" : "line #{opened_at}"
-          Common.log_warn("[vs-lint] #{location} の <!-- vs-lint-disable --> が " \
-                          '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。')
+          Common.log_warn("[vs-lint] #{location} の <!-- no-lint-start --> が " \
+                          '<!-- no-lint-end --> で閉じられていません。ファイル末尾まで lint が無効化されます。')
         end
 
         # 欧文の単語。アクセント記号の付いた文字（Latin-1 補助と拡張 A・B。× と ÷ は除く）も

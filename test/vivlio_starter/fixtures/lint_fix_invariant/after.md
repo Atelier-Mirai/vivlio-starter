@@ -10,7 +10,7 @@
 
 面積は $(1/2)πr^2$ です。![](logo.webp){width=20%}
 
-<!-- vs-lint-disable-next-line -->
+<!-- no-lint -->
 面積は $\pi r^2$ です。![](a.webp){width=20%}
 
 :::{.output}

@@ -43,13 +43,13 @@ module VivlioStarter
       ORIGINAL_CONTENT = <<~MD
         # テスト章
 
-        <!-- vs-lint-disable-next-line -->
+        <!-- no-lint -->
         これは故意にルールを破る文章で御座います。
 
-        <!-- vs-lint-disable -->
+        <!-- no-lint-start -->
         一つ目の壊れた段落。
         二つ目の壊れた段落。
-        <!-- vs-lint-enable -->
+        <!-- no-lint-end -->
 
         通常段落。
       MD
@@ -71,17 +71,17 @@ module VivlioStarter
         通常段落。
       MD
 
-      # 原稿へ書き戻された結果の期待値。修正が反映され、コメントは vs-lint 形へ戻る。
+      # 原稿へ書き戻された結果の期待値。修正が反映され、コメントは no-lint 形へ戻る。
       EXPECTED_AFTER_FIX = <<~MD
         # テスト章
 
-        <!-- vs-lint-disable-next-line -->
+        <!-- no-lint -->
         これは故意にルールを破る文章でございます。
 
-        <!-- vs-lint-disable -->
+        <!-- no-lint-start -->
         一つ目の壊れた段落。
         二つ目の壊れた段落。
-        <!-- vs-lint-enable -->
+        <!-- no-lint-end -->
 
         通常段落。
       MD

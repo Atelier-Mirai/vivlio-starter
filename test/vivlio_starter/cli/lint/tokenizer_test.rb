@@ -97,18 +97,18 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'paragraph'
   end
 
-  # <!-- vs-lint-disable-next-line --> コメントの次の行がスキップされることを確認する
+  # <!-- no-lint --> コメントの次の行がスキップされることを確認する
   def test_vs_lint_disable_next_line_skips_next_line
-    content = "good word\n<!-- vs-lint-disable-next-line -->\nbadword\nmore words\n"
+    content = "good word\n<!-- no-lint -->\nbadword\nmore words\n"
     words = T.tokenize(content).map { _1[0] }
     refute_includes words, 'badword'
     assert_includes words, 'good'
     assert_includes words, 'more'
   end
 
-  # <!-- vs-lint-disable --> 〜 <!-- vs-lint-enable --> の範囲がスキップされることを確認する
+  # <!-- no-lint-start --> 〜 <!-- no-lint-end --> の範囲がスキップされることを確認する
   def test_vs_lint_disable_enable_block_skipped
-    content = "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n<!-- vs-lint-enable -->\nafter\n"
+    content = "before\n<!-- no-lint-start -->\nbadword1\nbadword2\n<!-- no-lint-end -->\nafter\n"
     words = T.tokenize(content).map { _1[0] }
     refute_includes words, 'badword1'
     refute_includes words, 'badword2'
@@ -116,9 +116,9 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'after'
   end
 
-  # <!-- vs-lint-enable --> がない場合にファイル末尾まで除外されることを確認する
+  # <!-- no-lint-end --> がない場合にファイル末尾まで除外されることを確認する
   def test_vs_lint_disable_without_enable_skips_to_end
-    content = "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n"
+    content = "before\n<!-- no-lint-start -->\nbadword1\nbadword2\n"
     tokens = nil
     capture_io { tokens = T.tokenize(content) }
     words = tokens.map { _1[0] }
@@ -127,11 +127,11 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'before'
   end
 
-  # <!-- vs-lint-disable --> が閉じられていない場合に警告が出ることを確認する。
+  # <!-- no-lint-start --> が閉じられていない場合に警告が出ることを確認する。
   # 出力先は stdout——他の 🟡 と同じく Common.log_warn を通すため
   # （`cli-warning-delivery-spec.md` §5.1）。
   def test_vs_lint_disable_unclosed_emits_warning
-    content = "before\n<!-- vs-lint-disable -->\nbadword\n"
+    content = "before\n<!-- no-lint-start -->\nbadword\n"
     out, _err = capture_io { T.tokenize(content, path: 'sample.md') }
     assert_match(/vs-lint/, out)
     assert_match(/sample\.md:2/, out)
@@ -140,21 +140,21 @@ class TestTokenizer < Minitest::Test
 
   # 閉じられた disable-enable では警告が出ないことを確認する
   def test_vs_lint_disable_closed_does_not_warn
-    content = "<!-- vs-lint-disable -->\nword\n<!-- vs-lint-enable -->\n"
+    content = "<!-- no-lint-start -->\nword\n<!-- no-lint-end -->\n"
     out, err = capture_io { T.tokenize(content, path: 'sample.md') }
     refute_match(/vs-lint/, out + err)
   end
 
   # path 省略時でも警告が出ることを確認する（ただし行番号のみ表示）
   def test_vs_lint_disable_unclosed_warns_without_path
-    content = "<!-- vs-lint-disable -->\nword\n"
+    content = "<!-- no-lint-start -->\nword\n"
     out, _err = capture_io { T.tokenize(content) }
     assert_match(/line 1/, out)
   end
 
   # vs-lint コメント行自体がスキップされることを確認する
   def test_vs_lint_comment_lines_themselves_skipped
-    content = "<!-- vs-lint-disable -->\n<!-- vs-lint-enable -->\n<!-- vs-lint-disable-next-line -->\n"
+    content = "<!-- no-lint-start -->\n<!-- no-lint-end -->\n<!-- no-lint -->\n"
     words = T.tokenize(content).map { _1[0] }
     assert_empty words
   end
@@ -165,7 +165,7 @@ class TestTokenizer < Minitest::Test
   def test_vs_lint_comment_inside_code_fence_is_not_a_directive
     content = <<~MD
       ````markdown
-      <!-- vs-lint-disable -->
+      <!-- no-lint-start -->
       除外の例です。
       ````
 
@@ -182,10 +182,10 @@ class TestTokenizer < Minitest::Test
   def test_vs_lint_comment_outside_code_fence_still_works
     content = <<~MD
       ````markdown
-      <!-- vs-lint-disable -->
+      <!-- no-lint-start -->
       ````
 
-      <!-- vs-lint-disable-next-line -->
+      <!-- no-lint -->
       これは anthoer ですが抑止されます。
       これは mistaek なので検出されます。
     MD

@@ -74,7 +74,7 @@ module VivlioStarter
         assert_equal 2, result[:total], 'textlint が出した指摘はすべて表示する'
       end
 
-      # 行単位の抑止（`<!-- vs-lint-disable-next-line -->` の次の行）。
+      # 行単位の抑止（`<!-- no-lint -->` の次の行）。
       # textlint 側の comments フィルタが -next-line を実装していないため、
       # 出力段で落とすしかない。**集約の前に当たること**が要点で、集約後は
       # 行番号が 1 行へ畳まれて選り分けられなくなる

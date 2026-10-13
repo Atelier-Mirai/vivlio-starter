@@ -149,8 +149,7 @@ module VivlioStarter
         # 「文字が選択できず…」が繋がって挙がっていた（実測 1 件）。
         SENTENCE_BREAK = /(?<=。)|(?<=\|)/
 
-        # 指摘を抑止するコメント。正典は NotationGuard 側に一本化してある
-        # （短い `no-lint` 系と、後方互換の `vs-lint-*` 系の両方を受ける）。
+        # 指摘を抑止するコメント。正典は NotationGuard 側に一本化してある。
         DISABLE_NEXT_LINE   = NotationGuard::SUPPRESS_NEXT_LINE
         DISABLE_RANGE_OPEN  = NotationGuard::SUPPRESS_START
         DISABLE_RANGE_CLOSE = NotationGuard::SUPPRESS_END
@@ -255,7 +254,7 @@ module VivlioStarter
         #
         # 除外リストが効くのは交ぜ書きだけである。あれは「この語はこのままでよい」という
         # 語彙の宣言なので、構文の指摘（二通りに読める対比）には当てはまらない。
-        # 対比を黙らせるときは `<!-- vs-lint-disable -->` か `lint.disabled_rules` を使う。
+        # 対比を黙らせるときは `<!-- no-lint-start -->` か `lint.disabled_rules` を使う。
         def mazegaki_findings(text, allowlist = [])
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = protect_furigana(Masking.protect_code(line).first)
@@ -339,7 +338,7 @@ module VivlioStarter
         # 無関係な `・` と同居しただけの `/` まで黙ってしまう。窓の外にある `・`
         # （`運転免許・IT資格（基本情報技術者/応用情報技術者）`）は指摘されるが、
         # **検出して著者に委ねる**ほうを採る——lint の役目は候補を示すことで、まれな誤検出は
-        # `<!-- vs-lint-disable-next-line -->` で受ければよい（本書での誤検出は 0 件）。
+        # `<!-- no-lint -->` で受ければよい（本書での誤検出は 0 件）。
         #
         # 直し方を著者に委ねる（`--fix` しない）のは、`・` と ` / ` のどちらが合うかが
         # 意味で決まるため。見出しで両方を示す。
@@ -426,7 +425,7 @@ module VivlioStarter
         # のは一般の作法で、textlint 側も `ListItem` を最初から除外している。
         #
         # 助詞で終わる形（`…という自然な習慣で` `…用語集へ`）は残る。文ではないので
-        # 指摘は正しくないが、助詞の一覧を抱えるより `<!-- vs-lint-disable-next-line -->`
+        # 指摘は正しくないが、助詞の一覧を抱えるより `<!-- no-lint -->`
         # で抑えるほうが軽いと判断した（実測で本書 2 件）。
         #
         # `--fix` はしない——句点を足すのか体言止めに直すのかは、著者にしか決められない。
@@ -614,7 +613,7 @@ module VivlioStarter
         # （Unix のパイプ）・`ドット`（ドット記法）・`文字`・`記号` は、載せると記号でない
         # 数まで黙らせる——「1 つのハッシュで」を実際に黙らせた（本書 25 章）。
         # 文脈で決まる箇所（「直前の 1 つだけ」が `---` を指すなど）は判定できないので、
-        # 著者が `<!-- vs-lint-disable-next-line -->` で黙らせる。
+        # 著者が `<!-- no-lint -->` で黙らせる。
         COUNTER_SYMBOL_NAMES = %w[
           空白 空行 改行 タブ スペース 半角スペース 全角スペース
           バッククォート バックティック ダブルクォート シングルクォート 引用符
@@ -1144,7 +1143,7 @@ module VivlioStarter
 
         # コード領域でない（＝地の文の）行を [行番号, 行] で返す。
         #
-        # `<!-- vs-lint-disable -->` 系で抑止された行は落とす。textlint 側はコメントを
+        # `<!-- no-lint-start -->` 系で抑止された行は落とす。textlint 側はコメントを
         # textlint 記法へ変換して渡している（LintRunner#rewrite_vs_lint_to_textlint）ので、
         # 独自ルールも同じ指示に従わないと、著者から見て「同じコメントが片方にしか効かない」
         # という不可解な振る舞いになる。校正について書いた章は自らの例文が指摘されるため、

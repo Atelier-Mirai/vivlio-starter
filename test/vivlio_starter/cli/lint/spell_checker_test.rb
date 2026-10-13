@@ -88,22 +88,22 @@ class TestSpellChecker < Minitest::Test
     end
   end
 
-  # <!-- vs-lint-disable-next-line --> が付いた行の次の行がスキップされることを確認する
+  # <!-- no-lint --> が付いた行の次の行がスキップされることを確認する
   def test_check_skips_vs_lint_disable_next_line
     word_map = {}
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'test.md')
-      File.write(path, "<!-- vs-lint-disable-next-line -->\nbadword\n")
+      File.write(path, "<!-- no-lint -->\nbadword\n")
       assert_empty SC.check(path, word_map)
     end
   end
 
-  # <!-- vs-lint-disable --> 〜 <!-- vs-lint-enable --> の範囲がスキップされることを確認する
+  # <!-- no-lint-start --> 〜 <!-- no-lint-end --> の範囲がスキップされることを確認する
   def test_check_skips_vs_lint_disable_enable_block
     word_map = {}
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'test.md')
-      File.write(path, "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n<!-- vs-lint-enable -->\nafter\n")
+      File.write(path, "before\n<!-- no-lint-start -->\nbadword1\nbadword2\n<!-- no-lint-end -->\nafter\n")
       errors = SC.check(path, word_map)
       words = errors.map { _1[:word] }
       refute_includes words, 'badword1'

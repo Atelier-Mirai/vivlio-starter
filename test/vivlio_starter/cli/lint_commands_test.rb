@@ -555,18 +555,18 @@ module VivlioStarter
       end
 
       # sentence_length_max 指定時に、上限を上書きした一時 textlintrc を生成する
-      # `<!-- vs-lint-disable-next-line -->` は textlint 側で効かない
+      # `<!-- no-lint -->` は textlint 側で効かない
       # （textlint-filter-rule-comments v1.3.0 に -next-line の実装が無い）。
       # 原稿は「一行だけ除外」を案内しているので、出力段で行ごと落として辻褄を合わせる
       def test_next_line_suppression_targets_only_the_following_line
         text = <<~MD
           # 見出し
 
-          <!-- vs-lint-disable-next-line -->
+          <!-- no-lint -->
           この行は抑止される。
           この行は抑止されない。
 
-          <!-- vs-lint-disable-next-line -->
+          <!-- no-lint -->
           ここも抑止される。
         MD
 
@@ -596,7 +596,7 @@ module VivlioStarter
       def test_next_line_suppression_ignores_comments_inside_code_fences
         text = <<~MD
           ````markdown
-          <!-- vs-lint-disable-next-line -->
+          <!-- no-lint -->
           ````
 
           この行は抑止されない。
@@ -609,7 +609,7 @@ module VivlioStarter
 
       # 囲む形（disable / enable）は textlint 側が処理するので、こちらは拾わない
       def test_next_line_suppression_ignores_the_range_form
-        text = "<!-- vs-lint-disable -->\n囲まれた行。\n<!-- vs-lint-enable -->\n"
+        text = "<!-- no-lint-start -->\n囲まれた行。\n<!-- no-lint-end -->\n"
 
         runner = LintCommands::LintRunner.new([], {})
 
@@ -623,7 +623,7 @@ module VivlioStarter
         Dir.mktmpdir do |dir|
           path = File.join(dir, 'chapter.md')
           tmp  = File.join(dir, 'textlint_tmp.md')
-          body = "前の行です。\n<!-- vs-lint-disable-next-line -->\n①が愛器「リナ」です。\n後の行です。\n"
+          body = "前の行です。\n<!-- no-lint -->\n①が愛器「リナ」です。\n後の行です。\n"
           File.write(path, body)
           File.write(tmp, body)
 
@@ -646,7 +646,7 @@ module VivlioStarter
         Dir.mktmpdir do |dir|
           path = File.join(dir, 'chapter.md')
           tmp  = File.join(dir, 'textlint_tmp.md')
-          body = "<!-- vs-lint-disable-next-line -->\n面積は $\\pi r^2$ です。\n"
+          body = "<!-- no-lint -->\n面積は $\\pi r^2$ です。\n"
           File.write(path, body)
           masked, spans = Lint::NotationGuard.mask_for_fix(body)
           File.write(tmp, masked)
@@ -699,7 +699,7 @@ module VivlioStarter
         Dir.mktmpdir do |dir|
           original = File.join(dir, '11-install.md')
           tmp      = File.join(dir, 'textlint_tmp.md')
-          File.write(original, "<!-- vs-lint-disable-next-line -->\n抑止される行。\n")
+          File.write(original, "<!-- no-lint -->\n抑止される行。\n")
           FileUtils.touch(tmp)
 
           runner = LintCommands::LintRunner.new([], {})
@@ -707,6 +707,48 @@ module VivlioStarter
 
           assert_equal Set[2], map[File.expand_path(tmp)]
         end
+      end
+
+      # 1.0 の前の抑止コメントは、置き換え先を添えて 1 ファイル 1 件の 🟡 で知らせる。
+      # コードブロックの中（記法の例示）は案内しない
+      def test_should_point_retired_suppression_markers_to_their_replacements
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, '31-lint.md')
+          File.write(path, <<~MD)
+            <!-- vs-lint-disable-next-line -->
+            抑えていたつもりの行。
+            <!-- vs-lint-disable -->
+            <!-- vs-lint-enable -->
+
+            ```markdown
+            <!-- vs-lint-disable -->
+            ```
+          MD
+          warnings = []
+          runner = LintCommands::LintRunner.new([], {})
+
+          Common.stub(:log_warn, ->(msg, detail: nil) { warnings << [msg, detail] }) do
+            runner.send(:warn_retired_suppression_markers, [path])
+          end
+
+          assert_equal 1, warnings.size
+          message, detail = warnings.first
+          assert_includes message, '廃止した抑止コメントが 3 か所'
+          assert_includes detail, 'L1: <!-- vs-lint-disable-next-line --> → <!-- no-lint -->'
+          assert_includes detail, 'L3: <!-- vs-lint-disable --> → <!-- no-lint-start -->'
+          assert_includes detail, 'L4: <!-- vs-lint-enable --> → <!-- no-lint-end -->'
+          refute_includes detail, 'L7:'
+        end
+      end
+
+      # --fix で行番号から戻せなかった textlint の記法は、廃止した vs-lint-* ではなく
+      # no-lint 系へ戻す（vs-lint-* を書くと、次の lint で抑止が効かない）
+      def test_should_write_textlint_markers_back_as_no_lint
+        runner = LintCommands::LintRunner.new([], {})
+        source = "<!-- textlint-disable-next-line -->\nA\n<!-- textlint-disable -->\nB\n<!-- textlint-enable -->\n"
+
+        assert_equal "<!-- no-lint -->\nA\n<!-- no-lint-start -->\nB\n<!-- no-lint-end -->\n",
+                     runner.send(:rewrite_textlint_to_no_lint, source)
       end
 
       # generate_runtime_config は、元設定と同じディレクトリに一時ファイルを作る
