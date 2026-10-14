@@ -277,10 +277,8 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 # 1. マスター画像を配置
 # covers/frontcover_master.png
 # covers/backcover_master.png を配置
-
 # 2. カバー画像を生成
 vs cover
-
 # 3. 本文と結合してビルドし、表紙を確かめる
 vs build
 ```
@@ -289,13 +287,10 @@ vs build
 
 ```bash
 # 1. マスター画像を修正（デザインツールで編集）
-
 # 2. 古いカバー画像を削除
 vs clean --cover
-
 # 3. 新しいカバー画像を生成
 vs cover
-
 # 4. PDFに統合してビルド
 vs build
 ```
@@ -305,12 +300,9 @@ vs build
 ```bash
 # 1. 入稿用の表紙を作り直す（output.targets に print_pdf を入れておく）
 vs cover
-
 # 2. プロジェクト直下の入稿用表紙を開いて確かめる
 open vivlio_starter_frontcover_v1.0.0.pdf
 open vivlio_starter_backcover_v1.0.0.pdf
-
 # 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
-
 # 4. 問題なければ印刷所に入稿
 ```
