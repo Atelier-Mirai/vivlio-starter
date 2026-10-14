@@ -22,6 +22,7 @@
 require 'yaml'
 require 'fileutils'
 require_relative '../common'
+require_relative 'main_reference'
 
 module VivlioStarter
   module CLI
@@ -295,6 +296,38 @@ module VivlioStarter
         return unless scanned&.include?(old_basename)
 
         record_scanned_chapters!([new_basename])
+      end
+
+      # 章の削除に辞書を追随させる（main: と scanned_chapters）。改善案.md #108。
+      #
+      # 改名と違い、移す先が無い。消した章を指す main: を外し、空になった語は main ごと
+      # 消して「まだ決めていない」へ戻す——次の vs index:auto が主要参照の候補を出す流れに
+      # 乗る。残しておくと索引の太字の主要参照が黙って消え、main があるので
+      # 「未指定」の促しにも候補の提示にも引っかからない。`main: []`（付けないと決めた語）は
+      # 著者の判断なので触らない。
+      #
+      # @param basename [String] 消した章名（拡張子なし）
+      # @return [Integer] main: を書き換えた語数
+      def forget_chapter!(basename)
+        terms = load_terms
+        changed = 0
+
+        terms.each do |term|
+          next unless term['main']
+
+          before = Array(term['main'])
+          after = before.reject { IndexCommands::MainReference.parse(it).chapter == basename }
+          next if after == before
+
+          after.empty? ? term.delete('main') : term['main'] = after
+          changed += 1
+        end
+
+        save_terms!(terms) if changed.positive?
+        # record_scanned_chapters! は実在する章との積を取るので、原稿を消した後なら落ちる
+        record_scanned_chapters!([])
+        Common.log_info("索引辞書の主要参照から #{basename} を外しました（#{changed} 語）") if changed.positive?
+        changed
       end
 
       # キャッシュをクリア

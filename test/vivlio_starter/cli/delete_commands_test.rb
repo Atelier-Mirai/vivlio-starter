@@ -62,6 +62,25 @@ module VivlioStarter
         end
       end
 
+      # 消した章を指す索引辞書の main: を外す（vs rename の追随と対・改善案.md #108）
+      def test_delete_forgets_main_references_to_the_deleted_chapter
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          File.write('config/index_glossary_terms.yml', {
+            'terms' => [
+              { 'term' => 'テスト', 'yomi' => 'てすと', 'flags' => 'i', 'main' => ['11-sample'] },
+              { 'term' => 'CSS', 'yomi' => 'CSS', 'flags' => 'i', 'main' => %w[11-sample 15] }
+            ]
+          }.to_yaml)
+
+          capture_io { DeleteCommands::DeleteCommandExecutor.new({ force: true }, ['11-sample']).call }
+
+          terms = YAML.load_file('config/index_glossary_terms.yml')['terms'].to_h { [it['term'], it] }
+          refute terms['テスト'].key?('main'), '空になった語は「未決定」に戻す'
+          assert_equal ['15'], terms['CSS']['main']
+        end
+      end
+
       # 対象が見つからない場合に終了コード 1 で終了することを確認
       def test_delete_exits_when_targets_missing
         within_temp_dir do

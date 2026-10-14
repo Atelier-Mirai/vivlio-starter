@@ -583,6 +583,8 @@ module VivlioStarter
         warn_unscanned_chapters(chapters)
         # 主要参照が未指定で広く散らばっている語を要約 1 行で促す
         warn_missing_main_references(chapters)
+        # 主要参照が原稿の無い章を指している語を知らせる（#108）
+        warn_orphan_main_references(chapters)
 
         return unless scanner.config_missing || scanner.no_matches
 
@@ -674,6 +676,48 @@ module VivlioStarter
           message: "主要参照が未指定の索引語が #{wide.size} 語あります（vs index:auto で候補を確認できます）"
         )
       end
+
+      # 辞書の main: が、原稿の無い章を指していたら知らせる（改善案.md #108 の B）。
+      #
+      # catalog に無いだけの章（原稿はある）は黙る——catalog から外して戻す使い方のための
+      # 規則（index-main-reference-spec.md）。原稿ごと無いときは、索引の太字の主要参照が
+      # 黙って消え、main があるので「未指定」の促し（上）にも vs index:auto の候補にも
+      # 引っかからない。vs delete は辞書を追随させるが、git mv などツールを通さずに
+      # 動かした場合はここでしか気づけない。部分ビルドでも知らせる（範囲に依らない欠陥）。
+      # @param chapters [Array<String>] ビルド対象章（主要参照の候補として出現章を挙げる）
+      def warn_orphan_main_references(chapters)
+        existing = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }
+        bodies = nil
+
+        @terms_manager.load_terms.each do |term|
+          missing = Array(term['main']).map { IndexCommands::MainReference.parse(it).chapter }.uniq
+                                       .reject { |chapter| existing.include?(chapter) }
+          next if missing.empty?
+
+          bodies ||= chapters.to_h { [File.basename(it.to_s, '.md'), chapter_body(it)] }.compact
+          pattern = IndexCommands::TermPattern.for(term)
+          found = bodies.select { |_, body| body.match?(pattern) }.keys
+          hint = found.empty? ? '' : "（出現する章: #{found.first(5).join('・')}）"
+          missing.each do |chapter|
+            IndexCommands.add_post_build_message(
+              "🟡 索引語「#{term['term']}」の主要参照 #{chapter} の原稿がありません（#{Common::CONTENTS_DIR}/#{chapter}.md）\n" \
+              "🟡  config/index_glossary_terms.yml の「#{term['term']}」の main: から #{chapter} を外すと、" \
+              "vs index:auto が主要参照の候補を出します#{hint}"
+            )
+          end
+          PreProcessCommands::IssueRegistry.record(
+            severity: :warn, category: :index,
+            message: "索引語「#{term['term']}」の主要参照 #{missing.join('・')} の原稿がありません"
+          )
+        end
+      end
+
+      # 章の本文（コードを除く）。原稿が見つからなければ nil
+      def chapter_body(chapter)
+        path = IndexCommands::ChapterSource.path(chapter)
+        path && IndexCommands::CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+      end
+      private :chapter_body
 
       # R4: ビルド対象章に 1 回も出現しない用語集語を警告する（掲載自体は維持）。
       # catalog 未登録の原稿に出現があるならその章名を添え、どこにも無ければその旨を伝える。

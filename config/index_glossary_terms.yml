@@ -1492,8 +1492,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テスト/"
   updated_at: '2026-10-04 00:05:46'
-  main:
-  - 61-developer
 - term: テンプレート
   yomi: てんぷれーと
   flags: i

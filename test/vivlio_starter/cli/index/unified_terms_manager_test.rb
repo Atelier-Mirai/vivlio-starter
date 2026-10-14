@@ -254,6 +254,47 @@ module VivlioStarter
         assert_equal %w[10-intro 20-body], @manager.scanned_chapters
       end
 
+      # --- Phase: 章の削除への追随（改善案.md #108） ---
+
+      # 消した章を指す main: は外す。空になった語は main ごと消して「まだ決めていない」に
+      # 戻す——次の vs index:auto が主要参照の候補を出す流れに乗せるため
+      def test_forget_chapter_drops_main_references_to_the_deleted_chapter
+        seed_terms([
+                     { 'term' => 'テスト', 'flags' => 'i', 'main' => ['61-developer'] },
+                     { 'term' => 'lint', 'flags' => 'i', 'main' => %w[61-developer 31-lint] },
+                     { 'term' => '索引', 'flags' => 'i', 'main' => '61-developer#索引の仕組み' },
+                     { 'term' => 'CSS', 'flags' => 'i', 'main' => ['22-extensions'] }
+                   ])
+
+        assert_equal 3, @manager.forget_chapter!('61-developer')
+
+        terms = @manager.load_terms.to_h { [it['term'], it] }
+        refute terms['テスト'].key?('main'), '空になった語は「未決定」に戻す'
+        assert_equal ['31-lint'], terms['lint']['main']
+        refute terms['索引'].key?('main'), '節を指す main: も章ごと外す'
+        assert_equal ['22-extensions'], terms['CSS']['main']
+      end
+
+      def test_forget_chapter_keeps_explicit_no_main_decision
+        seed_terms([{ 'term' => '付けない語', 'flags' => 'i', 'main' => [] }])
+
+        assert_equal 0, @manager.forget_chapter!('61-developer')
+        assert_equal [], @manager.load_terms.first['main'], '「付けない」と決めた語はそのまま'
+      end
+
+      def test_forget_chapter_drops_the_chapter_from_scanned_chapters
+        FileUtils.mkdir_p('contents')
+        File.write('contents/10-intro.md', '# intro')
+        File.write('contents/61-developer.md', '# dev')
+        seed_terms([{ 'term' => 'CSS', 'flags' => 'i' }])
+        @manager.record_scanned_chapters!(%w[10-intro 61-developer])
+        File.delete('contents/61-developer.md')
+
+        @manager.forget_chapter!('61-developer')
+
+        assert_equal ['10-intro'], @manager.scanned_chapters
+      end
+
       def test_save_terms_preserves_scanned_chapters
         FileUtils.mkdir_p('contents')
         File.write('contents/10-intro.md', '# intro')
@@ -309,7 +350,7 @@ module VivlioStarter
             'flags' => e['flags'] || 'i', 'definition' => e['definition'] || '',
             'pattern' => "/#{e['term']}/", 'source' => 'test',
             'approved_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
-          }
+          }.merge(e.slice('main'))
         end
         File.write('config/index_glossary_terms.yml',
                    { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)

@@ -255,6 +255,10 @@
 
 ### Fixed
 
+- **消した章を指す索引の主要参照が、辞書に黙って残っていたのを直した**（改善案 #108）。残ると索引の太字の主要参照が消え、`main:` があるので「主要参照が未指定」の促しにも `vs index:auto` の候補にも引っかからなかった。
+  - `vs delete` は、`vs rename` と同じく索引辞書を追随させる（`UnifiedTermsManager#forget_chapter!`）。消した章を指す `main:` を外し、空になった語は `main` ごと消して「まだ決めていない」へ戻す（次の `vs index:auto` が候補を出す）。`main: []`（付けないと決めた語）はそのまま。
+  - ビルドは、`main:` が原稿の無い章を指していたら 🟡 で知らせる（`warn_orphan_main_references`）。直し方と、その語が出てくる章を添える。catalog から外しただけの章（原稿はある）は今までどおり黙る。`git mv` などツールを通さずに動かした場合も、ここで気づける。
+  - 本書の辞書の「テスト」の `main: [61-developer]` を外した（61 章を本から外した後、本文に出てこなくなっていた）。24 章の `vs delete` の説明に一言足した。
 - **横結合（`||`）や複数行の見出しを含む表で、インラインコードが `VS_CODE_SPAN__1` のような太字の文字列になっていたのを直した**（`TableConverter.intercept_extended_tables`）。コードを目印 `__VS_CODE_SPAN__n__` に退避したまま表を描いていたため、目印が Markdown の太字と読まれ、元のコードへ戻せなくなっていた。判定は退避した文字列で行い、描くときはコードを戻した文字列を渡す。
 - **表のセルのインラインコードで、`\|` がバックスラッシュごと出ていたのを直した**（`PostProcessCommands.unescape_pipes_in_table_code!`）。VFM はコードの中の `\|` を `|` に戻さない（GFM では戻る）。表のセルの中のコードの `\|` だけを、後処理で `|` に戻す。14 章の対応表と付録F の記法の表の `{漢字|よみ}` が直った。
 - **Kindle の数式で、`\epsilon`・`\phi` が PDF と違う字になっていたのを直した**（`MathTextRenderer::GREEK`）。Kindle はインライン数式を本文の文字に置き換えるが、`\epsilon` と `\varepsilon` をどちらも ε に、`\phi` を φ・`\varphi` を ϕ にしていた。PDF の数式（TeX の決まり）と同じく、`\epsilon` は ϵ・`\varepsilon` は ε・`\phi` は ϕ・`\varphi` は φ にした。

@@ -155,7 +155,7 @@ vs create intro basics advanced
 vs delete 11-intro
 ```
 
-`contents/11-intro.md`、`images/11-intro/`、`catalog.yml` のエントリが削除されます。章は前の節の書き方で指定できるので、`vs delete 11` や、範囲を指定した `vs delete 11-13` も使えます。
+`contents/11-intro.md`、`images/11-intro/`、`catalog.yml` のエントリが削除され、索引辞書の主要参照（`main:`）がこの章を指していれば外れます。章は前の節の書き方で指定できるので、`vs delete 11` や、範囲を指定した `vs delete 11-13` も使えます。
 
 確認を省くときは `--force`（`-f`）を付けます。`--yes`（`-y`）も同じ意味です。
 

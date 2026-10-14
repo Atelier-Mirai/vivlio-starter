@@ -26,6 +26,7 @@ require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
 require_relative 'token_resolver'
+require_relative 'index/unified_terms_manager'
 
 module VivlioStarter
   module CLI
@@ -174,6 +175,7 @@ module VivlioStarter
       #   - contents/XX-slug.md（章 Markdown）
       #   - images/XX-slug/（章画像ディレクトリ）
       #   - config/catalog.yml 内の該当エントリ
+      #   - 索引辞書の main: と scanned_chapters のうち、その章を指すもの
       class ChapterDeletion
         # @param options [DeleteOptions] 削除オプション（force 判定などに使用）
         def initialize(options)
@@ -189,6 +191,7 @@ module VivlioStarter
         #   - contents/XX-slug.md を削除
         #   - images/XX-slug/ ディレクトリを削除
         #   - config/catalog.yml から該当エントリを削除
+        #   - 索引辞書からその章を指す主要参照を外す（原稿を消したときだけ）
         def remove(basename)
           documents = delete_markdown_file(basename) ? 1 : 0
           image_dirs = delete_image_directory(basename) ? 1 : 0
@@ -196,6 +199,9 @@ module VivlioStarter
           # catalog.yml からも削除することで build 時に含まれなくなる
           base = basename.sub(/\.md\z/, '')
           Build::CatalogUpdater.remove_chapter(base)
+          # 辞書の main: が消えた章を指したまま残ると、索引の主要参照が黙って消える
+          # （改善案.md #108）。vs rename の追随と対になる
+          UnifiedTermsManager.new.forget_chapter!(base) if documents.positive?
 
           DeleteSummary.new(documents: documents, image_dirs: image_dirs)
         end
