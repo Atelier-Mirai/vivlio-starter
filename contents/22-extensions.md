@@ -358,6 +358,15 @@ einstein:
   initial: AE        # 表示名と違う字も書ける
 ```
 
+雛形の `config/talk.yml` には、付録の読み物で使うアインシュタイン（`einstein`・`initial: AE`）とボーア（`bohr`・`initial: NB`）が、`avatar: auto` で入っています。2 人の会話は、次のように組まれます。
+
+::::{.output}
+:::{.talk}
+einstein: 神はサイコロを振らない。
+bohr: 神が何をなさるかを、あなたが指図すべきではありません。
+:::
+::::
+
 ### 表示を切り替える
 
 表示は**`style`（形式）・`name`（話者名）・`avatar`（アバター）**の三つで決まります。本全体の既定は `config/talk.yml` の `display:` に書きます。
