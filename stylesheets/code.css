@@ -104,6 +104,11 @@ figure[class^="language-"],
 figure[class*=" language-"] {
   /* layout */
   display: block;
+  /* layout-utils.css の figure { break-inside: avoid } は図版のためのもの。ファイル名を
+     付けたコードもこの figure に包まれるので、打ち消さないと版面に収まらないコードが
+     丸ごと次のページへ送られる（付録F の 39 行のコードで、前のページに 7 割の空き）。
+     ファイル名だけがページの下に残らないよう、figcaption は break-after: avoid にする */
+  break-inside: auto;
 
   /* spacing */
   margin: 0 0 3mm;
@@ -127,6 +132,7 @@ figure[class^="language-"] > figcaption,
 figure[class*=" language-"] > figcaption {
   /* layout */
   display: block;
+  break-after: avoid;
 
   /* box-size */
   inline-size: 100%;

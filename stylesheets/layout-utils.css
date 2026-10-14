@@ -317,6 +317,17 @@
   break-inside: avoid;
 }
 
+/* リストは 1 つの要素なので、上の規則のままでは段の途中で分けられず、全部が左の段に
+   入って右の段が空いた（付録F の年表）。項目ごとに分けないようにし、リストは段を
+   またいでよいことにする */
+.text-2dan > :is(ul, ol) {
+  break-inside: auto;
+}
+
+.text-2dan li {
+  break-inside: avoid;
+}
+
 /* 図版（figure）体裁と回り込み対応 */
 figure {
   margin: 0 0 0.5em;
