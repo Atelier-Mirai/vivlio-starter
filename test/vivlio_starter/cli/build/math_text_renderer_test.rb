@@ -31,7 +31,16 @@ module VivlioStarter
           assert_equal '⟨<i>x</i><sup>2</sup>⟩', R.render('\langle x^2 \rangle')
           assert_equal '<i>e</i><sup><i>i</i>π</sup>+1=0', R.render('e^{i\pi} + 1 = 0')
           assert_equal 'ν<sub>0</sub>', R.render('\nu_0')
-          assert_equal 'φ', R.render('\phi')
+          assert_equal 'ϕ', R.render('\phi')
+        end
+
+        # 異体のあるギリシャ文字は、PDF の数式（TeX の決まり）と同じ字形にする（改善案.md #109）
+        def test_should_match_tex_glyphs_for_greek_variants
+          assert_equal 'ϵ', R.render('\epsilon'),    'U+03F5'
+          assert_equal 'ε', R.render('\varepsilon'), 'U+03B5'
+          assert_equal 'ϕ', R.render('\phi'),        'U+03D5'
+          assert_equal 'φ', R.render('\varphi'),     'U+03C6'
+          assert_equal 'ϑ', R.render('\vartheta')
         end
 
         # \text は立体（イタリックなし）、\, は細空白、\cdot は Unicode で単位式を組む

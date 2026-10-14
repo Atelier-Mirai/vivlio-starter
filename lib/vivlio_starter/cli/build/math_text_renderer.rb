@@ -50,14 +50,17 @@ module VivlioStarter
         }.freeze
 
         # ギリシャ文字コマンド → Unicode（立体＝イタリックにしない・§3.1）。
+        # 字形は PDF の数式（TeX の決まり）にそろえる。\epsilon は ϵ（U+03F5）・\varepsilon は
+        # ε（U+03B5）、\phi は ϕ（U+03D5）・\varphi は φ（U+03C6）。逆にすると、同じ原稿でも
+        # PDF と Kindle で字の形が入れ替わる（改善案.md #109）。
         GREEK = {
           'alpha' => 'α', 'beta' => 'β', 'gamma' => 'γ', 'delta' => 'δ',
-          'epsilon' => 'ε', 'varepsilon' => 'ε', 'zeta' => 'ζ', 'eta' => 'η',
+          'epsilon' => 'ϵ', 'varepsilon' => 'ε', 'zeta' => 'ζ', 'eta' => 'η',
           'theta' => 'θ', 'vartheta' => 'ϑ', 'iota' => 'ι', 'kappa' => 'κ',
           'lambda' => 'λ', 'mu' => 'μ', 'nu' => 'ν', 'xi' => 'ξ',
           'omicron' => 'ο', 'pi' => 'π', 'varpi' => 'ϖ', 'rho' => 'ρ',
           'varrho' => 'ϱ', 'sigma' => 'σ', 'varsigma' => 'ς', 'tau' => 'τ',
-          'upsilon' => 'υ', 'phi' => 'φ', 'varphi' => 'ϕ', 'chi' => 'χ',
+          'upsilon' => 'υ', 'phi' => 'ϕ', 'varphi' => 'φ', 'chi' => 'χ',
           'psi' => 'ψ', 'omega' => 'ω',
           'Gamma' => 'Γ', 'Delta' => 'Δ', 'Theta' => 'Θ', 'Lambda' => 'Λ',
           'Xi' => 'Ξ', 'Pi' => 'Π', 'Sigma' => 'Σ', 'Upsilon' => 'Υ',
