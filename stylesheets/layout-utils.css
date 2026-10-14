@@ -455,6 +455,48 @@ figure.align-center {
   object-fit: contain;
 }
 
+/* 二つのブロックを左右に並べるコンテナ。記法のコードと表示例を見比べる用途が主
+   使用例（VFM コンテナ。中の .output と区別するため外枠は ::::）:
+   ::::{.side-by-side}
+   ```markdown
+   保存は 〘Ctrl〙 + 〘S〙 で行います。
+   ```
+
+   :::{.output}
+   保存は 〘Ctrl〙 + 〘S〙 で行います。
+   :::
+   ::::
+   grid ではなく flex で組む（.pictures と同じ理由。grid の囲みは前のページに収まる高さでも
+   次のページへ送られることがある）。min-inline-size: 0 がないと、折り返さない長い行が
+   列を押し広げて左右が等分にならない。
+   左右に並んだ箱はページの途中で分けられず、収まらなければ丸ごと次のページへ送られる。
+   そのとき前置きの段落と見出しだけがページの下に残らないよう、直前と同じページに組む */
+.side-by-side {
+  display: flex;
+  break-before: avoid;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-block: 0.5lh;
+}
+
+.side-by-side > * {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  margin-block: 0;
+}
+
+/* EPUB は読者の画面幅が分からず、狭い画面では左右とも読めなくなる。Kindle は flex を
+   解さない。どちらも上下に積む（PDF の紙面と同じ順に読める） */
+body.vs-epub .side-by-side,
+body.vs-kindle .side-by-side {
+  display: block;
+}
+
+body.vs-epub .side-by-side > *,
+body.vs-kindle .side-by-side > * {
+  margin-block: 3mm;
+}
+
 /* グリッド内の配置 */
 .align-top {
   align-items: start;
