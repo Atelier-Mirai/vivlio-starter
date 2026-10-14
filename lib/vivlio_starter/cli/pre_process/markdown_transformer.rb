@@ -616,7 +616,11 @@ module VivlioStarter
           # --- Phase: コードブロック退避 ---
           protected_text, spans = MarkdownUtils.extract_code_spans(content)
 
-          pattern = /:::\s*\{\.([^}]+)\}\s*\n(.*?)\n:::\s*(?:\n|$)/m
+          # 開きは行頭（字下げは可）の `:::` ちょうど 3 つに限る。行頭に固定しないと、
+          # 入れ子の外枠 `::::{.output}` の 2 文字目からの `:::{.output}` に当たり、対象外の
+          # クラスとして素通しする一致が内側の閉じ `:::` まで文字を食って、内側の
+          # `:::{.book-card}` を飛ばしていた（23 章の表示例）。閉じも `::::` には当たらない
+          pattern = /^[ \t]*:::\s*\{\.([^}]+)\}\s*\n(.*?)\n[ \t]*:::\s*(?:\n|$)/m
 
           converted = protected_text.gsub(pattern) do
             raw_token_str = ::Regexp.last_match(1)

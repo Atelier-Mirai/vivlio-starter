@@ -298,6 +298,32 @@ module VivlioStarter
           assert_includes out, ':::{.output}', '前のコンテナ（対象外クラス）は素通しのまま'
         end
 
+        # 表示例の枠 `::::{.output}` の中に入れ子にした book-card も変換される回帰テスト。
+        # 開きを行頭に固定していなかったため、外枠の 2 文字目からの `:::{.output}` に当たった
+        # 一致が内側の閉じまで食い、book-card が素の div のまま組まれていた（23 章）。
+        def test_should_convert_book_card_nested_in_output_frame
+          md = <<~MD
+            ::::{.output}
+            :::{.book-card}
+            ![](images/x.webp)
+            **はじめての技術書づくり**
+            早乙女 遙香 著
+
+            はじめて技術書を書く方にお勧め。
+            :::
+            ::::
+          MD
+
+          out, opened, = convert_container_blocks(md, class_name: 'book-card')
+          out = convert_book_card_inner_markdown(out)
+
+          assert_equal 1, opened, '入れ子の book-card が検出される'
+          assert_includes out, '<p class="book-title">はじめての技術書づくり</p>'
+          assert_includes out, '<p class="book-meta">早乙女 遙香 著</p>', '書誌の段落が分かれる'
+          assert_match(/\A::::\{\.output\}\n/, out, '外枠はそのまま残る')
+          assert_match(/\n::::\n\z/, out, '外枠の閉じもそのまま残る')
+        end
+
         # 書名の後に段落が 2 つ以上あれば、最初の段落が書誌（book-meta）になる。
         # 書誌の中は 1 行ずつ改行し、説明は book-description に入る（book-card-bibliography-spec.md §3.1）。
         def test_convert_book_card_with_bibliography_paragraph
