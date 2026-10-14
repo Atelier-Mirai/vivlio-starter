@@ -441,25 +441,21 @@ Kindle だけは事情が異なります。KFX 形式は SVG を扱えないた�
     .note  { font-size: 12px; fill: #993c1d; }  /* 注記 */
     .title { font-size: 17px; font-weight: 700;
              fill: #1a1a1a; }                   /* 図の題 */
-
     /* 線 ------------------------------------- */
     .rule  { stroke: #1a1a1a; stroke-width: 2; fill: none; }
     .frame { stroke: #9aa0a6; stroke-width: 1; fill: none; }
     /* 背景の目盛 */
     .guide { stroke: #9aa0a6; stroke-width: 1; fill: none;
              stroke-dasharray: 4 4; }
-
     /* 面 ------------------------------------- */
     .plate     { fill: #ffffff; }  /* 線の上に重ねる面 */
     .area      { fill: #4e7ca1; }  /* 値の大きさを表す面 */
     .area-pale { fill: #c9d3da; }  /* 背景側の領域 */
-
     /* 強調 ----------------------------------- */
     .mark  { stroke: #993c1d; stroke-width: 2.5; fill: none; }
     .alert { stroke: #74202c; stroke-width: 3.5; fill: none; }
     .mark-text { font-size: 14px; font-weight: 700;
                  fill: #993c1d; }
-
     /* 系列。明るさと線種の両方で分ける ------- */
     .s1 { stroke: #22496b; stroke-width: 2.5; fill: none; }
     .s2 { stroke: #4e7ca1; stroke-width: 2.5; fill: none;
