@@ -49,19 +49,9 @@
 `theme.style: image` にすると、章扉には frontispiece、節見出しには ornament が使われます。まずは同梱画像で仕上がりを確かめ、必要なら本の内容に合った独自画像へ差し替えられます。
 :::
 
-### 基本的な設定方法
+### 設定方法
 
-**最小限の設定**
-
-```yaml
-theme:
-  style: image  # image スタイルを使用
-  frontispiece:
-    image: sakura  # 桜の画像を使用
-  ornament: sakura  # 桜の装飾を使用
-```
-
-**詳細な設定**
+テーマカラーと、扉絵・装飾画像として使いたい画像名を指定してください。必要に応じて文字数などの調整も行なえます。
 
 ```yaml
 theme:
@@ -69,34 +59,24 @@ theme:
   color: teal  # テーマカラー
   frontispiece:
     image: sakura  # 桜の画像を使用
-    edge_inset: 10mm  # 扉絵を紙の端から引っ込める量
-    heading_chars: 8  # 章題を 1 行に何文字入れるか
-    lead_chars: 20  # リード文を 1 行に何文字入れるか
+    edge_inset: 10mm  # （任意）扉絵を紙の端から引っ込める量
+    heading_chars: 8  # （任意）章題を 1 行に何文字入れるか
+    lead_chars: 20  # （任意）リード文を 1 行に何文字入れるか
   ornament:
     image: sakura  # 桜の装飾を使用
-    heading_chars: 14  # 節題を 1 行に何文字入れるか
+    heading_chars: 14  # （任意）節題を 1 行に何文字入れるか
 ```
 
 ### バンドル画像の使用
 
-花を題材にした画像が 12 種類同梱されています。`stylesheets/images/bundled/` にある画像の名前を設定へ書けば、そのまま章扉や節見出しに使えます。画像をまだ用意していない段階でも、紙面の見え方を試せます。
+花を題材にした画像が 12 種類同梱されています。`stylesheets/images/bundled/` にある画像の名前を設定へ書けば、そのまま章扉や節見出しに使えます。画像をまだ用意していない段階でも、紙面の見え方を試せます。設定には花の名前をローマ字で書きます。
 
-設定には花の名前をローマ字で書きます。
-
-| 画像名 | 画像名 |
-|:---:|:---:|
-| ![suisen](suisen.webp) | ![ume](ume.webp) |
-| 水仙 `suisen` | 梅 `ume` |
-| ![nanohana](nanohana.webp) | ![sakura](sakura.webp) |
-| 菜の花 `nanohana` | 桜 `sakura` |
-| ![suzuran](suzuran.webp) | ![ajisai](ajisai.webp) |
-| 鈴蘭 `suzuran` | 紫陽花 `ajisai` |
-| ![asagao](asagao.webp) | ![himawari](himawari.webp) |
-| 朝顔 `asagao` | 向日葵 `himawari` |
-| ![kikyo](kikyo.webp) | ![kosumosu](kosumosu.webp) |
-| 桔梗 `kikyo` | 秋桜 `kosumosu` |
-| ![kiku](kiku.webp) | ![tsubaki](tsubaki.webp) |
-| 菊 `kiku` | 椿 `tsubaki` |
+| | | |
+|:---:|:---:|:---:|
+| ![suisen](suisen.webp)<br>水仙 `suisen` | ![ume](ume.webp)<br>梅 `ume` | ![nanohana](nanohana.webp)<br>菜の花 `nanohana` |
+| ![sakura](sakura.webp)<br>桜 `sakura` | ![suzuran](suzuran.webp)<br>鈴蘭 `suzuran` | ![ajisai](ajisai.webp)<br>紫陽花 `ajisai` |
+| ![asagao](asagao.webp)<br>朝顔 `asagao` | ![himawari](himawari.webp)<br>向日葵 `himawari` | ![kikyo](kikyo.webp)<br>桔梗 `kikyo` |
+| ![kosumosu](kosumosu.webp)<br>秋桜 `kosumosu` | ![kiku](kiku.webp)<br>菊 `kiku` | ![tsubaki](tsubaki.webp)<br>椿 `tsubaki` |
 
 frontispiece と ornament に同じ名前を指定すれば、縦長と横長の画像がそれぞれ選ばれます。
 

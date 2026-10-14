@@ -138,6 +138,13 @@ tr:nth-child(even) {
   background: #eee;
 }
 
+/* 見出し行のセルがすべて空の表は、見出し行を出さない。Markdown の表は見出し行を
+   省けないので、`| | | |` と空に書いて「見出しなし」を表す（画像を並べる表など）。
+   ページをまたいで繰り返される見出し行も消える */
+thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
 .long-table {
   /* 長い表はわずかに小さめ。スケール追従しつつ下限/上限を設ける */
   font-size: clamp(9Q, calc(11Q * var(--paper-scale)), 12Q);
