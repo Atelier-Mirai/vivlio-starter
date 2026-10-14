@@ -220,6 +220,38 @@ module VivlioStarter
           assert_equal content, result
         end
 
+        # 横取りしたテーブルのインラインコードは、退避の目印のまま残らず元のコードへ戻る。
+        # 目印 `__VS_CODE_SPAN__1__` は Markdown の太字と同じ形なので、目印のまま描くと
+        # <strong>VS_CODE_SPAN__1</strong> になって戻せなくなっていた（改善案.md #110）
+        def test_should_keep_inline_code_in_intercepted_table
+          content = <<~MD
+            | A        | B    |
+            | :---     | :--- |
+            | `vs build` | y ||
+          MD
+          result, count = TableConverter.intercept_extended_tables(content)
+
+          assert_equal 1, count
+          assert_includes result, '<code>vs build</code>'
+          refute_includes result, 'VS_CODE_SPAN'
+        end
+
+        # 横結合のない素のテーブルは、`\|` があっても VFM に任せる（コードの中の `\|` は後処理が
+        # `|` に戻す——post_process の unescape_pipes_in_table_code!）。Kramdown で描き直すと、
+        # 先頭が空白のインラインコード（`` ` * 項目` ``）がコードにならない（改善案.md #110）
+        def test_should_leave_bare_table_with_escaped_pipes_to_vfm
+          content = <<~MD
+            | 記法 | 用途 |
+            | :--- | :--- |
+            | `{漢字\\|よみ}` | ルビ |
+            | a\\|b | 地の文 |
+          MD
+          result, count = TableConverter.intercept_extended_tables(content)
+
+          assert_equal 0, count
+          assert_equal content, result
+        end
+
         def test_should_not_touch_indented_pipe_lines
           content = "        | A | B |\n        | - | - |\n        | x | y ||\n"
           result, count = TableConverter.intercept_extended_tables(content)

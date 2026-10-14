@@ -160,6 +160,7 @@ module VivlioStarter
             Common.log_error("#{html_file}: 定義リストの組み立て中にエラー: #{e.message}")
           end
 
+          unescape_pipes_in_table_code!(html_file)
           mark_code_captions!(html_file)
           mark_strong_headings!(html_file)
           wrap_cross_ref_code_blocks!(html_file)
@@ -251,6 +252,43 @@ module VivlioStarter
       # <div id="ID" class="cross-ref-list"> で包みます。
       # 行番号付与 (prism_lines) 後に実行します。
       # ================================================================
+      # ================================================================
+      # 表のセルのインラインコードの `\|`
+      # ----------------------------------------------------------------
+      # 表のセルに文字としての `|` を書くときは `\|` とエスケープします。GFM では
+      # インラインコードの中でも `|` に戻りますが、VFM はコードの中の `\|` を
+      # バックスラッシュごと残します（コードの外は戻す）。表のセルの中のコードに
+      # 現れる `\|` はエスケープとしてしか書けないので、ここで `|` に戻します。
+      #
+      # 前処理で表を Kramdown に描かせる道もありますが、Kramdown は先頭が空白の
+      # インラインコード（`` ` * 項目` ``）をコードにしないので、ほかのセルの
+      # 見え方が変わります（改善案.md #110）。
+      # ================================================================
+      def unescape_pipes_in_table_code!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        return unless content.include?('\\|')
+
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.css('td code, th code').each do |code|
+          next if code.ancestors('pre').any?
+
+          code.xpath('.//text()').each do |text|
+            next unless text.content.include?('\\|')
+
+            text.content = text.content.gsub('\\|', '|')
+            changed = true
+          end
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_success("#{html_file}: 表のコードの \\| を | に戻しました")
+      end
+      module_function :unescape_pipes_in_table_code!
+
       # ================================================================
       # コードブロックのキャプション判定
       # ----------------------------------------------------------------

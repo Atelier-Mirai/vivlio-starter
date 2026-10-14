@@ -130,7 +130,10 @@ module VivlioStarter
             j += 1 while j < lines.size && table_block_line?(lines[j])
             block = lines[i...j].join
 
-            html = intercept_candidate?(block) ? pipe_table_to_html(block) : nil
+            # 判定は退避した文字列で行う（コードの中の `||` を colspan と取り違えない）。描くときは
+            # コードを戻した文字列を渡す。退避の目印 `__VS_CODE_SPAN__n__` は Markdown の太字と
+            # 同じ形で、目印のままセルを描くと <strong> に変わって戻せなくなる（改善案.md #110）。
+            html = intercept_candidate?(block) ? pipe_table_to_html(Masking.restore_code(block, spans)) : nil
             if html
               count += 1
               out << "\n" unless out.empty? || out.end_with?("\n\n")
