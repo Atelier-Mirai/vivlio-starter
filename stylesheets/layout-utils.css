@@ -9,11 +9,19 @@
    ![alt](path.jpg)
    :::
 */
+/* grid ではなく折り返す flex で組む。Vivliostyle は grid の囲みを、前のページに
+   収まる高さでも次のページへ送ることがあり、23 章では写真グリッドの前に
+   ページの 7 割の空きができた（flex なら収まる）。各画像は 12em を下限に
+   行を等分し、入りきらなければ次の行へ回る（grid の auto-fit と同じ見え方） */
 .pictures {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
   align-items: stretch;
+}
+
+.pictures > figure {
+  flex: 1 1 12em;
 }
 
 .pictures img {
