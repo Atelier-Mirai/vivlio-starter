@@ -1069,13 +1069,21 @@ module VivlioStarter
           marker && fancy_marker?(marker) ? candidate : line
         end
 
+        # 1 行に単独で書くブロックのマクロ（後処理で <div> になるもの）
+        STANDALONE_BLOCK_MACRO = /\A@(?:vspace:-?[\d.]+(?:lh|rem|em|mm|cm|pt|px)?|pagebreak(?::(?:recto|verso))?)\z/
+
         # 単独行の {.aki} / {.aki2} を縦余白マクロ @vspace に置換する。
         # {.aki} は本来「段落末に付けて段落へ class を与える」インライン記法のため、
         # それ自身だけを 1 行に書くと（付与先の本文が無いので）VFM が "{.aki}" を
         # そのまま文字として出力してしまう。空行用途（<br> のように 1 行空ける）で
         # 書かれた単独行は @vspace:1lh（aki2 は 2lh）へ置き換え、独立段落となるよう
         # 直後に空行を補う。段落末に付いた {.aki} は対象外（後処理の組み込み置換ルールでクラス化）。
-        # コードフェンス内は対象外。
+        #
+        # @vspace / @pagebreak だけの行も、前後に空行を補って独立段落にする。どちらも後処理で
+        # <div> に置き換わるので、空行なしで本文の行の間に書くと（hardLineBreaks で 1 つの <p> に
+        # なり）<div> が段落を途中で閉じる。行末の <br> が空の行として残り、後ろの行は <p> の外に
+        # 出て字下げと段落の余白を失っていた。空行は段落の区切りを示すだけなので、既にある空行に
+        # 足しても空きは増えない。コードフェンス内は対象外。
         def convert_standalone_spacing(content)
           lines = content.lines
           code_lines = code_line_numbers(content)
@@ -1091,12 +1099,18 @@ module VivlioStarter
               out << "@vspace:#{m[1] == 'aki2' ? 2 : 1}lh\n"
               next_line = lines[i + 1]
               out << "\n" unless next_line.nil? || next_line.strip.empty?
+            elsif line.strip.match?(STANDALONE_BLOCK_MACRO)
+              out << "\n" unless prev_blank
+              out << line
+              next_line = lines[i + 1]
+              out << "\n" unless next_line.nil? || next_line.strip.empty?
             else
               out << line
             end
           end
           out.join
         end
+
 
         # :::{.class} コンテナの開始行直後・終了行直前に空行を補い、開始/終了行を独立段落にする。
         # VFM は hardLineBreaks のため、空行が無いと開始 ":::{.output}" 行を直後の本文行と

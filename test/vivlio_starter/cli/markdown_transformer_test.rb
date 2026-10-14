@@ -522,6 +522,33 @@ module VivlioStarter
           assert_equal "前。\n\n@vspace:1lh\n\n次。\n", out, '直後が既に空行なら余分な空行を足さない'
         end
 
+        def test_should_separate_vspace_lines_written_between_text_lines
+          md = "前の段落。\n@vspace:-0.2lh\n「引用」\n@vspace:-0.2lh\n後の段落。\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal "前の段落。\n\n@vspace:-0.2lh\n\n「引用」\n\n@vspace:-0.2lh\n\n後の段落。\n", out,
+                       '空行なしで書いた @vspace の行も独立段落にする（段落の中の <div> にしない）'
+        end
+
+        def test_should_not_add_blank_lines_around_vspace_already_separated
+          md = "前。\n\n@vspace:10\n\n次。\n"
+
+          assert_equal md, convert_standalone_spacing(md), '前後が既に空行なら何も足さない'
+        end
+
+        def test_should_separate_pagebreak_lines_written_between_text_lines
+          md = "前。\n@pagebreak\n次。\n@pagebreak:recto\n# 部扉\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal "前。\n\n@pagebreak\n\n次。\n\n@pagebreak:recto\n\n# 部扉\n", out
+        end
+
+        def test_should_keep_vspace_in_the_middle_of_a_line_and_in_code
+          md = "文の途中の @vspace:1lh はそのまま。\n```markdown\n前。\n@vspace:1lh\n次。\n```\n"
+
+          assert_equal md, convert_standalone_spacing(md), '行の途中・コードフェンスの中は対象外'
+        end
+
         # =================================================================
         # normalize_container_fence_spacing
         # =================================================================
