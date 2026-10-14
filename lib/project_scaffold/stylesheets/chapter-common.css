@@ -94,8 +94,10 @@ h3::before {
   color: var(--color-mark);
 }
 
-/* 目見出し（h4） */
+/* 目見出し（h4）。上の段落に付いて見えないよう、上に半行あける。囲み枠（.output・
+   .memo など）の下余白とは相殺するので、枠の直後では間がほとんど増えない */
 h4 {
+  margin-block-start: 0.5rlh;
   font-size: var(--base-font-size);
 }
 

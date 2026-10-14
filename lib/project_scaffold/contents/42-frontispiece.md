@@ -4,10 +4,10 @@
 章の始まりと節見出しは、読者がいま本のどこにいるかを確かめる目印になります。Vivlio Starter では、章扉の背景画像（frontispiece）と節見出しの装飾画像（ornament）を使う `image`、色と文字を中心に組む `simple` の二つのスタイルを選べます。本章では、それぞれの設定と画像の用意のしかたを見ていきます。
 :::
 
-## 扉絵（frontispiece）と装飾画像（ornament）とは
+## 扉絵と装飾画像とは
 
 :::{.section-lead}
-frontispiece は章扉に置く縦長の画像、ornament は節見出しに添える横長の画像です。同じ絵柄を使っても、別の画像を組み合わせても構いません。章と節の見え方を揃えたいときに設定します。
+扉絵（frontispiece）は章扉に置く縦長の画像、装飾画像（ornament）は節見出しに添える横長の画像です。同じ絵柄を使っても、別の画像を組み合わせても構いません。章と節に彩りを添えたいときに設定します。
 :::
 
 ### 扉絵（frontispiece）
@@ -49,19 +49,9 @@ frontispiece は章扉に置く縦長の画像、ornament は節見出しに添�
 `theme.style: image` にすると、章扉には frontispiece、節見出しには ornament が使われます。まずは同梱画像で仕上がりを確かめ、必要なら本の内容に合った独自画像へ差し替えられます。
 :::
 
-### 基本的な設定方法
+### 設定方法
 
-**最小限の設定**
-
-```yaml
-theme:
-  style: image  # image スタイルを使用
-  frontispiece:
-    image: sakura  # 桜の画像を使用
-  ornament: sakura  # 桜の装飾を使用
-```
-
-**詳細な設定**
+テーマカラーと、扉絵・装飾画像として使いたい画像名を指定してください。必要に応じて文字数などの調整も行なえます。
 
 ```yaml
 theme:
@@ -69,78 +59,30 @@ theme:
   color: teal  # テーマカラー
   frontispiece:
     image: sakura  # 桜の画像を使用
-    edge_inset: 10mm  # 扉絵を紙の端から引っ込める量
-    heading_chars: 8  # 章題を 1 行に何文字入れるか
-    lead_chars: 20  # リード文を 1 行に何文字入れるか
+    edge_inset: 10mm  # （任意）扉絵を紙の端から引っ込める量
+    heading_chars: 8  # （任意）章題を 1 行に何文字入れるか
+    lead_chars: 20  # （任意）リード文を 1 行に何文字入れるか
   ornament:
     image: sakura  # 桜の装飾を使用
-    heading_chars: 14  # 節題を 1 行に何文字入れるか
+    heading_chars: 14  # （任意）節題を 1 行に何文字入れるか
 ```
 
 ### バンドル画像の使用
 
-花を題材にした画像が 12 種類同梱されています。`stylesheets/images/bundled/` にある画像の名前を設定へ書けば、そのまま章扉や節見出しに使えます。画像をまだ用意していない段階でも、紙面の見え方を試せます。
+花を題材にした画像が 12 種類同梱されています。`stylesheets/images/bundled/` にある画像の名前を設定へ書けば、そのまま章扉や節見出しに使えます。画像をまだ用意していない段階でも、紙面の見え方を試せます。設定には花の名前をローマ字で書きます。
 
-**利用可能なバンドル画像**
+| | | |
+|:---:|:---:|:---:|
+| ![suisen](suisen.webp)<br>水仙 `suisen` | ![ume](ume.webp)<br>梅 `ume` | ![nanohana](nanohana.webp)<br>菜の花 `nanohana` |
+| ![sakura](sakura.webp)<br>桜 `sakura` | ![suzuran](suzuran.webp)<br>鈴蘭 `suzuran` | ![ajisai](ajisai.webp)<br>紫陽花 `ajisai` |
+| ![asagao](asagao.webp)<br>朝顔 `asagao` | ![himawari](himawari.webp)<br>向日葵 `himawari` | ![kikyo](kikyo.webp)<br>桔梗 `kikyo` |
+| ![kosumosu](kosumosu.webp)<br>秋桜 `kosumosu` | ![kiku](kiku.webp)<br>菊 `kiku` | ![tsubaki](tsubaki.webp)<br>椿 `tsubaki` |
 
-選べる画像は次のとおりです。設定には花の名前をローマ字で書きます。
-
-| 画像名 | 画像名 |
-|:---:|:---:|
-| ![suisen](suisen.webp) | ![ume](ume.webp) |
-| 水仙 `suisen` | 梅 `ume` |
-| ![nanohana](nanohana.webp) | ![sakura](sakura.webp) |
-| 菜の花 `nanohana` | 桜 `sakura` |
-| ![suzuran](suzuran.webp) | ![ajisai](ajisai.webp) |
-| 鈴蘭 `suzuran` | 紫陽花 `ajisai` |
-| ![asagao](asagao.webp) | ![himawari](himawari.webp) |
-| 朝顔 `asagao` | 向日葵 `himawari` |
-| ![kikyo](kikyo.webp) | ![kosumosu](kosumosu.webp) |
-| 桔梗 `kikyo` | 秋桜 `kosumosu` |
-| ![kiku](kiku.webp) | ![tsubaki](tsubaki.webp) |
-| 菊 `kiku` | 椿 `tsubaki` |
-
-**バンドル画像の指定方法**
-
-同梱画像を使うには、設定に画像名を書きます。frontispiece と ornament に同じ名前を指定すれば、縦長と横長の画像がそれぞれ選ばれます。
-
-```yaml
-theme:
-  frontispiece:
-    image: sakura  # 桜の画像
-  ornament: sakura  # 桜の装飾
-```
-
-独自画像に`sakura`がある場合に、同梱画像を選びたいときは、`bundled/` を付けて指定することもできます。
-
-```yaml
-theme:
-  frontispiece:
-    image: bundled/sakura
-  ornament: bundled/sakura
-```
+frontispiece と ornament に同じ名前を指定すれば、縦長と横長の画像がそれぞれ選ばれます。
 
 ### 独自画像の使用
 
-本の題材に合わせて画像を用意したら、`stylesheets/images/` に置きます。縦長と横長を別々に作ることも、一枚の元画像から生成することもできます。
-
-**画像の配置場所**
-
-元画像は次の場所に置きます。切り抜き方を自分で決めている場合は、縦長・横長の画像も同じ場所に置けます。
-
-:::{.diagram}
-```text
-stylesheets/
-└── images/
-    ├── my_image.webp        # 独自画像
-    ├── my_image_portrait.webp   # 縦長の派生画像（オプション）
-    └── my_image_landscape.webp  # 横長の派生画像（オプション）
-```
-:::
-
-**画像の指定方法**
-
-設定には拡張子を除いた画像名を書きます。
+本の題材に合わせて画像を用意したら、`stylesheets/images/` に置き、設定には拡張子を除いた画像名を書きます。画像は WebP（推奨）・PNG・JPEG を使えます。
 
 ```yaml
 theme:
@@ -149,91 +91,13 @@ theme:
   ornament: my_image  # stylesheets/images/my_image.webp
 ```
 
-**対応している画像形式**
-
-以下の画像形式に対応しています。
-
-- WebP（`.webp`）- 推奨
-- PNG（`.png`）
-- JPEG（`.jpg`, `.jpeg`）
-
-<!-- no-lint-start -->
-WebP は、画質を保ちながらファイルサイズを抑えやすい形式です。新しく画像を用意する場合の第一候補になります。
-<!-- no-lint-end -->
-
 ### 画像の自動生成
 
-元画像を一枚指定すると、章扉用の縦長画像と節見出し用の横長画像が必要に応じて生成されます。切り抜く位置まで自分で決めたい場合は、縦長・横長の派生画像を先に用意できます。
-
-**自動生成の仕組み**
-
-たとえば `sakura.webp` を指定すると、次の順に画像が準備されます。
-
-1. **画像の検索**: `stylesheets/images/` と `stylesheets/images/bundled/` から画像を検索
-2. **アスペクト比の確認**: 画像のアスペクト比が適切かチェック
-3. **派生画像の生成**: 必要に応じて `_portrait` と `_landscape` の画像を生成
-4. **キャッシュ**: 生成した画像は次回以降再利用される
-
-**派生画像の命名規則**
-
-生成される画像の名前には、用途を示す接尾語が付きます。
-
-- **縦長の派生画像**: `画像名_portrait.webp`
-- **横長の派生画像**: `画像名_landscape.webp`
-
-たとえば、`sakura.webp` から以下の画像が生成されます。
-
-- `sakura_portrait.webp` - frontispiece 用
-- `sakura_landscape.webp` - ornament 用
-
-**用意した派生画像を優先する**
-
-切り抜き位置を指定したい場合は、`_portrait` や `_landscape` の画像を先に用意してください。用意した派生画像が使われ、元画像からの自動生成は行われません。
-
-```yaml
-theme:
-  frontispiece:
-    image: sakura  # sakura_portrait.webp が存在すればそれを使用
-  ornament: sakura  # sakura_landscape.webp が存在すればそれを使用
-```
-
-**派生画像を直接指定する**
-
-設定で派生画像の名前を直接指定する方法もあります。
-
-```yaml
-theme:
-  frontispiece:
-    image: sakura_portrait  # 縦長の派生画像を直接指定
-  ornament: sakura_landscape  # 横長の派生画像を直接指定
-```
+元画像を一枚指定すると、章扉用の縦長画像（`画像名_portrait.webp`）と節見出し用の横長画像（`画像名_landscape.webp`）が自動で作られます。切り抜く位置を自分で決めたいときは、この名前の画像を `stylesheets/images/` に先に置いてください。置いた画像が使われ、自動生成は行われません。設定に `image: sakura_portrait` のように派生画像の名前を直接書くこともできます。
 
 ### 画像の検索順序
 
-画像は、まず `stylesheets/images/` に置いた独自画像から探し、見つからなければ同梱画像を探します。同じ名前を付けると独自画像が優先されるため、設定名を変えずに絵柄だけを差し替えられます。
-
-**検索の優先順位**
-
-検索順は次のとおりです。
-
-1. **ユーザー提供画像**: `stylesheets/images/` 内を検索
-2. **バンドル画像**: `stylesheets/images/bundled/` 内を検索
-
-**上書きの例**
-
-バンドル画像 `sakura` を独自の画像で上書きしたい場合は、`stylesheets/images/sakura.webp` を配置します。
-
-:::{.diagram}
-```text
-stylesheets/
-└── images/
-    ├── sakura.webp  # この画像が優先される
-    └── bundled/
-        └── sakura.webp  # バンドル画像（使用されない）
-```
-:::
-
-この場合、`config/book.yml` で `sakura` を指定すると、ユーザー提供の `sakura.webp` が使用されます。
+画像は、まず `stylesheets/images/` に置いた独自画像から探し、見つからなければ同梱画像を探します。同じ名前の独自画像（`stylesheets/images/sakura.webp` など）を置けば、設定名を変えずに絵柄だけを差し替えられます。同じ名前の独自画像があるときに同梱画像を選ぶには、`image: bundled/sakura` と書きます。
 
 ### frontispiece の詳細設定
 
@@ -321,11 +185,7 @@ theme:
 
 ### 画像が見つからない場合
 
-指定した画像が見つからない場合は警告が出て、既定画像の `sakura` に切り替えてビルドが続きます。紙面が作れた場合も、意図した絵柄になっているかは警告とあわせて確認してください。
-
-**ビルド時の警告**
-
-`vs build` / `vs preflight` は、存在しない画像名を検出すると次のような警告を表示します（ビルドは中断しません）。
+指定した画像が見つからないときは、`vs build` と `vs preflight` が次のように知らせ、既定画像の `sakura` で代わりに組みます。
 
 :::{.output}
 ```text
@@ -334,38 +194,11 @@ theme:
 ```
 :::
 
-警告が出たら、まず画像名の綴りと `stylesheets/images/` / `stylesheets/images/bundled/` への配置を確かめます。組版前に画像の指定をまとめて調べるなら、`vs preflight` を使えます。
-
-**プレースホルダーの表示（最終手段）**
-
-フォールバック先の `sakura` すら見つからない場合（バンドル画像を削除した場合など）は、指定した画像名（拡張子付き）をグレー背景の中央に記した SVG プレースホルダー画像が生成されます。
-
-:::{.diagram}
-```text
-┌─────────────────────┐
-│                     │
-│     fuji.webp       │
-│                     │
-└─────────────────────┘
-```
-:::
+警告が出たら、画像名の綴りと `stylesheets/images/` への置き場所を確かめてください。画像名は拡張子なしで書き、`.webp`・`.png`・`.jpg`・`.jpeg` のどれで置いても見つかります。
 
 ### 実践例
 
-**例1: バンドル画像を使用する**
-
-同梱画像だけで紙面を確かめる例です。まずこの形でビルドすれば、画像を準備する前に配置を見られます。
-
-```yaml
-theme:
-  style: image
-  color: teal
-  frontispiece:
-    image: sakura
-  ornament: sakura
-```
-
-**例2: 独自画像を使用する**
+**独自画像を使い、余白と字数も整える**
 
 独自画像に替え、扉絵の余白と文字の幅も調整する例です。
 
@@ -381,7 +214,7 @@ theme:
   ornament: my_decoration  # stylesheets/images/my_decoration.webp
 ```
 
-**例3: 異なる画像を使用する**
+**章扉と節見出しで別の画像を使う**
 
 章扉と節見出しに別々の絵柄を使うこともできます。組み合わせた結果は紙面で確かめてください。
 
@@ -394,33 +227,13 @@ theme:
   ornament: ume  # 梅の装飾
 ```
 
-**例4: 派生画像を直接指定する**
-
-切り抜き済みの縦長・横長画像を直接選ぶ例です。
-
-```yaml
-theme:
-  style: image
-  frontispiece:
-    image: my_awesome_portrait  # 縦長の派生画像を直接指定
-  ornament: my_awesome_landscape  # 横長の派生画像を直接指定
-```
-
 ### image スタイルのトラブルシューティング
 
 ImageMagick などのツールがない・動かないときは、`vs doctor --fix` で導入してください。ここでは、ツールを入れても直らない症状を扱います。
 
-**設定した画像にならず、桜で組まれる**
-
-指定した画像名が見つからないときは、`vs build` と `vs preflight` が 🟡 で知らせ、既定画像の `sakura` で代わりに組みます（前述の「画像が見つからない場合」）。警告に出た画像名の綴りと、`stylesheets/images/` への置き場所を確かめてください。画像名は拡張子なしで書き、`.webp`・`.png`・`.jpg`・`.jpeg` のどれで置いても見つかります。
-
 **画像が引き伸ばされたり、一部が切れたりする**
 
-元画像を 1 枚指定すれば、縦長（扉絵）と横長（節見出し、2.39:1）の画像が版面の比率に合わせて切り出されます。切り抜く位置が意図と違うときは、`_portrait` / `_landscape` の画像を自分で用意してください（前述の「用意した派生画像を優先する」）。
-
-**同梱画像を指定したのに、自分の画像が使われる**
-
-`stylesheets/images/` に同じ名前の画像があると、そちらが優先されます。同梱画像を使いたいときは、`image: bundled/sakura` のように `bundled/` を付けて指定します。
+元画像を 1 枚指定すれば、縦長（扉絵）と横長（節見出し、2.39:1）の画像が版面の比率に合わせて切り出されます。切り抜く位置が意図と違うときは、`_portrait` / `_landscape` の画像を自分で用意してください（前述の「画像の自動生成」）。
 
 ## simple スタイルの設定
 
@@ -446,18 +259,14 @@ theme:
 
 ### 利用可能な色とジャンル例
 
-![yellow](yellow.svg)
-![orange](orange.svg)
-![red](red.svg)
-![magenta](magenta.svg)
-![purple](purple.svg)
-![indigo](indigo.svg)
-![navy](navy.svg)
-![blue](blue.svg)
-![cyan](cyan.svg)
-![teal](teal.svg)
-![green](green.svg)
-![lime](lime.svg)
+:::{.text-left}
+![yellow](yellow.svg){width=49%} ![orange](orange.svg){width=49%}
+![red](red.svg){width=49%} ![magenta](magenta.svg){width=49%}
+![purple](purple.svg){width=49%} ![indigo](indigo.svg){width=49%}
+![navy](navy.svg){width=49%} ![blue](blue.svg){width=49%}
+![cyan](cyan.svg){width=49%} ![teal](teal.svg){width=49%}
+![green](green.svg){width=49%} ![lime](lime.svg){width=49%}
+:::
 
 **HEX 表記**：`color: #ff0000` のように色コードを直接指定することもできます。
 

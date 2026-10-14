@@ -277,10 +277,8 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 # 1. マスター画像を配置
 # covers/frontcover_master.png
 # covers/backcover_master.png を配置
-
 # 2. カバー画像を生成
 vs cover
-
 # 3. 本文と結合してビルドし、表紙を確かめる
 vs build
 ```
@@ -289,13 +287,10 @@ vs build
 
 ```bash
 # 1. マスター画像を修正（デザインツールで編集）
-
 # 2. 古いカバー画像を削除
 vs clean --cover
-
 # 3. 新しいカバー画像を生成
 vs cover
-
 # 4. PDFに統合してビルド
 vs build
 ```
@@ -305,30 +300,9 @@ vs build
 ```bash
 # 1. 入稿用の表紙を作り直す（output.targets に print_pdf を入れておく）
 vs cover
-
 # 2. プロジェクト直下の入稿用表紙を開いて確かめる
 open vivlio_starter_frontcover_v1.0.0.pdf
 open vivlio_starter_backcover_v1.0.0.pdf
-
 # 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
-
 # 4. 問題なければ印刷所に入稿
 ```
-
-## まとめ
-
-:::{.section-lead}
-カバーの元画像を一つ決めておくと、配布先ごとに必要な形式を作り直せます。最後は形式の名前だけで判断せず、実際のカバーを開いて文字・色・裁断位置を確かめてください。
-:::
-
-本章で扱った手順は次のとおりです。
-
-- ソース画像の準備（判型に合わせたサイズ・350 dpi・PNG または SVG）
-- `book.yml` の `output.cover` によるテーマの選択
-- `vs cover` による生成（`output.targets` に応じて RGB 版・CMYK 版・EPUB 用）
-- `vs clean --cover` による生成物の削除
-- 生成できないときや色が変わるときの確認
-
-一つのソースから作っていても、RGB 版と CMYK 版では色が変わり、EPUB 用では左右が切り取られます。用途ごとに仕上がりを確かめることで、同じデザインを安心して使い分けられます。
-
-カバーができたら、`vs build` で本文と結合できます（@chapref:ch-build）。本文と並べたときの印象も、そこで確かめてください。

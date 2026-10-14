@@ -196,39 +196,7 @@ output:
     layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 ```
 
-**`targets` と出力物の関係**
-
-| targets の値 | 生成されるもの |
-| :--- | :--- |
-| `pdf` | 閲覧用 PDF（表紙結合） |
-| `print_pdf` | 入稿用 PDF（トンボ・塗り足し付き） |
-| `epub` | 電子書籍（クリーン EPUB。楽天 Kobo / Apple Books 向け） |
-| `kindle` | Amazon Kindle 用ファイル（KPF。中間 EPUB から自動変換） |
-
-:::{.note}
-**`epub` と `kindle` の違い**
-
-同じ電子書籍でも、配信先によって最適な作り方が異なります。Vivlio Starter は両者を別ターゲットとして分離しています。
-
-- **`epub`（クリーン EPUB）**: 楽天 Kobo・Apple Books 向け。WebP 画像・SVG 化した扉絵や数式をそのまま活かした、高品質な EPUB を生成します。
-- **`kindle`（KPF）**: Amazon Kindle 向け。Kindle の表示エンジン（KFX）の制約に合わせて画像形式やレイアウトを調整した中間 EPUB を作り、`kindle previewer` で `.kpf` に変換します。KDP（Kindle Direct Publishing）にはこの `.kpf` をアップロードします。
-
-両方を同時に出力したい場合は `targets: epub, kindle` のように指定します。
-:::
-
-`cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は @chapref:ch-cover を参照してください。
-
-PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は @chapref:ch-build を参照してください。
-
-[^type3-font]: Type 3 は、文字の形を PDF 内の描画命令で定義するフォント形式です。
-
-:::{.note}
-**`print_pdf.full_bleed` — 入稿用 PDF の生成方式**
-
-既定（`false`）では、入稿用 PDF は閲覧用 PDF から高速に導出されます。本文が閲覧用とまったく同じレンダリング由来になるため、ページずれや内容差が起きず、ビルド時間も大幅に短くなります。
-
-ただし、閲覧用 PDF は仕上がりサイズで裁たれていて塗り足し（裁ち落とし）部分を復元できません。**紙の端まで届く画像や背景（フチなし要素）が本文にある本**では `full_bleed: true` を指定してください。入稿用 PDF を塗り足し付きで組み直すので、フチなし要素が白フチ（裁ち落とし事故）になるのを防げます。
-:::
+各形式の違いと、`techbook`・`full_bleed` などの使いどころは @chapref:ch-build で説明しています。`cover` に指定するスラッグは、`vs cover` コマンドで生成したカバーのテーマ名と対応します（@chapref:ch-cover）。
 
 #### `pdf_preview` — ビルド後に開く PDF の位置（macOS のみ）
 

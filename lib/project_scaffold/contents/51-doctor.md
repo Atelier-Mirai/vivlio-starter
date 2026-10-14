@@ -44,18 +44,7 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 
 ツールが入っていても、版が古いと正しく動かないことがあります。`vs doctor` は、見つかったツールの版も確かめます。
 
-**Kindle Previewer は 4 を使います。** 3 が入っていると、`vs doctor` が更新を案内します。
-
-:::{.output}
-```text
-✅ kindlepreviewer (Kindle Previewer 3.104.0): OK
-🟡 Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）
-        → Amazon KDP の配布ページから入れてください: https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170
-          更新後に vs doctor --fix を実行してください
-```
-:::
-
-案内どおりに更新したら、`vs doctor --fix` を実行してください。`kindlepreviewer` コマンドが新しい版を呼ぶように整えます。診断の行には入っている版（`4.0.3` など）が出るので、配布ページの最新版と見比べられます。
+Kindle Previewer 3 が入っていれば 4 への更新を、Apple Silicon の Mac で Rosetta 2 が入っていなければ導入のコマンドを案内します（@chapref:ch-build）。Rosetta の導入には管理者パスワードが要るので、`--fix` では行いません。
 
 **Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると更新を案内します。
 
@@ -67,21 +56,6 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
           Homebrew 以外（nvm など）で入れた場合は、その道具で 22.12.0 以上へ更新してください。
 ```
 :::
-
-### Apple Silicon では Rosetta も要る
-
-Kindle Previewer 4 の変換部分は Intel 向けのプログラムです。Apple Silicon の Mac で Kindle 用のファイルを作るには、Intel 向けのプログラムを動かす Rosetta 2 が必要です。入っていないと、Kindle への変換で `bad CPU type in executable` というエラーが出ます。
-
-`vs doctor` は、Apple Silicon の Mac で Kindle Previewer を見つけると、Rosetta の有無も確かめ、入っていなければ導入のコマンドを表示します。
-
-:::{.output}
-```text
-🟡 Rosetta 2 が入っていません（Kindle Previewer の変換部分は Intel 版のままです）
-        → sudo softwareupdate --install-rosetta --agree-to-license
-```
-:::
-
-Rosetta の導入には管理者パスワードの入力が要るので、`--fix` では行いません。表示されたコマンドを実行してください。
 
 ### 設定ファイルの診断
 
@@ -158,18 +132,6 @@ vs doctor --fix --yes
 
 `--yes`（短縮形は `-y`）を `--fix` と組み合わせると、Xcode Command Line Tools や Homebrew の導入時に出る確認を省略できます。CI/CD やセットアップ用のスクリプトなど、対話せずに実行したいときに使います。
 
-## vs doctor のコマンドオプション
-
-```
-doctor [--fix] [--yes/-y] [-h/--help]
-```
-
-| オプション | 説明 |
-|------------|------|
-| `--fix` | 不足ツールを自動インストール（一部確認あり） |
-| `--yes` / `-y` | 確認プロンプトをスキップ（`--fix` 指定時のみ有効） |
-| `-h` / `--help` | ヘルプを表示 |
-
 ## 自動インストールの対応範囲
 
 :::{.section-lead}
@@ -239,28 +201,22 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 たとえば、自分でスタイルシートの末尾に規則を加え、新しい雛形では先頭が改良された場合は「合流」です。**変更箇所が離れていれば、両方を残して取り込めます。** 同じ箇所を変更していた場合は「競合」となり、差分を見て適用するか選びます。適用すると自分の変更が失われることも、その場で示されます。元のファイルは退避されるため、必要なら戻せます。
 
-自動で合流するには、前回取り込んだ雛形との比較が必要です。その雛形は、残っている古い版の gem（`gem update` では旧版は削除されません）か、`.cache/vs/scaffold-base/` に保存した写しから取得します。どちらもなければ「競合」として扱い、判断を求めます。
-
 :::{.note}
 **原稿と辞書は構造的に安全です**
 
 `contents/`・`images/`・`covers/`・`codes/`・`data/` と、`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを書き換えません。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
 :::
 
-著者が雛形のファイルを変更したかどうかは、`vs new` が生成する `config/scaffold.lock`（雛形マニフェスト）を使って判定します。このファイルは手で編集せず、Git にはコミットしてください。古いプロジェクトなどで lock がない場合も更新できますが、初回は差分のあるファイルをすべて「競合」として確認します。適用後に lock が記録され、次回からは変更箇所を判別できます。
+著者が雛形のファイルを変更したかどうかは、`vs new` が作る `config/scaffold.lock` で判定します。このファイルは手で編集せず、Git にコミットしてください。
 
 ### Gemfile.lock の追随
 
-雛形を取り込んだあと、`Gemfile.lock` が指す Vivlio Starter の版を、現在使っている版に合わせます（`bundle update vivlio-starter` に相当します）。lock に古い版が残っていると、`bundle exec vs` や `bundle install` が「その版が見つかりません」と止まる場合があるためです。版がすでに一致していれば、変更は行いません。
-
-現在の `vs` コマンドは `Gemfile.lock` を見ずに起動します。そのため、lock の更新に失敗しても執筆作業は続けられます。失敗した場合は、🟡 の表示とともに手動での対処方法を案内します。
+雛形を取り込んだあと、`Gemfile.lock` が指す Vivlio Starter の版を、使っている版に合わせます（`bundle update vivlio-starter` に相当します）。失敗したときは 🟡 で手動の対処方法を案内します。
 
 :::{.note}
 **`vs` が `Bundler::GemNotFound` で起動しないとき**
 
-1.0.0 より前の版で作ったプロジェクトでは、`vs` の起動時に `Could not find vivlio-starter-… in locally installed gems` という Ruby のエラーが出ることがあります。当時の `vs` はプロジェクトの `Gemfile.lock` を読んで起動していたため、そこに記録された版が手元にないと動きません。古い版を整理した場合やプロジェクトを別の機材へ移した場合、その版の公開が取り下げられた場合などに起こります。この状態では `vs upgrade` も `vs doctor` も実行できません。
-
-その場合は、`vs` を使わずに gem を更新してください。
+1.0.0 より前の版で作ったプロジェクトでは、`vs` の起動時に `Could not find vivlio-starter-… in locally installed gems` というエラーが出ることがあります。`Gemfile.lock` に記録された版が手元にないためで、この状態では `vs upgrade` も実行できません。`vs` を使わずに gem を更新してください。
 
 ```bash
 gem update vivlio-starter
@@ -310,47 +266,9 @@ gem update vivlio-starter
 | 所要時間 | 数秒 | 数分 |
 | 使いどころ | ビルドが突然失敗した・新しい環境を整える | 動いている環境を定期的に更新する |
 
-使う場面を短くまとめると、次のとおりです。
-
-- **ビルドが失敗した・新しい環境を用意した** → `vs doctor`（必要なら `--fix`）
-- **動いている環境を更新したい** → `vs upgrade`
-
 ビルドが失敗したときは、まず `vs doctor` で不足や設定の問題を確かめてください。原因が分からないまま `vs upgrade` を実行すると、複数のツールの版が変わり、かえって問題を切り分けにくくなることがあります。
 
 新しい Mac をセットアップするときも、最初に使うのは `vs doctor --fix` です。Homebrew や Xcode Command Line Tools の導入確認から始められます。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
-
-## 実行例
-
-### 新しい Mac でセットアップする
-
-```bash
-# まず診断して何が必要か確認
-vs doctor
-
-# 不足ツールをまとめてインストール
-vs doctor --fix
-```
-
-### CI/CD 環境でセットアップする
-
-```bash
-# 確認プロンプトをすべてスキップして自動インストール
-vs doctor --fix --yes
-```
-
-### ビルドが失敗したときのトラブルシューティング
-
-```bash
-# 環境を診断して原因を特定
-vs doctor
-```
-
-### ツールを定期的に最新へ保つ
-
-```bash
-# 更新計画を確認してから一括更新（本体 gem・雛形の追従もまとめて）
-vs upgrade
-```
 
 ## トラブルシューティング
 

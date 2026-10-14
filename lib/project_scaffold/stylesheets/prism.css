@@ -46,7 +46,11 @@ pre[class*="language-"] {
 pre[class*="language-"] {
 	padding: 1em;
 	margin: .5em 0;
-	overflow: auto;
+	/* Prism の既定は overflow: auto。スクロールする箱は Vivliostyle がページの途中から
+	   分けられず、版面に収まらないコードは丸ごと次のページへ送られて、前のページに大きな
+	   空きを残した（23 章の SVG の雛形で 2 割強）。長い行は code.css の pre-wrap で
+	   折り返すので、横にはみ出すことはない */
+	overflow: visible;
 }
 
 :not(pre) > code[class*="language-"],
@@ -166,6 +170,14 @@ pre[class*="language-"].line-numbers > code > .vs-code-line {
 	display: block;
 	padding-left: 2.4em;
 	text-indent: -2.4em;   /* 1 行目だけ左へ戻す＝番号が行頭・折返し行はコード開始位置へ揃う */
+}
+
+/* ページをまたぐとき、ページの端に 1 行だけ残さない。行ごとに別のブロックなので、
+   段落の orphans / widows は効かない。最初の行の後と、最後から 2 行目の後では
+   改ページしないので、分けるときは両側に 2 行以上残り、3 行以下のコードは分けない */
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child,
+pre[class*="language-"].line-numbers > code > .vs-code-line:nth-last-child(2) {
+	break-after: avoid;
 }
 
 /* 番号欄の総幅は padding-left と厳密に一致させる（2.4em）。ずれると折返し行の頭が
