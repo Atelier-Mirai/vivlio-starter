@@ -30,6 +30,8 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | 章見出し・本文の一部の語だけが斜体になる（全章ビルドのみ） | **UA 既定の `dfn { font-style: italic }`**。打ち消しを索引ページ専用の index.css に書いており、その要素が現れる本文・目次へ届いていなかった | base.css（全ページが読む） | §2.9 |
 | 収まるはずのコードブロックが丸ごと次ページへ送られ、前のページに大きな空き | Prism の既定の **`pre { overflow: auto }`**。スクロールする箱は Vivliostyle がページの途中から分けない（版面より高いときだけ、次のページの頭から分ける） | prism.css（`overflow: visible`） | §2.11 |
 | 写真グリッドが、前のページに収まる高さでも次ページへ送られる | **`display: grid` の囲み**を Vivliostyle が途中から置かない（flex なら置く） | layout-utils.css（`.pictures` を flex に） | §2.12 |
+| ファイル名付きのコードだけが、版面に収まらないと丸ごと次ページへ送られる | ファイル名付きのコードは **`<figure>` に包まれ、図版用の `figure { break-inside: avoid }`** が掛かる | code.css（コードの figure は `break-inside: auto`） | §2.13 |
+| 二段組（`.text-2dan`）の箇条書きが左の段にだけ入り、右の段が空く | **`.text-2dan > * { break-inside: avoid }` がリスト全体に掛かり**、リストが段をまたげない | layout-utils.css（リストは auto・`li` を avoid） | §2.14 |
 
 ---
 
@@ -121,6 +123,18 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **症状**: `:::{.pictures}`（写真 3 枚）がページの 4 割ほどの高さなのに、7 割空いたページに置かれず次のページへ送られた。
 - **原因**: Vivliostyle が grid の囲みを途中から置かない。画像の `height: 100%` を `auto` にしても変わらず、`display: flex` にすると置かれた。
 - **修正**: `.pictures` を `display: flex; flex-wrap: wrap` にし、`> figure { flex: 1 1 12em }` で `repeat(auto-fit, minmax(12em, 1fr))` と同じ見え方にした。`.img-text` などほかの grid の囲みは小さく、送られても空きが小さいので変えていない。大きな grid の囲みを足すときは、同じことが起きないか紙面で確かめる。
+
+### 2.13 ファイル名付きのコードは、図版と同じく分割されない
+
+- **症状**: 付録F の 39 行のコード（`brownian_motion.rb`）が、前のページに 7 割の空きを残して次のページへ送られた。ファイル名のないコードは途中から分かれる。
+- **原因**: ` ```ruby:file.rb ` は `<figure class="language-ruby">` に `<figcaption>` と `<pre>` を入れた形になる。layout-utils.css の図版のための `figure { break-inside: avoid }` がそのまま掛かっていた。
+- **修正**: code.css の `figure[class^="language-"]` に `break-inside: auto` を足し（特異度で勝つ）、`> figcaption` に `break-after: avoid` を足して、ファイル名だけがページの下に残らないようにした。
+
+### 2.14 段組の中の要素を分けない規則は、リスト全体を 1 つの段に閉じ込める
+
+- **症状**: `:::{.text-2dan}` の中の年表（箇条書き 13 項目）が左の段にだけ入り、右の段が空いた。
+- **原因**: `.text-2dan > * { break-inside: avoid }` は段落や図を段の途中で分けないための規則だが、リストは `<ul>` 1 つなので、リスト全体が分けられなくなる。
+- **修正**: `.text-2dan > :is(ul, ol) { break-inside: auto }` と `.text-2dan li { break-inside: avoid }` にし、分けない単位を項目にした。子要素に「分けない」を掛けるときは、子がリストや表のように中身を持つ要素でないかを確かめる。
 
 ---
 
