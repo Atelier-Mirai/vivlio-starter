@@ -28,6 +28,8 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | flex 内のテキストが縮まず箱を突き抜ける | flex アイテムの **`min-width: auto`** ＋ inline-flex の**匿名 flex アイテム**は `min-inline-size: 0` を外から与えても縮まない | image-header.css（タイトルをブロック化） | §2.7 |
 | 太字を持たない書体を指定すると、リスト番号だけ Type 3 になる | **`font-synthesis-weight` が `::before` / `::after` の生成ボックスへ継承されない**（継承プロパティなのに届かない） | book_settings_css.rb（疑似要素まで明示） | §2.8 |
 | 章見出し・本文の一部の語だけが斜体になる（全章ビルドのみ） | **UA 既定の `dfn { font-style: italic }`**。打ち消しを索引ページ専用の index.css に書いており、その要素が現れる本文・目次へ届いていなかった | base.css（全ページが読む） | §2.9 |
+| 収まるはずのコードブロックが丸ごと次ページへ送られ、前のページに大きな空き | Prism の既定の **`pre { overflow: auto }`**。スクロールする箱は Vivliostyle がページの途中から分けない（版面より高いときだけ、次のページの頭から分ける） | prism.css（`overflow: visible`） | §2.11 |
+| 写真グリッドが、前のページに収まる高さでも次ページへ送られる | **`display: grid` の囲み**を Vivliostyle が途中から置かない（flex なら置く） | layout-utils.css（`.pictures` を flex に） | §2.12 |
 
 ---
 
@@ -106,6 +108,19 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **原因**: `prism.css`（上流のハイライト用 CSS）は `pre[class*="language-"]` だけでなく、**中の `code[class*="language-"]` にも `white-space: pre` と `word-wrap: normal`** を指定する。`code.css` は `pre` 側を `pre-wrap` に直していたが、`white-space` は子が自分で宣言していれば継承されないので、`<code>` は折り返さないまま。はみ出した分は `pre` の `overflow: auto` で切れる。行番号付きのコードブロックは `figure` と行ブロック（`.vs-code-line`）で組まれるのでこの経路を通らず、**出力例の枠の中の素の `<pre><code>` だけ**が引っかかっていた。
 - **切り分け**: 「`pre` に `pre-wrap` を当てたのに折り返さない」ときは、**折り返しを止めているのが子要素ではないか**を見る。`--no-clean` でビルドすると `.cache/vs/build/pdf/*.html` が残るので、実際の入れ子（`<div class="output"><pre class="language-text"><code class="language-text">`）を確かめてから、その各段に効いている宣言を追う。
 - **修正**: `chapter-common.css` で `.output pre[class*="language-"]` に `white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible;`、`> code` に `white-space: inherit; overflow-wrap: inherit;`（特異度 (0,2,2) で prism の (0,1,1) に勝つ）。`.terminal`・`.diagram` は導入時から `pre-wrap` だったので、`.output` だけが付け忘れていた形。`pre-wrap` は連続空白を保ち、はみ出すときだけ折り返すので、収まっている行の桁揃えは変わらない（44 章のビルド時間の表で確認）。
+
+### 2.11 `overflow: auto` の `<pre>` は、ページの途中から分割されない
+
+- **症状**: 版面に収まらない長さのコードブロックが、前のページに十分な空きがあっても丸ごと次のページへ送られ、前のページの下に 2 割から 7 割の空きが残る（23 章の SVG の雛形）。次のページの頭からは普通に分かれて続くので、「分割できない」のではなく「途中から始めない」。
+- **原因**: Prism の上流 CSS が `pre[class*="language-"] { overflow: auto }` を指定している。スクロールする箱を、Vivliostyle は残りの高さに入らなければ送る。行ブロック（`.vs-code-line`）や `position: relative` は無関係だった（どちらも外して試し、変わらなかった）。
+- **切り分け**: 試験用の `.md` を `vs build t.md` で組み、埋め草の段落の後に 45 行のコードを置く。素の `<pre>`（クラスなし）は 2 ページ目の途中から分かれ、`language-*` の付いた `<pre>` は 3 ページ目の頭から始まった。差はクラスに付く CSS だけ。
+- **修正**: `prism.css` で `overflow: visible`。長い行は `code.css` の `pre-wrap` で折り返すので、横にははみ出さない。行ごとに別のブロックなので段落の `orphans`・`widows` は効かず、`.vs-code-line:first-child` と `:nth-last-child(2)` に `break-after: avoid` を付けて、ページの端に 1 行だけ残らないようにした。本書は 331 → 329 ページ。
+
+### 2.12 `display: grid` の囲みは、収まる高さでも次のページへ送られる
+
+- **症状**: `:::{.pictures}`（写真 3 枚）がページの 4 割ほどの高さなのに、7 割空いたページに置かれず次のページへ送られた。
+- **原因**: Vivliostyle が grid の囲みを途中から置かない。画像の `height: 100%` を `auto` にしても変わらず、`display: flex` にすると置かれた。
+- **修正**: `.pictures` を `display: flex; flex-wrap: wrap` にし、`> figure { flex: 1 1 12em }` で `repeat(auto-fit, minmax(12em, 1fr))` と同じ見え方にした。`.img-text` などほかの grid の囲みは小さく、送られても空きが小さいので変えていない。大きな grid の囲みを足すときは、同じことが起きないか紙面で確かめる。
 
 ---
 
