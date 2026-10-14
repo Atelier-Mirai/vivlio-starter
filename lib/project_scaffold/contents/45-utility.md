@@ -13,7 +13,7 @@
 | `pdf:rasterize` | 入稿対策 | PDF の全ページを画像にして束ね直す |
 | `clean` | メンテナンス | 不要な生成ファイルを削除する |
 
-## vs preflight — ビルド前に原稿を点検する
+## vs preflight — 原稿を点検する
 
 :::{.section-lead}
 組版を待たずに原稿の問題を確かめたいときは、`vs preflight` を使います。PDF を生成せず、画像やコードの参照先などを短時間で確認できます。
@@ -168,7 +168,7 @@ vs pdf:compress 11-intro # → 11-intro_compressed.pdf が生成される
 
 ビルドのたびに圧縮版を作るには、`config/book.yml` の `output.pdf.compress` を `true` にします（@chapref:ch-build）。処理時間が増えるので、普段は `false` のままにして、必要なときにこのコマンドを使うのがお勧めです。
 
-## vs pdf:pages / vs pdf:rasterize — PDF のページを画像にする
+## vs pdf:pages / vs pdf:rasterize
 
 :::{.section-lead}
 完成した PDF から見本ページを画像にしたいときや、印刷所からフォントに関する指摘を受けたときは、PDF を加工するコマンドを使えます。用途と、加工後に変わる性質を確認してから選んでください。
@@ -258,7 +258,7 @@ vs clean              # 後から手動でクリーンアップ
 ビルド結果が更新されないなど、キャッシュが原因と思われるときは `vs clean --cache` を試せます。次のビルドでは必要なデータが作り直されます。
 :::
 
-## カスタム CSS — スタイルを自由に調整する
+## カスタム CSS — スタイルを調整する
 
 :::{.section-lead}
 書籍全体の色や書体は `config/book.yml` で選べます。リンクの色やコードブロックの枠など、一部分の見た目を調整したいときは `stylesheets/custom.css` を編集します。

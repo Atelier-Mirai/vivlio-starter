@@ -1,4 +1,4 @@
-<svg width="100%" viewBox="0 0 680 600" role="img" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" viewBox="31 21 583 567" role="img" xmlns="http://www.w3.org/2000/svg">
 <title>Vivlio Starter 執筆ワークフロー概観</title>
 <desc>プロジェクト作成から入稿までの5ステップを縦方向のフローチャートで示した図</desc>
 <defs>
@@ -28,7 +28,7 @@
 <!-- Step 1: プロジェクト作成 -->
 <rect x="180" y="30" width="320" height="72" rx="10" class="box-teal" stroke-width="0.5"/>
 <text class="th th-teal" x="340" y="62" text-anchor="middle" dominant-baseline="central">(1) プロジェクト作成</text>
-<text class="ts ts-teal" x="340" y="86" text-anchor="middle" dominant-baseline="central">vs new mybook（内部で vs doctor --fix を自動実行）</text>
+<text class="ts ts-teal" x="340" y="86" text-anchor="middle" dominant-baseline="central">vs new mybook</text>
 <text class="sub" x="522" y="66" dominant-baseline="central">環境構築も自動</text>
 
 <!-- 矢印 1→2 -->
