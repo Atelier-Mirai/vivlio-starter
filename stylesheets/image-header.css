@@ -175,10 +175,12 @@ body.vs-header-image .section-topic h2 {
   padding-inline: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm)
     clamp(12mm, calc(var(--paper-scale) * 18mm), 18mm);
   padding-block: clamp(1.5mm, calc(var(--paper-scale) * 2mm), 2mm);
-  /* 帯の高さは「最長ケース（3 行）が飾りの枠に収まる」ことで決まる。
-     A4 版面 162mm では 38.6mm ＝ 3 行 34.3mm ＋ 上下パディング 4mm。
-     1 行・2 行の節題も同じ高さで組む（行数で帯の高さが変わると紙面が落ち着かない）。 */
-  aspect-ratio: 420 / 100;
+  /* 帯の高さは「2 行の節題が飾りの間に収まる」ことで決まる。A4 版面 162mm では
+     27mm ＝ 2 行 22.9mm ＋ 上下パディング 4mm。1 行の節題も同じ高さで組む（行数で
+     帯の高さが変わると紙面が落ち着かない）。以前は 3 行を見込んだ 38.6mm（420 / 100）
+     だったが、本書の 130 の節で 3 行になるのは 3 つだけで、その節題を 2 行に詰めて
+     帯を低くした（本は 4 ページ減る）。3 行の節題でも重ならず、箱が文字に合わせて伸びる。 */
+  aspect-ratio: 600 / 100;
   min-block-size: 60px;
   text-align: left;
 
@@ -202,8 +204,9 @@ body.vs-header-image .section-topic h2::after {
   inline-size: 50%;
   background-image: var(--section-bg-image);
   background-repeat: no-repeat;
-  /* 帯を高くしたぶん飾りも大きくして枠として成立させる（帯幅の 80%） */
-  background-size: 160% auto;
+  /* 飾りの幅は帯幅の 67%。帯の高さに合わせて縮めると（112%）飾りが小さく見えるので、
+     帯より大きく描く。はみ出す分は帯の端で切れ、左は上寄り・右は下寄りの部分が見える */
+  background-size: 134% auto;
   z-index: -1;
 }
 
