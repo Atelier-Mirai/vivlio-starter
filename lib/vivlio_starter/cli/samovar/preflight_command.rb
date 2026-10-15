@@ -96,6 +96,7 @@ module VivlioStarter
           @preflight_started = true
 
           PreProcessCommands::LinkImageValidator.reset!
+          PreProcessCommands::ImageTrimmer.collect_hints!
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
@@ -117,6 +118,7 @@ module VivlioStarter
           # --verify-links 有効時のみ外部 URL チェックを実行
           PreProcessCommands::LinkImageValidator.check_external_urls!
           PreProcessCommands::LinkImageValidator.print_summary
+          PreProcessCommands::ImageTrimmer.report_hints!
 
           print_chapter_summary(entries)
           print_preflight_summary
@@ -139,6 +141,7 @@ module VivlioStarter
           # --help や Guard 違反時はプロジェクト外で実行された可能性があるため触らない）
           CleanCommands.execute_clean({}) if @preflight_started
           Thread.current[:vs_verify_options] = nil
+          PreProcessCommands::ImageTrimmer.stop_collecting_hints!
         end
 
         private

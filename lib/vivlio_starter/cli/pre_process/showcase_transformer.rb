@@ -39,6 +39,7 @@ require 'json'
 require 'open3'
 require_relative '../common'
 require_relative 'generated_asset_cache'
+require_relative 'image_trimmer'
 require_relative 'markdown_utils'
 require_relative 'showcase_svg_builder'
 require_relative 'svg_font_embedder'
@@ -140,6 +141,7 @@ module VivlioStarter
           orig_w, orig_h = dims
           block = ShowcaseSvgBuilder.parse(lines, orig_w:, orig_h:,
                                                   on_warn: ->(line) { warn_unparsable(line, source_filename) })
+          block = trimmed_block(block, image, source, source_filename)
           key = cache_key(source, block)
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE, chapter_slug)
           # 元画像の素性でラスター形式を選ぶ（冒頭コメント参照）。同じ画像なら判定も同じに
@@ -153,6 +155,18 @@ module VivlioStarter
           # PDF は pdf/ ミラーで解決する（math_transformer.rb P4b §2.1 コメント参照）。
           rel_dir = "images/#{REL_BASE}/#{chapter_slug}"
           [block, "#{rel_dir}/#{key}.svg", "#{rel_dir}/#{key}.#{ext}"]
+        end
+
+        # `trim=on` を、測った値の crop に置き換える（image-trim-spec.md §3.5）。
+        # 位置づけは「crop の値を自動で測るもの」なので、測った後は crop と同じ道を通る。
+        # 注釈の座標は元画像の基準のままなので、窓を変えても注釈はずれない。
+        # crop を併記したら crop を使う（警告は前処理の検証が原稿の行番号で出す）。
+        def trimmed_block(block, image, source, source_filename)
+          return block unless image.attributes['trim'] == 'on' && !image.attributes.key?('crop')
+
+          measurement = ImageTrimmer.measure(source)
+          ImageTrimmer.warn_unmeasurable(source_filename, image.path) unless measurement
+          measurement ? block.with(crop: measurement.crop) : block
         end
 
         # SVG とラスターを対でワークスペースへ用意する。合成は magick+rsvg で 1 枚 0.5〜1 秒級

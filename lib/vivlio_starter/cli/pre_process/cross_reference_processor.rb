@@ -613,7 +613,7 @@ module VivlioStarter
             { alt: Regexp.last_match(1), src: Regexp.last_match(2),
               align: extract_attr(attrs, /align=["']?(left|center|right)/),
               width: image_width(attrs),
-              crop: attrs&.match?(/(?<![\w-])crop=/), line:,
+              framed: attrs&.match?(/(?<![\w-])(?:crop=|trim=on(?!\S))/), line:,
               classes: extract_classes(attrs) }
           end
 
@@ -642,18 +642,25 @@ module VivlioStarter
             "#{parts.join("\n")}\n"
           end
 
-          # crop のある画像は、切り抜いた SVG（PDF 用）とラスター（EPUB 用・data-vs-raster）へ
-          # 差し替える。切り抜けなければ元の画像のまま出す（警告は ShowcaseTransformer が出す）。
+          # crop・trim=on のある画像は、切り抜いた画像へ差し替える（image-trim-spec.md）。
+          # - SVG: viewBox を書き換えた写し。data-vs-source は PDF の差し替えが書体を抱かせる入口
+          #   （生成物の参照は asset_prefix を持たず、無いと図の文字が Type 3 になる）。
+          # - ラスター: 切り抜いた SVG（PDF 用）とラスター（EPUB 用・data-vs-raster）。
+          # 切り抜かない・切り抜けないときは元の画像のまま出す（警告は ImageTrimmer / ShowcaseTransformer が出す）。
           def img_tag(img)
-            svg, raster = img[:crop] && cropped_sources(img)
-            return %(<img src="#{img[:src]}" alt="#{img[:alt]}">) unless svg
-
-            %(<img class="vs-cropped" src="#{svg}" data-vs-raster="#{raster}" alt="#{img[:alt]}">)
+            case img[:framed] && framed_sources(img)
+            in { svg:, source: }
+              %(<img src="#{svg}" data-vs-source="#{source}" alt="#{img[:alt]}">)
+            in { svg:, raster: }
+              %(<img class="vs-cropped" src="#{svg}" data-vs-raster="#{raster}" alt="#{img[:alt]}">)
+            else
+              %(<img src="#{img[:src]}" alt="#{img[:alt]}">)
+            end
           end
 
-          def cropped_sources(img)
-            ShowcaseTransformer.crop_assets(img[:line], chapter_slug: File.basename(@filename.to_s, '.*'),
-                                                        source_filename: File.basename(@filename.to_s))
+          def framed_sources(img)
+            ImageTrimmer.framed_image(img[:line], chapter_slug: File.basename(@filename.to_s, '.*'),
+                                                  source_filename: File.basename(@filename.to_s))
           end
 
           def figure_html(block_start, info, label)

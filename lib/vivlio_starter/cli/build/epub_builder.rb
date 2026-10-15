@@ -122,11 +122,15 @@ module VivlioStarter
         # 剥がした後の参照（stylesheets/… ・images/…）は dir 基準の相対となり、
         # ローカライズされた資産と対応する。章間リンクは同一 dir 内のため不変。
         #
+        # `data-vs-source` も外す。詰めた SVG（image-trim-spec.md §3.4）が PDF の書体の差し替えへ
+        # 渡すための控えで、ビルド機のパスを EPUB に残す理由はない。
+        #
         # @param dir [String] 消費者 dir（BUILD_EPUB_DIR / BUILD_KINDLE_DIR）
         def stage_consumer_htmls!(dir)
           FileUtils.mkdir_p(dir)
           Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
             content = File.read(src, encoding: 'utf-8').gsub(Common::ASSET_PREFIX, '')
+                          .gsub(/\s+data-vs-source="[^"]*"/, '')
             File.write(File.join(dir, File.basename(src)), content, encoding: 'utf-8')
           end
         end

@@ -32,6 +32,7 @@ require_relative 'issue_registry'
 require_relative 'qr_transformer'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
+require_relative 'image_trimmer'
 require_relative 'markdown_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
@@ -75,6 +76,11 @@ module VivlioStarter
         BORDER_CLASSES = { 'on' => '.vs-bordered', 'off' => '.vs-borderless' }.freeze
         BORDER_ATTRIBUTE = /(?<!\S)border=(\S+)/
 
+        # 画像の余白を詰める `trim=on` / `trim=off`（image-trim-spec.md）。
+        TRIM_ATTRIBUTE = /(?<!\S)trim=(\S+)/
+        TRIM_VALUES = %w[on off].freeze
+        CROP_ATTRIBUTE = /(?<![\w-])crop=/
+
         # 撤去したクラス `.bordered`（画像の属性・囲みの両方）
         RETIRED_BORDERED = /(?<![\w-])\.bordered(?![\w-])/
         RETIRED_BORDERED_CONTAINER = /\A\s*:{3,}\s*\{[^}]*#{RETIRED_BORDERED.source}[^}]*\}\s*\z/
@@ -99,6 +105,7 @@ module VivlioStarter
           Common.log_info("#{context.source_path} → #{context.output_path}")
           validate_directives!
           validate_image_borders!
+          validate_image_trims!
           validate_qr_codes!
           validate_links!
           apply_frontmatter!
@@ -175,6 +182,37 @@ module VivlioStarter
               end
             end
           end
+        end
+
+        # 画像の `trim` を点検し、preflight なら余白の多い画像の候補を集める（image-trim-spec.md）。
+        # 原稿そのままの行番号が使えるこの時点で行う。trim=on の処理そのものは図を組むとき
+        # （CrossReferenceProcessor・ShowcaseTransformer）に行う。
+        def validate_image_trims!
+          Masking.each_prose_line(context.content) do |line, line_number|
+            prose = line.gsub(/`[^`]+`/, '')
+            prose.scan(IMAGE_WITH_ATTRIBUTES) do |image, attributes|
+              values = attributes.scan(TRIM_ATTRIBUTE).flatten
+              values.reject { TRIM_VALUES.include?(it) }.each { warn_invalid_trim(line_number, it) }
+              warn_trim_with_crop(line_number, image, attributes) if values.include?('on') && attributes.match?(CROP_ATTRIBUTE)
+            end
+          end
+          ImageTrimmer.note_hint_candidates(context.content, chapter: context.filename)
+        end
+
+        def warn_invalid_trim(line_number, value)
+          record_notation_warning(
+            line_number, "画像の trim の値が不正です（trim=#{value}）",
+            detail: '→ 余白を詰めるなら trim=on と書いてください（既定は trim=off）。'
+          )
+        end
+
+        # crop は図の一部だけを見せる指定なので、trim で範囲を広げ直さず crop を使う（§3.6）。
+        def warn_trim_with_crop(line_number, image, attributes)
+          kept = attributes.sub(TRIM_ATTRIBUTE, '').squeeze(' ').strip
+          record_notation_warning(
+            line_number, '画像に crop と trim=on の両方があります。crop を使い、trim=on は使いません',
+            detail: "→ 切り抜く範囲を自分で決めるなら trim=on を消してください: #{image}{#{kept}}"
+          )
         end
 
         # `@qr:URL{…}` の大きさの指定を点検する。変換（transform_qr_codes!）はフロントマターを
