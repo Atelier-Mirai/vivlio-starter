@@ -43,7 +43,7 @@ Vivlio Starter は Markdown で書いた原稿から高品質な PDF・EPUB を�
 ## 謝辞
 
 :::{.sideimage-right}
-![](kauplan.webp){width=15%}
+![](kauplan.webp){width=15% trim=on}
 
 Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarter/)に触発されたことに始まります。Re:VIEW Starter が示した「執筆者が執筆に集中できる環境づくり」という思想は、Vivlio Starter の根幹にあり続けています。作者の kauplan さんに厚く御礼申し上げます。
 :::
