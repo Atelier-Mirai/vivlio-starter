@@ -152,17 +152,19 @@ SVG への `crop` も §3.4 と同じ `viewBox` の書き換えにそろえる�
 - 本書と雛形に、SVG へ `crop` を書いた箇所は無い（2026-10-15 に確かめた）。今の原稿の紙面は変わらない。
 - `:::{.showcase}` の中の SVG は、注釈を重ねるために今までどおり埋め込む（変えない）。
 
-## 5. 余白の多い画像を知らせる（`vs preflight` の 💡）
+## 5. 余白の多い画像を知らせる（`vs build`・`vs preflight` の 🟡）
+
+> 起草時は「`vs preflight` だけの 💡」だった。2026-10-15 に 🟡 へ改め、`vs build` でも出すことにした（§9.3）。
 
 - 対象は §3.1 で `trim=on` が効く画像のうち、`trim`・`crop` のどちらも書いていないもの。`trim=off` と書いた画像は外す。
 - **絵が画像の幅の 85% 未満しか使っていない**とき、1 画像につき 1 回知らせる。高さは見ない（幅で載せる図の大きさには効かないため）。
-- 知らせは 💡 で出す。終了コードにも、🟡 の件数にも数えない。既定のログの水準（`warn`）でも表示する。
+- 知らせは 🟡 で出し、`vs build` と `vs preflight` で同じものを出す。終了コードは変えない。
 - 文面には、出現箇所・使用率・詰めたときの倍率・before → after を添える。
 
 ```text
-💡 11-workflow.md:58 workflow.svg は、絵が画像の幅の 83% しか使っていません。余白を詰めると約 1.16 倍で載ります
-   → ![](workflow.svg) を ![](workflow.svg){trim=on} に
-     （余白を意図して残すときは {trim=off} と書くと、この知らせは出ません）
+🟡 11-workflow.md:58 - workflow.svg は、絵が画像の幅の 83% しか使っていません。余白を詰めると約 1.16 倍で載ります
+        → ![](workflow.svg) を ![](workflow.svg){trim=on} に直してください。
+          余白を意図して残すときは {trim=off} と書くと、この指摘は出なくなります。
 ```
 
 - 本書で知らせる画像は、2.1 の表から `kauplan.webp`（80%）の 1 枚の見込み。
@@ -222,3 +224,11 @@ SVG への `crop` も §3.4 と同じ `viewBox` の書き換えにそろえる�
 - 詰めた SVG は `html/images/trim/<章>/<キー>.svg` に置き、`<img>` に `data-vs-source`（`.cache/vs/trim/` の実体）を付ける。PDF の差し替え（`PdfBuilder#swap_images_for_pdf!`）は `data-vs-source` を先に見るので、生成物でも `DerivedSvg` が書体を抱かせる。試しのプロジェクトの全ターゲットのビルドで Type 3 は 0 件だった。
 - EPUB は消費者 dir へ写すときに `data-vs-source` を外す（`EpubBuilder.stage_consumer_htmls!`）。クリーン EPUB は詰めた窓の派生 SVG を使っていた（パッケージを開いて `viewBox` を確かめた）。Kindle は焼いた画像を使う。KPF は開いて確かめておらず、変換の警告が増えなかったことだけを確かめた（W14016×1 は詰める前から出ていた）。
 - ラスターの `crop` は、値をそのまま `crop_assets` へ渡す（既存のテストの差し替えの位置を変えないため、分かれ目は拡張子で決める）。
+
+### 9.3 余白の指摘を 💡 から 🟡 へ改め、`vs build` でも出す
+
+実装後にユーザーが `vs preflight`（💡）と `vs build`（🟡・`trim` の値の誤り）を並べ、二つの差がわかりにくいこと、`vs preflight` を経ずに `vs build` する著者もいることを挙げた。
+
+- 💡 を出すほかの箇所（`vs lint`・`vs doctor`・`vs upgrade`・`vs build` の案内・索引の報告）は、どれも原稿の場所を指さない補足だった。原稿の行を指して before → after を添えていたのは、この指摘だけだった。
+- そこで「原稿の場所を指す指摘は 🟡、指さない補足は 💡」と決め、この指摘を 🟡 にした（`terminal-output-notes.md` に基準を書いた）。`IssueRegistry` に `:image` で記録するので、`vs preflight` の最終行は「警告 N 件（ビルドは可能です）」になる。終了コードは変えない。
+- 候補は章の前処理（`MarkdownPreprocessor#validate_image_trims!`）で毎回集め、`SectionBuilder.preprocess_sections!` の最後に測って出す。全章・単章のビルドと preflight が同じ入口を通る。ビルドでも測るので、初回だけ画像 1 枚あたり約 0.15 秒延びる（以後はキャッシュ）。

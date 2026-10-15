@@ -108,6 +108,8 @@ module VivlioStarter
           targets = resolve_targets(entries_or_keep)
           return if targets.empty?
 
+          # 余白の多い画像の候補は章ごとに集め、全章の後でまとめて測って知らせる（image-trim-spec.md §5）
+          PreProcessCommands::ImageTrimmer.reset_hints!
           concurrency = determine_concurrency
           if concurrency == 1
             targets.each { |target| preprocess_single_chapter!(target) }
@@ -117,6 +119,7 @@ module VivlioStarter
 
           # 全章の前処理完了後に1回だけクロスリファレンス処理を実行する
           PreProcessCommands.execute_cross_references(targets)
+          PreProcessCommands::ImageTrimmer.report_hints!
         end
 
         # セクション（前書き/本文/付録/後書き）の変換を一括実行

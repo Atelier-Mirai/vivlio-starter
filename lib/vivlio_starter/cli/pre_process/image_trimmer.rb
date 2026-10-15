@@ -29,6 +29,7 @@ require_relative '../masking'
 require_relative '../build/derived_svg'
 require_relative 'generated_asset_cache'
 require_relative 'image_path_normalizer'
+require_relative 'issue_registry'
 require_relative 'showcase_svg_builder'
 
 module VivlioStarter
@@ -331,25 +332,18 @@ module VivlioStarter
           )
         end
 
-        # --- 余白の多い画像を知らせる（vs preflight の 💡・§5） ---
+        # --- 余白の多い画像を知らせる（vs build・vs preflight の 🟡・§5） ---
 
-        # 候補を集め始める。preflight だけが呼ぶ（build では測らない）。
-        def collect_hints!
+        # 集めた候補を捨てる。章の前処理（SectionBuilder.preprocess_sections!）の最初に呼ぶ。
+        def reset_hints!
           @hint_monitor.synchronize { @hint_candidates = [] }
-        end
-
-        def collecting_hints? = @hint_monitor.synchronize { !@hint_candidates.nil? }
-
-        def stop_collecting_hints!
-          @hint_monitor.synchronize { @hint_candidates = nil }
         end
 
         # 原稿 1 章分から、trim=on が効くのに crop・trim を書いていない画像を拾う。
         # 前処理の最初（原稿そのままの行番号が使える時点）で呼ぶ。章の前処理は並列に
         # 走るので、測るのは report_hints! で全章を集めた後にまとめて行う。
+        # build でも preflight でも同じものを出す（preflight を経ずに build する著者もいる）。
         def note_hint_candidates(content, chapter:)
-          return unless collecting_hints?
-
           found = []
           containers = []
           Masking.each_prose_line(content) do |line, line_number|
@@ -359,7 +353,7 @@ module VivlioStarter
             candidate = hint_candidate(line, line_number, chapter)
             found << candidate if candidate
           end
-          @hint_monitor.synchronize { @hint_candidates&.concat(found) }
+          @hint_monitor.synchronize { (@hint_candidates ||= []).concat(found) }
         end
 
         # 囲みの開き・閉じを追う。囲みの行なら true。
@@ -394,7 +388,9 @@ module VivlioStarter
           resolved && File.expand_path(resolved.delete_prefix('images/'), Common::IMAGES_DIR)
         end
 
-        # 集めた候補を測り、余白の多い画像を 💡 で知らせる。終了コードにも 🟡 の件数にも数えない。
+        # 集めた候補を測り、余白の多い画像を 🟡 で知らせる。原稿の行を指し、直し方（before → after）と
+        # 黙らせ方（{trim=off}）を添える指摘なので、lint の改善提案と同じ 🟡 にそろえる（💡 は原稿の
+        # 場所を指さない補足に使う・terminal-output-notes.md）。終了コードは変えない。
         # 同じ画像を何か所で使っていても、知らせるのは最初の 1 か所（ほかの数を添える）。
         def report_hints!(tools: default_tools)
           candidates = @hint_monitor.synchronize { @hint_candidates.to_a.dup }
@@ -404,21 +400,23 @@ module VivlioStarter
             measurement = measure(uses.first.source, tools:)
             next unless measurement && measurement.usage < HINT_USAGE_BELOW
 
-            emit_hint(uses, measurement)
+            warn_wide_margin(uses, measurement)
           end
         end
 
-        def emit_hint(uses, measurement)
+        def warn_wide_margin(uses, measurement)
           first = uses.first
           others = uses.size > 1 ? "（ほか #{uses.size - 1} か所）" : ''
-          attributes = [first.attributes, 'trim=on'].compact.join(' ').strip
-          Common.log_always(
-            "💡 #{first.chapter}:#{first.line} #{File.basename(first.source)} は、絵が画像の幅の " \
-            "#{(measurement.usage * 100).floor}% しか使っていません。余白を詰めると約 #{format('%.2f', measurement.scale)} 倍で載ります#{others}"
-          )
+          message = "#{File.basename(first.source)} は、絵が画像の幅の #{(measurement.usage * 100).floor}% しか" \
+                    "使っていません。余白を詰めると約 #{format('%.2f', measurement.scale)} 倍で載ります#{others}"
           before = first.attributes ? "#{first.markdown}{#{first.attributes}}" : first.markdown
-          Common.log_always("#{Common::DETAIL_INDENT}→ #{before} を #{first.markdown}{#{attributes}} に")
-          Common.log_always("#{Common::DETAIL_INDENT}  （余白を意図して残すときは {trim=off} と書くと、この知らせは出ません）")
+          after = "#{first.markdown}{#{[first.attributes, 'trim=on'].compact.join(' ').strip}}"
+          Common.log_warn(
+            "#{first.chapter}:#{first.line} - #{message}",
+            detail: "→ #{before} を #{after} に直してください。\n" \
+                    '  余白を意図して残すときは {trim=off} と書くと、この指摘は出なくなります。'
+          )
+          IssueRegistry.record(chapter: first.chapter, line: first.line, severity: :warn, category: :image, message:)
         end
 
         # --- 外部ツール ---

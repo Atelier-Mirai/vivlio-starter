@@ -259,11 +259,11 @@ class ImageTrimmerTest < Minitest::Test
   # --- 余白の多い画像を知らせる（§5） ---
 
   def hints_for(content, box)
-    T.collect_hints!
+    T.reset_hints!
     T.note_hint_candidates(content, chapter: '11-workflow.md')
     capture_log { T.report_hints!(tools: BoxTools.new(box)) }
   ensure
-    T.stop_collecting_hints!
+    T.reset_hints!
   end
 
   def test_should_hint_wide_margin_image_with_before_and_after
@@ -273,9 +273,9 @@ class ImageTrimmerTest < Minitest::Test
       log = hints_for("本文\n\n![](workflow.svg){width=80%}\n\n![](workflow.svg)\n", WORKFLOW_BOX)
 
       assert_equal 3, log.size
-      assert_equal '💡 11-workflow.md:3 workflow.svg は、絵が画像の幅の 83% しか使っていません。' \
+      assert_equal '🟡 11-workflow.md:3 - workflow.svg は、絵が画像の幅の 83% しか使っていません。' \
                    '余白を詰めると約 1.16 倍で載ります（ほか 1 か所）', log[0]
-      assert_includes log[1], '→ ![](workflow.svg){width=80%} を ![](workflow.svg){width=80% trim=on} に'
+      assert_includes log[1], '→ ![](workflow.svg){width=80%} を ![](workflow.svg){width=80% trim=on} に直してください。'
       assert_includes log[2], '{trim=off}'
     end
   end
@@ -315,10 +315,31 @@ class ImageTrimmerTest < Minitest::Test
     end
   end
 
-  def test_should_not_collect_hints_outside_preflight
-    T.note_hint_candidates("![](workflow.svg)\n", chapter: '11-workflow.md')
+  # 🟡 として preflight の件数に数える（終了コードは変えない）。build でも同じものが出る
+  def test_should_record_wide_margin_as_warning
+    registry = VivlioStarter::CLI::PreProcessCommands::IssueRegistry
+    in_project do
+      File.write('images/11-workflow/workflow.svg', WORKFLOW_SVG)
+      registry.reset!
 
-    refute_predicate T, :collecting_hints?
+      hints_for("![](workflow.svg)\n", WORKFLOW_BOX)
+
+      assert_equal [['11-workflow', 1, :warn, :image]], # 章の名前は .md を外して記録される
+                   registry.issues.map { [it.chapter, it.line, it.severity, it.category] }
+    end
+  ensure
+    registry.reset!
+  end
+
+  # 章の前処理の最初に、前回のビルドの候補を捨てる
+  def test_should_forget_candidates_on_reset
+    in_project do
+      File.write('images/11-workflow/workflow.svg', WORKFLOW_SVG)
+      T.note_hint_candidates("![](workflow.svg)\n", chapter: '11-workflow.md')
+      T.reset_hints!
+
+      assert_empty capture_log { T.report_hints!(tools: BoxTools.new(WORKFLOW_BOX)) }
+    end
   end
 end
 
