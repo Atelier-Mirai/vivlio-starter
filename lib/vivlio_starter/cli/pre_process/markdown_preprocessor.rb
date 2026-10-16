@@ -429,11 +429,11 @@ module VivlioStarter
 
         # LaTeX 数式（$…$ / $$…$$ / \(…\) / \[…\]）を SVG 画像へ変換し <img> 化する。
         # 前処理段階で SVG 化することで PDF・EPUB・表セルの数式を同一画像で解決する
-        # （math-frontispiece-svg-spec.md §A）。mathematical gem 未導入時は本文を変えず、
-        # 生 LaTeX を VFM→MathJax 経路（PDF のみ）へ委ねる。
+        # （math-frontispiece-svg-spec.md §A）。node か mathjax-full が見つからないときは本文を
+        # 変えず、生 LaTeX を VFM→MathJax 経路（PDF のみ）へ委ねる。
         def transform_math!
           unless MathTransformer.available?
-            Common.log_warn('mathematical gem が無いため数式の SVG 化をスキップします（PDF は MathJax で組版）')
+            warn_math_renderer_missing
             return
           end
 
@@ -740,6 +740,28 @@ module VivlioStarter
           end
 
           context.content = MarkdownUtils.restore_code_spans(IndexMarkup.restore_math(stripped, maths), spans)
+        end
+
+        # 数式の SVG 化を飛ばすことを、数式のある章に当たったときに 1 度だけ知らせる。
+        #
+        # 以前は「mathematical gem が無いため」と出していたが、SVG 化はとうに Node 上の
+        # mathjax-full へ移っており、著者は何を入れればよいか分からなかった。しかも章ごとに
+        # 出るので、全章ビルドでは数式の無い章の数まで同じ行が並んだ。
+        # 起こりうるのは、Node の版を切り替えて mathjax-full を入れていない版で動かしたとき
+        # （グローバルの npm の置き場所が版ごとに違う）。
+        def warn_math_renderer_missing
+          return if self.class.math_renderer_warned
+          return unless MathDelimiters::ALL.any? { Masking.strip_code(context.content).match?(it) }
+
+          self.class.math_renderer_warned = true
+          Common.log_warn('mathjax-full が見つからないため、数式を画像にせずに組みます',
+                          detail: "PDF は組版時の MathJax で数式を組みますが、EPUB では LaTeX のまま表示されます\n" \
+                                  'vs doctor --fix で入れられます（Node の版を切り替えている場合は、今の版に入れてください）')
+        end
+
+        class << self
+          # 同じ実行で警告を 1 度に抑えるための印（warn_math_renderer_missing）
+          attr_accessor :math_renderer_warned
         end
 
         # HTMLコメント <!-- ... --> を削除する

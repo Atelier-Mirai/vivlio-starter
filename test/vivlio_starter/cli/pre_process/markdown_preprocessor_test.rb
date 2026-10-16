@@ -106,6 +106,38 @@ module VivlioStarter
         def test_should_expand_index_markup_nested_in_footnote_body
           assert_equal '本文^[これはRubyの話]。', strip('本文^[これは[Ruby]の話]。')
         end
+
+        # --- phase: 数式の中のブラケットは印ではない（改善案 #115） ---
+
+        # 数式の SVG 化が使えない環境では数式が素のまま残る。単位の [\Omega] を剥がすと式が変わる
+        def test_should_keep_brackets_inside_math_when_expanding
+          source = "$$R = 5\\,[\\Omega]$$ と $[\\text{W}]$ と [電力]。\n"
+
+          assert_equal "$$R = 5\\,[\\Omega]$$ と $[\\text{W}]$ と 電力。\n", strip(source)
+        end
+
+        # --- phase: 数式の SVG 化を飛ばす警告（mathjax-full が見つからないとき） ---
+
+        # 数式のある章に当たったとき 1 度だけ、入れるべきものと入れ方を添えて知らせる。
+        # 数式の無い章では出さない（以前は全章で「mathematical gem が無い」と並んでいた）
+        def test_should_warn_once_about_missing_mathjax_only_for_chapters_with_math
+          MarkdownPreprocessor.math_renderer_warned = nil
+          out, = capture_io do
+            MathTransformer.stub(:available?, false) do
+              ["数式の無い章です。\n", "式 $a^2$ があります。\n", "式 $$b$$ もあります。\n"].each do |markdown|
+                pre = MarkdownPreprocessor.new(@md_path, @entry)
+                pre.context.content = markdown
+                pre.send(:transform_math!)
+              end
+            end
+          end
+
+          assert_equal 1, out.scan('mathjax-full が見つからないため').size
+          assert_includes out, 'vs doctor --fix で入れられます'
+          refute_includes out, 'mathematical gem'
+        ensure
+          MarkdownPreprocessor.math_renderer_warned = nil
+        end
       end
     end
   end
