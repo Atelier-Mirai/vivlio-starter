@@ -137,6 +137,7 @@ module VivlioStarter
           scaffold_code = sync_scaffold!(cmd)
           refresh_gemfile_lock!(options)
           tidy_author_data!(options)
+          suggest_dictionary_review
         else
           Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
         end
@@ -281,6 +282,26 @@ module VivlioStarter
         end
 
         Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
+      end
+
+      # 原稿に出てこない語が辞書にあれば、見直しの手順を案内する（改善案.md #114）。
+      #
+      # ベータ版の雛形は本書の辞書（171 語）を配っていたので、そこから育てた本では
+      # 辞書の大半が著者の原稿に出てこない。ただ、どの語が雛形から来たかは、版ごとの
+      # 辞書を gem に持たせない限り見分けられず、著者が先回りして登録した語と区別できない。
+      # そこで upgrade は消さずに数えるだけにし、外すかは vs index:auto のレビュー
+      # （5 節「原稿に出てこない語」は [ ] の印で並び、そのまま apply すれば外れる）に委ねる。
+      def suggest_dictionary_review
+        terms = UnifiedTermsManager.new
+        absent = terms.absent_listed_terms
+        return if absent.empty?
+
+        listed = terms.load_terms.count { !it['flags'].to_s.empty? }
+        names = absent.first(3).map { it['term'] }.join('・') + (absent.size > 3 ? ' ほか' : '')
+        Common.log_always("💡 索引辞書の #{absent.size} 語（載せている #{listed} 語のうち）が、原稿のどこにも出てきません（#{names}）")
+        Common.log_always("#{Common::DETAIL_INDENT}古い版の雛形が配った見本の語や、原稿から消した語が残っているのかもしれません")
+        Common.log_always("#{Common::DETAIL_INDENT}vs index:auto を実行し、レビューファイルの「5. 原稿に出てこない語」を確かめてから " \
+                          'vs index:apply すると外れます')
       end
 
       # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）

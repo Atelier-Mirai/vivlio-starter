@@ -844,14 +844,39 @@ module VivlioStarter
 
       def test_should_stay_silent_when_there_is_nothing_to_tidy
         within_project do |scaffold|
-          write('.', 'contents/11-intro.md', "# はじめに\n")
+          write('.', 'contents/11-intro.md', "# はじめに\n\n原稿を書きます。\n")
           write('.', 'config/index_glossary_terms.yml', "terms:\n- term: 原稿\n  main:\n  - 11-intro\n")
           write_lock
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
           refute_includes out, '整理'
+          refute_includes out, '原稿のどこにも出てきません'
           assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*')
+        end
+      end
+
+      # --- 原稿に出てこない語: 消さずに数え、vs index:auto での見直しを案内する ---
+      def test_should_suggest_reviewing_terms_absent_from_the_manuscript
+        within_project do |scaffold|
+          write('.', 'contents/11-intro.md', "# はじめに\n\n原稿を書きます。`Vivliostyle` はコードの中だけ。\n")
+          write('.', 'config/index_glossary_terms.yml', <<~YAML)
+            terms:
+            - term: 原稿
+              flags: i
+            - term: Vivliostyle
+              flags: ig
+            - term: 使っていない語
+              flags: ''
+          YAML
+          write_lock
+          before = File.read('config/index_glossary_terms.yml')
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, '索引辞書の 1 語（載せている 2 語のうち）が、原稿のどこにも出てきません（Vivliostyle）'
+          assert_includes out, '「5. 原稿に出てこない語」を確かめてから vs index:apply すると外れます'
+          assert_equal before, File.read('config/index_glossary_terms.yml'), '案内だけで、辞書は書き換えないべき'
         end
       end
 

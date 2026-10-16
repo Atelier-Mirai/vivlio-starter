@@ -23,6 +23,8 @@ require 'yaml'
 require 'fileutils'
 require_relative '../common'
 require_relative 'main_reference'
+require_relative 'term_pattern'
+require_relative 'code_block_stripper'
 
 module VivlioStarter
   module CLI
@@ -360,6 +362,21 @@ module VivlioStarter
         end
         save_terms!(load_terms)
         orphans
+      end
+
+      # 索引か用語集に載せているのに、原稿（contents/*.md のコードを除く本文）のどこにも
+      # 出てこない語。vs upgrade が辞書の見直しを案内するのに使う（改善案.md #114）。
+      # `_README.md` のような `_` で始まるファイルは原稿ではないので読まない。
+      # @return [Array<Hash>]
+      def absent_listed_terms
+        bodies = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
+                    .reject { File.basename(it).start_with?('_') }
+                    .map { IndexCommands::CodeBlockStripper.strip(File.read(it, encoding: 'utf-8')) }
+
+        load_terms.reject { it['flags'].to_s.empty? }.reject do |term|
+          pattern = IndexCommands::TermPattern.for(term)
+          bodies.any? { it.match?(pattern) }
+        end
       end
 
       # キャッシュをクリア
