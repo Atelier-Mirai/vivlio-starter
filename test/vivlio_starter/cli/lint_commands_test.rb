@@ -420,7 +420,8 @@ module VivlioStarter
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-13'], {})
             end
-            assert_match(/\ASTDOUT/, stdout)
+            assert_match(/^STDOUT$/, stdout)
+            assert_includes stdout, '💡 11-13 のうち、原稿のある 3 章（11-install, 12-setup, 13-build）を検査します'
             assert_equal 'STDERR', stderr
           end
         end
@@ -454,7 +455,7 @@ module VivlioStarter
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-install', '91', '11-12'], {})
             end
-            assert_match(/\ASTDOUT/, stdout)
+            assert_match(/^STDOUT$/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
@@ -544,14 +545,15 @@ module VivlioStarter
         resolver = LintCommands::LintRunner::TargetResolver.new(['foo'])
 
         logged_errors = []
-        Common.stub :log_error, ->(msg) { logged_errors << msg } do
+        Common.stub :log_error, ->(msg, **) { logged_errors << msg } do
           capture_io do
             error = assert_raises(SystemExit) { resolver.resolve }
             assert_equal 1, error.status
           end
         end
-        assert logged_errors.any? { it.include?('不正な章指定') },
-               "不正な章指定エラーが出力されること: #{logged_errors.inspect}"
+        # vs build と同じ検査・同じ文面で止める（改善案 #113）
+        assert logged_errors.any? { it.include?('指定した章が見つかりません: foo') },
+               "章が見つからないエラーが出力されること: #{logged_errors.inspect}"
       end
 
       # sentence_length_max 指定時に、上限を上書きした一時 textlintrc を生成する

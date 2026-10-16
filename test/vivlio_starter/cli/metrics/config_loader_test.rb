@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'tmpdir'
+require 'fileutils'
 require 'vivlio_starter/cli/metrics/config_loader'
 
 module VivlioStarter
@@ -88,24 +90,31 @@ module VivlioStarter
         end
 
         def test_exclude_chapters_returns_default_list
-          loader = ConfigLoader.new({})
-          excluded = loader.exclude_chapters
+          with_chapters(%w[00-preface 11-a 90-b 98-c 99-postface]) do
+            excluded = ConfigLoader.new({}).exclude_chapters
 
-          assert_includes excluded, '00'
-          assert_includes excluded, '99'
-          assert_includes excluded, '90'
-          assert_includes excluded, '98'
+            assert_equal %w[00 90 98 99], excluded.sort
+          end
         end
 
         def test_exclude_chapters_expands_ranges
-          config = { 'metrics' => { 'exclude_chapters' => ['01-03', '99'] } }
-          loader = ConfigLoader.new(config)
-          excluded = loader.exclude_chapters
+          with_chapters(%w[01-a 02-b 03-c 04-d 99-postface]) do
+            config = { 'metrics' => { 'exclude_chapters' => ['01-03', '99'] } }
+            excluded = ConfigLoader.new(config).exclude_chapters
 
-          assert_includes excluded, '01'
-          assert_includes excluded, '02'
-          assert_includes excluded, '03'
-          assert_includes excluded, '99'
+            assert_equal %w[01 02 03 99], excluded.sort
+          end
+        end
+
+        # CLI の章指定と同じく TokenResolver で解く。自前で広げていたころは、
+        # 降順の範囲が空になり、何も除かなかった（改善案 #113）
+        def test_exclude_chapters_reads_a_descending_range_and_a_slug
+          with_chapters(%w[11-a 12-b 13-c 97-sample]) do
+            config = { 'metrics' => { 'exclude_chapters' => ['13-12', 'sample'] } }
+            excluded = ConfigLoader.new(config).exclude_chapters
+
+            assert_equal %w[12 13 97], excluded.sort
+          end
         end
 
         def test_vocabulary_thresholds_returns_defaults
@@ -164,6 +173,20 @@ module VivlioStarter
 
           assert_equal 111, thresholds[:chapter][:min]
           assert_equal ConfigLoader::DEFAULT_PRESETS[:compact][:section][:min], thresholds[:section][:min]
+        end
+
+        private
+
+        # 除外の指定は TokenResolver が解くので、原稿のある章を置いた仮のプロジェクトで読む
+        def with_chapters(basenames)
+          Dir.mktmpdir('vs-metrics-exclude') do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p(%w[config contents])
+              File.write('config/catalog.yml', "CHAPTERS:\n" + basenames.map { "  - #{it}\n" }.join)
+              basenames.each { File.write("contents/#{it}.md", "# #{it}\n") }
+              yield
+            end
+          end
         end
       end
     end

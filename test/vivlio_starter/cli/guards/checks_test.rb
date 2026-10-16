@@ -351,7 +351,7 @@ module VivlioStarter
           assert_equal 1, Guards.precheck(failing)
         end
         assert_includes out, '🔴 違反'
-        assert_includes out, '前提条件を満たしていません'
+        refute_includes out, '前提条件を満たしていません', '違反を 1 件ずつ出したうえで、要約を重ねない'
       end
 
       # ------------------------------------------------------------------

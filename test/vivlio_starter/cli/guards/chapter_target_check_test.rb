@@ -10,7 +10,8 @@
 #   - 解決できる指定（番号 / 範囲 / ベース名 / スラグ）は合格
 #   - 解決できない指定が 1 つでもあれば :error（＝ vs build を止める）
 #   - 理由で文面を分ける（原稿が無い／catalog.yml 未登録）
-#   - 範囲指定は欠けている番号まで名指しする
+#   - 範囲は間にある章を指し、欠けた番号は責めない。章が 1 つも無いときだけ止める（改善案 #113）
+#   - 範囲が何章に広がったかを 💡 で知らせる（build は catalog.yml の章だけ・lint/metrics は原稿があれば）
 #   - 打ち間違いに「もしかして」を 1 件だけ添える（綴り／番号の 2 段構え）
 #   - 引数なし（フルビルド）は検査対象外
 # ================================================================
@@ -68,15 +69,86 @@ module VivlioStarter
         end
       end
 
-      # 範囲は欠けている番号まで言う。"11-13" とだけ返すと 11・12 まで無いように読める
-      def test_should_name_the_missing_number_inside_a_range
-        with_project do
-          violations = validate(%w[11-13])
+# 範囲は、その間にある章を指す。欠けた番号は著者が名指しした章ではないので責めない
+def test_should_pass_a_range_with_missing_numbers
+  with_project do
+    assert_empty validate(%w[11-13])
+    assert_empty validate(%w[00-99])
+    assert_empty validate(%w[13-11]), '降順も同じ'
+  end
+end
 
-          assert_equal 1, violations.size
-          assert_includes violations.first.message, '11-13 のうち第 13 章'
-        end
-      end
+# 範囲に章が 1 つも無いときだけ止め、手前と後ろの近い章を添える
+def test_should_report_an_empty_range_with_the_nearest_chapters
+  with_project do
+    write_content('21-advanced')
+    File.write('config/catalog.yml',
+               "PREFACE:\nCHAPTERS:\n  - 11-install\n  - 12-tutorial\n  - 21-advanced\nAPPENDICES:\nPOSTFACE:\n")
+
+    violations = validate(%w[15-19])
+
+    assert_equal 1, violations.size
+    assert_equal '15-19 に章がありません', violations.first.message
+    assert_includes violations.first.detail, '近い章: 12-tutorial, 21-advanced'
+  end
+end
+
+# 範囲に草稿しか無ければ、組む章が無いことと、登録すれば組めることを言う
+def test_should_report_a_range_holding_only_drafts
+  with_project do
+    write_content('15-draft')
+
+    violations = validate(%w[15-19])
+
+    assert_equal 1, violations.size
+    assert_includes violations.first.message, '登録した章がありません'
+    assert(violations.first.detail.any? { it.include?('15-draft を追加してください') })
+  end
+end
+
+# lint・metrics は読むだけなので、範囲の草稿も単独の草稿も通す
+def test_should_accept_drafts_for_reading_commands
+  with_project do
+    write_content('15-draft')
+
+    assert_empty validate(%w[15-19], scope: :contents)
+    assert_empty validate(%w[15-draft], scope: :contents)
+    refute_empty validate(%w[abc], scope: :contents), '打ち間違いは止める'
+  end
+end
+
+# ------------------------------------------------------------
+# 範囲が何章に広がったかの知らせ（💡）
+# ------------------------------------------------------------
+
+def test_should_tell_which_chapters_a_range_covers
+  with_project do
+    notices = Guards::ChapterTargetCheck.range_notices(%w[00-11], verb: 'ビルド')
+
+    assert_equal ['💡 00-11 のうち、原稿のある 1 章（11-install）をビルドします'], notices
+  end
+end
+
+# build は範囲の中の草稿を組まない。外したことを同じ行で言う
+def test_should_mention_drafts_left_out_of_a_range
+  with_project do
+    write_content('13-draft')
+
+    notice = Guards::ChapterTargetCheck.range_notices(%w[11-13], verb: 'ビルド').first
+
+    assert_includes notice, '原稿のある 2 章（11-install, 12-tutorial）をビルドします'
+    assert_includes notice, '（13-draft は catalog.yml に無いので外しました）'
+    contents = Guards::ChapterTargetCheck.range_notices(%w[11-13], verb: '検査', scope: :contents).first
+    assert_includes contents, '原稿のある 3 章（11-install, 12-tutorial, 13-draft）を検査します'
+  end
+end
+
+# 単独の指定は打ったとおりなので知らせない。章の無い範囲は validate が止める
+def test_should_not_tell_about_single_targets_or_empty_ranges
+  with_project do
+    assert_empty Guards::ChapterTargetCheck.range_notices(%w[11 12-tutorial 50-60], verb: 'ビルド')
+  end
+end
 
       # 原稿はあるが catalog.yml 未登録なら、直し方は「登録する」であって
       # 「章を探す」ではない。文面を分ける
@@ -147,15 +219,6 @@ module VivlioStarter
         end
       end
 
-      # 範囲指定に章名を差し出しても意味がない
-      def test_should_not_suggest_for_a_range
-        with_project do
-          detail = validate(%w[11-13]).first.detail
-
-          refute(detail.any? { it.include?('もしかして') })
-        end
-      end
-
       # 番号の重なった章を番号で指したときは、「見つかりません（もしかして片方）」と重ねて言わない。
       # 重なりは DuplicateNumberCheck が振り直すコマンドを添えて止める
       def test_should_leave_a_duplicated_number_to_duplicate_number_check
@@ -194,7 +257,7 @@ module VivlioStarter
 
       private
 
-      def validate(targets) = Guards::ChapterTargetCheck.new(targets).validate
+      def validate(targets, scope: :catalog) = Guards::ChapterTargetCheck.new(targets, scope:).validate
 
       def with_project
         Dir.mktmpdir('vs-chapter-target') do |dir|

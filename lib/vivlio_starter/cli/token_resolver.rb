@@ -40,6 +40,9 @@ module VivlioStarter
       class Resolver
         AUTO_NUMBER_MAX = 98
 
+        # 範囲の指定（`11-13`）
+        RANGE_TOKEN = /\A(\d+)-(\d+)\z/
+
         # 章番号の範囲から kind を決定するためのマッピング。
         # 00: preface, 01-89: chapter, 90-98: appendix, 99: postface
         KIND_RANGES = { preface: 0..0, chapter: 1..89, appendix: 90..98, postface: 99..99 }.freeze
@@ -83,9 +86,25 @@ module VivlioStarter
             catalog
           else
             # 引数あり：入力を正規化してカタログと突き合わせる
-            normalize(tokens).map { match_entry(it, catalog) }
+            resolve_pieces(split_tokens(tokens), catalog)
           end
         end
+
+        # CLI の指定を 1 つずつの指定に分ける（カンマで分け、contents/ と拡張子を外す）。
+        # 範囲は広げない。指定ごとに結果を見たい ChapterTargetCheck が使う。
+        # @param tokens [Array<String>] CLI から受け取ったトークン配列
+        # @return [Array<String>]
+        def split_tokens(tokens)
+          prefix = %r{\A#{Regexp.escape(contents_dir)}/}
+          # 除くのは章のファイルの拡張子だけにする。点から後ろを何でも拡張子とみなすと、
+          # `01-vol.53_09_482` を `01-vol` と読み、存在しない原稿を開いてビルドが異常終了していた
+          Array(tokens).compact.flat_map { it.to_s.split(',') }.map(&:strip)
+                       .map { File.basename(it.sub(prefix, '')).sub(/\.(?:md|markdown|html|pdf)\z/i, '') }
+                       .reject(&:empty?)
+        end
+
+        # 範囲の指定（`11-13`、降順の `13-11` も）か
+        def self.range_token?(token) = token.match?(RANGE_TOKEN)
 
         # ファイルパスから Entry を取得する便利メソッド。
         # @param file_path [String] Markdown/HTML ファイルのパス
@@ -100,31 +119,44 @@ module VivlioStarter
         attr_reader :catalog_path, :contents_dir
 
         # --- Phase 1: Normalization (入力の正規化) ---
-        # カンマ区切りの分割、パス/拡張子の除去、範囲指定の展開を行う。
-        # 入力の多様なバリエーションを統一フォーマットに変換する。
-        def normalize(tokens)
-          prefix = %r{\A#{Regexp.escape(contents_dir)}/}
-          Array(tokens).compact.flat_map { it.to_s.split(',') }.map(&:strip).flat_map do |raw|
-            # contents/ プレフィクスと拡張子を除去。除くのは章のファイルの拡張子だけにする。点から後ろを何でも
-            # 拡張子とみなすと、`01-vol.53_09_482` を `01-vol` と読み、存在しない原稿を開いてビルドが異常終了していた
-            n = File.basename(raw.sub(prefix, '')).sub(/\.(?:md|markdown|html|pdf)\z/i, '')
-            case n
-            in /\A(\d+)\z/
-              # 数字のみ: ゼロ埋め
-              format('%02d', ::Regexp.last_match(1).to_i)
-            in /\A(\d+)-(\d+)\z/
-              # 範囲指定: 展開（降順にも対応）
-              s = ::Regexp.last_match(1).to_i
-              e = ::Regexp.last_match(2).to_i
-              (s <= e ? s..e : e..s).map { format('%02d', it) }
-            in /\A(\d+)([-_].+)\z/
-              # 番号+スラグ: 番号部分をゼロ埋め
-              "#{format('%02d', ::Regexp.last_match(1).to_i)}#{::Regexp.last_match(2)}"
-            else
-              # その他: そのまま（invalid として後で処理される可能性あり）
-              n
-            end
-          end.reject(&:empty?).uniq
+        # 指定ごとに、ゼロ埋め・範囲の展開をしてカタログと突き合わせる。
+        #
+        # **範囲は「その番号の間にある章」と読む**（改善案 #113）。章の番号は飛び飛びに
+        # 振るもの（00・11〜14・21…）なので、`00-11` の 01〜10 は著者が名指しした章ではない。
+        # catalog.yml にも contents/ にも無い番号は落とし、誤りにしない。範囲の中の
+        # 未登録の草稿を含めるかはコマンドが決める（build・preflight は in_catalog? で絞る）。
+        # 単独の指定は落とさない。打ち間違いを黙って捨てないよう、ChapterTargetCheck が止める。
+        def resolve_pieces(pieces, catalog)
+          seen = Set.new
+          pieces.flat_map do |piece|
+            names = expand_piece(piece).reject { seen.include?(it) }
+            seen.merge(names)
+            entries = names.map { match_entry(it, catalog) }
+            self.class.range_token?(piece) ? entries.reject { absent_in_range?(it) } : entries
+          end
+        end
+
+        # 範囲の欠けた番号か。番号の重なりで解決できなかったもの（valid: false）は残し、
+        # DuplicateNumberCheck に止めさせる
+        def absent_in_range?(entry) = entry.valid? && !entry.in_catalog? && !entry.exists?
+
+        def expand_piece(piece)
+          case piece
+          in /\A(\d+)\z/
+            # 数字のみ: ゼロ埋め
+            [format('%02d', ::Regexp.last_match(1).to_i)]
+          in RANGE_TOKEN
+            # 範囲指定: 展開（降順は昇順に並べ替える）
+            s = ::Regexp.last_match(1).to_i
+            e = ::Regexp.last_match(2).to_i
+            (s <= e ? s..e : e..s).map { format('%02d', it) }
+          in /\A(\d+)([-_].+)\z/
+            # 番号+スラグ: 番号部分をゼロ埋め
+            ["#{format('%02d', ::Regexp.last_match(1).to_i)}#{::Regexp.last_match(2)}"]
+          else
+            # その他: そのまま（invalid として後で処理される可能性あり）
+            [piece]
+          end
         end
 
         # --- Phase 2: Catalog Loading (カタログ読み込み) ---

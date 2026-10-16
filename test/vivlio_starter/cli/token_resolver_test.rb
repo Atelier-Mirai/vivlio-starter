@@ -282,17 +282,31 @@ module VivlioStarter
           refute entry.in_catalog?
         end
 
-        def test_skips_missing_catalog_entries_in_range
-          # catalog に 02 が存在しない場合
+        # 範囲は間にある章を指す。catalog.yml にも contents/ にも無い番号は落とす（改善案 #113）
+        def test_drops_absent_numbers_in_range
           resolver = build_resolver_with_catalog(%w[01-install 03-option])
 
           result = resolver.resolve(['1-3'])
 
-          # 01, 02, 03 が展開されるが、02 は in_catalog: false
-          assert_equal 3, result.size
-          assert result.find { it.number == '01' }.in_catalog?
-          refute result.find { it.number == '02' }.in_catalog?
-          assert result.find { it.number == '03' }.in_catalog?
+          assert_equal %w[01-install 03-option], result.map(&:basename)
+        end
+
+        # 単独の番号は落とさない。打ち間違いは ChapterTargetCheck が止める
+        def test_keeps_absent_single_number
+          resolver = build_resolver_with_catalog(%w[01-install])
+
+          result = resolver.resolve(['2'])
+
+          assert_equal ['02'], result.map(&:number)
+          refute result.first.in_catalog?
+        end
+
+        def test_splits_tokens_without_expanding_ranges
+          resolver = build_resolver_with_catalog(%w[01-a])
+
+          assert_equal %w[1-3 5 01-a], resolver.split_tokens(['1-3,5', 'contents/01-a.md'])
+          assert Resolver.range_token?('13-11')
+          refute Resolver.range_token?('11-install')
         end
 
         # --- Filesystem Slug Completion Tests ---

@@ -88,7 +88,8 @@ module VivlioStarter
       module_function
 
       # コマンドの call 冒頭用ヘルパー。Guard を実行し、
-      # 違反時は要約を 🔴 で表示して終了コード 1 を返す（合格時は nil）。
+      # 違反時は終了コード 1 を返す（合格時は nil）。違反は Guard.run! が 1 件ずつ 🔴 で出しているので、
+      # 「前提条件を満たしていません（エラー N 件）」の要約は重ねて出さない（改善案 #113）。
       #
       # 使用例:
       #   guard_failure = Guards.precheck(Guards::ProjectRootCheck.new)
@@ -96,8 +97,7 @@ module VivlioStarter
       def precheck(*checks)
         Guard.run!(*checks)
         nil
-      rescue GuardError => e
-        Common.log_error(e.message)
+      rescue GuardError
         1
       end
     end

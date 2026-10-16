@@ -186,6 +186,8 @@ module VivlioStarter
           def resolve(*_tokens)
             @return_value
           end
+
+          def split_tokens(tokens) = Array(tokens).flat_map { it.to_s.split(',') }
         end
 
         class PipelineStub
@@ -373,6 +375,8 @@ module VivlioStarter
           end
 
           def resolve(*tokens) = tokens.empty? ? @catalog : @entries
+
+          def split_tokens(tokens) = Array(tokens).flat_map { it.to_s.split(',') }
         end
 
         # run の中で指摘を積む pipeline スタブ（実際の前処理は走らせない）

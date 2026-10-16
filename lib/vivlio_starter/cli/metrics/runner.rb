@@ -29,6 +29,7 @@ require_relative 'sentence_endings'
 require_relative 'content_words'
 require_relative 'kanji_levels'
 require_relative '../token_resolver'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -65,6 +66,8 @@ module VivlioStarter
         # メトリクス分析を実行する
         def call
           files = resolve_files
+          # 章の指定の誤りは ChapterTargetCheck が 🔴 で言い切っている
+          return 1 if files.nil?
           return warn_no_targets if files.empty?
 
           # JSON/YAML 出力は一括処理
@@ -501,7 +504,7 @@ module VivlioStarter
         # ファイル解決
         # ================================================================
 
-        # ファイルを解決する
+        # ファイルを解決する。章の指定に誤りがあれば nil
         def resolve_files
           paths = if targets.empty?
                     resolve_from_catalog
@@ -509,7 +512,7 @@ module VivlioStarter
                     resolve_target_paths
                   end
 
-          paths.select { File.exist?(it) }.sort
+          paths&.select { File.exist?(it) }&.sort
         end
 
         # catalog.yml から有効章を解決する（パーサは TokenResolver に一本化。
@@ -532,11 +535,18 @@ module VivlioStarter
              .reject { it.include?('_') }
         end
 
-        # ターゲットからパスを解決する（明示指定時はカタログ外も許可）
+        # ターゲットからパスを解決する（明示指定時はカタログ外も許可）。
+        # 打ち間違い・章の無い範囲は、vs build と同じ検査・同じ文面で止める（改善案 #113）。
+        # 黙って落とすと、`vs metrics 15` が何も解析せずに「見つかりません」とだけ言う
         def resolve_target_paths
-          resolver = TokenResolver::Resolver.new
-          entries = resolver.resolve(targets)
-          entries.select(&:exists?).map(&:path)
+          return nil if Guards.precheck(Guards::ChapterTargetCheck.new(targets, scope: :contents))
+
+          # JSON・YAML の出力に 💡 の行を混ぜない
+          unless options[:json] || options[:yaml]
+            Guards::ChapterTargetCheck.range_notices(targets, verb: '集計', scope: :contents)
+                                      .each { Common.log_always(it) }
+          end
+          TokenResolver::Resolver.new.resolve(targets).select(&:exists?).map(&:path)
         end
 
         # ================================================================

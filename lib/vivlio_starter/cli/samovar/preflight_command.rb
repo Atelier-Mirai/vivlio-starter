@@ -90,6 +90,7 @@ module VivlioStarter
             Guards::ContainerClassCheck.new,
             Guards::ChapterTargetCheck.new(targets)
           )
+          Guards::ChapterTargetCheck.range_notices(targets, verb: "点検").each { Common.log_always(it) }
 
           # ensure 節の execute_clean は本処理開始後のみ実行する
           # （Guard 違反＝プロジェクト外の可能性があるディレクトリでクリーンを走らせない）
@@ -126,8 +127,8 @@ module VivlioStarter
           # 従来は LinkImageValidator.any_issues?（severity を見ない）で判定していたため、
           # 裸 URL の警告だけでも 1 を返していた。
           PreProcessCommands::IssueRegistry.counts.errors.positive? ? 1 : 0
-        rescue Guards::GuardError => e
-          Common.log_error(e.message)
+        rescue Guards::GuardError
+          # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
         rescue SystemExit => e
           raise e

@@ -256,6 +256,8 @@ module VivlioStarter
           def resolve(*_tokens)
             @return_value
           end
+
+          def split_tokens(tokens) = Array(tokens).flat_map { it.to_s.split(',') }
         end
 
         class PipelineStub

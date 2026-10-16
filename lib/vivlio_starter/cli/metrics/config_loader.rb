@@ -18,6 +18,7 @@ require_relative 'analyzer'
 require_relative '../common'
 
 require_relative '../config_keys'
+require_relative '../token_resolver'
 
 module VivlioStarter
   module CLI
@@ -147,10 +148,16 @@ module VivlioStarter
           PRESET_BY_TOTAL.find { |limit, _| total < limit }&.last || :heavy
         end
 
-        # 除外する章番号のリストを取得する
+        # 除外する章番号のリストを取得する。範囲・降順・スラッグの読み方を CLI の章指定と
+        # そろえるため、TokenResolver で解く（改善案 #113。自前で広げていたころは `13-11` が
+        # 空の範囲になり、何も除かず何も言わなかった）。index_glossary.exclude_chapters と同じ
         def exclude_chapters
           raw = metrics_config[:exclude_chapters] || ConfigKeys::KEYS[%i[metrics exclude_chapters]].default
-          expand_chapter_ranges(raw)
+          TokenResolver::Resolver.new.resolve(Array(raw).map(&:to_s)).select(&:valid?).filter_map(&:number)
+        rescue StandardError
+          # catalog.yml が壊れていても metrics は書ける範囲で答える。壊れていることは
+          # Runner#resolve_from_catalog が 🟡 で知らせる
+          []
         end
 
         # 語彙難度のしきい値を取得する
@@ -241,18 +248,6 @@ module VivlioStarter
             ideal_max: ideal[1],
             max: range[:max] || Float::INFINITY
           }
-        end
-
-        # 章範囲を展開する
-        def expand_chapter_ranges(ranges)
-          ranges.flat_map do |item|
-            case item.to_s
-            in /\A(\d+)-(\d+)\z/
-              (Regexp.last_match(1).to_i..Regexp.last_match(2).to_i).map { format('%02d', it) }
-            else
-              [format('%02d', item.to_s.to_i)]
-            end
-          end
         end
 
         # デフォルト値とマージする

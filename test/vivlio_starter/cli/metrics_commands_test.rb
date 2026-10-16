@@ -23,16 +23,14 @@ module VivlioStarter
   module CLI
     # MetricsCommands のエントリポイントのユニットテスト
     class MetricsCommandsEntrypointTest < Minitest::Test
-      # 対象 Markdown が見つからない場合に警告を出力することを確認
-      def test_text_metrics_warns_when_no_targets
+      # 見つからない章を指したら、vs build と同じ文面の 🔴 で止める。黙って落とすと
+      # 何を打ち間違えたかが分からない（改善案 #113）
+      def test_text_metrics_stops_on_an_unknown_target
         within_temp_dir do
-          logged_warnings = []
-          Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
-            capture_io { MetricsCommands.execute_metrics(['missing']) }
-          end
+          out, = capture_io { MetricsCommands.execute_metrics(['missing']) }
 
-          assert logged_warnings.any? { it.include?('見つかりません') },
-                 "missing 警告が出力されること: #{logged_warnings.inspect}"
+          assert_includes out, '🔴 指定した章が見つかりません: missing'
+          refute_includes out, '対象となる Markdown ファイルが見つかりません', '同じことを 🟡 で重ねない'
         end
       end
 

@@ -85,6 +85,7 @@ module VivlioStarter
             Guards::ImageFilenameCheck.new,
             Guards::ChapterTargetCheck.new(targets)
           )
+          Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { common.log_always(it) }
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
@@ -112,8 +113,8 @@ module VivlioStarter
           end
 
           0
-        rescue Guards::GuardError => e
-          common.log_error(e.message)
+        rescue Guards::GuardError
+          # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
         rescue BuildCommands::BuildLock::AlreadyLockedError => e
           common.log_error(e.message)

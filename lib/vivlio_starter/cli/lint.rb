@@ -33,6 +33,7 @@ require_relative 'common'
 require_relative 'masking'
 require_relative 'textlint_formatter'
 require_relative 'token_resolver'
+require_relative 'guards'
 require_relative 'lint/finding_rows'
 require_relative 'lint/notation_guard'
 require_relative 'lint/tokenizer'
@@ -1126,11 +1127,10 @@ module VivlioStarter
 
           # プロジェクトルートからの相対 Markdown パスの配列を返す
           def resolve
-            entries = resolve_entries
-
             # --- Phase: Validation ---
+            reject_unknown_targets!
+            entries = resolve_entries
             reject_invalid_entries!(entries)
-            reject_unknown_entries!(entries)
 
             # --- Phase: contents/ 配下のみに限定 ---
             content_entries = entries.select { it.path.start_with?(Common::CONTENTS_DIR) }
@@ -1161,17 +1161,13 @@ module VivlioStarter
             exit 1
           end
 
-          def reject_unknown_entries!(entries)
-            unknown = entries.reject { system_entry?(it) }.select { !it.in_catalog? && !it.exists? }
-            return if unknown.empty?
+          # 打ち間違い・章の無い範囲は、vs build と同じ検査・同じ文面で止める（改善案 #113）。
+          # lint は読むだけなので、catalog.yml に無い原稿も対象に含める
+          def reject_unknown_targets!
+            exit 1 if Guards.precheck(Guards::ChapterTargetCheck.new(raw_targets, scope: :contents))
 
-            labels = unknown.map { it.slug || it.basename }.uniq
-            Common.log_error("不正な章指定が含まれています: #{labels.join(', ')}")
-            exit 1
-          end
-
-          def system_entry?(entry)
-            entry.respond_to?(:number) && entry.number.nil?
+            Guards::ChapterTargetCheck.range_notices(raw_targets, verb: '検査', scope: :contents)
+                                      .each { Common.log_always(it) }
           end
         end
       end
