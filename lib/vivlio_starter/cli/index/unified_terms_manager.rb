@@ -330,6 +330,38 @@ module VivlioStarter
         changed
       end
 
+      # 原稿（contents/*.md）の無い章を指す main: を、語ごとに返す。
+      # catalog から外しただけの章は原稿があるので含めない（index-main-reference-spec.md）。
+      # @return [Hash{String => Array<String>}] 語 → 原稿の無い章
+      def orphan_main_references
+        existing = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }
+
+        load_terms.each_with_object({}) do |term, found|
+          missing = Array(term['main']).map { IndexCommands::MainReference.parse(it).chapter }.uniq - existing
+          found[term['term']] = missing if missing.any?
+        end
+      end
+
+      # 原稿の無い章を指す main: をまとめて外す（vs upgrade の著者データの整理。改善案.md #114）。
+      #
+      # ベータ版の雛形は本書の辞書をそのまま配っていたので、そこから育てた本には
+      # 本書の章（33-index-glossary など）を指す main: が百を超えて残り、ビルドのたびに
+      # 語ごとの警告が並ぶ。外し方は forget_chapter! と同じで、空になった語は main ごと
+      # 消して「まだ決めていない」へ戻す。`main: []` は著者の判断なので触らない。
+      # @return [Hash{String => Array<String>}] 語 → 外した章（何もしなければ空）
+      def forget_missing_chapters!
+        orphans = orphan_main_references
+        return orphans if orphans.empty?
+
+        load_terms.each do |term|
+          missing = orphans[term['term']] or next
+          after = Array(term['main']).reject { missing.include?(IndexCommands::MainReference.parse(it).chapter) }
+          after.empty? ? term.delete('main') : term['main'] = after
+        end
+        save_terms!(load_terms)
+        orphans
+      end
+
       # キャッシュをクリア
       def clear_cache!
         @cache = nil

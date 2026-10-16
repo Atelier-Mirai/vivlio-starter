@@ -246,7 +246,7 @@ module VivlioStarter
         found.each do |path, guidance|
           log_warn("config/book.yml の #{path.join('.')} は廃止されました", detail: guidance)
         end
-        log_warn('上記のキーは読み込まれません。book.yml から削除してください',
+        log_warn('上記のキーは読み込まれません。vs upgrade で book.yml から消せます（手で削除しても構いません）',
                  detail: '指定できるキーは vs doctor か各コマンドの --help で確認できます')
       end
 

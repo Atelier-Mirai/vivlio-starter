@@ -54,7 +54,7 @@ RETIRED = {
 ```
 🟡 config/book.yml の metrics.mattr_window は廃止されました
         語彙多様度を測る窓幅は算出方法そのもので、変えると章どうしを比べられなくなるため固定しました
-🟡 上記のキーは読み込まれません。book.yml から削除してください
+🟡 上記のキーは読み込まれません。vs upgrade で book.yml から消せます（手で削除しても構いません）
 ```
 
 **実装の内情は書かない。** 「コードの半分が定数を直接見ており」のような説明は、
@@ -78,6 +78,9 @@ RETIRED = {
 `Common.ensure_configured!` の入口で 1 度だけ発火する。ここはプロジェクトを必要と
 する全コマンドが通る関門（`root_command.rb#ensure_project_context!`）なので、
 著者はどのコマンドを叩いても気付ける。同じ実行で何度呼ばれても案内は 1 度だけ。
+
+`vs upgrade` は、この表にある廃止キーを `book.yml` から行単位で消す（改善案.md #114。
+`RetiredKeyRemover`）。著者が手で消す必要はないが、upgrade を回すまでは案内が出続ける。
 
 ---
 

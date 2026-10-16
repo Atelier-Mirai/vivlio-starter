@@ -780,6 +780,81 @@ module VivlioStarter
         end
       end
 
+      # --- 著者データの整理（改善案 #114）: 廃止キーと原稿の無い章を指す main: を片づける ---
+      def test_should_remove_retired_keys_and_orphan_main_references_with_backup
+        within_project do |scaffold|
+          book_yml = <<~YAML
+            book:
+              main_title: "わたしの本"
+            verify:
+              images: true # 画像パスの存在チェック
+              external_links: false # 外部 URL の到達性
+          YAML
+          write('.', 'config/book.yml', book_yml)
+          write('.', 'contents/11-intro.md', "# はじめに\n")
+          write('.', 'config/index_glossary_terms.yml', <<~YAML)
+            terms:
+            - term: 索引
+              flags: ig
+              main:
+              - 33-index-glossary
+            - term: 原稿
+              flags: i
+              main:
+              - 11-intro
+              - 44-build
+            - term: 付けない語
+              flags: i
+              main: []
+          YAML
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, '廃止キーを消します（verify.images）'
+          assert_includes out, '主要参照を外します（2 語）'
+          assert_equal <<~YAML, File.read('config/book.yml'), '廃止キーの行だけが消え、コメントとほかのキーは残るべき'
+            book:
+              main_title: "わたしの本"
+            verify:
+              external_links: false # 外部 URL の到達性
+          YAML
+          terms = YAML.safe_load_file('config/index_glossary_terms.yml')['terms'].to_h { [it['term'], it['main']] }
+          assert_equal({ '索引' => nil, '原稿' => ['11-intro'], '付けない語' => [] }, terms,
+                       '空になった語は main ごと消え、残る章と main: [] は保たれるべき')
+          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/*').map { File.basename(it) }.sort
+          assert_equal %w[book.yml index_glossary_terms.yml], backups
+        end
+      end
+
+      def test_should_only_report_tidying_on_dry_run
+        within_project do |scaffold|
+          write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\nverify:\n  bare_urls: true\n")
+          write('.', 'config/index_glossary_terms.yml', "terms:\n- term: 索引\n  main:\n  - 33-index-glossary\n")
+          before = Dir.glob('**/*', File::FNM_DOTMATCH).sort.to_h { [it, File.file?(it) ? File.read(it) : nil] }
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, '廃止キーを消します（verify.bare_urls）'
+          assert_includes out, '--dry-run のため整理しません'
+          after = Dir.glob('**/*', File::FNM_DOTMATCH).sort.to_h { [it, File.file?(it) ? File.read(it) : nil] }
+          assert_equal before, after, '--dry-run は整理でも書き込まないべき'
+        end
+      end
+
+      def test_should_stay_silent_when_there_is_nothing_to_tidy
+        within_project do |scaffold|
+          write('.', 'contents/11-intro.md', "# はじめに\n")
+          write('.', 'config/index_glossary_terms.yml', "terms:\n- term: 原稿\n  main:\n  - 11-intro\n")
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute_includes out, '整理'
+          assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*')
+        end
+      end
+
       private
 
       # 色付け判定（diff_color_enabled?）の DI 用スタブ

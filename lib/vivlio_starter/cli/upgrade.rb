@@ -38,6 +38,9 @@ require 'fileutils'
 
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
+require_relative 'config_keys'
+require_relative 'retired_key_remover'
+require_relative 'index/unified_terms_manager'
 require_relative 'new'
 require_relative 'doctor'
 require_relative '../version'
@@ -133,6 +136,7 @@ module VivlioStarter
         if File.exist?(File.join('config', 'book.yml'))
           scaffold_code = sync_scaffold!(cmd)
           refresh_gemfile_lock!(options)
+          tidy_author_data!(options)
         else
           Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
         end
@@ -236,6 +240,61 @@ module VivlioStarter
           Common.log_warn('Gemfile.lock の更新に失敗しました。手元で bundle update vivlio-starter を実行してください' \
                           '（vs コマンド自体は lock を見ないため、このままでも執筆は続けられます）。')
         end
+      end
+
+      # 古い版から持ち越した著者データを、今の版に合わせて片づける（改善案.md #114）。
+      #   - book.yml の廃止キー（読まれないのに、どのコマンドでも警告が出続ける）
+      #   - 原稿の無い章を指す索引辞書の main:（ベータ版の雛形が配った本書の辞書の名残など）
+      #
+      # 雛形追従と違い、著者データ領域に手を入れる。それでも確認は求めない——消すのは
+      # 効いていないキーと、無い原稿を指す参照だけで、失う設定が無いため。せっかく
+      # 上げた著者に手作業を残さないことを優先し、代わりに退避を取って何をしたかを示す。
+      def tidy_author_data!(options)
+        book_yml = File.join('config', 'book.yml')
+        book_text = File.read(book_yml, encoding: 'utf-8')
+        retired = RetiredKeyRemover.authored(book_text, ConfigKeys::RETIRED.keys)
+        terms = UnifiedTermsManager.new
+        orphans = terms.orphan_main_references
+        return if retired.empty? && orphans.empty?
+
+        Common.log_summary('古い版から持ち越した設定を整理しています…')
+        report_tidy(retired, orphans, dry_run: options[:dry_run])
+        return if options[:dry_run]
+
+        # --- Phase: book.yml の廃止キー ---
+        backup_dir = nil
+        if retired.any?
+          rewritten = RetiredKeyRemover.remove(book_text, retired)
+          if rewritten
+            backup_dir = backup!(book_yml, backup_dir)
+            File.write(book_yml, rewritten, encoding: 'utf-8')
+          else
+            Common.log_warn("#{book_yml} の廃止キーを自動で消せませんでした（書き方を読み取れない）",
+                            detail: "#{retired.map { it.join('.') }.join('・')} を手で削除してください")
+          end
+        end
+
+        # --- Phase: 索引辞書の main: ---
+        if orphans.any?
+          backup_dir = backup!(UnifiedTermsManager::UNIFIED_FILE, backup_dir)
+          terms.forget_missing_chapters!
+        end
+
+        Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
+      end
+
+      # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
+      def report_tidy(retired, orphans, dry_run:)
+        if retired.any?
+          Common.log_always("   config/book.yml: 廃止キーを消します（#{retired.map { it.join('.') }.join('・')}）")
+        end
+        if orphans.any?
+          chapters = orphans.values.flatten.uniq
+          listed = chapters.first(3).join('・') + (chapters.size > 3 ? " ほか #{chapters.size - 3} 章" : '')
+          Common.log_always("   #{UnifiedTermsManager::UNIFIED_FILE}: 原稿の無い章（#{listed}）を指す主要参照を外します（#{orphans.size} 語）")
+          Common.log_always('      外した語は、次の vs index:auto が主要参照の候補を出します')
+        end
+        Common.log_always('--dry-run のため整理しません') if dry_run
       end
 
       # @return [Gem::Version, nil] lock が読めない・自分の行が無い・版が壊れていれば nil
