@@ -189,6 +189,28 @@ module VivlioStarter
         refute_includes load_all_terms, 'x'
       end
 
+      # 回帰: 数式の単位 `[\Omega]` や `\[…\]` の中身を手動登録の語にしない（改善案 #115）。
+      # book_hobby_tech で `\Omega`・`\text{W}`・`\text{A}` が辞書に入っていた
+      def test_auto_process_ignores_brackets_inside_math
+        File.write('contents/14-electricity.md', <<~'MD')
+          # 電気
+
+          $$R = 1.5 \div 0.3 = 5\,[\Omega]$$
+
+          $$
+          P = 0.45\,[\text{W}]
+          $$
+
+          単位は $[\text{A}]$ と書き、式 \[x = [a]\] も使います。[電力|でんりょく]は索引に載せます。
+        MD
+
+        capture_io { @manager.auto_process!(['14-electricity']) }
+
+        terms = load_all_terms
+        assert_includes terms, '電力', '数式の外の印は今までどおり登録されるべき'
+        assert_empty terms.grep(/Omega|text|\Aa\z/), '数式の中のブラケットを語として登録してはならない'
+      end
+
       # auto は件数と次の手順だけを告げる。目安の表は vs index:plan の役目（改善案 #99）
       def test_auto_process_reports_only_the_review_file_summary
         File.write('contents/10-intro.md', "Vivliostyle で組版します。Vivliostyle は CSS 組版エンジンです。\n")

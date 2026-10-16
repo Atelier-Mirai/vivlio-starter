@@ -374,6 +374,9 @@ def process_line(line, file_basename)
   # 見える（index-html-code-protection-spec.md §1）。
   mask.protect!(Masking::HTML_INLINE_CODE)
   mask.protect!(Masking::INLINE_CODE_SPAN)
+  # 数式の中のブラケット（`$$5\,[\Omega]$$` の単位）は印ではない（改善案.md #115）。
+  # 数式の SVG 化が使える環境では、ここへ来る前に <img> になっている
+  MathDelimiters::ALL.each { mask.protect!(it) }
 
   mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
     term_text, yomi_raw = extract_term_and_yomi(match[1])
@@ -568,6 +571,8 @@ end
           # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
           # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。
           mask.protect!(Masking::INLINE_CODE_SPAN)
+          # 素のまま残った数式（SVG 化が使えない環境）。語のタグが式へ入ると組めない（改善案.md #115）
+          MathDelimiters::ALL.each { mask.protect!(it) }
         end
 
         # 索引語のマッチングパターン。辞書由来で不変なので初回だけ組み立てて使い回す。

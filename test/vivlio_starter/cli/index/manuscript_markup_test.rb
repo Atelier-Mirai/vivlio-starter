@@ -41,6 +41,26 @@ module VivlioStarter
           assert_includes text, "```markdown\n[セットアップ]\n```"
         end
 
+        # 回帰: 棄却した語の印を外すとき、数式の中のブラケットを外さない（改善案 #115）。
+        # 以前は `$$5\,[\Omega]$$` が `$$5\,\Omega$$` に書き換わっていた
+        def test_strip_keeps_brackets_inside_math
+          original = <<~'MD'
+            抵抗は $$R = 5\,[\Omega]$$ です。
+
+            $$
+            P = 0.45\,[\text{W}]
+            $$
+
+            単位 $[\Omega]$ と \[x = [\Omega]\] と [\Omega]。
+          MD
+          File.write(@path, original)
+
+          assert_equal ['11-intro:7'], ManuscriptMarkup.places('\Omega', [@path]),
+                       '数式の外の印だけを、ずれない行番号で挙げるべき'
+          assert_equal 1, ManuscriptMarkup.strip!('\Omega', [@path])
+          assert_equal original.sub('と [\Omega]。', 'と \Omega。'), File.read(@path)
+        end
+
         def test_strip_does_not_touch_other_terms
           File.write(@path, "[Ruby]と[セットアップ]です。\n")
 

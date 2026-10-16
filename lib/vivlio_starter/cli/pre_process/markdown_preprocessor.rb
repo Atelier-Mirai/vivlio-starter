@@ -719,6 +719,9 @@ module VivlioStarter
           return if Common.index_enabled?
 
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
+          # 数式の SVG 化が使えない環境では、数式が素のまま残る。単位の `[\Omega]` を
+          # 印として剥がすと式が変わるので退避する（改善案.md #115）
+          protected_text, maths = IndexMarkup.protect_math(protected_text)
 
           # 参照リンクのラベルは文書ごとに決まる（markdown-notation-collision-spec.md §3）。
           # 外さないと `[ref]: url` が `ref: url` に化けてリンク定義が静かに壊れる。
@@ -736,7 +739,7 @@ module VivlioStarter
             end
           end
 
-          context.content = MarkdownUtils.restore_code_spans(stripped, spans)
+          context.content = MarkdownUtils.restore_code_spans(IndexMarkup.restore_math(stripped, maths), spans)
         end
 
         # HTMLコメント <!-- ... --> を削除する

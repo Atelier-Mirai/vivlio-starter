@@ -1121,6 +1121,8 @@ module VivlioStarter
           # 素朴な /```...```/ は地の文中のインライン ``` でフェンス対がズレ、
           # コード例の [###] や [00, 90-98, 99] を誤検出するため状態機械方式を使う。
           content_without_code = CodeBlockStripper.strip(content)
+          # 数式の中のブラケット（`$$5\,[\Omega]$$`）も印ではない。行数を保って退避する（改善案.md #115）
+          content_without_code, = IndexMarkup.protect_math(content_without_code)
           chapter_name = File.basename(chapter_path, '.*')
 
           # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）。

@@ -183,6 +183,38 @@ module VivlioStarter
         refute IndexMarkup.other_notation?(matches_in('索引語 [基本情報技術者] です。').first, [])
       end
 
+      # --- 数式の退避（改善案 #115） ---
+
+      # 4 種類の区切りを退避し、数式の外の印だけが照合に残る
+      def test_protect_math_hides_brackets_inside_all_four_delimiters
+        text = '$$5\,[\Omega]$$ \[x = [a]\] $[\text{W}]$ \([b]\) と [索引語]'
+
+        protected_text, spans = IndexMarkup.protect_math(text)
+
+        assert_equal ['索引語'], protected_text.scan(IndexMarkup::TERM_PATTERN).flatten
+        assert_equal 4, spans.size
+        assert_equal text, IndexMarkup.restore_math(protected_text, spans)
+      end
+
+      # 複数行の数式でも行数を保ち、戻せば元どおりになる
+      def test_protect_math_keeps_line_count_across_display_math
+        text = "前\n$$\nP = [W]\n$$\n後 [語]\n"
+
+        protected_text, spans = IndexMarkup.protect_math(text)
+
+        assert_equal text.count("\n"), protected_text.count("\n")
+        assert_equal 5, protected_text.lines.index { it.include?('[語]') } + 1
+        assert_equal text, IndexMarkup.restore_math(protected_text, spans)
+      end
+
+      # エスケープした `\$` は数式の区切りではない
+      def test_protect_math_ignores_escaped_dollars
+        protected_text, spans = IndexMarkup.protect_math('価格は \$5 と [索引語] と \$8 です')
+
+        assert_empty spans
+        assert_includes protected_text, '[索引語]'
+      end
+
       private
 
       def matches_in(line)

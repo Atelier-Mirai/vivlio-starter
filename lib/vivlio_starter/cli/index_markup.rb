@@ -25,6 +25,7 @@
 # ================================================================
 
 require 'cgi'
+require_relative 'math_delimiters'
 
 module VivlioStarter
   module CLI
@@ -197,6 +198,45 @@ module VivlioStarter
       def plain_text(term_text)
         term = term_text.include?('|') ? term_text.split('|', 2).first : term_text
         CGI.escapeHTML(term.to_s)
+      end
+
+      # --- 数式の中のブラケット ---------------------------------------------
+      #
+      # 数式は単位を角かっこで囲む（`$$R = 5\,[\Omega]$$`）し、`\[…\]` は区切りそのものが
+      # ブラケットである。印の綴りだけを見ると、`[\Omega]` は索引の印に見える。
+      # 実害（改善案.md #115）: `vs index:auto` が `\Omega`・`\text{W}` を手動登録の語として
+      # 辞書に足し、その語を棄却すると `vs index:apply` が原稿の数式から角かっこを外していた。
+      #
+      # 数式の範囲は 1 行に収まらない（`$$` を前後の行に置く書き方）ので、行の照合の前に
+      # 本文ごと退避する。区切りの綴りは MathDelimiters（MathTransformer と共有）。
+      # コードの中の `$` を数式と読まないよう、**コードを退避した後に**呼ぶこと。
+
+      # 退避の目印。NUL 区切りで、ブラケットも `$` も含まない（印の照合に自己一致しない）
+      MATH_PLACEHOLDER = /\u0000VSMATH(\d+)\u0000/
+
+      # 数式を目印へ退避する。数式の中の改行は目印の後ろへ残し、行番号をずらさない。
+      # @param text [String]
+      # @return [Array(String, Array<String>)] 退避後の本文と、退避した数式の並び
+      def protect_math(text)
+        spans = []
+        protected_text = MathDelimiters::ALL.reduce(text.to_s) do |acc, pattern|
+          acc.gsub(pattern) do |math|
+            spans << math
+            "\u0000VSMATH#{spans.size - 1}\u0000#{"\n" * math.count("\n")}"
+          end
+        end
+        [protected_text, spans]
+      end
+
+      # protect_math で退避した数式を戻す（目印の後ろに残した改行も畳む）。
+      # 先に退避した数式の中身が、後の数式の目印を含むことはない（目印は数式の区切りを
+      # 含まない）ので、順番は問わない。
+      def restore_math(text, spans)
+        text.gsub(/#{MATH_PLACEHOLDER.source}(\n*)/o) do
+          math = spans[::Regexp.last_match(1).to_i]
+          newlines = ::Regexp.last_match(2)
+          math + newlines[math.count("\n")..].to_s
+        end
       end
     end
   end

@@ -12,7 +12,7 @@
 #   棄却すると原稿の印が残り、辞書と原稿が食い違う。`vs index:apply` は著者に
 #   確かめたうえで、原稿の印も外す（index-glossary-registration-spec.md §3.1.3）。
 #
-#   印の見分け方はビルド・lint と同じ IndexMarkup に従う。コード・リンク・脚注・
+#   印の見分け方はビルド・lint と同じ IndexMarkup に従う。コード・数式・リンク・脚注・
 #   タスクリストのブラケットは印ではないので、探さないし触らない。
 #
 #   綴りも同じ理由で直す。索引の照合は大文字・小文字を区別し、lint は空白の違いしか
@@ -39,7 +39,7 @@ module VivlioStarter
         def places(term, paths)
           paths.flat_map do |path|
             # コードを空行にして行数を保つ（行番号を著者に見せるため）
-            text = CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+            text, = IndexMarkup.protect_math(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
             labels = IndexMarkup.link_labels(text)
             text.each_line.with_index(1).flat_map do |line, lineno|
               line.to_enum(:scan, IndexMarkup::TERM_PATTERN).filter_map do
@@ -55,6 +55,7 @@ module VivlioStarter
           paths.sum do |path|
             original = File.read(path, encoding: 'utf-8')
             protected_text, spans = Masking.protect_code(original)
+            protected_text, maths = IndexMarkup.protect_math(protected_text)
             labels = IndexMarkup.link_labels(protected_text)
             count = 0
             # タスクリストの見分けは行頭からの並びを見るので、行ごとに置き換える
@@ -67,7 +68,7 @@ module VivlioStarter
                 match[1].split('|', 2).first
               end
             end.join
-            File.write(path, Masking.restore_code(rewritten, spans), encoding: 'utf-8') if count.positive?
+            File.write(path, Masking.restore_code(IndexMarkup.restore_math(rewritten, maths), spans), encoding: 'utf-8') if count.positive?
             count
           end
         end
@@ -81,7 +82,7 @@ module VivlioStarter
         def spelling_places(old_name, new_name, paths)
           paths.flat_map do |path|
             # コードを空行にして行数を保つ（行番号を著者に見せるため）
-            text = CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+            text, = IndexMarkup.protect_math(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
             text.each_line.with_index(1).flat_map do |line, lineno|
               protected_line, = Masking.protect_code(line)
               stale_spellings(protected_line, old_name, new_name).map do
@@ -97,13 +98,14 @@ module VivlioStarter
           paths.sum do |path|
             original = File.read(path, encoding: 'utf-8')
             protected_text, spans = Masking.protect_code(original)
+            protected_text, maths = IndexMarkup.protect_math(protected_text)
             stale = stale_spellings(protected_text, old_name, new_name)
             next 0 if stale.empty?
 
             # 後ろから置き換えて、前の照合の位置をずらさない
             rewritten = protected_text.dup
             stale.reverse_each { rewritten[it.begin(0)...it.end(0)] = new_name }
-            File.write(path, Masking.restore_code(rewritten, spans), encoding: 'utf-8')
+            File.write(path, Masking.restore_code(IndexMarkup.restore_math(rewritten, maths), spans), encoding: 'utf-8')
             stale.size
           end
         end
