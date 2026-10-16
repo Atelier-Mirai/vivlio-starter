@@ -132,8 +132,8 @@ module VivlioStarter
             end
           end
 
-          assert_equal 1, out.scan('mathjax-full が見つからないため').size
-          assert_includes out, 'vs doctor --fix で入れられます'
+          assert_equal 1, out.scan('数式を組むための mathjax-full が見つかりません').size
+          assert_includes out, 'vs doctor --fix で入れてください'
           refute_includes out, 'mathematical gem'
         ensure
           MarkdownPreprocessor.math_renderer_warned = nil

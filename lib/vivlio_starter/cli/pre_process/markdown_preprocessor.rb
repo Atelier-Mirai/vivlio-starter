@@ -754,9 +754,10 @@ module VivlioStarter
           return unless MathDelimiters::ALL.any? { Masking.strip_code(context.content).match?(it) }
 
           self.class.math_renderer_warned = true
-          Common.log_warn('mathjax-full が見つからないため、数式を画像にせずに組みます',
-                          detail: "PDF は組版時の MathJax で数式を組みますが、EPUB では LaTeX のまま表示されます\n" \
-                                  'vs doctor --fix で入れられます（Node の版を切り替えている場合は、今の版に入れてください）')
+          # 著者に要るのは「何を、どう入れるか」だけ。PDF と EPUB で組まれ方が違うといった
+          # 仕組みの説明は、次の一手を決める助けにならないので書かない
+          Common.log_warn('数式を組むための mathjax-full が見つかりません',
+                          detail: 'vs doctor --fix で入れてください')
         end
 
         class << self
