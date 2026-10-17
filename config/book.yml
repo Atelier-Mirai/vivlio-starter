@@ -161,7 +161,7 @@ output:
 
   # ------- PDF プレビュー設定（macOS のみ） -------
   pdf_preview:
-    close_existing_windows: true # 既存PDFウィンドウを閉じる
+    close_existing_windows: true # 開く前にプレビューのウィンドウをすべて閉じ、開いたあと window_bounds へ並べる（false: 開くだけ）
     window_bounds: "{4096, 0, 5120, 2160}"    # PDF表示位置とサイズ（5Kモニターの右側1/5）
     # window_bounds: "{0, 0, 1024, 768}"      # 左上角に小さなウィンドウ
     # window_bounds: "{1920, 0, 1920, 1080}"  # モニター全画面（フルHD）

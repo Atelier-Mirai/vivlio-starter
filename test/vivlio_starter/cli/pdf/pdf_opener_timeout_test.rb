@@ -64,11 +64,21 @@ module VivlioStarter
           assert_empty outcome[:hints]
         end
 
+        # close_existing_windows: false は「ウィンドウに触らない」。閉じも並べもしないので、
+        # 許可を断った人も、この設定で 💡 を止められる
+        def test_should_only_open_when_told_not_to_touch_windows
+          outcome = open_with(preview_running: true, arrange: false) { it.first == 'open' ? :ok : :failed }
+
+          assert_equal %w[open], outcome[:commands], '許可の要る指示（osascript）は出さない'
+          assert_equal [:called], outcome[:results]
+          assert_empty outcome[:hints]
+        end
+
         private
 
         # 61-developer.pdf を開かせ、Preview へ出した指示と、出たログを集める。
         # 指示の結果はブロックが argv から決める（実際の Preview・osascript は動かさない）
-        def open_with(preview_running:, &result_for)
+        def open_with(preview_running:, arrange: true, &result_for)
           outcome = { commands: [], warnings: [], results: [], hints: [] }
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
@@ -76,7 +86,7 @@ module VivlioStarter
               opener = PdfOpener.new({}, '61-developer')
 
               opener.stub(:macos?, true) do
-                opener.stub(:close_existing_windows?, true) do
+                opener.stub(:close_existing_windows?, arrange) do
                   opener.stub(:preview_running?, preview_running) do
                     run = lambda { |*argv, **|
                       outcome[:commands] << argv.first

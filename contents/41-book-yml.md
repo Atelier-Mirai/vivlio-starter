@@ -200,7 +200,7 @@ output:
 
 #### `pdf_preview` — ビルド後に開く PDF の位置（macOS のみ）
 
-`pdf_preview` セクションでは、`vs build` 後に自動表示する PDF のウィンドウ位置を設定できます。デュアルモニター環境でサブモニターに表示させたい場合などに便利です。
+`pdf_preview` セクションでは、`vs build` 後に自動表示する PDF のウィンドウ位置を設定できます。デュアルモニター環境でサブモニターに表示させたい場合などに便利です。`close_existing_windows` が `true` のときは、開く前にプレビューのウィンドウをすべて閉じ、開いたあと `window_bounds` の位置へ並べます。`false` にすると、閉じも並べもせず、開くだけにします。
 
 ```yaml
 output:
