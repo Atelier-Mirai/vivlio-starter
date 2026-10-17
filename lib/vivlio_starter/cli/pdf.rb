@@ -576,6 +576,14 @@ module VivlioStarter
         # `open -a Preview` も AppleEvent の既定（約 2 分）まで戻らず、ビルドが止まって見える。
         PREVIEW_TIMEOUT_SEC = 10
 
+        # AppleScript でウインドウを閉じる・並べる指示を待つ上限（秒）。
+        # 初めてのときは macOS が「"ターミナル"から"プレビュー"を制御」の許可を尋ね、答えるまで
+        # 指示が戻らない。打ち切るとダイアログも消えるので、押す時間を残す（改善案.md #87）。
+        AUTOMATION_TIMEOUT_SEC = 60
+
+        # 閉じる・並べる指示がうまくいかなかったことを表す結果
+        AUTOMATION_FAILED = %i[timeout failed].freeze
+
         def initialize(options, path)
           @options = options || {}
           @explicit_path = path
@@ -598,13 +606,17 @@ module VivlioStarter
           end
 
           ensure_pdf_exists(pdf_path)
-          # ウィンドウを閉じられなくても開くことはできるので続ける。応答が無いときだけは止める
-          return warn_preview_unresponsive(pdf_path) if close_existing_windows_if_needed == :timeout
+          # 閉じる・並べるのは AppleScript で、macOS の許可が要る。開くこと（`open -a`）は
+          # 許可が要らないので、閉じられなくても必ず開く。以前は閉じる指示が許可待ちで
+          # 時間切れになると開かずに止まり、何も入っていない Mac では毎回開かなかった（#87）
+          closed = close_existing_windows_if_needed
 
           opened = open_pdf(pdf_path)
           return warn_preview_unresponsive(pdf_path) if %i[timeout failed].include?(opened)
 
-          position_window
+          # 閉じられなかったなら、並べる指示も同じ理由で通らないので出さない
+          placed = AUTOMATION_FAILED.include?(closed) ? closed : position_window
+          suggest_automation_permission if AUTOMATION_FAILED.include?(placed)
           # どのファイルを開いたかを既定ログレベルでも報告する（省略時は自動選択のため）
           Common.log_result("#{File.basename(pdf_path)} を開きました", status: :success)
         end
@@ -721,12 +733,20 @@ module VivlioStarter
           RbConfig::CONFIG['host_os'] =~ /darwin|mac os/i
         end
 
-        # 既存の Preview ウィンドウを閉じる
-        # @return [Symbol, nil] run_preview_command の結果（閉じない設定なら nil）
+        # 既存の Preview ウィンドウを閉じる。
+        # Preview が起動していなければ閉じるものは無いので、許可の要る指示を出さない
+        # （何も入っていない Mac の初回のビルドが、許可を待たずに開く）。
+        # @return [Symbol, nil] run_preview_command の結果（閉じない設定・未起動なら nil）
         def close_existing_windows_if_needed
           return unless close_existing_windows?
+          return unless preview_running?
 
-          run_preview_command('osascript', '-e', 'tell application "Preview" to close every window')
+          run_preview_command('osascript', '-e', 'tell application "Preview" to close every window',
+                              timeout: AUTOMATION_TIMEOUT_SEC)
+        end
+
+        def preview_running?
+          system('pgrep', '-xq', 'Preview')
         end
 
         # Preview.app で PDF を開く
@@ -735,7 +755,9 @@ module VivlioStarter
           run_preview_command('open', '-a', 'Preview', path)
         end
 
-        # Preview ウィンドウを設定された位置に移動する。PDF はもう開いているので、結果は問わない
+        # Preview ウィンドウを設定された位置に移動する。PDF はもう開いているので、
+        # うまくいかなくても開けたことは変わらない（結果は許可の案内にだけ使う）
+        # @return [Symbol] run_preview_command の結果
         def position_window
           script = <<~APPLE_SCRIPT
             tell application "Preview"
@@ -743,7 +765,19 @@ module VivlioStarter
               set bounds of front window to #{resolved_window_bounds}
             end tell
           APPLE_SCRIPT
-          run_preview_command('osascript', '-e', script)
+          run_preview_command('osascript', '-e', script, timeout: AUTOMATION_TIMEOUT_SEC)
+        end
+
+        # 閉じる・並べるに要る macOS の許可の案内。一度断った人は、確認がもう出ないので
+        # システム設定の場所を添え、使わない人のために止め方も添える。
+        def suggest_automation_permission
+          Common.log_always('💡 古いウインドウを閉じて並べるには、macOS が「プレビュー」の制御を尋ねたときに「許可」を押してください')
+          Common.log_always("#{Common::DETAIL_INDENT}一度断った場合: システム設定 → プライバシーとセキュリティ → オートメーション で、" \
+                            '使っているターミナルの「プレビュー」をオンにします')
+          return unless close_existing_windows?
+
+          Common.log_always("#{Common::DETAIL_INDENT}閉じなくてよい場合: config/book.yml の " \
+                            'output.pdf_preview.close_existing_windows を false にします')
         end
 
         # Preview への指示を 1 つ、timeout 秒（既定 PREVIEW_TIMEOUT_SEC）を上限に実行する。
