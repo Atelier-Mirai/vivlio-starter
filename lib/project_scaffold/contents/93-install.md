@@ -233,6 +233,7 @@ vs --version
 :::{.long-table}
 | 症状 | 原因 | 解決策 |
 | :--- | :--- | :--- |
+| `vs` を打つと `ERROR Error: No input is set.` と出る | Vivliostyle CLI が入れる同じ名前の `vs` が動いている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を外します。Vivliostyle は `vivliostyle` で使えます） |
 | `brew` が見つからない | Homebrew 未インストール | `vs doctor --fix` または[brew.sh](https://brew.sh)を参照 |
 | `npm` が見つからない | Node.js 未インストール | `vs doctor --fix` で Node.js をインストール後、再実行 |
 | Xcode CLT のインストールが完了しない | GUI 承認が必要 | インストーラ完了後に `vs doctor --fix` を再実行 |
