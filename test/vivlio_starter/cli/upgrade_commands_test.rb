@@ -856,6 +856,34 @@ module VivlioStarter
         end
       end
 
+      # --- 使われなくなった特別ページ: contents/ の扉・免責・奥付・部扉を退避して消す ---
+      def test_should_remove_special_pages_left_in_contents_with_backup
+        within_project do |scaffold|
+          %w[_titlepage _legalpage _colophon _part1].each { write('.', "contents/#{it}.md", "<h1>#{it}</h1>\n") }
+          write('.', 'contents/_README.md', "# 原稿の置き場\n")
+          write('.', 'contents/11-intro.md', "# はじめに\n")
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, 'contents/_colophon.md ほか 3 件: 今の版では使わないので消します'
+          assert_equal %w[11-intro.md _README.md], Dir.children('contents').sort
+          backups = Dir.glob('.cache/vs/upgrade-backup/*/contents/*').map { File.basename(it) }.sort
+          assert_equal %w[_colophon.md _legalpage.md _part1.md _titlepage.md], backups
+        end
+      end
+
+      def test_should_keep_special_pages_on_dry_run
+        within_project do |scaffold|
+          write('.', 'contents/_titlepage.md', "<h1>扉</h1>\n")
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, 'contents/_titlepage.md: 今の版では使わないので消します'
+          assert File.exist?('contents/_titlepage.md'), '--dry-run では消さないべき'
+        end
+      end
+
       # --- 原稿に出てこない語: 消さずに数え、vs index:auto での見直しを案内する ---
       def test_should_suggest_reviewing_terms_absent_from_the_manuscript
         within_project do |scaffold|

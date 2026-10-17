@@ -40,6 +40,7 @@ require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
 require_relative 'config_keys'
 require_relative 'retired_key_remover'
+require_relative 'token_resolver'
 require_relative 'index/unified_terms_manager'
 require_relative 'new'
 require_relative 'doctor'
@@ -256,10 +257,11 @@ module VivlioStarter
         retired = RetiredKeyRemover.authored(book_text, ConfigKeys::RETIRED.keys)
         terms = UnifiedTermsManager.new
         orphans = terms.orphan_main_references
-        return if retired.empty? && orphans.empty?
+        pages = stale_system_pages
+        return if retired.empty? && orphans.empty? && pages.empty?
 
         Common.log_summary('古い版から持ち越した設定を整理しています…')
-        report_tidy(retired, orphans, dry_run: options[:dry_run])
+        report_tidy(retired, orphans, pages, dry_run: options[:dry_run])
         return if options[:dry_run]
 
         # --- Phase: book.yml の廃止キー ---
@@ -281,7 +283,27 @@ module VivlioStarter
           terms.forget_missing_chapters!
         end
 
+        # --- Phase: 使われなくなった特別ページ ---
+        pages.each do |page|
+          backup_dir = backup!(page, backup_dir)
+          FileUtils.rm(page)
+        end
+
         Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
+      end
+
+      # contents/ に残った扉・免責・奥付・部扉の原稿（改善案.md #114）。
+      #
+      # 古い版はこれらを contents/ に置いていたが、今の版はビルドのたびに book.yml から
+      # .cache/vs/ に作り直し、contents/ のものは読まない（TokenResolver::Resolver）。
+      # 残っていると、著者が直しても紙面が変わらず戸惑うので、退避して消す。
+      # 消しても紙面は変わらない。`_README.md` など、ほかの `_` で始まるファイルは触らない。
+      # @return [Array<String>] プロジェクト直下からの相対パス
+      def stale_system_pages
+        Dir.glob(File.join(Common::CONTENTS_DIR, '_*.md')).select do |path|
+          name = File.basename(path, '.md')
+          TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(name) || name.match?(/\A_part\d+\z/)
+        end.sort
       end
 
       # 原稿に出てこない語が辞書にあれば、見直しの手順を案内する（改善案.md #114）。
@@ -305,7 +327,7 @@ module VivlioStarter
       end
 
       # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
-      def report_tidy(retired, orphans, dry_run:)
+      def report_tidy(retired, orphans, pages, dry_run:)
         if retired.any?
           Common.log_always("   config/book.yml: 廃止キーを消します（#{retired.map { it.join('.') }.join('・')}）")
         end
@@ -314,6 +336,10 @@ module VivlioStarter
           listed = chapters.first(3).join('・') + (chapters.size > 3 ? " ほか #{chapters.size - 3} 章" : '')
           Common.log_always("   #{UnifiedTermsManager::UNIFIED_FILE}: 原稿の無い章（#{listed}）を指す主要参照を外します（#{orphans.size} 語）")
           Common.log_always('      外した語は、次の vs index:auto が主要参照の候補を出します')
+        end
+        if pages.any?
+          others = pages.size > 1 ? " ほか #{pages.size - 1} 件" : ''
+          Common.log_always("   #{pages.first}#{others}: 今の版では使わないので消します（扉・免責・奥付は book.yml から作ります）")
         end
         Common.log_always('--dry-run のため整理しません') if dry_run
       end
