@@ -36,13 +36,17 @@ module VivlioStarter
       end
 
       # PDF アウトラインを付与する (Standard モードではスキップ)
+      #
+      # 付けられないことは原稿の誤りではないので 🟡 にせず、入れ方を 💡 で添える。
+      # 以前は「Standard モードではサポートされていません」を 🟡 で出し、入れ方は --log を
+      # 付けたときしか見えず、著者は次に何をすればよいか分からなかった（改善案.md #87）。
       # @param original_pdf_path [String] 対象のPDFファイルパス
       # @param items [Array<Hash>] アウトラインの項目配列
       # @param max_level [Integer] 最大階層
       # @return [Boolean]
       def add_outline!(_original_pdf_path, _items, max_level:) # rubocop:disable Lint/UnusedMethodArgument
-        CLI::Common.log_warn('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません。')
-        CLI::Common.log_info('  => 拡張機能が必要な場合は `gem install vivlio-starter-pdf` を検討してください。')
+        CLI::Common.log_always('💡 PDF にしおり（目次）を付けるには、vivlio-starter-pdf を入れてください')
+        CLI::Common.log_always("#{CLI::Common::DETAIL_INDENT}gem install vivlio-starter-pdf")
         false
       end
     end

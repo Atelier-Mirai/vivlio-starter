@@ -66,14 +66,17 @@ module VivlioStarter
         create_dummy_pdf(pdf_path, 1)
 
         # Act & Assert
-        logged_warnings = []
-        VivlioStarter::CLI::Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
+        logged = []
+        VivlioStarter::CLI::Common.stub :log_always, ->(msg) { logged << msg } do
           result = @provider.add_outline!(pdf_path, [], max_level: 3)
           refute result
         end
 
-        assert logged_warnings.any? { |msg| msg.include?('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません') },
-               'Standard モードではアウトライン付与スキップの警告を出すこと'
+        # 付けられないことだけでなく、入れ方を既定のログ水準で見せる（改善案.md #87）
+        assert logged.any? { it.start_with?('💡') && it.include?('しおり') },
+               'しおりを付けられないことを 💡 で知らせること'
+        assert logged.any? { it.include?('gem install vivlio-starter-pdf') },
+               '入れ方のコマンドを添えること'
       end
 
       private
