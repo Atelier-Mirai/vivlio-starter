@@ -260,6 +260,9 @@
 
 ### Fixed
 
+- **何も入っていない Mac で、`vs new` に続けて `vs build` を打つと、Vivliostyle CLI の `ERROR Error: No input is set.` で落ちていたのを直した**（改善案 #87）。Vivliostyle CLI は 3.0.0（2021 年 2 月）から、`vivliostyle` の別名として `vs` も入れる（package.json の bin にだけあり、説明書きには無い）。Vivlio Starter の `vs` と同じ名前で、PATH の順番では rbenv の `vs` が先でも、ターミナルを開いた後に両方ができると、zsh が Vivliostyle の `vs` の場所を覚えてしまうことがあった。`vs doctor --fix` は Vivliostyle CLI を入れた直後と診断の段で、`vs upgrade` は更新後の再診断で、リンク先が Vivliostyle CLI の `vs` だけを外し、そのことを知らせる。`--fix` でない `vs doctor` は 🟡 で知らせる。外せば zsh は PATH を探し直すので、開いているターミナルもそのまま使える。README・51 章・93 章に、`No input is set` と出たら `vivlio-starter doctor --fix` を打つよう書いた。
+  - `vs new` が最後に呼ぶ doctor も、`vs doctor --fix` でなく `vivlio-starter doctor --fix` で呼ぶ。PATH で Vivliostyle の `vs` が先に来る人（Homebrew の Ruby など）が 2 冊目を作ると、ここで Vivliostyle が動いていた。
+  - `VS_NO_DOCTOR=1` のときは、`vs new` が最後の doctor を飛ばす（CI など、ツールを自分で用意する場面向け）。表記の検査のテストが本物の `vs new` を走らせており、`rake test` のたびに開発機で本物の `vs doctor --fix` が動いて、Vivliostyle の別名を消していた。
 - **Ruby の無い Mac で、導入スクリプトをどう手に入れるかが書かれていなかったのを直した**（改善案 #87）。README・11 章・93 章は「同梱の `bin/install-ruby.zsh`」と案内していたが、これは gem の中にあり、gem を入れるには Ruby が要る。`zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"` の 1 行を載せた。`curl … | zsh` にしないのは、確認の `[y/N]` を端末から読めなくなるため。オプションは末尾に `install-ruby -y` のように渡す。
   - 11 章は「`ruby -v` でバージョンが表示されれば準備完了」と書いていたが、何も入っていない Mac では付属の `ruby 2.6.10` が表示され、著者は先へ進んで `gem install` の権限エラーにぶつかる。「3.4 以上なら準備完了。2.6 のような古い版なら導入する」に直した。途中で Mac のパスワードと `Enter` を求められることも書いた。
 - **導入スクリプトが Homebrew を入れるとき、Xcode コマンドラインツールのインストールを勧めるダイアログが、入った後も画面に残っていたのを直した**（改善案 #87）。Homebrew のインストーラが画面なしで入れるので、Homebrew をこれから入れる場合は `xcode-select --install` を呼ばない。Homebrew はあるのに Xcode コマンドラインツールだけが無い場合は、ダイアログを終えてからもう一度実行するよう案内して止める（以前は待たずに Ruby を組み始めて失敗した）。macOS でない環境では、この確認をしない。

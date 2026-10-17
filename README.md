@@ -76,6 +76,8 @@ gem install vivlio-starter
 
 > **1.0.0 より前の版で作ったプロジェクトで、`vs` が `Bundler::GemNotFound` で起動しない場合**は、先に `gem update vivlio-starter` を一度だけ実行してください。当時の `vs` はプロジェクトの `Gemfile.lock` に従って起動していたため、そこに書かれた版が手元に無いと起動できません。1.0.0 以降の `vs` は lock を見ずに起動するので、以後は起こりません。
 
+> **`vs` を打つと `ERROR Error: No input is set.` と出る場合**は、`vivlio-starter doctor --fix` を一度実行してください。Vivliostyle CLI が `vivliostyle` の別名として入れる同じ名前の `vs` が動いています。`vs doctor --fix` と `vs upgrade` はこの別名を外します（Vivliostyle は `vivliostyle` で使えます）。
+
 ### プロジェクト作成からビルドまで
 
 ```bash

@@ -200,6 +200,31 @@ module VivlioStarter
         end
       end
 
+      # doctor は正式名で呼ぶ。Vivliostyle CLI も `vs` という別名を入れるので、PATH の順番しだいで
+      # `vs doctor --fix` が Vivliostyle に渡ってしまう（改善案.md #87）
+      def test_should_run_doctor_by_its_unambiguous_name
+        within_temp_dir do
+          calls = record_system_calls { capture_io { run_new_command(['namebook', '--yes']) } }
+
+          assert_equal ['cd namebook && vivlio-starter doctor --fix'], calls
+        end
+      end
+
+      # VS_NO_DOCTOR=1 なら doctor を呼ばない。機械が検査するテストが、本物の --fix で
+      # 開発機のツールや Vivliostyle の vs 別名を書き換えないようにする
+      def test_should_skip_doctor_when_told
+        within_temp_dir do
+          original = ENV.fetch('VS_NO_DOCTOR', nil)
+          ENV['VS_NO_DOCTOR'] = '1'
+          calls = record_system_calls { capture_io { run_new_command(['skipbook', '--yes']) } }
+
+          assert_empty calls
+          assert Dir.exist?('skipbook'), 'プロジェクトは作る'
+        ensure
+          ENV['VS_NO_DOCTOR'] = original
+        end
+      end
+
       # 展開時に scaffold.lock が生成され、雛形原本のハッシュが記録されることを確認
       # （book.yml もプレースホルダー書き換え後ではなく雛形原本のハッシュで記録される）
       def test_should_generate_scaffold_lock_with_scaffold_original_hashes
@@ -269,6 +294,19 @@ module VivlioStarter
       def stub_system_call(success: true)
         SamovarCommands::NewCommand.define_method(:system) { |*| success }
         yield
+      ensure
+        SamovarCommands::NewCommand.remove_method(:system)
+      end
+
+      # system() を差し替え、渡されたコマンドを集めて返す（doctor は実際には走らない）
+      def record_system_calls
+        calls = []
+        SamovarCommands::NewCommand.define_method(:system) do |cmd|
+          calls << cmd
+          true
+        end
+        yield
+        calls
       ensure
         SamovarCommands::NewCommand.remove_method(:system)
       end

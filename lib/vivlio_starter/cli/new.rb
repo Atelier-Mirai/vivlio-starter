@@ -225,8 +225,22 @@ module VivlioStarter
         end
       end
 
+      # ツールの導入を自分で管理する場面（CI・機械が検査するテスト）で、最後の doctor --fix を
+      # 飛ばす環境変数。--fix は足りないツールを入れ、Vivliostyle CLI の別名 vs も外すので、
+      # テストが開発機の環境を書き換えないようにする（2026-10-18 に rake test が
+      # /opt/homebrew/bin/vs を消した。PdfOpener の VS_NO_PDF_PREVIEW と同じ考え方）。
+      SKIP_DOCTOR_ENV = 'VS_NO_DOCTOR'
+
       def run_doctor(cmd, project_name)
-        shell_cmd = "cd #{Shellwords.escape(project_name)} && vs doctor --fix"
+        if ENV[SKIP_DOCTOR_ENV] == '1'
+          log_debug("#{SKIP_DOCTOR_ENV} が設定されているため vs doctor --fix を飛ばします")
+          return
+        end
+
+        # `vs` でなく正式名で呼ぶ。Vivliostyle CLI も `vivliostyle` の別名として `vs` を入れるので、
+        # PATH で向こうが先に来る人（Homebrew の Ruby など）が、Vivliostyle を入れたあとに
+        # 2 冊目を作ると、ここで Vivliostyle が動いてしまう（改善案.md #87）。
+        shell_cmd = "cd #{Shellwords.escape(project_name)} && vivlio-starter doctor --fix"
         log_debug("実行: #{shell_cmd}")
 
         # system の呼び出しを cmd 経由にすることでテスト時のスタブが有効になる

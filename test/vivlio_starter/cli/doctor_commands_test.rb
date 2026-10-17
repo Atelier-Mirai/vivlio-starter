@@ -28,6 +28,12 @@ module VivlioStarter
   module CLI
     # DoctorCommands のユニットテスト
     class DoctorCommandsTest < Minitest::Test
+      # --fix のテストが、開発機の PATH にある本物の Vivliostyle の vs 別名を消さないようにする。
+      # 別名を外す処理そのものは vivliostyle_vs_alias_test.rb が一時フォルダで確かめる。
+      def run(...)
+        DoctorCommands.stub(:vivliostyle_vs_aliases, []) { super }
+      end
+
       # すべてのツールが揃っている場合、正常終了することを確認
       def test_doctor_reports_success_when_environment_complete
         with_host_os('linux') do

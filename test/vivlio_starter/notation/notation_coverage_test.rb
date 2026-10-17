@@ -65,7 +65,9 @@ class NotationCoverageTest < Minitest::Test
     private
 
     def setup_project_and_build
-      unless run_vs(@work, "new", "notationbook", "--yes")
+      # 表記の検査に doctor は要らず、本物の --fix は開発機のツールを入れたり、Vivliostyle の
+      # vs 別名を外したりする（2026-10-18 に rake test が /opt/homebrew/bin/vs を消した）
+      unless run_vs(@work, "new", "notationbook", "--yes", env: { "VS_NO_DOCTOR" => "1" })
         return "vs new に失敗しました"
       end
 
@@ -107,8 +109,8 @@ class NotationCoverageTest < Minitest::Test
 
     # **リポジトリの bin/vs を直接叩く。** PATH 上の `vs` は導入済み gem を使うため、
     # 変更が反映されないまま検証してしまう（rake reinstall を要らなくする）。
-    def run_vs(dir, *args)
-      system(RbConfig.ruby, "-I#{File.join(REPO_ROOT, 'lib')}", File.join(REPO_ROOT, "bin", "vs"),
+    def run_vs(dir, *args, env: {})
+      system(env, RbConfig.ruby, "-I#{File.join(REPO_ROOT, 'lib')}", File.join(REPO_ROOT, "bin", "vs"),
              *args, chdir: dir, out: File::NULL, err: File::NULL)
     end
   end

@@ -116,6 +116,8 @@ vs doctor --fix
 
 Node.js も対象です。vivliostyle や textlint など、npm で導入するツールは Node.js の準備が済んでからインストールされます。
 
+Vivliostyle CLI は、`vivliostyle` の別名として `vs` というコマンドも入れます。Vivlio Starter の `vs` と同じ名前なので、`--fix` はこの別名を外します（`vs upgrade` も同じです）。Vivliostyle は `vivliostyle` の名前でそのまま使えます。
+
 :::{.output}
 ```text
 🛠 不足しているツールをインストールします…

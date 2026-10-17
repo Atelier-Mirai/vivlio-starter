@@ -288,6 +288,9 @@ module VivlioStarter
         # Vivliostyle の headless Chrome キャッシュの健全性（中断ビルド等で壊れた残骸を掃除）
         # ※ missing.empty? の早期 return より前に実行し、他ツールが揃っていても修復できるようにする
         handle_vivliostyle_chrome(options)
+        # Vivliostyle CLI の別名 vs（Vivlio Starter の vs とぶつかる）。同じく早期 return より前に
+        # 見て、ほかのツールが揃っている人（vs upgrade の再診断を含む）からも外す
+        handle_vivliostyle_vs_aliases(options)
 
         report_ocr_optional_tools(ocr_optional_missing)
         # --fix 時は OCR ツールも従来どおり先回りインストールする（spec §5.1）
@@ -469,6 +472,8 @@ module VivlioStarter
             if command_exists?('npm')
               Common.log_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
               system('npm install --loglevel=error -g @vivliostyle/cli')
+              # 入れると別名の vs も作られるので、すぐ外す（診断の段はもう過ぎている）
+              remove_vivliostyle_vs_aliases!
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
             end
@@ -1193,6 +1198,53 @@ module VivlioStarter
           Common.log_warn(
             'Vivliostyle の Chrome が不完全です（ビルド中断などで破損）。`vs doctor --fix` で修復できます。'
           )
+        end
+      end
+
+      # Vivliostyle CLI は 3.0.0 から、`vivliostyle` の別名として `vs` も入れる（package.json の
+      # bin にだけあり、説明書きには無い）。Vivlio Starter の vs と同じ名前なので、PATH の順番や
+      # zsh が覚えたコマンドの場所しだいでこちらが動き、`vs build` が Vivliostyle の
+      # 「No input is set」で落ちる。何も入っていない Mac で、gem install → vs new → vs build を
+      # 1 つのウィンドウで打つと起きた（改善案.md #87）。Vivliostyle は `vivliostyle` で使えるので、
+      # 別名だけを外す。--fix でないときは知らせるに留める。
+      def handle_vivliostyle_vs_aliases(options)
+        aliases = vivliostyle_vs_aliases
+        return if aliases.empty?
+
+        if options[:fix]
+          remove_vivliostyle_vs_aliases!(aliases)
+        else
+          Common.log_warn('Vivliostyle CLI の別名 vs が、Vivlio Starter の vs とぶつかります',
+                          detail: 'vs doctor --fix で外せます（Vivliostyle は vivliostyle で使えます）')
+        end
+      end
+
+      # PATH 上の `vs` のうち、Vivliostyle CLI を指すリンク。Vivlio Starter の vs（rbenv の shim や
+      # gem の bin）はリンクでないか、別の場所を指すので含まない。
+      # @return [Array<String>]
+      def vivliostyle_vs_aliases
+        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).uniq
+           .map { File.join(it, 'vs') }
+           .select { vivliostyle_vs_alias?(it) }
+      end
+
+      def vivliostyle_vs_alias?(path)
+        File.symlink?(path) && File.realpath(path).include?("#{File::SEPARATOR}@vivliostyle#{File::SEPARATOR}cli#{File::SEPARATOR}")
+      rescue SystemCallError
+        false
+      end
+
+      # 別名を外したことは、Vivliostyle の vs を使っていた人のために必ず知らせる。
+      # 外したあとは、そのシェルが覚えていた場所が無くなるので、zsh は PATH を探し直して
+      # Vivlio Starter の vs を見つける（rehash は要らない）。
+      def remove_vivliostyle_vs_aliases!(aliases = vivliostyle_vs_aliases)
+        aliases.each do |path|
+          File.unlink(path)
+          Common.log_always("✅ Vivliostyle CLI の別名 vs を外しました（#{path}）")
+          Common.log_always("#{Common::DETAIL_INDENT}Vivlio Starter の vs とぶつかるためです。Vivliostyle は vivliostyle で使えます")
+        rescue SystemCallError => e
+          Common.log_warn("Vivliostyle CLI の別名 vs を外せませんでした（#{e.message}）",
+                          detail: "rm #{path} で外してください")
         end
       end
 
