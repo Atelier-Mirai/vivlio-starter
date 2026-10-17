@@ -152,9 +152,16 @@ module VivlioStarter
         # stdin:   IO                              確認プロンプト入力
         Deps = Data.define(:run, :capture, :fetch, :stdin)
 
+        # brew を呼ぶときに渡す環境変数。Homebrew 7 から、端末では install・upgrade・reinstall の
+        # たびに [y/n] を尋ねるようになった。vs は自分で確認を済ませてから（--fix を打った時点、
+        # または「更新を実行しますか？」で）呼ぶので、Homebrew に尋ね直させない。
+        # 何も入っていない Mac の --fix では 7 回尋ねられ、止まったように見えた（改善案.md #87）。
+        # --yes ではなく環境変数にするのは、確認の機能が無い古い Homebrew でもエラーにならないため。
+        BREW_ENV = { 'HOMEBREW_NO_ASK' => '1' }.freeze
+
         def default_deps
           Deps.new(
-            run: ->(cmd) { Kernel.system(cmd) },
+            run: ->(cmd) { Kernel.system(BREW_ENV, cmd) },
             capture: lambda do |cmd|
               out, status = Open3.capture2(cmd)
               [out, status.success?]

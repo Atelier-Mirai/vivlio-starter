@@ -38,6 +38,21 @@ class InstallRubyScriptTest < Minitest::Test
                     '未検証の Ruby を配ることになります。'
   end
 
+  # ~/.zprofile に書く行は、$( ) を展開せずにそのまま書く。
+  # 以前は推奨設定を "…$(brew shellenv)…" と二重引用符で表示していたため、
+  # 表示の時点で展開され、写して貼ると .zprofile が壊れる形で出ていた（改善案.md #87）。
+  def test_should_write_shell_setup_lines_without_expanding_them
+    skip 'zsh がありません' unless system('command -v zsh >/dev/null 2>&1')
+
+    functions = @script[/^brew_bin\(\) \{.*?^\}\n.*?^shell_setup_lines\(\) \{.*?^\}\n/m]
+    refute_nil functions, 'brew_bin と shell_setup_lines が読み取れません'
+
+    lines = IO.popen(['zsh', '-c', "#{functions}\nshell_setup_lines"], &:read).lines(chomp: true)
+
+    assert_match %r{\Aeval "\$\(/(opt/homebrew|usr/local)/bin/brew shellenv\)"\z}, lines[0]
+    assert_equal 'eval "$(rbenv init - zsh)"', lines[1]
+  end
+
   # 使い方の例に書くバージョンも、実在する対応版にする
   # （読者はここをそのままコピーする）
   def test_should_show_a_supported_version_in_the_usage_example

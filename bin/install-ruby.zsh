@@ -6,6 +6,7 @@
 # - rbenv と ruby-build を導入
 # - 指定した Ruby をインストール（既定: 最新の安定版）
 # - グローバルに切り替え、bundler をインストール
+# - ~/.zprofile に Homebrew と rbenv の設定を書き込む（同じ設定があれば足さない）
 #
 # 使い方（Usage）:
 #   bin/install-ruby.zsh                 # 対話モード、最新安定版を導入
@@ -62,6 +63,33 @@ confirm() {
   fi
 }
 
+# 新しいターミナルで Homebrew と rbenv の Ruby を使うための設定。
+# 書かないと、新しいターミナルでは macOS 付属の Ruby 2.6 が使われ、
+# gem install が /Library/Ruby/Gems に書けないというエラーで止まる
+# （改善案.md #87。何も入っていない Mac で確かめた）。
+ZPROFILE="${ZDOTDIR:-$HOME}/.zprofile"
+
+# Homebrew の置き場所は Apple シリコンと Intel で違う
+brew_bin() {
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    print -r -- /opt/homebrew/bin/brew
+  else
+    print -r -- /usr/local/bin/brew
+  fi
+}
+
+# ~/.zprofile に足す行。$( ) は書き込む先で展開させるので、ここでは展開しない
+shell_setup_lines() {
+  print -r -- "eval \"\$($(brew_bin) shellenv)\""
+  print -r -- 'eval "$(rbenv init - zsh)"'
+}
+
+# すでに同じ設定（コメントでない行）があれば足さない。
+# 手で書いた人の書き方（`brew shellenv zsh` など）とも重ならないよう、要の語で見る。
+zprofile_has() {
+  [[ -f "$ZPROFILE" ]] && grep -qE "^[^#]*$1" "$ZPROFILE"
+}
+
 echo "⛏️  Xcode コマンドラインツールを確認しています…"
 if ! xcode-select -p >/dev/null 2>&1; then
   if confirm "Xcode コマンドラインツールを今すぐインストールしますか？"; then
@@ -103,7 +131,8 @@ if $is_macos; then
 
   echo "📦 rbenv と ruby-build をインストールしています…"
   brew update
-  brew install rbenv ruby-build || true
+  # Homebrew 7 から、端末では install のたびに [y/n] を尋ねる。入れることはもう決まっている
+  HOMEBREW_NO_ASK=1 brew install rbenv ruby-build || true
 else
   echo "このスクリプトは macOS 向けです。Linux では各ディストリのパッケージマネージャで rbenv と ruby-build を導入後、再実行してください。" >&2
 fi
@@ -115,10 +144,8 @@ fi
 
 if ! command -v rbenv >/dev/null 2>&1; then
   echo "PATH に rbenv が見つかりません。シェル初期化に rbenv の設定を追加してから再実行してください。" >&2
-  echo "zsh（Apple Silicon）の例:"
-  echo "  echo 'eval \"$(/opt/homebrew/bin/brew shellenv)\"' >> ~/.zprofile"
-  echo "  echo 'export PATH=\"$HOME/.rbenv/bin:$PATH\"' >> ~/.zprofile"
-  echo "  echo 'eval \"$(rbenv init - zsh)\"' >> ~/.zprofile"
+  echo "~/.zprofile に次の 2 行を足してください:"
+  shell_setup_lines | sed 's/^/  /'
   exit 1
 fi
 
@@ -176,14 +203,20 @@ if [[ "$INSTALL_BUNDLER" == "true" ]]; then
   gem install bundler
 fi
 
-echo "✅ 完了しました。推奨シェル設定（zsh）:"
-if [[ -x /opt/homebrew/bin/brew ]]; then
-  echo "  echo 'eval \"$(/opt/homebrew/bin/brew shellenv)\"' >> ~/.zprofile"
+echo "🐚 シェルの設定を確認しています…"
+missing_lines=()
+zprofile_has 'brew shellenv' || missing_lines+=("$(shell_setup_lines | sed -n 1p)")
+zprofile_has 'rbenv init'    || missing_lines+=("$(shell_setup_lines | sed -n 2p)")
+
+if (( ${#missing_lines} == 0 )); then
+  echo "~/.zprofile は設定済みです。"
+elif confirm "新しいターミナルでこの Ruby を使うため、~/.zprofile に設定を書き込みますか？"; then
+  print -r -l -- "" "# Homebrew と rbenv（Vivlio Starter の install-ruby.zsh が追記）" "${missing_lines[@]}" >> "$ZPROFILE"
+  echo "~/.zprofile に書き込みました:"
+  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
 else
-  echo "  echo 'eval \"$(/usr/local/bin/brew shellenv)\"' >> ~/.zprofile"
+  echo "~/.zprofile には書き込みませんでした。使う前に、次の行を足してください:"
+  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
 fi
-cat <<'EOT'
-  echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zprofile
-  echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
-  exec zsh -l   # シェルを再読み込み
-EOT
+
+echo "✅ 完了しました。新しいターミナルを開くと、Ruby ${VERSION} が使えます（このターミナルで続けるなら: exec zsh -l）"

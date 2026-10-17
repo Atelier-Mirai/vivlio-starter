@@ -15,7 +15,7 @@ bin/install-ruby.zsh -v 4.0.7     # バージョンを明示して導入
 bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
-スクリプトは Xcode Command Line Tools の確認と導入案内から始め、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。
+スクリプトは Xcode Command Line Tools の確認と導入案内から始め、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。最後に、新しいターミナルでこの Ruby が使われるよう、`~/.zprofile` に Homebrew と rbenv の設定を書き込みます。同じ設定がすでにあれば、足しません。
 
 :::{.memo}
 **ターミナルの開き方（macOS）**

@@ -412,14 +412,14 @@ module VivlioStarter
           # 以前優先していた node@20 はこれを満たさないうえ、Homebrew で無効化される。
           if missing.include?('node')
             Common.log_always('node をインストールします…')
-            ok = system('brew install node')
+            ok = system(ToolUpgrader::BREW_ENV, 'brew install node')
             Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
           end
 
           # qpdf / poppler(pdfinfo, pdftoppm) / ghostscript / imagemagick / librsvg /
           # vips / tesseract(+lang) / mecab(+ipadic)。
           # formula 名の正典は ToolUpgrader::TOOLS（vs upgrade と共用し、二重管理しない）
-          ToolUpgrader.brew_install_packages(missing).each { system("brew install #{it}") }
+          ToolUpgrader.brew_install_packages(missing).each { system(ToolUpgrader::BREW_ENV, "brew install #{it}") }
 
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
@@ -638,8 +638,8 @@ module VivlioStarter
       def install_ssl_certificates!
         Common.log_always('Google Fonts 用に ca-certificates / openssl@3 を設定します…')
         system('brew update >/dev/null 2>&1')
-        system('brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
-        system('brew reinstall ca-certificates')
+        system(ToolUpgrader::BREW_ENV, 'brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
+        system(ToolUpgrader::BREW_ENV, 'brew reinstall ca-certificates')
 
         openssl_prefix = capture_command('brew --prefix openssl@3').strip
         if openssl_prefix.empty?
@@ -938,12 +938,12 @@ module VivlioStarter
         end
 
         Common.log_always('Inkscape を導入します（Homebrew cask）…')
-        return true if system('brew install --cask inkscape')
+        return true if system(ToolUpgrader::BREW_ENV, 'brew install --cask inkscape')
 
         # 半壊 cask（記録は在るのに /Applications/Inkscape.app が無い等）は通常インストールが
         # アップグレード扱いになり purge に失敗する。--force 再インストールで上書き復旧する。
         Common.log_warn('通常インストールに失敗しました。壊れた cask を --force で再インストールします…')
-        system('brew reinstall --cask --force inkscape')
+        system(ToolUpgrader::BREW_ENV, 'brew reinstall --cask --force inkscape')
       end
 
       # 入っている Kindle Previewer のアプリ内 CLI を呼ぶ kindlepreviewer コマンドを、

@@ -125,7 +125,8 @@ module VivlioStarter
                   DoctorCommands.stub :command_exists?, tool_present do
                    DoctorCommands.stub :command_runnable?, tool_present do
                     DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
-                      DoctorCommands.stub :system, lambda { |cmd|
+                      DoctorCommands.stub :system, lambda { |*args|
+                        cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
                         system_calls << cmd
 
                         case cmd
@@ -174,6 +175,7 @@ module VivlioStarter
         with_host_os('darwin') do
           system_calls = []
           vips_installed = false
+          brew_env = nil
 
           stub_logging do
             DoctorCommands.stub :ssl_certificate_configured?, true do
@@ -185,7 +187,8 @@ module VivlioStarter
                           tool_present = ->(cmd, **) { cmd == 'vips' ? vips_installed : true }
                           DoctorCommands.stub :command_exists?, tool_present do
                            DoctorCommands.stub :command_runnable?, tool_present do
-                            DoctorCommands.stub :system, lambda { |cmd|
+                            DoctorCommands.stub :system, lambda { |*args|
+                              cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
                               system_calls << cmd
 
                               case cmd
@@ -193,6 +196,7 @@ module VivlioStarter
                               when /which brew/ then true
                               when 'brew install vips'
                                 vips_installed = true
+                                brew_env = args.first
                                 true
                               else
                                 true
@@ -210,6 +214,8 @@ module VivlioStarter
           end
 
           assert_includes(system_calls, 'brew install vips')
+          # Homebrew 7 の [y/n] を尋ね直させない（改善案.md #87）
+          assert_equal({ 'HOMEBREW_NO_ASK' => '1' }, brew_env)
         end
       end
 
@@ -231,7 +237,8 @@ module VivlioStarter
                           tool_present = ->(cmd, **) { cmd == 'tesseract' ? tesseract_installed : true }
                           DoctorCommands.stub :command_exists?, tool_present do
                            DoctorCommands.stub :command_runnable?, tool_present do
-                            DoctorCommands.stub :system, lambda { |cmd|
+                            DoctorCommands.stub :system, lambda { |*args|
+                              cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
                               system_calls << cmd
 
                               case cmd
@@ -275,7 +282,7 @@ module VivlioStarter
                 DoctorCommands.stub :command_runnable?, ->(*, **) { false } do
                   DoctorCommands.stub :waifu2x_available?, false do
                     DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
-                      DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
+                      DoctorCommands.stub :system, ->(*args) { system_calls << args.last; false } do
                         capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
                       end
                     end
