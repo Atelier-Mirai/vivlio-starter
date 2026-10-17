@@ -58,12 +58,13 @@ Vivlio Starter を使った書籍制作は、5つのステップで完結しま�
 
 Linux / Windows では**未検証**です。本体は Ruby と Node で書かれているので、[追加ツール](#追加ツールのインストールpdf-操作)を各環境のパッケージ管理（apt / dnf / winget など）で手動導入すれば動作する見込みですが、確認は取れていません。非 macOS で `vs doctor --fix` を実行すると、**自動導入は行わず、必要なツールの一覧を示して止まります**。手動導入の道しるべとしてお使いください。
 
-Ruby が未導入の場合は、同梱スクリプトで自動セットアップできます。
+Ruby が未導入の場合（`ruby -v` が 3.4 より古い版、たとえば macOS 付属の 2.6 を表示する場合も）は、次の 1 行で Homebrew・rbenv・Ruby をまとめて導入できます。確認しながら進み、最後に `~/.zprofile` へシェルの設定を書き込みます。
 
 ```bash
-bin/install-ruby.zsh        # 対話モード
-bin/install-ruby.zsh -y     # 無人モード
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
 ```
+
+確認を省くときは、末尾に ` install-ruby -y` を足します。終わったら、新しいターミナルを開いてください。
 
 ### インストール
 

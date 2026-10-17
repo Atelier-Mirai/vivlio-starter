@@ -14,6 +14,11 @@
 #   bin/install-ruby.zsh -v 4.0.7        # 特定の Ruby バージョンを導入
 #   bin/install-ruby.zsh -y -v latest    # 全自動（最新安定版）
 #
+# gem を入れる前（Ruby が無い Mac）は GitHub から取って走らせる。`curl … | zsh` に
+# しないのは、確認の [y/N] を端末から読めなくなるため（README・11 章・93 章と同じ形）:
+#   zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
+#   zsh -c "$(curl -fsSL …/install-ruby.zsh)" install-ruby -y   # オプションは末尾に
+#
 set -euo pipefail
 
 # 自動解決できなかったときに入れる版。「最新版」ではなく
@@ -90,19 +95,26 @@ zprofile_has() {
   [[ -f "$ZPROFILE" ]] && grep -qE "^[^#]*$1" "$ZPROFILE"
 }
 
-echo "⛏️  Xcode コマンドラインツールを確認しています…"
-if ! xcode-select -p >/dev/null 2>&1; then
-  if confirm "Xcode コマンドラインツールを今すぐインストールしますか？"; then
-    xcode-select --install || true
-    echo "インストーラのダイアログを完了してください。必要に応じて本スクリプトを再実行してください。"
-  else
-    echo "CLT のインストールをスキップしました。必要なら次を実行: xcode-select --install"
-  fi
-fi
-
 is_macos=true
 if [[ "$(uname -s)" != "Darwin" ]]; then
   is_macos=false
+fi
+
+if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
+  echo "⛏️  Xcode コマンドラインツールを確認しています…"
+  if ! command -v brew >/dev/null 2>&1; then
+    # Homebrew のインストーラが画面なしで入れるので、ここではダイアログを出さない。
+    # 出すと、入った後もインストールを勧めるダイアログが画面に残る（改善案.md #87）
+    echo "Xcode コマンドラインツールは、このあと Homebrew と一緒に入ります。"
+  elif confirm "Xcode コマンドラインツールを今すぐインストールしますか？"; then
+    xcode-select --install || true
+    # Ruby を組むのに要るので、入り終わるまで先へ進まない
+    echo "インストーラのダイアログを完了してから、もう一度このスクリプトを実行してください。"
+    exit 1
+  else
+    echo "Ruby を組むには Xcode コマンドラインツールが要ります。xcode-select --install で入れてから、もう一度実行してください。" >&2
+    exit 1
+  fi
 fi
 
 if $is_macos; then

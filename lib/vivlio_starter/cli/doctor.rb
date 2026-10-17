@@ -405,7 +405,7 @@ module VivlioStarter
           end
         end
 
-        Common.log_always('🛠 Homebrew による不足ツールのインストールを実行します…')
+        Common.log_always('🛠 不足しているツールをインストールします…')
         begin
           # Node.js。npm で入れるツール（vivliostyle・textlint など）の前提なので最初に入れる。
           # 版を固定せず最新の node を入れる——Vivliostyle CLI は Node 22.12 以上を要求し、

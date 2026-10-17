@@ -143,13 +143,15 @@ Vivlio Starter は Ruby で動作します。最初に、現在の環境で Ruby
 ruby -v
 ```
 
-`ruby 4.0.7` のようにバージョンが表示されれば準備完了です。次の「Vivlio Starter をインストールする」へ進んでください。
+`ruby 4.0.7` のように 3.4 以上のバージョンが表示されれば準備完了です。次の「Vivlio Starter をインストールする」へ進んでください。
 
-バージョンが表示されなければ、同梱のスクリプトで必要な環境を導入します。Xcode コマンドラインツール・Homebrew・rbenv・Ruby 本体・bundler が順にセットアップされます。
+バージョンが表示されないときや、`ruby 2.6.10` のような古いバージョン（macOS に付属の Ruby）が表示されたときは、次の 1 行で必要な環境を導入します。Homebrew（Xcode コマンドラインツールも一緒に入ります）・rbenv・Ruby 本体・bundler が順にセットアップされます。
 
 ```bash
-bin/install-ruby.zsh
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
 ```
+
+途中で、Mac にログインするときのパスワードと、`Enter` キーを求められます。Homebrew の導入に必要です。
 
 :::{.memo}
 **ターミナルの開き方（macOS）**
@@ -171,7 +173,7 @@ ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [arm64-darwin27]
 ```
 :::
 
-macOS 以外の環境へ入れたい方や、何が導入されるのかを把握しておきたい方は、@chapref:ch-install を参照してください。将来 Ruby を新しくするときも、同じスクリプトにバージョンを渡すだけです（`bin/install-ruby.zsh -v 4.1.0`）。
+macOS 以外の環境へ入れたい方や、何が導入されるのかを把握しておきたい方は、@chapref:ch-install を参照してください。将来 Ruby の新しいバージョンが出たときは、`vs upgrade` が知らせ、入れ替える手順を示します。
 
 ### Vivlio Starter をインストールする
 

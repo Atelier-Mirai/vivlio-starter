@@ -6,16 +6,23 @@
 
 ## Ruby のインストール
 
-Vivlio Starter を動かすには Ruby が必要です。まだ入っていなければ、同梱のスクリプトで導入できます。
+Vivlio Starter を動かすには Ruby 3.4 以上が必要です。まだ入っていなければ（macOS に付属の Ruby 2.6 しかない場合も）、次の 1 行で導入できます。確認しながら進みます。
 
 ```bash
-bin/install-ruby.zsh              # 対話的に最新安定版を導入
-bin/install-ruby.zsh -y           # 確認をスキップして自動導入
-bin/install-ruby.zsh -v 4.0.7     # バージョンを明示して導入
-bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
 ```
 
-スクリプトは Xcode Command Line Tools の確認と導入案内から始め、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。最後に、新しいターミナルでこの Ruby が使われるよう、`~/.zprofile` に Homebrew と rbenv の設定を書き込みます。同じ設定がすでにあれば、足しません。
+オプションは、末尾に `install-ruby` と続けて渡します。たとえば確認を省くときは、`… install-ruby.zsh)" install-ruby -y` とします。
+
+| オプション | 働き |
+| :--- | :--- |
+| `-y` | 確認をスキップして自動導入 |
+| `-v 4.0.7` | バージョンを明示して導入（既定は最新の安定版） |
+| `--no-bundler` | bundler の導入をスキップ |
+
+スクリプトの中身は、gem に同梱の `bin/install-ruby.zsh` と同じです。実行する前に GitHub で読むこともできます。
+
+スクリプトは Homebrew（Xcode Command Line Tools も一緒に入ります）、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。最後に、新しいターミナルでこの Ruby が使われるよう、`~/.zprofile` に Homebrew と rbenv の設定を書き込みます。同じ設定がすでにあれば、足しません。
 
 :::{.memo}
 **ターミナルの開き方（macOS）**

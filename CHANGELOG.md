@@ -260,6 +260,11 @@
 
 ### Fixed
 
+- **Ruby の無い Mac で、導入スクリプトをどう手に入れるかが書かれていなかったのを直した**（改善案 #87）。README・11 章・93 章は「同梱の `bin/install-ruby.zsh`」と案内していたが、これは gem の中にあり、gem を入れるには Ruby が要る。`zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"` の 1 行を載せた。`curl … | zsh` にしないのは、確認の `[y/N]` を端末から読めなくなるため。オプションは末尾に `install-ruby -y` のように渡す。
+  - 11 章は「`ruby -v` でバージョンが表示されれば準備完了」と書いていたが、何も入っていない Mac では付属の `ruby 2.6.10` が表示され、著者は先へ進んで `gem install` の権限エラーにぶつかる。「3.4 以上なら準備完了。2.6 のような古い版なら導入する」に直した。途中で Mac のパスワードと `Enter` を求められることも書いた。
+- **導入スクリプトが Homebrew を入れるとき、Xcode コマンドラインツールのインストールを勧めるダイアログが、入った後も画面に残っていたのを直した**（改善案 #87）。Homebrew のインストーラが画面なしで入れるので、Homebrew をこれから入れる場合は `xcode-select --install` を呼ばない。Homebrew はあるのに Xcode コマンドラインツールだけが無い場合は、ダイアログを終えてからもう一度実行するよう案内して止める（以前は待たずに Ruby を組み始めて失敗した）。macOS でない環境では、この確認をしない。
+- **作った直後のプロジェクトで `vs lint` を打つと、雛形の 32 章の MATTR にスペルの指摘が 7 件出ていたのを直した**（改善案 #87）。スペルの検査は索引辞書の語を正しい綴りとして扱うが、雛形の索引辞書は空で配る。`config/spellcheck_allowlist.yml` に MATTR を足した。
+- `vs doctor --fix` が npm のツールを入れるときも「🛠 Homebrew による不足ツールのインストールを実行します…」と出していたのを、「🛠 不足しているツールをインストールします…」にした（改善案 #87）。
 - **何も入っていない Mac で `bin/install-ruby.zsh` を使うと、入れた Ruby が新しいターミナルで使われず、`gem install vivlio-starter` が権限のエラーで止まっていたのを直した**（改善案 #87）。スクリプトはシェルの設定を表示するだけで、`~/.zprofile` に書いていなかった。新しいターミナルでは macOS 付属の Ruby 2.6 が使われ、`/Library/Ruby/Gems/2.6.0` に書けないというエラーになる。最後に Homebrew と rbenv の設定を `~/.zprofile` へ書き込むようにした（対話のときは確かめてから。同じ設定がすでにあれば足さない）。
   - 表示していた推奨設定も壊れていた。`echo "…$(brew shellenv)…"` と二重引用符で表示していたため、表示の時点で `$( )` が展開され、写して貼ると `.zprofile` が壊れる形で出ていた。書かないことを選んだ人には、写して使える形で表示する。
   - Homebrew で入れた rbenv には要らない `export PATH="$HOME/.rbenv/bin:$PATH"` は書かない。
