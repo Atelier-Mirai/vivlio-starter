@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require 'vivlio_starter/cli/common'
 
 # ================================================================
 # bin/install.zsh と対応 Ruby バージョンの一致
@@ -51,6 +52,35 @@ class InstallScriptTest < Minitest::Test
 
     assert_match %r{\Aeval "\$\(/(opt/homebrew|usr/local)/bin/brew shellenv\)"\z}, lines[0]
     assert_equal 'eval "$(rbenv init - zsh)"', lines[1]
+  end
+
+  # ようこその枠は、右端の │ がそろう（全角と絵文字を 2 桁と数える。vs の Common.log_box と同じ）。
+  # スクリプトと同じ set -u の下で走らせる（名前の無い ${(l:…:)} が「parameter not set」で落ちた）
+  def test_should_align_the_right_edge_of_the_welcome_box
+    skip 'zsh がありません' unless system('command -v zsh >/dev/null 2>&1')
+
+    function = @script[/^welcome_box\(\) \{.*?^\}\n/m]
+    refute_nil function, 'welcome_box が読み取れません'
+
+    call = "welcome_box 'Vivlio Starter バージョン 1.0.0 がインストールされました。' '' " \
+           "'vs new mybook で新しい本を書き始めることができます。' 'ok'"
+    rows = IO.popen(['zsh', '-c', "set -euo pipefail\n#{function}\n#{call}"], &:read).force_encoding('utf-8').lines(chomp: true)
+
+    assert_equal 6, rows.size
+    widths = rows.map { VivlioStarter::CLI::Common.display_width(it) }
+    assert_equal [widths.first], widths.uniq, "枠の幅がそろっていません:\n#{rows.join("\n")}"
+    refute rows.join.include?("\e["), '端末でないときは色を付けない'
+  end
+
+  # 最後の exec では EXIT の trap が走らない。パスワードを覚えさせ続ける裏の処理は、
+  # 切り替える前に止める（止めないと、切り替えた先のシェルで延ばし続ける）
+  def test_should_stop_keeping_sudo_alive_before_switching_shells
+    stop = @script.rindex(/^stop_sudo_keeper$/)
+    switch = @script.index('exec zsh -l')
+
+    refute_nil switch, 'exec zsh -l が見当たりません'
+    refute_nil stop, 'stop_sudo_keeper を呼んでいません'
+    assert_operator stop, :<, switch
   end
 
   # 使い方の例に書くバージョンも、実在する対応版にする

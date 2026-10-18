@@ -6,14 +6,19 @@
 # - rbenv と ruby-build を導入し、指定した Ruby をインストール（既定: 最新の安定版）
 # - グローバルに切り替え、bundler をインストール
 # - ~/.zprofile に Homebrew と rbenv の設定を書き込む（同じ設定があれば足さない）
-# - 尋ねること（Homebrew・~/.zprofile・プレビューの操作の許可）は最初にまとめる
-# - Vivlio Starter（gem）を入れ、執筆に使うツール一式を vivlio-starter doctor --fix で入れる
+# - 尋ねること（Homebrew・~/.zprofile・プレビューの操作の許可・Kindle Previewer・パスワード）は
+#   最初にまとめる。あとは終わるまで席を外せる
+# - Kindle を選んだ人には、Kindle Previewer と Rosetta 2 も入れる
+# - Vivlio Starter と vivlio-starter-pdf（gem）を入れ、執筆に使うツール一式を
+#   vivlio-starter doctor --fix で入れる
+# - 最後にようこその枠を出し、端末から打ったときはそのウィンドウのまま vs を使えるようにする
 #
 # 使い方（Usage）:
 #   bin/install.zsh                      # 対話モード、最新安定版を導入
 #   bin/install.zsh -y                   # 非対話モード（自動確認）
 #   bin/install.zsh -v 4.0.7             # 特定の Ruby バージョンを導入
 #   bin/install.zsh --gem ./vivlio-starter.gem   # 手元の gem を入れる（公開前の確かめ用）
+#   bin/install.zsh --pdf-gem ./vivlio-starter-pdf.gem   # vivlio-starter-pdf も手元の gem から
 #
 # gem を入れる前（Ruby が無い Mac）は GitHub から取って走らせる。`curl … | zsh` に
 # しないのは、確認の [y/N] を端末から読めなくなるため（README・11 章・93 章と同じ形）:
@@ -35,6 +40,7 @@ VERSION="latest"
 YES="false"
 INSTALL_BUNDLER="true"
 GEM_FILE=""
+PDF_GEM_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,6 +50,8 @@ while [[ $# -gt 0 ]]; do
       VERSION="${2:-}"; shift 2 ;;
     --gem)
       GEM_FILE="${2:-}"; shift 2 ;;
+    --pdf-gem)
+      PDF_GEM_FILE="${2:-}"; shift 2 ;;
     --no-bundler)
       INSTALL_BUNDLER="false"; shift ;;
     -h|--help)
@@ -52,6 +60,7 @@ while [[ $# -gt 0 ]]; do
   -y, --yes           非対話モードで実行し、確認を自動承認します
   -v, --version VER   インストールする Ruby のバージョン（既定: latest）。'latest' で自動解決
       --gem FILE      rubygems からでなく、手元の gem ファイルから Vivlio Starter を入れます
+      --pdf-gem FILE  rubygems からでなく、手元の gem ファイルから vivlio-starter-pdf を入れます
       --no-bundler    bundler のインストールをスキップ
   -h, --help          このヘルプを表示
 USAGE
@@ -115,12 +124,72 @@ zprofile_has() {
   [[ -f "$ZPROFILE" ]] && grep -qE "^[^#]*$1" "$ZPROFILE"
 }
 
+# Kindle Previewer のアプリ（3 と 4 で名前が違う。doctor の KINDLE_PREVIEWER_APP_BINS と同じ）
+kindle_previewer_installed() {
+  [[ -d "/Applications/Kindle Previewer 4.app" || -d "/Applications/Kindle Previewer 3.app" ]]
+}
+
+# Kindle Previewer の変換部分は Intel 版なので、Apple シリコンの Mac には Rosetta 2 が要る
+# （doctor の ROSETTA_RUNTIME と同じ実体で見る）
+rosetta_needed() {
+  [[ "$(uname -m)" == "arm64" && ! -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ]]
+}
+
+# パスワードを覚えている状態（sudo の timestamp）を、導入が終わるまで延ばす。
+# macOS の既定では 5 分で忘れ、Kindle Previewer や Homebrew が途中でまた尋ねる——
+# 席を外した著者は気づかず、導入がそこで止まる（改善案.md #87）
+sudo_keeper=""
+start_sudo_keeper() {
+  ( while true; do sudo -n -v 2>/dev/null || exit; sleep 50; kill -0 $$ 2>/dev/null || exit; done ) &
+  sudo_keeper=$!
+}
+
+# 延ばすのをやめ、覚えているパスワードを忘れさせる。最後の exec では EXIT の trap が
+# 走らないので、そこでも呼ぶ
+stop_sudo_keeper() {
+  if [[ -n "$sudo_keeper" ]]; then
+    kill "$sudo_keeper" 2>/dev/null || true
+    sudo_keeper=""
+    sudo -k
+  fi
+}
+trap stop_sudo_keeper EXIT
+
+# ようこその枠。右端は zsh の ${(m)#…}（端末で占める桁数）でそろえる。
+# 桁数は文字コードの設定に左右されるので、枠を組むあいだだけ UTF-8 にする。
+# 打つもの（vs new mybook・vs --help）だけを緑にする（vs の Common.log_box と同じ形）
+welcome_box() {
+  local LC_ALL=en_US.UTF-8
+  local title="💡 Vivlio Starter の世界へようこそ"
+  local -a lines=("$@")
+  local width=$(( ${(m)#title} + 2 )) line
+  for line in "${lines[@]}"; do
+    (( ${(m)#line} > width )) && width=${(m)#line}
+  done
+
+  # 枠は黄色（vs の枠の案内と同じ）。色を付けない端末では、枠も文字もそのまま
+  local y="" g="" r="" none=""
+  if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
+    y=$'\e[33m' g=$'\e[32m' r=$'\e[0m'
+  fi
+
+  print -r -- "${y}╭─ ${title} ${(l:width - 1 - ${(m)#title}::─:)none}╮${r}"
+  local body pad
+  for line in "${lines[@]}"; do
+    pad=${(l:width - ${(m)#line}:: :)none}
+    body=${line//vs new mybook/${g}vs new mybook${r}}
+    body=${body//vs --help/${g}vs --help${r}}
+    print -r -- "${y}│${r} ${body}${pad} ${y}│${r}"
+  done
+  print -r -- "${y}╰${(l:width + 2::─:)none}╯${r}"
+}
+
 is_macos=true
 if [[ "$(uname -s)" != "Darwin" ]]; then
   is_macos=false
 fi
 
-echo "📚 Vivlio Starter を導入します（Homebrew・Ruby・Vivlio Starter・執筆に使うツール）。"
+echo "📚 Vivlio Starter を導入します（Homebrew・Ruby・Vivlio Starter・vivlio-starter-pdf・執筆に使うツール）。"
 echo "   15 分ほどかかります。最初にいくつか確かめます。"
 echo ""
 
@@ -183,20 +252,42 @@ if $is_macos && [[ -t 0 ]]; then
   $preview_was_running || osascript -e 'tell application "Preview" to quit' >/dev/null 2>&1 || true
 fi
 
-echo ""
-if $install_homebrew; then
-  echo "続けて、Homebrew のインストーラがパスワード（Mac にログインするときのもの）と RETURN（Enter）を尋ねます。"
-  echo "それが済めば、終わるまで席を外して構いません。"
-else
-  echo "確認は以上です。終わるまで席を外して構いません。"
+# Kindle 向けの本（KPF）は Kindle Previewer でしか作れない。500MB ほどあり、入れるのに
+# パスワードも要るので、ここで尋ねて一緒に入れる。あとから targets に kindle を足した人には、
+# vs build・vs preflight が vs doctor --fix を案内する（Build::KindlePreviewerNotice）
+install_kindle=false
+if $is_macos && ! kindle_previewer_installed; then
+  echo "📱 Kindle 向けの電子書籍（KPF）は、Amazon の Kindle Previewer で作ります。"
+  if confirm "Kindle Previewer もインストールしますか？（500MB ほど・あとからでも入れられます）"; then
+    install_kindle=true
+  fi
 fi
+
+# パスワードは、ここで 1 回だけ尋ねる。Homebrew のインストーラは、始める前にパスワードを
+# 覚えている状態なら尋ね直さない（install.sh の have_sudo_access）。NONINTERACTIVE で
+# 走らせ、RETURN も尋ねさせない。こうしておけば、尋ねることがすべて最初に集まる
+if $install_homebrew || $install_kindle; then
+  echo ""
+  echo "🔑 インストールに、Mac の管理者のパスワード（ログインするときのもの）を使います。"
+  echo "   打っても画面には表示されません。打ち終えたら RETURN（Enter）を押してください。"
+  if ! sudo -v -p "   パスワード: "; then
+    echo "パスワードを確かめられませんでした。もう一度このスクリプトを実行してください。" >&2
+    exit 1
+  fi
+  start_sudo_keeper
+fi
+
+echo ""
+echo "確認は以上です。終わるまで席を外して構いません。"
 echo ""
 
 # --- Phase: Homebrew・rbenv ---
 if $is_macos; then
   echo "🍺 Homebrew を確認しています…"
   if $install_homebrew; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # インストーラの「Next steps」（~/.zprofile への書き込み）は、このあとこのスクリプトが行う
+    echo "（Homebrew の「Next steps」は、このあとこのスクリプトが済ませます）"
   fi
   # このシェルで brew を使えるようにする（Apple シリコン・Intel のどちらでも）
   eval "$("$(brew_bin)" shellenv)"
@@ -205,6 +296,18 @@ if $is_macos; then
   brew update
   # Homebrew 7 から、端末では install のたびに [y/n] を尋ねる。入れることはもう決まっている
   HOMEBREW_NO_ASK=1 brew install rbenv ruby-build || true
+
+  # kindlepreviewer コマンド（アプリの中の CLI を呼ぶラッパー）は、あとの doctor --fix が作る
+  if $install_kindle; then
+    echo "📱 Kindle Previewer をインストールしています（500MB ほど）…"
+    HOMEBREW_NO_ASK=1 brew install --cask kindle-previewer \
+      || echo "🟡 Kindle Previewer を入れられませんでした。あとで、targets に kindle を足した本で vs doctor --fix を実行してください。"
+    if rosetta_needed; then
+      echo "🔁 Rosetta 2（Kindle Previewer の変換に要ります）をインストールしています…"
+      sudo softwareupdate --install-rosetta --agree-to-license \
+        || echo "🟡 Rosetta 2 を入れられませんでした。あとで sudo softwareupdate --install-rosetta --agree-to-license を実行してください。"
+    fi
+  fi
 else
   echo "このスクリプトは macOS 向けです。Linux では各ディストリのパッケージマネージャで rbenv と ruby-build を導入後、再実行してください。" >&2
 fi
@@ -295,19 +398,50 @@ if [[ -n "$GEM_FILE" ]]; then
 else
   gem install vivlio-starter
 fi
+# PDF のしおり（目次）を付ける拡張。AGPL の HexaPDF を使うので別の gem に分けてあるが、
+# 著者にはどちらも使ってほしいので、尋ねずに一緒に入れる。入らなくても本は作れる
+echo "📄 vivlio-starter-pdf（PDF のしおりを付ける拡張）をインストールしています…"
+gem install "${PDF_GEM_FILE:-vivlio-starter-pdf}" \
+  || echo "🟡 vivlio-starter-pdf を入れられませんでした。PDF にしおりを付けるには、あとで gem install vivlio-starter-pdf を実行してください。"
 rbenv rehash
 
 echo "🔎 バージョン確認: vs --version"
 # `vs` でなく正式名で呼ぶ。Vivliostyle CLI も `vs` という別名を入れるため（改善案.md #87）
-vivlio-starter --version
+version_line="$(vivlio-starter --version)"
+print -r -- "$version_line"
 
 # --- Phase: 執筆に使うツール ---
 # vs new が最後に呼ぶ doctor と同じもの。ここで入れておけば、vs new は確かめるだけで済む
 echo "🧰 執筆に使うツール（Node・Vivliostyle・PDF や画像の処理など）をインストールしています…"
 echo "   数分かかります。"
-vivlio-starter doctor --fix --yes || echo "🟡 ツールの導入が途中で止まりました。新しいターミナルで vs doctor --fix を実行してください。"
+vivlio-starter doctor --fix --yes || echo "🟡 ツールの導入が途中で止まりました。vs doctor --fix を実行してください。"
+stop_sudo_keeper
 
+# --- Phase: ようこそ ---
+welcome_lines=(
+  "Vivlio Starter バージョン ${version_line##* } がインストールされました。"
+  ""
+  "vs new mybook で新しい本を書き始めることができます。"
+  "vs --help でコマンドの使い方を確認できます。"
+)
+if $install_kindle; then
+  welcome_lines+=("Kindle 用にも作るには、config/book.yml の targets に kindle を足します。")
+fi
+welcome_lines+=("" "素敵な一冊をどうぞ執筆なさってください。")
 echo ""
-echo "✅ 準備ができました。新しいターミナルのウィンドウを開いて、次を打ってください:"
-print -rn -- "  "; green "vs --version"; print -r -- ""
-print -rn -- "  "; green "vs new mybook"; print -r -- ""
+welcome_box "${welcome_lines[@]}"
+echo ""
+
+# 新しいシェルに切り替え、このウィンドウのまま vs を使えるようにする。このスクリプトは
+# 子のシェルで走るので、PATH や rbenv の設定を、打った人のシェルへ渡せない（Oh My Zsh と同じ形）。
+# ~/.zprofile に設定が無いと、切り替えても vs が見つからないので、そのときは切り替えない。
+# 端末が無いとき（CI など）も切り替えない
+if (( ${#missing_lines} == 0 )) || $write_zprofile; then
+  if [[ -t 0 && -t 1 ]]; then
+    exec zsh -l
+  fi
+  echo "新しいターミナルのウィンドウを開くと、vs を使えます。"
+else
+  echo "vs を使う前に、~/.zprofile に次の行を足して、新しいターミナルのウィンドウを開いてください:"
+  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
+fi
