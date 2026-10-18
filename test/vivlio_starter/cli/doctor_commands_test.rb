@@ -58,6 +58,30 @@ module VivlioStarter
         end
       end
 
+      # --quiet（vs new の最後の診断）は、揃っているツールの ✅ を並べず、揃っていることを
+      # 1 行で言う（改善案.md #87。25 行の ✅ で画面が埋まっていた）
+      def test_doctor_quiet_reports_only_the_summary_when_environment_complete
+        lines = []
+        with_host_os('linux') do
+          DoctorCommands.stub :diagnose_config_files!, nil do
+            DoctorCommands.stub :tesseract_language_available?, true do
+              DoctorCommands.stub :command_exists?, ->(_) { true } do
+                DoctorCommands.stub :command_runnable?, ->(*, **) { true } do
+                  DoctorCommands.stub :kindlepreviewer_functional?, true do
+                    DoctorCommands.stub :waifu2x_available?, true do
+                      Common.with_emit_sink(lines) { DoctorCommands.execute_doctor(options_context(quiet: true)) }
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        refute lines.any? { it.match?(/\A✅ .+: OK/) }, "個々の ✅ は出さない:\n#{lines.join("\n")}"
+        assert_includes lines, '✅ 執筆に使うツールは揃っています'
+      end
+
       # --fix 実行時に設定ファイルの診断・復元（diagnose_config_files!）が起動することを確認するテスト。
       # ※ 開発環境の Node.js やツールの有無に依存せずテストをパスさせるため、
       #    mathjax_full_available? も true にスタブ化しています。

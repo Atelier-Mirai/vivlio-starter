@@ -206,7 +206,7 @@ module VivlioStarter
         within_temp_dir do
           calls = record_system_calls { capture_io { run_new_command(['namebook', '--yes']) } }
 
-          assert_equal ['cd namebook && vivlio-starter doctor --fix'], calls
+          assert_equal ['cd namebook && vivlio-starter doctor --fix --quiet'], calls
         end
       end
 

@@ -37,6 +37,7 @@ module VivlioStarter
         options do
           option '--fix', '不足ツールを自動インストール (macOS のみ・一部確認あり)', default: false, key: :fix
           option '--yes/-y', '確認プロンプトをスキップ (--fix 指定時のみ有効)', default: false, key: :yes
+          option '--quiet', '揃っているツールは表示せず、足りないものと結果だけを出す', default: false, key: :quiet
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -60,6 +61,7 @@ module VivlioStarter
             options: {
               fix: options[:fix],
               yes: options[:yes],
+              quiet: options[:quiet],
               verbose: verbose_from_parent?
             }
           }

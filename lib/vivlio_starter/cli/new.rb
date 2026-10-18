@@ -240,7 +240,7 @@ module VivlioStarter
         # `vs` でなく正式名で呼ぶ。Vivliostyle CLI も `vivliostyle` の別名として `vs` を入れるので、
         # PATH で向こうが先に来る人（Homebrew の Ruby など）が、Vivliostyle を入れたあとに
         # 2 冊目を作ると、ここで Vivliostyle が動いてしまう（改善案.md #87）。
-        shell_cmd = "cd #{Shellwords.escape(project_name)} && vivlio-starter doctor --fix"
+        shell_cmd = "cd #{Shellwords.escape(project_name)} && vivlio-starter doctor --fix --quiet"
         log_debug("実行: #{shell_cmd}")
 
         # system の呼び出しを cmd 経由にすることでテスト時のスタブが有効になる

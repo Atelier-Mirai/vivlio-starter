@@ -176,7 +176,7 @@ module VivlioStarter
         if is_macos
           clt_ok = system('xcode-select -p >/dev/null 2>&1')
           if clt_ok
-            Common.log_always('✅ Xcode Command Line Tools: OK')
+            report_ok('✅ Xcode Command Line Tools: OK', options)
           else
             Common.log_error('Xcode Command Line Tools: 見つかりません')
             missing << 'xcode-command-line-tools'
@@ -238,7 +238,7 @@ module VivlioStarter
                end
 
           if ok
-            Common.log_always("✅ #{label}: OK")
+            report_ok("✅ #{label}: OK", options)
           elsif OCR_OPTIONAL_TOOLS.include?(label) && !plugin_installed
             # Enhanced Mode 専用ツールはプラグイン未導入の利用者にとってノイズのため
             # エラーにせず、後段でまとめて 🟡 注記を出す（spec §5.1）
@@ -262,14 +262,14 @@ module VivlioStarter
         # 壊れ/不在は --fix(macOS) で復旧を試み、それ以外は 🟡 案内（ハードエラーにしない）。
         # command_runnable? を使うのは、半壊ラッパー（在るのに exit 126）まで見抜くため。
         inkscape_ok = command_runnable?('inkscape')
-        Common.log_always('✅ inkscape: OK') if inkscape_ok
+        report_ok('✅ inkscape: OK', options) if inkscape_ok
 
         # kindlepreviewer（Kindle Previewer 3 / 4）は targets: kindle 専用の任意ツール。
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
         # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
         kindle_previewer_present = kindlepreviewer_functional?
         if kindle_previewer_present
-          Common.log_always("✅ kindlepreviewer (#{kindle_previewer_label}): OK")
+          report_ok("✅ kindlepreviewer (#{kindle_previewer_label}): OK", options)
           # 「在るが古い」「在るが動かない」は ✅ の後に注記する。不足ではないので
           # missing には積まず、ビルドも止めない。
           report_kindle_previewer_outdated if kindle_previewer_outdated?
@@ -278,7 +278,7 @@ module VivlioStarter
 
         if is_macos
           if ssl_certificate_configured?
-            Common.log_always('✅ Google Fonts 用 SSL 証明書: OK')
+            report_ok('✅ Google Fonts 用 SSL 証明書: OK', options)
           else
             Common.log_error('Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
             missing << 'ssl-certificates'
@@ -332,7 +332,9 @@ module VivlioStarter
         end
 
         if missing.empty?
-          Common.log_result('すべての必要ツールが見つかりました', status: :success)
+          # --quiet（vs new から）は個々の ✅ を出していないので、揃っていることを 1 行で言う
+          Common.log_result(options[:quiet] ? '執筆に使うツールは揃っています' : 'すべての必要ツールが見つかりました',
+                            status: :success)
           return true
         end
 
@@ -733,7 +735,7 @@ module VivlioStarter
         missing_dirs.each  { Common.log_warn("設定ディレクトリが見つかりません: config/#{it}/") }
 
         if broken.empty? && missing_files.empty? && missing_dirs.empty?
-          Common.log_always('✅ config/ 設定ファイル: OK')
+          report_ok('✅ config/ 設定ファイル: OK', options)
           return
         end
 
@@ -1199,6 +1201,13 @@ module VivlioStarter
             'Vivliostyle の Chrome が不完全です（ビルド中断などで破損）。`vs doctor --fix` で修復できます。'
           )
         end
+      end
+
+      # 揃っているツールの ✅ 行。--quiet では出さない——vs new の最後の診断で 25 行の ✅ が
+      # 並び、作ったばかりの著者が読む必要の無い行で画面が埋まっていた（改善案.md #87）。
+      # 🔴・🟡 と最後の結果は --quiet でも出す。
+      def report_ok(message, options)
+        Common.log_always(message) unless options[:quiet]
       end
 
       # Vivliostyle CLI は 3.0.0 から、`vivliostyle` の別名として `vs` も入れる（package.json の
