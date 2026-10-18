@@ -6,8 +6,8 @@
 # - rbenv と ruby-build を導入し、指定した Ruby をインストール（既定: 最新の安定版）
 # - グローバルに切り替え、bundler をインストール
 # - ~/.zprofile に Homebrew と rbenv の設定を書き込む（同じ設定があれば足さない）
+# - 尋ねること（Homebrew・~/.zprofile・プレビューの操作の許可）は最初にまとめる
 # - Vivlio Starter（gem）を入れ、執筆に使うツール一式を vivlio-starter doctor --fix で入れる
-# - PDF を開くときに使うプレビューの操作を、ここで許可してもらう
 #
 # 使い方（Usage）:
 #   bin/install.zsh                      # 対話モード、最新安定版を導入
@@ -91,12 +91,15 @@ green() {
 # （改善案.md #87。何も入っていない Mac で確かめた）。
 ZPROFILE="${ZDOTDIR:-$HOME}/.zprofile"
 
-# Homebrew の置き場所は Apple シリコンと Intel で違う
+# Homebrew の置き場所は Apple シリコンと Intel で違う。まだ入っていないときは CPU の種類で決める
+# （~/.zprofile に書くかどうかを、Homebrew を入れる前に尋ねるため）
 brew_bin() {
   if [[ -x /opt/homebrew/bin/brew ]]; then
     print -r -- /opt/homebrew/bin/brew
-  else
+  elif [[ -x /usr/local/bin/brew || "$(uname -m)" != "arm64" ]]; then
     print -r -- /usr/local/bin/brew
+  else
+    print -r -- /opt/homebrew/bin/brew
   fi
 }
 
@@ -117,6 +120,10 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   is_macos=false
 fi
 
+echo "📚 Vivlio Starter を導入します（Homebrew・Ruby・Vivlio Starter・執筆に使うツール）。"
+echo "   15 分ほどかかります。最初にいくつか確かめます。"
+echo ""
+
 # --- Phase: Xcode コマンドラインツール ---
 if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
   echo "⛏️  Xcode コマンドラインツールを確認しています…"
@@ -135,16 +142,61 @@ if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
   fi
 fi
 
+# --- Phase: はじめの確認 ---
+# 尋ねることは最初にまとめる。導入は 15 分ほどかかり、途中や最後に尋ねると、席を外した著者が
+# 確認を見逃したり、戻ってきてから続きの導入が始まったりする（改善案.md #87・ユーザーの指摘）。
+install_homebrew=false
+if $is_macos && ! command -v brew >/dev/null 2>&1; then
+  if confirm "Homebrew が見つかりません。インストールしますか？"; then
+    install_homebrew=true
+  else
+    echo "このスクリプトは macOS では Homebrew を前提とします。終了します。" >&2
+    exit 1
+  fi
+fi
+
+missing_lines=()
+zprofile_has 'brew shellenv' || missing_lines+=("$(shell_setup_lines | sed -n 1p)")
+zprofile_has 'rbenv init'    || missing_lines+=("$(shell_setup_lines | sed -n 2p)")
+write_zprofile=false
+if (( ${#missing_lines} > 0 )) && confirm "新しいターミナルで Ruby を使えるよう、~/.zprofile に設定を書き込みますか？"; then
+  write_zprofile=true
+fi
+
+# ビルドのあと、前の PDF を閉じて新しい PDF を決まった位置に開くのに、プレビューを操作する。
+# 初めてのときは macOS が許可を尋ねるので、著者が画面の前にいる今ここで尋ねておく。
+# 初めてのビルドの最後に尋ねると、席を外していれば 60 秒待ってしまう。
+# 端末が無いとき（CI など）は確認に答えられないので尋ねない。
+if $is_macos && [[ -t 0 ]]; then
+  echo "🖨  PDF を開くときに使う「プレビュー」の操作を確かめます。"
+  print -rn -- "   macOS の確認が出たら"; green "「許可」"; print -r -- "を押してください。"
+  preview_was_running=false
+  pgrep -xq Preview && preview_was_running=true
+  if osascript -e 'tell application "Preview" to count windows' >/dev/null 2>&1; then
+    echo "✅ プレビューの操作が許可されました"
+  else
+    echo "許可しなくても PDF は開きます。あとから許可するには:"
+    echo "  システム設定 → プライバシーとセキュリティ → オートメーション"
+    echo "  → お使いのターミナル（またはエディタ）→「プレビュー」をオン"
+  fi
+  # 確かめるために起動したプレビューは閉じる（もとから開いていたなら、そのままにする）
+  $preview_was_running || osascript -e 'tell application "Preview" to quit' >/dev/null 2>&1 || true
+fi
+
+echo ""
+if $install_homebrew; then
+  echo "続けて、Homebrew のインストーラがパスワード（Mac にログインするときのもの）と RETURN（Enter）を尋ねます。"
+  echo "それが済めば、終わるまで席を外して構いません。"
+else
+  echo "確認は以上です。終わるまで席を外して構いません。"
+fi
+echo ""
+
 # --- Phase: Homebrew・rbenv ---
 if $is_macos; then
   echo "🍺 Homebrew を確認しています…"
-  if ! command -v brew >/dev/null 2>&1; then
-    if confirm "Homebrew が見つかりません。インストールしますか？"; then
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    else
-      echo "このスクリプトは macOS では Homebrew を前提とします。終了します。" >&2
-      exit 1
-    fi
+  if $install_homebrew; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
   # このシェルで brew を使えるようにする（Apple シリコン・Intel のどちらでも）
   eval "$("$(brew_bin)" shellenv)"
@@ -222,15 +274,12 @@ if [[ "$INSTALL_BUNDLER" == "true" ]]; then
 fi
 
 # --- Phase: シェルの設定 ---
-# この後の gem やツールの導入が途中で失敗しても、新しいターミナルで Ruby を使えるよう、先に書く
+# 書くかどうかは最初に尋ねてある。この後の gem やツールの導入が途中で失敗しても、
+# 新しいターミナルで Ruby を使えるよう、先に書く
 echo "🐚 シェルの設定を確認しています…"
-missing_lines=()
-zprofile_has 'brew shellenv' || missing_lines+=("$(shell_setup_lines | sed -n 1p)")
-zprofile_has 'rbenv init'    || missing_lines+=("$(shell_setup_lines | sed -n 2p)")
-
 if (( ${#missing_lines} == 0 )); then
   echo "~/.zprofile は設定済みです。"
-elif confirm "新しいターミナルでこの Ruby を使うため、~/.zprofile に設定を書き込みますか？"; then
+elif $write_zprofile; then
   print -r -l -- "" "# Homebrew と rbenv（Vivlio Starter の install.zsh が追記）" "${missing_lines[@]}" >> "$ZPROFILE"
   echo "~/.zprofile に書き込みました:"
   print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
@@ -257,28 +306,6 @@ vivlio-starter --version
 echo "🧰 執筆に使うツール（Node・Vivliostyle・PDF や画像の処理など）をインストールしています…"
 echo "   数分かかります。"
 vivlio-starter doctor --fix --yes || echo "🟡 ツールの導入が途中で止まりました。新しいターミナルで vs doctor --fix を実行してください。"
-
-# --- Phase: プレビューの操作の許可 ---
-# ビルドのあと、前の PDF を閉じて新しい PDF を決まった位置に開くのに、プレビューを操作する。
-# 初めてのときは macOS が許可を尋ねるので、著者が画面の前にいる今ここで尋ねておく。
-# 初めてのビルドの最後に尋ねると、席を外していれば 60 秒待ってしまう（改善案.md #87）。
-# 端末が無いとき（CI など）は確認に答えられないので尋ねない。
-if $is_macos && [[ -t 0 ]]; then
-  echo ""
-  echo "🖨  PDF を開くときに使う「プレビュー」の操作を確かめます。"
-  print -rn -- "   macOS の確認が出たら"; green "「許可」"; print -r -- "を押してください。"
-  preview_was_running=false
-  pgrep -xq Preview && preview_was_running=true
-  if osascript -e 'tell application "Preview" to count windows' >/dev/null 2>&1; then
-    echo "✅ プレビューの操作が許可されました"
-  else
-    echo "許可しなくても PDF は開きます。あとから許可するには:"
-    echo "  システム設定 → プライバシーとセキュリティ → オートメーション"
-    echo "  → お使いのターミナル（またはエディタ）→「プレビュー」をオン"
-  fi
-  # 確かめるために起動したプレビューは閉じる（もとから開いていたなら、そのままにする）
-  $preview_was_running || osascript -e 'tell application "Preview" to quit' >/dev/null 2>&1 || true
-fi
 
 echo ""
 echo "✅ 準備ができました。新しいターミナルのウィンドウを開いて、次を打ってください:"
