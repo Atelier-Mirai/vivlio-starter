@@ -423,11 +423,9 @@ welcome_lines=(
   ""
   "vs new mybook で新しい本を書き始めることができます。"
   "vs --help でコマンドの使い方を確認できます。"
+  ""
+  "素敵な一冊をどうぞ執筆なさってください。"
 )
-if $install_kindle; then
-  welcome_lines+=("Kindle 用にも作るには、config/book.yml の targets に kindle を足します。")
-fi
-welcome_lines+=("" "素敵な一冊をどうぞ執筆なさってください。")
 echo ""
 welcome_box "${welcome_lines[@]}"
 echo ""
