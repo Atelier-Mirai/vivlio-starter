@@ -781,14 +781,16 @@ module VivlioStarter
         def suggest_automation_permission
           Common.log_box(
             '💡 プレビューの操作',
-            ['古いウィンドウを閉じて並べるには、許可が要ります。',
+            ['ビルドのあと、前に開いていた PDF のウィンドウを閉じて、',
+             '新しい PDF を決まった位置に開きます。',
+             'そのためにプレビューを操作するので、許可が要ります。',
              'macOS の確認が出たら「許可」を押してください。',
              '',
              '一度断った場合:',
              '  システム設定 → プライバシーとセキュリティ → オートメーション',
              '  → お使いのターミナル（またはエディタ）→「プレビュー」をオン',
              '',
-             'プレビューのウィンドウを vs に触らせない場合:',
+             'プレビューのウィンドウに Vivlio Starter を触れさせない場合:',
              '  config/book.yml の output.pdf_preview.close_existing_windows を false'],
             emphasis: ['「許可」']
           )
