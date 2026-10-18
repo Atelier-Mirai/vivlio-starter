@@ -260,6 +260,7 @@
 
 ### Fixed
 
+- **導入スクリプトを `bin/install-ruby.zsh` から `bin/install.zsh` に改め、Ruby のあと Vivlio Starter とツール一式まで入れるようにした**（改善案 #87）。以前は Ruby と gem を入れ終えても、`vs new` でまたツールの導入（7 分ほど）が始まった。gem を入れたあと `vivlio-starter doctor --fix --yes` でツール一式を入れ、`vs new` は確かめるだけで済む。最後に、PDF を開くときに使うプレビューの操作の許可をここで尋ねる（初めてのビルドの最後に尋ねると、席を外していれば 60 秒待ってしまう）。確かめのために起動したプレビューは閉じる。`--gem <ファイル>` で、rubygems でなく手元の gem を入れられる（公開前の確かめ用）。`~/.zprofile` の設定は、gem やツールの導入が途中で失敗しても Ruby を使えるよう、その前に書く。
 - **何も入っていない Mac で、`vs new` に続けて `vs build` を打つと、Vivliostyle CLI の `ERROR Error: No input is set.` で落ちていたのを直した**（改善案 #87）。Vivliostyle CLI は 3.0.0（2021 年 2 月）から、`vivliostyle` の別名として `vs` も入れる（package.json の bin にだけあり、説明書きには無い）。Vivlio Starter の `vs` と同じ名前で、PATH の順番では rbenv の `vs` が先でも、ターミナルを開いた後に両方ができると、zsh が Vivliostyle の `vs` の場所を覚えてしまうことがあった。`vs doctor --fix` は Vivliostyle CLI を入れた直後と診断の段で、`vs upgrade` は更新後の再診断で、リンク先が Vivliostyle CLI の `vs` だけを外し、そのことを知らせる。`--fix` でない `vs doctor` は 🟡 で知らせる。外せば zsh は PATH を探し直すので、開いているターミナルもそのまま使える。README・51 章・93 章に、`No input is set` と出たら `vivlio-starter doctor --fix` を打つよう書いた。
   - `vs new` が最後に呼ぶ doctor も、`vs doctor --fix` でなく `vivlio-starter doctor --fix` で呼ぶ。PATH で Vivliostyle の `vs` が先に来る人（Homebrew の Ruby など）が 2 冊目を作ると、ここで Vivliostyle が動いていた。
   - `vs doctor --quiet` を足した。揃っているツールの ✅ を並べず、足りないものと結果だけを出す（揃っていれば「✅ 執筆に使うツールは揃っています」の 1 行）。`vs new` の最後の診断はこれで呼ぶ。作ったばかりの著者が読む必要の無い 25 行の ✅ で画面が埋まっていた。

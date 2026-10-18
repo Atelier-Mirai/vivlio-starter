@@ -148,7 +148,7 @@ ruby -v
 バージョンが表示されないときや、`ruby 2.6.10` のような古いバージョン（macOS に付属の Ruby）が表示されたときは、次の 1 行で必要な環境を導入します。Homebrew（Xcode コマンドラインツールも一緒に入ります）・rbenv・Ruby 本体・bundler が順にセットアップされます。
 
 ```bash
-zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
 ```
 
 途中で、Mac にログインするときのパスワードと、`Enter` キーを求められます。Homebrew の導入に必要です。

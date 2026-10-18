@@ -61,10 +61,10 @@ Linux / Windows では**未検証**です。本体は Ruby と Node で書かれ
 Ruby が未導入の場合（`ruby -v` が 3.4 より古い版、たとえば macOS 付属の 2.6 を表示する場合も）は、次の 1 行で Homebrew・rbenv・Ruby をまとめて導入できます。確認しながら進み、最後に `~/.zprofile` へシェルの設定を書き込みます。
 
 ```bash
-zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
 ```
 
-確認を省くときは、末尾に ` install-ruby -y` を足します。終わったら、新しいターミナルを開いてください。
+確認を省くときは、末尾に ` install -y` を足します。終わったら、新しいターミナルを開いてください。
 
 ### インストール
 

@@ -1,35 +1,40 @@
 #!/usr/bin/env zsh
 #
-# install-ruby.zsh — macOS向け Ruby セットアップ（Homebrew + rbenv）
+# install.zsh — macOS 向け Vivlio Starter の導入（Homebrew → Ruby → Vivlio Starter → ツール一式）
 #
-# - Homebrew が未導入なら確認のうえインストール
-# - rbenv と ruby-build を導入
-# - 指定した Ruby をインストール（既定: 最新の安定版）
+# - Homebrew が未導入なら確認のうえインストール（Xcode コマンドラインツールも一緒に入る）
+# - rbenv と ruby-build を導入し、指定した Ruby をインストール（既定: 最新の安定版）
 # - グローバルに切り替え、bundler をインストール
 # - ~/.zprofile に Homebrew と rbenv の設定を書き込む（同じ設定があれば足さない）
+# - Vivlio Starter（gem）を入れ、執筆に使うツール一式を vivlio-starter doctor --fix で入れる
+# - PDF を開くときに使うプレビューの操作を、ここで許可してもらう
 #
 # 使い方（Usage）:
-#   bin/install-ruby.zsh                 # 対話モード、最新安定版を導入
-#   bin/install-ruby.zsh -y              # 非対話モード（自動確認）
-#   bin/install-ruby.zsh -v 4.0.7        # 特定の Ruby バージョンを導入
-#   bin/install-ruby.zsh -y -v latest    # 全自動（最新安定版）
+#   bin/install.zsh                      # 対話モード、最新安定版を導入
+#   bin/install.zsh -y                   # 非対話モード（自動確認）
+#   bin/install.zsh -v 4.0.7             # 特定の Ruby バージョンを導入
+#   bin/install.zsh --gem ./vivlio-starter.gem   # 手元の gem を入れる（公開前の確かめ用）
 #
 # gem を入れる前（Ruby が無い Mac）は GitHub から取って走らせる。`curl … | zsh` に
 # しないのは、確認の [y/N] を端末から読めなくなるため（README・11 章・93 章と同じ形）:
-#   zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install-ruby.zsh)"
-#   zsh -c "$(curl -fsSL …/install-ruby.zsh)" install-ruby -y   # オプションは末尾に
+#   zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
+#   zsh -c "$(curl -fsSL …/install.zsh)" install -y   # オプションは末尾に
+#
+# 以前の名前は install-ruby.zsh。Ruby だけでなく Vivlio Starter とツールまで入れるようにした
+# ので改めた（改善案.md #87。gem を入れたあと vs new でまたツールの導入が始まり、待たされた）。
 #
 set -euo pipefail
 
 # 自動解決できなかったときに入れる版。「最新版」ではなく
 # **Vivlio Starter が実際に試験している版**を置く（Rakefile の
-# SUPPORTED_RUBY_VERSIONS。install_ruby_script_test が一致を見張る）。
+# SUPPORTED_RUBY_VERSIONS。install_script_test が一致を見張る）。
 # ここが外れると、解決に失敗した人だけ未検証の Ruby を掴むことになる。
 FALLBACK_VERSION="4.0.7"
 
 VERSION="latest"
 YES="false"
 INSTALL_BUNDLER="true"
+GEM_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -37,6 +42,8 @@ while [[ $# -gt 0 ]]; do
       YES="true"; shift ;;
     -v|--version)
       VERSION="${2:-}"; shift 2 ;;
+    --gem)
+      GEM_FILE="${2:-}"; shift 2 ;;
     --no-bundler)
       INSTALL_BUNDLER="false"; shift ;;
     -h|--help)
@@ -44,6 +51,7 @@ while [[ $# -gt 0 ]]; do
 使い方: $0 [オプション]
   -y, --yes           非対話モードで実行し、確認を自動承認します
   -v, --version VER   インストールする Ruby のバージョン（既定: latest）。'latest' で自動解決
+      --gem FILE      rubygems からでなく、手元の gem ファイルから Vivlio Starter を入れます
       --no-bundler    bundler のインストールをスキップ
   -h, --help          このヘルプを表示
 USAGE
@@ -65,6 +73,15 @@ confirm() {
     [[ "${ans:l}" == "y" ]]
   else
     return 1
+  fi
+}
+
+# 押すもの・打つものだけを緑にする（端末に出すときだけ。vs の枠の案内と同じ決まり）
+green() {
+  if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
+    print -rn -- $'\e[32m'"$1"$'\e[0m'
+  else
+    print -rn -- "$1"
   fi
 }
 
@@ -100,6 +117,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   is_macos=false
 fi
 
+# --- Phase: Xcode コマンドラインツール ---
 if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
   echo "⛏️  Xcode コマンドラインツールを確認しています…"
   if ! command -v brew >/dev/null 2>&1; then
@@ -117,29 +135,19 @@ if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
   fi
 fi
 
+# --- Phase: Homebrew・rbenv ---
 if $is_macos; then
   echo "🍺 Homebrew を確認しています…"
   if ! command -v brew >/dev/null 2>&1; then
     if confirm "Homebrew が見つかりません。インストールしますか？"; then
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      # Add brew to PATH for current session (Apple Silicon or Intel)
-      if [[ -x /opt/homebrew/bin/brew ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-      elif [[ -x /usr/local/bin/brew ]]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-      fi
     else
       echo "このスクリプトは macOS では Homebrew を前提とします。終了します。" >&2
       exit 1
     fi
-  else
-    # Ensure brew env is loaded for this session
-    if [[ -x /opt/homebrew/bin/brew ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [[ -x /usr/local/bin/brew ]]; then
-      eval "$(/usr/local/bin/brew shellenv)"
-    fi
   fi
+  # このシェルで brew を使えるようにする（Apple シリコン・Intel のどちらでも）
+  eval "$("$(brew_bin)" shellenv)"
 
   echo "📦 rbenv と ruby-build をインストールしています…"
   brew update
@@ -161,11 +169,9 @@ if ! command -v rbenv >/dev/null 2>&1; then
   exit 1
 fi
 
-# Initialize rbenv for current shell
-if command -v rbenv >/dev/null 2>&1; then
-  eval "$(rbenv init - zsh)"
-fi
+eval "$(rbenv init - zsh)"
 
+# --- Phase: Ruby ---
 # 'latest' が指定された場合は最新安定版を解決
 # - プレビュー版（alpha/beta/preview/rc/dev）を除外
 # - 正式リリース番号（X.Y.Z）のみを対象とする
@@ -215,6 +221,8 @@ if [[ "$INSTALL_BUNDLER" == "true" ]]; then
   gem install bundler
 fi
 
+# --- Phase: シェルの設定 ---
+# この後の gem やツールの導入が途中で失敗しても、新しいターミナルで Ruby を使えるよう、先に書く
 echo "🐚 シェルの設定を確認しています…"
 missing_lines=()
 zprofile_has 'brew shellenv' || missing_lines+=("$(shell_setup_lines | sed -n 1p)")
@@ -223,7 +231,7 @@ zprofile_has 'rbenv init'    || missing_lines+=("$(shell_setup_lines | sed -n 2p
 if (( ${#missing_lines} == 0 )); then
   echo "~/.zprofile は設定済みです。"
 elif confirm "新しいターミナルでこの Ruby を使うため、~/.zprofile に設定を書き込みますか？"; then
-  print -r -l -- "" "# Homebrew と rbenv（Vivlio Starter の install-ruby.zsh が追記）" "${missing_lines[@]}" >> "$ZPROFILE"
+  print -r -l -- "" "# Homebrew と rbenv（Vivlio Starter の install.zsh が追記）" "${missing_lines[@]}" >> "$ZPROFILE"
   echo "~/.zprofile に書き込みました:"
   print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
 else
@@ -231,4 +239,48 @@ else
   print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
 fi
 
-echo "✅ 完了しました。新しいターミナルを開くと、Ruby ${VERSION} が使えます（このターミナルで続けるなら: exec zsh -l）"
+# --- Phase: Vivlio Starter ---
+echo "📚 Vivlio Starter をインストールしています…"
+if [[ -n "$GEM_FILE" ]]; then
+  gem install "$GEM_FILE"
+else
+  gem install vivlio-starter
+fi
+rbenv rehash
+
+echo "🔎 バージョン確認: vs --version"
+# `vs` でなく正式名で呼ぶ。Vivliostyle CLI も `vs` という別名を入れるため（改善案.md #87）
+vivlio-starter --version
+
+# --- Phase: 執筆に使うツール ---
+# vs new が最後に呼ぶ doctor と同じもの。ここで入れておけば、vs new は確かめるだけで済む
+echo "🧰 執筆に使うツール（Node・Vivliostyle・PDF や画像の処理など）をインストールしています…"
+echo "   数分かかります。"
+vivlio-starter doctor --fix --yes || echo "🟡 ツールの導入が途中で止まりました。新しいターミナルで vs doctor --fix を実行してください。"
+
+# --- Phase: プレビューの操作の許可 ---
+# ビルドのあと、前の PDF を閉じて新しい PDF を決まった位置に開くのに、プレビューを操作する。
+# 初めてのときは macOS が許可を尋ねるので、著者が画面の前にいる今ここで尋ねておく。
+# 初めてのビルドの最後に尋ねると、席を外していれば 60 秒待ってしまう（改善案.md #87）。
+# 端末が無いとき（CI など）は確認に答えられないので尋ねない。
+if $is_macos && [[ -t 0 ]]; then
+  echo ""
+  echo "🖨  PDF を開くときに使う「プレビュー」の操作を確かめます。"
+  print -rn -- "   macOS の確認が出たら"; green "「許可」"; print -r -- "を押してください。"
+  preview_was_running=false
+  pgrep -xq Preview && preview_was_running=true
+  if osascript -e 'tell application "Preview" to count windows' >/dev/null 2>&1; then
+    echo "✅ プレビューの操作が許可されました"
+  else
+    echo "許可しなくても PDF は開きます。あとから許可するには:"
+    echo "  システム設定 → プライバシーとセキュリティ → オートメーション"
+    echo "  → お使いのターミナル（またはエディタ）→「プレビュー」をオン"
+  fi
+  # 確かめるために起動したプレビューは閉じる（もとから開いていたなら、そのままにする）
+  $preview_was_running || osascript -e 'tell application "Preview" to quit' >/dev/null 2>&1 || true
+fi
+
+echo ""
+echo "✅ 準備ができました。新しいターミナルのウィンドウを開いて、次を打ってください:"
+print -rn -- "  "; green "vs --version"; print -r -- ""
+print -rn -- "  "; green "vs new mybook"; print -r -- ""
