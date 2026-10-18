@@ -475,6 +475,46 @@ module VivlioStarter
         emit(msg)
       end
 
+      # 1 度読めばよい大事な案内を、黄色の枠で囲んで常に表示する（Netlify の完了表示の形）。
+      # 1 行に詰めると端末で折り返して読みにくかった（改善案.md #87 のプレビューの許可の案内）。
+      # emphasis に渡した語（「許可」のように、押すもの・打つもの）だけを緑にする。
+      # 色はパイプ・NO_COLOR・TERM=dumb では付けない。枠は色が無くても形で伝わる。
+      # @param title [String] 枠の上辺に載せる見出し
+      # @param lines [Array<String>] 中身（空文字列で空行）
+      # @param emphasis [Array<String>] 緑にする語
+      def log_box(title, lines, emphasis: [], io: $stdout, env: ENV)
+        color = color_enabled?(io, env)
+        width = [lines.map { display_width(it) }.max.to_i, display_width(title) + 2].max
+        frame = ->(text) { paint(text, :yellow, enabled: color) }
+
+        emit(frame.("╭─ #{title} #{'─' * (width - 1 - display_width(title))}╮"))
+        lines.each do |line|
+          body = emphasis.reduce(line) { |text, word| text.gsub(word) { paint(word, :green, enabled: color) } }
+          emit("#{frame.('│')} #{body}#{' ' * (width - display_width(line))} #{frame.('│')}")
+        end
+        emit(frame.("╰#{'─' * (width + 2)}╯"))
+      end
+
+      # 端末で占める桁数。全角（漢字・仮名・全角記号）と絵文字を 2 桁、それ以外を 1 桁と数える。
+      # 矢印や罫線のような「幅があいまいな字」は、macOS の端末の既定どおり 1 桁とする。
+      def display_width(text)
+        text.each_char.sum { WIDE_CHAR.match?(it) ? 2 : 1 }
+      end
+
+      WIDE_CHAR = /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꀀ-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦\u{1F300}-\u{1F64F}\u{1F900}-\u{1F9FF}\u{20000}-\u{3FFFD}]/
+
+      ANSI_COLORS = { yellow: 33, green: 32 }.freeze
+
+      def paint(text, color, enabled:)
+        enabled ? "\e[#{ANSI_COLORS.fetch(color)}m#{text}\e[0m" : text
+      end
+
+      # 色を付けてよい環境か。NO_COLOR（no-color.org の事実上の標準）と TERM=dumb を尊重し、
+      # パイプ・リダイレクト先には付けない（UpgradeCommands#diff_color_enabled? と同じ決まり）
+      def color_enabled?(io = $stdout, env = ENV)
+        io.tty? && env.fetch('NO_COLOR', '').to_s.empty? && env['TERM'] != 'dumb'
+      end
+
       # 取り返しのつかない操作の前に確認を取る（❓）。ログレベルに関わらず常に表示する。
       # 各コマンドが独自に print していると絵文字も表記も揃わないため、ここに集約する。
       # @param message [String] 「〜しますか？」までの質問文

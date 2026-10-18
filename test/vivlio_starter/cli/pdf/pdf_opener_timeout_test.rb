@@ -95,7 +95,8 @@ module VivlioStarter
                     opener.stub(:run_preview_command, run) do
                       Common.stub(:log_warn, ->(msg, detail: nil) { outcome[:warnings] << [msg, detail] }) do
                         Common.stub(:log_result, ->(*) { outcome[:results] << :called }) do
-                          Common.stub(:log_always, ->(msg) { outcome[:hints] << msg }) do
+                          box = ->(title, lines, **) { outcome[:hints] << [title, *lines].join("\n") }
+                          Common.stub(:log_box, box) do
                             capture_io { opener.call }
                           end
                         end

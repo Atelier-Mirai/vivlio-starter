@@ -775,12 +775,23 @@ module VivlioStarter
         # 閉じる・並べるに要る macOS の許可の案内。一度断った人は、確認がもう出ないので
         # システム設定の場所を添える。ほかの PDF まで閉じられたくない人や、許可を断って
         # この案内を止めたい人のために、ウィンドウに触らせない設定も添える。
+        # 1 行に詰めると端末で折り返して読みにくかったので、枠で囲む（ユーザーの提案）。
+        # オートメーションの設定は「操作する側のアプリ（ターミナルや Zed など）」の下に
+        # 「プレビュー」が並ぶので、間の 1 段も書く。
         def suggest_automation_permission
-          Common.log_always('💡 古いウィンドウを閉じて並べるには、macOS が「プレビュー」の制御を尋ねたときに「許可」を押してください')
-          Common.log_always("#{Common::DETAIL_INDENT}一度断った場合: システム設定 → プライバシーとセキュリティ → オートメーション で、" \
-                            '使っているターミナルの「プレビュー」をオンにします')
-          Common.log_always("#{Common::DETAIL_INDENT}プレビューのウィンドウを vs に触らせない場合: config/book.yml の " \
-                            'output.pdf_preview.close_existing_windows を false にします（PDF は開きます）')
+          Common.log_box(
+            '💡 プレビューの操作',
+            ['古いウィンドウを閉じて並べるには、許可が要ります。',
+             'macOS の確認が出たら「許可」を押してください。',
+             '',
+             '一度断った場合:',
+             '  システム設定 → プライバシーとセキュリティ → オートメーション',
+             '  → お使いのターミナル（またはエディタ）→「プレビュー」をオン',
+             '',
+             'プレビューのウィンドウを vs に触らせない場合:',
+             '  config/book.yml の output.pdf_preview.close_existing_windows を false'],
+            emphasis: ['「許可」']
+          )
         end
 
         # Preview への指示を 1 つ、timeout 秒（既定 PREVIEW_TIMEOUT_SEC）を上限に実行する。
