@@ -3,6 +3,7 @@
 # `vs new` の Samovar エントリ。処理本体は `CLI::NewCommands` に集約する。
 
 require_relative '../new'
+require_relative '../doctor'
 require_relative 'vs_command'
 
 module VivlioStarter
@@ -33,7 +34,14 @@ module VivlioStarter
         end
 
         # doctor 実行を委譲するメソッド。テスト時はこのメソッドをスタブ化する。
-        def system(cmd) = Kernel.system(cmd)
+        #
+        # 別プロセスの `vs doctor --fix` でなく、このプロセスの中で呼ぶ。`vs` の名前は Vivliostyle
+        # CLI の別名とぶつかりうるうえ、揃っているツールを並べない quiet は、vs new のための
+        # 指定なのでコマンドのオプションとして外に見せない（改善案.md #87）。
+        # @return [Boolean] ツールが揃ったか
+        def run_doctor(project_dir)
+          Dir.chdir(project_dir) { DoctorCommands.execute_doctor(options: { fix: true, quiet: true }) }
+        end
 
         private
 

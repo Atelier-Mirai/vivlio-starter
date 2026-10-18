@@ -19,7 +19,7 @@
 #
 # テスト環境:
 #   - 一時ディレクトリで副作用を隔離
-#   - system() をスタブ化して doctor 実行を差し替え
+#   - run_doctor をスタブ化して doctor 実行を差し替え
 # ================================================================
 
 require 'test_helper'
@@ -57,7 +57,7 @@ module VivlioStarter
       # --yes モードで全ファイルが展開されデフォルト値が book.yml に反映されることを確認
       def test_should_expand_scaffold_with_default_values_in_yes_mode
         within_temp_dir do
-          stub_system_call do
+          stub_doctor_run do
             capture_io { run_new_command(['testbook', '--yes']) }
           end
 
@@ -76,7 +76,7 @@ module VivlioStarter
       # {{PROJECT_NAME}} がコマンド引数の値で置換されることを確認
       def test_should_replace_project_name_placeholder_in_book_yml
         within_temp_dir do
-          stub_system_call do
+          stub_doctor_run do
             capture_io { run_new_command(['myproject', '--yes']) }
           end
 
@@ -105,8 +105,8 @@ module VivlioStarter
       # vs doctor --fix 失敗時に警告を出力しファイル展開は成功していることを確認
       def test_should_warn_when_doctor_fails_but_keep_files
         within_temp_dir do
-          # system() が false を返す（doctor 失敗）
-          stub_system_call(success: false) do
+          # run_doctor が false を返す（ツールが揃わなかった）
+          stub_doctor_run(success: false) do
             out, _err = capture_io { run_new_command(['doctorfail', '--yes']) }
 
             assert Dir.exist?('doctorfail'), 'プロジェクトディレクトリは残るべき'
@@ -142,7 +142,7 @@ module VivlioStarter
           # 書籍名(")、副題(\\)、著者名(改行混入ペースト事故想定)、発行者(タブ)
           input = StringIO.new(%(my"book\n\\\\series\n山田\t太郎\nmy\rpublisher\ny\n))
 
-          stub_system_call do
+          stub_doctor_run do
             $stdin = input
             capture_io { run_new_command(['escbook']) }
           ensure
@@ -173,14 +173,14 @@ module VivlioStarter
       # 対話モードで、実際に表示されるプロンプト文言と確認サマリーを検証する。
       # プロンプトの例文・ヒント（著者＝原稿を書いた人／発行者＝世に出す主体）や、
       # 入力値が「著者」「発行者」へ正しく振り分けられることの回帰防止が目的。
-      # doctor 実行は system スタブで差し替えるため brew install や実ビルドは走らない。
+      # doctor 実行は run_doctor の差し替えで止めるため brew install や実ビルドは走らない。
       def test_should_display_author_publisher_prompts_and_confirmation_summary
         within_temp_dir do
           # 書籍名 → 副題 → 著者 → 発行者 → 確認(y) の順で入力を流し込む
           input = StringIO.new("我輩は猫である\n吾輩シリーズ\n夏目 漱石\n吾輩社\ny\n")
 
           out = nil
-          stub_system_call do
+          stub_doctor_run do
             $stdin = input
             out, = capture_io { run_new_command(['promptbook']) }
           ensure
@@ -200,13 +200,13 @@ module VivlioStarter
         end
       end
 
-      # doctor は正式名で呼ぶ。Vivliostyle CLI も `vs` という別名を入れるので、PATH の順番しだいで
-      # `vs doctor --fix` が Vivliostyle に渡ってしまう（改善案.md #87）
-      def test_should_run_doctor_by_its_unambiguous_name
+      # doctor は作ったプロジェクトの中で、このプロセスから呼ぶ。別プロセスの `vs doctor` だと、
+      # `vs` の名前が Vivliostyle CLI の別名とぶつかりうる（改善案.md #87）
+      def test_should_run_doctor_in_the_new_project
         within_temp_dir do
-          calls = record_system_calls { capture_io { run_new_command(['namebook', '--yes']) } }
+          runs = record_doctor_runs { capture_io { run_new_command(['namebook', '--yes']) } }
 
-          assert_equal ['cd namebook && vivlio-starter doctor --fix --quiet'], calls
+          assert_equal ['namebook'], runs
         end
       end
 
@@ -216,9 +216,9 @@ module VivlioStarter
         within_temp_dir do
           original = ENV.fetch('VS_NO_DOCTOR', nil)
           ENV['VS_NO_DOCTOR'] = '1'
-          calls = record_system_calls { capture_io { run_new_command(['skipbook', '--yes']) } }
+          runs = record_doctor_runs { capture_io { run_new_command(['skipbook', '--yes']) } }
 
-          assert_empty calls
+          assert_empty runs
           assert Dir.exist?('skipbook'), 'プロジェクトは作る'
         ensure
           ENV['VS_NO_DOCTOR'] = original
@@ -229,7 +229,7 @@ module VivlioStarter
       # （book.yml もプレースホルダー書き換え後ではなく雛形原本のハッシュで記録される）
       def test_should_generate_scaffold_lock_with_scaffold_original_hashes
         within_temp_dir do
-          stub_system_call do
+          stub_doctor_run do
             capture_io { run_new_command(['lockbook', '--yes']) }
           end
 
@@ -267,7 +267,7 @@ module VivlioStarter
       # --log=debug でコピー中のファイルパスが出力されることを確認
       def test_should_output_debug_logs_when_log_debug_is_set
         within_temp_dir do
-          stub_system_call do
+          stub_doctor_run do
             out, _err = capture_io { run_new_command(['debugbook', '--yes', '--log', 'debug']) }
 
             assert_match(/\[debug\]/, out, 'デバッグログが出力されるべき')
@@ -289,26 +289,30 @@ module VivlioStarter
         Common.log_level = nil
       end
 
-      # system() をスタブ化して doctor 実行をスキップする
-      # @param success [Boolean] system() の戻り値
-      def stub_system_call(success: true)
-        SamovarCommands::NewCommand.define_method(:system) { |*| success }
-        yield
-      ensure
-        SamovarCommands::NewCommand.remove_method(:system)
+      # run_doctor を差し替えて doctor 実行をスキップする
+      # @param success [Boolean] run_doctor の戻り値（ツールが揃ったか）
+      def stub_doctor_run(success: true, &)
+        replace_run_doctor(->(*) { success }, &)
       end
 
-      # system() を差し替え、渡されたコマンドを集めて返す（doctor は実際には走らない）
-      def record_system_calls
-        calls = []
-        SamovarCommands::NewCommand.define_method(:system) do |cmd|
-          calls << cmd
+      # run_doctor を差し替え、doctor を走らせるはずだったフォルダを集めて返す
+      def record_doctor_runs
+        runs = []
+        replace_run_doctor(lambda { |project_dir|
+          runs << project_dir
           true
-        end
+        }) { yield }
+        runs
+      end
+
+      # NewCommand 自身の run_doctor を差し替え、終わったら元に戻す。
+      # remove_method で消すと、本来の run_doctor ごと無くなり、後のテストが壊れる
+      def replace_run_doctor(body)
+        original = SamovarCommands::NewCommand.instance_method(:run_doctor)
+        SamovarCommands::NewCommand.define_method(:run_doctor, &body)
         yield
-        calls
       ensure
-        SamovarCommands::NewCommand.remove_method(:system)
+        SamovarCommands::NewCommand.define_method(:run_doctor, original)
       end
 
       # 一時ディレクトリで副作用を隔離する

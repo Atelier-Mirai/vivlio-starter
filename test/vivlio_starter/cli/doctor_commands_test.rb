@@ -58,7 +58,7 @@ module VivlioStarter
         end
       end
 
-      # --quiet（vs new の最後の診断）は、揃っているツールの ✅ を並べず、揃っていることを
+      # quiet（vs new の最後の診断が内側から渡す）は、揃っているツールの ✅ を並べず、揃っていることを
       # 1 行で言う（改善案.md #87。25 行の ✅ で画面が埋まっていた）
       def test_doctor_quiet_reports_only_the_summary_when_environment_complete
         lines = []

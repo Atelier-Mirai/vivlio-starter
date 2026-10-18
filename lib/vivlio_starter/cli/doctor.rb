@@ -332,7 +332,7 @@ module VivlioStarter
         end
 
         if missing.empty?
-          # --quiet（vs new から）は個々の ✅ を出していないので、揃っていることを 1 行で言う
+          # quiet（vs new から）は個々の ✅ を出していないので、揃っていることを 1 行で言う
           Common.log_result(options[:quiet] ? '執筆に使うツールは揃っています' : 'すべての必要ツールが見つかりました',
                             status: :success)
           return true
@@ -1203,9 +1203,9 @@ module VivlioStarter
         end
       end
 
-      # 揃っているツールの ✅ 行。--quiet では出さない——vs new の最後の診断で 25 行の ✅ が
-      # 並び、作ったばかりの著者が読む必要の無い行で画面が埋まっていた（改善案.md #87）。
-      # 🔴・🟡 と最後の結果は --quiet でも出す。
+      # 揃っているツールの ✅ 行。quiet（vs new の最後の診断が内側から渡す。コマンドの
+      # オプションには出さない）では出さない——25 行の ✅ が並び、作ったばかりの著者が読む
+      # 必要の無い行で画面が埋まっていた（改善案.md #87）。🔴・🟡 と最後の結果は出す。
       def report_ok(message, options)
         Common.log_always(message) unless options[:quiet]
       end
