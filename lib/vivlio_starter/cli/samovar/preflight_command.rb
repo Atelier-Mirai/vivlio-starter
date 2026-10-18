@@ -27,6 +27,7 @@
 
 require_relative '../build'
 require_relative '../build/pipeline'
+require_relative '../build/kindle_previewer_notice'
 require_relative '../index'
 require_relative '../pre_process'
 require_relative '../token_resolver'
@@ -121,6 +122,7 @@ module VivlioStarter
 
           print_chapter_summary(entries)
           print_preflight_summary
+          Build::KindlePreviewerNotice.report
 
           # 終了コードは 🔴 の有無だけで決める。画面に出た絵文字と CI の成否が一致し、
           # 「❗ 警告 N 件（ビルドは可能です）」と言いながら 1 を返す食い違いが起きない。

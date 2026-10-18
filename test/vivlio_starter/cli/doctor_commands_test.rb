@@ -439,20 +439,16 @@ module VivlioStarter
         end
       end
 
-      # macOS で、本が Kindle を選んでいないときは、Kindle にも出すときの入れ方だけを 💡 で示す。
-      # PDF だけの人に 490MB のアプリは入れない（改善案.md #87）
-      def test_should_hint_how_to_add_kindle_when_not_requested_on_macos
-        lines = []
-        Common.stub :log_always, ->(msg) { lines << msg } do
-          Common.stub :log_warn, ->(*, **) { flunk('Kindle を選んでいない人に 🟡 を出さない') } do
-            DoctorCommands.report_kindle_previewer_optional(true)
+      # 本が Kindle を選んでいないときは、Kindle の話をしない（vs new の診断にも出ない）。
+      # 選んだ著者には、vs build・vs preflight の終わりに入れ方を知らせる（改善案.md #87）
+      def test_should_stay_silent_about_kindle_when_not_requested
+        [true, false].each do |is_macos|
+          Common.stub :log_always, ->(msg) { flunk("Kindle を選んでいない人に言わない: #{msg}") } do
+            Common.stub :log_warn, ->(msg, **) { flunk("Kindle を選んでいない人に言わない: #{msg}") } do
+              DoctorCommands.report_kindle_previewer_optional(is_macos)
+            end
           end
         end
-
-        text = lines.join("\n")
-        assert lines.first.start_with?('💡')
-        assert_includes text, 'output.targets に kindle'
-        assert_includes text, 'vs doctor --fix'
       end
 
       # macOS で、本が Kindle を選んでいるのに入っていなければ、--fix で入れられると 🟡 で示す
@@ -515,15 +511,15 @@ module VivlioStarter
         refute_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
       end
 
-      # macOS 以外では手動セットアップ（KDP からの導入）を案内する
+      # macOS 以外で Kindle を選んでいれば、手動セットアップ（KDP からの導入）を案内する
       def test_report_kindle_previewer_optional_hints_manual_on_non_macos
-        lines = []
-        Common.stub :log_always, ->(msg) { lines << msg } do
-          DoctorCommands.report_kindle_previewer_optional(false)
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_optional(false, kindle_wanted: true)
         end
 
-        assert_includes lines.join("\n"), 'KDP'
-        assert_includes lines.join("\n"), DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
+        assert_includes captured[1], 'KDP'
+        assert_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
       end
 
       # Previewer 3 だけが入っているときは「古い」と判定する。

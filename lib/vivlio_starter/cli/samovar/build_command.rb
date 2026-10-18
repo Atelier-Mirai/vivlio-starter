@@ -22,6 +22,7 @@
 require_relative '../build'
 require_relative '../build/build_lock'
 require_relative '../build/direct_build'
+require_relative '../build/kindle_previewer_notice'
 require_relative '../build/pipeline'
 require_relative '../build/output_helpers'
 require_relative '../pre_process'
@@ -374,17 +375,20 @@ module VivlioStarter
         # 枝を並列に走らせるとステップ計時の合計は実際に待った時間より長くなるため、
         # 著者へ見せるのは壁時計（wall_time）を優先する（§3.5）。
         def print_created_files_message(files, build_timings: nil, wall_time: nil)
-          return if files.empty?
+          unless files.empty?
+            file_list = files.map { |f| File.basename(f) }.join(', ')
 
-          file_list = files.map { |f| File.basename(f) }.join(', ')
-
-          if build_timings && Common.current_log_level < 3
-            aggregated, = aggregate_step_timings(build_timings)
-            total = wall_time || aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
-            Common.log_result("#{file_list} を作成しました (#{format('%.1f', total)}s)", status: :artifact)
-          else
-            Common.log_result("#{file_list} を作成しました。", status: :artifact)
+            if build_timings && Common.current_log_level < 3
+              aggregated, = aggregate_step_timings(build_timings)
+              total = wall_time || aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
+              Common.log_result("#{file_list} を作成しました (#{format('%.1f', total)}s)", status: :artifact)
+            else
+              Common.log_result("#{file_list} を作成しました。", status: :artifact)
+            end
           end
+
+          # Kindle を選んだ本で Kindle Previewer が無ければ、ビルドの終わりに入れ方を添える
+          Build::KindlePreviewerNotice.report
         end
 
         # CLI の --verify-links オプションをスレッドローカルに設定する

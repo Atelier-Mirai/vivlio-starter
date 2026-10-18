@@ -3363,9 +3363,9 @@ module VivlioStarter
           return false unless File.exist?(epub_path)
 
           unless kindlepreviewer_available?(command)
-            # 入れ方は doctor に一本化した（targets に kindle があれば --fix が入れる・改善案.md #87）
-            Common.log_warn("[KPF] Kindle Previewer が見つからないため、Kindle 用の変換をしませんでした（中間 EPUB: #{epub_path}）",
-                            detail: 'vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）')
+            # 入れ方は、ビルドの終わりに Build::KindlePreviewerNotice が 1 度だけ 💡 で知らせる
+            # （改善案.md #87）。ここで 🟡 を出すと、同じことを 2 度言うことになる
+            Common.log_info("[KPF] #{command} が見つからないため、KPF への変換を飛ばしました（中間 EPUB: #{epub_path}）")
             return false
           end
 

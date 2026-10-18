@@ -883,23 +883,21 @@ module VivlioStarter
 
       # kindlepreviewer 未導入時の案内（targets: kindle の KPF 変換時のみ必要・不足はエラーにしない）。
       #
-      # 本が Kindle を選んでいなければ、Kindle にも出すときの入れ方だけを 💡 で示す（PDF だけの人には
-      # 要らないが、出したくなったときに戸惑わないように・改善案.md #87）。選んでいれば 🟡 で、
-      # --fix で入れられることを示す。アプリが入っていてコマンドだけが無い macOS では、
-      # --fix でラッパーを作れることを示す。
+      # 本が Kindle を選んでいなければ何も言わない。vs new で Kindle の話をされても著者の体験が
+      # 悪くなるだけだった（改善案.md #87・ユーザーの指摘）。Kindle を選んだ著者には、vs build・
+      # vs preflight の終わりに Build::KindlePreviewerNotice が入れ方を知らせる。
+      # 選んでいれば 🟡 で、macOS なら --fix で入れられることを、ほかの OS なら配布ページを示す。
+      # アプリが入っていてコマンドだけが無い macOS では、--fix でラッパーを作れることを示す。
       def report_kindle_previewer_optional(is_macos, app_installed: false, kindle_wanted: false)
         if is_macos && app_installed
           Common.log_warn('kindlepreviewer コマンドがありません（Kindle Previewer は入っています）',
                           detail: 'vs doctor --fix で作れます')
-        elsif is_macos && kindle_wanted
+        elsif kindle_wanted && is_macos
           Common.log_warn('Kindle Previewer が入っていません（output.targets に kindle があります）',
                           detail: 'vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）')
-        elsif is_macos
-          Common.log_always('💡 Kindle にも出すときは、config/book.yml の output.targets に kindle を足して、')
-          Common.log_always("#{Common::DETAIL_INDENT}vs doctor --fix を実行してください（Kindle Previewer を入れます）")
-        else
-          Common.log_always('💡 Kindle にも出すときは、Amazon KDP の配布ページから Kindle Previewer 4 を入れ、')
-          Common.log_always("#{Common::DETAIL_INDENT}kindlepreviewer コマンドに PATH を通してください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}")
+        elsif kindle_wanted
+          Common.log_warn('Kindle Previewer が入っていません（output.targets に kindle があります）',
+                          detail: "Amazon KDP の配布ページから入れ、kindlepreviewer コマンドに PATH を通してください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}")
         end
       end
 
