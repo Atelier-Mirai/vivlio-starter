@@ -417,14 +417,14 @@ module VivlioStarter
           # 以前優先していた node@20 はこれを満たさないうえ、Homebrew で無効化される。
           if missing.include?('node')
             Common.log_always('node をインストールします…')
-            ok = system(ToolUpgrader::BREW_ENV, 'brew install node')
+            ok = system(ToolUpgrader::INSTALL_ENV, 'brew install node')
             Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
           end
 
           # qpdf / poppler(pdfinfo, pdftoppm) / ghostscript / imagemagick / librsvg /
           # vips / tesseract(+lang) / mecab(+ipadic)。
           # formula 名の正典は ToolUpgrader::TOOLS（vs upgrade と共用し、二重管理しない）
-          ToolUpgrader.brew_install_packages(missing).each { system(ToolUpgrader::BREW_ENV, "brew install #{it}") }
+          ToolUpgrader.brew_install_packages(missing).each { system(ToolUpgrader::INSTALL_ENV, "brew install #{it}") }
 
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
@@ -433,7 +433,7 @@ module VivlioStarter
           if missing.include?('mathjax')
             if command_exists?('npm')
               Common.log_always('数式の SVG 化用 mathjax-full をインストールします…')
-              system('npm install --loglevel=error -g mathjax-full')
+              system(ToolUpgrader::INSTALL_ENV, 'npm install --loglevel=error -g mathjax-full')
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g mathjax-full` を実行してください。')
             end
@@ -443,7 +443,7 @@ module VivlioStarter
           if missing.include?('mermaid')
             if command_exists?('npm')
               Common.log_always('mermaid の図化用 @mermaid-js/mermaid-cli をインストールします…')
-              system('npm install --loglevel=error -g @mermaid-js/mermaid-cli')
+              system(ToolUpgrader::INSTALL_ENV, 'npm install --loglevel=error -g @mermaid-js/mermaid-cli')
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @mermaid-js/mermaid-cli` を実行してください。')
             end
@@ -453,7 +453,7 @@ module VivlioStarter
           if missing.include?('guesslang')
             if command_exists?('npm')
               Common.log_always('コードブロックの言語推定用 Guesslang（@vscode/vscode-languagedetection）をインストールします…')
-              system("npm install --loglevel=error -g #{Lint::CodeLanguageGuesser::PACKAGE}")
+              system(ToolUpgrader::INSTALL_ENV, "npm install --loglevel=error -g #{Lint::CodeLanguageGuesser::PACKAGE}")
             else
               Common.log_always('npm が見つかりません。node のインストール後に ' \
                                 "`npm install -g #{Lint::CodeLanguageGuesser::PACKAGE}` を実行してください。")
@@ -473,7 +473,7 @@ module VivlioStarter
           if missing.include?('vivliostyle')
             if command_exists?('npm')
               Common.log_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
-              system('npm install --loglevel=error -g @vivliostyle/cli')
+              system(ToolUpgrader::INSTALL_ENV, 'npm install --loglevel=error -g @vivliostyle/cli')
               # 入れると別名の vs も作られるので、すぐ外す（診断の段はもう過ぎている）
               remove_vivliostyle_vs_aliases!
             else
@@ -484,7 +484,7 @@ module VivlioStarter
           if missing.include?('vfm')
             if command_exists?('npm')
               Common.log_always('VFM(@vivliostyle/vfm) をグローバルインストールします…')
-              system('npm install --loglevel=error -g @vivliostyle/vfm')
+              system(ToolUpgrader::INSTALL_ENV, 'npm install --loglevel=error -g @vivliostyle/vfm')
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/vfm` を実行してください。')
             end
@@ -499,7 +499,7 @@ module VivlioStarter
             if command_exists?('npm')
               Common.log_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
               packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
-              system("npm install --loglevel=error -g #{packages}")
+              system(ToolUpgrader::INSTALL_ENV, "npm install --loglevel=error -g #{packages}")
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
             end
@@ -645,8 +645,8 @@ module VivlioStarter
       def install_ssl_certificates!
         Common.log_always('Google Fonts 用に ca-certificates / openssl@3 を設定します…')
         system('brew update >/dev/null 2>&1')
-        system(ToolUpgrader::BREW_ENV, 'brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
-        system(ToolUpgrader::BREW_ENV, 'brew reinstall ca-certificates')
+        system(ToolUpgrader::INSTALL_ENV, 'brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
+        system(ToolUpgrader::INSTALL_ENV, 'brew reinstall ca-certificates')
 
         openssl_prefix = capture_command('brew --prefix openssl@3').strip
         if openssl_prefix.empty?
@@ -945,12 +945,12 @@ module VivlioStarter
         end
 
         Common.log_always('Inkscape を導入します（Homebrew cask）…')
-        return true if system(ToolUpgrader::BREW_ENV, 'brew install --cask inkscape')
+        return true if system(ToolUpgrader::INSTALL_ENV, 'brew install --cask inkscape')
 
         # 半壊 cask（記録は在るのに /Applications/Inkscape.app が無い等）は通常インストールが
         # アップグレード扱いになり purge に失敗する。--force 再インストールで上書き復旧する。
         Common.log_warn('通常インストールに失敗しました。壊れた cask を --force で再インストールします…')
-        system(ToolUpgrader::BREW_ENV, 'brew reinstall --cask --force inkscape')
+        system(ToolUpgrader::INSTALL_ENV, 'brew reinstall --cask --force inkscape')
       end
 
       # 入っている Kindle Previewer のアプリ内 CLI を呼ぶ kindlepreviewer コマンドを、

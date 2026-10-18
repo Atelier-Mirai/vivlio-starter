@@ -152,16 +152,22 @@ module VivlioStarter
         # stdin:   IO                              確認プロンプト入力
         Deps = Data.define(:run, :capture, :fetch, :stdin)
 
-        # brew を呼ぶときに渡す環境変数。Homebrew 7 から、端末では install・upgrade・reinstall の
-        # たびに [y/n] を尋ねるようになった。vs は自分で確認を済ませてから（--fix を打った時点、
-        # または「更新を実行しますか？」で）呼ぶので、Homebrew に尋ね直させない。
-        # 何も入っていない Mac の --fix では 7 回尋ねられ、止まったように見えた（改善案.md #87）。
-        # --yes ではなく環境変数にするのは、確認の機能が無い古い Homebrew でもエラーにならないため。
-        BREW_ENV = { 'HOMEBREW_NO_ASK' => '1' }.freeze
+        # brew・npm でツールを入れるときに渡す環境変数（改善案.md #87）。
+        #
+        # HOMEBREW_NO_ASK: Homebrew 7 から、端末では install・upgrade・reinstall のたびに [y/n] を
+        # 尋ねるようになった。vs は自分で確認を済ませてから（--fix を打った時点、または「更新を
+        # 実行しますか？」で）呼ぶので、Homebrew に尋ね直させない。何も入っていない Mac の --fix
+        # では 7 回尋ねられ、止まったように見えた。--yes ではなく環境変数にするのは、確認の機能が
+        # 無い古い Homebrew でもエラーにならないため。
+        #
+        # npm_config_update_notifier: npm は、手元の版より新しい大版が出ていると、使うたびに
+        # 「New major version of npm available! 11 → 12」と出す。Node に同梱の npm はあとから
+        # 追いつくので、著者が npm だけを上げる必要は無い（上げると brew upgrade node で食い違う）。
+        INSTALL_ENV = { 'HOMEBREW_NO_ASK' => '1', 'npm_config_update_notifier' => 'false' }.freeze
 
         def default_deps
           Deps.new(
-            run: ->(cmd) { Kernel.system(BREW_ENV, cmd) },
+            run: ->(cmd) { Kernel.system(INSTALL_ENV, cmd) },
             capture: lambda do |cmd|
               out, status = Open3.capture2(cmd)
               [out, status.success?]

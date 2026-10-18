@@ -143,6 +143,7 @@ module VivlioStarter
       def test_doctor_fix_installs_textlint_when_missing
         with_host_os('darwin') do
           system_calls = []
+          npm_env = nil
           textlint_installed = false
           diagnose_called = false
 
@@ -156,8 +157,9 @@ module VivlioStarter
                    DoctorCommands.stub :command_runnable?, tool_present do
                     DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
                       DoctorCommands.stub :system, lambda { |*args|
-                        cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
+                        cmd = args.last # brew には環境変数（ToolUpgrader::INSTALL_ENV）が先に付く
                         system_calls << cmd
+                        npm_env = args.first if cmd.start_with?('npm install')
 
                         case cmd
                         when /xcode-select -p/ then true
@@ -190,6 +192,8 @@ module VivlioStarter
           end
 
           assert diagnose_called, 'config files should be diagnosed before tool installation'
+          # npm の「新しい大版が出ています」のお知らせを出させない（改善案.md #87）
+          assert_equal 'false', npm_env['npm_config_update_notifier']
         end
       end
 
@@ -218,7 +222,7 @@ module VivlioStarter
                           DoctorCommands.stub :command_exists?, tool_present do
                            DoctorCommands.stub :command_runnable?, tool_present do
                             DoctorCommands.stub :system, lambda { |*args|
-                              cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
+                              cmd = args.last # brew には環境変数（ToolUpgrader::INSTALL_ENV）が先に付く
                               system_calls << cmd
 
                               case cmd
@@ -245,7 +249,7 @@ module VivlioStarter
 
           assert_includes(system_calls, 'brew install vips')
           # Homebrew 7 の [y/n] を尋ね直させない（改善案.md #87）
-          assert_equal({ 'HOMEBREW_NO_ASK' => '1' }, brew_env)
+          assert_equal '1', brew_env['HOMEBREW_NO_ASK']
         end
       end
 
@@ -268,7 +272,7 @@ module VivlioStarter
                           DoctorCommands.stub :command_exists?, tool_present do
                            DoctorCommands.stub :command_runnable?, tool_present do
                             DoctorCommands.stub :system, lambda { |*args|
-                              cmd = args.last # brew には環境変数（ToolUpgrader::BREW_ENV）が先に付く
+                              cmd = args.last # brew には環境変数（ToolUpgrader::INSTALL_ENV）が先に付く
                               system_calls << cmd
 
                               case cmd
