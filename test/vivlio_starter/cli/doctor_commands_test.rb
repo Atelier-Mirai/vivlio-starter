@@ -439,18 +439,69 @@ module VivlioStarter
         end
       end
 
-      # macOS でアプリが無いときは、Amazon の配布ページと、入れたあとの --fix を案内する。
-      # doctor はアプリを入れない（Homebrew の cask は配布より遅れるため）
-      def test_should_point_to_amazon_download_when_app_is_missing_on_macos
-        captured = nil
-        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
-          DoctorCommands.report_kindle_previewer_optional(true)
+      # macOS で、本が Kindle を選んでいないときは、Kindle にも出すときの入れ方だけを 💡 で示す。
+      # PDF だけの人に 490MB のアプリは入れない（改善案.md #87）
+      def test_should_hint_how_to_add_kindle_when_not_requested_on_macos
+        lines = []
+        Common.stub :log_always, ->(msg) { lines << msg } do
+          Common.stub :log_warn, ->(*, **) { flunk('Kindle を選んでいない人に 🟡 を出さない') } do
+            DoctorCommands.report_kindle_previewer_optional(true)
+          end
         end
 
-        assert_includes captured[0], 'kindlepreviewer'
-        assert_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
+        text = lines.join("\n")
+        assert lines.first.start_with?('💡')
+        assert_includes text, 'output.targets に kindle'
+        assert_includes text, 'vs doctor --fix'
+      end
+
+      # macOS で、本が Kindle を選んでいるのに入っていなければ、--fix で入れられると 🟡 で示す
+      def test_should_point_to_fix_when_kindle_is_requested_on_macos
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_optional(true, kindle_wanted: true)
+        end
+
+        assert_includes captured[0], 'Kindle Previewer'
         assert_includes captured[1], 'vs doctor --fix'
-        refute_includes captured[1], 'brew'
+      end
+
+      # targets に kindle があるかは、その場の config/book.yml をビルドと同じ規則で読む
+      # （vs new から同じプロセスで呼ばれたときも、作ったばかりの本の設定を見る）
+      def test_should_read_kindle_target_from_the_book_in_the_current_directory
+        Dir.mktmpdir do |dir|
+          Dir.chdir(dir) do
+            refute DoctorCommands.send(:kindle_target_requested?), 'プロジェクトの外では false'
+
+            FileUtils.mkdir_p('config')
+            File.write('config/book.yml', "output:\n  targets: pdf, epub, kindle\n")
+            assert DoctorCommands.send(:kindle_target_requested?)
+
+            File.write('config/book.yml', "output:\n  targets: [pdf, kindle]\n")
+            assert DoctorCommands.send(:kindle_target_requested?), '配列でも読む'
+
+            File.write('config/book.yml', "output:\n  targets: pdf\n")
+            refute DoctorCommands.send(:kindle_target_requested?)
+          end
+        end
+      end
+
+      # Kindle Previewer は Homebrew の cask で入れ、続けて kindlepreviewer コマンドのラッパーを作る
+      def test_should_install_kindle_previewer_with_homebrew_cask
+        calls = []
+        linked = false
+        stub_logging do
+          DoctorCommands.stub :system, ->(*args) { calls << args; true } do
+            DoctorCommands.stub :link_kindlepreviewer_macos!, -> { linked = true } do
+              DoctorCommands.send(:install_kindle_previewer_macos!)
+            end
+          end
+        end
+
+        env, command = calls.first
+        assert_equal 'brew install --cask kindle-previewer', command
+        assert_equal '1', env['HOMEBREW_NO_ASK']
+        assert linked, 'アプリを入れたらラッパーを作る'
       end
 
       # macOS でアプリはあるがコマンドだけが無いときは、--fix でラッパーを作れることだけを示す
@@ -466,12 +517,13 @@ module VivlioStarter
 
       # macOS 以外では手動セットアップ（KDP からの導入）を案内する
       def test_report_kindle_previewer_optional_hints_manual_on_non_macos
-        captured = nil
-        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+        lines = []
+        Common.stub :log_always, ->(msg) { lines << msg } do
           DoctorCommands.report_kindle_previewer_optional(false)
         end
 
-        assert_includes captured[1], 'KDP'
+        assert_includes lines.join("\n"), 'KDP'
+        assert_includes lines.join("\n"), DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
       end
 
       # Previewer 3 だけが入っているときは「古い」と判定する。

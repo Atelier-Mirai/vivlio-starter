@@ -38,7 +38,8 @@
 #   - macOS + Homebrew 環境でのみ対応
 #   - --fix オプションで不足ツールを自動インストール
 #   - Node.js ツール（vivliostyle, textlint）は npm -g でインストール
-#   - Kindle Previewer は入れない（Amazon の配布ページを案内し、--fix はコマンドのラッパーだけを作る）
+#   - Kindle Previewer は、book.yml の targets に kindle があるときだけ --fix が Homebrew cask で入れる
+#     （無ければ入れ方を 💡 で案内する。PDF だけの人に 490MB のアプリを入れない）
 #
 # 依存:
 #   - Common: ログ出力
@@ -56,10 +57,12 @@ require 'shellwords'
 require 'open-uri'
 require 'tmpdir'
 require 'json'
+require 'yaml'
 
 require_relative 'guards'
 require_relative 'doctor/config_salvager'
 require_relative 'doctor/tool_upgrader'
+require_relative 'build/targets'
 require_relative 'lint/code_language_guesser'
 
 module VivlioStarter
@@ -103,11 +106,18 @@ module VivlioStarter
 
       # Kindle Previewer の配布ページ（Amazon KDP）。
       #
-      # 入れ方はここに一本化し、doctor はアプリを入れずにこのページを示す。Homebrew の
-      # cask は Amazon の配布より遅れる（2026-10-13 に cask は 4.0.1、Amazon は 4.0.3）。
-      # インストーラーは管理者のパスワードを求めるので `--fix` でも自動では入らず、
-      # 入れたあとはアプリに付いている更新機能が新しい版へ追随する。
+      # macOS 以外の人と、Kindle Previewer 3 から 4 へ上げる人に示す。macOS で targets に kindle が
+      # あれば、--fix が Homebrew の cask で入れる（改善案.md #87）。cask は Amazon の配布より遅れる
+      # ことがある（2026-10-13 に cask は 4.0.1、Amazon は 4.0.3）が、入れたあとはアプリに付いている
+      # 更新機能が新しい版へ追随する。インストーラーは管理者のパスワードを求めるので、端末が
+      # あるときだけ入れる。
       KINDLE_PREVIEWER_DOWNLOAD_URL = 'https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170'
+
+      # 不足一覧（missing）での呼び名。アプリそのものと Rosetta 2 は、コマンドの kindlepreviewer
+      # （ラッパー）とは入れ方が違うので分けて積む。
+      KINDLE_PREVIEWER_APP = 'kindle-previewer-app'
+      KINDLE_PREVIEWER_CASK = 'kindle-previewer'
+      ROSETTA = 'rosetta'
 
       # Vivliostyle CLI が要求する Node.js の下限の**予備**。
       #
@@ -268,12 +278,15 @@ module VivlioStarter
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
         # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
         kindle_previewer_present = kindlepreviewer_functional?
+        kindle_wanted = kindle_target_requested?
+        # Kindle を選んだ本の --fix では、Rosetta 2 を案内でなく導入に回す（後段）
+        install_rosetta = options[:fix] && kindle_wanted && $stdin.tty? && !rosetta_ready?(is_macos)
         if kindle_previewer_present
           report_ok("✅ kindlepreviewer (#{kindle_previewer_label}): OK", options)
           # 「在るが古い」「在るが動かない」は ✅ の後に注記する。不足ではないので
           # missing には積まず、ビルドも止めない。
           report_kindle_previewer_outdated if kindle_previewer_outdated?
-          report_rosetta_missing unless rosetta_ready?(is_macos)
+          report_rosetta_missing unless rosetta_ready?(is_macos) || install_rosetta
         end
 
         if is_macos
@@ -297,16 +310,22 @@ module VivlioStarter
         missing.concat(ocr_optional_missing) if options[:fix]
 
         # kindlepreviewer が不足の場合、アプリが入っていれば --fix(macOS) で対象に積み、
-        # 後段でコマンドのラッパーだけを作る。アプリ自体は配布元から入れてもらうので
-        # （KINDLE_PREVIEWER_DOWNLOAD_URL）、無ければ 🟡 で配布ページを案内するに留める。
+        # 後段でコマンドのラッパーだけを作る。アプリが無く、本が Kindle を選んでいれば
+        # （targets に kindle）、--fix が Homebrew の cask でアプリから入れる。選んでいなければ
+        # 入れず、Kindle にも出すときの入れ方を案内する（改善案.md #87）。
         unless kindle_previewer_present
           app_installed = !kindle_previewer_app_bin.nil?
           if options[:fix] && is_macos && app_installed
             missing << KINDLEPREVIEWER_COMMAND
+          elsif options[:fix] && is_macos && kindle_wanted && $stdin.tty?
+            missing << KINDLE_PREVIEWER_APP
           else
-            report_kindle_previewer_optional(is_macos, app_installed:)
+            report_kindle_previewer_optional(is_macos, app_installed:, kindle_wanted:)
           end
         end
+        # Kindle Previewer の変換部分は Intel 版なので、Kindle を選んだ Apple シリコンの Mac には
+        # Rosetta 2 も要る。--fix なら入れる（パスワードを尋ねるので端末があるときだけ）
+        missing << ROSETTA if install_rosetta
 
         # inkscape も同方式（任意ツール）。--fix(macOS) なら復旧を試み、それ以外は 🟡 案内。
         unless inkscape_ok
@@ -460,8 +479,10 @@ module VivlioStarter
             end
           end
 
-          # Kindle Previewer（kindlepreviewer）: 入っているアプリの CLI を呼ぶラッパーを作る
+          # Kindle Previewer: targets に kindle があればアプリから入れ、CLI を呼ぶラッパーを作る
+          install_kindle_previewer_macos! if missing.include?(KINDLE_PREVIEWER_APP)
           link_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
+          install_rosetta_macos! if missing.include?(ROSETTA)
 
           install_ssl_certificates! if missing.include?('ssl-certificates')
         rescue StandardError => e
@@ -861,19 +882,60 @@ module VivlioStarter
       end
 
       # kindlepreviewer 未導入時の案内（targets: kindle の KPF 変換時のみ必要・不足はエラーにしない）。
-      # アプリが入っていてコマンドだけが無い macOS では、--fix でラッパーを作れることを示す。
-      def report_kindle_previewer_optional(is_macos, app_installed: false)
-        detail = if is_macos && app_installed
-                   'vs doctor --fix で kindlepreviewer コマンドを作れます（アプリ内の CLI を呼ぶラッパー）。'
-                 elsif is_macos
-                   "Amazon KDP の配布ページから Kindle Previewer 4 を入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
-                     '入れたあとに vs doctor --fix を実行すると、kindlepreviewer コマンドを作ります。'
-                 else
-                   "Amazon KDP の配布ページから Kindle Previewer 4 を入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
-                     'kindlepreviewer コマンドに PATH を通してください。'
-                 end
-        Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer・targets: kindle の KPF 変換時のみ必要）:',
-                        detail:)
+      #
+      # 本が Kindle を選んでいなければ、Kindle にも出すときの入れ方だけを 💡 で示す（PDF だけの人には
+      # 要らないが、出したくなったときに戸惑わないように・改善案.md #87）。選んでいれば 🟡 で、
+      # --fix で入れられることを示す。アプリが入っていてコマンドだけが無い macOS では、
+      # --fix でラッパーを作れることを示す。
+      def report_kindle_previewer_optional(is_macos, app_installed: false, kindle_wanted: false)
+        if is_macos && app_installed
+          Common.log_warn('kindlepreviewer コマンドがありません（Kindle Previewer は入っています）',
+                          detail: 'vs doctor --fix で作れます')
+        elsif is_macos && kindle_wanted
+          Common.log_warn('Kindle Previewer が入っていません（output.targets に kindle があります）',
+                          detail: 'vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）')
+        elsif is_macos
+          Common.log_always('💡 Kindle にも出すときは、config/book.yml の output.targets に kindle を足して、')
+          Common.log_always("#{Common::DETAIL_INDENT}vs doctor --fix を実行してください（Kindle Previewer を入れます）")
+        else
+          Common.log_always('💡 Kindle にも出すときは、Amazon KDP の配布ページから Kindle Previewer 4 を入れ、')
+          Common.log_always("#{Common::DETAIL_INDENT}kindlepreviewer コマンドに PATH を通してください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}")
+        end
+      end
+
+      # 本の設定で Kindle を選んでいるか（output.targets に kindle）。ビルドと同じ Build::Targets で判じる。
+      # vs new から同じプロセスで呼ばれたときは Common::CONFIG がプロジェクトを作る前の設定のままなので、
+      # その場の config/book.yml を読み直す。プロジェクトの外や、読めないときは false。
+      def kindle_target_requested?
+        path = File.join('config', 'book.yml')
+        return false unless File.file?(path)
+
+        config = YAML.load_file(path, aliases: true, symbolize_names: true)
+        config.is_a?(Hash) && Build::Targets.resolve(config).kindle
+      rescue StandardError
+        false
+      end
+
+      # Kindle Previewer を Homebrew の cask で入れ、kindlepreviewer コマンドのラッパーを作る。
+      # cask は Amazon の配布より遅れることがあるが、入れたあとはアプリの更新機能が追随する。
+      def install_kindle_previewer_macos!
+        Common.log_always('Kindle Previewer をインストールします（output.targets に kindle があるため・Homebrew cask）…')
+        unless system(ToolUpgrader::INSTALL_ENV, "brew install --cask #{KINDLE_PREVIEWER_CASK}")
+          Common.log_warn('Kindle Previewer を入れられませんでした',
+                          detail: "brew install --cask #{KINDLE_PREVIEWER_CASK} を実行してから、vs doctor --fix を実行してください")
+          return false
+        end
+
+        link_kindlepreviewer_macos!
+      end
+
+      # Rosetta 2 を入れる。管理者のパスワードを尋ねるので、端末があるときだけ呼ばれる。
+      def install_rosetta_macos!
+        Common.log_always('Rosetta 2 をインストールします（Kindle Previewer の変換に要ります・パスワードを尋ねられます）…')
+        return true if system('sudo', 'softwareupdate', '--install-rosetta', '--agree-to-license')
+
+        report_rosetta_missing
+        false
       end
 
       # Kindle Previewer 3 のままなら 4 への更新を促す。
@@ -1022,7 +1084,9 @@ module VivlioStarter
           'mathjax' => '数式SVG化 (mathjax-full)',
           'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
           'guesslang' => 'Guesslang (vs lint のコードブロックの言語推定・@vscode/vscode-languagedetection)',
-          'kindlepreviewer' => 'Kindle Previewer (kindlepreviewer・targets: kindle 用)'
+          'kindlepreviewer' => 'Kindle Previewer (kindlepreviewer・targets: kindle 用)',
+          KINDLE_PREVIEWER_APP => 'Kindle Previewer（targets: kindle）',
+          ROSETTA => 'Rosetta 2（Kindle Previewer の変換用）'
         }
         keys.uniq.map { |key| label_map[key] || key }
       end

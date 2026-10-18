@@ -3363,8 +3363,9 @@ module VivlioStarter
           return false unless File.exist?(epub_path)
 
           unless kindlepreviewer_available?(command)
-            Common.log_warn("[KPF] #{command} が見つかりません。KPF 変換をスキップし、中間 EPUB を残します: #{epub_path}")
-            Common.log_warn('  → Kindle Previewer を導入するか、中間 EPUB を手動で変換してください。')
+            # 入れ方は doctor に一本化した（targets に kindle があれば --fix が入れる・改善案.md #87）
+            Common.log_warn("[KPF] Kindle Previewer が見つからないため、Kindle 用の変換をしませんでした（中間 EPUB: #{epub_path}）",
+                            detail: 'vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）')
             return false
           end
 
