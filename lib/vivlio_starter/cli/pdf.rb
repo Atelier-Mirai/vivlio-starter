@@ -778,7 +778,30 @@ module VivlioStarter
         # 1 行に詰めると端末で折り返して読みにくかったので、枠で囲む（ユーザーの提案）。
         # オートメーションの設定は「操作する側のアプリ（ターミナルや Zed など）」の下に
         # 「プレビュー」が並ぶので、間の 1 段も書く。
+        #
+        # Mac 1 台につき 1 回だけ出す（ユーザーの指示）。macOS の許可はアプリ同士のもので、
+        # 1 台につき 1 回しか尋ねられない。許可した人にはそもそも出ず、出るのは断った・見逃した
+        # 人だけなので、本を作るたびに出すとしつこい。出したことは本の .cache/vs/ でなく、
+        # ホームフォルダの下に記録する。
         def suggest_automation_permission
+          marker = preview_notice_marker
+          return if File.exist?(marker)
+
+          show_automation_permission_box
+          FileUtils.mkdir_p(File.dirname(marker))
+          File.write(marker, "#{Time.now}\n")
+        rescue SystemCallError
+          nil
+        end
+
+        # 枠の案内を出したことの記録。XDG_CACHE_HOME があればその下、無ければ ~/.cache の下。
+        def preview_notice_marker
+          base = ENV.fetch('XDG_CACHE_HOME', '')
+          base = File.join(Dir.home, '.cache') if base.empty?
+          File.join(base, 'vivlio-starter', 'preview-permission-notified')
+        end
+
+        def show_automation_permission_box
           Common.log_box(
             '💡 プレビューの操作',
             ['ビルドのあと、前に開いていた PDF のウィンドウを閉じて、',

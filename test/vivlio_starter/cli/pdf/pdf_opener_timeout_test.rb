@@ -74,18 +74,33 @@ module VivlioStarter
           assert_empty outcome[:hints]
         end
 
+# 枠の案内は Mac 1 台につき 1 回。macOS の許可は 1 台につき 1 回しか尋ねられないので、
+# 断った人に本を作るたびに出さない（改善案.md #87・ユーザーの指示）
+def test_should_show_the_permission_box_only_once_per_mac
+  first = open_with(preview_running: true) { |argv| argv.first == 'osascript' ? :failed : :ok }
+  again = open_with(preview_running: true, notified: true) { |argv| argv.first == 'osascript' ? :failed : :ok }
+
+  assert_equal 1, first[:hints].size, '初めては案内する'
+  assert_empty again[:hints], '案内したことのある Mac では出さない'
+  assert_equal [:called], again[:results], 'PDF は開く'
+end
+
         private
 
         # 61-developer.pdf を開かせ、Preview へ出した指示と、出たログを集める。
         # 指示の結果はブロックが argv から決める（実際の Preview・osascript は動かさない）
-        def open_with(preview_running:, arrange: true, &result_for)
+        def open_with(preview_running:, arrange: true, notified: false, &result_for)
           outcome = { commands: [], warnings: [], results: [], hints: [] }
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
               File.write('61-developer.pdf', '%PDF-1.4')
               opener = PdfOpener.new({}, '61-developer')
+              # 案内を出した記録は開発機のホームでなく一時フォルダに置く
+              marker = File.join(dir, 'preview-permission-notified')
+              File.write(marker, '') if notified
 
               opener.stub(:macos?, true) do
+               opener.stub(:preview_notice_marker, marker) do
                 opener.stub(:close_existing_windows?, arrange) do
                   opener.stub(:preview_running?, preview_running) do
                     run = lambda { |*argv, **|
@@ -104,6 +119,7 @@ module VivlioStarter
                     end
                   end
                 end
+               end
               end
             end
           end
