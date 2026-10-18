@@ -26,7 +26,8 @@ module VivlioStarter
           return unless targets.kindle
           return if available.call
 
-          Common.log_always('💡 Kindle Previewer を入れると、Kindle 用の KPF まで作れます')
+          # 「Kindle 向けのビルドが止まった」と読まれないよう、KPF への変換だけを飛ばしたことを言う
+          Common.log_always('💡 Kindle 用の KPF は、Kindle Previewer で変換して作ります（今回は変換を飛ばしました）')
           Common.log_always("#{Common::DETAIL_INDENT}vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）")
         end
       end
