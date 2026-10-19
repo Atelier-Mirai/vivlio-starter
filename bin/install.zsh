@@ -167,21 +167,22 @@ welcome_box() {
     (( ${(m)#line} > width )) && width=${(m)#line}
   done
 
-  # 枠は黄色（vs の枠の案内と同じ）。色を付けない端末では、枠も文字もそのまま
-  local y="" g="" r="" none=""
+  # 枠は青緑（Netlify の完了の枠のような色）。注意を促す vs の枠（黄色）と分け、
+  # 導入を終えた歓迎だと見て取れるようにする。色を付けない端末では、枠も文字もそのまま
+  local c="" g="" r="" none=""
   if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
-    y=$'\e[33m' g=$'\e[32m' r=$'\e[0m'
+    c=$'\e[36m' g=$'\e[32m' r=$'\e[0m'
   fi
 
-  print -r -- "${y}╭─ ${title} ${(l:width - 1 - ${(m)#title}::─:)none}╮${r}"
+  print -r -- "${c}╭─ ${title} ${(l:width - 1 - ${(m)#title}::─:)none}╮${r}"
   local body pad
   for line in "${lines[@]}"; do
     pad=${(l:width - ${(m)#line}:: :)none}
     body=${line//vs new mybook/${g}vs new mybook${r}}
     body=${body//vs --help/${g}vs --help${r}}
-    print -r -- "${y}│${r} ${body}${pad} ${y}│${r}"
+    print -r -- "${c}│${r} ${body}${pad} ${c}│${r}"
   done
-  print -r -- "${y}╰${(l:width + 2::─:)none}╯${r}"
+  print -r -- "${c}╰${(l:width + 2::─:)none}╯${r}"
 }
 
 is_macos=true
