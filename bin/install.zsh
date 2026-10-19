@@ -3,10 +3,12 @@
 # install.zsh — macOS 向け Vivlio Starter の導入（Homebrew → Ruby → Vivlio Starter → ツール一式）
 #
 # - Homebrew が未導入なら確認のうえインストール（Xcode コマンドラインツールも一緒に入る）
-# - rbenv と ruby-build を導入し、指定した Ruby をインストール（既定: 最新の安定版）
-# - グローバルに切り替え、bundler をインストール
-# - ~/.zprofile に Homebrew と rbenv の設定を書き込む（同じ設定があれば足さない）
-# - 尋ねること（Homebrew・~/.zprofile・プレビューの操作の許可・Kindle Previewer・パスワード）は
+# - Ruby 3.4 以上がすでにあれば、それを使う。無ければ（macOS 付属の 2.6 や rbenv の古い版）、
+#   rbenv と ruby-build で最新の安定版を入れてグローバルに切り替える。Homebrew の古い Ruby は
+#   brew upgrade で上げ、mise・rvm・asdf の古い Ruby は、その道具で上げるよう案内して止まる
+# - bundler をインストール
+# - Homebrew と rbenv の設定を書き込む（~/.zprofile か ~/.zshrc。同じ設定があれば足さない）
+# - 尋ねること（Homebrew・設定の書き込み・プレビューの操作の許可・Kindle Previewer・パスワード）は
 #   最初にまとめる。あとは終わるまで席を外せる
 # - Kindle を選んだ人には、Kindle Previewer と Rosetta 2 も入れる
 # - Vivlio Starter と vivlio-starter-pdf（gem）を入れ、執筆に使うツール一式を
@@ -35,6 +37,10 @@ set -euo pipefail
 # SUPPORTED_RUBY_VERSIONS。install_script_test が一致を見張る）。
 # ここが外れると、解決に失敗した人だけ未検証の Ruby を掴むことになる。
 FALLBACK_VERSION="4.0.7"
+
+# Vivlio Starter が求める Ruby の版（gemspec の required_ruby_version。install_script_test が
+# 一致を見張る）。これ以上の Ruby がすでにあれば、新しく組まずにそれを使う
+MIN_RUBY="3.4"
 
 VERSION="latest"
 YES="false"
@@ -99,6 +105,7 @@ green() {
 # gem install が /Library/Ruby/Gems に書けないというエラーで止まる
 # （改善案.md #87。何も入っていない Mac で確かめた）。
 ZPROFILE="${ZDOTDIR:-$HOME}/.zprofile"
+ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"
 
 # Homebrew の置き場所は Apple シリコンと Intel で違う。まだ入っていないときは CPU の種類で決める
 # （~/.zprofile に書くかどうかを、Homebrew を入れる前に尋ねるため）
@@ -112,16 +119,132 @@ brew_bin() {
   fi
 }
 
-# ~/.zprofile に足す行。$( ) は書き込む先で展開させるので、ここでは展開しない
-shell_setup_lines() {
+# 設定ファイルに足す行。$( ) は書き込む先で展開させるので、ここでは展開しない
+brew_setup_line() {
   print -r -- "eval \"\$($(brew_bin) shellenv)\""
+}
+rbenv_setup_line() {
   print -r -- 'eval "$(rbenv init - zsh)"'
 }
 
-# すでに同じ設定（コメントでない行）があれば足さない。
+# すでに同じ設定（コメントでない行）が ~/.zprofile か ~/.zshrc にあれば足さない。
 # 手で書いた人の書き方（`brew shellenv zsh` など）とも重ならないよう、要の語で見る。
-zprofile_has() {
-  [[ -f "$ZPROFILE" ]] && grep -qE "^[^#]*$1" "$ZPROFILE"
+# ~/.zshrc も見るのは、rbenv 1.3 より前の案内どおり ~/.zshrc に書いている人が多いため
+shell_config_has() {
+  local file
+  for file in "$ZPROFILE" "$ZSHRC"; do
+    [[ -f "$file" ]] && grep -qE "^[^#]*($1)" "$file" && return 0
+  done
+  return 1
+}
+
+# rbenv の設定を書くファイル。rbenv 1.3 の `rbenv init` と同じく、~/.zshrc にすでに rbenv の
+# 記述があればそちらに書き続け、無ければ ~/.zprofile に書く
+rbenv_config_file() {
+  if [[ -f "$ZSHRC" ]] && grep -q rbenv "$ZSHRC"; then
+    print -r -- "$ZSHRC"
+  else
+    print -r -- "$ZPROFILE"
+  fi
+}
+
+# 書き込む行（ファイルごと）。書くかどうかは最初に尋ね、書くのは Ruby を入れたあと
+zprofile_lines=()
+zshrc_lines=()
+plan_setup_line() {
+  if [[ "$1" == "$ZSHRC" ]]; then
+    zshrc_lines+=("$2")
+  else
+    zprofile_lines+=("$2")
+  fi
+}
+
+# 足す行と、足す先のファイルを並べる（書き込んだとき・足してもらうときの表示用）
+show_setup_lines() {
+  local file
+  for file in ZPROFILE ZSHRC; do
+    local -a lines
+    if [[ $file == ZPROFILE ]]; then lines=("${zprofile_lines[@]}"); else lines=("${zshrc_lines[@]}"); fi
+    (( ${#lines} > 0 )) || continue
+    print -r -- "  ${${(P)file}/#$HOME/~}:"
+    print -r -l -- "${lines[@]}" | sed 's/^/    /'
+  done
+}
+
+# 今使われている Ruby を、何で入れたか（置き場所から判じる）
+ruby_manager() {
+  case "$1" in
+    "") print -r -- none ;;
+    /usr/bin/ruby) print -r -- system ;;
+    */rbenv/*|*/.rbenv/*) print -r -- rbenv ;;
+    */mise/*) print -r -- mise ;;
+    */.asdf/*) print -r -- asdf ;;
+    */.rvm/*) print -r -- rvm ;;
+    */opt/ruby/bin/ruby) print -r -- homebrew ;;
+    *) print -r -- other ;;
+  esac
+}
+
+# 今の Ruby が、Vivlio Starter の求める版を満たすか（rbenv の入っていない版を指すときも偽）
+ruby_new_enough() {
+  ruby -e "exit(Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('$MIN_RUBY'))" >/dev/null 2>&1
+}
+
+# gem が入れたコマンド（vs）の置き場所に PATH が通っているか。rbenv・asdf・mise の shims は、
+# 置き場所でなく shims から呼ぶので通っている扱い。Homebrew の Ruby は、既定では通っていない
+# （brew info ruby の注意書き。通っていないと、gem は入っても vs が見つからない）
+gem_bin_reachable() {
+  [[ "$current_ruby" == */shims/* ]] && return 0
+  local bindir
+  bindir="$(ruby -e 'print Gem.bindir' 2>/dev/null)" || return 1
+  [[ ":$PATH:" == *":$bindir:"* ]]
+}
+
+# gem を入れたあと、新しいコマンドを呼べるようにする（shims を作り直す道具では作り直す）
+refresh_ruby_commands() {
+  case "$manager" in
+    rbenv) rbenv rehash ;;
+    asdf) asdf reshim ruby ;;
+    mise) mise reshim ;;
+  esac 2>/dev/null || true
+  rehash
+}
+
+# 今の Ruby をどう扱うかを決める（ruby_mode）
+#   keep         … Ruby 3.4 以上がある。新しく組まずにそれを使う（ほかの仕事の Ruby を変えない）
+#   rbenv        … Ruby が無い・macOS 付属・rbenv の古い版・-v で版を指定された。rbenv で入れる
+#   brew_upgrade … Homebrew の古い Ruby。brew upgrade ruby で上げる
+# mise・rvm・asdf などの古い Ruby は、案内して止まる（stop_for_old_ruby）
+decide_ruby_mode() {
+  current_ruby="$(command -v ruby 2>/dev/null || true)"
+  current_ruby_version="$(ruby -e 'print RUBY_VERSION' 2>/dev/null || true)"
+  manager="$(ruby_manager "$current_ruby")"
+  if [[ "$VERSION" != "latest" ]]; then
+    ruby_mode=rbenv
+  elif [[ "$manager" != system && "$manager" != none ]] && ruby_new_enough; then
+    ruby_mode=keep
+  elif [[ "$manager" == homebrew ]]; then
+    ruby_mode=brew_upgrade
+  elif [[ "$manager" == system || "$manager" == none || "$manager" == rbenv ]]; then
+    ruby_mode=rbenv
+  else
+    stop_for_old_ruby
+  fi
+}
+
+# 古い Ruby を、rbenv 以外の道具（mise・rvm・asdf など）で入れている人への案内。
+# 横に rbenv の Ruby を入れると Ruby が 2 つ並び、どちらが先に見つかるかが人によって
+# 変わるので、その人が使っている道具で上げてもらう
+stop_for_old_ruby() {
+  echo "Ruby ${current_ruby_version}（${manager} で入れたもの）が使われています。Vivlio Starter には Ruby ${MIN_RUBY} 以上が要ります。" >&2
+  echo "お使いの道具で Ruby を上げてから、もう一度このスクリプトを実行してください:" >&2
+  case "$manager" in
+    mise) echo "  mise use -g ruby@${FALLBACK_VERSION}" >&2 ;;
+    rvm)  echo "  rvm install ${FALLBACK_VERSION} && rvm --default use ${FALLBACK_VERSION}" >&2 ;;
+    asdf) echo "  asdf install ruby ${FALLBACK_VERSION} && asdf set --home ruby ${FALLBACK_VERSION}" >&2 ;;
+    *)    echo "  （今の Ruby: ${current_ruby}）" >&2 ;;
+  esac
+  exit 1
 }
 
 # Kindle Previewer のアプリ（3 と 4 で名前が違う。doctor の KINDLE_PREVIEWER_APP_BINS と同じ）
@@ -194,6 +317,10 @@ echo "📚 Vivlio Starter を導入します（Homebrew・Ruby・Vivlio Starter�
 echo "   15 分ほどかかります。最初にいくつか確かめます。"
 echo ""
 
+# --- Phase: 今の Ruby ---
+# 何も尋ねないうちに決める（古い Ruby の道具によっては、ここで案内して止まるため）
+decide_ruby_mode
+
 # --- Phase: Xcode コマンドラインツール ---
 if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
   echo "⛏️  Xcode コマンドラインツールを確認しています…"
@@ -207,7 +334,7 @@ if $is_macos && ! xcode-select -p >/dev/null 2>&1; then
     echo "インストーラのダイアログを完了してから、もう一度このスクリプトを実行してください。"
     exit 1
   else
-    echo "Ruby を組むには Xcode コマンドラインツールが要ります。xcode-select --install で入れてから、もう一度実行してください。" >&2
+    echo "Ruby や gem を組むには Xcode コマンドラインツールが要ります。xcode-select --install で入れてから、もう一度実行してください。" >&2
     exit 1
   fi
 fi
@@ -225,12 +352,39 @@ if $is_macos && ! command -v brew >/dev/null 2>&1; then
   fi
 fi
 
-missing_lines=()
-zprofile_has 'brew shellenv' || missing_lines+=("$(shell_setup_lines | sed -n 1p)")
-zprofile_has 'rbenv init'    || missing_lines+=("$(shell_setup_lines | sed -n 2p)")
-write_zprofile=false
-if (( ${#missing_lines} > 0 )) && confirm "新しいターミナルで Ruby を使えるよう、~/.zprofile に設定を書き込みますか？"; then
-  write_zprofile=true
+if [[ "$ruby_mode" == brew_upgrade ]]; then
+  if ! confirm "Homebrew の Ruby ${current_ruby_version} を最新版に上げますか？（Vivlio Starter には Ruby ${MIN_RUBY} 以上が要ります）"; then
+    echo "Ruby を上げずに終了します。brew upgrade ruby で上げてから、もう一度実行してください。" >&2
+    exit 1
+  fi
+fi
+
+# 新しいターミナルで Homebrew・Ruby・vs を使うための設定。書かないと、新しいターミナルでは
+# macOS 付属の Ruby 2.6 が使われ、gem install が /Library/Ruby/Gems に書けないという
+# エラーで止まる（改善案.md #87。何も入っていない Mac で確かめた）
+if $is_macos && ! shell_config_has 'brew shellenv'; then
+  plan_setup_line "$ZPROFILE" "$(brew_setup_line)"
+fi
+if [[ "$ruby_mode" == rbenv ]] && ! shell_config_has 'rbenv init'; then
+  plan_setup_line "$(rbenv_config_file)" "$(rbenv_setup_line)"
+fi
+# Homebrew の Ruby は gem のコマンドの置き場所に PATH を通す。上げると置き場所が変わる
+# （…/gems/4.0.0/bin）ので、実際に足すかどうかと足す行は、Ruby を上げたあとで決める
+add_gem_bin=false
+if [[ "$ruby_mode" == brew_upgrade ]] || { [[ "$ruby_mode" == keep ]] && ! gem_bin_reachable; }; then
+  add_gem_bin=true
+fi
+
+config_files=()
+if (( ${#zprofile_lines} > 0 )) || $add_gem_bin; then
+  config_files+=("~/.zprofile")
+fi
+if (( ${#zshrc_lines} > 0 )); then
+  config_files+=("~/.zshrc")
+fi
+write_shell_config=false
+if (( ${#config_files} > 0 )) && confirm "新しいターミナルで vs を使えるよう、${(j: と :)config_files} に設定を書き込みますか？"; then
+  write_shell_config=true
 fi
 
 # ビルドのあと、前の PDF を閉じて新しい PDF を決まった位置に開くのに、プレビューを操作する。
@@ -293,10 +447,12 @@ if $is_macos; then
   # このシェルで brew を使えるようにする（Apple シリコン・Intel のどちらでも）
   eval "$("$(brew_bin)" shellenv)"
 
-  echo "📦 rbenv と ruby-build をインストールしています…"
   brew update
-  # Homebrew 7 から、端末では install のたびに [y/n] を尋ねる。入れることはもう決まっている
-  HOMEBREW_NO_ASK=1 brew install rbenv ruby-build || true
+  if [[ "$ruby_mode" == rbenv ]]; then
+    echo "📦 rbenv と ruby-build をインストールしています…"
+    # Homebrew 7 から、端末では install のたびに [y/n] を尋ねる。入れることはもう決まっている
+    HOMEBREW_NO_ASK=1 brew install rbenv ruby-build || true
+  fi
 
   # kindlepreviewer コマンド（アプリの中の CLI を呼ぶラッパー）は、あとの doctor --fix が作る
   if $install_kindle; then
@@ -313,61 +469,70 @@ else
   echo "このスクリプトは macOS 向けです。Linux では各ディストリのパッケージマネージャで rbenv と ruby-build を導入後、再実行してください。" >&2
 fi
 
-# Ensure rbenv is on PATH for this session
-if [[ -x "$(brew --prefix 2>/dev/null)/bin/rbenv" ]]; then
-  export PATH="$(brew --prefix)/bin:$PATH"
-fi
-
-if ! command -v rbenv >/dev/null 2>&1; then
-  echo "PATH に rbenv が見つかりません。シェル初期化に rbenv の設定を追加してから再実行してください。" >&2
-  echo "~/.zprofile に次の 2 行を足してください:"
-  shell_setup_lines | sed 's/^/  /'
-  exit 1
-fi
-
-eval "$(rbenv init - zsh)"
-
 # --- Phase: Ruby ---
-# 'latest' が指定された場合は最新安定版を解決
-# - プレビュー版（alpha/beta/preview/rc/dev）を除外
-# - 正式リリース番号（X.Y.Z）のみを対象とする
-if [[ "$VERSION" == "latest" ]]; then
-  echo "🔍 rbenv から最新の安定版 Ruby を取得しています…"
-  latest="$(rbenv install -l 2>/dev/null \
-    | awk '{print $1}' \
-    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
-    | grep -vE '(alpha|beta|preview|rc|dev)' \
-    | tail -1 \
-    | tr -d ' ')"
-
-  if [[ -z "$latest" ]]; then
-    # フォールバック: ruby-lang の index から取得（ベストエフォート）
-    latest="$(curl -fsSL https://cache.ruby-lang.org/pub/ruby/index.txt 2>/dev/null \
-      | grep -E 'ruby-[0-9]+\.[0-9]+\.[0-9]+\.tar\.xz' \
-      | grep -vE '(alpha|beta|preview|rc|dev)' \
-      | sed -E 's/.*ruby-([0-9]+\.[0-9]+\.[0-9]+).*/\1/' \
-      | sort -V \
-      | tail -1)"
-  fi
-
-  if [[ -n "$latest" ]]; then
-    VERSION="$latest"
-    echo "➡️  最新安定版を解決しました: ${VERSION}"
-  else
-    echo "⚠️  最新版を自動取得できませんでした。既知の安定版 ${FALLBACK_VERSION} を使用します"
-    VERSION="$FALLBACK_VERSION"
-  fi
-fi
-
-echo "💎 Ruby ${VERSION} をインストールしています…"
-if rbenv versions --bare | grep -qx "${VERSION}"; then
-  echo "Ruby ${VERSION} は既にインストール済みです。"
+if [[ "$ruby_mode" == keep ]]; then
+  echo "💎 今の Ruby ${current_ruby_version} をそのまま使います（${MIN_RUBY} 以上）。"
+elif [[ "$ruby_mode" == brew_upgrade ]]; then
+  echo "💎 Homebrew の Ruby を最新版に上げています…"
+  HOMEBREW_NO_ASK=1 brew upgrade ruby
+  rehash
 else
-  RUBY_CONFIGURE_OPTS="--with-openssl-dir=$(brew --prefix openssl@3 2>/dev/null || true)" rbenv install "${VERSION}"
-fi
+  # Ensure rbenv is on PATH for this session
+  if [[ -x "$(brew --prefix 2>/dev/null)/bin/rbenv" ]]; then
+    export PATH="$(brew --prefix)/bin:$PATH"
+  fi
 
-rbenv global "${VERSION}"
-rbenv rehash
+  if ! command -v rbenv >/dev/null 2>&1; then
+    echo "PATH に rbenv が見つかりません。シェル初期化に rbenv の設定を追加してから再実行してください。" >&2
+    echo "$(rbenv_config_file) に次の行を足してください:"
+    rbenv_setup_line | sed 's/^/  /'
+    exit 1
+  fi
+
+  eval "$(rbenv init - zsh)"
+
+  # 'latest' が指定された場合は最新安定版を解決
+  # - プレビュー版（alpha/beta/preview/rc/dev）を除外
+  # - 正式リリース番号（X.Y.Z）のみを対象とする
+  if [[ "$VERSION" == "latest" ]]; then
+    echo "🔍 rbenv から最新の安定版 Ruby を取得しています…"
+    latest="$(rbenv install -l 2>/dev/null \
+      | awk '{print $1}' \
+      | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+      | grep -vE '(alpha|beta|preview|rc|dev)' \
+      | tail -1 \
+      | tr -d ' ')"
+
+    if [[ -z "$latest" ]]; then
+      # フォールバック: ruby-lang の index から取得（ベストエフォート）
+      latest="$(curl -fsSL https://cache.ruby-lang.org/pub/ruby/index.txt 2>/dev/null \
+        | grep -E 'ruby-[0-9]+\.[0-9]+\.[0-9]+\.tar\.xz' \
+        | grep -vE '(alpha|beta|preview|rc|dev)' \
+        | sed -E 's/.*ruby-([0-9]+\.[0-9]+\.[0-9]+).*/\1/' \
+        | sort -V \
+        | tail -1)"
+    fi
+
+    if [[ -n "$latest" ]]; then
+      VERSION="$latest"
+      echo "➡️  最新安定版を解決しました: ${VERSION}"
+    else
+      echo "⚠️  最新版を自動取得できませんでした。既知の安定版 ${FALLBACK_VERSION} を使用します"
+      VERSION="$FALLBACK_VERSION"
+    fi
+  fi
+
+  echo "💎 Ruby ${VERSION} をインストールしています…"
+  if rbenv versions --bare | grep -qx "${VERSION}"; then
+    echo "Ruby ${VERSION} は既にインストール済みです。"
+  else
+    RUBY_CONFIGURE_OPTS="--with-openssl-dir=$(brew --prefix openssl@3 2>/dev/null || true)" rbenv install "${VERSION}"
+  fi
+
+  rbenv global "${VERSION}"
+  rbenv rehash
+  manager=rbenv
+fi
 
 echo "🔎 バージョン確認: ruby -v"
 ruby -v
@@ -381,15 +546,19 @@ fi
 # 書くかどうかは最初に尋ねてある。この後の gem やツールの導入が途中で失敗しても、
 # 新しいターミナルで Ruby を使えるよう、先に書く
 echo "🐚 シェルの設定を確認しています…"
-if (( ${#missing_lines} == 0 )); then
-  echo "~/.zprofile は設定済みです。"
-elif $write_zprofile; then
-  print -r -l -- "" "# Homebrew と rbenv（Vivlio Starter の install.zsh が追記）" "${missing_lines[@]}" >> "$ZPROFILE"
-  echo "~/.zprofile に書き込みました:"
-  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
+if $add_gem_bin && ! gem_bin_reachable; then
+  zprofile_lines+=("export PATH=\"$(ruby -e 'print Gem.bindir'):\$PATH\"")
+fi
+if (( ${#zprofile_lines} + ${#zshrc_lines} == 0 )); then
+  echo "シェルの設定は済んでいます。"
+elif $write_shell_config; then
+  (( ${#zprofile_lines} > 0 )) && print -r -l -- "" "# Vivlio Starter の install.zsh が追記" "${zprofile_lines[@]}" >> "$ZPROFILE"
+  (( ${#zshrc_lines} > 0 )) && print -r -l -- "" "# Vivlio Starter の install.zsh が追記" "${zshrc_lines[@]}" >> "$ZSHRC"
+  echo "次の設定を書き込みました:"
+  show_setup_lines
 else
-  echo "~/.zprofile には書き込みませんでした。使う前に、次の行を足してください:"
-  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
+  echo "シェルの設定には書き込みませんでした。使う前に、次の行を足してください:"
+  show_setup_lines
 fi
 
 # --- Phase: Vivlio Starter ---
@@ -404,7 +573,10 @@ fi
 echo "📄 vivlio-starter-pdf（PDF のしおりを付ける拡張）をインストールしています…"
 gem install "${PDF_GEM_FILE:-vivlio-starter-pdf}" \
   || echo "🟡 vivlio-starter-pdf を入れられませんでした。PDF にしおりを付けるには、あとで gem install vivlio-starter-pdf を実行してください。"
-rbenv rehash
+# このシェルでも vs を呼べるようにする（Homebrew の Ruby は、gem のコマンドの置き場所に
+# PATH が通っていない。設定ファイルに書いた行は、次のシェルから効く）
+path=("$(ruby -e 'print Gem.bindir')" $path)
+refresh_ruby_commands
 
 echo "🔎 バージョン確認: vs --version"
 # `vs` でなく正式名で呼ぶ。Vivliostyle CLI も `vs` という別名を入れるため（改善案.md #87）
@@ -433,14 +605,14 @@ echo ""
 
 # 新しいシェルに切り替え、このウィンドウのまま vs を使えるようにする。このスクリプトは
 # 子のシェルで走るので、PATH や rbenv の設定を、打った人のシェルへ渡せない（Oh My Zsh と同じ形）。
-# ~/.zprofile に設定が無いと、切り替えても vs が見つからないので、そのときは切り替えない。
+# 設定を書き込まなかったときは、切り替えても vs が見つからないので切り替えない。
 # 端末が無いとき（CI など）も切り替えない
-if (( ${#missing_lines} == 0 )) || $write_zprofile; then
+if (( ${#zprofile_lines} + ${#zshrc_lines} == 0 )) || $write_shell_config; then
   if [[ -t 0 && -t 1 ]]; then
     exec zsh -l
   fi
   echo "新しいターミナルのウィンドウを開くと、vs を使えます。"
 else
-  echo "vs を使う前に、~/.zprofile に次の行を足して、新しいターミナルのウィンドウを開いてください:"
-  print -r -l -- "${missing_lines[@]}" | sed 's/^/  /'
+  echo "vs を使う前に、次の行を足して、新しいターミナルのウィンドウを開いてください:"
+  show_setup_lines
 fi
