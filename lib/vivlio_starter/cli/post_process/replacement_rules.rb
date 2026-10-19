@@ -142,7 +142,8 @@ module VivlioStarter
 
           rules.unshift(
             Rule.new(%r{@version\b}m, sanitize_value(cfg.project.version), :text_only),
-            Rule.new(%r{@title\b}m,   sanitize_value(cfg.book.main_title), :text_only)
+            # 本文の中で書名を改行させないよう、扉用の <br> などのタグは外す
+            Rule.new(%r{@title\b}m,   sanitize_value(Common.plain_title(cfg.book.main_title)), :text_only)
           )
         end
 

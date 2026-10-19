@@ -128,15 +128,17 @@ module VivlioStarter
         end
 
         # book.yml の書誌を {{title}} などへ埋める。SVG の構造と装飾には触れない。
+        # SVG の <text> には文字しか入れられないので、扉で改行させる <br> などのタグは外し
+        # （Common.plain_title）、& や < は文字参照にする（そのまま入ると SVG が壊れる）
         def apply_text_replacements(svg)
           placeholders = {
-            '{{title}}' => Common::CONFIG.dig(:book, :main_title),
-            '{{subtitle}}' => Common::CONFIG.dig(:book, :subtitle),
+            '{{title}}' => Common.plain_title(Common::CONFIG.dig(:book, :main_title)),
+            '{{subtitle}}' => Common.plain_title(Common::CONFIG.dig(:book, :subtitle)),
             '{{author}}' => Common::CONFIG.dig(:book, :author),
             '{{series}}' => Common::CONFIG.dig(:book, :series),
             '{{release}}' => Common::CONFIG.dig(:book, :release)
           }
-          placeholders.reduce(svg) { |result, (placeholder, value)| result.gsub(placeholder, value.to_s) }
+          placeholders.reduce(svg) { |result, (placeholder, value)| result.gsub(placeholder, CGI.escapeHTML(value.to_s)) }
         end
 
         # :root で定義した CSS カスタムプロパティを、var(--xxx) の所へ展開する。

@@ -641,6 +641,16 @@ module VivlioStarter
         assert_equal 'はじめての技術書 実践ガイド', meta[:title]
       end
 
+      # 副題に扉で改行させる <br> を書いても、書誌（PDF の文書情報・EPUB の dc:title）には入れない
+      # （改善案.md #116）
+      def test_epub_config_title_drops_line_break_tags
+        meta = config_metadata(book: { "main_title" => "AIと学ぶモダンWebサイト入門",
+                                       "subtitle" => "HTML/CSSグリッドと<br>やさしいJavaScriptの基本",
+                                       "author" => "早乙女 遙香", "language" => "ja" })
+
+        assert_equal "AIと学ぶモダンWebサイト入門 HTML/CSSグリッドとやさしいJavaScriptの基本", meta[:title]
+      end
+
       # 著者名・言語・title キー未設定: 空文字もプレースホルダへ寄る（writer と同一規則）
       def test_epub_config_falls_back_to_placeholders_like_writer
         meta = config_metadata(book: { 'main_title' => 'T', 'author' => '', 'language' => '' })

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'cgi/escape'
 require 'json'
 require 'yaml'
 require_relative 'config_keys'
@@ -493,6 +494,19 @@ module VivlioStarter
           emit("#{frame.('│')} #{body}#{' ' * (width - display_width(line))} #{frame.('│')}")
         end
         emit(frame.("╰#{'─' * (width + 2)}╯"))
+      end
+
+      # 書名・副題を、PDF の文書情報・EPUB の書誌・しおりのような「文字だけが入る所」へ入れる形にする。
+      # book.yml の書名には、扉で改行させる <br> などのタグを書けるが、そのまま入ると
+      # 「…グリッドと<br>やさしい…」と出る（改善案.md #116）。<br> は、前後がどちらも英数字なら
+      # 空白に、それ以外は詰める（改行で分けた英単語をくっつけず、和文には空白を挟まない）。
+      # ほかのタグは外し、&amp; などは文字に戻す。
+      def plain_title(text)
+        joined = text.to_s.gsub(%r{\s*<br\s*/?>\s*}i) do
+          match = ::Regexp.last_match
+          [match.pre_match[-1], match.post_match[0]].all? { it&.match?(/[!-~]/) } ? ' ' : ''
+        end
+        CGI.unescapeHTML(joined.gsub(/<[^>]*>/, '')).gsub(/\s+/, ' ').strip
       end
 
       # 端末で占める桁数。全角（漢字・仮名・全角記号）と絵文字を 2 桁、それ以外を 1 桁と数える。

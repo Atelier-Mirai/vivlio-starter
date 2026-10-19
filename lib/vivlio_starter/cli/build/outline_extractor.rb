@@ -624,7 +624,8 @@ module VivlioStarter
         end
 
         def prepend_cover_item(items)
-          cover_title = Common::CONFIG.book.main_title.to_s.strip
+          # しおりは文字だけなので、扉で改行させる <br> などのタグは外す
+          cover_title = Common.plain_title(Common::CONFIG.book.main_title)
           cover_title = '表紙' if cover_title.empty?
 
           return items if items.any? { |it| it[:page].to_i == 1 && it[:text] == cover_title }

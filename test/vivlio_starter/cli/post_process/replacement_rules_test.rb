@@ -184,6 +184,19 @@ module VivlioStarter
           assert_includes out, '本書 テスト書名 は v1.2.3 です。'
         end
 
+        # 書名に扉で改行させる <br> を書いても、本文の @title では改行させず、文字としても出さない
+        def test_should_expand_title_without_line_break_tags
+          rules = ReplacementRules.value_macro_rules(stub_config(main_title: "Webサイト<br>入門"))
+          out = Tempfile.create(["vs_rr_value_", ".html"]) do |f|
+            f.write("<p>本書 @title です。</p>")
+            f.flush
+            HtmlReplacer.process_html_file(f.path, rules)
+            File.read(f.path, encoding: "utf-8")
+          end
+
+          assert_includes out, "本書 Webサイト入門 です。"
+        end
+
         # \b により @titlepage のような続き文字には反応しない
         def test_should_not_expand_macro_with_trailing_word_characters
           rules = ReplacementRules.value_macro_rules(stub_config)
@@ -198,9 +211,10 @@ module VivlioStarter
           assert_includes out, '@versionup'
         end
 
-        # 値の $ は置換エンジンの $1〜$9 展開に食われるため無害化し、< > は HTML エスケープする
+        # 値の $ は置換エンジンの $1〜$9 展開に食われるため無害化し、& などは HTML エスケープする。
+        # 書名のタグは、文字として見せず外す（扉用の <br> と同じ。改善案.md #116）
         def test_should_sanitize_dollar_and_html_in_config_values
-          rules = ReplacementRules.value_macro_rules(stub_config(main_title: '<b>$1 の本</b>'))
+          rules = ReplacementRules.value_macro_rules(stub_config(main_title: '<b>$1 & 本</b>'))
           out = Tempfile.create(['vs_rr_value_', '.html']) do |f|
             f.write('<p>@title</p>')
             f.flush
@@ -208,7 +222,7 @@ module VivlioStarter
             File.read(f.path, encoding: 'utf-8')
           end
 
-          assert_includes out, '&lt;b&gt;&#36;1 の本&lt;/b&gt;'
+          assert_includes out, '<p>&#36;1 &amp; 本</p>'
           refute_includes out, '<b>'
         end
 

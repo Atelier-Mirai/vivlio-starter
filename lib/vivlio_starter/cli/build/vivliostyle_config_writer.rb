@@ -124,10 +124,11 @@ module VivlioStarter
           JS
         end
 
-        # main_title + subtitle 合成 → プレースホルダ。
+        # main_title + subtitle 合成 → プレースホルダ。PDF の文書情報と EPUB の書誌に入るので、
+        # 扉で改行させる <br> などのタグは外す（Common.plain_title）
         def resolve_title
           book = Common::CONFIG.book
-          combined = [book.main_title, book.subtitle].compact.map { it.to_s.strip }.reject(&:empty?).join(' ')
+          combined = [book.main_title, book.subtitle].map { Common.plain_title(it) }.reject(&:empty?).join(' ')
           combined.empty? ? '書籍タイトル' : combined
         end
 

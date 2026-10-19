@@ -407,6 +407,20 @@ module VivlioStarter
         Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
       end
 
+      # SVG の表紙の <text> には文字しか入れられない。書名の <br> は外し、& は文字参照にする
+      # （そのまま入ると SVG が壊れる。改善案.md #116）
+      def test_svg_cover_puts_plain_titles_into_text
+        config = YAML.load_file("config/book.yml")
+        config["book"] = config.fetch("book", {}).merge("main_title" => "Tom & Jerry",
+                                                        "subtitle" => "グリッドと<br>やさしい基本")
+        File.write("config/book.yml", config.to_yaml)
+        Common.reload_configuration!(silent: true)
+
+        svg = CoverCommands::SvgCover.apply_text_replacements("<text>{{title}}</text><text>{{subtitle}}</text>")
+
+        assert_equal "<text>Tom &amp; Jerry</text><text>グリッドとやさしい基本</text>", svg
+      end
+
       # lightテーマ設定が正しく読み込めることを確認
       def test_should_read_light_theme_setting
         config_content = {
