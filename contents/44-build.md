@@ -273,11 +273,11 @@ SVG で描いた図は、Kindle 版では画像に変えて入れるので、細
 
 ### kindlepreviewer のインストール
 
-`.kpf` への変換には、Amazon が配布する **Kindle Previewer** に含まれる `kindlepreviewer` コマンドが必要です。未インストールの場合、Kindle 用の中間 EPUB までは生成されますが、`.kpf` への変換はスキップされ、その旨が警告として表示されます。
+`.kpf` への変換には、Amazon が配布する **Kindle Previewer** に含まれる `kindlepreviewer` コマンドが必要です。未インストールの場合、Kindle 用の中間 EPUB までは生成されますが、`.kpf` への変換は飛ばし、ビルドの最後に 💡 で入れ方を知らせます。
 
 現在配布されているのは **Kindle Previewer 4** です。3 をお使いでしたら、4 へ更新してください。Amazon公式も、3 はサポートしていません。
 
-Kindle Previewer は、[Amazon KDP の配布ページ](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から入れてください（`vs doctor --fix` はアプリそのものは入れません）。入れたあとの更新は、アプリの更新機能で行えます。macOS では、入れたあとに `vs doctor --fix` を実行すると、`kindlepreviewer` コマンドを使えるようになります。
+macOS では、`targets` に `kindle` がある本で `vs doctor --fix` を実行すると、Homebrew で Kindle Previewer を入れ、`kindlepreviewer` コマンドを使えるようにします（管理者のパスワードを尋ねます）。導入スクリプトで Kindle 向けにも作ると答えた場合は、もう入っています。入れたあとの更新は、アプリの更新機能で行えます。Windows では、[Amazon KDP の配布ページ](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から入れてください。
 
 `vs doctor --fix` を使わない場合は、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認してください。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 4.app` 配下）にパスを通してください。
 
@@ -292,13 +292,11 @@ Kindle Previewer 4 は、見かけのうえでは Apple Silicon に対応して�
 bad CPU type in executable
 ```
 
-新しい Mac には Rosetta が最初から入っていないことがあります。次のコマンドで導入してください。
+新しい Mac には Rosetta が最初から入っていないことがあります。`targets` に `kindle` がある本では、`vs doctor --fix` が Kindle Previewer と一緒に入れます。自分で入れる場合は、次のコマンドを実行します。
 
 ```bash
 sudo softwareupdate --install-rosetta --agree-to-license
 ```
-
-`vs doctor` も、この状態を見つけたら同じ案内を出します。
 :::
 
 :::{.note}

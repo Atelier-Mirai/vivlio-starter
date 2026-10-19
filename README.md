@@ -58,18 +58,23 @@ Vivlio Starter を使った書籍制作は、5つのステップで完結しま�
 
 Linux / Windows では**未検証**です。本体は Ruby と Node で書かれているので、[追加ツール](#追加ツールのインストールpdf-操作)を各環境のパッケージ管理（apt / dnf / winget など）で手動導入すれば動作する見込みですが、確認は取れていません。非 macOS で `vs doctor --fix` を実行すると、**自動導入は行わず、必要なツールの一覧を示して止まります**。手動導入の道しるべとしてお使いください。
 
-Ruby が未導入の場合（`ruby -v` が 3.4 より古い版、たとえば macOS 付属の 2.6 を表示する場合も）は、次の 1 行で Homebrew・rbenv・Ruby をまとめて導入できます。確認しながら進み、最後に `~/.zprofile` へシェルの設定を書き込みます。
+### インストール
+
+macOS では、次の 1 行で Vivlio Starter と、執筆に使うツールをまとめて導入できます。
 
 ```bash
 zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
 ```
 
-確認を省くときは、末尾に ` install -y` を足します。終わったら、新しいターミナルを開いてください。
+- 尋ねること（Homebrew の導入・シェルの設定ファイルへの書き込み・プレビューの操作の許可・Kindle Previewer の導入・管理者のパスワード）は最初にまとめてあり、あとは 15 分ほどで終わります
+- Ruby 3.4 以上があればそのまま使い、無いか古ければ rbenv で最新の安定版を入れます（mise・rvm・asdf の古い Ruby は、その道具での上げ方を示して止まります）
+- Vivlio Starter・vivlio-starter-pdf・`vs doctor --fix` が入れるツールを入れ、最後に同じウィンドウのまま `vs` を使えるようにします
+- 確認を省くときは、末尾に ` install -y` を足します
 
-### インストール
+Ruby 3.4 以上があり、gem だけを入れる場合は次のとおりです。執筆に使うツールは、最初の `vs new` が入れます。
 
 ```bash
-gem install vivlio-starter
+gem install vivlio-starter vivlio-starter-pdf
 ```
 
 既存プロジェクトの更新は、そのプロジェクト内で `vs upgrade` を実行するだけです（本体 gem・雛形・`Gemfile.lock`・外部ツールをまとめて最新化します）。

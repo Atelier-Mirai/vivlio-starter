@@ -44,7 +44,7 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 
 ツールが入っていても、版が古いと正しく動かないことがあります。`vs doctor` は、見つかったツールの版も確かめます。
 
-Kindle Previewer 3 が入っていれば 4 への更新を、Apple Silicon の Mac で Rosetta 2 が入っていなければ導入のコマンドを案内します（@chapref:ch-build）。Rosetta の導入には管理者パスワードが要るので、`--fix` では行いません。
+Kindle Previewer 3 が入っていれば、4 への更新を案内します（@chapref:ch-build）。Apple Silicon の Mac で Rosetta 2 が入っていなければ、導入のコマンドを案内します。`config/book.yml` の `targets` に `kindle` がある本では、`--fix` が Rosetta 2 を入れます（管理者のパスワードを尋ねます）。
 
 **Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると更新を案内します。
 
@@ -154,7 +154,7 @@ npm で導入するツールには Node.js が必要です。まだ入ってい�
 - **Xcode Command Line Tools**（`xcode-select --install`）と **Homebrew**（公式インストーラ）— 入っていない場合は、導入前に確認を求められます
 - **textlint** — 本体と一緒に日本語技術書向けのルールセットを導入し、設定ファイルを `config/` に配置します
 - **`waifu2x-ncnn-vulkan`** — Homebrew では配布されていないため、GitHub Releases からダウンロードします
-- **Kindle Previewer** — アプリそのものは入れず、Amazon KDP の配布ページを案内します（Homebrew の配布は Amazon の最新版より遅れることがあるため）。アプリが入っていれば、コマンドから呼び出すためのラッパーを作ります。`targets: kindle` で Kindle 用ファイルを作る場合に必要な任意ツールです
+- **Kindle Previewer** — `config/book.yml` の `targets` に `kindle` がある本でだけ、`brew install --cask kindle-previewer` でアプリを入れ、コマンドから呼び出すためのラッパーを作ります。Apple Silicon の Mac には Rosetta 2 も入れます。どちらも管理者のパスワードを尋ねます。アプリがすでに入っていれば、ラッパーだけを作ります
 
 インストール手順や対応する版は変わることがあります。ここにない方法で導入するときや、案内どおりに進まないときは、各ツールの公式ドキュメントで現在の手順を確認してください。
 
@@ -270,7 +270,7 @@ gem update vivlio-starter
 
 ビルドが失敗したときは、まず `vs doctor` で不足や設定の問題を確かめてください。原因が分からないまま `vs upgrade` を実行すると、複数のツールの版が変わり、かえって問題を切り分けにくくなることがあります。
 
-新しい Mac をセットアップするときも、最初に使うのは `vs doctor --fix` です。Homebrew や Xcode Command Line Tools の導入確認から始められます。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
+新しい Mac をセットアップするときは、@chapref:ch-install の導入スクリプトを使います。Homebrew・Ruby・Vivlio Starter と、`vs doctor --fix` が入れるツールをまとめて入れます。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
 
 ## トラブルシューティング
 

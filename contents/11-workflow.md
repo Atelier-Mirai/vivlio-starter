@@ -63,10 +63,10 @@ CLI は Command Line Interface の略で、文字で操作を伝える方式で�
 
 ### (1) プロジェクト作成
 
-`vs new` コマンドで、書籍プロジェクトの雛形を生成します。画面に表示される質問に沿って書籍名や著者名を入力すると、原稿・画像・設定を置くためのファイル一式が作られます。続いて `vs doctor --fix` が実行され、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールもまとめてセットアップされます。
+`vs new` コマンドで、書籍プロジェクトの雛形を生成します。画面に表示される質問に沿って書籍名や著者名を入力すると、原稿・画像・設定を置くためのファイル一式が作られます。続いて、Vivliostyle や ImageMagick など、書籍制作に使う外部ツールが揃っているかを確かめ、足りないものがあれば入れます。
 
 ```bash
-vs new mybook   # 雛形生成 + 必要ツールの自動セットアップ
+vs new mybook   # 雛形生成 + 必要ツールの確認
 cd mybook
 ```
 
@@ -135,23 +135,13 @@ vs cover   # カバーを個別に生成・調整したい場合
 ここからは、実際に小さな書籍プロジェクトを作ります。インストールから最初の PDF が開くまでに使うコマンドは、まだ数えるほどです。意味を一つずつ確かめながら進めれば、先程見た全体の流れが手元のファイルとして見えてきます。
 :::
 
-### Ruby を用意する
+### Vivlio Starter をインストールする
 
-Vivlio Starter は Ruby で動作します。最初に、現在の環境で Ruby を使えるか確かめます。
-
-```bash
-ruby -v
-```
-
-`ruby 4.0.7` のように 3.4 以上のバージョンが表示されれば準備完了です。次の「Vivlio Starter をインストールする」へ進んでください。
-
-バージョンが表示されないときや、`ruby 2.6.10` のような古いバージョン（macOS に付属の Ruby）が表示されたときは、次の 1 行で必要な環境を導入します。Homebrew（Xcode コマンドラインツールも一緒に入ります）・rbenv・Ruby 本体・bundler が順にセットアップされます。
+ターミナルを開き、次の 1 行を打ちます。Vivlio Starter と、執筆に使うツールがまとめて入ります。
 
 ```bash
 zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
 ```
-
-途中で、Mac にログインするときのパスワードと、`Enter` キーを求められます。Homebrew の導入に必要です。
 
 :::{.memo}
 **ターミナルの開き方（macOS）**
@@ -160,32 +150,36 @@ zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-star
 - Finder から: アプリケーション → ユーティリティ → Terminal.app
 :::
 
-完了したらシェルを読み込み直し、もう一度バージョンを確認します。
+はじめに、次のことをまとめて尋ねます。`y` か `n` を打って `Enter` を押してください。
 
-```bash
-exec zsh -l
-ruby -v
-```
+- Homebrew（Mac にツールを入れる道具）が無ければ、入れてよいか
+- 新しいターミナルでも使えるよう、シェルの設定ファイルに書き込んでよいか
+- PDF を開くのに使うプレビューを操作してよいか（macOS の確認が出たら「許可」を押します）
+- Kindle 向けの電子書籍も作るか（作るなら Kindle Previewer を入れます）
+- Mac にログインするときのパスワード（Homebrew か Kindle Previewer を入れるときだけ）
+
+あとは、終わるまで 15 分ほど待ちます。席を外して構いません。Ruby がないか古ければ新しい Ruby を入れ、Vivlio Starter、PDF にしおりを付ける拡張（vivlio-starter-pdf）、PDF や画像の処理に使うツールを順に入れます。Ruby 3.4 以上がすでにあれば、それをそのまま使います。
+
+終わると、次の枠が表示されます。同じウィンドウのまま、続けて `vs` を使えます。
 
 :::{.output}
 ```text
-ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [arm64-darwin27]
+╭─ 💡 Vivlio Starter の世界へようこそ ───────────
+│ Vivlio Starter バージョン 1.0.0 がインストールされました。
+│
+│ vs new mybook で新しい本を書き始めることができます。
+│ vs --help でコマンドの使い方を確認できます。
+│
+│ 素敵な一冊をどうぞ執筆なさってください。
+╰────────────────────────────────────────
 ```
 :::
 
-macOS 以外の環境へ入れたい方や、何が導入されるのかを把握しておきたい方は、@chapref:ch-install を参照してください。将来 Ruby の新しいバージョンが出たときは、`vs upgrade` が知らせ、入れ替える手順を示します。
-
-### Vivlio Starter をインストールする
-
-Ruby の準備ができたら、gem を入れます。
-
-```bash
-gem install vivlio-starter
-```
+何が入るのかを知りたい方や、macOS 以外の環境へ入れたい方は、@chapref:ch-install を参照してください。将来 Ruby の新しいバージョンが出たときは、`vs upgrade` が知らせ、入れ替える手順を示します。
 
 ### プロジェクトを作る
 
-Ruby と gem の準備ができたので、新しい書籍プロジェクトを作成します。`mybook` はプロジェクト名です。これから書く本に合わせた名前へ変更できます。
+準備ができたので、新しい書籍プロジェクトを作成します。`mybook` はプロジェクト名です。これから書く本に合わせた名前へ変更できます。
 
 ```bash
 vs new mybook

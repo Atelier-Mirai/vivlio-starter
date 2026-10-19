@@ -960,7 +960,7 @@ module VivlioStarter
       # `Server_KRF4`・同梱 JRE・`kindlegen`・`phantomjs` がここに含まれる）。Rosetta が
       # 無いと `bad CPU type in executable` で KPF 変換だけが落ちる。
       #
-      # 導入は管理者権限を要して対話が入るため、`--fix` でも自動実行しない。
+      # 導入は管理者のパスワードを尋ねるので、`--fix` が入れるのは、Kindle を選んだ本で端末があるときだけ。
       def report_rosetta_missing
         Common.log_warn(
           'Rosetta 2 が入っていません（Kindle Previewer の変換部分は Intel 版のままです）',

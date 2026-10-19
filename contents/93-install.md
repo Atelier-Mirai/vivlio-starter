@@ -1,28 +1,16 @@
 # インストール詳細
 
 :::{.chapter-lead}
-通常の macOS 環境では、`vs new` が執筆に必要なツールを揃えます。この章は、その処理の内訳を確かめたいときや、macOS 以外の環境・CI/CD 環境を自分で整えたいときのための資料です。すぐに書き始めたい方は、必要になったところから参照してください。
+通常の macOS 環境では、導入スクリプトが執筆に必要なツールを揃えます。この章は、その処理の内訳を確かめたいときや、macOS 以外の環境・CI/CD 環境を自分で整えたいときのための資料です。すぐに書き始めたい方は、必要になったところから参照してください。
 :::
 
-## Ruby のインストール
+## 導入スクリプト
 
-Vivlio Starter を動かすには Ruby 3.4 以上が必要です。まだ入っていなければ（macOS に付属の Ruby 2.6 しかない場合も）、次の 1 行で導入できます。確認しながら進みます。
+macOS では、次の 1 行で Vivlio Starter と、執筆に使うツールをまとめて入れられます。
 
 ```bash
 zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
 ```
-
-オプションは、末尾に `install` と続けて渡します。たとえば確認を省くときは、`… install.zsh)" install -y` とします。
-
-| オプション | 働き |
-| :--- | :--- |
-| `-y` | 確認をスキップして自動導入 |
-| `-v 4.0.7` | バージョンを明示して導入（既定は最新の安定版） |
-| `--no-bundler` | bundler の導入をスキップ |
-
-スクリプトの中身は、gem に同梱の `bin/install.zsh` と同じです。実行する前に GitHub で読むこともできます。
-
-スクリプトは Homebrew（Xcode Command Line Tools も一緒に入ります）、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。最後に、新しいターミナルでこの Ruby が使われるよう、`~/.zprofile` に Homebrew と rbenv の設定を書き込みます。同じ設定がすでにあれば、足しません。
 
 :::{.memo}
 **ターミナルの開き方（macOS）**
@@ -32,24 +20,49 @@ Finder から: アプリケーション → ユーティリティ → Terminal.a
 [iTerm2](https://iterm2.com/)や[Warp](https://www.warp.dev/)などの代替ターミナルも利用できます。
 :::
 
-## Vivlio Starter のインストール
+スクリプトは次の順に進みます。尋ねることは最初にまとめてあるので、確認が済めば、終わるまで席を外して構いません。
 
-Ruby が使えるようになったら、Vivlio Starter の gem を入れます。
+1. 確認（Homebrew を入れてよいか・シェルの設定ファイルに書いてよいか・プレビューの操作の許可・Kindle Previewer を入れるか・管理者のパスワード）
+2. Homebrew の導入（Xcode Command Line Tools も一緒に入る）
+3. Kindle Previewer と Rosetta 2 の導入（Kindle 向けにも作ると答えたときだけ）
+4. Ruby の準備（次の表）
+5. シェルの設定ファイルへの書き込み
+6. Vivlio Starter と vivlio-starter-pdf（PDF にしおりを付ける拡張）の導入
+7. 執筆に使うツールの導入（`vs doctor --fix`。内訳は次の節）
+8. 新しいシェルへの切り替え（同じウィンドウのまま `vs` を使える）
+
+Ruby は、今使っている Ruby に合わせて用意します。
+
+| 今の Ruby | 扱い |
+| :--- | :--- |
+| 3.4 以上 | そのまま使う |
+| ない・macOS 付属の 2.6・rbenv の古い版 | rbenv で最新の安定版を入れ、既定に切り替える |
+| Homebrew の古い Ruby | 確かめてから `brew upgrade ruby` で上げる |
+| mise・rvm・asdf の古い Ruby | その道具での上げ方を示して止まる |
+
+シェルの設定ファイルには、新しいターミナルで Homebrew と Ruby を使うための行を書きます。Homebrew の設定は `~/.zprofile` に書きます。rbenv の設定は、`~/.zshrc` にすでに rbenv の記述があればそちらに、無ければ `~/.zprofile` に書きます。Homebrew の Ruby を使う場合は、gem が入れるコマンドの置き場所を PATH に足す行も書きます。同じ設定がすでにあれば、足しません。
+
+オプションは、末尾に `install` と続けて渡します。たとえば確認を省くときは、`… install.zsh)" install -y` とします。
+
+| オプション | 働き |
+| :--- | :--- |
+| `-y` | 確認をスキップして自動導入 |
+| `-v 4.0.7` | 指定した版の Ruby を rbenv で導入 |
+| `--no-bundler` | bundler の導入をスキップ |
+
+スクリプトの中身は、gem に同梱の `bin/install.zsh` と同じです。実行する前に GitHub で読むこともできます。
+
+Ruby 3.4 以上がすでにあり、gem だけを入れたい場合は、次のようにします。執筆に使うツールは、最初の `vs new` が入れます。
 
 ```bash
-gem install vivlio-starter
+gem install vivlio-starter vivlio-starter-pdf
 ```
 
-PDF のアウトライン・しおり機能やデータ展開を使う場合は、対応する gem を追加します。どちらも必要になってから導入できます。
-
-```bash
-gem install vivlio-starter-pdf  # AGPL のため本体とは別 gem
-gem install query-stream        # データ展開機能
-```
+vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあります。本体だけでも、PDF のしおり以外の処理はすべて動きます。
 
 ## 自動インストールの内訳
 
-`vs new mybook` の途中では `vs doctor --fix` が呼び出され、必要なツールを導入します。どのツールが何に使われるか、ここで確認できます。
+導入スクリプトと `vs new mybook` の最後では `vs doctor --fix` が呼び出され、必要なツールを導入します。どのツールが何に使われるか、ここで確認できます。
 
 | ツール | インストール方法 | 用途 |
 | :--- | :--- | :--- |
@@ -62,7 +75,7 @@ gem install query-stream        # データ展開機能
 | poppler（pdfinfo / pdftoppm） | `brew install poppler` | PDF メタデータ取得・ページ画像化 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
-| Inkscape | `brew install inkscape` | SVG ラスタライズの予備経路（任意） |
+| Inkscape | `brew install --cask inkscape` | SVG ラスタライズの予備経路（任意） |
 | librsvg（rsvg-convert） | `brew install librsvg` | EPUB 扉絵・節絵の合成画像ラスタライズ |
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
@@ -71,12 +84,12 @@ gem install query-stream        # データ展開機能
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
-| Kindle Previewer（kindlepreviewer） | Amazon KDP の配布ページから手動で導入（`--fix` はラッパーだけを作成） | Kindle（KPF）変換（任意・targets: kindle 用） |
+| Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer`（Kindle を選んだときだけ） | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
 Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
 
-Kindle Previewer を使う場合は、[Amazon KDP の配布ページ](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から入れてから `vs doctor --fix` を実行してください。`kindlepreviewer` コマンドのラッパーを作ります。Apple Silicon の Mac では **Rosetta 2 も必要**です。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれます。Rosetta がないと `.kpf` への変換時に `bad CPU type in executable` と表示されます。`vs doctor` で導入状況を確認し、必要なら `sudo softwareupdate --install-rosetta --agree-to-license` を実行してください。
+Kindle Previewer は、`config/book.yml` の `targets` に `kindle` がある本で `vs doctor --fix` を実行すると入ります。導入スクリプトで Kindle 向けにも作ると答えた場合は、そこで入ります。Kindle を選んでいない本では入れません。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれるので、Apple Silicon の Mac には **Rosetta 2** も一緒に入れます。どちらも管理者のパスワードを尋ねます。入れたあとは、アプリの更新機能で新しい版に上がります。
 
 <!-- no-lint -->
 **`vs doctor --fix` による自動インストールは、macOS と Homebrew の組み合わせに対応しています。** Linux と Windows は現時点で動作検証を行えておらず、公式のサポート対象外です。手動で環境を整えたい場合は、以降の手順をお使いの環境に読み替えてください。必要なツールが揃えば動作する見込みはありますが、手順や結果は環境によって異なります。
@@ -109,7 +122,6 @@ source ~/.zprofile
 
 ```bash
 brew install rbenv ruby-build
-echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zprofile
 echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
 source ~/.zprofile
 
@@ -142,7 +154,7 @@ brew install tesseract tesseract-lang mecab mecab-ipadic
 7) Vivlio Starter gem
 
 ```bash
-gem install vivlio-starter
+gem install vivlio-starter vivlio-starter-pdf
 vs --version
 ```
 
@@ -234,6 +246,7 @@ vs --version
 | 症状 | 原因 | 解決策 |
 | :--- | :--- | :--- |
 | `vs` を打つと `ERROR Error: No input is set.` と出る | Vivliostyle CLI が入れる同じ名前の `vs` が動いている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を外します。Vivliostyle は `vivliostyle` で使えます） |
+| 導入スクリプトのあと、新しいターミナルで `vs` が見つからない | シェルの設定ファイルへの書き込みを断った | スクリプトが最後に示した行を設定ファイルに足し、新しいターミナルを開く |
 | `brew` が見つからない | Homebrew 未インストール | `vs doctor --fix` または[brew.sh](https://brew.sh)を参照 |
 | `npm` が見つからない | Node.js 未インストール | `vs doctor --fix` で Node.js をインストール後、再実行 |
 | Xcode CLT のインストールが完了しない | GUI 承認が必要 | インストーラ完了後に `vs doctor --fix` を再実行 |
