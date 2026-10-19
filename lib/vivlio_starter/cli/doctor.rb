@@ -442,8 +442,7 @@ module VivlioStarter
 
           # qpdf / poppler(pdfinfo, pdftoppm) / ghostscript / imagemagick / librsvg /
           # vips / tesseract(+lang) / mecab(+ipadic)。
-          # formula 名の正典は ToolUpgrader::TOOLS（vs upgrade と共用し、二重管理しない）
-          ToolUpgrader.brew_install_packages(missing).each { system(ToolUpgrader::INSTALL_ENV, "brew install #{it}") }
+          install_brew_formulae!(missing)
 
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
@@ -1092,6 +1091,23 @@ module VivlioStarter
       # 探し方は Common に 1 つだけある。ここに名前を残すのは、テストが診断の各経路を
       # DoctorCommands.stub :command_exists? で差し替えるため。
       def command_exists?(cmd) = Common.external_command_available?(cmd)
+
+      # 足りないツールの formula を入れる。formula 名の正典は ToolUpgrader::TOOLS（vs upgrade と
+      # 共用し、二重管理しない）。前のツールの依存として入ったものは飛ばす（ghostscript は
+      # tesseract に依存する）。入っている formula を brew install すると「already installed」の
+      # 警告と `brew reinstall` の案内が出て、入れ直しているように読まれた（改善案.md #87）
+      def install_brew_formulae!(missing)
+        ToolUpgrader.brew_install_packages(missing).each do |package|
+          next if brew_formula_installed?(package)
+
+          system(ToolUpgrader::INSTALL_ENV, "brew install #{package}")
+        end
+      end
+
+      # Homebrew の formula が入っているか（コマンドの有無でなく、Homebrew の記録で見る）
+      def brew_formula_installed?(package)
+        Kernel.system('brew', 'list', '--formula', '--versions', package, out: File::NULL, err: File::NULL)
+      end
 
       # コマンドが存在し、かつ実際に起動できるかを検証する。
       # presence チェック（command_exists?）は「ファイルが在り実行ビットが立つ」だけを見るため、

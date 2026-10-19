@@ -449,9 +449,25 @@ if $is_macos; then
 
   brew update
   if [[ "$ruby_mode" == rbenv ]]; then
-    echo "📦 rbenv と ruby-build をインストールしています…"
+    echo "📦 rbenv と ruby-build を確認しています…"
+    # 入っていないものだけ入れ、古いものは上げる（ruby-build が古いと、最新の Ruby を知らない）。
+    # 入っているものを brew install すると「already installed」の警告と `brew reinstall` の
+    # 案内が出て、入れ直しているように読まれた（改善案.md #87）
+    rbenv_install=() rbenv_upgrade=()
+    for formula in rbenv ruby-build; do
+      if ! brew list --formula --versions "$formula" >/dev/null 2>&1; then
+        rbenv_install+=("$formula")
+      elif [[ -n "$(brew outdated --formula --quiet "$formula" 2>/dev/null || true)" ]]; then
+        rbenv_upgrade+=("$formula")
+      fi
+    done
     # Homebrew 7 から、端末では install のたびに [y/n] を尋ねる。入れることはもう決まっている
-    HOMEBREW_NO_ASK=1 brew install rbenv ruby-build || true
+    if (( ${#rbenv_install} > 0 )); then
+      HOMEBREW_NO_ASK=1 brew install "${rbenv_install[@]}" || true
+    fi
+    if (( ${#rbenv_upgrade} > 0 )); then
+      HOMEBREW_NO_ASK=1 brew upgrade "${rbenv_upgrade[@]}" || true
+    fi
   fi
 
   # kindlepreviewer コマンド（アプリの中の CLI を呼ぶラッパー）は、あとの doctor --fix が作る

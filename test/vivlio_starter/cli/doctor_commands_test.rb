@@ -30,8 +30,24 @@ module VivlioStarter
     class DoctorCommandsTest < Minitest::Test
       # --fix のテストが、開発機の PATH にある本物の Vivliostyle の vs 別名を消さないようにする。
       # 別名を外す処理そのものは vivliostyle_vs_alias_test.rb が一時フォルダで確かめる。
+      # Homebrew の formula も、開発機の記録を見ず、@installed_formulae にあるものだけを入っている扱いにする
       def run(...)
-        DoctorCommands.stub(:vivliostyle_vs_aliases, []) { super }
+        @installed_formulae = []
+        DoctorCommands.stub(:vivliostyle_vs_aliases, []) do
+          DoctorCommands.stub(:brew_formula_installed?, ->(package) { @installed_formulae.include?(package) }) { super }
+        end
+      end
+
+      # 前のツールの依存として入った formula は brew install しない（ghostscript が tesseract を
+      # 連れてくる）。入れ直しているように見える「already installed」の警告を出さない
+      def test_doctor_fix_skips_formulae_already_pulled_in_as_dependencies
+        calls = []
+        @installed_formulae = %w[tesseract]
+        DoctorCommands.stub(:system, ->(*args) { calls << args.last }) do
+          DoctorCommands.install_brew_formulae!(%w[gs tesseract])
+        end
+
+        assert_equal ["brew install ghostscript"], calls
       end
 
       # すべてのツールが揃っている場合、正常終了することを確認
