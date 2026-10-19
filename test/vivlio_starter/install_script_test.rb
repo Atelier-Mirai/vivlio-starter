@@ -62,7 +62,20 @@ class InstallScriptTest < Minitest::Test
     assert_equal 'eval "$(rbenv init - zsh)"', lines[1]
   end
 
-  # rbenv の設定は、~/.zshrc にすでに rbenv の記述があればそちらに書き続け、無ければ
+# 設定を足すとき、新しく作るファイルは空行で始めない。今ある設定との間は 1 行空ける
+def test_should_not_start_a_new_config_file_with_a_blank_line
+  Dir.mktmpdir do |dir|
+    fresh = File.join(dir, ".zprofile")
+    existing = File.join(dir, ".zshrc")
+    File.write(existing, "export FOO=1\n")
+    zsh("#{functions(:append_setup_lines)}\nappend_setup_lines #{fresh} a b\nappend_setup_lines #{existing} c")
+
+    assert_equal "# Vivlio Starter の install.zsh が追記\na\nb\n", File.read(fresh)
+    assert_equal "export FOO=1\n\n# Vivlio Starter の install.zsh が追記\nc\n", File.read(existing)
+  end
+end
+
+# rbenv の設定は、~/.zshrc にすでに rbenv の記述があればそちらに書き続け、無ければ
   # ~/.zprofile に書く（rbenv 1.3 の rbenv init と同じ）。すでにあるかは両方のファイルで見る
   def test_should_keep_writing_rbenv_setup_to_zshrc_when_it_is_already_there
     Dir.mktmpdir do |dir|

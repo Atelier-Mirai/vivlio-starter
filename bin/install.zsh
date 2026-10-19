@@ -171,6 +171,15 @@ show_setup_lines() {
   done
 }
 
+# 設定ファイルの末尾に行を足す。前の設定との間は 1 行空けるが、ファイルが無いか空なら空けない
+# （新しく作った ~/.zprofile が空行で始まっていた）
+append_setup_lines() {
+  local file="$1"
+  shift
+  [[ -s "$file" ]] && print -r -- "" >> "$file"
+  print -r -l -- "# Vivlio Starter の install.zsh が追記" "$@" >> "$file"
+}
+
 # 今使われている Ruby を、何で入れたか（置き場所から判じる）
 ruby_manager() {
   case "$1" in
@@ -573,8 +582,8 @@ fi
 if (( ${#zprofile_lines} + ${#zshrc_lines} == 0 )); then
   echo "シェルの設定は済んでいます。"
 elif $write_shell_config; then
-  (( ${#zprofile_lines} > 0 )) && print -r -l -- "" "# Vivlio Starter の install.zsh が追記" "${zprofile_lines[@]}" >> "$ZPROFILE"
-  (( ${#zshrc_lines} > 0 )) && print -r -l -- "" "# Vivlio Starter の install.zsh が追記" "${zshrc_lines[@]}" >> "$ZSHRC"
+  (( ${#zprofile_lines} > 0 )) && append_setup_lines "$ZPROFILE" "${zprofile_lines[@]}"
+  (( ${#zshrc_lines} > 0 )) && append_setup_lines "$ZSHRC" "${zshrc_lines[@]}"
   echo "次の設定を書き込みました:"
   show_setup_lines
 else
