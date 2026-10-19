@@ -192,12 +192,17 @@ ruby_new_enough() {
 
 # gem が入れたコマンド（vs）の置き場所に PATH が通っているか。rbenv・asdf・mise の shims は、
 # 置き場所でなく shims から呼ぶので通っている扱い。Homebrew の Ruby は、既定では通っていない
-# （brew info ruby の注意書き。通っていないと、gem は入っても vs が見つからない）
+# （brew info ruby の注意書き。通っていないと、gem は入っても vs が見つからない）。
+# 別名を解いてから比べる。mise は版の別名（…/ruby/3.4/bin → 3.4.11）を PATH に置き、
+# Gem.bindir は実体（…/ruby/3.4.11/bin）を返すので、文字列では一致しない
 gem_bin_reachable() {
   [[ "$current_ruby" == */shims/* ]] && return 0
-  local bindir
+  local bindir dir
   bindir="$(ruby -e 'print Gem.bindir' 2>/dev/null)" || return 1
-  [[ ":$PATH:" == *":$bindir:"* ]]
+  for dir in $path; do
+    [[ -n "$dir" && "${dir:A}" == "${bindir:A}" ]] && return 0
+  done
+  return 1
 }
 
 # gem を入れたあと、新しいコマンドを呼べるようにする（shims を作り直す道具では作り直す）

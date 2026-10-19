@@ -118,6 +118,11 @@ class InstallScriptTest < Minitest::Test
       assert_equal "no", zsh(code.("/opt/homebrew/opt/ruby/bin/ruby"), path: "#{dir}:/usr/bin:/bin")
       assert_equal "yes", zsh(code.("/opt/homebrew/opt/ruby/bin/ruby"), path: "#{dir}:#{Gem.bindir}:/usr/bin:/bin")
       assert_equal "yes", zsh(code.("/Users/a/.rbenv/shims/ruby"), path: "#{dir}:/usr/bin:/bin")
+
+      # mise は版の別名（…/ruby/3.4/bin → 3.4.11/bin）を PATH に置く。別名を解いて比べる
+      alias_dir = File.join(dir, "3.4-bin")
+      File.symlink(Gem.bindir, alias_dir)
+      assert_equal "yes", zsh(code.("#{alias_dir}/ruby"), path: "#{dir}:#{alias_dir}:/usr/bin:/bin")
     end
   end
 
