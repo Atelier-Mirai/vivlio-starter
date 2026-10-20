@@ -49,6 +49,7 @@ module VivlioStarter
           option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
           option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
+          option '--volume <name>', '分冊の巻を選んで組む（巻の id か name。all で全巻を続けて組む）', key: :volume
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -70,6 +71,9 @@ module VivlioStarter
           end
 
           warn_theme_option_ignored
+          return run_all_volumes if options[:volume] == Build::Volumes::ALL
+
+          volume = options[:volume] && Build::Volumes.find!(options[:volume])
 
           # 前提条件の検証（precondition-guard-spec.md）
           # 違反があれば 🔴 メッセージを表示して本処理に入らず終了する
@@ -80,6 +84,7 @@ module VivlioStarter
             Guards::ChapterFileNameCheck.new,
             Guards::DuplicateNumberCheck.new,
             Guards::CatalogSectionCheck.new,
+            Guards::VolumeDefinitionCheck.new,
             Guards::DuplicateSlugCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
@@ -88,6 +93,7 @@ module VivlioStarter
             Guards::ChapterTargetCheck.new(targets)
           )
           Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { common.log_always(it) }
+          select_volume!(volume)
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
@@ -118,6 +124,9 @@ module VivlioStarter
         rescue Guards::GuardError
           # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
+        rescue Build::Volumes::SelectionError => e
+          common.log_error(e.message, detail: e.detail)
+          1
         rescue BuildCommands::BuildLock::AlreadyLockedError => e
           common.log_error(e.message)
           1
@@ -130,6 +139,7 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = nil
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
           PostProcessCommands::HeadingProcessor.chapter_numbering = true
+          restore_volume_selection
         end
 
         # プロジェクト文脈（config/book.yml）なしで実行できるか。
@@ -209,6 +219,76 @@ module VivlioStarter
 
           common.log_warn('--theme は直接ビルド（.md 指定）専用です。',
                           detail: "対処: config/book.yml の theme.color を '#{options[:theme]}' に変更してください。")
+        end
+
+        # 分冊の本で、組む範囲を選ぶ（multivolume-spec.md §4）。
+        #   --volume を付けた … その巻（書名・副題・表紙も巻の値にする）
+        #   章を指定した     … その章を載せた巻（@chapref と図表番号の章番号を巻の振り方にするため）
+        #   どちらもない     … 合本
+        # 巻の無い本では何もしない
+        def select_volume!(volume)
+          return unless Build::Volumes.enabled?
+
+          volume ||= targets.any? ? volume_of_targets : nil
+          Build::Volumes.select!(volume || (targets.any? ? :all : :combined))
+          return unless volume
+
+          common.log_action("#{volume.name}（#{volume.id}）を組みます")
+          Build::Volumes.apply_config!(volume)
+          @volume_config_applied = true
+          # 単章ビルドは対象の章だけで「第1章」から数える（chapter-reference-spec.md）ので、全章ビルドのときだけ足す
+          PostProcessCommands::HeadingProcessor.chapter_number_offset = Build::Volumes.chapter_offset if targets.empty?
+        end
+
+        # 章の指定のうち、最初の章を載せた巻
+        def volume_of_targets
+          basename = TokenResolver::Resolver.new.resolve(targets).find(&:in_catalog?)&.basename
+          basename && Build::Volumes.containing(basename)
+        end
+
+        # 巻の選択と、巻の値を重ねた設定を元に戻す（同じプロセスで続けて呼ばれるテストのため）
+        def restore_volume_selection
+          Build::Volumes.select!(nil)
+          PostProcessCommands::HeadingProcessor.chapter_number_offset = 0
+          Common.reload_configuration!(silent: true) if @volume_config_applied
+          @volume_config_applied = false
+        end
+
+        # 全巻を巻の順に、一巻ずつ別のプロセスで組む（§4.2）。設定や章の並びの記録は
+        # プロセスの中に残るので、同じプロセスで巻を切り替えると前の巻の値が混ざる
+        def run_all_volumes
+          if targets.any?
+            common.log_error('--volume all は、章の指定と一緒には使えません',
+                             detail: "対処: 章を組むなら vs build #{targets.join(' ')}、全巻を組むなら vs build --volume all")
+            return 1
+          end
+
+          volumes = Build::Volumes.list
+          Build::Volumes.find!(Build::Volumes::ALL) if volumes.empty? # 巻の無い本は書き方を案内して止める
+          volumes.each do |volume|
+            common.log_action("== #{volume.name}（#{volume.id}）を組みます（#{volume.index + 1}/#{volumes.size}）")
+            next if system(RbConfig.ruby, "-I#{File.expand_path('../../..', __dir__)}", $PROGRAM_NAME,
+                           'build', '--volume', volume.id, *passthrough_options)
+
+            common.log_error("#{volume.name}（#{volume.id}）の組版に失敗したので、ここで止めます",
+                             detail: "それまでに組んだ巻の出力は残しています。直したら vs build --volume #{volume.id} から組み直せます。")
+            return 1
+          end
+          common.log_success("全 #{volumes.size} 巻を組みました: #{volumes.map(&:name).join('、')}")
+          0
+        rescue Build::Volumes::SelectionError => e
+          common.log_error(e.message, detail: e.detail)
+          1
+        end
+
+        # --volume all から各巻の vs build へ渡すオプション（明示したものだけ）
+        def passthrough_options
+          [
+            ({ true => '--compress', false => '--no-compress' }[options[:compress]]),
+            ('--no-clean' if options[:clean] == false),
+            ('--verify-links' if options[:verify_links]),
+            *(['--log', options[:log_level]] if options[:log_level])
+          ].compact
         end
 
         # CLI 引数から Entry 配列を解決する

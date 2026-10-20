@@ -768,9 +768,11 @@ module VivlioStarter
 
       # 走査対象が catalog の全章を覆っているか（R4 の前提条件）。
       # catalog を読めない場合は従来どおり検査する（判定材料が無いのに黙るのは危険）。
+      # 分冊の本では「全章」を全巻の原稿で数える。巻を選んで組むと全章を覆わないので、
+      # 別の巻にだけ出る語を「出現しません」と知らせなくなる（multivolume-spec.md §6.2）
       # @param build_targets [Array<String>] 走査した章の basename
       def full_catalog_scope?(build_targets)
-        catalog = Build::CatalogLoader.load_existing_basenames
+        catalog = Build::Volumes.with_selection(:all) { Build::CatalogLoader.load_existing_basenames }
         return true if catalog.empty?
 
         (catalog - build_targets).empty?
@@ -1445,11 +1447,12 @@ module VivlioStarter
 
       # catalog.yml に載っている章。読めないときは nil を返す——判定材料が無いのに
       # 「catalog 未登録」と決めつけず、弱いほうの注記（走査対象外）に倒すため。
+      # 分冊の本では全巻の原稿を数える。別の巻の章を「catalog 未登録」としないため
       def catalog_basenames
         return @catalog_basenames if defined?(@catalog_basenames)
 
         @catalog_basenames = begin
-          Build::CatalogLoader.load_existing_basenames.to_set
+          Build::Volumes.with_selection(:all) { Build::CatalogLoader.load_existing_basenames }.to_set
         rescue StandardError
           nil
         end

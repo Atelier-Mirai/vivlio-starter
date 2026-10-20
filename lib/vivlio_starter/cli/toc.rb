@@ -170,7 +170,7 @@ module VivlioStarter
 
         # TOC の Markdown 文字列を構築する
         def build
-          buffer = [self.class.front_matter]
+          buffer = [self.class.front_matter.sub("<ul>\n", "<ul#{chapter_counter_style}>\n")]
           append_preface(buffer)
           append_headings(buffer)
           append_postface(buffer)
@@ -206,11 +206,35 @@ module VivlioStarter
             entry = entry_map[target]
             HeadingExtractor.new(target, entry, depth:).headings.each do |heading|
               list_state.transition_to(heading.level)
-              list_state.open_item(heading.list_markup)
+              markup = heading.list_markup
+              markup = with_appendix_counter(markup, target, entry) if heading.level == 1 && entry&.kind == :appendix
+              list_state.open_item(markup)
             end
           end
 
           list_state.prepare_for_postface
+        end
+
+        # 目次の「第 N 章」は CSS のカウンタで 1 から数える（toc.css）。分冊の巻を選んで組むときは、
+        # 章扉と同じ番号になるよう、カウンタの始まりを前の巻までの章の数にする（multivolume-spec.md §5.1）
+        def chapter_counter_style
+          offset = PostProcessCommands::HeadingProcessor.chapter_number_offset
+          offset.positive? ? %( style="counter-reset: toc-list-counter #{offset} toc-list-appendix-counter 0") : ''
+        end
+
+        # 分冊の本の付録は、巻をまたいで記号を振るので、巻の中では記号が飛ぶことがある（下巻の付録が A・C）。
+        # 並び順に数えるカウンタでは表せないので、付録ごとに章扉と同じ記号をカウンタに与える（§5.2）。
+        # 巻の無い本は今までどおりカウンタに任せる
+        def with_appendix_counter(markup, target, entry)
+          return markup unless Build::Volumes.enabled?
+
+          letter = PostProcessCommands::HeadingProcessor.resolve_appendix_letter(File.basename(target, '.html'),
+                                                                                 entry.number.to_i)
+          index = letter && ('A'..'Z').to_a.index(letter)
+          return markup unless index
+
+          markup.sub('<li class="toc-chapter-appendix"',
+                     %(<li class="toc-chapter-appendix" style="counter-reset: toc-list-appendix-counter #{index}"))
         end
 
         # 後書きのエントリを追加する（catalog.yml の POSTFACE に書いた原稿。99 に限らない）

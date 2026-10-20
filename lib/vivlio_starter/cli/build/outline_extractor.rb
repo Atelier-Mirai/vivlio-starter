@@ -596,8 +596,9 @@ module VivlioStarter
           number_display = heading[:number_display].to_s.strip
           return number_display unless number_display.empty?
 
+          # 前書き・後書きは番号の範囲によらず番号を付けない（PREFACE の `20-vol2-intro` を「第10章」としない）
           entry = TokenResolver::Resolver.new.resolve_file(basename)
-          return '' unless entry.number&.to_i&.between?(11, 89)
+          return '' unless entry.kind == :chapter && entry.number&.to_i&.between?(11, 89)
 
           "第#{entry.number.to_i - 10}章"
         end

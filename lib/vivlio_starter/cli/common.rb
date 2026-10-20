@@ -768,6 +768,11 @@ module VivlioStarter
         # 空配列は「指定なし」として扱い catalog 全体から付録順を取り直す。
         # （フルビルドでは本文章のみの override が渡され、付録抽出後に空配列となるため、
         #   ここで全体 resolve に委ねないと末尾フォールバックに落ちて採番がずれる）
+        # 分冊の本は、全巻を通した規則で振る（multivolume-spec.md §5.2）。単章ビルドの絞り込みは今までどおり
+        if (entries.nil? || entries.empty?) && (letter = Build::Volumes.appendix_letter(n))
+          return letter
+        end
+
         appendix_entries = if entries && !entries.empty?
                              entries.select { it.kind == :appendix }.sort_by { it.number.to_i }
                            else
@@ -832,7 +837,7 @@ module VivlioStarter
         project_version = project&.version
         include_version = CONFIG&.output&.include_version || false
 
-        filename = project_name.to_s.dup
+        filename = output_basename(project_name)
         filename += '_print' if target == 'print_pdf'
         filename += "_v#{project_version}" if include_version && !blank?(project_version)
         if suffix && !blank?(suffix) && target == 'pdf'
@@ -850,6 +855,13 @@ module VivlioStarter
 
       def generate_print_pdf_filename = generate_output_filename('print_pdf')
 
+      # 成果品の名前の頭。分冊の巻を選んで組んだときは、巻の id を足す（`mybook_lower`・multivolume-spec.md §4.6）。
+      # 続けて組んでも前の巻の PDF を上書きしないため。vs clean は project.name から始まる名前を消すので、巻の出力も消える
+      def output_basename(project_name)
+        volume = Build::Volumes.current
+        volume ? "#{project_name}_#{volume.id}" : project_name.to_s.dup
+      end
+
       # 表紙のルート成果品名。入稿用の PDF（generated-assets 移設仕様 §3.4）と、
       # KDP へ上げる電子書籍用の JPEG（ebook-cover-jpeg-spec.md §3）で、拡張子だけが違う。
       # generate_output_filename と同じ include_version 規則に従う。
@@ -861,7 +873,7 @@ module VivlioStarter
         project = CONFIG&.project
         include_version = CONFIG&.output&.include_version || false
 
-        filename = "#{project&.name || 'vivlio_starter'}_#{side}cover"
+        filename = "#{output_basename(project&.name || 'vivlio_starter')}_#{side}cover"
         filename += "_v#{project&.version}" if include_version && !blank?(project&.version)
         "#{filename}.#{ext}"
       end
@@ -1204,7 +1216,7 @@ module VivlioStarter
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,
-                      :generate_output_filename, :generate_print_pdf_filename,
+                      :generate_output_filename, :generate_print_pdf_filename, :output_basename,
                       :images_dir, :data_dir, :load_config, :load_page_presets, :log_action,
                       :emit, :confirm?, :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,

@@ -144,7 +144,7 @@ module VivlioStarter
           return num.to_s unless PostProcessCommands::HeadingProcessor.main_chapter_token?(token)
 
           idx = main_chapter_order.index(token)
-          idx ? (idx + 1).to_s : (num - 10).to_s
+          idx ? (idx + 1 + PostProcessCommands::HeadingProcessor.chapter_number_offset).to_s : (num - 10).to_s
         end
 
         # 付録の原稿の図表番号プレフィックスに使う付録レター（"A"〜）を返す。
@@ -178,7 +178,7 @@ module VivlioStarter
           context = { file_type: nil, chapter_display_number: nil, appendix_letter: nil }
           if entry.kind == :chapter && PostProcessCommands::HeadingProcessor.chapter_numbering?
             index = main_chapters_from_catalog.index(basename)
-            context[:chapter_display_number] = index && (index + 1)
+            context[:chapter_display_number] = index && (index + 1 + Build::Volumes.chapter_offset)
           elsif entry.kind == :appendix
             context[:file_type] = 'appendix'
             context[:appendix_letter] = Common.appendix_number_to_letter(entry.number)&.upcase

@@ -446,6 +446,8 @@ module VivlioStarter
             # 前回ビルドのワークスペースを一括掃除（stale HTML の混入防止・P4 §3.4-8）
             FileUtils.rm_rf(Common::BUILD_DIR)
           end
+          # 分冊の本で前回と違う巻を組むなら、--no-clean でも前の巻の HTML を残さない
+          Build::Volumes.prepare_workspace!
         end
 
         # 組み上がった本文 PDF から実効解像度を測り、過剰な画像を縮小版へ差し替える。

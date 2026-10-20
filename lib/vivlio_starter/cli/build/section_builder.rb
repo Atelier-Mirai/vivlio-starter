@@ -126,7 +126,7 @@ module VivlioStarter
           # 並列処理前に章の表示順を確定させる。
           # HeadingProcessor の @main_chapter_order はモジュールレベルのキャッシュなので、
           # 並列スレッドが不完全な HTML リストでキャッシュを作る前に正しい順序を注入する。
-          main_tokens = targets.select { |t| t.match?(/\A\d{2}-/) && t[/\A(\d{2})/, 1].to_i.between?(1, 89) }
+          main_tokens = targets.select { PostProcessCommands::HeadingProcessor.main_chapter_token?(it) }
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = main_tokens unless main_tokens.empty?
 
           concurrency = determine_concurrency

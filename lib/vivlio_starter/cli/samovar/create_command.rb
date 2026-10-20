@@ -31,6 +31,7 @@ module VivlioStarter
         many :names, '作成する章スラッグ（複数可）', default: []
 
         options do
+          option '--volume <name>', '分冊の目次で、章を足す巻（巻の id か name。省くと番号が一つ前の章の巻）', key: :volume
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -47,6 +48,9 @@ module VivlioStarter
 
           report_created(CreateCommands.execute_create(build_options, names))
           0
+        rescue Build::Volumes::SelectionError => e
+          Common.log_error(e.message, detail: e.detail)
+          1
         rescue SystemExit => e
           raise e
         rescue StandardError => e
@@ -69,7 +73,7 @@ module VivlioStarter
         end
 
         def build_options
-          { verbose: parent_verbose? }
+          { verbose: parent_verbose?, volume: options[:volume] && Build::Volumes.find!(options[:volume]) }
         end
 
         def parent_verbose?

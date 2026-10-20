@@ -56,6 +56,7 @@ module VivlioStarter
 
         options do
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
+          option '--volume <name>', '分冊の巻を選んで点検する（巻の id か name。省くと全巻の原稿）', key: :volume
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -65,6 +66,9 @@ module VivlioStarter
             print_usage
             return 0
           end
+
+          # 巻を選ばなければ、全巻の原稿（2 巻目以降の前書きも）を見る（multivolume-spec.md §6.1）
+          Build::Volumes.select!(Build::Volumes.find!(options[:volume])) if options[:volume]
 
           # 章別サマリーの集計をリセットする。Guard の 🟡 警告も最終判定に含めるため、
           # Guard.run! より前に置く（preflight-chapter-summary-spec.md §2.2）
@@ -80,6 +84,7 @@ module VivlioStarter
             Guards::ChapterFileNameCheck.new,
             Guards::DuplicateNumberCheck.new,
             Guards::CatalogSectionCheck.new,
+            Guards::VolumeDefinitionCheck.new,
             Guards::DuplicateSlugCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
@@ -133,6 +138,9 @@ module VivlioStarter
         rescue Guards::GuardError
           # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
+        rescue Build::Volumes::SelectionError => e
+          Common.log_error(e.message, detail: e.detail)
+          1
         rescue SystemExit => e
           raise e
         rescue StandardError => e
@@ -143,6 +151,7 @@ module VivlioStarter
           # --help や Guard 違反時はプロジェクト外で実行された可能性があるため触らない）
           CleanCommands.execute_clean({}) if @preflight_started
           Thread.current[:vs_verify_options] = nil
+          Build::Volumes.select!(nil)
         end
 
         private

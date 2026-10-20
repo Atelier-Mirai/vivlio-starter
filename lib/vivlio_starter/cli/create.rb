@@ -96,7 +96,7 @@ module VivlioStarter
             next
           end
 
-          create_single_chapter(fname, entry)
+          create_single_chapter(fname, entry, volume: options[:volume])
           created << entry.basename
         rescue StandardError => e
           errors = true
@@ -255,15 +255,16 @@ module VivlioStarter
       #
       # @param fname [String] ファイル名（XX-slug.md 形式）
       # @param entry [TokenResolver::Entry] 章エントリ
+      # @param volume [Build::Volumes::Volume, nil] 分冊の目次で章を足す巻（省くと番号から選ぶ）
       # @return [void]
-      def create_single_chapter(fname, entry)
+      def create_single_chapter(fname, entry, volume: nil)
         title   = generate_title(fname)
         content = generate_content_from_template(entry, title)
         path    = create_markdown_file(fname, content)
         create_image_directory(fname, {})
 
         basename = File.basename(fname, '.md')
-        Build::CatalogUpdater.add_chapter(basename)
+        Build::CatalogUpdater.add_chapter(basename, volume:)
 
         Common.log_success("#{path} を作成しました")
       end

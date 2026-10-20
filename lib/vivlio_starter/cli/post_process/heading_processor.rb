@@ -47,6 +47,16 @@ module VivlioStarter
           @chapter_tokens_override || []
         end
 
+        # 全章ビルドで「第 N 章」に足す数。分冊の巻を選んで組むとき、前の巻までの本文の章の数
+        # （multivolume-spec.md §5.1）。単章ビルドは対象の章だけで「第1章」から数えるので 0 のまま。
+        # chapter_tokens_override の有無では見分けられない——全章ビルドも、並列変換の前に
+        # 章の並びを override で渡している（SectionBuilder.convert_sections_html!）
+        def chapter_number_offset=(offset)
+          @chapter_number_offset = offset
+        end
+
+        def chapter_number_offset = @chapter_number_offset || 0
+
         # 章番号を振るか。直接ビルドで章が 1 つだけの配布資料には振らない（改善案 #84）。
         # 振らないときは章扉に「第N章」を出さず、節番号を 1, 2, …、図表番号を「図 1」とする
         # （CrossReferenceProcessor も見る）。既定は振る。
@@ -473,9 +483,10 @@ module VivlioStarter
           chapter_number_i ||= TokenResolver::Resolver.new.resolve_file(chapter_token).number&.to_i
           return nil unless chapter_number_i
 
+          # 全章ビルドは、分冊なら選んだ巻の始まりの番号から数える（chapter_number_offset）
           order = main_chapter_order
           if (idx = order.index(chapter_token))
-            return idx + 1
+            return idx + 1 + chapter_number_offset
           end
 
           chapter_number_i
