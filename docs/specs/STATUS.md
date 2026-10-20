@@ -13,7 +13,8 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| （なし） | | |
+| `catalog-section-kind-spec.md` | 章の種類を catalog.yml の区分で決める（番号より常に優先）・番号と区分の食い違いを 🟡 で知らせる | 未実装 |
+| `multivolume-spec.md` | 分冊（`VOLUMES`・`--volume`・合本・章番号と付録の記号・巻をまたぐ参照・全巻の目次） | 未実装 |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
@@ -27,4 +28,4 @@
 
 ## メモ（依存関係・実装順序）
 
-実装待ちの仕様書どうしの依存はありません。
+- `multivolume-spec.md` は `catalog-section-kind-spec.md` を先に入れる（巻ごとの前書きを `PREFACE` に書くため）。`catalog-section-kind-spec.md` は分冊と無関係に単独で入れられる。
