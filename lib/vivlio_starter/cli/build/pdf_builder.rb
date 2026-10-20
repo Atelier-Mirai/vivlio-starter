@@ -367,6 +367,7 @@ module VivlioStarter
 
           [
             preface_htmls,
+            Build::WholeTocGenerator.htmls(base_dir), # 分冊の全巻目次は、その巻の目次の前（multivolume-spec.md §9.3）
             toc_html,
             main_htmls_with_parts,
             Build::ChapterConfig.htmls_for_kind(base_dir, :appendix, entries_or_keep),

@@ -186,6 +186,15 @@ module VivlioStarter
           PostProcessCommands::HeadingProcessor.build_h1_number_text(context)
         end
 
+        # 目次（いま選んでいる範囲）での章番号の文字（図表番号の頭「8」）。本文の章でなければ番号そのもの。
+        # 分冊の別の巻の原稿のラベルを、その巻を選んだ状態で数えるときに使う（multivolume-spec.md §8）。
+        # display_chapter_number_for_filename は組んでいる巻の章の並びで数えるので、別の巻の章を数えられない
+        def catalog_chapter_number_for(filename)
+          basename = File.basename(filename.to_s, '.*')
+          index = main_chapters_from_catalog.index(basename)
+          index ? (index + 1 + Build::Volumes.chapter_offset).to_s : extract_chapter_number(basename).to_i.to_s
+        end
+
         # 章題の表示文字列。タグ（97 章の `<br>`）と強調・コードの記号、手書きの見出しラベルを除き、
         # 目次に出る文字とそろえる（§2.8）。
         def plain_chapter_title(heading_text)
@@ -334,8 +343,10 @@ module VivlioStarter
         # 参照置換
         # @param chapter_order [Array<String>, nil] catalog.yml の章の basename の並び。
         #   渡したときだけ「前の章 @ch-x」の x が隣の章かを確かめる（chapter-reference-spec.md §2.10）
-        def replace_references(content, labels_map, filename = nil, chapter_order: nil)
-          ReferenceReplacer.new(content, labels_map, filename, chapter_order:).replace
+        # @param other_volumes [Hash{String => String}] 分冊の別の巻の原稿（ファイル名 => 巻の名前）。
+        #   そこで定義したラベルへの参照は、巻の名前を添えた文字にし、リンクにしない（multivolume-spec.md §8）
+        def replace_references(content, labels_map, filename = nil, chapter_order: nil, other_volumes: {})
+          ReferenceReplacer.new(content, labels_map, filename, chapter_order:, other_volumes:).replace
         end
 
         # ラベルマップ構築（重複チェック付き）
@@ -778,11 +789,12 @@ module VivlioStarter
           #   角括弧の外に現れる URL 内の @
           MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)]+}
 
-          def initialize(content, labels_map, filename, chapter_order: nil)
+          def initialize(content, labels_map, filename, chapter_order: nil, other_volumes: {})
             @content = content
             @labels_map = labels_map
             @filename = filename
             @chapter_order = chapter_order
+            @other_volumes = other_volumes
             @errors = []
             @used_ids = Set.new
             @paged_in_paragraph = Set.new
@@ -873,8 +885,20 @@ module VivlioStarter
 
             check_adjacent_chapter(label, pre_text, line_num)
             @used_ids << label_id
+            if (volume = @other_volumes[label.source_file])
+              # 別の巻のページ番号はわからないので、@pageref も章を指すなら章番号と章題にする
+              return other_volume_text(volume, kind == 'chapref' || label.type == :chap ? chapref_text(label) : link_text(label))
+            end
+
             text = kind == 'chapref' ? chapref_text(label) : link_text(label)
             %(<a href="#{build_href(label)}" class="#{paged_classes(label)}">#{text}</a>)
+          end
+
+          # 別の巻のラベルへの参照。巻の名前を添え、リンクにしない（PDF・EPUB とも、別の巻へは飛べない）。
+          # 「上巻 第8章「…」」「上巻 図 8-2」「上巻「節題」」
+          def other_volume_text(volume, text)
+            separator = text.start_with?('「') ? '' : ' '
+            %(<span class="cross-ref-other-volume">#{CGI.escapeHTML(volume)}#{separator}#{text}</span>)
           end
 
           # 二度目以降は pageref を付けない。前書きへの参照には frontmatter を付け、
@@ -960,6 +984,9 @@ module VivlioStarter
           end
 
           def render_link(label)
+            volume = @other_volumes[label.source_file]
+            return other_volume_text(volume, link_text(label)) if volume
+
             href = build_href(label)
             %(<a href="#{href}" class="cross-ref-link">#{link_text(label)}</a>)
           end

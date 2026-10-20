@@ -62,11 +62,12 @@ module VivlioStarter
           '_colophon' => :colophon,
           '_indexpage' => :indexpage,
           '_glossarypage' => :glossarypage,
-          '_toc' => :toc
+          '_toc' => :toc,
+          '_whole_toc' => :whole_toc # 分冊の全巻目次（multivolume-spec.md §9）
         }.freeze
 
         # .cache/vs/ に生成されるシステムページ（contents/ ではなくキャッシュに配置）
-        CACHED_SYSTEM_FILES = %w[_titlepage _legalpage _colophon].freeze
+        CACHED_SYSTEM_FILES = %w[_titlepage _legalpage _colophon _whole_toc].freeze
 
         # @param catalog_path [String] catalog.yml のパス
         # @param contents_dir [String] 章ファイルが格納されるディレクトリ

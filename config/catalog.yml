@@ -112,4 +112,6 @@ POSTFACE:
 #   vs build --volume lower で下巻を、vs build --volume all で全巻を続けて組む。
 #   巻を選ばない vs build は、全巻を一冊にまとめた合本になる。
 #   ほかに書ける巻の設定: subtitle（副題）・cover（表紙の名前）・
-#   chapter_start（その巻の最初の章の番号）・appendix_start（その巻の付録を振り直す記号）
+#   chapter_start（その巻の最初の章の番号）・appendix_start（その巻の付録を振り直す記号）・
+#   whole_toc: true（その巻の目次の前に、全巻の構成を章まで示す目次を載せる）
+#   別の巻の章や図を @chapref:ch-xxx・@fig-xxx で指すと、「上巻 第8章「…」」のように巻の名前を添えて組む。

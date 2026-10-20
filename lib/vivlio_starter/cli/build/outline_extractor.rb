@@ -207,7 +207,9 @@ module VivlioStarter
           chapter_order = Build::SectionBuilder.chapter_order_from(html_basenames)
           prefaces, postfaces = supplement_basenames(chapter_order)
           # 新仕様: _titlepage, _legalpage を使用
-          frontmatter_sequence = [*%w[_titlepage _legalpage], *prefaces, '_toc']
+          # 分冊の全巻目次（multivolume-spec.md §9）は、その巻の目次の前に置く
+          frontmatter_sequence = [*%w[_titlepage _legalpage], *prefaces, *([WholeTocGenerator::BASENAME] & chapter_order),
+                                  '_toc']
           # 巻末の順序: 用語集 → 終わりに → 索引
           # 索引・用語集が無効の場合は除外
           backmatter_sequence = if IndexCommands.index_enabled?
@@ -477,6 +479,11 @@ module VivlioStarter
           preface_start = ctx[:from_base] + 2
           preface_end = ctx[:chapter_ranges][ctx[:preface_bn]]&.[](1) || (preface_start + ctx[:preface_pages] - 1)
           start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : preface_start
+          # 全巻目次が前にあるときは、前書きの終わりが全巻目次の手前で切られている。目次の見出しをその後ろで探す
+          if (whole = ctx[:chapter_ranges][WholeTocGenerator::BASENAME])
+            start_candidate = ctx[:find_page_by_first_line].call(toc_heading_title, whole[0] + 1, ctx[:total_pages]) ||
+                              (whole[0] + 1)
+          end
           start_page = [start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
           end_page = if ctx[:toc_pages].positive?
                        (start_page + ctx[:toc_pages] - 1).clamp(1,

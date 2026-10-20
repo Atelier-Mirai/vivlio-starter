@@ -103,7 +103,7 @@ module VivlioStarter
         def outline_target_htmls(entries_or_keep = nil)
           # chapter_numbers_for_outline は常に配列を返すため nil 判定は不要
           keep_numbers = chapter_numbers_for_outline(entries_or_keep)
-          special_pages = %w[_toc]
+          special_pages = [WholeTocGenerator::BASENAME, '_toc'] # 全巻目次は分冊の巻にだけある（multivolume-spec.md §9）
           special_pages.push('_glossarypage', '_indexpage') if Common.index_enabled?
 
           Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|

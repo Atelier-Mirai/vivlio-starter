@@ -543,10 +543,11 @@ module VivlioStarter
           # 奥付は本文 HTML として明示的に収録しないと EPUB に含まれない。
           colophon_html = [File.join(base_dir, '_colophon.html')].select { File.exist?(it) }
 
-          # 書籍構成順序: 前書き → [中扉+本文] → 付録 → 用語集 → 後書き → 索引 → 奥付
-          # ※ 目次（_toc）と裏表紙は除外
+          # 書籍構成順序: 前書き → [全巻目次] → [中扉+本文] → 付録 → 用語集 → 後書き → 索引 → 奥付
+          # ※ 目次（_toc）と裏表紙は除外。全巻目次は分冊の巻にだけある（multivolume-spec.md §9）
           [
             preface_html,
+            Build::WholeTocGenerator.htmls(base_dir),
             main_htmls_with_parts,
             appx_htmls,
             glossary_html,

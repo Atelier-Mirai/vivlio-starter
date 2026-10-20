@@ -169,6 +169,84 @@ module VivlioStarter
           end
         end
 
+        # --- 巻をまたぐ参照（§8） ---
+
+        # 別の巻のラベルは、巻の名前を添えた文字にし、リンクにしない。@pageref も章なら章番号と章題
+        def test_should_render_reference_to_other_volume_without_link
+          label = PreProcessCommands::CrossReferenceProcessor::Label
+          labels = {
+            'ch-dom' => label.new('ch-dom', :chap, '8', '第8章', 'ページを操作する', '08-dom.md', 1, true),
+            'fig-tree' => label.new('fig-tree', :fig, '8', '8-2', 'DOM の木', '08-dom.md', 20, false)
+          }
+          content = "@chapref:ch-dom と @fig-tree、@pageref:ch-dom を見ます。\n"
+
+          result = PreProcessCommands::CrossReferenceProcessor.replace_references(
+            content, labels, nil, other_volumes: { '08-dom.md' => '上巻' }
+          )[:content]
+
+          assert_includes result, '<span class="cross-ref-other-volume">上巻 第8章「ページを操作する」</span> と'
+          assert_includes result, '<span class="cross-ref-other-volume">上巻 図 8-2</span>'
+          assert_equal 2, result.scan('上巻 第8章').size, '@pageref:ch-dom も章番号と章題になる'
+          refute_includes result, '<a ', '別の巻へはリンクしない'
+        end
+
+        # 別の巻のラベルは、その巻の振り方で数える（組んでいる巻の並びでは数えられない）
+        def test_should_number_other_volume_chapters_by_their_volume
+          with_project do
+            Volumes.select!(Volumes.find('lower'))
+            middle = Volumes.find('middle')
+
+            number = Volumes.with_selection(middle) do
+              PreProcessCommands::CrossReferenceProcessor.catalog_chapter_number_for('12-more.md')
+            end
+            text = Volumes.with_selection(middle) do
+              PreProcessCommands::CrossReferenceProcessor.chapter_number_text_for('12-more.md')
+            end
+
+            assert_equal ['4', '第4章'], [number, text]
+            assert_equal({ '12-more.md' => 'middle', '02-basics.md' => 'upper' },
+                         PreProcessCommands.other_volume_files(%w[contents/12-more.md contents/02-basics.md
+                                                                 contents/21-final.md contents/90-how-to-ask.md])
+                                           .transform_values(&:id),
+                         '下巻にも載る共通の付録 90 は、下巻の原稿として扱う')
+          end
+        end
+
+        # --- 全巻の目次（§9） ---
+
+        def test_should_list_every_volume_to_chapters_with_their_numbers
+          with_project do
+            Volumes.select!(Volumes.find('middle'))
+
+            markdown = WholeTocGenerator.markdown
+
+            assert_includes markdown, '<section class="whole-toc-volume vs-current-volume">' \
+                                      "\n<p class=\"whole-toc-volume-name\">中巻</p>", '今の巻だけを目立たせる'
+            assert_equal 2, markdown.scan('<section class="whole-toc-volume">').size
+            assert_includes markdown, '<li class="whole-toc-part">入門</li>', '部の題名'
+            assert_includes markdown, '<li class="whole-toc-chapter"><span class="whole-toc-number">第3章</span>11-apply</li>'
+            assert_includes markdown, '<li class="whole-toc-chapter"><span class="whole-toc-number">第1章</span>21-final</li>',
+                            '下巻は chapter_start: 1 で始め直す'
+            assert_includes markdown, '<li class="whole-toc-preface">10-vol2-intro</li>', '前書きは番号なし'
+            assert_includes markdown, '<span class="whole-toc-number">付録 B</span>92-links</li>',
+                            '下巻は appendix_start: A で、下巻の付録だけを振り直す（90 が A・92 が B）'
+            refute_includes markdown, 'href', 'リンクにしない'
+          end
+        end
+
+        def test_should_include_whole_toc_only_for_volume_asking_for_it
+          with_project(catalog: CATALOG.sub("    id: middle\n", "    id: middle\n    whole_toc: true\n")) do
+            Volumes.select!(Volumes.find('middle'))
+            assert WholeTocGenerator.needed?
+
+            Volumes.select!(Volumes.find('upper'))
+            refute WholeTocGenerator.needed?
+
+            Volumes.select!(:combined)
+            refute WholeTocGenerator.needed?, '合本には載せない'
+          end
+        end
+
         # --- --volume の指定 ---
 
         def test_should_find_volume_by_id_or_name_and_explain_unknown_one
