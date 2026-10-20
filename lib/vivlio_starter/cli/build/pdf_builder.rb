@@ -30,12 +30,6 @@ module VivlioStarter
       #   dedup の破壊的書換は pdf/ 配下のコピーに閉じ、html/ は常にクリーンな原本。
       # ------------------------------------------------
       module PdfBuilder
-        # 章レンジ（定数）- 新仕様に合わせて更新
-        PREFACE_RANGE  = (0..0)   # 00-preface
-        MAIN_RANGE     = (1..89)  # 01..89 本文
-        APPX_RANGE     = (90..98) # 90..98 付録
-        POSTFACE_RANGE = (99..99) # 99-postface
-
         # 本文スパインの末尾へ相乗りさせる特殊ページ。並び順は最終的な綴じ順
         # （本扉 → 権利ページ → 奥付）と一致していること——結合時にこの順で
         # 切り出して並べ替えるため。
@@ -352,17 +346,10 @@ module VivlioStarter
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
         # @return [Array<String>] 結合順の HTML パス配列
         def sections_entry_htmls(base_dir, entries_or_keep = nil)
-          preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
+          # 前書きは組む章で絞らない（置き場にあるものをすべて載せる）。単章ビルドの置き場には組んだ前書きしかない
+          preface_htmls = Build::ChapterConfig.htmls_for_kind(base_dir, :preface)
           toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
 
-          keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
-          keep_numbers_appx = nil
-          keep_numbers_post = nil
-          if entries_or_keep&.any?
-            chapter_numbers = extract_chapter_numbers(entries_or_keep)
-            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
-          end
           glossary_html = if IndexCommands.index_enabled?
                             [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) }
                           else
@@ -375,16 +362,16 @@ module VivlioStarter
                        end
 
           # 本文章 HTML に中扉を挿入（部タイトルが定義されている場合）
-          main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
+          main_htmls = Build::ChapterConfig.htmls_for_kind(base_dir, :chapter, entries_or_keep)
           main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
 
           [
-            preface_html,
+            preface_htmls,
             toc_html,
             main_htmls_with_parts,
-            Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
+            Build::ChapterConfig.htmls_for_kind(base_dir, :appendix, entries_or_keep),
             glossary_html,
-            Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
+            Build::ChapterConfig.htmls_for_kind(base_dir, :postface, entries_or_keep),
             index_html,
             special_page_htmls(base_dir)
           ].flatten
@@ -533,21 +520,6 @@ module VivlioStarter
             Common.log_success("[Step 9] #{output_basename} を生成しました")
           else
             Common.log_warn("[Step 9] #{output_basename} の生成に失敗しました")
-          end
-        end
-
-        # Entry 配列または basename 配列から章番号配列を抽出
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>]
-        # @return [Array<Integer>] 章番号配列
-        def extract_chapter_numbers(entries_or_keep)
-          raw = Array(entries_or_keep).compact
-          return [] if raw.empty?
-
-          if raw.first.respond_to?(:number)
-            raw.filter_map { it.number&.to_i }
-          else
-            resolver = TokenResolver::Resolver.new
-            raw.filter_map { resolver.resolve_file(it).number&.to_i }
           end
         end
       end

@@ -542,6 +542,72 @@ module VivlioStarter
         end
       end
 
+      # ------------------------------------------------------------------
+      # CatalogSectionCheck（catalog-section-kind-spec.md §3）
+      #
+      # 種類は書いた区分で決まる。CHAPTERS・APPENDICES に別の区分の番号の原稿を書くと、
+      # かつては番号どおりに組まれていたものが区分どおりに組まれるので、行番号を添えて知らせる。
+      # ------------------------------------------------------------------
+      def test_should_warn_with_line_when_appendix_number_is_written_in_chapters
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            PREFACE:
+              - 00-preface
+            CHAPTERS:
+              - 01-intro
+              - 90-how-to-ask
+            APPENDICES:
+            POSTFACE:
+          YAML
+          %w[00-preface 01-intro 90-how-to-ask].each { write_content(it) }
+
+          violations = Guards::CatalogSectionCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :warn?
+          assert_includes violations.first.message, 'config/catalog.yml:5'
+          assert_includes violations.first.message, '本文の章として組みます'
+          assert_equal ['付録にするなら: この行を APPENDICES の下へ移す',
+                        '本文の章にするなら: vs renumber 90-how-to-ask 02-how-to-ask'], violations.first.detail
+        end
+      end
+
+      # PREFACE・POSTFACE に範囲外の番号を書くのは、巻ごとの前書きの正しい書き方なので知らせない
+      def test_should_not_warn_for_out_of_range_numbers_in_preface_and_postface
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            PREFACE:
+              - 20-vol2-intro
+            CHAPTERS:
+              - 21-janken
+            POSTFACE:
+              - 98-afterword
+          YAML
+          %w[20-vol2-intro 21-janken 98-afterword].each { write_content(it) }
+
+          assert_empty Guards::CatalogSectionCheck.new.validate
+        end
+      end
+
+      # 同じ原稿を二つの区分に書くと、種類が決まらないので止める
+      def test_should_stop_when_same_file_is_written_in_two_sections
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            PREFACE:
+              - 20-vol2-intro
+            CHAPTERS:
+              - 20-vol2-intro
+          YAML
+          write_content('20-vol2-intro')
+
+          violations = Guards::CatalogSectionCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :error?
+          assert_includes violations.first.message, 'PREFACE（前書き）とCHAPTERS（本文の章）'
+        end
+      end
+
       private
 
       # config/ contents/ を備えた一時プロジェクトへ chdir して検証する

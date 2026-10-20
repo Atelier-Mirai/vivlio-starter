@@ -79,6 +79,7 @@ module VivlioStarter
             Guards::CatalogEntriesCheck.new,
             Guards::ChapterFileNameCheck.new,
             Guards::DuplicateNumberCheck.new,
+            Guards::CatalogSectionCheck.new,
             Guards::DuplicateSlugCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,

@@ -71,18 +71,6 @@ module VivlioStarter
           exit 1
         end
 
-        # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
-        # @return [Array<Integer>] 1..89 範囲の章番号配列
-        def chapter_numbers_for_book(entries_or_keep = nil)
-          entries = resolve_entries(entries_or_keep)
-          entries
-            .filter_map { it.number&.to_i }
-            .grep(1..89)
-            .uniq
-            .sort
-        end
-
         # PDF アウトライン生成対象の章番号リストを取得（新仕様）
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         # @return [Array<Integer>] アウトライン対象の章番号配列

@@ -75,6 +75,10 @@ module VivlioStarter
         end
 
         # 章の basename を変更
+        #
+        # 番号の範囲に合った区分に書かれていた章は、新しい番号の区分へ移す（`vs rename 05-x 92-x` で付録へ）。
+        # 範囲の外の番号で書かれていた章（PREFACE の `20-vol2-intro`）は、著者が区分を選んで書いたものなので、
+        # 区分を動かさずに名前だけ書き換える（catalog-section-kind-spec.md §4.4）
         # @param old_basename [String] 旧 basename
         # @param new_basename [String] 新 basename
         def rename_chapter(old_basename, new_basename)
@@ -82,8 +86,9 @@ module VivlioStarter
 
           old_section = section_for_basename(old_basename)
           new_section = section_for_basename(new_basename)
+          written_section = CatalogLoader.load_labeled_entries.find { it.basename == old_basename }&.section
 
-          if old_section == new_section
+          if old_section == new_section || (written_section && written_section != old_section)
             # 同一セクション内: 行内の basename を置換
             lines = read_catalog_lines
             idx = find_active_entry_line(lines, old_basename)

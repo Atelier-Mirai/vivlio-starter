@@ -27,12 +27,36 @@ module VivlioStarter
   module CLI
     module Build
       class PdfBuilderTest < Minitest::Test
-        # 章レンジ定数が正しく定義されていることを確認
-        def test_chapter_ranges_are_defined
-          assert_equal (0..0), PdfBuilder::PREFACE_RANGE, '前書きは 00 のみ'
-          assert_equal (1..89), PdfBuilder::MAIN_RANGE, '本文は 01-89'
-          assert_equal (90..98), PdfBuilder::APPX_RANGE, '付録は 90-98'
-          assert_equal (99..99), PdfBuilder::POSTFACE_RANGE, '後書きは 99 のみ'
+        # 綴じる順は番号の範囲ではなく、catalog.yml の区分で決まる種類で集める（catalog-section-kind-spec.md §4.2）。
+        # PREFACE に書いた 20-vol2-intro が本文の間に入らず、目次の前に並ぶこと
+        def test_should_assemble_htmls_by_catalog_section_kind
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p(%w[config contents html])
+              File.write('config/catalog.yml', <<~YAML)
+                PREFACE:
+                  - 00-preface
+                  - 20-vol2-intro
+                CHAPTERS:
+                  - 21-janken
+                  - 92-promoted
+                APPENDICES:
+                  - 90-how-to-ask
+                POSTFACE:
+                  - 99-postface
+              YAML
+              basenames = %w[00-preface 20-vol2-intro 21-janken 92-promoted 90-how-to-ask 99-postface]
+              basenames.each do
+                File.write("contents/#{it}.md", "# #{it}")
+                File.write("html/#{it}.html", '<html></html>')
+              end
+              File.write('html/_toc.html', '<html></html>')
+
+              htmls = PdfBuilder.sections_entry_htmls('html', []).map { File.basename(it, '.html') }
+
+              assert_equal %w[00-preface 20-vol2-intro _toc 21-janken 92-promoted 90-how-to-ask 99-postface], htmls
+            end
+          end
         end
 
         # compile_overall_pdf! が対象HTMLなしの場合に早期リターンすることを確認

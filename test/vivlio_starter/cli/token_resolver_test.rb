@@ -564,6 +564,34 @@ module VivlioStarter
           assert_equal :postface, result.first.kind
         end
 
+        # 目次に載った原稿の種類は、番号の範囲ではなく書いた区分で決まる（catalog-section-kind-spec.md §2.1）
+        def test_should_take_kind_from_catalog_section_over_number
+          resolver = build_resolver_from_yaml(<<~YAML)
+            PREFACE:
+              - 20-vol2-intro
+            CHAPTERS:
+              - 21-janken
+              - 90-promoted
+            APPENDICES:
+              - 05-glossary
+            POSTFACE:
+              - 98-afterword
+          YAML
+
+          kinds = resolver.resolve.to_h { [it.basename, it.kind] }
+
+          assert_equal({ '20-vol2-intro' => :preface, '21-janken' => :chapter, '90-promoted' => :chapter,
+                         '05-glossary' => :appendix, '98-afterword' => :postface }, kinds)
+        end
+
+        # 目次に載っていない原稿（草稿の単章ビルドなど）は、今までどおり番号の範囲で決まる
+        def test_should_take_kind_from_number_for_uncataloged_file
+          resolver = build_resolver_from_yaml("CHAPTERS:\n  - 01-intro\n", extra_files: %w[95-draft 00-foreword])
+
+          assert_equal :appendix, resolver.resolve(['95']).first.kind
+          assert_equal :preface, resolver.resolve(['00-foreword']).first.kind
+        end
+
         # --- Entry Attribute Tests ---
 
         def test_entry_basename_with_slug
@@ -648,12 +676,26 @@ module VivlioStarter
           contents_dir = File.join(dir, 'contents')
           FileUtils.mkdir_p(contents_dir)
 
-          # catalog.yml を生成
-          yaml_content = { 'CHAPTERS' => basenames }.to_yaml
+          # catalog.yml を生成。種類は書いた区分で決まるので、番号の範囲に合った区分へ書く
+          yaml_content = basenames.group_by { Build::CatalogLoader.section_for_chapter_number(it.to_i) }.to_yaml
           File.write(catalog_path, yaml_content)
 
           # 各章のファイルを作成（exists を true にするため）
           basenames.each do |basename|
+            File.write(File.join(contents_dir, "#{basename}.md"), "# #{basename}")
+          end
+
+          Resolver.new(catalog_path:, contents_dir:)
+        end
+
+        # catalog.yml を文字どおりに書いて Resolver を返す。原稿は catalog の章と extra_files を作る
+        def build_resolver_from_yaml(yaml, extra_files: [])
+          dir = Dir.mktmpdir
+          catalog_path = File.join(dir, 'catalog.yml')
+          contents_dir = File.join(dir, 'contents')
+          FileUtils.mkdir_p(contents_dir)
+          File.write(catalog_path, yaml)
+          (yaml.scan(/^\s*-\s*(\S+)/).flatten + extra_files).each do |basename|
             File.write(File.join(contents_dir, "#{basename}.md"), "# #{basename}")
           end
 

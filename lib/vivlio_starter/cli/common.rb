@@ -757,15 +757,13 @@ module VivlioStarter
         end
       end
 
-      # 付録の章番号をビルド対象の付録の順番に基づいてレター（a〜i）に変換する。
+      # 付録の章番号をビルド対象の付録の順番に基づいてレター（a〜z）に変換する。
       # entries が渡された場合はその中の付録の順番を使い、
       # 渡されない場合は catalog.yml の付録一覧から順番を取得する。
-      # @param num [Integer, String] 付録の章番号（90〜98）
+      # @param num [Integer, String] 付録の章番号（catalog.yml の APPENDICES に書いた原稿の番号）
       # @param entries [Array, nil] ビルド対象の Entry 配列（単章ビルド時に渡す）
       def appendix_number_to_letter(num, entries: nil)
         n = num.to_i
-        return nil unless n.between?(90, 98)
-
         # ビルド対象のエントリ（付録を含む非空配列）が渡された場合のみ、その並びを使う。
         # 空配列は「指定なし」として扱い catalog 全体から付録順を取り直す。
         # （フルビルドでは本文章のみの override が渡され、付録抽出後に空配列となるため、
@@ -777,11 +775,13 @@ module VivlioStarter
                              resolver.resolve.select { it.kind == :appendix }.sort_by { it.number.to_i }
                            end
 
+        # 付録の中での並びの位置から振る。付録の種類は catalog.yml の区分で決まり、番号が 90〜98 に
+        # 収まっているとは限らないので、記号は A〜Z まで振れるようにする（catalog-section-kind-spec.md §4.3）
         index = appendix_entries.index { it.number.to_i == n }
-        return ('a'..'i').to_a[index] if index
+        return ('a'..'z').to_a[index] if index
 
-        # 見つからない場合は章番号から直接計算（フォールバック）
-        ('a'..'i').to_a[n - 90]
+        # 付録として見つからない場合は章番号から直接計算（目次に載る前の付録の名前を決める vs rename のため）
+        ('a'..'i').to_a[n - 90] if n.between?(90, 98)
       rescue StandardError
         nil
       end

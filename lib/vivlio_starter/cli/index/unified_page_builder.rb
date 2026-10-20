@@ -315,10 +315,16 @@ module VivlioStarter
             link = occ['link'] || occ[:link]
             classes = []
             classes << 'main-ref' if highlight && main_occurrence?(occ)
-            classes << 'frontmatter' if link.start_with?('00-preface')
+            classes << 'frontmatter' if preface_basenames.include?(link[/\A[^#]+?(?=\.html|#|\z)/])
             attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
             %(<a href="#{link}"#{attr}></a>)
           end.join
+        end
+
+        # 前書きの原稿の basename。前書きのページはノンブルの体裁が違うので、索引の参照に印を付ける。
+        # 前書きは catalog.yml の PREFACE で決まり、`00-preface` に限らない（catalog-section-kind-spec.md §2.1）
+        def preface_basenames
+          @preface_basenames ||= TokenResolver::Resolver.new.resolve.select { it.kind == :preface }.map(&:basename)
         end
 
         # 主要参照を先頭へ。同種のなかでは元の走査順（章順）を保つ。
@@ -568,7 +574,7 @@ module VivlioStarter
             anchor_id = source['anchor_id'] || source[:anchor_id] || "gls-src-#{chapter}-#{occurrence}"
 
             classes = ['glossary-backlink']
-            classes << 'frontmatter' if chapter.to_s.start_with?('00-')
+            classes << 'frontmatter' if preface_basenames.include?(chapter.to_s)
 
             %(<a href="#{chapter}.html##{anchor_id}" class="#{classes.join(' ')}"></a>)
           end

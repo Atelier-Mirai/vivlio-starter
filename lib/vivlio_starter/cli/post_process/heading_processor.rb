@@ -29,8 +29,6 @@ module VivlioStarter
       #    - h3: <span class="subsection-marker">♣</span><span class="subsection-title">タイトル</span>
       # ================================================================
       module HeadingProcessor
-        MAIN_CHAPTER_RANGE = (1..89)
-
         module_function
 
         # 一時的な章トークンの並びを外部から指定するためのオーバーライド
@@ -194,7 +192,7 @@ module VivlioStarter
                                       resolve_main_chapter_display_number(chapter_token,
                                                                           chapter_number_i)
                                     end,
-            appendix_letter: if chapter_number_i&.between?(90, 98)
+            appendix_letter: if chapter_number_i && entry.kind == :appendix
                                resolve_appendix_letter(chapter_token, chapter_number_i)
                              end,
             process_headings: %i[chapter appendix].include?(entry.kind)
@@ -470,9 +468,10 @@ module VivlioStarter
         # @return [Integer, nil] 表示番号
         def resolve_main_chapter_display_number(chapter_token, chapter_number_i = nil)
           return nil if chapter_token.nil? || chapter_token.empty?
+          return nil unless main_chapter_token?(chapter_token)
 
           chapter_number_i ||= TokenResolver::Resolver.new.resolve_file(chapter_token).number&.to_i
-          return nil unless chapter_number_i && MAIN_CHAPTER_RANGE.include?(chapter_number_i)
+          return nil unless chapter_number_i
 
           order = main_chapter_order
           if (idx = order.index(chapter_token))
@@ -573,15 +572,15 @@ module VivlioStarter
         # 先頭に居座って図表番号の章プレフィックスを 1 つずらしていた
         # （`11-workflow` が第 1 章ではなく第 2 章として採番される）。
         # 綴りではなく接頭辞で弾く——`_` の意味は「章として数えない」だからである。
+        # 本文の章かは番号ではなく種類で見る。PREFACE に書いた `20-vol2-intro` は前書きであって、
+        # 章番号を数える並びに入れない（catalog-section-kind-spec.md §2.1）。
         # @param token [String] トークン
         # @return [Boolean] メイン章トークンの場合true
         def main_chapter_token?(token)
           return false if token.to_s.start_with?('_')
 
           entry = TokenResolver::Resolver.new.resolve_file(token)
-          return false unless entry.number
-
-          MAIN_CHAPTER_RANGE.include?(entry.number.to_i)
+          entry.number && entry.kind == :chapter
         end
       end
     end

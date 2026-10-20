@@ -157,9 +157,13 @@ module VivlioStarter
         # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
         # @param base_dir [Pathname] ベースディレクトリ
         # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
+        # 目次に並べる種類の順。区分で種類が決まるので（catalog-section-kind-spec.md §2.1）、
+        # ファイル名の順では PREFACE に書いた `20-vol2-intro` が本文の間に入る
+        KIND_ORDER = %i[preface chapter appendix postface].freeze
+
         def initialize(entry_map, base_dir:, depth: HeadingExtractor.configured_depth)
           @entry_map = entry_map
-          @targets = entry_map.keys.sort
+          @targets = entry_map.keys.sort_by { [KIND_ORDER.index(entry_map[it]&.kind) || KIND_ORDER.index(:chapter), it] }
           @base_dir = Pathname.new(base_dir)
           @depth = depth
         end
@@ -178,14 +182,15 @@ module VivlioStarter
 
         attr_reader :entry_map, :targets, :base_dir, :depth
 
-        # 前書きエントリを必要に応じて追加する（新仕様: 00-preface）
-        def append_preface(buffer)
-          entry = SupplementEntryProvider.new(
-            targets: targets,
-            base_dir: base_dir,
-            file_name: '00-preface.html'
-          ).call
-          buffer << entry if entry
+        # 前書きのエントリを追加する（catalog.yml の PREFACE に書いた原稿。00 に限らない）
+        def append_preface(buffer) = append_supplements(buffer, :preface)
+
+        # 前書き・後書きの h1 だけを、番号を付けずに載せる
+        def append_supplements(buffer, kind)
+          targets.select { entry_map[it]&.kind == kind }.each do |target|
+            entry = SupplementEntryProvider.new(targets:, base_dir:, file_name: File.basename(target)).call
+            buffer << entry if entry
+          end
         end
 
         # 各ターゲットから見出しを抽出し TOC のリストを構築
@@ -195,10 +200,7 @@ module VivlioStarter
           # 前書き・後書きは SupplementEntryProvider で専用処理されるため除外
           # これにより、前書き・後書きが重複して表示される問題を防ぐ
           # （append_preface/append_postface で専用のエントリとして追加される）
-          filtered_targets = targets.reject do |target|
-            basename = File.basename(target)
-            ['00-preface.html', '99-postface.html'].include?(basename)
-          end
+          filtered_targets = targets.reject { %i[preface postface].include?(entry_map[it]&.kind) }
 
           filtered_targets.each do |target|
             entry = entry_map[target]
@@ -211,15 +213,8 @@ module VivlioStarter
           list_state.prepare_for_postface
         end
 
-        # 後書きエントリを必要に応じて追加する（新仕様: 99-postface）
-        def append_postface(buffer)
-          entry = SupplementEntryProvider.new(
-            targets: targets,
-            base_dir: base_dir,
-            file_name: '99-postface.html'
-          ).call
-          buffer << entry if entry
-        end
+        # 後書きのエントリを追加する（catalog.yml の POSTFACE に書いた原稿。99 に限らない）
+        def append_postface(buffer) = append_supplements(buffer, :postface)
 
         # <ul>/<li> の入れ子状態を管理する
         class ListState

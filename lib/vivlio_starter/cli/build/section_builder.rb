@@ -31,12 +31,6 @@ module VivlioStarter
     module Build
       # セクション HTML 生成モジュール
       module SectionBuilder
-        # 章レンジ（定数）- 新仕様に合わせて更新
-        PREFACE_RANGE  = (0..0)
-        MAIN_RANGE     = (1..89)
-        APPX_RANGE     = (90..98)
-        POSTFACE_RANGE = (99..99)
-
         module_function
 
         # 章順序を取得（ベース名配列から）

@@ -512,25 +512,15 @@ module VivlioStarter
         # @param entries [Array<TokenResolver::Entry>] Entry 配列
         # @return [Array<String>] HTML ファイルパスの配列
         def collect_epub_htmls(base_dir, entries)
-          keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries)
-          keep_numbers_appx = nil
-          keep_numbers_post = nil
-
-          if entries&.any?
-            chapter_numbers = PdfBuilder.send(:extract_chapter_numbers, entries)
-            keep_numbers_appx = chapter_numbers.select { |n| PdfBuilder::APPX_RANGE.include?(n) }
-            keep_numbers_post = chapter_numbers.select { |n| PdfBuilder::POSTFACE_RANGE.include?(n) }
-          end
-
-          # 前書き（00-preface）
-          preface_html = [File.join(base_dir, '00-preface.html')].select { File.exist?(it) }
+          # 前書き（PDF と同じく組む章で絞らない）
+          preface_html = Build::ChapterConfig.htmls_for_kind(base_dir, :preface)
 
           # 本文章 HTML（中扉を挿入）
-          main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, PdfBuilder::MAIN_RANGE, keep_numbers_main)
+          main_htmls = Build::ChapterConfig.htmls_for_kind(base_dir, :chapter, entries)
           main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
 
           # 付録
-          appx_htmls = Build::ChapterConfig.htmls_for_range(base_dir, PdfBuilder::APPX_RANGE, keep_numbers_appx)
+          appx_htmls = Build::ChapterConfig.htmls_for_kind(base_dir, :appendix, entries)
 
           # 用語集・索引（リフロー型ではページ番号は無意味だがリンクは有効）
           glossary_html = if IndexCommands.index_enabled?
@@ -540,7 +530,7 @@ module VivlioStarter
                           end
 
           # 後書き
-          post_htmls = Build::ChapterConfig.htmls_for_range(base_dir, PdfBuilder::POSTFACE_RANGE, keep_numbers_post)
+          post_htmls = Build::ChapterConfig.htmls_for_kind(base_dir, :postface, entries)
 
           # 索引
           index_html = if IndexCommands.index_enabled?
@@ -1329,11 +1319,11 @@ module VivlioStarter
           Common.log_warn("[EPUB] #{File.basename(path)} の扉絵注入に失敗（simple 縮退）: #{e.message}")
         end
 
-        # 本文章（ファイル名の番号が 1..89）か。付録(90-98)・前付(00)・後付(99)・
-        # 特殊ページ（_toc 等）は対象外として simple 版にする。
+        # 本文章か。付録・前書き・後書き・特殊ページ（_toc 等）は対象外として simple 版にする。
+        # 種類は catalog.yml の区分で決まる（catalog-section-kind-spec.md §2.1）
         def main_chapter_file?(path)
-          base = File.basename(path)
-          (m = base.match(/\A(\d{2})-/)) ? PdfBuilder::MAIN_RANGE.include?(m[1].to_i) : false
+          base = File.basename(path, '.html')
+          base.match?(/\A\d{2}-/) && TokenResolver::Resolver.new.resolve_file(base).kind == :chapter
         end
 
         # 章扉（data-chapter-number-display を持つ h1）へファクシミリ合成画像を注入する。
