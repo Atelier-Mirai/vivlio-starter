@@ -176,7 +176,7 @@ vs build --volume all
 
 ### 4.7 EPUB の識別子
 
-ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id` から作る。同じ識別子だと、電子書籍ストアや読書アプリが上巻と下巻を同じ本の版違いとして扱うためである。合本は今と同じく `project.name` だけから作る。
+ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id` を `_` でつないだ名前（`mybook_lower`）から作る。巻ごとに `project.name` を変えていた回り道と同じ識別子になる。同じ識別子だと、電子書籍ストアや読書アプリが上巻と下巻を同じ本の版違いとして扱うためである。合本は今と同じく `project.name` だけから作る。
 
 ## 5. 番号
 

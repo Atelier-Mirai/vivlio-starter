@@ -3254,10 +3254,11 @@ module VivlioStarter
           return "urn:isbn:#{isbn}" unless isbn.empty?
 
           # 分冊の巻は巻ごとに違う識別子にする。同じだと、ストアや読書アプリが上巻と下巻を
-          # 同じ本の版違いとして扱う（multivolume-spec.md §4.7）
+          # 同じ本の版違いとして扱う（multivolume-spec.md §4.7）。区切りは出力ファイル名と同じ `_`
+          # （巻ごとに project.name を変えていた回り道 `mybook_upper` と同じ識別子になる）
           project = Common::CONFIG.project
           raw     = project&.name.to_s.strip
-          raw     = "#{raw}-#{Build::Volumes.current.id}" if !raw.empty? && Build::Volumes.current
+          raw     = "#{raw}_#{Build::Volumes.current.id}" if !raw.empty? && Build::Volumes.current
           fallback = [book&.main_title, book&.subtitle].compact.join(' ').strip
           base = raw.empty? ? fallback : raw
           base = base.to_s.strip
