@@ -241,7 +241,7 @@ vs renumber --step 2
 
 ### 番号帯と `vs renumber` の範囲
 
-Vivlio Starter は章番号の範囲によって、前書き・本文・付録・後書きを区別します。`vs renumber` は、この区分を保ったまま、それぞれの範囲内で連番を振り直します。
+章番号には、前書き・本文・付録・後書きの番号帯があります。`vs renumber` は、番号帯の区切りを保ったまま、それぞれの範囲内で連番を振り直します。なお、紙面でどの種類として組むかは、番号ではなく `catalog.yml` のどの区分（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）に書いたかで決まります。たとえば `20-vol2-intro` を `PREFACE` に書けば、番号は本文の帯でも前書きとして組まれます（@pageref:volumes）。
 
 | 番号帯 | 種別 | `vs renumber` の動作 |
 |---|---|---|
@@ -259,6 +259,84 @@ vs rename 00-preface 11-preface
 # 本文を付録に移す
 vs rename 45-utility 91-utility
 ```
+
+## 分冊にする @volumes
+
+:::{.section-lead}
+上下巻や上中下巻のように、一冊を分けて刊行するときは、`catalog.yml` に巻ごとの目次を書きます。原稿は `contents/` に一つにまとめたまま、巻を選んで組めます。章番号は前の巻から続き、別の巻の章も `@chapref` で指せます。
+:::
+
+### 巻を書く
+
+`catalog.yml` の一番上に `VOLUMES:` を書き、その下に巻を並べます。巻の数に決まりはありません。各巻には、呼び名の `name` と、出力ファイル名や `--volume` に使う `id`（英小文字・数字・`_`）を書き、その下に今までと同じ区分で目次を書きます。
+
+```yaml
+VOLUMES:
+  - name: 上巻
+    id: upper
+    PREFACE:
+      - 00-preface
+    CHAPTERS:
+      - 11-intro
+      - 12-basics
+    APPENDICES:
+      - 90-cheatsheet
+  - name: 下巻
+    id: lower
+    PREFACE:
+      - 20-preface-lower     # 下巻のはじめに
+    CHAPTERS:
+      - 21-advanced
+      - 22-practice
+    APPENDICES:
+      - 90-cheatsheet        # 上巻と共通の付録
+    POSTFACE:
+      - 99-postface
+```
+
+巻を書いたら、一番上の `PREFACE`・`CHAPTERS` などは使わず、すべて巻の中へ書きます。本文の章は一つの巻にだけ書けます。前書き・付録・後書きは、二つ以上の巻に書いてかまいません（共通の付録）。
+
+章の種類は、書いた区分で決まります。2 巻目以降の前書きは、空いている番号で原稿を作り、その巻の `PREFACE` に書きます。`vs create 20-preface-lower --volume lower` で下巻に作ると、番号から区分を選ぶので `CHAPTERS` に書かれます。その行を `PREFACE` へ移してください。
+
+### 巻を選んで組む
+
+```bash
+vs build --volume lower   # 下巻を組む（id でも name でも選べる）
+vs build --volume all     # 全巻を、巻の順に一巻ずつ組む
+vs build                  # 全巻を一冊にまとめた合本を組む
+```
+
+巻を選んで組むと、出力ファイル名に巻の `id` が入ります（`mybook_lower_v1.0.0.pdf`）。合本は、最初の巻の前書き・全巻の本文と付録・最後の巻の後書きで組み、章番号を全体で通して振ります。校正や、電子版の合本に使います。
+
+章を指定して組むと（`vs build 21`）、その章を載せた巻の振り方で組みます。`vs preflight`・`vs lint`・`vs metrics` も `--volume` で巻を選べます。選ばなければ、すべての巻の原稿を見ます。`vs create` は、番号が一つ前の章を載せた巻に章を足します。`--volume` で巻を選ぶこともできます。
+
+### 章番号と付録の記号
+
+章番号は、前の巻から続けて振ります（上巻が第12章までなら、下巻は第13章から）。図表番号や `@chapref` の番号も同じです。巻ごとに第1章から振るときは、その巻に `chapter_start: 1` を書きます。
+
+付録の記号は、巻の順に並べたとき先に載る付録から A、B と振ります。共通の付録は、どの巻でも同じ記号です。巻ごとに付録 A から振り直すときは、その巻に `appendix_start: A` を書きます。ページ番号（ノンブル）は、巻ごとに 1 から振ります。
+
+### 巻ごとの書名・表紙・発行日
+
+`book.yml` の `book:` の下の値は、全巻の既定になります。巻ごとに違う値だけを、巻の中に同じ名前で書くと、その巻だけ上書きされます。書かなかった値は `book.yml` のものを使い、合本はいつも `book.yml` の値で組みます。
+
+```yaml
+  - name: 下巻
+    id: lower
+    main_title: "はじめての技術書づくり 下巻"
+    cover: lower             # covers/frontcover_lower.png など
+    release: "令和九年一月十日"
+    isbn: "978-4-…"
+```
+
+書けるのは、`main_title`・`subtitle`・`author`・`release`・`isbn`・`cover` など、`book.yml` の `book:` の下にあるすべての値です。ISBN は巻ごとに取るものなので、巻ごとに書きます。`book.yml` の ISBN を二つ以上の巻が共有していると、同じ本とみなされるため 🟡 で知らせます。表紙だけを作り直すときは、`vs cover --volume lower`（全巻なら `--volume all`）を実行します（@chapref:ch-cover）。
+
+### 巻をまたぐ参照と全巻目次
+
+<!-- no-lint -->
+別の巻の章や図も、`@chapref:ch-xxx` や `@fig-xxx` で指せます。紙面では「上巻 第8章「…」」「上巻 図 8-2」のように巻の名前を添え、リンクにはしません。別の巻のページは分からないので、`@pageref` もページ番号を付けずに章で示します。
+
+巻に `whole_toc: true` を書くと、その巻の目次の前に、全巻の構成を示す「全巻目次」を載せます。今の巻を濃く、ほかの巻を薄く組みます。載せる深さは、その巻の目次と同じく `page.toc_depth` に従い、`2` 以上なら節まで載ります。ページ番号は載せません。
 
 ## 注意事項
 

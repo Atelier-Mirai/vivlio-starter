@@ -303,6 +303,7 @@ module VivlioStarter
 
             オプション:
               --verify-links      外部 URL の HTTP 到達性チェックを実行する
+              --volume <name>     分冊の巻を選んで点検する（巻の id か name。省くと全巻の原稿）
               --log <level>       ログレベルを指定（error/warn/info/debug）
               -h, --help          このコマンドの使い方を表示
 

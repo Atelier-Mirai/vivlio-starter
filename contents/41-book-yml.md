@@ -41,7 +41,7 @@ book:
 
 `subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なしです。副題が不要な場合には省略して構いません。
 
-`cover` は表紙のデザインの名前です。`vs cover` コマンドで生成するカバーのテーマ名と対応します（@chapref:ch-cover）。
+`cover` は表紙のデザインの名前です。`vs cover` コマンドで生成するカバーのテーマ名と対応します（@chapref:ch-cover）。分冊の本では、`book:` の下の値を巻ごとに上書きできます（@pageref:volumes）。
 
 ### project — プロジェクト情報
 
