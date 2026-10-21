@@ -115,9 +115,42 @@ module VivlioStarter
           end
         end
 
-        # 全巻の目次を区分ごとに巻の順でつなぐ（二つ以上の巻に載る付録は一つにまとめる）
+        # 全巻の目次を区分ごとに巻の順でつなぐ。二つ以上の巻に載る原稿（共通の付録・共通の章。§3.6）は、
+        # 最初に載った所に一度だけ残す。部の中に書いた章も原稿の名前で見るので、部ごとに別物とみなさない
         def merged_sections(volumes)
-          CatalogLoader::SECTION_KEYS.to_h { |key| [key, volumes.flat_map { Array(it.sections[key]) }.uniq] }
+          CatalogLoader::SECTION_KEYS.to_h do |key|
+            seen = Set.new
+            [key, volumes.flat_map { first_appearances(Array(it.sections[key]), seen) }]
+          end
+        end
+
+        # 項目の並びから、すでに載った原稿を外す。中身が無くなった部は載せない
+        # @param seen [Set<String>] これまでに載った原稿の basename（書き足していく）
+        def first_appearances(items, seen)
+          items.filter_map do |item|
+            case item
+            in Hash
+              parts = item.transform_values { first_appearances(Array(it), seen) }.reject { |_, children| children.empty? }
+              parts.empty? ? nil : parts
+            in nil then nil
+            else
+              names = CatalogLoader.expand_item(item)
+              names = [item.to_s] if names.empty?
+              next nil if names.all? { seen.include?(it) }
+
+              seen.merge(names)
+              item
+            end
+          end
+        end
+
+        # 全巻の原稿を、区分ごとに巻の順でつないだ並び。merged_sections と違い、二つ以上の巻に載る原稿は
+        # 載った巻ごとに現れる（「前の章」の検査で、巻ごとの前後を見るため。§3.6）
+        # @return [Array<String>] basename
+        def reading_order(volumes = list)
+          CatalogLoader::SECTION_KEYS.flat_map do |key|
+            volumes.flat_map { CatalogLoader.flatten_section(it.sections[key]) }
+          end
         end
 
         # 合本: 最初の巻の前書き → 全巻の本文 → 全巻の付録 → 最後の巻の後書き（§4.3）

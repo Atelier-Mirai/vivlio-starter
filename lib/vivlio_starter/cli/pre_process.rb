@@ -348,8 +348,11 @@ module VivlioStarter
         # （前処理済み中間 .md の置き場・P4 §3.4-1）
         # ------------------------------------------------
         processed_chapters = {}
-        # 「前の章 @ch-x」の検査に使う章の並び（chapter-reference-spec.md §2.10）
-        chapter_order = catalog_entries.map { File.basename(it.path, '.*') }
+        # 「前の章 @ch-x」の検査に使う章の並び（chapter-reference-spec.md §2.10）。分冊では、二つ以上の巻に
+        # 載る章が巻ごとに現れる並び（multivolume-spec.md §3.6）
+        chapter_order = if Build::Volumes.enabled? then Build::Volumes.reading_order
+                        else catalog_entries.map { File.basename(it.path, '.*') }
+                        end
 
         md_files.each do |md_file|
           filename = File.basename(md_file)

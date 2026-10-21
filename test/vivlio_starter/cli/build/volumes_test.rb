@@ -12,6 +12,7 @@
 #   - 出力ファイル名に巻の id を入れる（§4.6）
 #   - 巻に書いた book: の値（書名・ISBN・発行日・表紙）を book.yml に重ねる。ISBN の共有を 🟡（§3.2・§4.7）
 #   - vs cover --volume が巻ごとの値で表紙を作る（§4.8）
+#   - 本文の章を二つ以上の巻に載せる: 巻ごとの位置の番号・合本には一度だけ（§3.6）
 #
 # 2 巻だけで確かめると「最初の巻でなければ最後の巻」という思い込みが隠れるので、上中下の 3 巻で確かめる（§2）。
 # ================================================================
@@ -118,6 +119,58 @@ module VivlioStarter
             assert_equal '第3章', PreProcessCommands::CrossReferenceProcessor.chapter_number_text_for('11-apply'),
                          '中巻は上巻の 2 章の続きから数える'
             assert_equal '第5章', PreProcessCommands::CrossReferenceProcessor.chapter_number_text_for('13-deep')
+          end
+        end
+
+        # --- 本文の章を二つ以上の巻に載せる（§3.6） ---
+
+        SHARED_CATALOG = <<~YAML
+          VOLUMES:
+            - name: 上巻
+              id: upper
+              CHAPTERS:
+                - 01-intro
+                - 02-basics
+            - name: 中巻
+              id: middle
+              CHAPTERS:
+                - 11-apply
+            - name: 下巻
+              id: lower
+              CHAPTERS:
+                - 応用編:
+                    - 01-intro
+                    - 21-final
+                - 共通だけの部:
+                    - 02-basics
+        YAML
+
+        def test_should_number_shared_chapter_by_its_place_in_each_volume
+          with_project(catalog: SHARED_CATALOG) do
+            assert_empty Guards::VolumeDefinitionCheck.new.validate, '本文の章を二つの巻に書いても止めない'
+            assert_equal({ 'upper' => 1, 'middle' => 3, 'lower' => 4 }, Volumes.chapter_starts,
+                         '共通の章も、載った巻ごとに数える')
+
+            number = ->(basename) { PreProcessCommands::CrossReferenceProcessor.chapter_number_text_for(basename) }
+            Volumes.select!(Volumes.find('upper'))
+            assert_equal %w[第1章 第2章], [number.('01-intro'), number.('02-basics')]
+            Volumes.select!(Volumes.find('lower'))
+            # 巻の中の本文の章は番号の順に数える（catalog.yml に書いた順ではない。組版・目次と同じ）
+            assert_equal %w[第4章 第5章 第6章], [number.('01-intro'), number.('02-basics'), number.('21-final')],
+                         '下巻では下巻の位置の番号'
+          end
+        end
+
+        def test_should_put_shared_chapter_once_into_combined_edition
+          with_project(catalog: SHARED_CATALOG) do
+            Volumes.select!(:combined)
+
+            chapters = CatalogLoader.load_catalog['CHAPTERS']
+            assert_equal ['01-intro', '02-basics', '11-apply', { '応用編' => ['21-final'] }], chapters,
+                         '共通の章は最初の所に一度だけ。中身の無くなった部は載せない'
+            assert_equal %w[01-intro 02-basics 11-apply 01-intro 21-final 02-basics],
+                         Volumes.reading_order.select { it.match?(/\A(0[12]|11|21)-/) },
+                         '「前の章」の検査の並びには、載った巻ごとに現れる'
           end
         end
 
@@ -308,7 +361,7 @@ module VivlioStarter
           with_project { assert_empty Guards::VolumeDefinitionCheck.new.validate }
         end
 
-        def test_should_stop_on_mixed_sections_bad_ids_and_shared_chapters
+        def test_should_stop_on_mixed_sections_and_bad_ids
           catalog = <<~YAML
             CHAPTERS:
               - 05-stray
@@ -331,7 +384,6 @@ module VivlioStarter
             assert(messages.any? { it.include?('英小文字・数字・_') }, 'id の形')
             assert(messages.any? { it.include?('all は使えません') }, 'id の all')
             assert(messages.any? { it.include?('name が 上巻 で同じ') }, 'name の重なり')
-            assert(messages.any? { it.include?('01-intro が、上巻と上巻') }, '同じ本文の章を二つの巻に')
             assert(violations.any? { it.warn? && it.message.include?('colour') }, '知らない設定キーは 🟡')
           end
         end

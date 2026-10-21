@@ -971,13 +971,20 @@ module VivlioStarter
             word = pre_text[ADJACENT_CHAPTER_WORD, 1]
             return unless word
 
-            index = @chapter_order.index(File.basename(@filename, '.*'))
-            return unless index
+            # 分冊で二つ以上の巻に載る章は、並びに何度か現れる。どれか一つの載り方で隣なら正しい
+            # （multivolume-spec.md §3.6）。知らせるときは最初の載り方の隣の章を示す
+            basename = File.basename(@filename, '.*')
+            indexes = @chapter_order.each_index.select { @chapter_order[it] == basename }
+            return if indexes.empty?
 
             direction = word.start_with?('前') ? '前' : '次'
-            expected_index = index + (direction == '前' ? -1 : 1)
-            expected = @chapter_order[expected_index] if expected_index >= 0
-            return if File.basename(label.source_file.to_s, '.*') == expected
+            neighbors = indexes.map do |index|
+              neighbor_index = index + (direction == '前' ? -1 : 1)
+              @chapter_order[neighbor_index] if neighbor_index >= 0
+            end
+            return if neighbors.include?(File.basename(label.source_file.to_s, '.*'))
+
+            expected = neighbors.first
 
             @errors << "#{@filename}:#{line_num} - 「#{word}」の参照先 @#{label.id}（「#{label.title}」）は、" \
                        "この章の#{direction}の章ではありません#{adjacent_hint(direction, expected)}"

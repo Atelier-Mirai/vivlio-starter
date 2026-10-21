@@ -9,8 +9,7 @@ module VivlioStarter
       #   - VOLUMES と、一番上の PREFACE・CHAPTERS などが同じファイルにある（どちらが目次か決められない）
       #   - 巻の name・id が無い、id の形が正しくない、id が all（ファイル名と --volume に使えない）
       #   - 二つの巻の id・name が同じ（--volume でどちらを指すか決められない）
-      #   - 同じ本文の章を二つの巻に書いた（章番号が決まらない）
-      # 前書き・付録・後書きは二つ以上の巻に書いてよい（共通の付録）。
+      # 前書き・付録・後書き、本文の章も、二つ以上の巻に書いてよい（共通の付録・共通の章。§3.6）。
       # 知らない設定キー・読めない chapter_start / appendix_start は、打ち間違いとして 🟡 で知らせる。
       # book.yml の ISBN を二つ以上の巻が上書きせずに使っているときも 🟡（同じ urn:isbn になる。§4.7）。
       class VolumeDefinitionCheck < BaseCheck
@@ -24,7 +23,7 @@ module VivlioStarter
 
           volumes = Build::Volumes.list(catalog)
           [*mixed_sections_error(catalog), *volumes.flat_map { volume_errors(it) },
-           *duplicate_errors(volumes), *shared_chapter_errors(volumes),
+           *duplicate_errors(volumes),
            *entries.each_with_index.flat_map { |entry, index| setting_warnings(entry, index) },
            *shared_isbn_warning(volumes)]
         rescue StandardError
@@ -69,18 +68,6 @@ module VivlioStarter
               error("二つ以上の巻の #{attr} が #{value} で同じです",
                     detail: '--volume でどの巻を指すか決められないため、止めています。巻ごとに違う値にしてください。')
             end
-          end
-        end
-
-        def shared_chapter_errors(volumes)
-          owners = Hash.new { |hash, key| hash[key] = [] }
-          volumes.each do |volume|
-            Build::CatalogLoader.flatten_section(volume.sections['CHAPTERS']).uniq.each { owners[it] << volume.name }
-          end
-          owners.select { |_, names| names.size > 1 }.map do |basename, names|
-            error("本文の章 #{basename} が、#{names.join('と')}の二つの巻に書かれています",
-                  detail: ['章番号が決まらないため、止めています。→ どちらか一方の巻から外してください',
-                           '（前書き・付録・後書きは、二つ以上の巻に書けます）'])
           end
         end
 

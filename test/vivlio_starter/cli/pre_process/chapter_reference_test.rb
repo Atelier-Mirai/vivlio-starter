@@ -241,6 +241,19 @@ module VivlioStarter
         assert_match(/前の章は 44-build。→ @ch-build/, result[:errors].first)
       end
 
+      # 分冊で二つ以上の巻に載る章（12-new が上巻と下巻に）は、載った巻ごとの前後を見る（multivolume-spec.md §3.6）
+      SHARED_ORDER = %w[12-new 44-build 12-new 31-lint].freeze
+
+      def test_should_accept_neighbor_in_any_volume_for_shared_chapter
+        assert_empty replace("前の章 @ch-new では。\n", '31-lint.md', chapter_order: SHARED_ORDER)[:errors], '下巻での前'
+        assert_empty replace("前の章 @ch-new では。\n", '44-build.md', chapter_order: SHARED_ORDER)[:errors], '上巻での前'
+        assert_empty replace("次章 @ch-build へ。\n", '12-new.md', chapter_order: SHARED_ORDER)[:errors], '共通の章の、上巻での次'
+
+        errors = replace("前の章 @ch-build では。\n", '31-lint.md', chapter_order: SHARED_ORDER)[:errors]
+        assert_equal 1, errors.size
+        assert_match(/前の章は 12-new。→ @ch-new/, errors.first)
+      end
+
       def test_should_check_next_chapter_with_pageref_and_chapref
         errors = replace("次章 @chapref:ch-build と次の章 @pageref:ch-new。\n", '12-new.md', chapter_order: ORDER)[:errors]
 
