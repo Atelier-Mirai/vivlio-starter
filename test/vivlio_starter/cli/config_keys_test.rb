@@ -101,6 +101,13 @@ module VivlioStarter
       end
 
       # 打ち間違いは Data が即座に落とす（ハッシュリテラルだと静かに通ってしまう）
+      # 移した先が現役キーでなければ、vs upgrade が値を読まれない場所へ移してしまう
+      def test_moved_keys_point_at_active_keys
+        ConfigKeys.moves.each do |from, to|
+          assert ConfigKeys::KEYS.key?(to), "#{from.join('.')} の移した先 #{to.join('.')} が現役キーにありません"
+        end
+      end
+
       def test_spec_rejects_unknown_keyword
         assert_raises(ArgumentError) { ConfigKeys::Spec[defualt: 500] }
       end

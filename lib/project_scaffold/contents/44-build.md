@@ -197,7 +197,7 @@ vs build
 
 ### カバー画像
 
-EPUB の表紙は、ビルドのときに `output.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（@chapref:ch-cover）。同じ JPEG がプロジェクト直下にも置かれます（例: `janken_frontcover_v0.1.0.jpg`）。
+EPUB の表紙は、ビルドのときに `book.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（@chapref:ch-cover）。同じ JPEG がプロジェクト直下にも置かれます（例: `janken_frontcover_v0.1.0.jpg`）。
 
 | 設定 | 説明 |
 |:---|:---|

@@ -83,7 +83,7 @@ module VivlioStarter
       def execute_generate(_context = nil)
         theme = Common.cover_theme
         unless theme
-          Common.log_error 'output.cover 設定が見つかりません'
+          Common.log_error 'book.cover 設定が見つかりません'
           return
         end
 
@@ -153,7 +153,7 @@ module VivlioStarter
         Common.log_warn(
           "#{side}cover_#{theme} の画像が見つからないため、同梱のテンプレート（light）で作りました",
           detail: "探した場所: #{png_path}\n          #{svg_path}\n" \
-                  "→ book.yml の output.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください"
+                  "→ #{Common.cover_setting_label} のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください"
         )
       end
 

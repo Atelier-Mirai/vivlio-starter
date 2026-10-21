@@ -365,8 +365,8 @@ module VivlioStarter
           'directories' => {
             'covers' => 'covers'
           },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'pdf'
           }
         }
@@ -380,8 +380,8 @@ module VivlioStarter
           'directories' => {
             'covers' => 'covers'
           },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'pdf'
           }
         }

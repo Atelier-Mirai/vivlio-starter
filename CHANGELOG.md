@@ -11,7 +11,9 @@
 - **分冊（上下巻・上中下巻・第 N 分冊）を組めるようにした**（`multivolume-spec.md`）。`catalog.yml` に `VOLUMES:` を書き、巻ごとに `name`（呼び名）・`id`（ファイル名に使う名前）と目次（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）を書く。巻の数は自由で、`VOLUMES:` の無い目次は今までどおり一冊として組む。
   - `vs build --volume lower` でその巻を、`vs build --volume all` で全巻を巻の順に（一巻ずつ別のプロセスで）組む。巻を選ばない `vs build` は合本（最初の巻の前書き・全巻の本文と付録・最後の巻の後書き）を組む。章を指定した単章ビルドは、その章を載せた巻で組む（章扉は今までどおり「第1章」から数える）。
   - 章番号は前の巻から続ける（下巻は第13章から）。巻の `chapter_start` で始まりを決められる。図表番号・`@chapref`・目次・PDF のしおりも同じ番号になる。付録の記号は、全巻を巻の順に見て初めて出た付録に振り、別の巻に再び載るときも同じ記号を使う（共通の付録はどの巻でも付録 A）。巻の `appendix_start` で、その巻の付録だけを振り直せる。
-  - 巻の `main_title`・`subtitle`・`cover` で、その巻の書名・副題・表紙を `book.yml` の値から置き換える。出力ファイル名に巻の `id` が入り（`mybook_lower_v1.0.0.pdf`）、EPUB の識別子も巻ごとに変わる。
+  - `book.yml` の `book:` の下のキー（`main_title`・`subtitle`・`author`・`release`・`isbn`・`cover` など）を巻の中に同じ名前で書くと、その巻だけ書名・発行日・ISBN・表紙などを上書きする。書かないキーは `book.yml` の値を使い、合本はいつも `book.yml` の値で組む。上書きできるキーの一覧は `ConfigKeys` から作るので、`book:` にキーを足せば巻でも使える。出力ファイル名に巻の `id` が入り（`mybook_lower_v1.0.0.pdf`）、EPUB の識別子も巻ごとに変わる（ISBN があれば巻の ISBN）。
+  - `book.yml` の ISBN を二つ以上の巻が上書きせずに使っていると、同じ `urn:isbn` の EPUB になるので、巻の名前と `catalog.yml` の行を添えて 🟡 で知らせる（`vs build`・`vs preflight`）。
+  - `vs cover` も `--volume <id|name>` でその巻の表紙を、`--volume all` で全巻の表紙を作る（何も付けなければ合本の表紙）。巻の `cover` に書いた画像を使い、同梱の `light`・`dark` には巻の書名を当てる。
   - `vs preflight`・`vs lint`・`vs metrics` も `--volume` で巻を選べる。選ばなければ全巻の原稿を見る。`vs metrics` は巻ごとの合計を足す。用語集の「ビルド対象章に出現しません」は、どの巻にも出てこない語だけに出す。
   - `vs create` は、番号が一つ前の章を載せた巻に章を足す（`--volume` で選べる）。`vs delete`・`vs rename` は、載っているすべての巻を書き換える。
   - 巻の書き方の誤り（一番上の区分との併記・`id` の形・巻の名前の重なり・同じ本文の章を二つの巻に書いたなど）は 🔴 で止め、知らない設定キーは 🟡 で知らせる。`--no-clean` で巻を切り替えて組むと、前の巻の中間生成物を消してから組む。
@@ -517,6 +519,10 @@
 
 ### Changed
 
+- **表紙のテーマ（`master`・`light`・`dark`・独自の名前）を、`output.cover` から `book.cover` へ移した**（`multivolume-spec.md` §3.5）。どの表紙を使うかは書名や発行日と同じく本の一部で、分冊では巻ごとに変わるため、`book:` の下に置いて巻で上書きできるようにした。表紙の出し方（`output.pdf.combined`・`output.print_pdf.cover_bleed`・`output.epub.embed`・`output.kindle.embed`）は `output:` に残る。
+  - `output.cover` は廃止キーにした。残っていれば値は読まず、移す先と書いてあった値を添えて 🟡 で知らせる。
+  - `vs upgrade` は `output.cover` を消さずに `book.cover` へ移す（値の後ろの注釈も写す）。`book.cover` がすでにあれば、そちらを残して `output.cover` の行だけを消す。廃止キーの宣言に移す先（`moved_to:`）を書けるようにし、`config-retirement-guidelines.md` に手順を書き足した。
+  - `vs import` が表紙を取り込んだときに書く場所も `book.cover` にした。
 - **原稿の種類（前書き・本文の章・付録・後書き）を、`catalog.yml` に書いた区分で決めるようにした**（`catalog-section-kind-spec.md`）。これまでは番号の範囲（`00` 前書き・`01`〜`89` 本文・`90`〜`98` 付録・`99` 後書き）で決まり、区分は使われていなかった。`PREFACE` に書いた原稿は番号によらず前書きに、`POSTFACE` に書いた原稿は後書きになるので、分冊の巻ごとの前書き（`20-vol2-intro`）を置ける。目次に載っていない原稿（草稿の単章ビルド）は、今までどおり番号の範囲で決まる。
   - 組み立ての順（PDF・目次・EPUB）、「第 N 章」の数え方、図表番号、付録の記号、PDF のしおり、索引・用語集・`@pageref` の前書きへの参照（ローマ数字のノンブル）を、番号ではなく種類で判断する。PDF・EPUB・目次は前書きを `00-preface`、後書きを `99-postface` の名前で決め打ちしていたので、ほかの名前の前書き・後書きは組まれていなかった。
   - 付録の記号は付録の中での並びから振り、A〜Z まで振れる（これまでは A〜I）。

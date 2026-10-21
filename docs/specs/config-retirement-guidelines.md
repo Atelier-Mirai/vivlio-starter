@@ -70,6 +70,33 @@ RETIRED = {
 | `book.yml` の全キーが `KEYS` に宣言されているか | 手順 1 の消し忘れ |
 | `authored:` と `retired:` が排他か | 状態の取り違え |
 | 廃止キーが `default:` を持たないか | 「読まないのに値がある」矛盾 |
+| 移した先（`moved_to:`）が現役キーか | 下の「値を別のキーへ移す」の手順 1 |
+
+### 値を別のキーへ移す
+
+キーの**場所だけ**を変えるとき（`output.cover` → `book.cover`。`multivolume-spec.md` §3.5）は、
+廃止キーの宣言に移した先を添える。
+
+```ruby
+KEYS = {
+  %i[book cover] => Spec[default: "master"],             # ← 移した先を現役キーに足す
+}
+
+RETIRED = {
+  %i[output cover] =>
+    Spec[retired: "巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
+}
+```
+
+1. 移した先を `ConfigKeys::KEYS` に足し、元のキーを `moved_to:` 付きで `ConfigKeys::RETIRED` へ移す
+2. ルートの `config/book.yml` でキーを移し、`ruby scripts/copy_to_scaffold.rb` で雛形へ同期する
+3. 読み出し側のコードを移した先へ向ける
+
+ただ廃止するキーとの違いは、`vs upgrade` の扱いである。ただ廃止するキーは行を消すが、
+移した先のあるキーを消すと、著者が書いていた値が黙って既定値に戻る（`cover: master` の本が
+既定の表紙で組まれる）。そこで `vs upgrade` は、値（と行末の注釈）を移した先の親の最後へ写してから
+元の行を消す（`RetiredKeyRemover.move`）。移した先がすでに書かれていれば、そちらを残して元の行だけを消す。
+案内も「消せます」ではなく、移した先と書いてあった値で書き方を示す（`Common.warn_moved_config_key`）。
 
 ---
 

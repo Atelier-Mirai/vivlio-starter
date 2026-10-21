@@ -303,3 +303,64 @@ h2 {
   align-content: center;
   border-block-end: none;
 }
+
+/* ========================================================= */
+/*  全巻目次（分冊の本・multivolume-spec.md §9）              */
+/* ========================================================= */
+/* 巻を選んで組み、その巻に whole_toc: true を書いたときだけ、その巻の目次の前に置く。
+   章まで・ページ番号なし・リンクなし。今の巻は .vs-current-volume で目立たせ、ほかの巻は薄くする。
+   色はリテラルで書く（Kindle は var() を読まない・kindle-css-compatibility-notes.md）。 */
+body.whole_toc {
+  page: front;
+  break-before: recto;
+}
+
+.whole-toc-volume {
+  margin-block-end: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+  color: #666;
+}
+
+.whole-toc-volume.vs-current-volume {
+  color: #000;
+}
+
+.whole-toc-volume-name {
+  margin-block: 0 clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
+  padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+  border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) currentColor;
+  font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);
+  font-weight: 700;
+  break-after: avoid;
+}
+
+.vs-current-volume .whole-toc-volume-name {
+  border-block-end-width: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+}
+
+.whole-toc-volume ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.whole-toc-volume li {
+  margin-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+  font-size: clamp(9.8Q, calc(var(--paper-scale) * 14Q), 14Q);
+  line-height: 1.4;
+}
+
+li.whole-toc-part {
+  margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
+  font-weight: 700;
+}
+
+li.whole-toc-chapter,
+li.whole-toc-appendix {
+  padding-inline-start: 1em;
+}
+
+.whole-toc-number {
+  display: inline-block;
+  min-inline-size: 4.5em;
+  font-weight: 700;
+}

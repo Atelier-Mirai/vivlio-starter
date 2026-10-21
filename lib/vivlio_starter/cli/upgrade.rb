@@ -264,16 +264,22 @@ module VivlioStarter
         report_tidy(retired, orphans, pages, dry_run: options[:dry_run])
         return if options[:dry_run]
 
-        # --- Phase: book.yml の廃止キー ---
+        # --- Phase: book.yml の廃止キー（移した先のあるキーは移し、ほかは消す） ---
         backup_dir = nil
         if retired.any?
-          rewritten = RetiredKeyRemover.remove(book_text, retired)
+          moved, removed = retired.partition { moved_key_target(it) }
+          rewritten = moved.reduce(book_text) do |text, path|
+            text && RetiredKeyRemover.move(text, path, moved_key_target(path))
+          end
+          rewritten = RetiredKeyRemover.remove(rewritten, removed) if rewritten && removed.any?
           if rewritten
             backup_dir = backup!(book_yml, backup_dir)
             File.write(book_yml, rewritten, encoding: 'utf-8')
           else
-            Common.log_warn("#{book_yml} の廃止キーを自動で消せませんでした（書き方を読み取れない）",
-                            detail: "#{retired.map { it.join('.') }.join('・')} を手で削除してください")
+            todo = moved.map { "#{it.join('.')} を #{moved_key_target(it).join('.')} へ移し" } +
+                   removed.map { "#{it.join('.')} を消し" }
+            Common.log_warn("#{book_yml} の廃止キーを自動で直せませんでした（書き方を読み取れない）",
+                            detail: "#{todo.join('、')}てください")
           end
         end
 
@@ -326,10 +332,35 @@ module VivlioStarter
                           'vs index:apply すると外れます')
       end
 
+      # 値を別のキーへ移した廃止キーなら、移した先のパス（multivolume-spec.md §3.5）
+      # @param path [Array<String>] 例: ["output", "cover"]
+      # @return [Array<String>, nil] 例: ["book", "cover"]
+      def moved_key_target(path)
+        ConfigKeys.moves[path.map(&:to_sym)]&.map(&:to_s)
+      end
+
+      # 移す廃止キーの知らせ。移した先がすでに書かれていれば、そちらを残すので、値が違えば両方を示す
+      def report_moved_key(from, to)
+        written = YAML.safe_load_file(File.join('config', 'book.yml'), aliases: true) || {}
+        old_value = written.dig(*from)
+        unless written.dig(*to[0...-1])&.key?(to.last)
+          Common.log_always("   config/book.yml: #{from.join('.')} を #{to.join('.')} へ移します（#{old_value}）")
+          return
+        end
+
+        Common.log_always("   config/book.yml: #{to.join('.')} がすでにあるので、#{from.join('.')} の行を消します")
+        kept = written.dig(*to)
+        return if kept == old_value
+
+        Common.log_always("      #{to.join('.')}: #{kept} を残し、#{from.join('.')}: #{old_value} を消します")
+      end
+
       # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
       def report_tidy(retired, orphans, pages, dry_run:)
-        if retired.any?
-          Common.log_always("   config/book.yml: 廃止キーを消します（#{retired.map { it.join('.') }.join('・')}）")
+        moved, removed = retired.partition { moved_key_target(it) }
+        moved.each { report_moved_key(it, moved_key_target(it)) }
+        if removed.any?
+          Common.log_always("   config/book.yml: 廃止キーを消します（#{removed.map { it.join('.') }.join('・')}）")
         end
         if orphans.any?
           chapters = orphans.values.flatten.uniq

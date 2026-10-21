@@ -68,7 +68,7 @@ vs import --force ../review_project    # 確認を省略したい場合
 4. **画像処理** — 取り込み元の `images/` をコピーして WebP 化し、元画像（png/jpg/gif）は削除します。
 5. **codes/ へのコピー** — `source/` 配下をそのまま `codes/` へコピーします。
 6. **YAML 変換** — `catalog.yml` では `PREDEF`→`PREFACE` などのキーを変え、章名から `.re` を外します。部、コメント、コメントアウトした章は残します。`config.yml` の `book.main_title` などは `book.yml` に反映し、`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけます。
-7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピーし、その 1 ページめを `frontcover_master.png`・`backcover_master.png` へ変換します。あわせて `book.yml` の `output.cover` を `master` に揃えます。
+7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピーし、その 1 ページめを `frontcover_master.png`・`backcover_master.png` へ変換します。あわせて `book.yml` の `book.cover` を `master` に揃えます。
 
 ### 主な記法の行き先
 

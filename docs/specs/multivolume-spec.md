@@ -1,6 +1,7 @@
 # 分冊（上下巻・上中下巻・第 N 分冊）を組む
 
-> 状態: 実装済み（段階 1〜4・2026-10-20・feature/multivolume）。実装で分かったことは §13
+> 状態: 段階 1〜4 は実装済み（2026-10-20・feature/multivolume）。実装で分かったことは §13。
+> 段階 5（巻ごとの書誌情報と表紙。§3.2・§3.5・§4.7・§4.8）も実装済み（2026-10-21）。実装記録は §13.3。
 > 発端: `vivlio-starter-multivolume-request.md`（2026-10-17）。2026-10-19〜20 の検討で、巻の数を決め打ちしない形にまとめた。
 > 前提: `catalog-section-kind-spec.md`（巻ごとの前書きを置くために、区分で章の種類を決める）。
 
@@ -57,6 +58,7 @@ VOLUMES:
     id: upper
     main_title: AIと学ぶモダンWeb入門　上巻
     subtitle: 花屋のサイトで学ぶ HTML・CSS と JavaScript の基本
+    cover: upper               # covers/frontcover_upper.png・backcover_upper.png
     PREFACE:
       - 00-preface
     CHAPTERS:
@@ -72,6 +74,8 @@ VOLUMES:
     id: lower
     main_title: AIと学ぶモダンWeb入門　下巻
     subtitle: じゃんけんアプリで学ぶ JavaScript と Git・PWA・Canvas
+    cover: lower
+    release: 令和九年一月十日  # 上巻と発行日が違う（book.yml の値は上巻のもの）
     PREFACE:
       - 20-vol2-intro          # 下巻のはじめに（catalog-section-kind-spec.md）
     CHAPTERS:
@@ -94,13 +98,47 @@ VOLUMES:
 | :--- | :--- | :--- |
 | `name` | 必須 | 巻の呼び名（「上巻」「第一分冊」）。巻をまたぐ参照の表示（§8）と、`--volume` の指定に使う |
 | `id` | 必須 | ファイル名と `--volume` に使う短い名前。英小文字・数字・`_` だけ。`all` は使えない（§4.2） |
-| `main_title`・`subtitle` | 任意 | その巻だけ `book.yml` の `book.main_title`・`book.subtitle` を置き換える |
-| `cover` | 任意 | その巻だけ `book.yml` の `output.cover` を置き換える（`covers/frontcover_<cover>.png` などを使う） |
+| `book.yml` の `book:` の下のキー | 任意 | その巻だけ、`book.yml` の同じ名前の値を置き換える（下の「書誌情報の上書き」） |
 | `chapter_start` | 任意 | その巻の最初の本文の章の番号（§5.1） |
 | `appendix_start` | 任意 | その巻の付録を振り直すときの最初の記号（§5.2） |
 | `whole_toc` | 任意 | `true` で、その巻に全巻の目次を載せる（§9） |
 
 巻の設定を `book.yml` ではなく `catalog.yml` に置くのは、巻の構成と一体のものだからである。`book.yml` に置くと、分冊でない本の著者にも使わないキーが見えることになる（`config-key-criteria-guidelines.md` §1 は、`book.yml` のキーをすべて `book.yml` に書くことを求めている）。番号の振り方を全巻まとめて選ぶキー（要望書の `volumes.numbering`）は設けない。既定の振り方（§5）で多くの本が済み、違う本は巻の `chapter_start`・`appendix_start` で足りるからである。
+
+#### 書誌情報の上書き（段階 5）
+
+一冊の本は `book.yml` の `book:` に書名・表紙などを書く。分冊の本では、`book.yml` の値が全巻の既定になり、巻ごとに違う値だけを巻の中に書いて上書きする。
+
+```yaml
+# config/book.yml（全巻の既定）
+book:
+  main_title: "AIと学ぶモダンWeb入門"
+  author: "早乙女 遙香"
+  release: "令和八年十月一日"
+  cover: master
+
+# config/catalog.yml（巻ごとに違う値だけ）
+VOLUMES:
+  - name: 上巻
+    id: upper
+    main_title: "AIと学ぶモダンWeb入門　上巻"
+    isbn: "978-4-xxxx-xxxx-1"
+    cover: upper
+  - name: 下巻
+    id: lower
+    main_title: "AIと学ぶモダンWeb入門　下巻"
+    isbn: "978-4-xxxx-xxxx-2"
+    release: "令和九年一月十日"
+    cover: lower
+```
+
+- **書けるキー**は、`book.yml` の `book:` の下のキーすべてである。今は `main_title`・`subtitle`・`subtitle_style`・`series`・`release`・`publisher`・`contact`・`author`・`language`・`isbn`・`cover`（`cover` は §3.5 で `book:` へ移す）。
+- **名前は `book.yml` と同じにし、`book:` の一段を省いて平らに書く。** `book.yml` の `book:` の下も平らなので、行をそのまま写せば巻の設定になる。`book.yml:` や `book:` のような入れ子のキーは設けない。入れ子が二段深くなり、著者には何を書く場所かわからなくなるからである。
+- **書いたキーは上書きし、書かないキーは `book.yml` の値を使う。** 空の値も書いたとおりに使う（`isbn: ""` は「この巻には ISBN がない」）。
+- **合本（§4.3）は、いつも `book.yml` の値で組む。**
+- **書けるキーの一覧は、コードに書き並べず `ConfigKeys::KEYS` から作る**（`book` で始まる現役のキー）。`book:` にキーを足せば、巻でもそのまま上書きできる。キーごとに重ねる処理を書き足さない。
+- `book:` の下には、巻の設定（`name`・`id`・`chapter_start`・`appendix_start`・`whole_toc`）と同じ名前のキーや、大文字のキー（区分）を足さない。巻の中で区別がつかなくなる。名前が重ならないことはテストで確かめる。
+- `page`・`targets` のように `book:` の下にないキーを巻に書いたときは、今と同じく打ち間違いとして 🟡 で知らせる（`VolumeDefinitionCheck`）。添える「書けるキー」には、`book:` のキーも並べる。
 
 ### 3.3 止める場合（🔴）
 
@@ -120,6 +158,43 @@ VOLUMES:
 - `CatalogLoader.load_catalog` は、巻が選ばれていればその巻の目次を、選ばれていなければ全巻を合わせた目次（§4.3）を、今と同じ形の Hash（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）で返す。目次を読むほかの処理（部の中扉、最初の本文の章を探す `BodyClassInjector`、索引の対象など）は、これで直さずに済む見込みである。
 - 巻の一覧（設定と目次）は、新しい `CatalogLoader.volumes` で返す。番号の計算（§5）と巻をまたぐ参照（§8）が使う。
 
+### 3.5 `book.yml` の `cover` を `book:` へ移す（段階 5）
+
+表紙のテーマ（`master`・`light`・`dark`・独自の名前）を、`output.cover` から `book.cover` へ移す。
+
+```yaml
+book:
+  main_title: "はじめての技術書づくり"
+  # …
+  isbn: ""
+
+  # ------- 表紙・裏表紙設定 -------
+  cover: master  # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
+  # cover: light # 標準添付 light 表紙・裏表紙を指定
+  # cover: dark  # 標準添付 dark 表紙・裏表紙を指定
+```
+
+- **理由**: どの表紙を使うかは、書名や発行日と同じく「その本が何であるか」の一部で、巻ごとに変わる。`output:` の下は出力の仕方を決める値（ターゲット・圧縮・埋め込み）の置き場である。移すと、巻の上書き（§3.2）が「`book:` のキーなら何でも」の一つの決まりになり、`cover` だけの例外がなくなる。
+- 表紙の**出し方**の値は `output:` に残す: `output.pdf.combined`（PDF に綴じるか）・`output.print_pdf.cover_bleed`（塗り足し）・`output.epub.embed`・`output.kindle.embed`。
+- 既定値は今の `output.cover` と同じ `master`。
+- 読む場所は `Common.cover_theme` の一か所なので、そこを `book.cover` にする。`vs import`（`import.rb`・`import/yaml_processor.rb`）が書く場所も `book.cover` にする。
+
+#### 古い `book.yml` の扱い
+
+- `output.cover` は廃止キーにする（`config-retirement-guidelines.md` §1）。`book.yml` に残っていれば、ほかの廃止キーと同じく値を読まずに 🟡 で知らせる。案内には、移す先と `vs upgrade` を添える。
+
+  ```
+  🟡 config/book.yml の output.cover は book.cover へ移りました
+          巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます
+          → vs upgrade で移せます（手で移すなら、book: の下に cover: master と書き、output: の下の行を消します）
+  ```
+
+- **`vs upgrade` は、`output.cover` を消さずに `book.cover` へ移す。** 今の `vs upgrade` は廃止キーの行を消すだけである（`RetiredKeyRemover`）。消すと `cover: master` で組んでいた著者の表紙が黙って既定に戻るので、値を移す。
+  - `book.cover` がまだなければ、`book:` の下の最後に `cover: <値>` の行を足し、`output.cover` の行を消す。
+  - `book.cover` がすでにあれば（手で移した後など）、`book.cover` を残し、`output.cover` の行だけを消す。値が違うときは、残した値と消した値を知らせる。
+  - `output:` の下に残る `# cover: light` のような注釈の行は、消さずに残す（著者の書いた注釈かどうか見分けられない）。
+- 移す先を持つ廃止キーは、`ConfigKeys::RETIRED` の宣言に移す先を書く（`Spec[retired: '…', moved_to: %i[book cover]]`）。`vs upgrade` と案内文は、この宣言から移し方を決める。`config-retirement-guidelines.md` に「移す」手順を書き足す。
+
 ## 4. 組む
 
 ### 4.1 巻を選んで組む
@@ -129,7 +204,7 @@ vs build --volume lower      # id で選ぶ
 vs build --volume 下巻       # name でも選べる
 ```
 
-- 巻の `main_title`・`subtitle`・`cover` を、`book.yml` の値に重ねた `CONFIG` で組む（`Common.install_configuration!` と `deep_merge_config` を使う）。扉・奥付・PDF の文書情報・EPUB の書誌情報は、どれも `CONFIG` から読むので、そのまま巻の値になる。
+- 巻に書いた `book:` のキー（§3.2）を、`book.yml` の値に重ねた `CONFIG` で組む（`Common.install_configuration!` と `deep_merge_config` を使う）。扉・奥付・表紙・PDF の文書情報・EPUB の書誌情報は、どれも `CONFIG` から読むので、そのまま巻の値になる。
 - 前に別の巻を組んだ中間 HTML が残っていると、本文の章の並び（§1.3）に混ざって番号がずれる。巻を切り替えて組むときは、`--no-clean` でも中間 HTML の置き場を空にしてから組む（最後に組んだ巻を置き場に記録して比べる）。
 
 ### 4.2 全巻を続けて組む
@@ -148,7 +223,7 @@ vs build --volume all
 
 - 構成: **最初の巻の `PREFACE`** → 全巻の `CHAPTERS`（巻の順） → 全巻の `APPENDICES`（重なりを除く） → **最後の巻の `POSTFACE`**。2 巻目以降の前書き（「下巻のはじめに」）と、最後の巻より前の後書きは、合本では一冊の途中に来ることになるので載せない。
 - 番号は全体を通して振る。巻の `chapter_start`・`appendix_start` は使わない。
-- 書名・副題・表紙は `book.yml` の値を使う。出力ファイル名に巻の `id` は入らない。
+- 書名・副題・表紙・ISBN など `book:` の値は、`book.yml` の値を使う。出力ファイル名に巻の `id` は入らない。
 
 ### 4.4 単章ビルド
 
@@ -177,6 +252,37 @@ vs build --volume all
 ### 4.7 EPUB の識別子
 
 ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id` を `_` でつないだ名前（`mybook_lower`）から作る。巻ごとに `project.name` を変えていた回り道と同じ識別子になる。同じ識別子だと、電子書籍ストアや読書アプリが上巻と下巻を同じ本の版違いとして扱うためである。合本は今と同じく `project.name` だけから作る。
+
+ISBN があるとき（段階 5）は、今と同じく `urn:isbn:…` を使い、巻の `id` は足さない。ISBN は巻ごとに取るものなので、巻の `isbn`（§3.2）に書く。
+
+- **🟡 巻が ISBN を共有している**: `book.yml` の `book.isbn` に値があり、`isbn` を書いていない巻が二つ以上あるとき。それらの巻は同じ `urn:isbn` になり、ストアや読書アプリが同じ本とみなす。`VolumeDefinitionCheck` が知らせる（`vs build`・`vs preflight` で同じものを出す）。巻の名前と `catalog.yml` の行番号を添え、直し方を示す。
+
+  ```
+  🟡 上巻・下巻が、book.yml の ISBN（978-4-xxxx-xxxx-1）を共有しています
+          config/catalog.yml:2 上巻 / config/catalog.yml:20 下巻
+          → 巻ごとに ISBN を書いてください。ISBN の無い巻は isbn: "" と書きます
+            - name: 下巻
+              id: lower
+              isbn: "978-4-…"
+  ```
+
+- `isbn` を書いていない巻が一つだけのときは知らせない（`book.yml` の ISBN をその巻のものとして使う書き方）。合本の ISBN は `book.yml` の値で、巻の ISBN と重なりうるが、合本は校正用でもあるので知らせない。
+
+### 4.8 表紙だけを作る（`vs cover`。段階 5）
+
+`vs build` は巻の表紙で組む（§4.1。巻に `cover` を書けば巻ごとの画像を使い、`light`・`dark` なら巻の書名を当てる）。表紙だけを作り直す `vs cover` にも、`vs build` と同じ巻の選び方を足す。
+
+```
+vs cover --volume lower   # 下巻の表紙（id でも name でも選べる）
+vs cover --volume all     # 全巻の表紙を、巻の順に
+vs cover                  # 合本の表紙（book.yml の値）
+```
+
+- 巻を選んだときは、巻の値（§3.2）を重ねた `CONFIG` で作る。出力ファイル名には巻の `id` が入る（§4.6。`mybook_lower_frontcover_v0.1.0.pdf`・`.jpg`）。
+- `--volume all` は、巻ごとに選び直して設定を重ね直し、同じプロセスで続けて作る。表紙が読むのは `CONFIG` だけで、`vs build` のように章の並びの記録が残らないからである。作り終えたら設定を `book.yml` の値へ戻す。
+- 何も付けないときは、`vs build` と同じく合本の表紙（`book.yml` の値・ファイル名に `id` なし）を作る。
+- `VOLUMES` のない本で `--volume` を付けたとき、巻の名前が見つからないときは、`vs build` と同じく 🔴 で止める（§4.5）。
+- 生成キャッシュ（`.cache/vs/covers/`）の名前はテーマごと（`frontcover_light_b5_rgb.pdf`）のままにする。二つの巻が同じ `light` を使うと書名の違う表紙が同じ名前に書かれるが、`vs build`・`vs cover` は表紙を毎回作り直してから使う・写すので、取り違えは起きない。
 
 ## 5. 番号
 
@@ -298,8 +404,7 @@ ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id
 実装を終えるときに `PLANNED.md` へ移す。
 
 - 全巻の目次を節まで載せること、ページ番号を載せること（§9）
-- 巻ごとの ISBN・発行日・版、背表紙（要望書 §2.8）。`main_title`・`subtitle`・`cover` 以外の `book.yml` の値を巻ごとに置き換える仕組み
-- `vs cover` で巻ごとに表紙を作ること（要望書 §2.8）。表紙の画像を巻ごとに選ぶことは、§3.2 の `cover` でできる
+- 巻ごとの版（`project.version`）、背表紙（要望書 §2.8）。巻ごとの ISBN・発行日などの書誌情報と表紙は段階 5（§3.2・§3.5・§4.8）で扱う。`book:` の外の値（判型・ターゲットなど）は巻ごとに変えない
 - 索引の主要参照（「- 主要参照: 11, 12」）を別の巻の章へ向けること、全巻を通した索引（要望書 §2.9）
 - `vs renumber` が巻の区切りを保つこと（要望書 §2.10）
 - 2 巻目以降の前書きの雛形（要望書 §2.5）と、`vs create` で前書きとして作る指定
@@ -314,6 +419,16 @@ ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id
 | 2 | §3〜§7 | `build_volume.rb` を使わずに上下巻を組める。章番号は下巻が第13章から |
 | 3 | §8 | 下巻の 19 件・上巻の 2 件の巻をまたぐ参照が、`@chapref` のまま組める |
 | 4 | §9 | `whole_toc: true` の巻に、章までの全巻の目次が載る |
+| 5 | §3.2・§3.5・§4.7・§4.8 | 巻ごとに `book:` の値（ISBN・発行日・表紙など）を上書きでき、`vs cover --volume` で巻の表紙を作れる。`cover` は `book:` の下に移る |
+
+段階 5 の確認:
+
+- 3 巻の試しの本で、上巻・下巻に独自の表紙（`cover: upper`・`lower`）、中巻に `light` を書き、`vs build --volume all` と `vs cover --volume all` で、PDF の表と裏・EPUB の表紙・直下の成果品（`_frontcover` の PDF と JPEG）が巻ごとの画像になる。中巻の `light` には中巻の書名が入る。
+- 巻に書いた `release`・`isbn` が、奥付・PDF の文書情報・EPUB の `dc:identifier`（`urn:isbn`）に出る。書かない巻は `book.yml` の値になる。
+- `book.yml` に ISBN があり、`isbn` を書かない巻が二つあると 🟡 が出る。一つなら出ない。`isbn: ""` と書いた巻は数えない。
+- `output.cover: master` だけを書いた `book.yml` で、組むと 🟡 の案内が出る。`vs upgrade` の後は `book.cover: master` になり、組むと `master` の表紙になる。`book.cover` がすでにある `book.yml` では `output.cover` の行だけが消える。
+- 巻の設定の名前（`name`・`id` など）と `book:` のキーが重ならないことを、`ConfigKeys::KEYS` から確かめるテストを置く。
+- `VOLUMES` のない本（本書・雛形）の全章ビルドが、`cover` を移す前後で一致する。
 
 各段階の確認:
 
@@ -334,6 +449,10 @@ ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id
 | 7 | 全巻の目次を載せる巻 | 巻ごとに `whole_toc: true` で選ぶ（§9.1） | 全巻に必ず載せる。載せない本にも出る |
 | 8 | 全巻の目次の位置 | その巻の目次の前（§9.3） | 要望書の案のように前後を選べるキー。選ぶ理由が描けるまで設けない |
 | 9 | 今の巻のページ番号 | 載せない（§9.2） | 今の巻だけ載せる。他の巻と見た目がそろわない |
+| 10 | 巻で上書きできる値（段階 5） | `book:` の下のキーすべて。一覧は `ConfigKeys` から作る（§3.2） | `main_title`・`subtitle`・`cover` だけ。ISBN・発行日を足すたびにキーと処理が増える |
+| 11 | 上書きの書き方（段階 5） | `book:` の一段を省いて平らに書く（§3.2） | `book.yml:` の下に `book.yml` と同じ入れ子で書く。どの値も同じ形で書けるが、二段深くなり何を書く場所かわかりにくい |
+| 12 | 表紙のテーマの置き場（段階 5） | `book.cover`（§3.5） | `output.cover` のまま。巻の上書きで `cover` だけが `output:` の値を指す例外になる |
+| 13 | 何も付けない `vs cover`（段階 5） | 合本の表紙（§4.8。`vs build` と同じ） | 全巻の表紙。表紙だけは巻を作る機会が多いが、`vs build` と読み方が変わる |
 
 ## 13. 実装記録
 
@@ -353,3 +472,11 @@ ISBN がないとき、`dc:identifier` の UUID を `project.name` と巻の `id
 - 全巻目次は `toc.css` で組む（`stylesheet: toc.css` を前付けの Markdown に書く）。`body.whole_toc` に `page: front` を与え、目次と同じくローマ数字のノンブルにする。今の巻とほかの巻の色はリテラル（`#000`・`#666`）。
 - PDF のしおりは、目次の始まりを「前書きの終わりの次」で決めていた。全巻目次が間に入ると前書きの終わりが全巻目次の手前で切られ、目次が全巻目次と同じページを指したので、全巻目次があるときは目次の見出しをその後ろで探す（`OutlineExtractor#page_range_toc`）。
 - 確かめたこと: 3 巻の試しの本で、下巻から中巻・上巻を指す `@chapref`・図の参照・`@pageref` が「中巻 第 4 章「…」」「中巻 図 4-1」「上巻 第 1 章「…」」になり、中巻の最初の章の「前の章 @ch-new」（上巻の最後の章）が食い違いとして知らされなかった。中巻に `whole_toc: true` を書くと、前書きの後・目次の前に全巻目次が入り、PDF のしおりも「中巻のはじめに p4 → 全巻目次 p5 → 目次 p6」となった。
+
+### 13.3 段階 5（2026-10-21）
+
+- 巻で上書きできるキーは `ConfigKeys.book_keys`（`book` で始まる現役のキー）から作り、`Build::Volumes::BOOK_KEYS` に置いた。巻の設定は `VOLUME_KEYS`（`name`・`id`・`chapter_start`・`appendix_start`・`whole_toc`）と分け、知らないキーの 🟡 には「巻の設定」「書誌情報」「目次の区分」を分けて並べる。`apply_config!` は巻に書いた値を `book:` にだけ重ねる。空欄（`isbn:` だけ）は `deep_merge_config` の決まりで上書きしない。`isbn: ""` は上書きする。
+- `vs cover --volume all` は同じプロセスで巻ごとに作る。作り終えたら、`reload_configuration!` で読み直すのではなく、作る前の `CONFIG` を入れ直す。読み直すと `page_presets.yml` などを読み直すことになり、試験の器で止まった。
+- `RetiredKeyRemover.move` は、移した先の親（`book:`）のブロックの最後の行の後ろに、親の下の最初のキーと同じ字下げで足す。値の後ろの注釈も写す。書き換えた後に YAML として読み直し、移した先の値が元の値と同じで、ほかのキーが変わっていないことを確かめる。確かめられなければ書き込まない。値がブロック（`|`・`>`・次の行からの入れ子）なら移さない。
+- 雛形の `config/catalog.yml` の Tips の例を、例の行を選んで `# ` を外せばそのまま YAML として使える形にした（それまでは字下げしたまま書いてあり、外すと読めなかった）。
+- 確かめたこと: 3 巻の試しの本で、上巻 `cover: upper`（PNG）・中巻 `light`・下巻 `cover: lower` を書き、`vs build --volume all` と `vs cover --volume all` で、PDF の表と裏・EPUB の表紙・直下の JPEG が巻ごとの画像になった（EPUB の中の JPEG と直下の JPEG が一致）。中巻の `light` には中巻の書名が入った。上巻・中巻に書いた ISBN が `urn:isbn` に、`isbn: ""` の下巻は `urn:uuid` になり、下巻に書いた `release` だけが奥付に出た。ISBN を書かない巻が二つのとき 🟡（`config/catalog.yml:16 中巻 / …:31 下巻`）が出た。`output.cover: master` だけの `book.yml` で 🟡 の案内が出て、`vs upgrade` の整理で `book.cover: master` へ移った。book_ai_web_starter の `book.yml` も同じ整理で移した。

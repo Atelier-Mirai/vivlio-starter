@@ -10,6 +10,8 @@
 #   - --volume の指定の誤り（§4.5）と、巻の書き方の検査（§3.3）
 #   - vs create / delete / rename が巻の中を書き換える（§7）
 #   - 出力ファイル名に巻の id を入れる（§4.6）
+#   - 巻に書いた book: の値（書名・ISBN・発行日・表紙）を book.yml に重ねる。ISBN の共有を 🟡（§3.2・§4.7）
+#   - vs cover --volume が巻ごとの値で表紙を作る（§4.8）
 #
 # 2 巻だけで確かめると「最初の巻でなければ最後の巻」という思い込みが隠れるので、上中下の 3 巻で確かめる（§2）。
 # ================================================================
@@ -299,6 +301,101 @@ module VivlioStarter
           end
         end
 
+        # --- 書誌情報の上書き（段階 5） ---
+
+        BOOK_YML = <<~YAML
+          book:
+            main_title: "全巻の書名"
+            author: "著者"
+            release: "令和八年十月一日"
+            isbn: "978-4-0000-0000-0"
+            cover: master
+        YAML
+
+        def test_should_override_only_book_values_written_in_volume
+          catalog = CATALOG.sub("  - name: 上巻\n    id: upper\n",
+                                "  - name: 上巻\n    id: upper\n    main_title: 上巻の書名\n    isbn: \"978-4-0000-0000-1\"\n")
+                           .sub("  - name: 下巻\n    id: lower\n",
+                                "  - name: 下巻\n    id: lower\n    release: 令和九年一月十日\n    isbn: \"\"\n    cover: lower\n")
+          with_project(catalog:, book_yml: BOOK_YML) do
+            original = Common::CONFIG
+
+            Volumes.apply_config!(Volumes.find('upper'))
+            book = Common::CONFIG.book
+            assert_equal ['上巻の書名', '978-4-0000-0000-1', '令和八年十月一日', 'master', '著者'],
+                         [book.main_title, book.isbn, book.release, book.cover, book.author], '書かないキーは book.yml の値'
+
+            Volumes.apply_config!(Volumes.find('lower'))
+            book = Common::CONFIG.book
+            assert_equal ['全巻の書名', '', '令和九年一月十日', 'lower'], [book.main_title, book.isbn, book.release, book.cover],
+                         'isbn: "" は「この巻には ISBN がない」として上書きする'
+          ensure
+            Common.install_configuration!(original)
+          end
+        end
+
+        # 巻の設定の名前と book: のキーが重なると、巻の中でどちらの値か区別できない（§3.2）
+        def test_should_keep_book_keys_apart_from_volume_settings
+          assert_empty Volumes::BOOK_KEYS & Volumes::VOLUME_KEYS
+          assert(Volumes::BOOK_KEYS.none? { it.match?(/[A-Z]/) }, '大文字のキーは目次の区分')
+          assert_includes Volumes::BOOK_KEYS, 'cover', 'cover は book: の下へ移した（§3.5）'
+        end
+
+        def test_should_accept_book_keys_written_in_volume
+          catalog = CATALOG.sub("    id: middle\n", "    id: middle\n    release: 令和九年\n    cover: middle\n    isbn: \"\"\n")
+          with_project(catalog:) { assert_empty Guards::VolumeDefinitionCheck.new.validate }
+        end
+
+        def test_should_warn_when_volumes_share_isbn_of_book_yml
+          catalog = CATALOG.sub("    id: middle\n", "    id: middle\n    isbn: \"978-4-0000-0000-2\"\n")
+          with_project(catalog:, book_yml: BOOK_YML) do
+            warnings = Guards::VolumeDefinitionCheck.new.validate
+
+            assert_equal 1, warnings.size
+            assert warnings.first.warn?
+            assert_includes warnings.first.message, '上巻・下巻が、book.yml の ISBN（978-4-0000-0000-0）を共有しています'
+            assert_includes Array(warnings.first.detail).first, 'config/catalog.yml:2 上巻'
+          end
+
+          # 上書きしない巻が一つだけなら、book.yml の ISBN をその巻のものとみなす
+          catalog = catalog.sub("    id: lower\n", "    id: lower\n    isbn: \"\"\n")
+          with_project(catalog:, book_yml: BOOK_YML) { assert_empty Guards::VolumeDefinitionCheck.new.validate }
+        end
+
+        # vs cover は vs build と同じく、--volume で巻・all で全巻・何も付けなければ合本の表紙を作る（§4.8）
+        def test_should_make_covers_with_values_of_each_volume
+          catalog = CATALOG.sub("    id: upper\n", "    id: upper\n    cover: upper\n")
+                           .sub("    id: lower\n", "    id: lower\n    cover: lower\n")
+          with_project(catalog:, book_yml: BOOK_YML) do
+            original = Common::CONFIG
+            made = []
+            record = -> { made << [Volumes.current&.id, Common.cover_theme, Common.generate_cover_output_filename('front')] }
+
+            CoverCommands.stub(:execute_generate, ->(_ = nil) { record.call }) do
+              Common.stub(:log_action, nil) do
+                run_cover('--volume', 'all')
+                run_cover('--volume', '中巻')
+                run_cover
+              end
+            end
+
+            assert_equal [['upper', 'upper'], ['middle', 'master'], ['lower', 'lower'], ['middle', 'master'], [nil, 'master']],
+                         made.map { it.first(2) }, '巻の cover、書かない巻と合本は book.yml の cover'
+            assert_match(/_lower_frontcover/, made[2].last)
+            refute_match(/_(upper|middle|lower)_/, made.last.last, '合本の表紙の名前に巻の id は入らない')
+            assert_nil Volumes.current, '作り終えたら巻の選択を戻す'
+          ensure
+            Common.install_configuration!(original)
+          end
+        end
+
+        def test_should_stop_cover_for_unknown_volume
+          with_project do
+            out, err = capture_io { assert_equal 1, run_cover('--volume', 'fourth') }
+            assert_includes out + err, '巻 fourth が config/catalog.yml の VOLUMES に見つかりません'
+          end
+        end
+
         # --- 章の管理コマンド ---
 
         def test_should_add_new_chapter_to_volume_of_previous_number
@@ -361,11 +458,16 @@ module VivlioStarter
 
         private
 
-        def with_project(catalog: CATALOG)
+        def run_cover(*argv)
+          Guards.stub(:precheck, nil) { SamovarCommands::CoverCommand.new(argv).call }
+        end
+
+        def with_project(catalog: CATALOG, book_yml: nil)
           Dir.mktmpdir('vs-volumes') do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p(%w[config contents])
               File.write('config/catalog.yml', catalog)
+              File.write('config/book.yml', book_yml) if book_yml
               BASENAMES.each { File.write("contents/#{it}.md", "# #{it}\n") }
               Common.stub(:log_info, nil) { yield }
             end

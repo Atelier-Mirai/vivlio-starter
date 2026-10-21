@@ -11,6 +11,7 @@
 #   - 廃止キーの行と、その下の入れ子だけを消し、コメント・空行・ほかのキーは残す
 #   - 消した結果、下にキーが残らない親も消す
 #   - 行から読み取れない書き方（流れ形式）では書き換えない（nil）
+#   - 移した先のある廃止キーは、値と注釈を移した先へ写してから消す（multivolume-spec.md §3.5）
 # ================================================================
 
 require 'test_helper'
@@ -92,6 +93,52 @@ module VivlioStarter
         text = "verify: { images: true, external_links: false }\n"
 
         assert_nil RetiredKeyRemover.remove(text, [%w[verify images]])
+      end
+
+      def test_should_move_the_value_to_the_end_of_the_new_parent
+        text = <<~YAML
+          book:
+            main_title: "本"
+            isbn: "" # 任意
+
+          output:
+            targets: pdf
+
+            # ------- 表紙・裏表紙設定 -------
+            cover: light # 標準添付 light 表紙
+            # cover: dark
+
+            pdf:
+              combined: true
+        YAML
+
+        assert_equal <<~YAML, RetiredKeyRemover.move(text, %w[output cover], %w[book cover])
+          book:
+            main_title: "本"
+            isbn: "" # 任意
+            cover: light # 標準添付 light 表紙
+
+          output:
+            targets: pdf
+
+            # ------- 表紙・裏表紙設定 -------
+            # cover: dark
+
+            pdf:
+              combined: true
+        YAML
+      end
+
+      # 手で移した後など、移した先がすでにあれば、そちらを残して元の行だけを消す
+      def test_should_keep_the_new_key_when_it_is_already_written
+        text = "book:\n  cover: dark\noutput:\n  cover: master\n  targets: pdf\n"
+
+        assert_equal "book:\n  cover: dark\noutput:\n  targets: pdf\n",
+                     RetiredKeyRemover.move(text, %w[output cover], %w[book cover])
+      end
+
+      def test_should_give_up_moving_when_the_new_parent_is_missing
+        assert_nil RetiredKeyRemover.move("output:\n  cover: master\n", %w[output cover], %w[book cover])
       end
     end
   end

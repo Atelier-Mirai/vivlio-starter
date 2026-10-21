@@ -412,8 +412,8 @@ module VivlioStarter
         FileUtils.mkdir_p('config')
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'pdf',
             'print_pdf' => { 'bleed' => '3mm', 'crop_marks' => false }
           },
@@ -429,8 +429,8 @@ module VivlioStarter
         page_preset_name = "#{page_size}_standard"
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'pdf',
             'print_pdf' => { 'bleed' => "#{bleed_mm}mm", 'crop_marks' => false }
           },
@@ -445,8 +445,8 @@ module VivlioStarter
         FileUtils.mkdir_p('config')
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'epub'
           },
           'page' => { 'use' => 'b5_standard' }
@@ -460,8 +460,8 @@ module VivlioStarter
         FileUtils.mkdir_p('config')
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'print_pdf',
             'print_pdf' => { 'bleed' => '3mm', 'crop_marks' => true }
           },
@@ -476,8 +476,8 @@ module VivlioStarter
         FileUtils.mkdir_p('config')
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'light' },
           'output' => {
-            'cover' => 'light',
             'targets' => 'print_pdf',
             'print_pdf' => { 'bleed' => '3mm', 'crop_marks' => true }
           },

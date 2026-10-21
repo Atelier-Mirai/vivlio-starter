@@ -244,11 +244,27 @@ module VivlioStarter
         found = RETIRED_CONFIG_KEYS.select { |path, _| authored_key?(*path) }
         return if found.empty?
 
-        found.each do |path, guidance|
+        moved, removed = found.partition { |path, _| ConfigKeys.moves.key?(path) }
+        moved.each { |path, guidance| warn_moved_config_key(path, guidance) }
+        return if removed.empty?
+
+        removed.each do |path, guidance|
           log_warn("config/book.yml の #{path.join('.')} は廃止されました", detail: guidance)
         end
         log_warn('上記のキーは読み込まれません。vs upgrade で book.yml から消せます（手で削除しても構いません）',
                  detail: '指定できるキーは vs doctor か各コマンドの --help で確認できます')
+      end
+
+      # 値を別のキーへ移した廃止キーの案内（multivolume-spec.md §3.5）。消すのではなく移すので、
+      # 書いてあった値を添えて、移した先の書き方を示す。
+      def warn_moved_config_key(path, guidance)
+        target = ConfigKeys.moves.fetch(path)
+        value = CONFIG&.dig(*path)
+        line = "#{target.last}: #{value.nil? ? '…' : value}"
+        log_warn("config/book.yml の #{path.join('.')} は #{target.join('.')} へ移りました",
+                 detail: "#{guidance}\n" \
+                         "→ vs upgrade で移せます（手で移すなら、#{target[0...-1].join('.')}: の下に #{line} と書き、" \
+                         "#{path[0...-1].join('.')}: の下の行を消します）")
       end
 
       # ネストしたハッシュのキーパスを集合にする（authored_keys の作成用）
@@ -1116,7 +1132,14 @@ module VivlioStarter
 
       # カバー設定関連（CONFIG&. は CONFIG 未ロード（プロジェクト外）を吸収する。
       # 各セクションは既定値スキーマで存在保証されるため、以降はドットで辿れる）
-      def cover_theme        = CONFIG&.output&.cover
+      def cover_theme        = CONFIG&.book&.cover
+      # 表紙のテーマを書いた場所（案内に使う）。巻で上書きしていれば catalog.yml の巻を指す
+      def cover_setting_label
+        volume = Build::Volumes.current
+        return 'config/book.yml の book.cover' unless volume&.settings&.key?('cover')
+
+        "config/catalog.yml の#{volume.name}の cover"
+      end
       def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
       def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
@@ -1147,7 +1170,7 @@ module VivlioStarter
       end
 
       # カバー設定のバリデーション。
-      # output.cover は既定値 master を持つため「未設定」の状態は存在しない
+      # book.cover は既定値 master を持つため「未設定」の状態は存在しない
       # （従来も cover.rb が `|| 'master'` で補っており、実際の出力は同じだった）。
       # 画像が足りない場合は下の存在チェックが具体的に指摘する。
       def validate_cover_settings
@@ -1183,7 +1206,7 @@ module VivlioStarter
 
         log_error("カスタム画像 '#{theme}' のPNGファイルもSVGファイルも見つかりません",
                   detail: missing.map { "covers/#{it}cover_#{theme}.png または .svg" }.join("\n") +
-                          "\n→ book.yml の output.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください")
+                          "\n→ #{cover_setting_label} のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください")
         false
       end
 
@@ -1193,7 +1216,7 @@ module VivlioStarter
 
       # エンドレスメソッド定義を module_function として明示的に公開
       module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
-                      :warn_retired_config_keys, :collect_key_paths,
+                      :warn_retired_config_keys, :warn_moved_config_key, :collect_key_paths,
                       :ensure_external_command!, :external_command_available?, :image_size,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_dir, :cache_enabled?,
@@ -1205,7 +1228,7 @@ module VivlioStarter
                       :appendix_template_path, :postface_template_path,
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
-                      :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
+                      :cover_theme, :cover_setting_label, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,

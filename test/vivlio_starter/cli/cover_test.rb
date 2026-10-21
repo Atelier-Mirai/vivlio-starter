@@ -319,8 +319,8 @@ module VivlioStarter
           'directories' => {
             'covers' => 'covers'
           },
+          'book' => { 'cover' => theme },
           'output' => {
-            'cover' => theme,
             'targets' => targets
           },
           'page' => {
@@ -424,8 +424,8 @@ module VivlioStarter
       # lightテーマ設定が正しく読み込めることを確認
       def test_should_read_light_theme_setting
         config_content = {
+          'book' => { 'cover' => 'light' },
           'output' => {
-            'cover' => 'light',
             'pdf' => { 'combined' => true },
             'epub' => { 'embed' => true }
           }
@@ -443,8 +443,8 @@ module VivlioStarter
       # darkテーマ設定が正しく読み込めることを確認
       def test_should_read_dark_theme_setting
         config_content = {
+          'book' => { 'cover' => 'dark' },
           'output' => {
-            'cover' => 'dark',
             'pdf' => { 'combined' => false },
             'epub' => { 'embed' => false }
           }
@@ -461,8 +461,8 @@ module VivlioStarter
       # カスタムテーマ設定が正しく読み込めることを確認
       def test_should_read_custom_theme_setting
         config_content = {
+          'book' => { 'cover' => 'my_custom_theme' },
           'output' => {
-            'cover' => 'my_custom_theme',
             'pdf' => { 'combined' => true },
             'epub' => { 'embed' => true }
           }
@@ -563,7 +563,7 @@ module VivlioStarter
         setup_config_file(config_content)
         Common.reload_configuration!
         
-        # output.cover を書かなくても既定の master が使われる（未設定という状態は無い）
+        # book.cover を書かなくても既定の master が使われる（未設定という状態は無い）
         assert_equal 'master', Common.cover_theme
 
         # master の画像が無いプロジェクトなので、存在チェックで弾かれる
@@ -590,8 +590,8 @@ module VivlioStarter
       # 基本的なカバー設定を作成（テーマ名を指定）
       def setup_basic_config(theme)
         config_content = {
+          'book' => { 'cover' => theme },
           'output' => {
-            'cover' => theme,
             'pdf' => { 'combined' => true },
             'epub' => { 'embed' => true }
           }
@@ -752,8 +752,8 @@ module VivlioStarter
         FileUtils.mkdir_p('config')
         config = {
           'directories' => { 'covers' => 'covers' },
+          'book' => { 'cover' => 'master' },
           'output' => {
-            'cover' => 'master',
             'targets' => 'print_pdf',
             'print_pdf' => { 'bleed' => '3mm', 'crop_marks' => true }
           },

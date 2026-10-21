@@ -310,7 +310,7 @@ module VivlioStarter
       # config.yml / config-starter.yml の変換と表紙 PDF の取り込み
       #
       # config-starter.yml の frontcover_pdffile / backcover_pdffile を
-      # covers/ のマスター画像へ変換し、book.yml の output.cover を master に揃える。
+      # covers/ のマスター画像へ変換し、book.yml の book.cover を master に揃える。
       def convert_config_with_cover!
         # 基本的な設定変換
         Import::YamlProcessor.convert_config!(@starter_dir)

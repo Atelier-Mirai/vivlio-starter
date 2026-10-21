@@ -9,11 +9,11 @@
 ## カバーテーマの選択
 
 :::{.section-lead}
-最初に `book.yml` の `output.cover` で使うデザインを選びます。同梱テンプレートを使うか、名前を付けた独自の SVG または PNG を使うかで指定します。
+最初に `book.yml` の `book.cover` で使うデザインを選びます。同梱テンプレートを使うか、名前を付けた独自の SVG または PNG を使うかで指定します。
 :::
 
 ```yaml
-output:
+book:
   # 同梱のデザインを使う場合
   cover: light   # 明るいテーマ
   # cover: dark  # 暗いテーマ
@@ -48,7 +48,7 @@ PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異な�
 `light` または `dark` を選ぶと、同梱の `covers/bundled/frontcover.svg` に対応する色が使われます。タイトルや著者名も `book.yml` から入るため、まず本の情報を設定して試し刷りできます。
 
 ```yaml
-output:
+book:
   cover: dark  # 暗いテーマのデザインを使用
 ```
 
@@ -65,7 +65,7 @@ covers/
 :::
 
 ```yaml
-output:
+book:
   cover: floral  # frontcover_floral.svg を使用
 ```
 
@@ -90,7 +90,7 @@ covers/
 :::
 
 ```yaml
-output:
+book:
   cover: master  # covers/frontcover_master.png, covers/backcover_master.png を使用
 ```
 
@@ -253,7 +253,7 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 **解決方法**:
 1. `covers/` ディレクトリが存在するか確認
 2. ファイル名が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた名前になっているか確認（`master` なら `frontcover_master.png` と `backcover_master.png`）
-3. `book.yml` の `output.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
+3. `book.yml` の `book.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
 
 ### CMYK 変換で色が変わる
 

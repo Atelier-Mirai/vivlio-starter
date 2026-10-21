@@ -145,7 +145,8 @@ module VivlioStarter
         def install_config(targets:, cover:, combined:)
           Common.install_configuration!(
             Common.wrap_config(
-              output: { targets:, cover:, pdf: { combined: } },
+              book: { cover: },
+              output: { targets:, pdf: { combined: } },
               page: { use: 'a4_standard' },
               cache: { dir: Common::CACHE_DIR, enabled: true },
               directories: { covers: 'covers' }

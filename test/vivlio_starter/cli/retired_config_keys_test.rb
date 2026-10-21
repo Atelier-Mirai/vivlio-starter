@@ -71,6 +71,24 @@ module VivlioStarter
         assert_match(/読み込まれません/, combined, '値が無視されることを明言する')
       end
 
+      # 移した先のある廃止キーは「消せます」ではなく、移す先と書いてあった値で書き方を示す
+      # （multivolume-spec.md §3.5）
+      def test_explains_where_a_moved_key_went_with_its_value
+        original = Common::CONFIG
+        Common.install_configuration!(Common.wrap_config(Common.merge_hardcoded_defaults({ output: { cover: 'light' } })).freeze)
+        authored({ output: { cover: 'light' } })
+
+        out, err = capture_io { Common.warn_retired_config_keys }
+        combined = out + err
+
+        assert_match(/output\.cover は book\.cover へ移りました/, combined)
+        assert_match(/vs upgrade で移せます/, combined)
+        assert_match(/book: の下に cover: light と書き/, combined, '書いてあった値で書き方を示す')
+        refute_match(/読み込まれません/, combined, '消すキーが無ければ「消せます」の案内は出さない')
+      ensure
+        Common.install_configuration!(original)
+      end
+
       def test_stays_silent_when_no_retired_key_is_written
         authored({ index: { target_terms: 'standard', candidate_pool: 3.0 } })
 

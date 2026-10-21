@@ -134,12 +134,15 @@ module VivlioStarter
         # 取り込んだ表紙は covers/frontcover_master.png になるので、book.yml も
         # master を指す必要がある。かつては撤去済みの output.pdf.cover.front を
         # 書こうとして、何も起きないまま警告だけが出ていた
-        def test_use_master_cover_rewrites_output_cover
+        # （表紙のテーマは book.cover。multivolume-spec.md §3.5）
+        def test_use_master_cover_rewrites_book_cover
           work_dir = File.join(@tmpdir, 'work')
           FileUtils.mkdir_p(File.join(work_dir, 'config'))
           File.write(File.join(work_dir, 'config', 'book.yml'), <<~BOOK)
-            output:
+            book:
+              main_title: "本"
               cover: light # 表紙テーマ
+            output:
               pdf:
                 combined: true
           BOOK

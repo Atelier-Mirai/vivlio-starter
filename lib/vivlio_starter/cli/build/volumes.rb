@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../config_keys'
+
 module VivlioStarter
   module CLI
     module Build
@@ -19,8 +21,15 @@ module VivlioStarter
       module Volumes
         KEY = 'VOLUMES'
 
-        # 巻の設定（小文字）。大文字のキーはその巻の目次（CatalogLoader::SECTION_KEYS）
-        SETTING_KEYS = %w[name id main_title subtitle cover chapter_start appendix_start whole_toc].freeze
+        # 巻そのものの設定。大文字のキーはその巻の目次（CatalogLoader::SECTION_KEYS）
+        VOLUME_KEYS = %w[name id chapter_start appendix_start whole_toc].freeze
+
+        # 巻で上書きできる book.yml の書誌情報（book: の下のキーを平らに書く。multivolume-spec.md §3.2）。
+        # 一覧を書き並べず ConfigKeys から作るので、book: にキーを足せば巻でもそのまま上書きできる
+        BOOK_KEYS = ConfigKeys.book_keys.freeze
+
+        # 巻に書ける小文字のキーすべて
+        SETTING_KEYS = (VOLUME_KEYS + BOOK_KEYS).freeze
 
         # 巻の id。ファイル名と --volume に使う
         ID_PATTERN = /\A[a-z0-9_]+\z/
@@ -33,6 +42,8 @@ module VivlioStarter
           def chapter_start = settings['chapter_start']
           def appendix_start = settings['appendix_start']
           def whole_toc? = settings['whole_toc'] == true
+          # 巻に書いた書誌情報（book.yml の book: を上書きする値）
+          def book_overrides = settings.slice(*BOOK_KEYS)
         end
 
         module_function
@@ -225,13 +236,13 @@ module VivlioStarter
 
         # --- 巻の設定（§4.1） ---
 
-        # 巻の main_title・subtitle・cover を book.yml の値に重ねた CONFIG にする
+        # 巻に書いた書誌情報（書名・ISBN・発行日・表紙など）を、book.yml の book: に重ねた CONFIG にする。
+        # 値を空欄にしたキー（nil）は、book.yml と同じく上書きしない（deep_merge_config の決まり）
         def apply_config!(volume)
-          overrides = { book: { main_title: volume.settings['main_title'], subtitle: volume.settings['subtitle'] }.compact,
-                        output: { cover: volume.settings['cover'] }.compact }.reject { |_, value| value.empty? }
+          overrides = volume.book_overrides
           return if overrides.empty?
 
-          merged = Common.deep_merge_config(Common.load_config, overrides)
+          merged = Common.deep_merge_config(Common.load_config, { book: overrides.transform_keys(&:to_sym) })
           Common.install_configuration!(Common.wrap_config(merged).freeze)
         end
 

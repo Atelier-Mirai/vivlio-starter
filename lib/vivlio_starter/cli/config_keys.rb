@@ -18,6 +18,7 @@
 #   Spec[default: 500]        通常のキー。book.yml に無ければこの値で動く
 #   Spec[authored: '著者名']   著者が埋めるキー。既定値は無く、空なら記入例つきで促す
 #   Spec[retired: '…']        廃止キー。読まずに移行先を案内する
+#   （廃止キーには moved_to: を添えられる。値を別のキーへ移したもので、vs upgrade は消さずに移す）
 #
 # book.yml との一致は config_keys_test.rb が検査する。scaffold の book.yml に
 # 書かれた値と default: がずれたらテストが落ちる——これが無いと、宣言を 1 箇所に
@@ -31,11 +32,14 @@ module VivlioStarter
       # キー 1 件の宣言。ハッシュリテラルではなく Data を使うのは、打ち間違いを
       # 即座に落とすため（Spec[defualt: 500] は ArgumentError だが
       # { defualt: 500 } は静かに通り、既定値を持たないキーとして振る舞う）。
-      Spec = Data.define(:default, :retired, :authored) do
-        def initialize(default: nil, retired: nil, authored: nil) = super
+      Spec = Data.define(:default, :retired, :authored, :moved_to) do
+        def initialize(default: nil, retired: nil, authored: nil, moved_to: nil) = super
 
         # 廃止キーか（値は移行先の案内文）
         def retired? = !retired.nil?
+
+        # 値を別のキーへ移した廃止キーか（値は移した先のパス）。vs upgrade は消さずに移す
+        def moved? = !moved_to.nil?
 
         # 著者が埋めるキーか（値は未設定時に見せる記入例）
         def authored? = !authored.nil?
@@ -56,6 +60,7 @@ module VivlioStarter
       %i[book author]                                 => Spec[authored: "著者名"],
       %i[book language]                               => Spec[default: "ja"],
       %i[book isbn]                                   => Spec[default: ""],
+      %i[book cover]                                  => Spec[default: "master"],
 
       # ------- project -------
       %i[project name]                                => Spec[authored: "mybook"],
@@ -98,7 +103,6 @@ module VivlioStarter
       %i[output include_version]                      => Spec[default: true],
       %i[output pdf_preview close_existing_windows]   => Spec[default: true],
       %i[output pdf_preview window_bounds]            => Spec[default: "{0, 0, 1280, 960}"],
-      %i[output cover]                                => Spec[default: "master"],
       %i[output pdf combined]                         => Spec[default: true],
       %i[output pdf compress]                         => Spec[default: false],
       %i[output pdf techbook]                         => Spec[default: true],
@@ -252,7 +256,9 @@ module VivlioStarter
       %i[commands]                               => Spec[retired: "vfm コマンドの名前は変更できません"],
       %i[vivliostyle]                            => Spec[retired: "vivliostyle の進行表示は常に抑制します（reading_progression は元から読んでいません）"],
       %i[book title]                             => Spec[retired: "書名は book.main_title に書きます（title は初期実装の名残で、main_title が空のときだけ使われていました）"],
-      %i[metrics clause_length]                  => Spec[retired: "節の長さの基準は使っていません（宣言だけが残っていました）"],      }.freeze
+      %i[metrics clause_length]                  => Spec[retired: "節の長さの基準は使っていません（宣言だけが残っていました）"],
+      %i[output cover]                           => Spec[retired: "巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
+      }.freeze
 
       # 現役キーと廃止キーを合わせた全宣言
       ALL = KEYS.merge(RETIRED).freeze
@@ -280,6 +286,19 @@ module VivlioStarter
       # @return [Hash{Array<Symbol> => String}]
       def retirement_notices
         RETIRED.transform_values(&:retired)
+      end
+
+      # 値を別のキーへ移した廃止キーと、移した先（multivolume-spec.md §3.5）。
+      # @return [Hash{Array<Symbol> => Array<Symbol>}]
+      def moves
+        RETIRED.select { |_, spec| spec.moved? }.transform_values(&:moved_to)
+      end
+
+      # 分冊の巻で上書きできる book.yml のキー（multivolume-spec.md §3.2）。巻には book: の一段を
+      # 省いて平らに書くので、book: の下の現役キーの名前がそのまま巻のキーになる。
+      # @return [Array<String>]
+      def book_keys
+        KEYS.keys.filter_map { |section, key, *rest| key.to_s if section == :book && rest.empty? }
       end
     end
   end

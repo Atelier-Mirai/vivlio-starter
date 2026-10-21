@@ -132,7 +132,7 @@ POSTFACE:
 
 書籍の表紙・裏表紙に使う画像ファイルを置くディレクトリです。設定に基づくカバー画像は、`vs cover` または `vs build` の実行時に生成されます。
 
-`config/book.yml` の `output.cover` でテーマ名を指定します。`light` / `dark` は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/frontcover_<theme>.png` を配置してください。
+`config/book.yml` の `book.cover` でテーマ名を指定します。`light` / `dark` は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/frontcover_<theme>.png` を配置してください。
 
 ```bash
 vs cover               # book.yml の設定に従ってカバー画像を生成

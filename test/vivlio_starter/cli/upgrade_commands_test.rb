@@ -827,6 +827,48 @@ module VivlioStarter
         end
       end
 
+      # 移した先のある廃止キー（output.cover → book.cover）は、消さずに移す（multivolume-spec.md §3.5）。
+      # 消すと master の表紙で組んでいた本が、黙って既定の表紙に戻るため
+      def test_should_move_output_cover_to_book_cover
+        within_project do |scaffold|
+          write('.', 'config/book.yml', <<~YAML)
+            book:
+              main_title: "わたしの本"
+            output:
+              cover: light # 標準添付の表紙
+              targets: pdf
+            verify:
+              images: true
+          YAML
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, 'output.cover を book.cover へ移します（light）'
+          assert_includes out, '廃止キーを消します（verify.images）'
+          assert_equal <<~YAML, File.read('config/book.yml')
+            book:
+              main_title: "わたしの本"
+              cover: light # 標準添付の表紙
+            output:
+              targets: pdf
+          YAML
+        end
+      end
+
+      def test_should_drop_output_cover_when_book_cover_is_already_written
+        within_project do |scaffold|
+          write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\n  cover: dark\noutput:\n  cover: master\n")
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, 'book.cover がすでにあるので、output.cover の行を消します'
+          assert_includes out, 'book.cover: dark を残し、output.cover: master を消します'
+          assert_equal "book:\n  main_title: \"わたしの本\"\n  cover: dark\n", File.read('config/book.yml')
+        end
+      end
+
       def test_should_only_report_tidying_on_dry_run
         within_project do |scaffold|
           write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\nverify:\n  bare_urls: true\n")

@@ -123,7 +123,7 @@ module VivlioStarter
 
         # default: のキーは宣言どおりの値が入る
         assert_equal ConfigKeys::KEYS[%i[theme markers h3]].default, cfg.theme.markers.h3
-        assert_equal ConfigKeys::KEYS[%i[output cover]].default, cfg.output.cover
+        assert_equal ConfigKeys::KEYS[%i[book cover]].default, cfg.book.cover
         assert_equal ConfigKeys::KEYS[%i[index_glossary enabled]].default, cfg.index_glossary.enabled
         assert_equal ConfigKeys::KEYS[%i[pdf_read ocr mode]].default, cfg.pdf_read.ocr.mode
       end
@@ -155,7 +155,7 @@ module VivlioStarter
 
         assert_equal true, merged[:output][:pdf][:compress]
         assert merged[:output][:pdf].key?(:combined)
-        assert merged[:output].key?(:cover)
+        assert merged[:output].key?(:targets)
       end
 
       # 空欄キー（nil）は既定値を採用し、false は明示設定として尊重する

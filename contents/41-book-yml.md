@@ -34,9 +34,14 @@ book:
   author: "早乙女 遙香"
   language: "ja"
   isbn: ''               # 独自 ISBN 取得の場合のみ記入（Kindle は ASIN が自動割り当てされる）
+
+  cover: master          # covers/ に置いた著者用意の画像を使う（既定）
+                         # light / dark … 標準添付の SVG テンプレート
 ```
 
 `subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なしです。副題が不要な場合には省略して構いません。
+
+`cover` は表紙のデザインの名前です。`vs cover` コマンドで生成するカバーのテーマ名と対応します（@chapref:ch-cover）。
 
 ### project — プロジェクト情報
 
@@ -172,9 +177,6 @@ output:
 
   include_version: true     # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
-  cover: master             # covers/ に置いた著者用意の画像を使う（既定）
-                            # light / dark … 標準添付の SVG テンプレート
-
   pdf:
     combined: true          # true: 表紙を本文 PDF に結合する
     compress: false         # true: ビルド後に自動圧縮（処理時間が増加）
@@ -196,7 +198,7 @@ output:
     layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 ```
 
-各形式の違いと、`techbook`・`full_bleed` などの使いどころは @chapref:ch-build で説明しています。`cover` に指定するスラッグは、`vs cover` コマンドで生成したカバーのテーマ名と対応します（@chapref:ch-cover）。
+各形式の違いと、`techbook`・`full_bleed` などの使いどころは @chapref:ch-build で説明しています。どの表紙を使うかは、`output` ではなく `book.cover` で選びます。
 
 #### `pdf_preview` — ビルド後に開く PDF の位置（macOS のみ）
 

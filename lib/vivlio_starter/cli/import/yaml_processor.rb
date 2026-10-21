@@ -123,7 +123,7 @@ module VivlioStarter
         #
         # @return [Boolean] 更新成功時 true
         def use_master_cover!
-          update_book_yaml_with_values([[%w[output cover], 'master']])
+          update_book_yaml_with_values([[%w[book cover], 'master']])
         end
 
         # config.yml / config-starter.yml から更新リストを構築する
