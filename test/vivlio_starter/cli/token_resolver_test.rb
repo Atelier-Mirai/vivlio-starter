@@ -210,8 +210,9 @@ module VivlioStarter
         end
 
         # バグ2回帰: catalog.yml 内のショートハンド "21-25" を「number=21, slug=25」の
-        # 幽霊エントリと誤解釈し 21〜25 章が脱落していた。委譲化で範囲展開されるようになる。
-        def test_expands_shorthand_range_written_in_catalog
+        # 幽霊エントリと誤解釈し 21〜25 章が脱落していた。範囲は書けなくなったので、
+        # 幽霊の章を作らずに止まり、番号だけの項目は番号の原稿として読む。
+        def test_rejects_range_and_reads_number_only_items_in_catalog
           Dir.mktmpdir do |dir|
             catalog_path = File.join(dir, 'catalog.yml')
             contents_dir = File.join(dir, 'contents')
@@ -220,13 +221,14 @@ module VivlioStarter
               File.write(File.join(contents_dir, "#{bn}.md"), "# #{bn}")
             end
             File.write(catalog_path, "CHAPTERS:\n  - 21-25\n")
+            error = assert_raises(StandardError) { Resolver.new(catalog_path:, contents_dir:).resolve([]) }
+            assert_includes error.message, '番号の範囲か一行の形で書いた章があります'
 
-            resolver = Resolver.new(catalog_path:, contents_dir:)
-            result = resolver.resolve([])
+            File.write(catalog_path, "CHAPTERS:\n  - 21\n  - 25\n")
+            result = Resolver.new(catalog_path:, contents_dir:).resolve([])
 
-            assert_equal %w[21 22 23 24 25], result.map(&:number)
-            assert(result.all?(&:in_catalog?), 'ショートハンド展開した章はすべて in_catalog であるべき')
-            refute(result.any? { it.slug == '25' }, '"21-25" を slug=25 の単一章と誤解釈してはならない')
+            assert_equal %w[21 25], result.map(&:number)
+            assert(result.all?(&:in_catalog?), '番号だけの項目の章は in_catalog であるべき')
           end
         end
 

@@ -173,7 +173,7 @@ module VivlioStarter
           File.write('config/catalog.yml', "- just\n- a\n- list\n")
 
           error = assert_raises(StandardError) { Loader.load_catalog }
-          assert_includes error.message, 'Hash ではありません'
+          assert_includes error.message, '一番上には、区分（PREFACE・CHAPTERS・APPENDICES・POSTFACE）を書きます'
         end
 
         private

@@ -104,7 +104,7 @@ module VivlioStarter
             lines = read_catalog_lines
             indexes = active_entry_lines(lines, old_basename)
             unless indexes.empty?
-              indexes.each { lines[it] = lines[it].sub(old_basename, new_basename) }
+              indexes.each { lines[it] = renamed_entry_line(lines[it], old_basename, new_basename) }
               write_catalog_lines(lines)
               Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
             end
@@ -115,6 +115,25 @@ module VivlioStarter
             add_chapter(new_basename, volume:)
             Common.log_info("catalog.yml: #{old_basename} → #{new_basename}（#{old_section} → #{new_section}）")
           end
+        end
+
+        # 章の basename をまとめて変更する（vs renumber）。1 章ずつ書き換えると、番号だけの項目が
+        # 連鎖して動く（`--step 2` の 12→13・13→15 で、`- 12` が 13 を経て 15 になる）ので、
+        # 書き換える前の行を対応表と一度に照らす。改番は区分の内側でしか番号を振らないので、区分は動かさない
+        # @param renames [Hash{String => String}] 旧 basename => 新 basename
+        def rename_chapters(renames)
+          return rename_chapter(*renames.first) if renames.size == 1
+          return unless File.exist?(CATALOG_FILE)
+
+          lines = read_catalog_lines
+          changed = lines.each_index.filter_map do |index|
+            old_basename = renames.keys.find { entry_line?(lines[index], it) } or next
+            lines[index] = renamed_entry_line(lines[index], old_basename, renames[old_basename])
+          end
+          return if changed.empty?
+
+          write_catalog_lines(lines)
+          Common.log_info("catalog.yml の #{changed.size} 行を新しい章名に書き換えました")
         end
 
         # basename から適切なセクションを決定
@@ -146,19 +165,38 @@ module VivlioStarter
         # Private: 行検索
         # ================================================================
 
+        # 項目の行（`- 22-extensions`・`- 22-extensions.md`・`- 22`）。行末の注釈は除く
+        ENTRY_LINE = /\A\s*-\s+(?<item>[^\s#]+)\s*(?:#.*)?\z/
+
+        # その章を指す項目の行か。名前のほか、番号だけの項目（`- 22`）もその番号の原稿を指す
+        # （contents/22.md のように番号だけの原稿もあるので、番号の項目も章の名前の一つ）
+        def entry_line?(line, basename)
+          item = line[ENTRY_LINE, :item] or return false
+          return true if [basename, "#{basename}.md"].include?(item)
+
+          number = CatalogLoader.extract_chapter_number(basename)
+          item.match?(/\A\d+\z/) && !number.nil? && item.to_i == number
+        end
+
+        # 項目の行を新しい章名に書き換える。番号だけの項目は番号だけを書き換え、書き方を保つ
+        def renamed_entry_line(line, old_basename, new_basename)
+          item = line[ENTRY_LINE, :item]
+          return line.sub(old_basename, new_basename) unless item&.match?(/\A\d+\z/)
+
+          new_number = new_basename[/\A\d+/] or return line.sub(item, new_basename)
+          line.sub(/(-\s+)#{item}/) { "#{Regexp.last_match(1)}#{new_number}" }
+        end
+
         # アクティブ（非コメント）エントリ行のインデックスを返す
         # @return [Integer, nil]
         def find_active_entry_line(lines, basename)
-          lines.index do |l|
-            stripped = l.strip
-            ["- #{basename}", "- #{basename}.md"].include?(stripped)
-          end
+          lines.index { entry_line?(it, basename) }
         end
 
         # アクティブ（非コメント）エントリ行のインデックスをすべて返す（分冊の目次では、共通の付録が二つ以上の巻に載る）
         # @return [Array<Integer>]
         def active_entry_lines(lines, basename)
-          lines.each_index.select { ["- #{basename}", "- #{basename}.md"].include?(lines[it].strip) }
+          lines.each_index.select { entry_line?(lines[it], basename) }
         end
 
         # アクティブエントリとして存在するかチェック

@@ -155,6 +155,9 @@ module VivlioStarter
           case YAML.safe_load(File.read(path, encoding: 'utf-8'), aliases: true, symbolize_names: true)
           in Hash | Array
             # Valid
+          in String | Integer => value if path == Build::CatalogLoader::CATALOG_FILE
+            # 目次に `00-02` とだけ書いた場合など。ファイルの作り直し（doctor --fix）ではなく、区分の書き方を示す
+            abort_with_error(Build::CatalogLoader.unsectioned_catalog_message(value))
           else
             abort_with_error("必須設定ファイルの内容が空、または形式が不正です: #{path}\n        修復するには vs doctor --fix を実行してください（破損ファイルはバックアップを取得します）")
           end

@@ -41,14 +41,16 @@ module VivlioStarter
       # batch: true の追随先は、1 章ずつではなく**改名の対応表全体**を一度に受け取る
       # （handler.call({ 旧 => 新, … })）。章番号で書かれた値を追う追随先のためで、
       # 1 章ずつ置き換えると `--step 2` の 12→13・13→15 で `12` が 13 を経て 15 まで
-      # 動いてしまう。basename で書かれた値（catalog・索引辞書）は一意なので 1 章ずつでよい。
+      # 動いてしまう。catalog.yml も番号だけの項目（`- 12`）を書けるので一度に受け取る。
+      # basename で書かれた値（索引辞書）は一意なので 1 章ずつでよい。
       Follower = Data.define(:label, :handler, :batch) do
         def initialize(label:, handler:, batch: false) = super
       end
 
-      # catalog.yml の章名を差し替える
-      def follow_catalog(old_basename, new_basename)
-        Build::CatalogUpdater.rename_chapter(old_basename, new_basename)
+      # catalog.yml の章名を差し替える（番号だけの項目もあるので、対応表を一度に当てる）
+      # @param renames [Hash{String => String}] 旧 basename => 新 basename
+      def follow_catalog(renames)
+        Build::CatalogUpdater.rename_chapters(renames)
       end
 
       # images/<basename>/ を移す。
@@ -168,7 +170,7 @@ module VivlioStarter
 
       # 追随先の登録簿。**ここへ 1 行足すだけ**で rename / renumber の両方に効く。
       FOLLOWERS = [
-        Follower.new(label: 'catalog.yml', handler: method(:follow_catalog)),
+        Follower.new(label: 'catalog.yml', handler: method(:follow_catalog), batch: true),
         Follower.new(label: '画像ディレクトリ', handler: method(:follow_image_dir)),
         Follower.new(label: '索引辞書', handler: method(:follow_index_dictionary)),
         Follower.new(label: '本文の章参照', handler: method(:follow_chapter_references)),

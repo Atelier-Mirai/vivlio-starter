@@ -10,7 +10,7 @@ module VivlioStarter
       # ------------------------------------------------
       # config/catalog.yml を読み込み、フラットな章リストを返す。
       # PREFACE / CHAPTERS / APPENDICES / POSTFACE のセクション、
-      # 部タイトルによるグルーピング、ショートハンド（21-25 等）に対応。
+      # 部タイトルによるグルーピング、番号だけの項目（22）に対応。範囲（21-25）と一行の形は止める。
       # ------------------------------------------------
       module CatalogLoader
         module_function
@@ -96,7 +96,7 @@ module VivlioStarter
         # 仕様: catalog-parser-unification-spec.md §3.1
         #
         # @param catalog_path [String] catalog.yml のパス（テスト用に注入可能）
-        # @param contents_dir [String] ショートハンド展開時の glob 基点
+        # @param contents_dir [String] 番号だけの項目を原稿の名前にするときの glob 基点
         # @return [Array<CatalogEntry>]
         def load_labeled_entries(catalog_path: CATALOG_FILE, contents_dir: Common::CONTENTS_DIR)
           return [] unless File.exist?(catalog_path)
@@ -110,7 +110,7 @@ module VivlioStarter
         end
 
         # セクション内を再帰走査し、Hash キー（部タイトル）を label として伝播させつつ
-        # ショートハンド（21-25 等）を展開する。
+        # 番号だけの項目（22）を原稿の名前にする。
         # @return [Array<CatalogEntry>]
         def collect_labeled(items, label:, section:, contents_dir:)
           case items
@@ -158,7 +158,10 @@ module VivlioStarter
           content = File.read(catalog_path, encoding: 'utf-8')
           catalog = YAML.safe_load(content, permitted_classes: [], aliases: true)
 
-          raise StandardError, 'catalog.yml の形式が不正です（Hash ではありません）' unless catalog.is_a?(Hash)
+          raise StandardError, unsectioned_catalog_message(catalog) unless catalog.is_a?(Hash)
+
+          message = untrackable_entries_message(catalog, content)
+          raise StandardError, message if message
 
           catalog
         rescue Psych::SyntaxError => e
@@ -169,6 +172,99 @@ module VivlioStarter
             安全性のため、!ruby/object などの Ruby オブジェクト記法や !ruby/symbol は catalog.yml では使用できません。
             標準的な YAML（文字列・数値・配列・ハッシュ・真偽値）のみを記述してください。
           MSG
+        end
+
+        # 一番上に区分（PREFACE・CHAPTERS など）の無い catalog.yml の案内。原稿の名前を区分の
+        # 下へ並べ直した例を、著者が書いた項目から番号で区分を決めて示す（そのまま写せば直る）
+        # @param catalog [Array, String, Integer, nil] YAML として読んだ一番上の値
+        # @return [String]
+        def unsectioned_catalog_message(catalog)
+          # 範囲（00-02）は原稿の名前に開いてから区分を分ける。前書きと本文の章をまたぐ範囲を
+          # 一つの区分に置くと、区分で種類が決まるため本文の章まで前書きになる
+          items = Array(catalog).flatten.map { it.to_s.strip.sub(/\.md\z/, '') }.reject(&:empty?).flat_map do |item|
+            next [item] unless range_item?(item)
+
+            names = numbers_in_range(item).flat_map { find_basenames_by_number(it) }
+            names.empty? ? [item] : names
+          end
+          return "#{CATALOG_FILE} に、区分（#{SECTION_KEYS.join('・')}）が書かれていません" if items.empty?
+
+          grouped = items.group_by { section_for_chapter_number(it[/\A\d+/]&.to_i || 1) }
+          example = SECTION_KEYS.filter_map do |key|
+            ["    #{key}:", *grouped[key].map { "      - #{it}" }] if grouped.key?(key)
+          end
+          ["#{CATALOG_FILE} の一番上には、区分（#{SECTION_KEYS.join('・')}）を書きます。いまは区分の無い並びになっています",
+           '→ 原稿の名前を区分の下へ字下げして書いてください:',
+           *example.flatten].join("\n")
+        end
+
+        # vs create・delete・rename・renumber が追えない書き方（番号の範囲 `- 21-23`、一行の形
+        # `CHAPTERS: 11, 21-23, 31`）の案内。どれも行で書き換えられないので、範囲で書いた章を消しても
+        # 範囲に番号が残り、改番すると別の章を指すようになる。番号を一つずつ書いたリストを示す。
+        # 書けるのは原稿の名前（22-extensions）と番号（22。contents/22.md も指せる）だけ
+        # @param catalog [Hash] catalog.yml
+        # @param content [String] catalog.yml の中身（行番号を添えるため）
+        # @return [String, nil] 案内。書き換えられない書き方が無ければ nil
+        def untrackable_entries_message(catalog, content)
+          lines = content.lines(chomp: true)
+          blocks = sections_of(catalog).flat_map { |key, value| untrackable_blocks(key, value, lines) }
+          return nil if blocks.empty?
+
+          ["#{CATALOG_FILE} に、番号の範囲か一行の形で書いた章があります。章の追加・削除・改番で書き換えられないので、書けなくなりました",
+           *blocks.flat_map do |block|
+             ["  #{block[:where]}", *block[:before].map { "    #{it}" }, '  → リストの形で、章を一つずつ書いてください:', *block[:after].map { "    #{it}" }]
+           end,
+           '一部の章だけを組むなら、catalog.yml は変えずに vs build 21-23 のように範囲を打てます'].join("\n")
+        end
+
+        # 区分のキーと値の組（分冊の目次では、巻ごとの区分も）
+        def sections_of(catalog)
+          top = SECTION_KEYS.filter_map { [it, catalog[it]] if catalog.key?(it) }
+          volumes = Array(catalog[Volumes::KEY]).select { it.is_a?(Hash) }.flat_map do |volume|
+            SECTION_KEYS.filter_map { [it, volume[it]] if volume.key?(it) }
+          end
+          top + volumes
+        end
+
+        # 区分の値から、書き換えられない書き方を探す（部の中も探す）
+        # @return [Array<Hash>] { where:, before:, after: }
+        def untrackable_blocks(key, value, lines)
+          case value
+          in String | Integer
+            line = lines.index { it.match?(/\A\s*#{key}:\s*[^\s#]/) }
+            indent = line ? lines[line][/\A\s*/] : ''
+            items = value.to_s.delete('[]').split(',').map(&:strip).reject(&:empty?)
+            [{ where: location(line), before: ["#{indent}#{key}: #{value}"],
+               after: ["#{indent}#{key}:", *items.flat_map { spelled_out(it) }.map { "#{indent}  - #{it}" }] }]
+          in Array
+            value.flat_map do |item|
+              case item
+              in Hash then item.values.flat_map { untrackable_blocks(key, it, lines) }
+              in String if range_item?(item)
+                line = lines.index { it.strip == "- #{item}" }
+                indent = line ? lines[line][/\A\s*/] : '  '
+                [{ where: location(line), before: ["#{indent}- #{item}"],
+                   after: spelled_out(item).map { "#{indent}- #{it}" } }]
+              else []
+              end
+            end
+          else []
+          end
+        end
+
+        def location(line) = line ? "#{CATALOG_FILE}:#{line + 1}" : CATALOG_FILE
+
+        # 範囲（21-23・21-23, 25）か
+        def range_item?(item) = item.to_s.strip.match?(/\A\d+\s*-\s*\d+(\s*,\s*\d+(\s*-\s*\d+)?)*\z/)
+
+        # 範囲を番号一つずつに開く。原稿のある番号だけにし、一つも無ければ範囲の番号すべてにする
+        # @return [Array<String>] 2 桁の番号、または範囲でなければそのまま
+        def spelled_out(item)
+          return [item] unless range_item?(item)
+
+          numbers = numbers_in_range(item)
+          existing = numbers.reject { find_basenames_by_number(it).empty? }
+          (existing.empty? ? numbers : existing).map { format('%02d', it) }
         end
 
         # catalog のバリデーション
@@ -222,8 +318,8 @@ module VivlioStarter
         end
 
         # アイテム（文字列）を basename 配列に展開
-        # @param item [String] basename またはショートハンド
-        # @param contents_dir [String] ショートハンド展開時の glob 基点
+        # @param item [String] basename または番号（22）
+        # @param contents_dir [String] 番号を原稿の名前にするときの glob 基点
         # @return [Array<String>] basename 配列
         def expand_item(item, contents_dir: Common::CONTENTS_DIR)
           normalized = item.to_s.strip
@@ -231,35 +327,15 @@ module VivlioStarter
           # .md 拡張子を除去
           normalized = normalized.sub(/\.md\z/, '')
 
-          # ショートハンド判定
-          if shorthand?(normalized)
-            expand_shorthand(normalized, contents_dir:)
-          else
-            [normalized]
-          end
+          # 番号だけの項目（22）は、その番号の原稿を指す。範囲（21-23）は load_raw_catalog が止める
+          normalized.match?(/\A\d+\z/) ? find_basenames_by_number(normalized.to_i, contents_dir:) : [normalized]
         end
 
-        # ショートハンド（番号・範囲指定）かどうか判定
-        # @param str [String]
-        # @return [Boolean]
-        def shorthand?(str)
-          # "21" や "21-25" や "21-25, 38" の形式
-          str.match?(/\A[\d\s,-]+\z/) && !str.match?(/\A\d+-[a-zA-Z]/)
-        end
-
-        # ショートハンドを展開して basename 配列を返す
-        # @param str [String] "21-25" や "21-25, 38" 形式
-        # @param contents_dir [String] glob 基点
-        # @return [Array<String>] basename 配列
-        def expand_shorthand(str, contents_dir: Common::CONTENTS_DIR)
-          numbers = parse_shorthand_to_numbers(str)
-          numbers.flat_map { |num| find_basenames_by_number(num, contents_dir:) }
-        end
-
-        # ショートハンド文字列を章番号配列に変換
+        # 範囲（"21-25" や "21-25, 38"）を章番号の配列にする。catalog.yml には書けないので、
+        # 案内で番号を一つずつに開くためと、区分の無い目次の範囲を区分に分けるために使う
         # @param str [String]
         # @return [Array<Integer>]
-        def parse_shorthand_to_numbers(str)
+        def numbers_in_range(str)
           parts = str.split(/[,\s]+/).map(&:strip).reject(&:empty?)
           numbers = []
 

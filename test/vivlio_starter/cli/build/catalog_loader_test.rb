@@ -44,23 +44,35 @@ module VivlioStarter
           end
         end
 
-        # --- ショートハンド展開（バグ2の根治確認） ---
+        # --- 番号だけの項目と、書けない書き方（範囲・一行の形） ---
 
-        def test_expands_shorthand_range
-          files = %w[21-alpha 22-bravo 23-charlie 24-delta 25-echo]
-          with_project("CHAPTERS:\n  - 21-25\n", files:) do |paths|
-            entries = CatalogLoader.load_labeled_entries(**paths)
-
-            assert_equal files, entries.map(&:basename)
+        # 番号だけの項目は、その番号の原稿を指す（contents/24.md のように番号だけの原稿も）
+        def test_expands_number_only_items
+          with_project("CHAPTERS:\n  - 22\n  - 24\n", files: %w[22-bravo 24]) do |paths|
+            assert_equal %w[22-bravo 24], CatalogLoader.load_labeled_entries(**paths).map(&:basename)
           end
         end
 
-        def test_expands_shorthand_list_with_gap
-          files = %w[21-alpha 22-bravo 23-charlie 25-echo]
-          with_project("CHAPTERS:\n  - 21-23, 25\n", files:) do |paths|
-            entries = CatalogLoader.load_labeled_entries(**paths)
+        # 範囲で書いた章は、消しても範囲に番号が残り、改番すると別の章を指すので書けない。
+        # 原稿のある番号だけを一つずつ書いた形を示す
+        def test_rejects_number_range_with_numbers_spelled_out
+          within_chdir_project("CHAPTERS:\n  - 21-25\n", %w[21-alpha 22-bravo 23-charlie 25-echo]) do
+            error = assert_raises(StandardError) { CatalogLoader.load_catalog }
 
-            assert_equal files, entries.map(&:basename)
+            assert_includes error.message, '番号の範囲か一行の形で書いた章があります'
+            assert_includes error.message, "config/catalog.yml:2\n      - 21-25\n"
+            assert_includes error.message, "      - 21\n      - 22\n      - 23\n      - 25\n"
+            assert_includes error.message, 'vs build 21-23 のように範囲を打てます'
+          end
+        end
+
+        # 一行の形は vs create が書き足せない（二つ目の CHAPTERS: ができ、前の章が黙って消える）
+        def test_rejects_one_line_section_with_list_form
+          within_chdir_project("CHAPTERS: 21-23, 25  # 番号で指定\n", %w[21-alpha 22-bravo 23-charlie 25-echo]) do
+            error = assert_raises(StandardError) { CatalogLoader.load_catalog }
+
+            assert_includes error.message, "config/catalog.yml:1\n    CHAPTERS: 21-23, 25\n"
+            assert_includes error.message, "    CHAPTERS:\n      - 21\n      - 22\n      - 23\n      - 25"
           end
         end
 
@@ -125,18 +137,75 @@ module VivlioStarter
             CHAPTERS:
               - 基礎篇:
                   - 10-intro
-                  - 21-25
+                  - 22
               - 30-outro
             APPENDICES:
               - 90-appendix
             POSTFACE:
               - 99-postface
           YAML
-          files = %w[00-preface 10-intro 21-a 22-b 23-c 24-d 25-e 30-outro 90-appendix 99-postface]
+          files = %w[00-preface 10-intro 22-b 30-outro 90-appendix 99-postface]
 
           within_chdir_project(catalog, files) do
             assert_equal CatalogLoader.load_all_basenames,
                          CatalogLoader.load_labeled_entries.map(&:basename)
+          end
+        end
+
+        # --- 区分の無い目次の案内 ---
+
+        # 区分を書かずに原稿を並べた目次は読めない。著者の並びを番号で区分に分けた例を添えて、
+        # そのまま写せば直るようにする
+        def test_explains_sections_with_authors_own_items
+          within_chdir_project("- 00-preface\n- 11-intro.md\n- 90-tips\n", %w[00-preface 11-intro 90-tips]) do
+            error = assert_raises(StandardError) { CatalogLoader.load_catalog }
+
+            assert_includes error.message, '区分の無い並びになっています'
+            assert_includes error.message, "    PREFACE:\n      - 00-preface\n    CHAPTERS:\n      - 11-intro\n" \
+                                           "    APPENDICES:\n      - 90-tips"
+          end
+        end
+
+        # 前書きと本文の章をまたぐ範囲（00-02）を一つの区分に置くと、区分で種類が決まるため
+        # 本文の章まで前書きになる。範囲は原稿の名前に開いてから区分を分ける
+        def test_splits_a_range_across_sections_in_the_explanation
+          within_chdir_project("00-02\n", %w[00-preface 01-intro 02-setup]) do
+            message = CatalogLoader.unsectioned_catalog_message('00-02')
+
+            assert_includes message, "    PREFACE:\n      - 00-preface\n    CHAPTERS:\n      - 01-intro\n      - 02-setup"
+          end
+        end
+
+        # `00-02` とだけ書いた目次は、必須ファイルの検査で止まる。ファイルの作り直し（doctor --fix）では
+        # なく、区分の書き方を示す
+        def test_required_files_check_explains_sections_for_scalar_catalog
+          within_chdir_project("00-02\n", %w[00-preface 01-intro]) do
+            File.write('config/book.yml', "book:\n  main_title: 本\n")
+            File.write('config/page_presets.yml', "b5_standard:\n  width: 182mm\n")
+
+            out, err = capture_io { assert_raises(SystemExit) { Common.ensure_required_yaml_files! } }
+
+            assert_includes out + err, '区分の無い並びになっています'
+            refute_includes out + err, 'doctor --fix'
+          end
+        end
+
+        # 番号だけの項目も、章の削除・改名・改番に追随する（contents/24.md のような原稿もあるので、
+        # 番号の項目も章の名前の一つ）。行末の注釈は残す
+        def test_number_only_entries_follow_delete_rename_and_renumber
+          catalog = "CHAPTERS:\n  - 21\n  - 22   # 番号で指定\n  - 23-c\n  - 24\n"
+          within_chdir_project(catalog, %w[21-a 22-b 23-c 24]) do
+            Common.stub(:log_info, nil) do
+              CatalogUpdater.remove_chapter('22-b')
+              assert_equal "CHAPTERS:\n  - 21\n  - 23-c\n  - 24\n", File.read('config/catalog.yml'), '削除'
+
+              CatalogUpdater.rename_chapter('24', '28-d')
+              assert_equal "CHAPTERS:\n  - 21\n  - 23-c\n  - 28\n", File.read('config/catalog.yml'), '改名（番号の形のまま）'
+
+              # 改番は対応表を一度に当てる（1 章ずつだと 21→23 の後に 23→25 が当たり、- 21 が 25 まで動く）
+              CatalogUpdater.rename_chapters('21-a' => '23-a', '23-c' => '25-c', '28-d' => '27-d')
+              assert_equal "CHAPTERS:\n  - 23\n  - 25-c\n  - 27\n", File.read('config/catalog.yml'), '改番'
+            end
           end
         end
 
