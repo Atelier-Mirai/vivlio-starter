@@ -50,6 +50,11 @@ module VivlioStarter
           "📚 合計 #{count} 章 ／ 平均 #{number_with_comma(avg)} 文字"
         end
 
+        # 分冊の巻ごとの合計（「📚 上巻: 12 章 ／ 計 98,000 文字」）
+        def format_volume_summary(name, count, total_chars)
+          "📚 #{name}: #{count} 章 ／ 計 #{number_with_comma(total_chars)} 文字"
+        end
+
         # 基本情報セクションを生成する。
         # 主役は本文で、コードと記法は外数としてカッコ内に添える
         # （`chapter-volume-calibration-data.md` §7.1）。文章が主でコード・記法は従、

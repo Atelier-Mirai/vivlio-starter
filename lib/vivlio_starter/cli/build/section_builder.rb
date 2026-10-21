@@ -31,12 +31,6 @@ module VivlioStarter
     module Build
       # セクション HTML 生成モジュール
       module SectionBuilder
-        # 章レンジ（定数）- 新仕様に合わせて更新
-        PREFACE_RANGE  = (0..0)
-        MAIN_RANGE     = (1..89)
-        APPX_RANGE     = (90..98)
-        POSTFACE_RANGE = (99..99)
-
         module_function
 
         # 章順序を取得（ベース名配列から）
@@ -132,7 +126,7 @@ module VivlioStarter
           # 並列処理前に章の表示順を確定させる。
           # HeadingProcessor の @main_chapter_order はモジュールレベルのキャッシュなので、
           # 並列スレッドが不完全な HTML リストでキャッシュを作る前に正しい順序を注入する。
-          main_tokens = targets.select { |t| t.match?(/\A\d{2}-/) && t[/\A(\d{2})/, 1].to_i.between?(1, 89) }
+          main_tokens = targets.select { PostProcessCommands::HeadingProcessor.main_chapter_token?(it) }
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = main_tokens unless main_tokens.empty?
 
           concurrency = determine_concurrency

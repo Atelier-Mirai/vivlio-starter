@@ -157,16 +157,20 @@ module VivlioStarter
         # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
         # @param base_dir [Pathname] ベースディレクトリ
         # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
+        # 目次に並べる種類の順。区分で種類が決まるので（catalog-section-kind-spec.md §2.1）、
+        # ファイル名の順では PREFACE に書いた `20-vol2-intro` が本文の間に入る
+        KIND_ORDER = %i[preface chapter appendix postface].freeze
+
         def initialize(entry_map, base_dir:, depth: HeadingExtractor.configured_depth)
           @entry_map = entry_map
-          @targets = entry_map.keys.sort
+          @targets = entry_map.keys.sort_by { [KIND_ORDER.index(entry_map[it]&.kind) || KIND_ORDER.index(:chapter), it] }
           @base_dir = Pathname.new(base_dir)
           @depth = depth
         end
 
         # TOC の Markdown 文字列を構築する
         def build
-          buffer = [self.class.front_matter]
+          buffer = [self.class.front_matter.sub("<ul>\n", "<ul#{chapter_counter_style}>\n")]
           append_preface(buffer)
           append_headings(buffer)
           append_postface(buffer)
@@ -178,14 +182,15 @@ module VivlioStarter
 
         attr_reader :entry_map, :targets, :base_dir, :depth
 
-        # 前書きエントリを必要に応じて追加する（新仕様: 00-preface）
-        def append_preface(buffer)
-          entry = SupplementEntryProvider.new(
-            targets: targets,
-            base_dir: base_dir,
-            file_name: '00-preface.html'
-          ).call
-          buffer << entry if entry
+        # 前書きのエントリを追加する（catalog.yml の PREFACE に書いた原稿。00 に限らない）
+        def append_preface(buffer) = append_supplements(buffer, :preface)
+
+        # 前書き・後書きの h1 だけを、番号を付けずに載せる
+        def append_supplements(buffer, kind)
+          targets.select { entry_map[it]&.kind == kind }.each do |target|
+            entry = SupplementEntryProvider.new(targets:, base_dir:, file_name: File.basename(target)).call
+            buffer << entry if entry
+          end
         end
 
         # 各ターゲットから見出しを抽出し TOC のリストを構築
@@ -195,31 +200,45 @@ module VivlioStarter
           # 前書き・後書きは SupplementEntryProvider で専用処理されるため除外
           # これにより、前書き・後書きが重複して表示される問題を防ぐ
           # （append_preface/append_postface で専用のエントリとして追加される）
-          filtered_targets = targets.reject do |target|
-            basename = File.basename(target)
-            ['00-preface.html', '99-postface.html'].include?(basename)
-          end
+          filtered_targets = targets.reject { %i[preface postface].include?(entry_map[it]&.kind) }
 
           filtered_targets.each do |target|
             entry = entry_map[target]
             HeadingExtractor.new(target, entry, depth:).headings.each do |heading|
               list_state.transition_to(heading.level)
-              list_state.open_item(heading.list_markup)
+              markup = heading.list_markup
+              markup = with_appendix_counter(markup, target, entry) if heading.level == 1 && entry&.kind == :appendix
+              list_state.open_item(markup)
             end
           end
 
           list_state.prepare_for_postface
         end
 
-        # 後書きエントリを必要に応じて追加する（新仕様: 99-postface）
-        def append_postface(buffer)
-          entry = SupplementEntryProvider.new(
-            targets: targets,
-            base_dir: base_dir,
-            file_name: '99-postface.html'
-          ).call
-          buffer << entry if entry
+        # 目次の「第 N 章」は CSS のカウンタで 1 から数える（toc.css）。分冊の巻を選んで組むときは、
+        # 章扉と同じ番号になるよう、カウンタの始まりを前の巻までの章の数にする（multivolume-spec.md §5.1）
+        def chapter_counter_style
+          offset = PostProcessCommands::HeadingProcessor.chapter_number_offset
+          offset.positive? ? %( style="counter-reset: toc-list-counter #{offset} toc-list-appendix-counter 0") : ''
         end
+
+        # 分冊の本の付録は、巻をまたいで記号を振るので、巻の中では記号が飛ぶことがある（下巻の付録が A・C）。
+        # 並び順に数えるカウンタでは表せないので、付録ごとに章扉と同じ記号をカウンタに与える（§5.2）。
+        # 巻の無い本は今までどおりカウンタに任せる
+        def with_appendix_counter(markup, target, entry)
+          return markup unless Build::Volumes.enabled?
+
+          letter = PostProcessCommands::HeadingProcessor.resolve_appendix_letter(File.basename(target, '.html'),
+                                                                                 entry.number.to_i)
+          index = letter && ('A'..'Z').to_a.index(letter)
+          return markup unless index
+
+          markup.sub('<li class="toc-chapter-appendix"',
+                     %(<li class="toc-chapter-appendix" style="counter-reset: toc-list-appendix-counter #{index}"))
+        end
+
+        # 後書きのエントリを追加する（catalog.yml の POSTFACE に書いた原稿。99 に限らない）
+        def append_postface(buffer) = append_supplements(buffer, :postface)
 
         # <ul>/<li> の入れ子状態を管理する
         class ListState

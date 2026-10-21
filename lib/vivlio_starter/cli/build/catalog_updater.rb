@@ -40,8 +40,12 @@ module VivlioStarter
         # ================================================================
 
         # 章を catalog.yml に追加
+        #
+        # 分冊（VOLUMES）の目次では、巻を選んでその巻の区分に足す。volume を省くと、番号が一つ前の
+        # 原稿を載せた巻に足し、見つからなければ最後の巻に足す（multivolume-spec.md §7）
         # @param basename [String] 追加する章の basename（拡張子なし）
-        def add_chapter(basename)
+        # @param volume [Volumes::Volume, nil] 足す巻（VOLUMES の目次のときだけ使う）
+        def add_chapter(basename, volume: nil)
           unless File.exist?(CATALOG_FILE)
             create_initial_catalog_with(basename)
             Common.log_info("catalog.yml を作成し #{basename} を追加しました")
@@ -54,27 +58,38 @@ module VivlioStarter
           # 既にアクティブ（非コメント）として存在する場合はスキップ
           return if active_entry_exists?(lines, basename)
 
-          insert_idx, indent = find_text_insertion_point(lines, section, basename)
+          range = nil
+          if Volumes.enabled?
+            volume ||= volume_for_new_entry(basename, section)
+            range = volume && volume_line_ranges(lines)[volume.index]
+          end
+
+          insert_idx, indent = find_text_insertion_point(lines, section, basename, range:)
           lines.insert(insert_idx, "#{indent}- #{basename}")
           write_catalog_lines(lines)
-          Common.log_info("catalog.yml に #{basename} を追加しました（#{section}）")
+          where = volume ? "#{volume.name}の#{section}" : section
+          Common.log_info("catalog.yml に #{basename} を追加しました（#{where}）")
         end
 
-        # 章を catalog.yml から削除
+        # 章を catalog.yml から削除（分冊の目次では、載っているすべての巻から外す）
         # @param basename [String] 削除する章の basename（拡張子なし）
         def remove_chapter(basename)
           return unless File.exist?(CATALOG_FILE)
 
           lines = read_catalog_lines
-          idx = find_active_entry_line(lines, basename)
-          return unless idx
+          indexes = active_entry_lines(lines, basename)
+          return if indexes.empty?
 
-          lines.delete_at(idx)
+          indexes.reverse_each { lines.delete_at(it) }
           write_catalog_lines(lines)
           Common.log_info("catalog.yml から #{basename} を削除しました")
         end
 
         # 章の basename を変更
+        #
+        # 番号の範囲に合った区分に書かれていた章は、新しい番号の区分へ移す（`vs rename 05-x 92-x` で付録へ）。
+        # 範囲の外の番号で書かれていた章（PREFACE の `20-vol2-intro`）は、著者が区分を選んで書いたものなので、
+        # 区分を動かさずに名前だけ書き換える（catalog-section-kind-spec.md §4.4）
         # @param old_basename [String] 旧 basename
         # @param new_basename [String] 新 basename
         def rename_chapter(old_basename, new_basename)
@@ -82,20 +97,22 @@ module VivlioStarter
 
           old_section = section_for_basename(old_basename)
           new_section = section_for_basename(new_basename)
+          written_section = CatalogLoader.load_labeled_entries.find { it.basename == old_basename }&.section
 
-          if old_section == new_section
-            # 同一セクション内: 行内の basename を置換
+          if old_section == new_section || (written_section && written_section != old_section)
+            # 同一セクション内: 行内の basename を置換（分冊の目次では、載っているすべての巻で）
             lines = read_catalog_lines
-            idx = find_active_entry_line(lines, old_basename)
-            if idx
-              lines[idx] = lines[idx].sub(old_basename, new_basename)
+            indexes = active_entry_lines(lines, old_basename)
+            unless indexes.empty?
+              indexes.each { lines[it] = lines[it].sub(old_basename, new_basename) }
               write_catalog_lines(lines)
               Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
             end
           else
-            # セクション変更: 削除 → 追加
+            # セクション変更: 削除 → 追加（分冊の目次では、元の巻の中で移す）
+            volume = Volumes.enabled? ? Volumes.containing(old_basename) : nil
             remove_chapter(old_basename)
-            add_chapter(new_basename)
+            add_chapter(new_basename, volume:)
             Common.log_info("catalog.yml: #{old_basename} → #{new_basename}（#{old_section} → #{new_section}）")
           end
         end
@@ -138,9 +155,48 @@ module VivlioStarter
           end
         end
 
+        # アクティブ（非コメント）エントリ行のインデックスをすべて返す（分冊の目次では、共通の付録が二つ以上の巻に載る）
+        # @return [Array<Integer>]
+        def active_entry_lines(lines, basename)
+          lines.each_index.select { ["- #{basename}", "- #{basename}.md"].include?(lines[it].strip) }
+        end
+
         # アクティブエントリとして存在するかチェック
         def active_entry_exists?(lines, basename)
           !!find_active_entry_line(lines, basename)
+        end
+
+        # ================================================================
+        # Private: 分冊（VOLUMES）
+        # ================================================================
+
+        # 巻ごとの行の範囲（VOLUMES の項目の並び順＝ Volumes.list の順）
+        # @return [Array<Range>]
+        def volume_line_ranges(lines)
+          header = lines.index { it.strip == "#{Volumes::KEY}:" && !it.start_with?(' ') }
+          return [] unless header
+
+          block_end = ((header + 1)...lines.length).find { lines[it].match?(/\A[^\s#]/) } || lines.length
+          starts = ((header + 1)...block_end).select { lines[it].match?(/\A\s*-\s+\w+:/) }
+          item_indent = starts.map { lines[it][/\A\s*/].size }.min
+          starts = starts.select { lines[it][/\A\s*/].size == item_indent }
+          starts.each_with_index.map do |start, index|
+            (start..((starts[index + 1] || block_end) - 1))
+          end
+        end
+
+        # 新しい原稿を足す巻: 同じ区分で、番号が一つ前の原稿を載せた巻。無ければ最後の巻
+        # @return [Volumes::Volume, nil]
+        def volume_for_new_entry(basename, section)
+          num = CatalogLoader.extract_chapter_number(basename) || 0
+          volumes = Volumes.list
+          lower = volumes.flat_map do |volume|
+            CatalogLoader.flatten_section(volume.sections[section]).filter_map do
+              n = CatalogLoader.extract_chapter_number(it)
+              [n, volume] if n && n < num
+            end
+          end
+          lower.max_by(&:first)&.last || volumes.last
         end
 
         # 行から basename を抽出（アクティブ/コメント両方対応）
@@ -162,21 +218,19 @@ module VivlioStarter
         # ================================================================
 
         # セクションの行範囲を特定
+        # @param range [Range, nil] 探す行の範囲（分冊の目次では巻の行。nil ならファイル全体）
         # @return [Array(Integer, Integer)] [開始行, 終了行]
-        def find_section_boundaries(lines, section)
-          start_idx = lines.index { |l| l.strip == "#{section}:" }
+        def find_section_boundaries(lines, section, range: nil)
+          range ||= (0...lines.length)
+          start_idx = range.find { lines[it].strip == "#{section}:" }
           return [nil, nil] unless start_idx
 
-          # 次のセクションヘッダーを探す
-          next_section_idx = nil
-          ((start_idx + 1)...lines.length).each do |idx|
-            if CatalogLoader::SECTION_KEYS.any? { lines[idx].strip == "#{it}:" }
-              next_section_idx = idx
-              break
-            end
+          # 次のセクションヘッダー（分冊の目次では、巻の終わり）を探す
+          next_section_idx = ((start_idx + 1)..range.max).find do |idx|
+            CatalogLoader::SECTION_KEYS.any? { lines[idx].strip == "#{it}:" }
           end
 
-          end_idx = (next_section_idx || lines.length) - 1
+          end_idx = (next_section_idx || (range.max + 1)) - 1
 
           # 末尾の空行・セクションコメント行を除外
           while end_idx > start_idx &&
@@ -244,18 +298,24 @@ module VivlioStarter
         # Private: 挿入位置の計算
         # ================================================================
 
-        # テキスト内の挿入位置とインデントを計算
+        # テキスト内の挿入位置とインデントを計算。
+        # 字下げは区分の見出しから数える（分冊の目次では、巻の中の区分が一段深い）
+        # @param range [Range, nil] 巻の行の範囲（分冊の目次のとき）
         # @return [Array(Integer, String)] [挿入行インデックス, インデント文字列]
-        def find_text_insertion_point(lines, section, basename)
+        def find_text_insertion_point(lines, section, basename, range: nil)
           num = CatalogLoader.extract_chapter_number(basename) || 0
-          section_start, section_end = find_section_boundaries(lines, section)
+          section_start, section_end = find_section_boundaries(lines, section, range:)
 
-          # セクションが見つからない場合、末尾にセクションヘッダーを追加
+          # セクションが見つからない場合、末尾（分冊の目次では巻の終わり）にセクションヘッダーを追加
           unless section_start
-            lines << ''
-            lines << "#{section}:"
-            return [lines.length, '  ']
+            return append_section_header(lines, section) unless range
+
+            base = lines[range.min][/\A\s*/].size + 2
+            lines.insert(range.max + 1, "#{' ' * base}#{section}:")
+            return [range.max + 2, ' ' * (base + 2)]
           end
+
+          base = ' ' * lines[section_start][/\A\s*/].size
 
           # 部タイトル構造を検出
           parts = detect_part_ranges(lines, section_start, section_end)
@@ -264,13 +324,20 @@ module VivlioStarter
             target = determine_target_part(lines, parts, num)
             if target
               return find_sorted_insert_in_range(
-                lines, target[:content_start], target[:end], num, '      '
+                lines, target[:content_start], target[:end], num, "#{base}      "
               )
             end
           end
 
           # フラットなセクション
-          find_sorted_insert_in_range(lines, section_start + 1, section_end, num, '  ')
+          find_sorted_insert_in_range(lines, section_start + 1, section_end, num, "#{base}  ")
+        end
+
+        # ファイル末尾に区分の見出しを足す
+        def append_section_header(lines, section)
+          lines << ''
+          lines << "#{section}:"
+          [lines.length, '  ']
         end
 
         # 範囲内で章番号順の挿入位置を検索（コメント行も含めてソート位置を計算）

@@ -281,21 +281,31 @@ module VivlioStarter
         all_labels = []
         all_errors = []
 
-        # catalog.yml 登録済みの全章を対象とする（未登録草稿は除外）
-        catalog_entries = TokenResolver::Resolver.new.resolve.select(&:in_catalog?)
+        # catalog.yml 登録済みの全章を対象とする（未登録草稿は除外）。
+        # 分冊の本では、組んでいない巻の原稿からも集める。別の巻の章を指す参照を未定義にせず、
+        # 巻の名前を添えて組むため（multivolume-spec.md §8）。別の巻のラベルは、その巻の振り方で数える
+        catalog_entries = Build::Volumes.with_selection(:all) { TokenResolver::Resolver.new.resolve.select(&:in_catalog?) }
         contents_files = catalog_entries.map(&:path).select { |p| File.exist?(p) }
+        other_volumes = other_volume_files(contents_files)
         Common.log_info("ラベル収集対象ファイル: #{contents_files.size}件")
 
         contents_files.each do |md_path|
           filename = File.basename(md_path)
           content = File.read(md_path, encoding: 'utf-8')
-          chapter_number = CrossReferenceProcessor.display_chapter_number_for_filename(filename)
-          chapter_number_text = CrossReferenceProcessor.chapter_number_text_for(filename)
-
-          result = CrossReferenceProcessor.collect_labels(content, filename, chapter_number, chapter_number_text:)
+          volume = other_volumes[filename]
+          result = Build::Volumes.with_selection(volume || Build::Volumes.selection) do
+            chapter_number = if volume
+                               CrossReferenceProcessor.catalog_chapter_number_for(filename)
+                             else
+                               CrossReferenceProcessor.display_chapter_number_for_filename(filename)
+                             end
+            chapter_number_text = CrossReferenceProcessor.chapter_number_text_for(filename)
+            CrossReferenceProcessor.collect_labels(content, filename, chapter_number, chapter_number_text:)
+          end
           all_labels.concat(result[:labels])
           all_errors.concat(result[:errors])
         end
+        other_volume_names = other_volumes.transform_values(&:name)
 
         # ------------------------------------------------
         # Phase 2: ラベルマップ構築 & 重複チェック
@@ -361,12 +371,13 @@ module VivlioStarter
           if File.exist?(contents_path)
             source_content = File.read(contents_path, encoding: 'utf-8')
             logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, contents_path,
-                                                                          chapter_order:)
+                                                                          chapter_order:, other_volumes: other_volume_names)
             logging_errors = logging_result[:errors]
           end
 
           # 2) ワークスペース内 .md に対して置換を適用（こちらのエラーは行番号がずれるため無視）
-          ref_result = CrossReferenceProcessor.replace_references(transformed, labels_map, nil)
+          ref_result = CrossReferenceProcessor.replace_references(transformed, labels_map, nil,
+                                                                  other_volumes: other_volume_names)
           processed_chapters[workspace_md] = ref_result[:content]
 
           # 3) エラー集計とログは contents/ 側の行番号に基づく
@@ -426,6 +437,24 @@ module VivlioStarter
         true
       end
       module_function :process_cross_references_for_files
+
+      # 分冊の本で、いま組む範囲（巻・合本）に入らない原稿と、それを載せた巻（ファイル名 => Volume）。
+      # 二つ以上の巻に載る付録は、組む巻にも載っていれば組む巻の原稿として扱う
+      # @param contents_files [Array<String>] 全巻の原稿のパス
+      # @return [Hash{String => Build::Volumes::Volume}]
+      def other_volume_files(contents_files)
+        return {} unless Build::Volumes.enabled?
+
+        local = TokenResolver::Resolver.new.resolve.select(&:in_catalog?).to_set(&:basename)
+        contents_files.each_with_object({}) do |path, map|
+          basename = File.basename(path, '.md')
+          next if local.include?(basename)
+
+          volume = Build::Volumes.containing(basename)
+          map[File.basename(path)] = volume if volume
+        end
+      end
+      module_function :other_volume_files
     end
   end
 end

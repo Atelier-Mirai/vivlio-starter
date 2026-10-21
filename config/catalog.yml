@@ -78,3 +78,40 @@ POSTFACE:
 #       - 上級編:
 #           - 05-faq
 #           - 06-bestpractice
+#
+#
+# ・上下巻や第一分冊・第二分冊のように分冊にするには、巻ごとに目次を書く。
+#   巻を書くときは、一番上の PREFACE・CHAPTERS などは使わず、すべて巻の中へ書く。
+#   name は巻の呼び名、id は出力ファイル名と vs build --volume に使う名前（英小文字・数字・_）。
+#   章番号は前の巻から続く（下巻は第13章から）。付録の記号は、共通の付録ならどの巻でも同じになる。
+#   前書きは PREFACE に書けば番号によらず前書きになるので、巻ごとの前書きは空いている番号で作る。
+#
+#     VOLUMES:
+#       - name: 上巻
+#         id: upper
+#         main_title: 本のタイトル　上巻   # 省くと book.yml の main_title
+#         PREFACE:
+#           - 00-preface
+#         CHAPTERS:
+#           - 01-install
+#           - 02-tutorial
+#         APPENDICES:
+#           - 90-cheatsheet
+#       - name: 下巻
+#         id: lower
+#         main_title: 本のタイトル　下巻
+#         PREFACE:
+#           - 20-lower-intro          # 下巻のはじめに
+#         CHAPTERS:
+#           - 21-syntax
+#         APPENDICES:
+#           - 90-cheatsheet           # 上巻と共通の付録
+#         POSTFACE:
+#           - 99-postface
+#
+#   vs build --volume lower で下巻を、vs build --volume all で全巻を続けて組む。
+#   巻を選ばない vs build は、全巻を一冊にまとめた合本になる。
+#   ほかに書ける巻の設定: subtitle（副題）・cover（表紙の名前）・
+#   chapter_start（その巻の最初の章の番号）・appendix_start（その巻の付録を振り直す記号）・
+#   whole_toc: true（その巻の目次の前に、全巻の構成を章まで示す目次を載せる）
+#   別の巻の章や図を @chapref:ch-xxx・@fig-xxx で指すと、「上巻 第8章「…」」のように巻の名前を添えて組む。

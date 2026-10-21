@@ -70,7 +70,6 @@ module VivlioStarter
         # 単位のない整数は px とみなす。文中の画像（post_process の apply_inline_image_widths!）と
         # 書ける値をそろえる（改善案.md #55）。
         IMAGE_WIDTH = /(?<![\w-])width=["']?(\d+(?:\.\d+)?(?:%|mm|cm|Q|in|pt|px|em|rem)?)(?=["'\s]|\z)/
-        MAIN_CHAPTER_RANGE = PostProcessCommands::HeadingProcessor::MAIN_CHAPTER_RANGE
 
         # ラベル定義情報を保持する構造体
         Label = Struct.new(:id, :type, :chapter, :number, :title, :source_file, :line, :auto) do
@@ -141,22 +140,22 @@ module VivlioStarter
 
         def display_chapter_number_for_filename(filename)
           num = extract_chapter_number(filename).to_i
-          return num.to_s unless MAIN_CHAPTER_RANGE.include?(num)
-
           token = File.basename(filename, File.extname(filename))
+          return num.to_s unless PostProcessCommands::HeadingProcessor.main_chapter_token?(token)
+
           idx = main_chapter_order.index(token)
-          idx ? (idx + 1).to_s : (num - 10).to_s
+          idx ? (idx + 1 + PostProcessCommands::HeadingProcessor.chapter_number_offset).to_s : (num - 10).to_s
         end
 
-        # 付録ファイル（90〜98）の図表番号プレフィックスに使う付録レター（"A".."I"）を返す。
+        # 付録の原稿の図表番号プレフィックスに使う付録レター（"A"〜）を返す。
         # 付録の見出し（付録 D）・節番号（D-1）と図表番号（表 D-1）を一致させるため、
         # 付録では章番号ではなくレターを用いる。本文章・前後付では nil を返し、
         # 各呼び出し元の既存挙動（章番号 / 表示番号）を維持する。
         def appendix_letter_for(filename)
-          num = extract_chapter_number(filename).to_i
-          return nil unless (90..98).cover?(num)
+          entry = TokenResolver::Resolver.new.resolve_file(File.basename(filename.to_s))
+          return nil unless entry.kind == :appendix
 
-          Common.appendix_number_to_letter(num)&.upcase
+          Common.appendix_number_to_letter(entry.number)&.upcase
         end
 
         # --- 暗黙の章ラベル（chapter-reference-spec.md） ---
@@ -175,16 +174,25 @@ module VivlioStarter
         # 絞り込みで数えると全章ビルドと違う番号になる（§2.11）。
         def chapter_number_text_for(filename)
           basename = File.basename(filename.to_s, '.*')
-          number = extract_chapter_number(basename).to_i
+          entry = TokenResolver::Resolver.new.resolve_file(basename)
           context = { file_type: nil, chapter_display_number: nil, appendix_letter: nil }
-          if MAIN_CHAPTER_RANGE.include?(number) && PostProcessCommands::HeadingProcessor.chapter_numbering?
+          if entry.kind == :chapter && PostProcessCommands::HeadingProcessor.chapter_numbering?
             index = main_chapters_from_catalog.index(basename)
-            context[:chapter_display_number] = index && (index + 1)
-          elsif (90..98).cover?(number)
+            context[:chapter_display_number] = index && (index + 1 + Build::Volumes.chapter_offset)
+          elsif entry.kind == :appendix
             context[:file_type] = 'appendix'
-            context[:appendix_letter] = Common.appendix_number_to_letter(number)&.upcase
+            context[:appendix_letter] = Common.appendix_number_to_letter(entry.number)&.upcase
           end
           PostProcessCommands::HeadingProcessor.build_h1_number_text(context)
+        end
+
+        # 目次（いま選んでいる範囲）での章番号の文字（図表番号の頭「8」）。本文の章でなければ番号そのもの。
+        # 分冊の別の巻の原稿のラベルを、その巻を選んだ状態で数えるときに使う（multivolume-spec.md §8）。
+        # display_chapter_number_for_filename は組んでいる巻の章の並びで数えるので、別の巻の章を数えられない
+        def catalog_chapter_number_for(filename)
+          basename = File.basename(filename.to_s, '.*')
+          index = main_chapters_from_catalog.index(basename)
+          index ? (index + 1 + Build::Volumes.chapter_offset).to_s : extract_chapter_number(basename).to_i.to_s
         end
 
         # 章題の表示文字列。タグ（97 章の `<br>`）と強調・コードの記号、手書きの見出しラベルを除き、
@@ -335,8 +343,10 @@ module VivlioStarter
         # 参照置換
         # @param chapter_order [Array<String>, nil] catalog.yml の章の basename の並び。
         #   渡したときだけ「前の章 @ch-x」の x が隣の章かを確かめる（chapter-reference-spec.md §2.10）
-        def replace_references(content, labels_map, filename = nil, chapter_order: nil)
-          ReferenceReplacer.new(content, labels_map, filename, chapter_order:).replace
+        # @param other_volumes [Hash{String => String}] 分冊の別の巻の原稿（ファイル名 => 巻の名前）。
+        #   そこで定義したラベルへの参照は、巻の名前を添えた文字にし、リンクにしない（multivolume-spec.md §8）
+        def replace_references(content, labels_map, filename = nil, chapter_order: nil, other_volumes: {})
+          ReferenceReplacer.new(content, labels_map, filename, chapter_order:, other_volumes:).replace
         end
 
         # ラベルマップ構築（重複チェック付き）
@@ -779,11 +789,12 @@ module VivlioStarter
           #   角括弧の外に現れる URL 内の @
           MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)]+}
 
-          def initialize(content, labels_map, filename, chapter_order: nil)
+          def initialize(content, labels_map, filename, chapter_order: nil, other_volumes: {})
             @content = content
             @labels_map = labels_map
             @filename = filename
             @chapter_order = chapter_order
+            @other_volumes = other_volumes
             @errors = []
             @used_ids = Set.new
             @paged_in_paragraph = Set.new
@@ -874,17 +885,34 @@ module VivlioStarter
 
             check_adjacent_chapter(label, pre_text, line_num)
             @used_ids << label_id
+            if (volume = @other_volumes[label.source_file])
+              # 別の巻のページ番号はわからないので、@pageref も章を指すなら章番号と章題にする
+              return other_volume_text(volume, kind == 'chapref' || label.type == :chap ? chapref_text(label) : link_text(label))
+            end
+
             text = kind == 'chapref' ? chapref_text(label) : link_text(label)
             %(<a href="#{build_href(label)}" class="#{paged_classes(label)}">#{text}</a>)
           end
 
-          # 二度目以降は pageref を付けない。前付け（00-）への参照には frontmatter を付け、
+          # 別の巻のラベルへの参照。巻の名前を添え、リンクにしない（PDF・EPUB とも、別の巻へは飛べない）。
+          # 「上巻 第8章「…」」「上巻 図 8-2」「上巻「節題」」
+          def other_volume_text(volume, text)
+            separator = text.start_with?('「') ? '' : ' '
+            %(<span class="cross-ref-other-volume">#{CGI.escapeHTML(volume)}#{separator}#{text}</span>)
+          end
+
+          # 二度目以降は pageref を付けない。前書きへの参照には frontmatter を付け、
           # 前付けのローマ数字のノンブル（p.iii）で出す（索引の frontmatter と同じ扱い）。
           def paged_classes(label)
             return 'cross-ref-link' unless @paged_in_paragraph.add?(label.id)
 
-            front = File.basename(label.source_file.to_s).start_with?('00-')
+            front = preface_basenames.include?(File.basename(label.source_file.to_s, '.*'))
             front ? 'cross-ref-link pageref frontmatter' : 'cross-ref-link pageref'
+          end
+
+          # 前書きの原稿。catalog.yml の PREFACE で決まり、`00-` に限らない（catalog-section-kind-spec.md §2.1）
+          def preface_basenames
+            @preface_basenames ||= TokenResolver::Resolver.new.resolve.select { it.kind == :preface }.map(&:basename)
           end
 
           # 引数を書き忘れた裸の @pageref / @chapref。そのままでは紙面に生テキストが出るため書式を案内する。
@@ -956,6 +984,9 @@ module VivlioStarter
           end
 
           def render_link(label)
+            volume = @other_volumes[label.source_file]
+            return other_volume_text(volume, link_text(label)) if volume
+
             href = build_href(label)
             %(<a href="#{href}" class="cross-ref-link">#{link_text(label)}</a>)
           end

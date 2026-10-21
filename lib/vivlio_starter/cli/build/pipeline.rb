@@ -292,6 +292,8 @@ module VivlioStarter
             ['index scan and build',      -> { run_step4_index_processing },                  true, :shared, :chapter],
             ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true, :shared, :chapter],
             ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },     true, :shared, :whole_book],
+            ['generate whole toc',        -> { Build::WholeTocGenerator.generate! },
+             Build::WholeTocGenerator.needed?, :shared, :whole_book],
             # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に置く。
             # ここで作れば html/ の一括後処理が拾い、個別再適用が要らなくなる
             # （front-back-matter-single-render-spec.md §2.1）。EPUB のスパイン末尾も
@@ -446,6 +448,8 @@ module VivlioStarter
             # 前回ビルドのワークスペースを一括掃除（stale HTML の混入防止・P4 §3.4-8）
             FileUtils.rm_rf(Common::BUILD_DIR)
           end
+          # 分冊の本で前回と違う巻を組むなら、--no-clean でも前の巻の HTML を残さない
+          Build::Volumes.prepare_workspace!
         end
 
         # 組み上がった本文 PDF から実効解像度を測り、過剰な画像を縮小版へ差し替える。

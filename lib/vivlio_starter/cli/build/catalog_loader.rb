@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'volumes'
+
 module VivlioStarter
   module CLI
     module Build
@@ -140,9 +142,17 @@ module VivlioStarter
         #   - `!ruby/object` など許可されないクラスタグは `Psych::DisallowedClass` を
         #     発生させ、ユーザー向けの明示的なメッセージに変換する。
         #
+        # 分冊（VOLUMES）の本では、選んだ巻・合本・全巻のどれかの目次を、巻の無い目次と同じ形で返す
+        # （Volumes.view・multivolume-spec.md §3.4）。目次を読むほかの処理を直さずに済ませるため。
+        #
         # @param catalog_path [String] catalog.yml のパス（テスト用に注入可能）
         # @return [Hash] catalog データ
-        def load_catalog(catalog_path: CATALOG_FILE)
+        def load_catalog(catalog_path: CATALOG_FILE) = Volumes.view(load_raw_catalog(catalog_path:))
+
+        # catalog.yml を書かれたとおりに読む（VOLUMES を展開しない）
+        # @param catalog_path [String] catalog.yml のパス
+        # @return [Hash]
+        def load_raw_catalog(catalog_path: CATALOG_FILE)
           raise StandardError, "catalog.yml が見つかりません: #{catalog_path}" unless File.exist?(catalog_path)
 
           content = File.read(catalog_path, encoding: 'utf-8')

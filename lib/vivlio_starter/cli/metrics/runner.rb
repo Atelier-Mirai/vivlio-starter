@@ -105,6 +105,7 @@ module VivlioStarter
 
           final_basic, final_vocab, final_readability = aggregate_summary_from_analyses(all_analyses)
           output_chapter_count(all_analyses)
+          output_volume_totals(all_analyses)
           output_final_summary(final_basic, final_vocab, final_readability)
 
           # --all のときだけ、推敲用の参考資料（A–G）を続けて出力する。
@@ -579,6 +580,22 @@ module VivlioStarter
           total_chars = analyses.sum { it.chapter.chars }
           puts ''
           puts formatter.format_chapter_count_summary(analyses.size, total_chars)
+        end
+
+        # 分冊の本で巻を選ばず全章を見たときは、巻ごとの合計を足す（multivolume-spec.md §6.1）。
+        # 二つ以上の巻に載る付録は、それぞれの巻に数える（その巻の分量だから）
+        def output_volume_totals(analyses)
+          return if targets.any? || Build::Volumes.current
+
+          volumes = Build::Volumes.list
+          return if volumes.empty?
+
+          puts ''
+          volumes.each do |volume|
+            names = Build::Volumes.basenames_of(volume).to_set
+            in_volume = analyses.select { names.include?(File.basename(it.chapter.path, '.md')) }
+            puts formatter.format_volume_summary(volume.name, in_volume.size, in_volume.sum { it.chapter.chars })
+          end
         end
 
         def output_final_summary(basic, vocab, readability)

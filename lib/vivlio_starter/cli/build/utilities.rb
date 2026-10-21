@@ -71,18 +71,6 @@ module VivlioStarter
           exit 1
         end
 
-        # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
-        # @return [Array<Integer>] 1..89 範囲の章番号配列
-        def chapter_numbers_for_book(entries_or_keep = nil)
-          entries = resolve_entries(entries_or_keep)
-          entries
-            .filter_map { it.number&.to_i }
-            .grep(1..89)
-            .uniq
-            .sort
-        end
-
         # PDF アウトライン生成対象の章番号リストを取得（新仕様）
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         # @return [Array<Integer>] アウトライン対象の章番号配列
@@ -115,7 +103,7 @@ module VivlioStarter
         def outline_target_htmls(entries_or_keep = nil)
           # chapter_numbers_for_outline は常に配列を返すため nil 判定は不要
           keep_numbers = chapter_numbers_for_outline(entries_or_keep)
-          special_pages = %w[_toc]
+          special_pages = [WholeTocGenerator::BASENAME, '_toc'] # 全巻目次は分冊の巻にだけある（multivolume-spec.md §9）
           special_pages.push('_glossarypage', '_indexpage') if Common.index_enabled?
 
           Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|

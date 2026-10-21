@@ -28,9 +28,6 @@ module VivlioStarter
     module Build
       # HTML 見出し抽出・PDF アウトライン生成モジュール
       module OutlineExtractor
-        # 章レンジ（定数）
-        APPX_RANGE = (90..98)
-
         class << self
           attr_accessor :last_outline_debug_info
         end
@@ -41,7 +38,7 @@ module VivlioStarter
         # 付録ラベル取得
         def appendix_label_for_basename(basename)
           entry = TokenResolver::Resolver.new.resolve_file(basename)
-          return nil unless entry.number && APPX_RANGE.include?(entry.number.to_i)
+          return nil unless entry.number && entry.kind == :appendix
 
           letter = Common.appendix_number_to_letter(entry.number)
           return nil unless letter
@@ -204,22 +201,35 @@ module VivlioStarter
           chapter_paths
         end
 
+        # 前書き・後書きは catalog.yml の区分で決まる（catalog-section-kind-spec.md §2.1）。
+        # `00-preface`・`99-postface` の名前で決めると、PREFACE に書いた `20-vol2-intro` が本文の章として並ぶ
         def build_chapter_order(html_basenames)
           chapter_order = Build::SectionBuilder.chapter_order_from(html_basenames)
+          prefaces, postfaces = supplement_basenames(chapter_order)
           # 新仕様: _titlepage, _legalpage を使用
-          frontmatter_sequence = %w[_titlepage _legalpage 00-preface _toc]
+          # 分冊の全巻目次（multivolume-spec.md §9）は、その巻の目次の前に置く
+          frontmatter_sequence = [*%w[_titlepage _legalpage], *prefaces, *([WholeTocGenerator::BASENAME] & chapter_order),
+                                  '_toc']
           # 巻末の順序: 用語集 → 終わりに → 索引
           # 索引・用語集が無効の場合は除外
           backmatter_sequence = if IndexCommands.index_enabled?
-                                  %w[_glossarypage 99-postface _indexpage]
+                                  ['_glossarypage', *postfaces, '_indexpage']
                                 else
-                                  %w[99-postface]
+                                  postfaces
                                 end
 
           # 巻末ページを除外した章順序
           main_chapters = chapter_order.reject { |bn| backmatter_sequence.include?(bn) }
 
           (frontmatter_sequence + main_chapters + backmatter_sequence).uniq
+        end
+
+        # 章の並びのうち、前書きと後書きの basename
+        # @return [Array(Array<String>, Array<String>)] [前書き, 後書き]
+        def supplement_basenames(chapter_order)
+          resolver = TokenResolver::Resolver.new
+          kinds = chapter_order.to_h { [it, resolver.resolve_file(it).kind] }
+          [chapter_order.select { kinds[it] == :preface }, chapter_order.select { kinds[it] == :postface }]
         end
 
         def extract_all_headings(chapter_order, chapter_paths, max_level)
@@ -325,12 +335,12 @@ module VivlioStarter
         def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
           chapter_starts = {}
           chapter_ranges = {}
-          # 本文章（01-89）の最初の章を特定（_titlepage, _legalpage, 00-preface, _toc は除外）
+          # 最初の本文章と、先頭の前書きを特定（_titlepage, _legalpage, _toc は除外）
           resolver = TokenResolver::Resolver.new
-          first_chapter_bn = chapter_order.find do |token|
-            entry = resolver.resolve_file(token)
-            entry.number&.to_i&.between?(1, 89)
-          end
+          kinds = chapter_order.to_h { [it, resolver.resolve_file(it).kind] }
+          first_chapter_bn = chapter_order.find { kinds[it] == :chapter }
+          preface_bn = chapter_order.find { kinds[it] == :preface }
+          postfaces = chapter_order.select { kinds[it] == :postface }
 
           # 前付（preface）・目次（toc）のページ数を、注釈対象の結合 PDF から直接算出する。
           preface_pages, toc_pages = detect_front_matter_spans(
@@ -340,7 +350,7 @@ module VivlioStarter
           ctx = build_page_range_context(
             chapter_ranges, chapter_starts, chapter_markers,
             search_helpers, from_base, total_pages, preface_pages, toc_pages
-          )
+          ).merge(preface_bn:, postfaces:)
 
           prev_bn = nil
           chapter_order.each do |bn|
@@ -424,15 +434,16 @@ module VivlioStarter
           }
         end
 
+        # 前書きは先頭の 1 本だけを前付の位置で数える。2 本目以降の前書きは本文と同じく見出しで探す
         def calculate_page_range(basename, ctx, first_chapter_bn, prev_bn)
           case basename
           when '_titlepage' then page_range_titlepage(ctx)
           when '_legalpage' then page_range_legalpage(ctx)
-          when '00-preface' then page_range_preface(ctx)
+          when ctx[:preface_bn] then page_range_preface(ctx)
           when '_toc'       then page_range_toc(ctx)
           when '99-colophon' then [ctx[:total_pages], ctx[:total_pages]]
           when '_glossarypage' then page_range_backmatter(basename, ctx, prev_bn, ['用語集'])
-          when '99-postface' then page_range_backmatter(basename, ctx, prev_bn, ['終わりに'])
+          when *ctx[:postfaces] then page_range_backmatter(basename, ctx, prev_bn, ['終わりに'])
           when '_indexpage' then page_range_backmatter(basename, ctx, prev_bn, ['索引'])
           when first_chapter_bn then page_range_first_chapter(ctx, prev_bn)
           else page_range_default(basename, ctx, prev_bn)
@@ -466,8 +477,13 @@ module VivlioStarter
 
         def page_range_toc(ctx)
           preface_start = ctx[:from_base] + 2
-          preface_end = ctx[:chapter_ranges]['00-preface']&.[](1) || (preface_start + ctx[:preface_pages] - 1)
+          preface_end = ctx[:chapter_ranges][ctx[:preface_bn]]&.[](1) || (preface_start + ctx[:preface_pages] - 1)
           start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : preface_start
+          # 全巻目次が前にあるときは、前書きの終わりが全巻目次の手前で切られている。目次の見出しをその後ろで探す
+          if (whole = ctx[:chapter_ranges][WholeTocGenerator::BASENAME])
+            start_candidate = ctx[:find_page_by_first_line].call(toc_heading_title, whole[0] + 1, ctx[:total_pages]) ||
+                              (whole[0] + 1)
+          end
           start_page = [start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
           end_page = if ctx[:toc_pages].positive?
                        (start_page + ctx[:toc_pages] - 1).clamp(1,
@@ -587,8 +603,9 @@ module VivlioStarter
           number_display = heading[:number_display].to_s.strip
           return number_display unless number_display.empty?
 
+          # 前書き・後書きは番号の範囲によらず番号を付けない（PREFACE の `20-vol2-intro` を「第10章」としない）
           entry = TokenResolver::Resolver.new.resolve_file(basename)
-          return '' unless entry.number&.to_i&.between?(11, 89)
+          return '' unless entry.kind == :chapter && entry.number&.to_i&.between?(11, 89)
 
           "第#{entry.number.to_i - 10}章"
         end
@@ -635,7 +652,7 @@ module VivlioStarter
         end
 
         module_function :extract_number_text, :extract_title_text, :build_search_terms,
-                        :validate_inputs, :build_chapter_paths, :build_chapter_order,
+                        :validate_inputs, :build_chapter_paths, :build_chapter_order, :supplement_basenames,
                         :extract_all_headings, :build_search_helpers, :toc_heading_title,
                         :calculate_chapter_ranges, :detect_front_matter_spans,
                         :build_page_range_context, :calculate_page_range,

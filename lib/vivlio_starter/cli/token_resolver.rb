@@ -45,7 +45,14 @@ module VivlioStarter
 
         # 章番号の範囲から kind を決定するためのマッピング。
         # 00: preface, 01-89: chapter, 90-98: appendix, 99: postface
+        # 使うのは catalog.yml に載っていない原稿だけ。載っている原稿は SECTION_KINDS で決まる。
         KIND_RANGES = { preface: 0..0, chapter: 1..89, appendix: 90..98, postface: 99..99 }.freeze
+
+        # catalog.yml の区分から kind を決めるためのマッピング。区分は番号より優先する
+        # （catalog-section-kind-spec.md §2.1）。巻ごとの前書き（`20-vol2-intro` を PREFACE に書く）のように、
+        # 番号の範囲の外の原稿を前書き・後書きとして組めるようにするため。
+        SECTION_KINDS = { 'PREFACE' => :preface, 'CHAPTERS' => :chapter,
+                          'APPENDICES' => :appendix, 'POSTFACE' => :postface }.freeze
 
         # システム予約ファイルの kind マッピング。
         # カタログに載らない特殊ファイルを仮想 Entry として解決するために使用。
@@ -55,11 +62,12 @@ module VivlioStarter
           '_colophon' => :colophon,
           '_indexpage' => :indexpage,
           '_glossarypage' => :glossarypage,
-          '_toc' => :toc
+          '_toc' => :toc,
+          '_whole_toc' => :whole_toc # 分冊の全巻目次（multivolume-spec.md §9）
         }.freeze
 
         # .cache/vs/ に生成されるシステムページ（contents/ ではなくキャッシュに配置）
-        CACHED_SYSTEM_FILES = %w[_titlepage _legalpage _colophon].freeze
+        CACHED_SYSTEM_FILES = %w[_titlepage _legalpage _colophon _whole_toc].freeze
 
         # @param catalog_path [String] catalog.yml のパス
         # @param contents_dir [String] 章ファイルが格納されるディレクトリ
@@ -113,6 +121,11 @@ module VivlioStarter
           basename = File.basename(file_path).sub(/\.(md|html)\z/i, '')
           resolve([basename]).first
         end
+
+        # catalog.yml に載っていない原稿の kind。番号の範囲で決め、範囲の外は本文の章とみなす
+        # @param number [String, Integer]
+        # @return [Symbol]
+        def self.kind_for_number(number) = KIND_RANGES.find { |_, range| range.cover?(number.to_i) }&.first || :chapter
 
         private
 
@@ -170,12 +183,9 @@ module VivlioStarter
         def load_catalog_entries
           Build::CatalogLoader
             .load_labeled_entries(catalog_path:, contents_dir:)
-            .map { instantiate_entry(it.basename, it.label, section_to_kind(it.section), in_catalog: true) }
+            .map { instantiate_entry(it.basename, it.label, SECTION_KINDS.fetch(it.section), in_catalog: true) }
             .uniq(&:basename)
         end
-
-        # セクション名を kind シンボルに変換する。
-        def section_to_kind(section) = section.to_s.downcase.to_sym
 
         # --- Phase 3: Matching (照合) ---
         # 正規化されたトークンをカタログと突き合わせ、Entry を生成する。
@@ -216,19 +226,19 @@ module VivlioStarter
 
             if fs_matches.any?
               fs_basename = File.basename(fs_matches.first, '.md')
-              return instantiate_entry(fs_basename, 'UNCATALOGED', :chapter, in_catalog: false)
+              return instantiate_entry(fs_basename, 'UNCATALOGED', nil, in_catalog: false)
             end
 
             # スラッグ付きファイルが無い場合、数字のみファイル (NN.md) を探索
             # 例: "2" → contents/02.md が存在すれば slug=nil の Entry として解決。
             numeric_file = File.join(contents_dir, "#{token_num}.md")
             if File.exist?(numeric_file)
-              return instantiate_entry(token_num, 'UNCATALOGED', :chapter, in_catalog: false)
+              return instantiate_entry(token_num, 'UNCATALOGED', nil, in_catalog: false)
             end
 
             # どちらも見つからない場合、番号のみの新規エントリとして生成
           end
-          instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
+          instantiate_entry(token, 'NEW', nil, in_catalog: false)
         end
 
         def match_slug_entry(token, catalog)
@@ -253,7 +263,7 @@ module VivlioStarter
           when 0
             instantiate_new_entry_from_slug(slug)
           when 1
-            instantiate_entry(matches.first, 'UNCATALOGED', :chapter, in_catalog: false)
+            instantiate_entry(matches.first, 'UNCATALOGED', nil, in_catalog: false)
           else
             instantiate_invalid_entry(token)
           end
@@ -264,10 +274,10 @@ module VivlioStarter
         # 数字のみファイル（NN）にも対応し、slug=nil の Entry を生成する。
         # @param basename [String] 章ファイルのベース名（例: "01-life" または "02"）
         # @param label [String] カタログのセクション名（例: "CHAPTERS"）
-        # @param fallback_kind [Symbol] kind 判定に失敗した際のフォールバック値
+        # @param section_kind [Symbol, nil] catalog.yml の区分から決めた kind。nil なら番号の範囲で決める
         # @param in_catalog [Boolean] カタログに登録済みかどうか
         # @return [Entry] 生成された Entry オブジェクト
-        def instantiate_entry(basename, label, fallback_kind, in_catalog:)
+        def instantiate_entry(basename, label, section_kind, in_catalog:)
           # 形式チェック: 数字で始まり、オプションで -slug または _slug が続く
           return instantiate_invalid_entry(basename) unless basename =~ /\A(\d+)(?:[-_](.+))?\z/
 
@@ -277,7 +287,7 @@ module VivlioStarter
           # slug がある場合は number-slug、ない場合は number のみ
           actual_basename = slug ? "#{number}-#{slug}" : number
           path = File.join(contents_dir, "#{actual_basename}.md")
-          kind = KIND_RANGES.find { |_, r| r.cover?(number.to_i) }&.first || fallback_kind
+          kind = section_kind || self.class.kind_for_number(number)
 
           Entry.new(
             number:,
@@ -344,7 +354,7 @@ module VivlioStarter
         def instantiate_new_entry_from_slug(slug)
           number = allocate_number
           basename = "#{number}-#{slug}"
-          instantiate_entry(basename, 'NEW', :chapter, in_catalog: false)
+          instantiate_entry(basename, 'NEW', nil, in_catalog: false)
         end
 
         def reset_number_tracking(catalog)
