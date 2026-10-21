@@ -4,8 +4,9 @@
 # File: lib/vivlio_starter/cli/build/whole_toc_generator.rb
 # ================================================================
 # 責務:
-#   分冊の本で、全巻の構成を章まで示す目次（全巻目次）のページを作る（multivolume-spec.md §9）。
-#   巻の設定に whole_toc: true を書いた巻を組むときだけ作り、その巻の目次（_toc）の前に置く。
+#   分冊の本で、全巻の構成を章（page.toc_depth が 2 以上なら節）まで示す目次（全巻目次）のページを
+#   作る（multivolume-spec.md §9）。巻の設定に whole_toc: true を書いた巻を組むときだけ作り、
+#   その巻の目次（_toc）の前に置く。
 #
 # 生成物:
 #   - .cache/vs/_whole_toc.md: 全巻目次の Markdown ソース
@@ -113,23 +114,71 @@ module VivlioStarter
           end
         end
 
-        # 1 項目。章扉の番号の文字（「第3章」「付録 A」）と章題。原稿が無ければ載せない
+        # 1 項目。章扉の番号の文字（「第3章」「付録 A」）と章題。原稿が無ければ載せない。
+        # 本文の章と付録には、page.toc_depth が 2 以上なら節（##）を入れ子で添える（詳しい目次と同じ決まり）
         def item(css_class, basename)
           title = chapter_title(basename)
           return nil unless title
 
           number = PreProcessCommands::CrossReferenceProcessor.chapter_number_text_for(basename)
           label = number ? %(<span class="whole-toc-number">#{CGI.escapeHTML(number)}</span>) : ''
-          %(<li class="#{css_class}">#{label}#{CGI.escapeHTML(title)}</li>)
+          sections = %w[whole-toc-chapter whole-toc-appendix].include?(css_class) ? section_list(basename) : ''
+          %(<li class="#{css_class}">#{label}#{CGI.escapeHTML(title)}#{sections}</li>)
         end
+
+        # 節（##）の並び。番号は章扉の節と同じ「13-2」「A-1」（HeadingProcessor.build_h2_number_text）
+        def section_list(basename)
+          return '' unless sections?
+
+          titles = section_titles(basename)
+          return '' if titles.empty?
+
+          context = PreProcessCommands::CrossReferenceProcessor.heading_number_context_for(basename)
+          items = titles.each_with_index.map do |title, index|
+            number = PostProcessCommands::HeadingProcessor.build_h2_number_text(context, index + 1)
+            %(<li class="whole-toc-section"><span class="whole-toc-number">#{CGI.escapeHTML(number)}</span>) +
+              %(#{CGI.escapeHTML(title)}</li>)
+          end
+          %(\n<ul class="whole-toc-sections">\n#{items.join("\n")}\n</ul>\n)
+        end
+
+        # 節まで載せるか。詳しい目次と同じく page.toc_depth に従う（2 以上で節まで。項は載せない）
+        def sections? = TocCommands::HeadingExtractor.configured_depth >= 2
 
         # 原稿の最初の `# ` 見出し（@chapref と同じく記号とタグを外す）
         def chapter_title(basename)
-          path = File.join(Common::CONTENTS_DIR, "#{basename}.md")
-          return nil unless File.exist?(path)
+          path = manuscript_path(basename) or return nil
 
           heading = File.foreach(path, encoding: 'utf-8').find { it.match?(/\A#\s+\S/) }
           heading && PreProcessCommands::CrossReferenceProcessor.plain_chapter_title(heading.sub(/\A#\s+/, ''))
+        end
+
+        # 原稿の `## ` 見出しの並び。ほかの巻は組まないので HTML が無く、Markdown から取り出す。
+        # コードブロックの中の `##`（記法の説明）は見出しではないので飛ばす。見出しの属性（{.class}）は外す
+        # @return [Array<String>]
+        def section_titles(basename)
+          path = manuscript_path(basename) or return []
+
+          fence = nil
+          File.foreach(path, encoding: 'utf-8').filter_map do |line|
+            marker = line[/\A\s*(`{3,}|~{3,})/, 1]
+            if fence
+              fence = nil if marker && marker[0] == fence[0] && marker.size >= fence.size && line.strip == marker
+              next
+            elsif marker
+              fence = marker
+              next
+            end
+            next unless line.match?(/\A##\s+\S/)
+
+            title = line.sub(/\A##\s+/, '').sub(/\s*\{[^}]*\}\s*\z/, '')
+            PreProcessCommands::CrossReferenceProcessor.plain_chapter_title(title)
+          end
+        end
+
+        def manuscript_path(basename)
+          path = File.join(Common::CONTENTS_DIR, "#{basename}.md")
+          File.exist?(path) ? path : nil
         end
       end
     end

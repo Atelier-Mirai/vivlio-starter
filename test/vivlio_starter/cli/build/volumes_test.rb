@@ -236,6 +236,41 @@ module VivlioStarter
           end
         end
 
+        # 節（##）は詳しい目次と同じ決まりで載せる: page.toc_depth が 2 以上のとき、本文の章と付録だけ、
+        # 章扉の節と同じ番号（13-2・A-1）で。ほかの巻は組まないので原稿から取り、コードの中の ## は拾わない
+        def test_should_list_sections_of_every_volume_when_toc_depth_allows
+          with_project do
+            File.write('contents/11-apply.md', <<~MD)
+              # 11-apply
+
+              ## 準備する {.no-break}
+
+              ```markdown
+              ## コードの中の見出し
+              ```
+
+              ## 組む @sec-build
+            MD
+            File.write('contents/92-links.md', "# 92-links\n\n## 公式サイト\n")
+            File.write('contents/10-vol2-intro.md', "# 10-vol2-intro\n\n## 前書きの節\n")
+            Volumes.select!(Volumes.find('upper'))
+
+            markdown = TocCommands::HeadingExtractor.stub(:configured_depth, 2) { WholeTocGenerator.markdown }
+
+            assert_includes markdown, '<span class="whole-toc-number">第3章</span>11-apply' \
+                                      "\n<ul class=\"whole-toc-sections\">\n" \
+                                      '<li class="whole-toc-section"><span class="whole-toc-number">3-1</span>準備する</li>' \
+                                      "\n" \
+                                      '<li class="whole-toc-section"><span class="whole-toc-number">3-2</span>組む</li>'
+            refute_includes markdown, 'コードの中の見出し'
+            assert_includes markdown, '<span class="whole-toc-number">B-1</span>公式サイト', '付録の節は付録の記号で'
+            refute_includes markdown, '前書きの節', '前書きの節は載せない（詳しい目次と同じ）'
+
+            chapters_only = TocCommands::HeadingExtractor.stub(:configured_depth, 1) { WholeTocGenerator.markdown }
+            refute_includes chapters_only, 'whole-toc-sections', 'toc_depth: 1 なら章まで'
+          end
+        end
+
         def test_should_include_whole_toc_only_for_volume_asking_for_it
           with_project(catalog: CATALOG.sub("    id: middle\n", "    id: middle\n    whole_toc: true\n")) do
             Volumes.select!(Volumes.find('middle'))

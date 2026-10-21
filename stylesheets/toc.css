@@ -308,7 +308,7 @@ h2 {
 /*  全巻目次（分冊の本・multivolume-spec.md §9）              */
 /* ========================================================= */
 /* 巻を選んで組み、その巻に whole_toc: true を書いたときだけ、その巻の目次の前に置く。
-   章まで・ページ番号なし・リンクなし。今の巻は .vs-current-volume で目立たせ、ほかの巻は薄くする。
+   章（page.toc_depth が 2 以上なら節）まで・ページ番号なし・リンクなし。今の巻は .vs-current-volume で目立たせ、ほかの巻は薄くする。
    色はリテラルで書く（Kindle は var() を読まない・kindle-css-compatibility-notes.md）。 */
 body.whole_toc {
   page: front;
@@ -363,4 +363,20 @@ li.whole-toc-appendix {
   display: inline-block;
   min-inline-size: 4.5em;
   font-weight: 700;
+}
+
+/* 節（page.toc_depth が 2 以上のとき）。章の下に字下げして、章より小さく細く組む */
+.whole-toc-volume ul.whole-toc-sections {
+  margin-block-start: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+}
+
+.whole-toc-volume li.whole-toc-section {
+  margin-block-end: clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm);
+  padding-inline-start: 4.5em;
+  font-size: clamp(8.4Q, calc(var(--paper-scale) * 12Q), 12Q);
+}
+
+li.whole-toc-section .whole-toc-number {
+  min-inline-size: 3.5em;
+  font-weight: 400;
 }

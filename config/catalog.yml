@@ -128,7 +128,7 @@ POSTFACE:
 #   巻の中に同じ名前で書くと、その巻だけ上書きできる。書かなければ book.yml の値を使う。
 #   ほかに書ける巻の設定:
 #   chapter_start（その巻の最初の章の番号）・appendix_start（その巻の付録を振り直す記号）・
-#   whole_toc: true（その巻の目次の前に、全巻の構成を章まで示す目次を載せる）
+#   whole_toc: true（その巻の目次の前に、全巻の構成を章と節まで示す目次を載せる。節は page.toc_depth が 2 以上のとき）
 #   別の巻の章や図を @chapref:ch-xxx・@fig-xxx で指すと、「上巻 第8章「…」」のように巻の名前を添えて組む。
 #
 # VOLUMES:
@@ -144,7 +144,7 @@ POSTFACE:
 #     id: lower
 #     chapter_start: 1        # 下巻も第1章から数える（書かなければ上巻から続けて第3章から）
 #     appendix_start: A       # 下巻の付録を A から振り直す（書かなければ 92-links は付録 C）
-#     whole_toc: true         # 下巻の目次の前に、上巻・下巻の構成を章まで示す「全巻目次」を載せる
+#     whole_toc: true         # 下巻の目次の前に、上巻・下巻の構成を章と節まで示す「全巻目次」を載せる
 #     CHAPTERS:
 #       - 21-syntax           # 第1章
 #       - 22-customize        # 第2章

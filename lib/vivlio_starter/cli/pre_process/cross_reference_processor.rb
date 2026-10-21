@@ -173,6 +173,13 @@ module VivlioStarter
         # 常に catalog.yml の全体から数える。参照先の章は単章ビルドの対象に入っていないので、
         # 絞り込みで数えると全章ビルドと違う番号になる（§2.11）。
         def chapter_number_text_for(filename)
+          PostProcessCommands::HeadingProcessor.build_h1_number_text(heading_number_context_for(filename))
+        end
+
+        # 章扉の番号を組み立てる材料（HeadingProcessor.build_h1_number_text・build_h2_number_text に渡す）。
+        # 目次から数えるので、組んでいない巻の章にも使える（全巻目次の節の番号「13-2」）
+        # @return [Hash] { file_type:, chapter_display_number:, appendix_letter: }
+        def heading_number_context_for(filename)
           basename = File.basename(filename.to_s, '.*')
           entry = TokenResolver::Resolver.new.resolve_file(basename)
           context = { file_type: nil, chapter_display_number: nil, appendix_letter: nil }
@@ -183,7 +190,7 @@ module VivlioStarter
             context[:file_type] = 'appendix'
             context[:appendix_letter] = Common.appendix_number_to_letter(entry.number)&.upcase
           end
-          PostProcessCommands::HeadingProcessor.build_h1_number_text(context)
+          context
         end
 
         # 目次（いま選んでいる範囲）での章番号の文字（図表番号の頭「8」）。本文の章でなければ番号そのもの。
