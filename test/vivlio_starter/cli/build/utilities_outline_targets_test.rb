@@ -89,4 +89,14 @@ class UtilitiesOutlineTargetsTest < Minitest::Test
       assert_equal %w[11-sample _toc].sort, basenames(targets)
     end
   end
+
+  # 番号だけの原稿（contents/12.md → 12.html）も章として拾う。以前は「番号-」で始まる名前しか拾わず、
+  # しおりから黙って抜けていた
+  def test_should_collect_number_only_chapter
+    within_workspace(chapters: %w[11-sample 12], pages: %w[11-sample 12 _toc]) do
+      targets = with_index_enabled(false) { Utilities.outline_target_htmls }
+
+      assert_equal %w[11-sample 12 _toc].sort, basenames(targets)
+    end
+  end
 end

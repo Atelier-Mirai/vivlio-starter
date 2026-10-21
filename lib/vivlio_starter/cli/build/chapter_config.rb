@@ -22,7 +22,8 @@ module VivlioStarter
         # 種類は TokenResolver が決める——catalog.yml に載った原稿は書かれた区分、載っていない原稿は
         # 番号の範囲（catalog-section-kind-spec.md §2.1）。番号の範囲で集めると、PREFACE に書いた
         # `20-vol2-intro` が本文の中に組み込まれる。区分の中の並びは従来どおり番号の順（§2.3）。
-        # 注: アンダースコア始まりのファイルは \A(\d+)- パターンにマッチしないため自動的に除外される
+        # 番号だけの原稿（contents/22.md → 22.html）も章として拾う。アンダースコア始まりの特殊ページ（_toc 等）は
+        # 番号で始まらないので除かれる
         # @param base_dir [String] HTML の置き場
         # @param kind [Symbol] :preface / :chapter / :appendix / :postface
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] 組む章（空・nil なら絞らない）
@@ -34,7 +35,7 @@ module VivlioStarter
 
           Dir.glob(File.join(base_dir, '*.html')).select do |path|
             bn = File.basename(path, '.html')
-            number = bn[/\A(\d+)-/, 1]
+            number = bn[/\A(\d+)(?=-|\z)/, 1]
             next false unless number
             next false if keep && !keep.include?(number.to_i)
 

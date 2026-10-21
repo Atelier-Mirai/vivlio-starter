@@ -441,7 +441,6 @@ module VivlioStarter
           when '_legalpage' then page_range_legalpage(ctx)
           when ctx[:preface_bn] then page_range_preface(ctx)
           when '_toc'       then page_range_toc(ctx)
-          when '99-colophon' then [ctx[:total_pages], ctx[:total_pages]]
           when '_glossarypage' then page_range_backmatter(basename, ctx, prev_bn, ['用語集'])
           when *ctx[:postfaces] then page_range_backmatter(basename, ctx, prev_bn, ['終わりに'])
           when '_indexpage' then page_range_backmatter(basename, ctx, prev_bn, ['索引'])
@@ -580,12 +579,7 @@ module VivlioStarter
         def build_display_text(basename, heading)
           return heading[:text] unless heading[:level].to_i == 1
 
-          case basename
-          when '99-colophon'
-            '奥付'
-          else
-            build_chapter_display_text(basename, heading)
-          end
+          build_chapter_display_text(basename, heading)
         end
 
         def build_chapter_display_text(basename, heading)

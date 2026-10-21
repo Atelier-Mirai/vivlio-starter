@@ -22,9 +22,6 @@ module VivlioStarter
         SECTION_NAMES = { 'PREFACE' => '前書き', 'CHAPTERS' => '本文の章',
                           'APPENDICES' => '付録', 'POSTFACE' => '後書き' }.freeze
 
-        # 区分の範囲に入る番号の一つ。空き番号を探す起点にする
-        SECTION_SAMPLE_NUMBERS = { 'PREFACE' => 0, 'CHAPTERS' => 1, 'APPENDICES' => 90, 'POSTFACE' => 99 }.freeze
-
         # @return [Array<Violation>]
         def validate
           return [] unless File.file?(Build::CatalogLoader::CATALOG_FILE)
@@ -75,7 +72,9 @@ module VivlioStarter
         # 書いた区分のままにするなら、その区分の空き番号へ振り直す。空きが無ければ案内しない
         def renumber_line(entry)
           taken = ChapterNames.existing_basenames
-          free = ChapterNames.free_number(SECTION_SAMPLE_NUMBERS.fetch(entry.section), taken)
+          # 区分の範囲の最初の番号から空きを探す
+          kind = TokenResolver::Resolver::SECTION_KINDS.fetch(entry.section)
+          free = ChapterNames.free_number(TokenResolver::Resolver::KIND_RANGES.fetch(kind).first, taken)
           return nil unless free
 
           slug = ChapterNames.slug_of(entry.basename)
@@ -83,7 +82,7 @@ module VivlioStarter
           "#{SECTION_NAMES[entry.section]}にするなら: vs renumber #{entry.basename} #{renamed}"
         end
 
-        # 「config/catalog.yml:38」。行が見つからなければ（ショートハンドで書いたなど）ファイル名だけ
+        # 「config/catalog.yml:38」。行が見つからなければ（番号だけの項目 `- 22` で書いたなど）ファイル名だけ
         def location(basename, lines)
           pattern = /\A\s*-\s*#{Regexp.escape(basename)}(?:\.md)?\s*(?:#.*)?\z/
           index = lines.index { it.match?(pattern) }

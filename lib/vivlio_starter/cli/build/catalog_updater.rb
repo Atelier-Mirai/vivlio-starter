@@ -55,14 +55,16 @@ module VivlioStarter
           lines = read_catalog_lines
           section = section_for_basename(basename)
 
-          # 既にアクティブ（非コメント）として存在する場合はスキップ
-          return if active_entry_exists?(lines, basename)
-
           range = nil
+          chosen = !volume.nil?
           if Volumes.enabled?
             volume ||= volume_for_new_entry(basename, section)
             range = volume && volume_line_ranges(lines)[volume.index]
           end
+
+          # 既にアクティブ（非コメント）として存在する場合はスキップ。巻を指定されたときは、その巻に
+          # 載っているかだけを見る（二つ以上の巻に載る章を、巻ごとに足すため）
+          return if active_entry_exists?(lines, basename, within: (range if chosen))
 
           insert_idx, indent = find_text_insertion_point(lines, section, basename, range:)
           lines.insert(insert_idx, "#{indent}- #{basename}")
@@ -109,10 +111,15 @@ module VivlioStarter
               Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
             end
           else
-            # セクション変更: 削除 → 追加（分冊の目次では、元の巻の中で移す）
-            volume = Volumes.enabled? ? Volumes.containing(old_basename) : nil
+            # セクション変更: 削除 → 追加（分冊の目次では、載っていたそれぞれの巻の中で移す。
+            # 共通の付録を本文の章にしても、どの巻からも消えない）
+            volumes = Volumes.enabled? ? Volumes.list.select { Volumes.basenames_of(it).include?(old_basename) } : []
             remove_chapter(old_basename)
-            add_chapter(new_basename, volume:)
+            if volumes.empty?
+              add_chapter(new_basename)
+            else
+              volumes.each { add_chapter(new_basename, volume: it) }
+            end
             Common.log_info("catalog.yml: #{old_basename} → #{new_basename}（#{old_section} → #{new_section}）")
           end
         end
@@ -187,12 +194,6 @@ module VivlioStarter
           line.sub(/(-\s+)#{item}/) { "#{Regexp.last_match(1)}#{new_number}" }
         end
 
-        # アクティブ（非コメント）エントリ行のインデックスを返す
-        # @return [Integer, nil]
-        def find_active_entry_line(lines, basename)
-          lines.index { entry_line?(it, basename) }
-        end
-
         # アクティブ（非コメント）エントリ行のインデックスをすべて返す（分冊の目次では、共通の付録が二つ以上の巻に載る）
         # @return [Array<Integer>]
         def active_entry_lines(lines, basename)
@@ -200,8 +201,9 @@ module VivlioStarter
         end
 
         # アクティブエントリとして存在するかチェック
-        def active_entry_exists?(lines, basename)
-          !!find_active_entry_line(lines, basename)
+        # @param within [Range, nil] 探す行の範囲（分冊の目次では巻の行。nil ならファイル全体）
+        def active_entry_exists?(lines, basename, within: nil)
+          (within || lines.each_index).any? { entry_line?(lines[it], basename) }
         end
 
         # ================================================================

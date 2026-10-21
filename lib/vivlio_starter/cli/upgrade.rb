@@ -261,7 +261,7 @@ module VivlioStarter
         return if retired.empty? && orphans.empty? && pages.empty?
 
         Common.log_summary('古い版から持ち越した設定を整理しています…')
-        report_tidy(retired, orphans, pages, dry_run: options[:dry_run])
+        report_tidy(retired, orphans, pages, book_text:, dry_run: options[:dry_run])
         return if options[:dry_run]
 
         # --- Phase: book.yml の廃止キー（移した先のあるキーは移し、ほかは消す） ---
@@ -340,8 +340,8 @@ module VivlioStarter
       end
 
       # 移す廃止キーの知らせ。移した先がすでに書かれていれば、そちらを残すので、値が違えば両方を示す
-      def report_moved_key(from, to)
-        written = YAML.safe_load_file(File.join('config', 'book.yml'), aliases: true) || {}
+      # @param written [Hash] 書き換える前の book.yml
+      def report_moved_key(from, to, written)
         old_value = written.dig(*from)
         unless written.dig(*to[0...-1])&.key?(to.last)
           Common.log_always("   config/book.yml: #{from.join('.')} を #{to.join('.')} へ移します（#{old_value}）")
@@ -356,9 +356,10 @@ module VivlioStarter
       end
 
       # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
-      def report_tidy(retired, orphans, pages, dry_run:)
+      def report_tidy(retired, orphans, pages, book_text:, dry_run:)
         moved, removed = retired.partition { moved_key_target(it) }
-        moved.each { report_moved_key(it, moved_key_target(it)) }
+        written = moved.any? ? (YAML.safe_load(book_text, aliases: true) || {}) : {}
+        moved.each { report_moved_key(it, moved_key_target(it), written) }
         if removed.any?
           Common.log_always("   config/book.yml: 廃止キーを消します（#{removed.map { it.join('.') }.join('・')}）")
         end

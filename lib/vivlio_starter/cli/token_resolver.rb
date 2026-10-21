@@ -173,7 +173,7 @@ module VivlioStarter
         end
 
         # --- Phase 2: Catalog Loading (カタログ読み込み) ---
-        # YAML パース・セクション/ショートハンド展開は Build::CatalogLoader に一本化した
+        # YAML パース・セクションと番号だけの項目の展開は Build::CatalogLoader に一本化した
         # （仕様: catalog-parser-unification-spec.md）。ここでは
         # CatalogEntry（basename/label/section）→ Entry への変換のみを行う。
         # instantiate_entry は常に Entry を返すため compact は不要。

@@ -17,12 +17,6 @@ module VivlioStarter
 
         CATALOG_FILE = 'config/catalog.yml'
 
-        # 章番号レンジ定数（新仕様）
-        PREFACE_RANGE  = (0..0)
-        MAIN_RANGE     = (1..89)
-        APPX_RANGE     = (90..98)
-        POSTFACE_RANGE = (99..99)
-
         # セクションキー
         SECTION_KEYS = %w[PREFACE CHAPTERS APPENDICES POSTFACE].freeze
 
@@ -30,17 +24,12 @@ module VivlioStarter
         # 仕様: catalog-parser-unification-spec.md §3.1
         CatalogEntry = Data.define(:basename, :label, :section)
 
-        # 章番号からセクションを決定
+        # 章番号からセクションを決定（範囲の外の番号は CHAPTERS）。
+        # 番号の範囲は TokenResolver::Resolver::KIND_RANGES の一か所に置く
         # @param num [Integer] 章番号
         # @return [String] セクションキー
         def section_for_chapter_number(num)
-          case num
-          when PREFACE_RANGE  then 'PREFACE'
-          when MAIN_RANGE     then 'CHAPTERS'
-          when APPX_RANGE     then 'APPENDICES'
-          when POSTFACE_RANGE then 'POSTFACE'
-          else 'CHAPTERS' # デフォルト
-          end
+          TokenResolver::Resolver::SECTION_KINDS.key(TokenResolver::Resolver.kind_for_number(num))
         end
 
         # catalog.yml を読み込み、フラットな basename 配列を返す
@@ -254,8 +243,14 @@ module VivlioStarter
 
         def location(line) = line ? "#{CATALOG_FILE}:#{line + 1}" : CATALOG_FILE
 
-        # 範囲（21-23・21-23, 25）か
-        def range_item?(item) = item.to_s.strip.match?(/\A\d+\s*-\s*\d+(\s*,\s*\d+(\s*-\s*\d+)?)*\z/)
+        # 範囲・並びの一つ（21・21-23）
+        RANGE_ELEMENT = /\d+(?:\s*-\s*\d+)?/
+
+        # 範囲や並び（21-23・21, 25・21, 23-25）か。番号一つだけ（22）は書ける項目なので含めない
+        def range_item?(item)
+          str = item.to_s.strip
+          str.match?(/\A#{RANGE_ELEMENT}(?:\s*,\s*#{RANGE_ELEMENT})*\z/) && !str.match?(/\A\d+\z/)
+        end
 
         # 範囲を番号一つずつに開く。原稿のある番号だけにし、一つも無ければ範囲の番号すべてにする
         # @return [Array<String>] 2 桁の番号、または範囲でなければそのまま
@@ -336,7 +331,8 @@ module VivlioStarter
         # @param str [String]
         # @return [Array<Integer>]
         def numbers_in_range(str)
-          parts = str.split(/[,\s]+/).map(&:strip).reject(&:empty?)
+          # 「21 - 23」のように - の前後に空白があっても範囲として読む（range_item? と同じ書き方を受ける）
+          parts = str.gsub(/\s*-\s*/, '-').split(/[,\s]+/).map(&:strip).reject(&:empty?)
           numbers = []
 
           parts.each do |part|
@@ -412,7 +408,7 @@ module VivlioStarter
         # @param used [Array<Integer>] 使われている番号
         # @return [String, nil]
         def free_number_in_section(number, used)
-          range = [PREFACE_RANGE, MAIN_RANGE, APPX_RANGE, POSTFACE_RANGE].find { it.cover?(number) } || MAIN_RANGE
+          range = TokenResolver::Resolver::KIND_RANGES.fetch(TokenResolver::Resolver.kind_for_number(number))
           free = range.find { !used.include?(it) }
           free && format('%02d', free)
         end

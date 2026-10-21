@@ -71,23 +71,12 @@ module VivlioStarter
           exit 1
         end
 
-        # PDF アウトライン生成対象の章番号リストを取得（新仕様）
+        # PDF アウトライン生成対象の章番号リストを取得。前書き・本文・付録・後書きのすべてが対象。
+        # TOC (_toc.html) はアウトライン生成時に別途処理されるため、ここには含めない
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         # @return [Array<Integer>] アウトライン対象の章番号配列
         def chapter_numbers_for_outline(entries_or_keep = nil)
-          # 新仕様: 0=PREFACE, 1-89=CHAPTERS, 90-98=APPENDICES, 99=POSTFACE
-          allowed_numbers = [0, 99] + (1..89).to_a + (90..98).to_a
-          entries = resolve_entries(entries_or_keep)
-
-          numbers = entries
-                    .filter_map { it.number&.to_i }
-                    .select { allowed_numbers.include?(it) }
-
-          # TOC (_toc.html) はアウトライン生成時に別途処理されるため、ここでは追加不要
-
-          numbers.uniq!
-          numbers.sort!
-          numbers
+          resolve_entries(entries_or_keep).filter_map { it.number&.to_i }.uniq.sort
         end
 
         # PDF アウトライン抽出の対象 HTML を、ワークスペースの pdf/ から選ぶ。
@@ -108,7 +97,7 @@ module VivlioStarter
 
           Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|
             bn = File.basename(path, '.html')
-            num = bn[/\A(\d+)-/, 1]&.to_i
+            num = bn[/\A(\d+)(?=-|\z)/, 1]&.to_i # 番号だけの原稿（22.html）も拾う
 
             (num && keep_numbers.include?(num)) || special_pages.include?(bn)
           end

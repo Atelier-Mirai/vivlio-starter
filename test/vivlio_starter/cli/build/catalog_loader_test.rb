@@ -66,6 +66,17 @@ module VivlioStarter
           end
         end
 
+        # 範囲を含まない並び（`- 21, 25`）も、行で書き換えられないので同じく止める。
+        # 以前は「contents/??-21, 25.md が見つかりません」と、原因のわからない案内になっていた
+        def test_rejects_comma_list_item_with_numbers_spelled_out
+          within_chdir_project("CHAPTERS:\n  - 21, 25\n  - 22 - 23\n", %w[21-alpha 22-bravo 23-charlie 25-echo]) do
+            error = assert_raises(StandardError) { CatalogLoader.load_catalog }
+
+            assert_includes error.message, "config/catalog.yml:2\n      - 21, 25\n  → リストの形で、章を一つずつ書いてください:\n      - 21\n      - 25\n"
+            assert_includes error.message, "config/catalog.yml:3\n      - 22 - 23\n  → リストの形で、章を一つずつ書いてください:\n      - 22\n      - 23\n"
+          end
+        end
+
         # 一行の形は vs create が書き足せない（二つ目の CHAPTERS: ができ、前の章が黙って消える）
         def test_rejects_one_line_section_with_list_form
           within_chdir_project("CHAPTERS: 21-23, 25  # 番号で指定\n", %w[21-alpha 22-bravo 23-charlie 25-echo]) do
@@ -212,7 +223,7 @@ module VivlioStarter
         private
 
         # 注入パス（catalog_path / contents_dir）で load_labeled_entries を呼ぶための一時プロジェクト。
-        # files に basename を渡すとショートハンド展開用の実ファイルを作る。
+        # files に basename を渡すと番号だけの項目を原稿の名前にするための実ファイルを作る。
         def with_project(catalog_yaml, files: [])
           Dir.mktmpdir do |dir|
             catalog_path = File.join(dir, 'catalog.yml')

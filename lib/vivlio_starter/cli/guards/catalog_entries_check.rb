@@ -5,7 +5,7 @@ module VivlioStarter
     module Guards
       # config/catalog.yml に記載された章ファイルがすべて contents/ に実在するかを検証する。
       #
-      # カタログ解析はセクション・部タイトル・ショートハンド対応済みの
+      # カタログ解析はセクション・部タイトル・番号だけの項目に対応済みの
       # TokenResolver::Resolver に委譲し、ロジックの二重化を避ける。
       # catalog.yml 自体の不在は CatalogFileCheck の責務のため、ここでは合格扱い。
       class CatalogEntriesCheck < BaseCheck

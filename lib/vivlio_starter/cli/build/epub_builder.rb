@@ -763,7 +763,7 @@ module VivlioStarter
           seq = 0
           html_files.each do |path|
             basename = File.basename(path, '.html')
-            next unless basename.match?(/\A\d{2}-/)
+            next unless basename.match?(/\A\d{2}(?=-|\z)/) # 番号だけの原稿（22.html）も章
 
             prefix = basename[0, 2]
             unless mapping.key?(prefix)
@@ -1324,7 +1324,7 @@ module VivlioStarter
         # 種類は catalog.yml の区分で決まる（catalog-section-kind-spec.md §2.1）
         def main_chapter_file?(path)
           base = File.basename(path, '.html')
-          base.match?(/\A\d{2}-/) && TokenResolver::Resolver.new.resolve_file(base).kind == :chapter
+          base.match?(/\A\d{2}(?=-|\z)/) && TokenResolver::Resolver.new.resolve_file(base).kind == :chapter
         end
 
         # 章扉（data-chapter-number-display を持つ h1）へファクシミリ合成画像を注入する。

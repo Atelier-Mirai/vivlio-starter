@@ -154,13 +154,13 @@ module VivlioStarter
           MD
         end
 
-        # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
-        # @param base_dir [Pathname] ベースディレクトリ
-        # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
         # 目次に並べる種類の順。区分で種類が決まるので（catalog-section-kind-spec.md §2.1）、
         # ファイル名の順では PREFACE に書いた `20-vol2-intro` が本文の間に入る
         KIND_ORDER = %i[preface chapter appendix postface].freeze
 
+        # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
+        # @param base_dir [Pathname] ベースディレクトリ
+        # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
         def initialize(entry_map, base_dir:, depth: HeadingExtractor.configured_depth)
           @entry_map = entry_map
           @targets = entry_map.keys.sort_by { [KIND_ORDER.index(entry_map[it]&.kind) || KIND_ORDER.index(:chapter), it] }

@@ -515,6 +515,21 @@ module VivlioStarter
           end
         end
 
+        # 共通の付録を本文の番号へ移すと、載っていたそれぞれの巻の CHAPTERS へ移る。
+        # 以前は最初の巻にだけ足し、ほかの巻からは黙って消えていた
+        def test_should_move_shared_chapter_to_new_section_in_every_volume
+          with_project do
+            CatalogUpdater.rename_chapter('90-how-to-ask', '80-how-to-ask')
+            volumes = Volumes.list
+
+            assert_equal 3, File.read('config/catalog.yml').scan('- 80-how-to-ask').size
+            volumes.each do |volume|
+              assert_includes CatalogLoader.flatten_section(volume.sections['CHAPTERS']), '80-how-to-ask', volume.name
+              refute_includes CatalogLoader.flatten_section(volume.sections['APPENDICES']), '90-how-to-ask', volume.name
+            end
+          end
+        end
+
         # --- 出力ファイル名 ---
 
         def test_should_put_volume_id_into_output_names

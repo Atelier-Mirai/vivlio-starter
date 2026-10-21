@@ -52,7 +52,11 @@ module VivlioStarter
 
         # 組み立てで、その巻の目次の前に差し込む HTML（無ければ空）
         # @return [Array<String>]
-        def htmls(base_dir) = [File.join(base_dir, "#{BASENAME}.html")].select { needed? && File.exist?(it) }
+        def htmls(base_dir)
+          return [] unless needed?
+
+          [File.join(base_dir, "#{BASENAME}.html")].select { File.exist?(it) }
+        end
 
         # 全巻目次の Markdown。巻の順に、巻の名前の下へ前書き・部・章・付録・後書きを並べる
         def markdown
