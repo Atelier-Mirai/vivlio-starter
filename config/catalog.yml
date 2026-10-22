@@ -1,20 +1,20 @@
 # ========================================
-# ビルド対象にする章の指定
+# ビルドする原稿を指定します
 # ========================================
-# 区分（PREFACE・CHAPTERS・APPENDICES・POSTFACE）の下に、原稿の名前か番号を一つずつ並べます。
-# 下の CHAPTERS とこの例を置き換えると、並べた章だけを組みます
-# （例の行の「# 」を外すと、そのまま使えます）。
+# このファイルで、本に含める原稿と掲載順を指定します。
+# 原稿は contents/ に置き、前書き・本文・付録・後書きの各区分の下に並べます。
+# 各行には「- 」に続けて、ファイル名または番号を一つずつ書いてください。
+# たとえば、本文を次の3章だけにする場合は、下の CHAPTERS: 全体をこの例に置き換えます。
+# 例を使うときは、各行の先頭の「# 」を外してください。
 #
 # CHAPTERS:
-#   - 11-workflow     # 拡張子(.md)は、省略できます
-#   - 21              # 番号だけでも書けます（contents/21-*.md か contents/21.md）
+#   - 11-workflow     # ファイル名の拡張子（.md）は省略できます。
+#   - 21              # 番号だけでも指定できます（contents/21-*.md または contents/21.md）。
 #   - 31
 #
-# 番号の範囲（- 21-23）と一行の形（CHAPTERS: 11, 21）は書けません。
-# 章の追加・削除・改番のときに vs が catalog.yml を書き換えられないためです。
-# 一部の章だけを試しに組むなら、catalog.yml は変えずに vs build 11 21-23 のように打てます。
+# 番号の範囲（- 21-23）や、複数の番号を1行にまとめる書き方（- 21, 25 や CHAPTERS: 11, 21）は使えません。
 
-# まえがき
+# 前書き
 PREFACE:
   - 00-preface
 
@@ -54,15 +54,15 @@ APPENDICES:
   - 94-further-inspiration
   - 95-sample
 
-# あとがき
+# 後書き
 POSTFACE:
   - 99-postface
 
-# 【Tips】
-#   下の例は、例の行を選んで行頭の「# 」を外すと、そのまま catalog.yml として使えます。
-#   （VS Code などのエディタでは、行を選んで Cmd+/ または Ctrl+/ で外せます。説明の行は外さないでください）
-#
-# ・付録やまえがきやあとがきがなければ、空にする。
+# 【基本形】
+# 本文が1章だけの例です。この構成にする場合は、現在の設定を次の例に置き換えます。
+# 例の行を選び、行頭の「# 」を外してください。説明の行はコメントのまま残します。
+# VS Code では、行を選んで Cmd+/（macOS）または Ctrl+/（Windows・Linux）で切り替えられます。
+# 前書き・付録・後書きが不要な場合は、それぞれ PREFACE:・APPENDICES:・POSTFACE: の下に原稿を書かず、空にします。
 #
 # PREFACE:
 #
@@ -73,9 +73,10 @@ POSTFACE:
 #
 # POSTFACE:
 #
-#
-# ・第I部、第II部、…のように「部」を使うには、次のようにする。
-#   （部タイトルの最後に半角の「:」をつけることに注意）
+# 【部構成を使う】
+# 本文を「第一部」「第二部」や「初級編」「中級編」などに分ける場合は、
+# CHAPTERS: の下に「- 部の名称:」を書き、その部に含める原稿をさらに字下げして並べます。
+# 部の名称の末尾には、半角の「:」を付けてください。字下げは次の例に合わせてください。
 #
 # CHAPTERS:
 #   - 初級編:
@@ -88,18 +89,21 @@ POSTFACE:
 #       - 05-faq
 #       - 06-bestpractice
 #
-#
-# ・上下巻や第一分冊・第二分冊のように分冊にするには、巻ごとに目次を書く。
-#   巻を書くときは、一番上の PREFACE・CHAPTERS などは使わず、すべて巻の中へ書く。
-#   name は巻の呼び名、id は出力ファイル名と vs build --volume に使う名前（英小文字・数字・_）。
-#   章番号は前の巻から続く（下巻は第13章から）。付録の記号は、共通の付録ならどの巻でも同じになる。
-#   前書きは PREFACE に書けば番号によらず前書きになるので、巻ごとの前書きは空いている番号で作る。
+# 【分冊にする】
+# 上下巻などに分ける場合は、現在の設定を次の VOLUMES: から始まる構成に置き換えます。
+# VOLUMES: の下に巻を並べ、PREFACE:・CHAPTERS:・APPENDICES:・POSTFACE: は各巻の中に書きます。
+# name には「上巻」などの呼び名を書きます。
+# id には、出力ファイル名や vs build --volume で巻を指定するための名前を書きます。
+# id に使える文字は、半角の英小文字・数字・アンダースコア（_）です。
+# 章番号は前の巻から続きます。上巻が第12章で終わる場合、下巻は第13章から始まります。
+# 同じ付録を複数の巻に含める場合、その付録の記号（A・B など）はどの巻でも同じになります。
+# 2巻目以降にも前書きを付ける場合は、未使用の番号で原稿を作り、その巻の PREFACE: に書いてください。
 #
 # VOLUMES:
 #   - name: 上巻
 #     id: upper
-#     main_title: 本のタイトル　上巻   # 省くと book.yml の main_title
-#     cover: upper                     # covers/frontcover_upper.png・backcover_upper.png
+#     main_title: 本のタイトル　上巻   # 省略すると book.yml の main_title を使います。
+#     cover: upper                  # covers/ 内の frontcover_upper.png と backcover_upper.png を表紙に使います。
 #     PREFACE:
 #       - 00-preface
 #     CHAPTERS:
@@ -107,46 +111,55 @@ POSTFACE:
 #       - 02-tutorial
 #     APPENDICES:
 #       - 90-cheatsheet
+#
 #   - name: 下巻
 #     id: lower
 #     main_title: 本のタイトル　下巻
 #     cover: lower
-#     release: "令和九年一月十日"       # 巻ごとに違う発行日・ISBN も書ける
+#     release: "令和九年一月十日"       # 発行日や ISBN は巻ごとに指定できます。
 #     isbn: "978-4-…"
 #     PREFACE:
-#       - 20-lower-intro      # 下巻のはじめに
+#       - 20-lower-intro      # 下巻の前書きの原稿を指定します。
 #     CHAPTERS:
 #       - 21-syntax
 #     APPENDICES:
-#       - 90-cheatsheet       # 上巻と共通の付録
+#       - 90-cheatsheet       # 上巻と同じ付録を指定しています。
 #     POSTFACE:
 #       - 99-postface
 #
-#   vs build --volume lower で下巻を、vs build --volume all で全巻を続けて組む。
-#   巻を選ばない vs build は、全巻を一冊にまとめた合本になる。vs cover も同じく --volume で巻の表紙を作る。
-#   book.yml の book: の下のキー（main_title・subtitle・author・release・isbn・cover など）は、
-#   巻の中に同じ名前で書くと、その巻だけ上書きできる。書かなければ book.yml の値を使う。
-#   ほかに書ける巻の設定:
-#   chapter_start（その巻の最初の章の番号）・appendix_start（その巻の付録を振り直す記号）・
-#   whole_toc: true（その巻の目次の前に、全巻の構成を章と節まで示す目次を載せる。節は page.toc_depth が 2 以上のとき）
-#   別の巻の章や図を @chapref:ch-xxx・@fig-xxx で指すと、「上巻 第8章「…」」のように巻の名前を添えて組む。
+# 巻を指定してビルドするには、vs build --volume lower のように id を指定します。
+# vs build --volume all を実行すると、各巻を順番にビルドします。
+# 巻を指定せずに vs build を実行すると、全巻を一冊にまとめた合本を作ります。
+# 表紙を作る vs cover でも、--volume で巻を指定できます。
+#
+# 巻ごとにタイトルや発行日などを変える場合は、各巻の中に設定を書きます。
+# book.yml の book: の下にある設定（main_title・subtitle・author・release・isbn・cover など）を、
+# 同じ名前で指定してください。指定した巻だけに適用され、省略した設定には book.yml の値を使います。
+#
+# 【巻ごとの章番号・付録記号・全巻目次を設定する】
+# chapter_start には、その巻の最初の章番号を書きます。省略すると、前の巻から続けて番号を付けます。
+# appendix_start には、その巻の付録の開始記号を英字1文字で書きます。
+# 省略すると、全巻を通した付録の並びに従って記号を付けます。
+# whole_toc: true を指定すると、その巻の目次の前に、全巻の構成を示す「全巻目次」を載せます。
+# 全巻目次には章を載せ、book.yml の page.toc_depth が 2 以上の場合は節も載せます。
+# 次の例では、下巻の章番号と付録記号をそれぞれ 1 と A から始め、全巻目次も載せます。
 #
 # VOLUMES:
 #   - name: 上巻
 #     id: upper
 #     CHAPTERS:
-#       - 01-install          # 第1章
-#       - 02-tutorial         # 第2章
+#       - 01-install          # 第1章になります。
+#       - 02-tutorial         # 第2章になります。
 #     APPENDICES:
-#       - 90-cheatsheet       # 付録 A
-#       - 91-glossary         # 付録 B
+#       - 90-cheatsheet       # 付録 A になります。
+#       - 91-glossary         # 付録 B になります。
 #   - name: 下巻
 #     id: lower
-#     chapter_start: 1        # 下巻も第1章から数える（書かなければ上巻から続けて第3章から）
-#     appendix_start: A       # 下巻の付録を A から振り直す（書かなければ 92-links は付録 C）
-#     whole_toc: true         # 下巻の目次の前に、上巻・下巻の構成を章と節まで示す「全巻目次」を載せる
+#     chapter_start: 1        # 下巻も第1章から始めます。省略すると第3章から始まります。
+#     appendix_start: A       # 下巻の付録を A から始めます。省略すると 92-links は付録 C になります。
+#     whole_toc: true         # 下巻の目次の前に全巻目次を載せます。
 #     CHAPTERS:
-#       - 21-syntax           # 第1章
-#       - 22-customize        # 第2章
+#       - 21-syntax           # 第1章になります。
+#       - 22-customize        # 第2章になります。
 #     APPENDICES:
-#       - 92-links            # 付録 A
+#       - 92-links            # 付録 A になります。
