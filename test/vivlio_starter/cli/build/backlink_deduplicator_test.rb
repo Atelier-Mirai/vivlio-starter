@@ -750,13 +750,72 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
 
+  # --- 先回り（dedup-rerender-skip-spec.md） ---
+
+  # 書き出しで空白がずれるだけの文書を「変わった」と数えると、1 件も消していないのに 2 回目の組版が走る
+  def test_should_not_rewrite_document_without_removals
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        page = <<~HTML
+          <!DOCTYPE html>
+          <html lang="ja"><head><meta charset="UTF-8"><title>用語集</title></head>
+
+          <body><p class="glossary-backlinks"><a href="08-web.html#gls-src-1" class="glossary-backlink"></a></p></body>
+          </html>
+        HTML
+        File.write(pdf_path('_glossarypage.html'), page, encoding: 'utf-8')
+        mapping = build_page_mapping(mappings: [{ anchor_id: 'gls-src-1', href: '', page_index: 4, spine_index: 0 }])
+
+        result = Deduplicator.new(mapping).deduplicate!
+
+        assert_empty result.files_modified
+        assert_equal page, File.read(pdf_path('_glossarypage.html')), '元の文字列のまま残す'
+      end
+    end
+  end
+
+  # 消したリンクは文書末の入れ物へ集め、<dd> の中身は証拠なしのときと同じにする。
+  # 範囲表記で捨てる間のページのリンクも残す——残さないと飛び先が PDF から消え、範囲を作り直せない
+  def test_should_keep_removed_links_as_witness_outside_dd
+    plain_dd, = dedup_index_dd(pages: [10, 10, 20, 21, 22])
+    dd, = dedup_index_dd(pages: [10, 10, 20, 21, 22], witness: true)
+
+    assert_equal plain_dd.to_html, dd.to_html, '<dd> の中は証拠の有無で変わらない'
+    witness = dd.document.at_css("div.#{Deduplicator::WITNESS_CLASS}")
+    assert_equal %w[#idx-2 #idx-4], witness.css('a').map { it['href'][/#.*/] }, '重複の 1 本と範囲の間の 1 本'
+    assert_includes witness['style'], 'position: absolute'
+    refute_includes witness['style'], 'display: none', 'display: none だと飛び先ごと消える'
+  end
+
+  def test_should_skip_body_daggers_when_asked
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        body = <<~HTML
+          <!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+          <a id="gls-src-08-web-term-1" class="glossary-link" href="_glossarypage.html#gls-term">†</a>
+          <a id="gls-src-08-web-term-2" class="glossary-link" href="_glossarypage.html#gls-term">†</a>
+          </body></html>
+        HTML
+        File.write(pdf_path('08-web.html'), body, encoding: 'utf-8')
+        mapping = build_page_mapping(
+          mappings: (1..2).map { { anchor_id: "gls-src-08-web-term-#{it}", href: '', page_index: 4, spine_index: 0 } }
+        )
+
+        result = Deduplicator.new(mapping, body: false).deduplicate!
+
+        assert_equal 0, result.body_removed
+        assert_equal body, File.read(pdf_path('08-web.html'))
+      end
+    end
+  end
+
   private
 
   # 索引の <dd> を 1 つだけ持つページを組んで dedup を通し、結果の <dd> を返す。
   # @param pages [Array<Integer>] リンクの通しページ番号（この順に並べる）
   # @param main [Integer, nil] 主要参照にする位置
   # @param frontmatter [Array<Integer>] 前付け（ローマ数字）にする位置
-  def dedup_index_dd(pages:, main: nil, frontmatter: [])
+  def dedup_index_dd(pages:, main: nil, frontmatter: [], witness: false)
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
         links = pages.each_with_index.map do |_, i|
@@ -780,7 +839,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           end
         )
 
-        deduplicator = Deduplicator.new(mapping)
+        deduplicator = Deduplicator.new(mapping, witness:)
         deduplicator.deduplicate!
         doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         return [doc.css('.index-list dd').first, deduplicator]
