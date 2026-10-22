@@ -96,6 +96,32 @@ module VivlioStarter
 
           assert_equal 1, toc_pages
         end
+
+        # 全ページを pdftotext 1 回で読んで分けても、白紙を挟んだページの番号がずれないこと
+        def test_should_find_pages_from_single_pdftotext_run
+          skip 'pdftotext が無い' unless Common.external_command_available?('pdftotext')
+          require 'prawn'
+
+          Dir.mktmpdir do |dir|
+            path = File.join(dir, 'book.pdf')
+            Prawn::Document.generate(path) do |pdf|
+              pdf.text 'Contents'
+              pdf.start_new_page # 白紙
+              pdf.start_new_page
+              pdf.text 'Chapter One'
+              pdf.text 'Second line'
+            end
+
+            texts = Extractor.read_page_texts(path)
+            assert_equal 3, texts.size
+            assert(texts.all? { it.end_with?("\f") }, '各ページの文字は \f で終わる')
+
+            helpers = Extractor.build_search_helpers(path, 3)
+            assert_equal 3, helpers[:search_markers].call(['Second line'], 1, 3)
+            assert_equal 3, helpers[:find_page_by_first_line].call('Chapter One', 1, 3)
+            assert_nil helpers[:find_page_by_first_line].call('Second line', 1, 2)
+          end
+        end
       end
     end
   end

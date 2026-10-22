@@ -22,6 +22,7 @@
 # ================================================================
 
 require 'nokogiri'
+require 'open3'
 
 module VivlioStarter
   module CLI
@@ -257,13 +258,15 @@ module VivlioStarter
         end
 
         def build_search_helpers(pdf_path, total_pages)
-          page_cache = {}
+          page_texts = nil
           normalized_cache = {}
           normalize = ->(str) { str.to_s.gsub(/[[:space:]\u00A0\u2000-\u200B\u202F\u205F\u3000]+/, '') }
 
+          # 全ページを pdftotext 1 回で読み、改ページ（\f）で分ける。1 ページずつ呼ぶと
+          # 起動のたびに PDF を開き直し、300 ページの本で 10 秒ほどかかっていた
           fetch_page_text = lambda do |page|
-            page = page.to_i.clamp(1, total_pages)
-            page_cache[page] ||= `pdftotext -f #{page} -l #{page} "#{pdf_path}" - 2>/dev/null`
+            page_texts ||= read_page_texts(pdf_path)
+            page_texts[page.to_i.clamp(1, total_pages) - 1].to_s
           end
 
           find_page_in_pdf = lambda do |term, from_page, to_page|
@@ -314,6 +317,14 @@ module VivlioStarter
           end
 
           { search_markers: search_markers, find_page_by_first_line: find_page_by_first_line }
+        end
+
+        # ページごとの文字。pdftotext は各ページの終わりに \f を出すので、\f の後ろで切る
+        # （1 ページずつ呼んだときと同じく、各ページの文字は \f で終わる）
+        # @return [Array<String>] 1 ページ目から順に
+        def read_page_texts(pdf_path)
+          text, = Open3.capture2('pdftotext', '-enc', 'UTF-8', pdf_path, '-', err: File::NULL)
+          text.force_encoding('utf-8').split(/(?<=\f)/)
         end
 
         # 目次見出し（例: 「目次」）を取得する。注釈対象 PDF 内で目次ページを
@@ -648,7 +659,7 @@ module VivlioStarter
 
         module_function :extract_number_text, :extract_title_text, :build_search_terms,
                         :validate_inputs, :build_chapter_paths, :build_chapter_order, :supplement_basenames,
-                        :extract_all_headings, :build_search_helpers, :toc_heading_title,
+                        :extract_all_headings, :build_search_helpers, :read_page_texts, :toc_heading_title,
                         :calculate_chapter_ranges, :detect_front_matter_spans,
                         :build_page_range_context, :calculate_page_range,
                         :page_range_titlepage, :page_range_legalpage, :page_range_preface,
