@@ -21,7 +21,9 @@
 .toc-section::after,
 #toc li.toc-section > .toc-title::after,
 .toc-subsection::after,
-#toc li.toc-chapter > .toc-title::after {
+#toc li.toc-chapter > .toc-title::after,
+#toc li.toc-chapter-appendix > .toc-title::after,
+#toc li.toc-chapter-no-number > .toc-title::after {
   font-family: var(--folio-font);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
@@ -110,10 +112,18 @@ body.toc {
   content: none;
 }
 
-#toc li.toc-chapter > .toc-title::after {
+/* 付録・前書き・後書きにも、章と同じくページ番号を付ける */
+#toc li.toc-chapter > .toc-title::after,
+#toc li.toc-chapter-appendix > .toc-title::after,
+#toc li.toc-chapter-no-number > .toc-title::after {
   margin-inline-start: 1em;
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   content: leader(dotted) " " target-counter(attr(href url), page);
+}
+
+/* 前書きはノンブルがローマ数字（page: front）なので、ページ番号もそろえる */
+#toc li.toc-preface > .toc-title::after {
+  content: leader(dotted) " " target-counter(attr(href url), page, lower-roman);
 }
 
 li.toc-chapter {
@@ -155,7 +165,7 @@ li.toc-chapter-appendix {
   margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
 }
 
-/* 付録および番号なし章タイトルはページ番号を非表示 */
+/* li 自体の ::after は使わない（ページ番号は .toc-title::after に付ける） */
 .toc-chapter-appendix::after,
 .toc-chapter-no-number::after {
   content: none !important;
@@ -324,8 +334,9 @@ body.whole_toc {
   color: #000;
 }
 
+/* 上の余白は、題（全巻目次）との間を空けるため。巻と巻の間は .whole-toc-volume の下の余白と重なる */
 .whole-toc-volume-name {
-  margin-block: 0 clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
+  margin-block: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm) clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
   padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
   border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) currentColor;
   font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);

@@ -217,6 +217,36 @@ module VivlioStarter
           end
         end
 
+        # 巻を選んで組む目次は「中巻目次」とし、前に置く全巻目次と見分ける。合本は「目次」のまま
+        def test_should_name_toc_after_selected_volume
+          with_project do
+            Volumes.select!(Volumes.find('middle'))
+            assert_includes TocCommands::TocDocumentBuilder.front_matter, "# 中巻目次\n"
+
+            Volumes.select!(:combined)
+            assert_includes TocCommands::TocDocumentBuilder.front_matter, "# 目次\n"
+          end
+        end
+
+        # 前書きはノンブルがローマ数字なので、目次でページ番号をローマ数字にする印を付ける（toc.css）
+        def test_should_mark_volume_preface_in_toc_for_roman_page_number
+          with_project do
+            FileUtils.mkdir_p('html')
+            Volumes.select!(Volumes.find('lower'))
+            entry_map = %w[20-vol3-intro 21-final 99-postface].to_h do |bn|
+              path = File.expand_path("html/#{bn}.html")
+              File.write(path, %(<html><body><h1 id="h-#{bn}">#{bn}</h1></body></html>))
+              [path, TokenResolver::Resolver.new.resolve_file(bn)]
+            end
+
+            toc = TocCommands::TocDocumentBuilder.new(entry_map, base_dir: 'html', depth: 1).build
+
+            assert_includes toc, %(<li class="toc-chapter-no-number toc-preface"><a href="20-vol3-intro.html#h-20-vol3-intro")
+            assert_includes toc, %(<li class="toc-chapter-no-number"><a href="99-postface.html#h-99-postface"),
+                            '後書きのノンブルは算用数字なので印を付けない'
+          end
+        end
+
         # PDF のしおりは、前書きに番号の範囲から「第 N 章」を付けない
         def test_should_not_number_volume_preface_in_outline
           with_project do

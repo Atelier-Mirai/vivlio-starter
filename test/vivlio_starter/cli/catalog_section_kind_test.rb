@@ -49,7 +49,7 @@ module VivlioStarter
           order = toc.scan(/href="([^"#]+)\.html#/).flatten
 
           assert_equal %w[00-preface 20-vol2-intro 01-intro 21-janken 05-glossary 90-how-to-ask 98-afterword], order
-          assert_includes toc, %(<li class="toc-chapter-no-number"><a href="20-vol2-intro.html#h-20-vol2-intro"),
+          assert_includes toc, %(<li class="toc-chapter-no-number toc-preface"><a href="20-vol2-intro.html#h-20-vol2-intro"),
                           'PREFACE に書いた原稿は、前書きとして番号なしで載ること'
           assert_includes toc, %(<li class="toc-chapter-no-number"><a href="98-afterword.html#h-98-afterword"),
                           'POSTFACE に書いた原稿は、後書きとして番号なしで載ること'

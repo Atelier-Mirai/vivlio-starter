@@ -614,14 +614,15 @@ module VivlioStarter
           return items unless chapter_ranges['_toc']
 
           toc_range = chapter_ranges['_toc']
-          toc_page = search_helpers[:search_markers].call(['目次'], toc_range[0], toc_range[1]) || toc_range[0]
+          title = toc_heading_title
+          toc_page = search_helpers[:search_markers].call([title], toc_range[0], toc_range[1]) || toc_range[0]
 
           return items if items.any? { |it| it[:chapter] == '_toc' }
 
           insert_index = items.index do |it|
             chapter_order.index(it[:chapter])&.> chapter_order.index('_toc')
           end || items.length
-          items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '_toc', id: nil })
+          items.insert(insert_index, { level: 1, text: title, page: toc_page, chapter: '_toc', id: nil })
           items
         end
 

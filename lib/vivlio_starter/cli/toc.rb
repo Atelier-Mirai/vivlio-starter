@@ -148,10 +148,16 @@ module VivlioStarter
             lang: '#{Common.book_language}'
             ---
 
-            # 目次
+            # #{heading}
             <nav id="toc" role="doc-toc">
             <ul>
           MD
+        end
+
+        # 目次の題。分冊の巻を選んで組むときは「下巻目次」のように巻の名前を添え、前に置く全巻目次と見分ける
+        def self.heading
+          volume = Build::Volumes.current
+          volume ? "#{volume.name}目次" : '目次'
         end
 
         # 目次に並べる種類の順。区分で種類が決まるので（catalog-section-kind-spec.md §2.1）、
@@ -188,7 +194,7 @@ module VivlioStarter
         # 前書き・後書きの h1 だけを、番号を付けずに載せる
         def append_supplements(buffer, kind)
           targets.select { entry_map[it]&.kind == kind }.each do |target|
-            entry = SupplementEntryProvider.new(targets:, base_dir:, file_name: File.basename(target)).call
+            entry = SupplementEntryProvider.new(targets:, base_dir:, file_name: File.basename(target), kind:).call
             buffer << entry if entry
           end
         end
@@ -301,11 +307,14 @@ module VivlioStarter
       # - 通常の見出し抽出ロジック（HeadingExtractor）は使用せず、h1 のみを抽出
       class SupplementEntryProvider
         CSS_CLASS = 'toc-chapter-no-number'
+        # 前書きのノンブルはローマ数字なので、目次のページ番号もローマ数字で組む（toc.css）
+        PREFACE_CSS_CLASS = "#{CSS_CLASS} toc-preface"
 
-        def initialize(targets:, base_dir:, file_name:)
+        def initialize(targets:, base_dir:, file_name:, kind:)
           @targets = targets      # ビルド対象の HTML ファイルリスト
           @base_dir = Pathname.new(base_dir)
           @file_name = file_name  # 対象ファイル名（例: '00-preface.html'）
+          @kind = kind            # :preface / :postface
         end
 
         # 指定された補助 HTML から TOC 項目を生成する
@@ -324,7 +333,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :targets, :base_dir, :file_name
+        attr_reader :targets, :base_dir, :file_name, :kind
 
         # 対象リストに既に該当ファイルが含まれているか判定する
         def included_in_targets?
@@ -347,7 +356,8 @@ module VivlioStarter
           return if text.empty? || heading_id.nil? || heading_id.empty?
 
           href = "#{file_name}##{heading_id}"
-          %(<li class="#{CSS_CLASS}"><a href="#{href}" class="toc-title"><span class="toc-label">#{text}</span></a></li>\n)
+          css_class = kind == :preface ? PREFACE_CSS_CLASS : CSS_CLASS
+          %(<li class="#{css_class}"><a href="#{href}" class="toc-title"><span class="toc-label">#{text}</span></a></li>\n)
         end
       end
 
