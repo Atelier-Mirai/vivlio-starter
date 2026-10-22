@@ -76,6 +76,27 @@ module VivlioStarter
           end
         end
 
+        def test_should_tell_pages_moved_when_same_references_moved
+          in_workspace(previous: { 'idx-1' => 10, 'idx-2' => 10 }) do
+            Orchestrator.speculate!
+
+            infos = capture_infos { run_with(current: { 'idx-1' => 10, 'idx-2' => 11 }) }
+
+            assert(infos.any? { it.include?('省けませんでした（ページがずれて') })
+          end
+        end
+
+        # 索引語を書き足すと参照の通し番号がずれ、前回の記録に無い参照ができる。ページのずれとは分けて知らせる
+        def test_should_tell_references_changed_when_index_terms_were_added
+          in_workspace(previous: { 'idx-1' => 10, 'idx-2' => 10 }) do
+            Orchestrator.speculate!
+
+            infos = capture_infos { run_with(current: { 'idx-1' => 10, 'idx-2' => 11, 'idx-3' => 11 }) }
+
+            assert(infos.any? { it.include?('省けませんでした（本文の索引語・用語が増えたか減ったため') })
+          end
+        end
+
         def test_should_render_again_when_images_were_swapped
           in_workspace(previous: { 'idx-1' => 10, 'idx-2' => 10 }) do
             Orchestrator.speculate!
@@ -151,6 +172,14 @@ module VivlioStarter
             end
           end
           renders
+        end
+
+        # ブロックの間に log_info へ渡った文を集める（teardown が元に戻す）
+        def capture_infos
+          infos = []
+          Common.define_singleton_method(:log_info) { |message, *| infos << message }
+          yield
+          infos
         end
 
         def mapping(pages) = Extractor.page_mapping_from(pages, total_pages: 30)

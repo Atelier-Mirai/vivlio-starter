@@ -137,7 +137,7 @@ module VivlioStarter
             save_record!(page_mapping, result)
             BacklinkDeduplicator.new(record[:mapping], dir: previous, body: false).deduplicate! if record
 
-            reason = speculation_miss_reason(result, current, previous, record:, images_changed:)
+            reason = speculation_miss_reason(result, current, previous, record:, images_changed:, page_mapping:)
             if reason.nil?
               Common.log_info('[Step 8] 前回のページ対応がそのまま使えたため、2 回目の組版を省きました')
               # 入稿用だけの経路は、このあと pdf/ の HTML で入稿用を組むので、証拠のリンクの無い形にしておく
@@ -155,7 +155,7 @@ module VivlioStarter
         end
 
         # 外れた理由。当たりなら nil
-        def speculation_miss_reason(result, current, previous, record:, images_changed:)
+        def speculation_miss_reason(result, current, previous, record:, images_changed:, page_mapping:)
           return '前回の記録を読めませんでした' unless record
           return '縮小版の画像へ差し替えました' if images_changed
           return '本文の † を除きました' if result.body_removed.positive?
@@ -163,8 +163,18 @@ module VivlioStarter
           same = BACK_MATTER.all? do |name|
             read_if_exist(File.join(current, name)) == read_if_exist(File.join(previous, name))
           end
-          same ? nil : 'ページがずれて、索引・用語集の判定が変わりました'
+          return if same
+
+          # 索引語を書き足す・消すと、その語の参照の通し番号（idx-…-N）が後ろへ向かってずれ、
+          # 前回の記録は別の箇所のページを指す。ページのずれとは直し方の見当が違うので分けて知らせる
+          if anchor_ids(page_mapping) == anchor_ids(record[:mapping])
+            'ページがずれて、索引・用語集の判定が変わりました'
+          else
+            '本文の索引語・用語が増えたか減ったため、索引・用語集が変わりました'
+          end
         end
+
+        def anchor_ids(page_mapping) = (page_mapping.mappings + page_mapping.index_mappings).to_set(&:anchor_id)
 
         # 今回のページ対応で作り直した HTML を pdf/ へ戻す（索引・用語集は証拠のリンクの無い形）
         def adopt!(dir, result)
