@@ -553,7 +553,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
 
   # 章の改丁も同じ理由でセレクタの実在を固定する（chapter-pagebreak-spec.md §4-2）。
   # break-before: recto を持つのは 7 ファイルだが、chapter-common / glossary / index /
-  # postface はいずれも素の body なので、相異なるセレクタは 4 つで足りる。
+  # postface はいずれも素の body なので、相異なるセレクタは 5 つで足りる。
   def test_should_mirror_selectors_that_actually_start_on_a_recto_page
     recto_sources = Dir.glob(File.join(STYLESHEETS, '*.css'))
                        .map { File.read(it) }
@@ -563,6 +563,24 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
       assert(recto_sources.any? { it.include?(selector) },
              "#{selector} を持つ break-before: recto のルールが stylesheets/ にありません。" \
              '元ルールを改名したなら CHAPTER_PAGEBREAK_SELECTORS も追随させてください。')
+    end
+  end
+
+  # 逆向き。右ページ始まりのルールを足したのに一覧へ入れ忘れると、chapter_pagebreak: any / verso が
+  # そこだけ効かず白紙が残る（全巻目次の body.whole_toc で実際に起きた）。
+  # 原稿の @pagebreak:recto（.vs-break-recto）は本設定より優先するので一覧に入れない
+  def test_should_relax_every_rule_that_starts_on_a_recto_page
+    recto_selectors = Dir.glob(File.join(STYLESHEETS, '*.css')).flat_map do |path|
+      css = File.read(path).gsub(%r{/\*.*?\*/}m, '')
+      css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
+        # 直前の @import など（; で終わる文）はセレクタではないので落とす
+        selector.split(';').last.split(',').map(&:strip) if body.match?(/break-before:\s*recto/)
+      end.flatten
+    end
+
+    (recto_selectors.uniq - ['.vs-break-recto']).each do |selector|
+      assert_includes BSC::CHAPTER_PAGEBREAK_SELECTORS, selector,
+                      "#{selector} は break-before: recto なのに CHAPTER_PAGEBREAK_SELECTORS にありません。"
     end
   end
 

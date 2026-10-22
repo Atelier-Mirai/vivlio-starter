@@ -432,12 +432,13 @@ module VivlioStarter
         # ================================================================
         # 章・目次・部扉・付録・用語集・後書き・索引を右ページ始まりにする既存ルールの
         # 元セレクタ。7 ファイルに散っているが、chapter-common / glossary / index /
-        # postface の 4 つはいずれも素の body なので、相異なるセレクタは 4 つで足りる。
+        # postface の 4 つはいずれも素の body なので、相異なるセレクタは 5 つで足りる。
         # 打ち消しは「元セレクタをそのまま複製」する必要がある——book-settings.css は
         # 後段読込なので同特異度なら後勝ちできるが、ずれると特異度負けして効かない。
         CHAPTER_PAGEBREAK_SELECTORS = [
           'body',                     # chapter-common.css / glossary.css / index.css / postface.css
           'body.toc',                 # toc.css
+          'body.whole_toc',           # toc.css（分冊の全巻目次）
           'body.vs-header-simple h1', # simple-header.css
           '.part-title'               # part-title.css
         ].freeze
