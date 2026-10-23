@@ -316,6 +316,8 @@ module VivlioStarter
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         def build_overall_pdf_from_dir!(entries_or_keep = nil)
           stage_workspace_htmls!
+          # 前回のページ対応で索引・用語集の重複を先に除いておくと、当たれば Step 8 の 2 回目の組版を省ける
+          BacklinkDedupOrchestrator.speculate!
           targets_for_pdf = sections_entry_htmls(Common::BUILD_PDF_DIR, entries_or_keep)
           Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
@@ -326,6 +328,7 @@ module VivlioStarter
         # 生成した entries.sections.js / config は PrintPdfBuilder と dedup が再利用する
         def generate_entries_for_sections!(entries_or_keep = nil)
           stage_workspace_htmls!
+          BacklinkDedupOrchestrator.speculate!
           targets_for_pdf = sections_entry_htmls(Common::BUILD_PDF_DIR, entries_or_keep)
 
           if targets_for_pdf.empty?

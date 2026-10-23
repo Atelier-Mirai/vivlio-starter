@@ -65,7 +65,26 @@ module VivlioStarter
           end
 
           Common.log_success("[backlink-dedup] ページマッピングを取得しました（#{anchor_to_page.size} 件）")
-          build_page_mapping(anchor_to_page, reader.page_count)
+          self.class.page_mapping_from(anchor_to_page, total_pages: reader.page_count)
+        end
+
+        # 「アンカー ID → 通しページ番号」から、Deduplicator が消費する形（用語集 / 索引の 2 系統）を作る。
+        # PDF から読んだときのほか、前回のビルドの記録から戻すときにも使う（dedup-rerender-skip-spec.md §4.2）
+        # @param anchor_to_page [Hash{String => Integer}]
+        # @return [PageMapping]
+        def self.page_mapping_from(anchor_to_page, total_pages:)
+          mappings = []
+          index_mappings = []
+
+          anchor_to_page.each do |anchor_id, page|
+            if anchor_id.start_with?(GLOSSARY_PREFIX)
+              mappings << MappingEntry.new(anchor_id:, href: '', page_index: page, spine_index: 0)
+            elsif anchor_id.start_with?(INDEX_PREFIX)
+              index_mappings << IndexMappingEntry.new(anchor_id:, page_index: page, spine_index: 0)
+            end
+          end
+
+          PageMapping.new(mappings:, index_mappings:, total_pages:, extracted_at: Time.now.iso8601)
         end
 
         # スパイン文書（HTML ベース名）→ その文書が始まる通しページ番号。
@@ -191,22 +210,6 @@ module VivlioStarter
           value = objects.deref(value[:D]) if value.is_a?(Hash)
           page_ref = Array(value).first
           page_ref.respond_to?(:id) ? page_numbers[page_ref.id] : nil
-        end
-
-        # Deduplicator が消費する形（用語集 / 索引の 2 系統）へ振り分ける
-        def build_page_mapping(anchor_to_page, total_pages)
-          mappings = []
-          index_mappings = []
-
-          anchor_to_page.each do |anchor_id, page|
-            if anchor_id.start_with?(GLOSSARY_PREFIX)
-              mappings << MappingEntry.new(anchor_id:, href: '', page_index: page, spine_index: 0)
-            elsif anchor_id.start_with?(INDEX_PREFIX)
-              index_mappings << IndexMappingEntry.new(anchor_id:, page_index: page, spine_index: 0)
-            end
-          end
-
-          PageMapping.new(mappings:, index_mappings:, total_pages:, extracted_at: Time.now.iso8601)
         end
       end
     end

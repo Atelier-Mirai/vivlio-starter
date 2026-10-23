@@ -80,11 +80,13 @@ lib/vivlio_starter/
 .cache/vs/
   build/
     html/   pdf/   epub/   kindle/
+    .volume
   derived/
     pdf/   svg/   image-metrics.yml
   math/   math-png/   mermaid/   showcase/   qr/   talk-avatars/
   covers/   theme-images/
   book-settings.css
+  dedup-pages-<巻>.json
 ```
 
 | 場所 | 内容 |
@@ -92,10 +94,12 @@ lib/vivlio_starter/
 | `build/html/` | 前処理済み Markdown と変換後 HTML。すべての出力の原本 |
 | `build/pdf/` | PDF 用に加工したコピー。破壊的な書き換えはここに閉じる |
 | `build/epub/` ・ `build/kindle/` | フレーバごとの消費者ディレクトリ |
+| `build/.volume` | 分冊の本で、最後に組んだ巻（巻の `id`・`combined`・`all`）。違う巻を組むときに置き場を空にする目印 |
 | `derived/` | ターゲットごとの画像派生。`pdf/` にラスタ、`svg/` に書体を埋めた SVG が入ります |
 | `math/` 〜 `talk-avatars/` | 生成資産のキャッシュ。final clean を生き延びます |
 | `covers/` `theme-images/` | 表紙・テーマ画像 |
 | `book-settings.css` | `book.yml` から生成した CSS |
+| `dedup-pages-<巻>.json` | 前回のビルドで取った索引・用語集のアンカーとページの対応。巻ごとに分かれ、巻のない本は `all` |
 
 生成資産のキャッシュは内容で引くので、ディレクトリができるのは実際に使った種別だけです。手元の `.cache/vs/` に上の全部が並んでいなくても、異常ではありません。
 
@@ -114,6 +118,8 @@ lib/vivlio_starter/
 | preflight | `vs preflight` | 原稿の検査のみ。HTML 変換・PDF 生成を行わない |
 
 単章ビルドが閲覧用 PDF だけを作るのは意図的です。入稿用 PDF・EPUB・Kindle は全章がそろってはじめて意味を持つ成果物なので、単章では中途半端な出力を避けています。
+
+分冊の本では、どのモードでも、パイプラインに入る前に組む範囲（巻・合本・全巻）を一つ選びます（後述の「分冊」）。モードは範囲の選び方を変えません。
 
 :::{.note}
 単章ビルドでは索引スキャンが走りません。索引語の初出を包む `<dfn>` が付かないため、索引・用語集に関わる見え方は全章ビルドでしか確認できません。
@@ -150,6 +156,7 @@ full モードのステップは、条件つきの 1 枚の表として宣言さ
 | shared | `index scan and build` | 常時 |
 | shared | `convert sections html` | 常時 |
 | shared | `generate part title pages` | 常時 |
+| shared | `generate whole toc` | 分冊の本で、`whole_toc: true` の巻を組むとき |
 | shared | `generate front and back matter html` | 常時 |
 | shared | `techbook post-process` | 常時 |
 | shared | `generate toc html` | 常時 |
@@ -261,6 +268,46 @@ Kindle の表示エンジン（KFX）は、EPUB で広く使える CSS の一部
 
 ## 主要サブシステム
 
+### 分冊
+
+`catalog.yml` に `VOLUMES:` を書くと、一つの `contents/` から上下巻などを組めます。中心は `Build::Volumes`（`cli/build/volumes.rb`）で、巻は順番のある並びとして扱います。巻の数も名前の意味も決め打ちせず、「前の巻」「最初の巻」「最後の巻」は並びの順から決めます。
+
+**組む範囲は、プロセスに一つだけ持ちます。** コマンドの始まりに `Volumes.select!` で選び、以後は `Volumes.selection` を誰もが読みます。
+
+| 選択 | 起動 | 目次（`CatalogLoader.load_catalog` が返すもの） |
+| :--- | :--- | :--- |
+| 巻（`Volume`） | `vs build --volume lower`・章を指定した `vs build 21` | その巻の目次 |
+| `:combined` | 巻を選ばない `vs build`（合本） | 最初の巻の前書き・全巻の本文と付録・最後の巻の後書き |
+| `:all` | 既定。巻を選ばない `vs preflight`・`vs lint`・`vs metrics` | どれかの巻に載った原稿すべて |
+
+`load_catalog` は、どの選択でも巻のない本と同じ形の Hash（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）を返します（`Volumes.view`）。部の中扉、最初の本文の章を探す処理、索引の対象など、目次を読むほかの処理は巻を知らずに済みます。**目次を読む処理を足すときは `load_catalog` を通してください。** `load_raw_catalog` を直接読むと `VOLUMES:` の入れ子が見え、巻を選んでも全巻を読んでしまいます。一時的に別の範囲で数えたいとき（全巻の原稿で用語集の警告を出す、など）は `Volumes.with_selection(:all) { … }` で包みます。
+
+**`--volume all` は、巻ごとに別のプロセスで組みます。** `CONFIG` も章の並びの記録もプロセスの中に残るので、同じプロセスで巻を切り替えると前の巻の値が混ざるためです。`BuildCommand#run_all_volumes` が巻の順に `vs build --volume <id>` を起動し、失敗した巻で止めます。`vs cover --volume all` だけは同じプロセスで巻ごとに選び直します。表紙が読むのは `CONFIG` だけなので、作り終えたら元の `CONFIG` を入れ直せば足ります。
+
+巻を選ぶと、ほかに三つのことが起こります。
+
+- **書誌情報の上書き**: 巻に書いた `book:` のキーを `book.yml` の値に重ねた `CONFIG` を入れます（`Volumes.apply_config!`）。扉・奥付・表紙・PDF の文書情報・EPUB の書誌情報はどれも `CONFIG` を読むので、そのまま巻の値になります。上書きできるキー（`BOOK_KEYS`）は `ConfigKeys.book_keys` から作るので、`book:` にキーを足せば巻でも上書きできます
+- **置き場の掃除**: 前に別の巻を組んだ HTML が残ると、本文の章の並びに混ざって番号がずれます。`Volumes.prepare_workspace!` が `build/.volume` と比べ、違えば `--no-clean` でも置き場を空にします
+- **出力の名前**: `project.name` の後に巻の `id` が入ります（`mybook_lower_v1.0.0.pdf`）。ISBN のない EPUB の識別子も、`project.name` と `id` から作ります。同じ識別子だと、ストアや読書アプリが上巻と下巻を同じ本の版違いとして扱うためです
+
+**番号は `Volumes` だけが数えます。**
+
+| 番号 | 決め方 | 実装 |
+| :--- | :--- | :--- |
+| 本文の章 | 前の巻から続ける。`chapter_start` を書いた巻はその番号から | `chapter_starts`・`chapter_offset` |
+| 付録の記号 | 全巻を巻の順に見て、はじめて出た付録に次の記号。再び載る巻でも同じ記号。`appendix_start` を書いた巻はその巻の付録だけを振り直す | `appendix_letter` |
+| ノンブル | 巻ごとに 1 から | （巻のない本と同じ） |
+
+章扉の「第 N 章」は、全章ビルドで巻を選んだときだけ `BuildCommand` が `HeadingProcessor.chapter_number_offset` に足す数を渡します。単章ビルドの章扉は、巻を選んでも「第1章」から数えます（`chapter-reference-spec.md` の決まり）。目次の番号は CSS のカウンタで数えているので、HTML の章扉に書いた番号は届きません。`TocGenerator` が目次の最上位の `<ul>` と付録の `<li>` に `counter-reset` を与えて合わせます。
+
+**本文の章や付録は、二つ以上の巻に載せられます。** 番号は載った巻ごとに、巻の中の位置で振ります。合本と `:all` の目次には、最初に載った所に一度だけ残します（`merged_sections`）。原稿の名前で見るので、部の中に書いた章も部ごとに別物とはみなしません。巻をまたいで並びを見る検査（「前の章」）は、共通の章が巻ごとに現れる `reading_order` を使います。
+
+**巻をまたぐ参照**は、ラベルを全巻の原稿から集めて作ります（`CrossReferenceProcessor`）。組む範囲に入らない原稿（`PreProcessCommands.other_volume_files`）のラベルは、その巻を選んだ状態（`with_selection`）で数えるので、番号はその巻の振り方になります。別の巻への参照は `<span class="cross-ref-other-volume">` にし、リンクにしません。`@pageref` もページ番号を付けず、章で示します。ほかの巻はその場で組まないので、ページ番号が分からないためです。
+
+**全巻目次**は `Build::WholeTocGenerator` が作ります。扉や中扉と同じシステムページ（`_whole_toc`）で、その巻の目次の前に置きます。ほかの巻の HTML はないので、節は原稿の Markdown の `## ` の行から取ります。題名は `@chapref` と同じ `plain_chapter_title`、節の番号は章扉と同じ材料（`heading_number_context_for`）で作ります。今の巻には `vs-current-volume` を付けて濃く組みます。Kindle は `var()` を読まないので、色はリテラルで書きます。ページ番号とリンクは載せません。
+
+巻の書き方の誤り（`id` の重なり、知らないキー、ISBN の共有など）は `Guards::VolumeDefinitionCheck` が知らせ、`vs build` と `vs preflight` で同じものを出します。`vs create`・`vs delete`・`vs rename` は `CatalogUpdater` を通して、すべての巻の行を書き換えます。設計の全体と、まだ作っていないもの（ほかの巻のページ番号が要る索引・全巻目次のページ番号・全巻を通したノンブル・背表紙）は `multivolume-spec.md` と `PLANNED.md` にあります。
+
 ### 索引・用語集
 
 Vivliostyle の `target-counter` はレンダリング時にページ番号を解決するため、Ruby のビルド時点では実際のページ番号が分かりません。そこで「**Ruby がリンク構造を作り、CSS がページ番号を流し込む**」設計を採っています。
@@ -276,6 +323,20 @@ Vivliostyle の `target-counter` はレンダリング時にページ番号を�
 | `ig` | 両方 | `<span>` ＋ `<a class="glossary-link">†</a>` |
 
 索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。同じページを指す重複は `backlink dedup` が排除します。組み上がった PDF の named destinations を読んで「アンカー ID からページ番号」を得るので、章が複数ページにまたがっても正確です。
+
+重複を除くと索引が縮んでページが動くので、除いた HTML で本文をもう一度組みます。本書ではこの 2 回目が約 55 秒かかります。これを省くために、**前回のページ対応で先回り**します（`BacklinkDedupOrchestrator`）。
+
+1. `backlink dedup` は、取ったページ対応を `dedup-pages-<巻>.json` に残します
+2. 次のビルドでは、`build overall pdf` が HTML を `pdf/` へ移した直後（`speculate!`）に、前回の対応で索引・用語集の重複を先に除いてから 1 回目を組みます
+3. `backlink dedup` は、先回り前の HTML に今回の対応と前回の対応をそれぞれ当て、結果の文字列が同じなら 2 回目を組みません。違えば今回の対応で組み直すので、出来上がりは先回りしないときと変わりません
+
+ページ対応そのものではなく当てた結果を比べるのは、判定に効かないずれ（章は改ページで始まるので、ずれは直した章の中で吸収されやすい）を外れに数えないためです。縮小版の画像へ差し替えたとき（`shrink oversized images`）と、本文の † を除いたときは、比べずに組み直します。
+
+:::{.notice}
+**先回りで消したリンクは、消さずに残してください。** 消したリンクの飛び先は PDF の `/Dests` から消えるので、今回の対応が取れず、何も直さなくても外れ続けます。消したリンクは、大きさ 0 のリンクとして索引・用語集の末尾（`div.vs-dedup-witness`。`<dd>` の外）に残します。範囲表記（12–15）で間を詰めたリンクも同じです。
+:::
+
+索引語のアンカーは語ごとの通し番号（`idx-<語のダイジェスト>-N`）なので、本文で索引語を書き足す・消すと、それより後ろの同じ語の番号がずれて外れます。`--log` の外れた理由は、ページのずれと参照の増減とを分けて出します。経緯と実測は `dedup-rerender-skip-spec.md` にあります。
 
 著者向けの記法と運用は、本書の「索引・用語集機能」の章にあります。
 
@@ -577,6 +638,8 @@ AGPL のライブラリを本体から切り離すための構造です。Standa
 ### 設定キーを足す・やめる
 
 `book.yml` のキーと既定値は `cli/config_keys.rb` の 1 表が正典です。ただし手を動かす前に `config-key-criteria-guidelines.md` の五つの判断軸を読んでください。「そのキーは設定であるべきか」を問うもので、足す手順より先に立ちます。足す手順は `config-extension-guidelines.md`、やめる手順は `config-retirement-guidelines.md` にあります。
+
+`book:` の下に足したキーは、分冊の本では巻ごとに上書きできるようになります（`Volumes::BOOK_KEYS` が `ConfigKeys.book_keys` から作られるため）。巻ごとに変えては困る値なら、`book:` の外に置いてください。
 
 章の basename を保持する設定やデータを足すときは `ChapterRename::FOLLOWERS` への登録が要ります。登録を忘れると `vs rename` が黙って参照を壊します。
 

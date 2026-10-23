@@ -271,7 +271,7 @@ Kindle の表示エンジン（KFX）は、EPUB の一部の画像形式や CSS 
 
 SVG で描いた図は、Kindle 版では画像に変えて入れるので、細い線や小さな文字が読めるかを Kindle Previewer で確かめてください。
 
-### kindlepreviewer のインストール
+### Kindle Previewer のインストール
 
 `.kpf` への変換には、Amazon が配布する **Kindle Previewer** に含まれる `kindlepreviewer` コマンドが必要です。未インストールの場合、Kindle 用の中間 EPUB までは生成されますが、`.kpf` への変換は飛ばし、ビルドの最後に 💡 で入れ方を知らせます。
 

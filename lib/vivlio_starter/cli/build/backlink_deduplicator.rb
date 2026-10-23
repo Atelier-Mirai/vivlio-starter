@@ -27,8 +27,22 @@ module VivlioStarter
         # 処理結果を保持する Data オブジェクト
         Result = Data.define(:glossary_removed, :body_removed, :index_removed, :files_modified)
 
-        def initialize(page_mapping)
+        # 先回りで消したリンクを残す入れ物。大きさ 0 の絶対配置なら、紙面にもリンク注釈にも出ずに
+        # 飛び先だけが PDF の /Dests に残る（display: none だと飛び先ごと消える）。1 回目の PDF で
+        # 判定を確かめるのに要る（dedup-rerender-skip-spec.md §2.3・§4.4）
+        WITNESS_CLASS = 'vs-dedup-witness'
+        WITNESS_STYLE = 'position: absolute; inline-size: 0; block-size: 0; overflow: hidden;'
+
+        # @param page_mapping [PdfPageMapExtractor::PageMapping]
+        # @param dir [String] 対象の HTML の置き場（既定はワークスペース pdf/）
+        # @param body [Boolean] 本文の † も重複を除くか（先回りでは除かない・§4.6）
+        # @param witness [Boolean] 消した索引・用語集のリンクを文書末へ証拠として残すか
+        def initialize(page_mapping, dir: Common::BUILD_PDF_DIR, body: true, witness: false)
           @page_mapping = page_mapping
+          @dir = dir
+          @body = body
+          @witness = witness
+          @removed_links = []
           @glossary_removed = 0
           @body_removed = 0
           @index_removed = 0
@@ -55,7 +69,7 @@ module VivlioStarter
           unless anchor_to_page.empty?
             Common.log_info("[backlink-dedup] #{anchor_to_page.size} 件の glossary anchor → page マッピングを構築しました")
             deduplicate_glossary_backlinks!(anchor_to_page)
-            deduplicate_body_glossary_links!(anchor_to_page)
+            deduplicate_body_glossary_links!(anchor_to_page) if @body
           end
 
           # --- Phase 3: 索引ページの重複排除 ---
@@ -85,18 +99,19 @@ module VivlioStarter
         # 同一用語について、同じページを指すバックリンクの2件目以降を削除
         # dedup の破壊的書換はワークスペース pdf/ 配下のコピーに閉じる（P4 §3.4-4）
         def deduplicate_glossary_backlinks!(anchor_to_page)
-          glossary_file = File.join(Common::BUILD_PDF_DIR, '_glossarypage.html')
+          glossary_file = File.join(@dir, '_glossarypage.html')
           return unless File.exist?(glossary_file)
 
-          html = File.read(glossary_file, encoding: 'utf-8')
-          doc = Nokogiri::HTML5(html)
+          doc = Nokogiri::HTML5(File.read(glossary_file, encoding: 'utf-8'))
+          removed_before = @glossary_removed
+          @removed_links = []
 
           # 各 .glossary-backlinks（用語ごとのバックリンク群）を処理
           doc.css('p.glossary-backlinks').each do |backlinks_p|
             deduplicate_backlinks_in_paragraph!(backlinks_p, anchor_to_page)
           end
 
-          write_if_changed!(glossary_file, html, doc)
+          write_if_changed!(glossary_file, doc, changed: @glossary_removed > removed_before, witness: @witness)
         end
 
         # 1つの <p class="glossary-backlinks"> 内の重複を排除
@@ -123,6 +138,7 @@ module VivlioStarter
 
           # 2件目以降を削除し、前後の空白ノードも整理
           links_to_remove.each do |link|
+            @removed_links << link['href'].to_s
             remove_link_and_adjacent_whitespace!(link)
             @glossary_removed += 1
           end
@@ -144,8 +160,7 @@ module VivlioStarter
 
         # 単一の本文 HTML ファイル内で glossary-link の重複を排除
         def deduplicate_single_body_file!(html_file, anchor_to_page)
-          html = File.read(html_file, encoding: 'utf-8')
-          doc = Nokogiri::HTML5(html)
+          doc = Nokogiri::HTML5(File.read(html_file, encoding: 'utf-8'))
 
           # ページ＋用語の組み合わせで重複を追跡
           # キー: "(spine_index, page_index, glossary_href)" → 最初の出現のみ残す
@@ -180,25 +195,26 @@ module VivlioStarter
             @body_removed += 1
           end
 
-          write_if_changed!(html_file, html, doc)
+          write_if_changed!(html_file, doc, changed: true)
         end
 
         # --- 索引ページ（_indexpage.html）の重複排除 ---
 
         # 同一用語について、同じページを指すリンクの2件目以降を削除
         def deduplicate_index_page_links!(index_anchor_to_page)
-          index_file = File.join(Common::BUILD_PDF_DIR, '_indexpage.html')
+          index_file = File.join(@dir, '_indexpage.html')
           return unless File.exist?(index_file)
 
-          html = File.read(index_file, encoding: 'utf-8')
-          doc = Nokogiri::HTML5(html)
+          doc = Nokogiri::HTML5(File.read(index_file, encoding: 'utf-8'))
+          before = [@index_removed, @index_ranges]
+          @removed_links = []
 
           # 各 <dd>（用語ごとのリンク群）を処理
           doc.css('.index-list dd').each do |dd|
             deduplicate_links_in_dd!(dd, index_anchor_to_page)
           end
 
-          write_if_changed!(index_file, html, doc)
+          write_if_changed!(index_file, doc, changed: [@index_removed, @index_ranges] != before, witness: @witness)
         end
 
         # 1つの <dd> 内の重複を排除
@@ -226,6 +242,7 @@ module VivlioStarter
           end
 
           links_to_remove.each do |link|
+            @removed_links << link['href'].to_s
             link.remove
             @index_removed += 1
           end
@@ -309,7 +326,11 @@ module VivlioStarter
 
         # 範囲は <span> でひとまとまりにする。ダッシュの前後で行が割れないよう
         # CSS 側で white-space: nowrap を当てている
+        #
+        # 間のページのリンクは捨てる。先回りでは、これも証拠に残さないと今回の PDF で飛び先が消え、
+        # 範囲を作り直せない（dedup-rerender-skip-spec.md §4.4）
         def build_page_range(doc, item)
+          item[1...-1].each { @removed_links << it.link['href'].to_s }
           span = Nokogiri::XML::Node.new('span', doc)
           span['class'] = 'page-range'
           span.add_child(item.first.link)
@@ -344,7 +365,7 @@ module VivlioStarter
           anchor_to_page.keys
                         .filter_map { extract_chapter_from_anchor_id(it) }
                         .uniq
-                        .map { File.join(Common::BUILD_PDF_DIR, "#{it}.html") }
+                        .map { File.join(@dir, "#{it}.html") }
                         .select { File.exist?(it) }
         end
 
@@ -367,14 +388,33 @@ module VivlioStarter
           link.remove
         end
 
-        # 変更がある場合のみファイルを書き込み
-        def write_if_changed!(file_path, original_html, doc)
-          new_html = serialize_html(doc)
-          return if new_html == original_html
+        # 消した・畳んだものがあるときだけ書く。書き出した文字列と元の文字列を比べると、
+        # Nokogiri が空白や </body> の位置を変えるだけで「変わった」になり、1 件も消していない
+        # 用語集のために 2 回目の組版が走っていた（dedup-rerender-skip-spec.md §2.1）
+        def write_if_changed!(file_path, doc, changed:, witness: false)
+          return unless changed
 
-          File.write(file_path, new_html, encoding: 'utf-8')
+          append_witness!(doc) if witness
+          File.write(file_path, serialize_html(doc), encoding: 'utf-8')
           @files_modified << file_path
           Common.log_success("[backlink-dedup] #{File.basename(file_path)} を更新しました")
+        end
+
+        # 消したリンクを、中身の無い <a> にして文書末の入れ物へ集める。<dd> の中に置くと、
+        # 範囲表記にしていない <dd> の `a:not(:last-child)::after` が最後の番号にもカンマを付ける
+        def append_witness!(doc)
+          return if @removed_links.empty?
+
+          container = Nokogiri::XML::Node.new('div', doc)
+          container['class'] = WITNESS_CLASS
+          container['style'] = WITNESS_STYLE
+          container['aria-hidden'] = 'true'
+          @removed_links.each do |href|
+            link = Nokogiri::XML::Node.new('a', doc)
+            link['href'] = href
+            container.add_child(link)
+          end
+          (doc.at_css('body') || doc.root).add_child(container)
         end
 
         # Nokogiri ドキュメントを HTML 文字列に変換

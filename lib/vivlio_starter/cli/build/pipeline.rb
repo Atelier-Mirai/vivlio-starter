@@ -322,7 +322,8 @@ module VivlioStarter
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
-            ['backlink dedup', -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
+            ['backlink dedup', -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf,
+                                                                                   images_changed: @images_reswapped) },
              t.any_pdf?, :pdf, :whole_book],
             # 前付・奥付。HTML は共通前段で作り済みなので、ここは相乗りできなかった
             # ときのフォールバックレンダだけを持つ。生成するのは扉・権利ページ（前付）と
@@ -466,7 +467,15 @@ module VivlioStarter
           end
 
           Common.log_info("[shrink] 実効解像度を測りました: #{measured} 種類の画素数")
+          # 差し替えた件数は、同じ縮小版を当て直しても数えられるので、HTML が変わったかは中身で見る。
+          # 変わっていれば、Step 8 の先回りが当たっても組み直す（dedup-rerender-skip-spec.md §4.5）
+          before = staged_html_digests
           Build::PdfBuilder.swap_images_for_pdf!
+          @images_reswapped = staged_html_digests != before
+        end
+
+        def staged_html_digests
+          Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).sort.to_h { [it, Digest::SHA256.file(it).hexdigest] }
         end
 
         # ここに残っているのは Techbook モードの SVG ラスタライズだけで、画像の WebP 変換は
