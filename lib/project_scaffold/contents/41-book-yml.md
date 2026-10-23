@@ -1,4 +1,4 @@
-# config/book.yml・catalog.yml リファレンス
+# book.yml・catalog.yml リファレンス
 
 :::{.chapter-lead}
 `config/book.yml` には、本のタイトルや著者名だけでなく、紙面のデザイン、出力形式、校正などの設定を集めている Vivlio Starter プロジェクトの中心となる設定ファイルです。制作中に何をどこで変えられるかを知っておくと、書籍の姿を調整しやすくなります。

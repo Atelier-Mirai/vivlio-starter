@@ -206,7 +206,7 @@ output:
   kindle:
     embed: false # 表紙画像を EPUB に埋め込むか（Kindle は二重表紙を避けるため false 推奨）
     layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
-    # メタデータは book セクションから自動流用。KPF 変換は kindlepreviewer を使用。
+    # メタデータは book セクションから自動流用。KPF 変換は Kindle Previewer を使用。
 
 # ======= 原稿の検証（vs build と vs preflight に共通） =======
 # 画像の実在と裸 URL は常に確かめます。外部 URL を調べるかどうかだけを選べます
