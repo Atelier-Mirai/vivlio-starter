@@ -175,7 +175,6 @@ module VivlioStarter
             ['--page-margin-inner',     page_cfg[:margin_inner]],
             ['--page-margin-outer',     page_cfg[:margin_outer]],
             ['--frontispiece-binding-offset', page_cfg[:frontispiece_binding_offset]],
-            ['--column-font-size',      page_cfg[:column_font_size]],
             ['--folio-font-size',       page_cfg[:folio_font_size]],
             ['--font-main-text',        page_cfg[:main_text_font],  :font],
             ['--font-header',           page_cfg[:header_font],     :font],

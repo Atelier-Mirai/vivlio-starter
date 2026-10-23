@@ -140,7 +140,6 @@ typography:
   # ------- コラム -------
   column:
     font: Zen Maru Gothic
-    font_size: 8pt # 本文より小さいため独立設定
 
   # ------- コード -------
   code:

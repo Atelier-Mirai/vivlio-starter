@@ -384,7 +384,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     --page-width --page-height --paper-scale --align-max-width
     --base-font-size --base-line-height --letter-spacing
     --page-margin-top --page-margin-bottom --page-margin-inner --page-margin-outer
-    --frontispiece-binding-offset --column-font-size
+    --frontispiece-binding-offset
     --font-main-text --font-header --font-code --font-column --font-folio
     --folio-center-content --folio-left-content --folio-right-content
   ].freeze

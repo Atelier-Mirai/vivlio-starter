@@ -29,7 +29,7 @@ module VivlioStarter
 
       CONFIG_FILE = 'config/book.yml'
       PAGE_PRESETS_FILE = 'config/page_presets.yml'
-      FONT_SIZE_KEYS = %i[base_font_size column_font_size folio_font_size].freeze
+      FONT_SIZE_KEYS = %i[base_font_size folio_font_size].freeze
       PAGE_PRESET_EXCLUDE_KEYS = %i[preset use preset_name].freeze
       # 直接ビルド（book.yml を持たない単一 Markdown）の版面。日本の技術書の主流サイズであり、
       # resolve_page_size の既定フォールバック（B5）とも一致する。

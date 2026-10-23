@@ -146,7 +146,7 @@ page:
 
 ### typography — タイポグラフィ設定
 
-本文・見出し・コード・ページ番号の書体を指定します。既定の組み合わせで読みやすければ、そのまま使えます。
+本文・見出し・コラム・コード・ページ番号の書体を指定します。既定の組み合わせで読みやすければ、そのまま使えます。
 
 ```yaml
 typography:
@@ -156,7 +156,6 @@ typography:
     font: Noto Sans JP          # 見出し（ゴシック体）
   column:
     font: Zen Maru Gothic       # コラム（丸ゴシック体）
-    font_size: 8pt
   code:
     font: HackGen35 Console NF  # コードブロック
   folio:

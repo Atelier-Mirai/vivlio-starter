@@ -80,11 +80,17 @@ module VivlioStarter
         STANDARD_FONT_FAMILIES.include?(name)
       end
 
+      # フォルダに書体のファイルがあり、google-fonts.css にその書体の @font-face があるとき取得済みとみなす。
+      # ファイルだけでは組版に効かない。10/12 より前の雛形は fonts/google/ に TTF だけを配っていた
+      # （@font-face は page-settings.css 側）ので、同梱をやめた後もフォルダが残ると取得を飛ばし、
+      # 指定した書体が黙ってフォールバックの書体で組まれていた
       def google_font_installed?(name)
         dir = File.join(google_fonts_dir, slug_for(name))
         return false unless Dir.exist?(dir)
+        return false if Dir.glob(File.join(dir, '*.{ttf,otf,woff,woff2}')).empty?
 
-        !Dir.glob(File.join(dir, '*.{ttf,otf,woff,woff2}')).empty?
+        File.exist?(google_bundle_path) &&
+          parse_bundle(File.read(google_bundle_path, encoding: 'utf-8')).key?(name)
       end
 
       def download_google_font(name)

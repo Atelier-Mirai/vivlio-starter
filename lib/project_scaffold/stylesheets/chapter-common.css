@@ -620,6 +620,9 @@ p > img {
   border-radius: 6px;
   background: var(--color-column-bg);
   position: relative;
+  /* 地の文・箇条書き・引用は book.yml の typography.column.font で組む。
+     見出し・ラベル（::before）・コードは、それぞれの書体を指定しているので変わらない */
+  font-family: var(--font-column);
 }
 .column::before {
   position: absolute;

@@ -704,7 +704,6 @@ module VivlioStarter
           page_cfg[:column_font]      = typo_cfg&.dig(:column, :font)
           page_cfg[:code_font]        = typo_cfg&.dig(:code, :font)
           page_cfg[:folio_font]       = typo_cfg&.dig(:folio, :font)
-          page_cfg[:column_font_size] = Units.font_size_to_pt(typo_cfg&.dig(:column, :font_size))
           page_cfg[:folio_placement]  = typo_cfg&.dig(:folio, :placement)
 
           Common.normalize_page_size!(page_cfg)
