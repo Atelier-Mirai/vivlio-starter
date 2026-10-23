@@ -140,7 +140,8 @@ module VivlioStarter
         Common.log_success("Google Fonts から #{name} を取得しました (#{downloaded_files.keys.size} ファイル)")
         return [] if processed_blocks.empty?
 
-        [[name, build_block_entry(name, processed_blocks.join("\n\n"))]]
+        # 見出しのコメントは update_google_bundle! が付ける。ここでも付けると二重になる
+        [[name, processed_blocks.join("\n\n")]]
       rescue StandardError => e
         Common.log_warn("Google Fonts の取得処理でエラーが発生しました: #{name} (#{e.class}: #{e.message})")
         []
@@ -342,11 +343,13 @@ module VivlioStarter
         "#{header}#{block.strip}\n"
       end
 
+      # 書体名は見出しのコメントの 1 行から取る。前の版は取得した書体の見出しを二重に書いていたので、
+      # 続いた見出しは一つにまとめて読む（同じ書体が二度あれば後のものを採る）。書き戻すときに一組へ直る
       def parse_bundle(content)
         entries = {}
         return entries if content.nil? || content.strip.empty?
 
-        content.scan(%r|/\*\s*Generated from Google Fonts:\s*(.+?)\s*\*/\s*((?:@font-face\s*\{[^}]+\}\s*)+)|m) do |family, block|
+        content.scan(%r|(?:/\*\s*Generated from Google Fonts:\s*([^*\n]+?)\s*\*/\s*)+((?:@font-face\s*\{[^}]+\}\s*)+)|) do |family, block|
           entries[family.strip] = build_block_entry(family.strip, block)
         end
 

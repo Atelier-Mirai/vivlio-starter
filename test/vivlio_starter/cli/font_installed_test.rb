@@ -14,8 +14,10 @@
 #   警告は出なかった。
 #
 # 検証方法:
-#   実際の HTTP は伴わない。download_google_font を差し替え、呼ばれたかと
-#   google-fonts.css に書かれた中身を見る。
+#   実際の HTTP は伴わない。Google Fonts の CSS の取得とフォントファイルの保存だけを差し替え、
+#   取りに行った回数と google-fonts.css に書かれた中身を見る。
+#   download_google_font ごと差し替えると、見出しのコメントを二重に書く不具合を通らない
+#   （1ae86901 で、取得済みと判定されず毎回取り直して @font-face が倍になった）。
 # ================================================================
 
 require 'test_helper'
@@ -36,6 +38,22 @@ module VivlioStarter
         }
       CSS
 
+      # Google Fonts の css2 が返す形（必要な属性だけ）
+      GOOGLE_CSS = <<~CSS
+        @font-face {
+          font-family: 'Zen Old Mincho';
+          font-style: normal;
+          font-weight: 400;
+          src: url(https://fonts.gstatic.com/s/zenoldmincho/v1/regular.ttf) format('truetype');
+        }
+        @font-face {
+          font-family: 'Zen Old Mincho';
+          font-style: normal;
+          font-weight: 700;
+          src: url(https://fonts.gstatic.com/s/zenoldmincho/v1/bold.ttf) format('truetype');
+        }
+      CSS
+
       def test_should_not_count_folder_without_font_face_as_installed
         in_project(bundle: PLACEHOLDER, files: ['Zen-Old-Mincho.ttf']) do
           refute FontManager.google_font_installed?('Zen Old Mincho')
@@ -48,21 +66,41 @@ module VivlioStarter
         end
       end
 
-      # 古い雛形のフォルダが残った本でも、次のビルドで取り直して @font-face を書く
+      # 古い雛形のフォルダが残った本でも、次のビルドで取り直して @font-face を書く。
+      # 書いた後は取得済みになり、続けて組んでも取り直さない
       def test_should_download_again_when_only_folder_is_left
         in_project(bundle: PLACEHOLDER, files: ['Zen-Old-Mincho.ttf']) do
           requested = []
-          download = lambda do |name|
+          # 通信だけを差し替える（Google Fonts が返す CSS と、フォントファイルの保存）
+          fetch = lambda do |name|
             requested << name
-            [[name, FontManager.build_block_entry(name, FACE)]]
+            GOOGLE_CSS
           end
 
-          FontManager.stub(:download_google_font, download) do
-            FontManager.ensure_fonts_available(['Zen Old Mincho'])
+          FontManager.stub(:fetch_google_css, fetch) do
+            FontManager.stub(:download_font_file, ->(_url, dest) { FileUtils.touch(dest) }) do
+              2.times { FontManager.ensure_fonts_available(['Zen Old Mincho']) }
+            end
           end
 
-          assert_equal ['Zen Old Mincho'], requested
-          assert_includes File.read(FontManager.google_bundle_path), "font-family: 'Zen Old Mincho'"
+          bundle = File.read(FontManager.google_bundle_path)
+          assert_equal ['Zen Old Mincho'], requested, '2 回目は取得済みとみなす'
+          assert_equal 1, bundle.scan('Generated from Google Fonts: Zen Old Mincho').size, '見出しは一つ'
+          assert_equal 2, bundle.scan('@font-face').size, '標準と太字の 2 面'
+        end
+      end
+
+      # 前の版は取得した書体の見出しを二重に書いていた。その google-fonts.css も取得済みと読み、一組に直す
+      def test_should_read_bundle_with_doubled_header_and_write_it_back_once
+        doubled = FontManager.build_block_entry('Zen Old Mincho', FontManager.build_block_entry('Zen Old Mincho', FACE))
+        in_project(bundle: doubled, files: ['ZenOldMincho-Regular.ttf']) do
+          assert FontManager.google_font_installed?('Zen Old Mincho')
+
+          FontManager.ensure_fonts_available(['Zen Old Mincho'])
+
+          bundle = File.read(FontManager.google_bundle_path)
+          assert_equal 1, bundle.scan('Generated from Google Fonts: Zen Old Mincho').size
+          assert_equal 1, bundle.scan('@font-face').size
         end
       end
 
