@@ -435,18 +435,45 @@ module VivlioStarter
         BOILERPLATE_SHARE = 0.6
         BOILERPLATE_TAIL = 6
 
-        # 置かれ方で分かる非語を候補から外す。どちらも語の形からは判別できない。
+        # 番号付けの呼び名。日本語の言葉の後ろに番号が付いた語（「課題38」「ステップ 2」「図3」）。
+        # 言葉に英字を含むもの（`UTF-8`・`HTML5`・`ES2015`）は製品や規格の名前なので対象外
+        NUMBERED_LABEL = /\A(?<label>[^A-Za-z]*[ぁ-んァ-ヶ一-龯])[ \t]?[0-9０-９]+\z/
+
+        # 同じ言葉に違う番号がこの数以上付いていれば、番号付けとみなす
+        NUMBERED_LABEL_MIN_VARIANTS = 3
+
+        # 置かれ方で分かる非語を候補から外す。どれも語の形からは判別できない。
         #
         # 表の列の値: 早見表の「解説章」列に「拡張リファレンス」が 39 回並ぶと、
         #   その語は本の中の索引語のように数えられる。セルの中身がその語だけという
         #   出現が並ぶのは、列の値（ラベル）の特徴である。
         # 定型句: 「表示結果は次のようになります」の「表示結果」は、21〜23 章で 70 回
         #   同じ文の中に出る。語の使われ方が 1 通りしかないのは、説明ではなく決まり文句。
+        # 番号付けの呼び名: 「課題38」は MeCab が「課題」「38」の名詞の連続として拾い、
+        #   その章の見出し（「## 課題38　銀行口座クラス」）に立ち、その章に集まるので、
+        #   一つずつ見ると専門用語と同じ形をしている（spiral-ruby で 103 語が候補に並んだ）。
+        #   「課題1」〜「課題180」と番号違いが並ぶことで初めて、番号付けだと分かる。
         def discard_structural_terms!
           labels = table_cell_labels
           @scoring.terms.each do |term|
-            @scoring.discard(term) if table_label?(term, labels[term]) || boilerplate?(term) || enclosed?(term)
+            @scoring.discard(term) if table_label?(term, labels[term]) || boilerplate?(term) ||
+                                      enclosed?(term) || numbered_label?(term)
           end
+        end
+
+        # 本文で、同じ言葉に違う番号が NUMBERED_LABEL_MIN_VARIANTS 以上付いているか。
+        # 候補でなく本文で数えるのは、番号違いの多くが候補に上がらない（1 回しか出ない）ため
+        def numbered_label?(term)
+          label = term[NUMBERED_LABEL, :label] or return false
+
+          numbered_label_variants(label) >= NUMBERED_LABEL_MIN_VARIANTS
+        end
+
+        # 言葉ごとの、本文に出る番号の種類の数（「課題」なら 180）
+        def numbered_label_variants(label)
+          (@numbered_label_variants ||= {})[label] ||= prose_documents.flat_map do
+            it.scan(/#{Regexp.escape(label)}[ \t]?([0-9０-９]+)(?![0-9０-９])/).flatten
+          end.uniq.size
         end
 
         # より長い候補の中にしか出てこない語か。「ギリシャ」は本文の 3 回とも「ギリシャ文字」の

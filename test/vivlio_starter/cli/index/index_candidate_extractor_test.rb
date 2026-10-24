@@ -390,6 +390,28 @@ module VivlioStarter
           refute_includes candidates, '表示結果'
         end
 
+        # 番号違いが三つ以上並ぶ「課題38」は番号付けの呼び名。見出しに立っても候補にしない。
+        # 見出しの本当の話題（「銀行口座クラス」）は残る
+        def test_numbered_labels_are_discarded
+          mecab!
+          markdown = (1..3).map { "## 課題#{it}　銀行口座クラス\n\n課題#{it}で口座を作ります。\n\n" }.join
+          candidates = extract(markdown)
+
+          refute(candidates.any? { it.match?(/\A課題\d/) }, "番号付けを外す: #{candidates.grep(/課題/)}")
+          assert_includes candidates, '銀行口座クラス'
+        end
+
+        # 番号違いが二つまでなら、番号付けとは決めない。英字の名前（UTF-8・UTF-16・UTF-32）も対象外
+        def test_names_with_numbers_are_kept
+          mecab!
+          markdown = "## 課題1　口座\n\n課題1と課題2の違いです。課題1を読みます。\n\n" \
+                     "## 文字コード\n\nUTF-8 と UTF-16 と UTF-32 を比べます。UTF-8 を使います。\n"
+          candidates = extract(markdown)
+
+          assert_includes candidates, '課題1'
+          refute_nil candidates.find { it.start_with?('UTF-') }, "UTF の候補が残る: #{candidates.grep(/UTF/)}"
+        end
+
         # 続きが同じでも、決まった組み合わせの名前（Re:VIEW Starter）は定型句ではない
         def test_fixed_compound_name_is_not_boilerplate
           candidates = extract("Re:VIEW Starter の原稿です。\n" * 6)
