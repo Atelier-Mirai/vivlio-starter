@@ -19,6 +19,7 @@ require_relative 'code_block_stripper'
 require_relative 'scoring_engine'
 require_relative 'term_pattern'
 require_relative 'context_snippet'
+require_relative '../math_delimiters'
 require_relative '../lint/notation_guard'
 
 module VivlioStarter
@@ -35,7 +36,11 @@ module VivlioStarter
         #
         # `/` `.` `-` は許す——`PDF/X-1a` `Terminal.app` `10-20行目` のような
         # 正当な語を巻き込まないため。
-        TERM_CHAR = %r{[^\s。、！？…「」『』（）()\[\]{}#*|`>~:：;；,，\\]}
+        TERM_CHAR = %r{[^\s。、！？…「」『』（）()\[\]{}#*|`>~:：;；,，\\〓]}
+
+        # 本文から外した数式の跡（strip_math）。MeCab は記号として読み、名詞の連続を切る。
+        # 語の文字（TERM_CHAR）にも、語の残骸の判定（JUNK_TERM_PATTERN）にも含めない
+        MATH_GAP = '〓'
 
         # 定義パターン（「〜とは」「〜について」など）
         DEFINITION_PATTERNS = [
@@ -49,7 +54,7 @@ module VivlioStarter
         # 語として成立しない文字列。定義文の切り出しや名詞連続に混ざる残骸を落とす。
         # 記法の断片（`###MATTR` `**Linux` `|画像`）、句読点をまたいだ文、
         # 記号で始まる・終わる語が対象。
-        JUNK_TERM_PATTERN = /[。、！？\r\n\t#*|`>~\[\]()（）「」『』【】]|:{3}|\A[[:space:]\-.:：]|[[:space:]\-.:：]\z/
+        JUNK_TERM_PATTERN = /[。、！？\r\n\t#*|`>~\[\]()（）「」『』【】〓]|:{3}|\A[[:space:]\-.:：]|[[:space:]\-.:：]\z/
 
         # MeCab が 1 語と認識する複合語（「相対性理論」など）を拾う下限。
         #
@@ -72,8 +77,10 @@ module VivlioStarter
           /(?<![A-Za-z0-9])#{ENGLISH_WORD}(?: (?:#{ENGLISH_WORD}|\d+(?![A-Za-z0-9])))*(?![A-Za-z0-9])/
         ].freeze
 
-        # 語の頭に来る指示語・副詞。「その語」「やや難解」は語ではなく句の断片
-        FRAGMENT_HEAD = /\A(?:その|この|あの|どの|やや|とても|もう|まだ|各)/
+        # 語の頭に来る指示語・副詞。「その語」「やや難解」は語ではなく句の断片。
+        # 助詞で始まり、すぐ仮名以外が続くもの（「の級数」「の絶対値」）も、前の語が
+        # 数式やコードとして外された跡の断片。「のれん」のように仮名が続く語は残す
+        FRAGMENT_HEAD = /\A(?:その|この|あの|どの|やや|とても|もう|まだ|各|[のをがはにへでとやも](?=[^ぁ-ん]))/
 
         # 語の末尾に残った助詞。「前章の」「画像の」は語の後ろに助詞が付いた断片
         FRAGMENT_TAIL = /[^ぁ-ん][のをがはにへでとやも]\z/
@@ -353,7 +360,7 @@ module VivlioStarter
 
         # 見出しから、語の切り出しに要らないもの（インラインコード・ラベル・強調）を外す
         def sanitize_heading(heading)
-          heading.gsub(/`[^`]*`/, ' ').gsub(/(?<![\w.])@[\w:.-]+/, ' ').delete('*')
+          strip_math(heading).gsub(/`[^`]*`/, ' ').gsub(/(?<![\w.])@[\w:.-]+/, ' ').delete('*')
         end
 
         # 単独の名詞として見出しから拾う品詞（MeCab の細分類）。
@@ -519,7 +526,9 @@ module VivlioStarter
         # 続きが同じでも定型句ではない。
         def boilerplate?(term)
           pattern = /#{occurrence_pattern(term)}(.{#{BOILERPLATE_TAIL}})/
-          tails = prose_documents.flat_map { it.scan(pattern).flatten }
+          # 続きに数式の跡がある出現は数えない。中身の違う数式（`$\pi$`・`$1$`）がどれも同じ印に
+          # なるので、「積分区間の長さは $\pi$ ですから」が決まり文句に見えてしまう
+          tails = prose_documents.flat_map { it.scan(pattern).flatten }.reject { it.include?(MATH_GAP) }
           return false if tails.size < BOILERPLATE_MIN_OCCURRENCES
 
           tail, count = tails.tally.max_by { _2 }
@@ -550,6 +559,11 @@ module VivlioStarter
           # インライン ``` でフェンス対がズレ、コード例をスコア対象にしてしまうため
           # 行頭フェンスを数える状態機械方式で確実に取り除く。
           text = CodeBlockStripper.strip(content)
+
+          # 数式。中身は LaTeX の命令と記号で、索引から案内する本文ではない。下の `{…}` の
+          # 除去より前に外す——後にすると `$\dfrac{\pi}{4}$` が `$\dfrac$` になり、
+          # `$\pi`・`pi$` が候補に並んでいた（spiral-ruby で 131 語）。改行は残す
+          text = strip_math(text)
 
           # 図解注釈・実行結果・端末の記録は、紙面に文として出ない機械データなので読まない。
           # 図解注釈の著者コメント（「愛用のバイオリン」）が候補の上位に来ていた
@@ -590,6 +604,15 @@ module VivlioStarter
           text.gsub!(/[ \t]+/, ' ')
 
           text
+        end
+
+        # 数式（4 種類の区切り。解釈の正典は MathDelimiters）を MATH_GAP に置き換える。
+        # 空白にすると両側の名詞が空白越しにつながり、「誤差を $10^{-10}$ 未満」から
+        # 「誤差 未満」が候補になっていた。ディスプレイ数式は行をまたぐので、改行の数だけは残す
+        def strip_math(text)
+          MathDelimiters::ALL.reduce(text) do |acc, pattern|
+            acc.gsub(pattern) { "#{MATH_GAP}#{"\n" * it.count("\n")}" }
+          end
         end
 
         # 機械データのブロック（lint の記法ガードと同じ定義）を空行にする

@@ -401,6 +401,32 @@ module VivlioStarter
           assert_includes candidates, '銀行口座クラス'
         end
 
+        # 数式の中身（LaTeX の命令と記号）は候補にしない。`{…}` の除去が先に走ると
+        # `$\dfrac{\pi}{4}$` が `$\dfrac$` になり、`$\pi`・`pi$` が候補に並んでいた（spiral-ruby）
+        def test_math_is_not_a_source_of_candidates
+          markdown = "## $\\pi$ の近似\n\n" +
+                     ("円周率の誤差は $\\dfrac{\\pi}{4}$ の 4 倍で、$\\pi$ の誤差を $10^{-10}$ 未満にします。\n\n" * 4) +
+                     "$$\n\\int_0^1 \\frac{4}{1+x^2}\\,dx = \\pi\n$$\n\nライプニッツ級数で円周率を求めます。\n"
+          candidates = extract(markdown)
+
+          math_like = candidates.grep(/[$\\^]|\A(?:pi|dfrac|frac|int)/)
+          assert_empty math_like, "数式の断片が候補に残った: #{math_like}"
+          assert_includes candidates, 'ライプニッツ級数' if YomiInferrer.new.available?
+        end
+
+        # 数式を外した跡がどれも同じ印になるので、続きに数式がある言い回しを決まり文句と見ない
+        def test_phrases_around_different_formulas_are_not_boilerplate
+          mecab!
+          markdown = "積分区間の長さは $\\pi$ ですから、評価できます。\n\n" \
+                     "積分区間の長さは $1$ ですから、評価できます。\n\n" \
+                     "積分区間の長さは $k$ ですから、評価できます。\n\n" \
+                     "積分区間の両端 $0$ で値が消えます。\n\n積分区間を分けます。\n"
+          candidates = extract(markdown)
+
+          assert_includes candidates, '積分区間'
+          refute(candidates.any? { it.include?('〓') }, '数式の跡の印は候補に出ない')
+        end
+
         # 番号付けに助詞で続けた見出しの語（「課題3のポーカー」）も外す。
         # 番号の後ろに言葉が直に付いた語（「第2正規形」）は一つの語なので残す
         def test_numbered_label_phrases_are_discarded_but_compounds_are_kept
