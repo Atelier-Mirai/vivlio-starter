@@ -427,6 +427,25 @@ module VivlioStarter
           refute(candidates.any? { it.include?('〓') }, '数式の跡の印は候補に出ない')
         end
 
+        # 敬称と複数の接尾語（「まつもとさん」「書記たち」）を付けたまま候補にしない
+        def test_person_suffixes_are_stripped
+          mecab!
+          markdown = "## 書記たちの計算\n\n" + ("四千年前の書記たちが掛け算をしていました。まつもとさんが言語を作りました。\n\n" * 3)
+          candidates = extract(markdown)
+
+          %w[書記たち まつもとさん].each { refute_includes candidates, it }
+        end
+
+        # 範囲を表す語（以下・以内・付近）を付けたまま候補にしない。品詞がまちまちなので綴りで見る
+        def test_range_words_are_stripped
+          mecab!
+          markdown = "小数点以下まで割ります。誤差以内に収めます。原点付近を見ます。\n\n" * 3 +
+                     "浮動小数点数の小数点以下を丸めます。\n"
+          candidates = extract(markdown)
+
+          %w[小数点以下 誤差以内 原点付近].each { refute_includes candidates, it }
+        end
+
         # 漢数字と助数詞だけの量の表現（「三年」「二倍」「三年目」）は、見出しに出ても候補にしない。
         # 助数詞が 2 字の「十進数」「二進数」は語として残す
         def test_quantities_in_kanji_numerals_are_not_candidates

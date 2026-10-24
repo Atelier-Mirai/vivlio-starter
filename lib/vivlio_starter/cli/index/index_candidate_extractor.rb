@@ -266,12 +266,24 @@ module VivlioStarter
         # 送り仮名つきの接尾語をまとめて外すと「箇条書き」が「箇条」に削れるので、列挙する
         PHRASE_SUFFIXES = %w[ならでは 向け 付き 済み ごと].freeze
 
-        # 末尾の句を作る接尾語を外す（「Apple Books 向け」→「Apple Books」）
+        # 人に付ける敬称と、複数を表す接尾語。「まつもとさん」「書記たち」が候補になっていた
+        # （spiral-ruby）。索引に立てるなら敬称を外した名前・語である
+        PERSON_SUFFIXES = %w[さん 氏 くん 君 ちゃん 様 さま たち 達 ら].freeze
+
+        # 末尾の句を作る接尾語と、人に付ける接尾語を外す（「Apple Books 向け」→「Apple Books」・
+        # 「書記たち」→「書記」）
         def without_okurigana_suffix(nouns)
           nouns = nouns.dup
-          nouns.pop while nouns.any? && nouns.last[2] == '接尾' && PHRASE_SUFFIXES.include?(nouns.last[0])
+          nouns.pop while nouns.size > 1 && nouns.last[2] == '接尾' &&
+                          (PHRASE_SUFFIXES.include?(nouns.last[0]) || PERSON_SUFFIXES.include?(nouns.last[0]))
           nouns
         end
+
+        # 範囲や程度を表す語。名詞の連続をここで切る。「小数点以下」「誤差以内」が候補になり、
+        # 途中にあれば「0 以上 1 未満」「小数点以下3桁程度」までつながっていた（spiral-ruby）。
+        # IPADIC の品詞はまちまち（以下は非自立、未満は接尾、以降は副詞可能、付近は一般）なので、
+        # 品詞でなく綴りで見る
+        RANGE_WORDS = %w[以下 以上 未満 以内 以外 以降 以前 以後 程度 前後 付近 同士].freeze
 
         # 1 行ぶん。行ごとに解析するのは、名詞連続が行をまたいでつながらないようにするため
         def each_noun_sequence_in_line(mecab, line)
@@ -291,8 +303,9 @@ module VivlioStarter
 
             # 空白の後に置かれた記号だけの名詞（IPADIC は `/` を名詞とする）は連続を切る。
             # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
-            # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す
-            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/))
+            # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す。
+            # 範囲を表す語（RANGE_WORDS）でも切る
+            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !RANGE_WORDS.include?(node.surface)
               current_nouns << token
             elsif pos == '接頭詞' && pos_detail == '名詞接続'
               # 接頭辞は次の名詞と 1 語をなす（「単章ビルド」「同梱画像」）。
@@ -393,8 +406,9 @@ module VivlioStarter
           counter[3] == '助数詞' && counter[0].length == 1 && rest.all? { QUANTITY_SUFFIXES.include?(it[0]) }
         end
 
-        # 数と助数詞の後ろに付いても量の表現のままの接尾語（「三年目」「一年後」「6人程度」）
-        QUANTITY_SUFFIXES = %w[目 間 後 前 分 程度 あたり ごろ 頃 ぶり あまり 余り どうし 足らず 未満 以上 以下
+        # 数と助数詞の後ろに付いても量の表現のままの接尾語（「三年目」「一年後」）。
+        # 「以上」「程度」は RANGE_WORDS が名詞の連続を切るので、ここには要らない
+        QUANTITY_SUFFIXES = %w[目 間 後 前 分 あたり ごろ 頃 ぶり あまり 余り どうし 足らず
                                越し 近く ずつ おき ごと 毎 じゅう 中 弱 強 半].freeze
 
         def join_nouns(nouns)
