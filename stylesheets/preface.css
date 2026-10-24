@@ -3,6 +3,9 @@
 @import url("base.css");
 @import url("theme.css");
 @import url("page-settings.css");
+@import url("prism.css");
+@import url("code.css");
+@import url("table.css");
 @import url("layout-utils.css");
 @import url("components.css");
 @import url("replace-list.css");
@@ -191,6 +194,12 @@ blockquote p {
   margin: 0;
   color: var(--color-text);
 }
+/* 表のセルは本文の両端揃え（body の justify）を継がない。章と同じく行頭へ寄せる。
+   継ぐと、狭い列で折り返した「第2分冊」が「第　2　分」と字間を空けて組まれる */
+table {
+  text-align: start;
+}
+
 /* テキスト整列ユーティリティ（chapter-common.css から継承） */
 .text-right,
 .text-right p {
