@@ -427,6 +427,37 @@ module VivlioStarter
           refute(candidates.any? { it.include?('〓') }, '数式の跡の印は候補に出ない')
         end
 
+        # 漢数字と助数詞だけの量の表現（「三年」「二倍」「三年目」）は、見出しに出ても候補にしない。
+        # 助数詞が 2 字の「十進数」「二進数」は語として残す
+        def test_quantities_in_kanji_numerals_are_not_candidates
+          mecab!
+          markdown = "## 三年で五万倍\n\n一年目に10%、二年目に20%、三年目に30%成長しました。\n\n" \
+                     "## 寿命を二倍にした発明\n\n寿命を二倍にしました。\n\n" \
+                     "## 十進数と二進数\n\n十進数を二進数に直します。十進数は日常の数です。\n"
+          candidates = extract(markdown)
+
+          %w[三年 二倍 三年目].each { refute_includes candidates, it }
+          %w[十進数 二進数].each { assert_includes candidates, it }
+        end
+
+        # 長い候補が複数に分かれていても、その中にしか出ない短い語は外す。
+        # 「UTF」の出現は「UTF-8」と「UTF-16」で、どちらか一つでは回数が届かない（spiral-ruby）
+        def test_term_found_only_inside_several_longer_terms_is_discarded
+          markdown = ("文字コードは UTF-8 にします。\n\n" * 4) + "Windows の内部は UTF-16 です。\n\nUTF-16 も使います。\n"
+          candidates = extract(markdown)
+
+          assert_includes candidates, 'UTF-8'
+          refute_includes candidates, 'UTF'
+        end
+
+        # 単独の出現が一つでもあれば残す
+        def test_term_used_alone_is_kept_even_when_longer_terms_cover_most
+          markdown = ("文字コードは UTF-8 にします。\n\n" * 4) + "UTF-16 も使います。\n\nUTF という名前の由来です。\n"
+          candidates = extract(markdown)
+
+          assert_includes candidates, 'UTF'
+        end
+
         # 番号付けに助詞で続けた見出しの語（「課題3のポーカー」）も外す。
         # 番号の後ろに言葉が直に付いた語（「第2正規形」）は一つの語なので残す
         def test_numbered_label_phrases_are_discarded_but_compounds_are_kept

@@ -283,10 +283,11 @@ module VivlioStarter
               next
             end
 
-            pos, pos_detail = node.feature.split(',')
+            pos, pos_detail, pos_detail2 = node.feature.split(',')
             # 直前に空白があったか（rlength は前の空白を含む長さ）。連結で空白を
-            # 落とすと「閲覧用 PDF」が「閲覧用PDF」になり、本文と一致しなくなる
-            token = [node.surface, node.rlength > node.length, pos_detail]
+            # 落とすと「閲覧用 PDF」が「閲覧用PDF」になり、本文と一致しなくなる。
+            # 細分類の 2 段目は助数詞の見分けに使う（quantity?）
+            token = [node.surface, node.rlength > node.length, pos_detail, pos_detail2]
 
             # 空白の後に置かれた記号だけの名詞（IPADIC は `/` を名詞とする）は連続を切る。
             # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
@@ -372,11 +373,30 @@ module VivlioStarter
         # 1 字の語（「章」「図」）は語として弱いので落とす
         def heading_term?(term, nouns)
           return false if nouns.size == 1 && !HEADING_SINGLE_NOUN_KINDS.include?(nouns.first[2])
+          return false if quantity?(nouns)
 
           term.length >= 2 && term.match?(/[ァ-ヶ一-龯A-Za-z]/) && valid_term?(term)
         end
 
         # 名詞連続を 1 語へ。空白があった位置には空白を残す
+        # 数と助数詞だけの並び（「三年」「二倍」「三年目」）。量の表現であって語ではない。
+        # 見出しの語は 2 字でも拾うので、「### 三年で5万倍という青天井」から「三年」が候補に
+        # なっていた（数字で書いた「5万倍」は MEASUREMENT が落とすが、漢数字は素通りしていた）。
+        # 助数詞が 1 字のときに限る——「十進数」「二進数」も MeCab では 数＋助数詞（進数）になる。
+        # 助数詞の後ろに続いてよいのは、量の表現を作る接尾語（QUANTITY_SUFFIXES）だけ。
+        # 何でも許すと「二段組」「千分率」「十六進法」「一次式」まで落ちた
+        # @param nouns [Array<Array>] [表層形, 直前に空白があったか, 細分類, 細分類 2]
+        def quantity?(nouns)
+          counter, *rest = nouns.drop_while { it[2] == '数' }
+          return false if counter.nil? || counter.equal?(nouns.first)
+
+          counter[3] == '助数詞' && counter[0].length == 1 && rest.all? { QUANTITY_SUFFIXES.include?(it[0]) }
+        end
+
+        # 数と助数詞の後ろに付いても量の表現のままの接尾語（「三年目」「一年後」「6人程度」）
+        QUANTITY_SUFFIXES = %w[目 間 後 前 分 程度 あたり ごろ 頃 ぶり あまり 余り どうし 足らず 未満 以上 以下
+                               越し 近く ずつ おき ごと 毎 じゅう 中 弱 強 半].freeze
+
         def join_nouns(nouns)
           nouns.each_with_index.map { |(surface, spaced), i| i.positive? && spaced ? " #{surface}" : surface }.join
         end
@@ -388,6 +408,7 @@ module VivlioStarter
 
           term = join_nouns(nouns)
           return if nouns.size == 1 && !compound_noun?(term)
+          return if quantity?(nouns)
           return if term.length < 3 || term.length > 20
           return unless valid_term?(term)
 
@@ -488,15 +509,31 @@ module VivlioStarter
 
         # より長い候補の中にしか出てこない語か。「ギリシャ」は本文の 3 回とも「ギリシャ文字」の
         # 一部で、カタカナの並びとして切り出されただけだった（改善案 #99）。長いほうの候補が
-        # 同じ回数以上出ていれば、短いほうが単独で使われた箇所はない
+        # 同じ回数以上出ていれば、短いほうが単独で使われた箇所はない。
+        #
+        # 長い候補が複数に分かれることもある。「UTF」の 18 回は「UTF-8」17 回と「UTF-16」1 回で、
+        # どちらか一つでは届かない（spiral-ruby）。複数で覆う場合は、長い候補がどれも短い語に
+        # 番号を付けただけの形（版や規格の違い）のときだけ外す。どんな長い候補でも数えると、
+        # 「ベクトルb」「固有ベクトル」が「ベクトル」を、「将棋盤バージョン」のような断片が
+        # 「バージョン」を覆い、それ自体が索引に立つ概念の語まで消していた。
+        # そのうえで長い候補の出現を伏せ、短いほうが単独で残るかを本文で数える
         def enclosed?(term)
           tf = term_frequencies[term].to_i
           return false if tf.zero?
 
           pattern = occurrence_pattern(term)
-          longer_terms.any? do |longer, longer_tf|
-            longer_tf >= tf && longer.length > term.length && longer.include?(term) && longer.match?(pattern)
+          longers = longer_terms.select do |longer, _|
+            longer.length > term.length && longer.include?(term) && longer.match?(pattern)
           end
+          return true if longers.any? { |_, longer_tf| longer_tf >= tf }
+
+          variant = /\A#{Regexp.escape(term)}[ \-]?\d+(?:\.\d+)*\z/
+          longers = longers.select { |longer, _| longer.match?(variant) }
+          return false if longers.sum { |_, longer_tf| longer_tf } < tf
+
+          covering = Regexp.union(longers.keys.sort_by { -it.length }.map { occurrence_pattern(it) })
+          # 伏せる文字は NUL。本文に現れず、語の一部にもならない
+          prose_documents.none? { it.gsub(covering, "\u0000").match?(pattern) }
         end
 
         # 長さ 3 字以上の候補と出現数（enclosed? の照合相手）
