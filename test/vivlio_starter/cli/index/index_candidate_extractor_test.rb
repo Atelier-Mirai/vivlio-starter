@@ -510,14 +510,14 @@ module VivlioStarter
           %w[書記たち まつもとさん].each { refute_includes candidates, it }
         end
 
-        # 範囲を表す語（以下・以内・付近）を付けたまま候補にしない。品詞がまちまちなので綴りで見る
+        # 範囲を表す語（以下・以内・付近・どうし）を付けたまま候補にしない。品詞がまちまちなので綴りで見る
         def test_range_words_are_stripped
           mecab!
-          markdown = "小数点以下まで割ります。誤差以内に収めます。原点付近を見ます。\n\n" * 3 +
+          markdown = "小数点以下まで割ります。誤差以内に収めます。原点付近を見ます。整数どうしで割ります。\n\n" * 3 +
                      "浮動小数点数の小数点以下を丸めます。\n"
           candidates = extract(markdown)
 
-          %w[小数点以下 誤差以内 原点付近].each { refute_includes candidates, it }
+          %w[小数点以下 誤差以内 原点付近 整数どうし].each { refute_includes candidates, it }
         end
 
         # 漢数字と助数詞だけの量の表現（「三年」「二倍」「三年目」）は、見出しに出ても候補にしない。
