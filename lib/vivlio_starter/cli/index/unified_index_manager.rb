@@ -172,6 +172,28 @@ module VivlioStarter
         report_dictionary_writes(dictionary_writes)
         report_auto_results(auto_approved, high_candidates, low_candidates,
                             rejected_count_in_candidates, present_rejected.size)
+        warn_unreadable_yomi(high_candidates + low_candidates)
+      end
+
+      # 読みに漢字が残った候補を挙げる数（残りは件数だけ）
+      UNREADABLE_YOMI_SHOWN = 10
+
+      # 読みを推測できなかった候補を知らせる。MeCab の辞書に無い漢語（「互除」「置記」）は
+      # 読みが取れず、漢字のまま残る（「互除法」→「互除ほう」）。辞書の読みからは直せないので、
+      # 著者に直してもらう。読みは索引の五十音の並びを決めるので、漢字が残ると「その他」へ落ちる
+      def warn_unreadable_yomi(candidates)
+        unreadable = candidates.select { it['yomi'].to_s.match?(/\p{Han}/) }
+        return if unreadable.empty?
+
+        shown = unreadable.first(UNREADABLE_YOMI_SHOWN).map { "#{it['term']}（#{it['yomi']}）" }
+        rest = unreadable.size - shown.size
+        example = unreadable.first
+        Common.log_warn(
+          "読みを推測できなかった語が #{unreadable.size} 語あります",
+          detail: "#{shown.join('・')}#{" ほか #{rest} 語" if rest.positive?}\n" \
+                  "#{ReviewMarkdownGenerator::REVIEW_FILE} の ( ) 内を、ひらがなの読みに直してください" \
+                  "（例: **#{example['term']}** (#{example['yomi']}) → 読みを仮名で書く）"
+        )
       end
 
       # Markdownから承認・リジェクトを適用

@@ -1587,6 +1587,26 @@ module VivlioStarter
         assert_equal 'スタイルシート言語。', entry['definition']
       end
 
+      # --- phase: 読みを推測できなかった候補の知らせ ---
+
+      # MeCab の辞書に無い漢語は読みに漢字が残る（「互除法」→「互除ほう」）。直す場所と語を挙げる
+      def test_auto_warns_about_readings_left_in_kanji
+        candidates = [{ 'term' => '互除法', 'yomi' => '互除ほう' }, { 'term' => '後置記法', 'yomi' => 'こう置記ほう' },
+                      { 'term' => '円周率', 'yomi' => 'えんしゅうりつ' }]
+        output, = capture_io { @manager.send(:warn_unreadable_yomi, candidates) }
+
+        assert_match(/読みを推測できなかった語が 2 語あります/, output)
+        assert_match(/互除法（互除ほう）・後置記法（こう置記ほう）/, output)
+        assert_includes output, '_index_glossary_review.md', '直す場所を示す'
+        refute_includes output, '円周率'
+      end
+
+      def test_auto_stays_silent_when_every_reading_is_in_kana
+        output, = capture_io { @manager.send(:warn_unreadable_yomi, [{ 'term' => '円周率', 'yomi' => 'えんしゅうりつ' }]) }
+
+        assert_empty output
+      end
+
       # --- phase: 副次参照を絞ったことの報告（index-sub-reference-selection-spec.md R7） ---
 
       # 組み終えたビルダーの代わり。報告が見るのは reference_limitation だけ

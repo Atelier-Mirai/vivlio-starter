@@ -427,6 +427,80 @@ module VivlioStarter
           refute(candidates.any? { it.include?('〓') }, '数式の跡の印は候補に出ない')
         end
 
+        # --- spiral-ruby のレビューで「挙がるべきでない」とされた語 ---
+
+        # 2 字以上の助数詞（箇所・回り）と、MeCab が 三＋つめ と切る「三つめ」も量の表現
+        def test_quantities_with_longer_counters_are_not_candidates
+          mecab!
+          markdown = "## 一回り小さい問題\n\n表示を一箇所にまとめます。一回りごとに狭くなります。三つめは鶴亀算です。\n\n" * 2
+          candidates = extract(markdown)
+
+          %w[一箇所 一回り 三つめ].each { refute_includes candidates, it }
+        end
+
+        # 見出しに 1 語で出る位置の言葉は、節の話題ではない
+        def test_position_words_in_headings_are_not_candidates
+          mecab!
+          candidates = extract("## 後ろから挿入する\n\n一番後ろに挿入します。後ろから二番目に入れます。\n")
+
+          refute_includes candidates, '後ろ'
+        end
+
+        # 数字・カンマ・スラッシュだけの語と、数学の記号を含む語は値や式の跡
+        def test_numbers_fractions_and_math_symbols_are_not_candidates
+          markdown = "隣どうしの差は 31, 30, 31, 30, 31 です。\n\n" +
+                     ("1/5 や 1/239 を arctan に入れます。355/113 は良い近似です。√n までに絞ります。log₂n 段です。\n\n" * 3)
+          candidates = extract(markdown)
+
+          bad = candidates.grep(%r{\A[\d.,\s/]+\z|[√₂]})
+          assert_empty bad, "値や式の跡が残った: #{bad}"
+        end
+
+        # 英大文字 1 字の番号（補遺A・補遺B・補遺C）も番号付け。「補遺」は本の構成の言葉
+        def test_lettered_labels_and_book_structure_words_are_not_candidates
+          mecab!
+          markdown = "## 補遺A　積分\n\n補遺Aで使います。\n\n## 補遺B　級数\n\n補遺Bで使います。\n\n" \
+                     "## 補遺C　解答\n\n解答は補遺Cにまとめてあります。補遺を読みます。\n"
+          candidates = extract(markdown)
+
+          refute(candidates.any? { it.start_with?('補遺') }, "補遺が残った: #{candidates.grep(/補遺/)}")
+        end
+
+        # 「版」は書き方違いの印。版を外した語を候補にする
+        def test_edition_suffix_is_stripped
+          mecab!
+          markdown = "ビット演算版が遅くなります。二次元配列版で回転します。\n\n" * 3 +
+                     "ビット演算の速さを測ります。二次元配列として持ちます。\n"
+          candidates = extract(markdown)
+
+          %w[ビット演算版 二次元配列版].each { refute_includes candidates, it }
+          assert_includes candidates, 'ビット演算'
+        end
+
+        # カタカナの名前が、どの出現でも後ろに語を従える（「グレゴリオ暦」「適応型ハフマン符号」）なら、
+        # 名前だけを候補にしない。名前で終わる形（「固有ベクトル」）が混ざれば残す
+        def test_names_used_only_as_modifiers_are_discarded
+          mecab!
+          # 同じ文を繰り返すと決まり文句と判定されるので、続きを出現ごとに変える
+          markdown = %w[数えます 確かめます 調べます 求めます].map { "グレゴリオ暦の日数を#{it}。ハフマン符号を#{it}。\n\n" }.join +
+                     "グレゴリオ改暦がありました。適応型ハフマン符号もあります。\n\n" +
+                     ("ベクトルbを足します。固有ベクトルを求めます。ベクトルの長さです。\n\n" * 2)
+          candidates = extract(markdown)
+
+          %w[グレゴリオ ハフマン].each { refute_includes candidates, it }
+          %w[グレゴリオ暦 ハフマン符号].each { assert_includes candidates, it }
+        end
+
+        # 振り仮名の記法は親文字へ戻す。消すと「ユリウス{通日|つうじつ}」が「ユリウス」に見える
+        def test_ruby_notation_keeps_its_base_text
+          mecab!
+          markdown = "### ユリウス{通日|つうじつ}\n\n" + ("ユリウス{通日|つうじつ}で日付を数えます。\n\n" * 3)
+          candidates = extract(markdown)
+
+          assert_includes candidates, 'ユリウス通日'
+          refute_includes candidates, 'ユリウス'
+        end
+
         # 敬称と複数の接尾語（「まつもとさん」「書記たち」）を付けたまま候補にしない
         def test_person_suffixes_are_stripped
           mecab!
