@@ -216,6 +216,48 @@ module VivlioStarter
           assert(links.none? { it[1] == 'main-ref' }, '太字にもしない')
         end
 
+        # === 主要参照が別の巻にある語（index-other-volume-main-spec.md） ===
+
+        def guided_index(occurrences, config: {}, guides: { '用語集' => '上巻 第7章' })
+          create_index_cache({ '用語集' => occurrences })
+          builder = UnifiedPageBuilder.new(index_config: config, other_volume_guides: guides)
+          builder.build_index!
+          [File.read(INDEX_OUTPUT_FILE)[%r{<dd>.*?</dd>}m], builder]
+        end
+
+        # 組む巻に主要参照が無くても、別の巻の章を案内して副次参照を絞る（R1・R2）
+        def test_other_volume_guide_leads_and_thins_sub_references
+          dd, builder = guided_index((21..25).map { occurrence("#{it}-chapter") }, config: { max_sub_references: 2 })
+
+          assert_match %r{\A<dd><span class="index-other-volume">→ 上巻 第7章&#x3000;</span><a }, dd
+          assert_equal 2, dd.scan('<a ').size
+          assert_equal ['用語集'], builder.reference_limitation.terms, '絞ったことを知らせる'
+        end
+
+        # 組む巻に主要参照があれば、そちらが案内になる
+        def test_other_volume_guide_is_omitted_when_main_is_local
+          dd, = guided_index([occurrence('21-a', main: true), occurrence('22-b')])
+
+          refute_includes dd, 'index-other-volume'
+          assert_includes dd, 'main-ref'
+        end
+
+        def test_other_volume_guide_alone_with_main_only
+          dd, = guided_index([occurrence('21-a'), occurrence('22-b')], config: { reference_style: 'main_only' })
+
+          assert_includes dd, '→ 上巻 第7章'
+          refute_includes dd, '<a '
+        end
+
+        # `all` は逃げ道。案内も間引きもしない
+        def test_other_volume_guide_is_off_with_all
+          dd, = guided_index((21..25).map { occurrence("#{it}-chapter") },
+                             config: { reference_style: 'all', max_sub_references: 2 })
+
+          refute_includes dd, 'index-other-volume'
+          assert_equal 5, dd.scan('<a ').size
+        end
+
         # 索引が短くなった理由が設定にあると分からないと「索引語が消えた」と読まれる
         def test_thinning_is_reported_not_silent
           occurrences = [occurrence('33-index', main: true)] +

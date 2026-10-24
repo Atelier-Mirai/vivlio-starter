@@ -60,8 +60,10 @@ module VivlioStarter
 
         attr_reader :index_data, :limited_reference_terms
 
-        def initialize(glossary_config: {}, index_config: nil)
+        # @param other_volume_guides [Hash{String => String}] 主要参照が別の巻にある語の案内（OtherVolumeMain.guides）
+        def initialize(glossary_config: {}, index_config: nil, other_volume_guides: {})
           @index_data = {}
+          @other_volume_guides = other_volume_guides
           @glossary_config = glossary_config
           @index_config = index_config || Common::CONFIG.index.to_h
           @glossary_backlinks = {}
@@ -311,7 +313,7 @@ module VivlioStarter
                           @index_data[term].to_a
                         end
 
-          occurrences.map do |occ|
+          links = occurrences.map do |occ|
             link = occ['link'] || occ[:link]
             classes = []
             classes << 'main-ref' if highlight && main_occurrence?(occ)
@@ -319,6 +321,16 @@ module VivlioStarter
             attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
             %(<a href="#{link}"#{attr}></a>)
           end.join
+          guide = highlight && other_volume_guide(term)
+          # ページ番号との間の全角空白は文字で持つ。CSS で空けると、雛形を写した本の index.css が古いままでは効かない
+          guide ? %(<span class="index-other-volume">→ #{CGI.escapeHTML(guide)}&#x3000;</span>#{links}) : links
+        end
+
+        # 主要参照が別の巻にあり、組む巻には主要参照の出現が無い語の案内（index-other-volume-main-spec.md R1）。
+        # 組む巻に主要参照があれば、そちらが案内になるので添えない
+        def other_volume_guide(term)
+          guide = @other_volume_guides[term] or return nil
+          @index_data[term].to_a.any? { main_occurrence?(it) } ? nil : guide
         end
 
         # 前書きの原稿の basename。前書きのページはノンブルの体裁が違うので、索引の参照に印を付ける。
@@ -339,10 +351,13 @@ module VivlioStarter
         # **主要参照が無い語は間引かない。** 「まずここを読めばよい」を示せないまま
         # 出現箇所だけ削ると、語が索引から実質消える——絞り込みは主要参照という
         # 代替の案内があってはじめて成立する。
+        #
+        # 主要参照が別の巻にある語は、巻の名前で案内するので、主要参照のある語と同じく絞る
+        # （index-other-volume-main-spec.md R2）。`main_only` なら案内だけを載せる。
         def apply_reference_style(term, occurrences)
           style = reference_style
           main, sub = occurrences.partition { main_occurrence?(it) }
-          return occurrences if main.empty?
+          return occurrences if main.empty? && !other_volume_guide(term)
 
           if style == 'main_only'
             @limited_reference_terms << term if sub.any?

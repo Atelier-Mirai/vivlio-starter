@@ -32,6 +32,7 @@ require_relative 'index_plan_reporter'
 require_relative 'term_ranking'
 require_relative 'term_spread'
 require_relative 'main_reference_suggester'
+require_relative 'other_volume_main'
 require_relative '../token_resolver'
 require_relative 'yomi_inferrer'
 
@@ -563,7 +564,9 @@ module VivlioStarter
         scanner.scan_all_chapters!(chapters, read_only: false)
 
         # UnifiedPageBuilder で索引＋用語集を生成
-        builder = UnifiedPageBuilder.new(glossary_config: @glossary_config)
+        # 分冊で主要参照が別の巻にある語は、巻の名前で案内する（index-other-volume-main-spec.md）
+        guides = IndexCommands::OtherVolumeMain.guides(@terms_manager.load_terms)
+        builder = UnifiedPageBuilder.new(glossary_config: @glossary_config, other_volume_guides: guides)
 
         # 索引ページ生成
         builder.build_index!

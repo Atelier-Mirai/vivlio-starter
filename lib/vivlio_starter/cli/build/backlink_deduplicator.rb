@@ -311,9 +311,13 @@ module VivlioStarter
           curr.page == prev.page + 1
         end
 
+        # 別の巻の主要参照の案内（`<span class="index-other-volume">`）はリンクではないので、
+        # 作り直しても先頭に残す（index-other-volume-main-spec.md R4）
         def rebuild_dd!(dd, items)
           doc = dd.document
+          guide = dd.at_css('> span.index-other-volume')
           dd.children.unlink
+          dd.add_child(guide) if guide
 
           items.each_with_index do |item, position|
             dd.add_child(doc.create_text_node(', ')) if position.positive?

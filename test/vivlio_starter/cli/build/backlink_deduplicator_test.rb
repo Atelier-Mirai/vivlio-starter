@@ -693,6 +693,17 @@ class TestBacklinkDeduplicator < Minitest::Test
     assert_equal %w[#idx-1 #idx-3 #idx-4], dd.css('a').map { it['href'][/#.*/] }
   end
 
+# 別の巻の主要参照の案内はリンクではない。範囲を畳んで作り直しても先頭に残す
+# （index-other-volume-main-spec.md R4）
+def test_should_keep_other_volume_guide_when_compressing
+  dd, = dedup_index_dd(pages: [10, 11, 12, 40], guide: '<span class="index-other-volume">→ 上巻 第7章</span>')
+
+  assert_equal 'resolved', dd['class']
+  assert_equal 'index-other-volume', dd.element_children.first['class']
+  assert_equal '→ 上巻 第7章', dd.element_children.first.text
+  assert_equal 1, dd.css('span.page-range').size
+end
+
   # 主要参照は太字の一点であることに意味があるので、範囲に飲み込まない
   def test_should_never_absorb_the_main_reference_into_a_range
     dd, = dedup_index_dd(pages: [10, 11, 12, 13], main: 0)
@@ -815,7 +826,7 @@ class TestBacklinkDeduplicator < Minitest::Test
   # @param pages [Array<Integer>] リンクの通しページ番号（この順に並べる）
   # @param main [Integer, nil] 主要参照にする位置
   # @param frontmatter [Array<Integer>] 前付け（ローマ数字）にする位置
-  def dedup_index_dd(pages:, main: nil, frontmatter: [], witness: false)
+  def dedup_index_dd(pages:, main: nil, frontmatter: [], witness: false, guide: nil)
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
         links = pages.each_with_index.map do |_, i|
@@ -829,7 +840,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           <!DOCTYPE html>
           <html lang="ja"><head><meta charset="UTF-8"><title>索引</title></head>
           <body class="index-page"><dl class="index-list">
-          <dt>ファイル</dt><dd>#{links.join}</dd>
+          <dt>ファイル</dt><dd>#{guide}#{links.join}</dd>
           </dl></body></html>
         HTML
 
