@@ -1291,6 +1291,7 @@ terms:
   pattern: "/数式/"
   main:
   - 21-markdown-tutorial
+  - 22-extensions
   updated_at: '2026-10-04 00:05:46'
 - term: スペルチェック
   yomi: すぺるちぇっく
@@ -1501,6 +1502,7 @@ terms:
   pattern: "/テンプレート/"
   updated_at: '2026-10-04 00:05:46'
   main:
+  - 26-querystream
   - 45-utility
 - term: テーブル
   yomi: てーぶる
