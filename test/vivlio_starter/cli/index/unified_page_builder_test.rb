@@ -118,8 +118,13 @@ module VivlioStarter
 
         # 索引の役割は所在の網羅ではなく説明の在り処への案内。
         # 「腰を据えて説明している箇所」を先頭に立てて太字にする。
-        def occurrence(chapter, main: false)
-          { 'yomi' => 'ようごしゅう', 'link' => "#{chapter}.html#idx-#{chapter}", 'is_main' => main }
+        #
+        # 既定では、出現ごとに別の節で、その節が語を見出しに掲げている（副次参照の候補になる）。
+        # 節の選び方を確かめるテストだけが section・headed を指定する
+        def occurrence(chapter, main: false, headed: true, section: nil)
+          @section_seq = @section_seq.to_i + 1
+          { 'yomi' => 'ようごしゅう', 'link' => "#{chapter}.html#idx-#{chapter}", 'is_main' => main,
+            'section' => section || @section_seq, 'headed' => headed }
         end
 
         def index_links(occurrences, config: {})
@@ -290,6 +295,84 @@ module VivlioStarter
           assert_match(/main_and_sub/, out + err, '指定できる値を示す')
         end
 
+        # === 副次参照の選び方（index-sub-reference-selection-spec.md） ===
+
+        def linked_chapters(links) = links.map { it[0][/\A[^.]+/] }
+
+        # 名前が出ているだけの所は、索引を引く手間に見合わない（R1）
+        def test_sub_references_outside_headed_sections_are_dropped
+          links, builder = index_links([occurrence('03-a', main: true), occurrence('07-b', headed: false),
+                                        occurrence('08-c')])
+
+          assert_equal %w[03-a 08-c], linked_chapters(links)
+          assert_equal ['用語集'], builder.reference_limitation.terms, '絞ったことを知らせる'
+        end
+
+        # 同じ節の 2 回目以降は同じ所を指すだけ。主要参照の節は主要参照が入り口を受け持つ（R2）
+        def test_only_the_first_occurrence_of_each_section_is_kept
+          links, = index_links([occurrence('03-a', main: true, section: 5), occurrence('03-a', section: 5),
+                                occurrence('07-b', section: 9), occurrence('07-b', section: 9),
+                                occurrence('07-b', section: 20)])
+
+          assert_equal %w[03-a 07-b 07-b], linked_chapters(links)
+        end
+
+        # 見出しに語を掲げた節が並ぶ章ごとに、別の節として数える
+        def sections_in(chapters, main: '07-main')
+          [occurrence(main, main: true)] + chapters.map { occurrence(it) }
+        end
+
+        # ふつうの言葉は作例の見出しにも出る。多すぎる語だけ主要参照の章へ絞る（R3）
+        def test_terms_over_the_threshold_keep_only_main_chapter_sections
+          subs = %w[07-main 07-main] + (10..20).map { "#{it}-other" } # 13 節
+          links, builder = index_links(sections_in(subs), config: { max_sub_references: 0 })
+
+          assert_equal %w[07-main 07-main 07-main], linked_chapters(links), '主要参照 1 + 主要参照の章の節 2'
+          assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
+          assert_equal 12, builder.reference_limitation.threshold
+        end
+
+        def test_terms_at_the_threshold_are_not_narrowed
+          subs = %w[07-main] + (10..20).map { "#{it}-other" } # 12 節
+          links, builder = index_links(sections_in(subs), config: { max_sub_references: 0 })
+
+          assert_equal 13, links.size
+          assert_empty builder.reference_limitation.main_chapter_only
+        end
+
+        def test_zero_threshold_never_narrows_to_the_main_chapter
+          subs = (10..29).map { "#{it}-other" }
+          links, = index_links(sections_in(subs), config: { max_sub_references: 0, main_chapter_only_over: 0 })
+
+          assert_equal 21, links.size
+        end
+
+        # 上限と公平さは、節を選んだ後に当てる（R5）
+        def test_the_cap_applies_after_selecting_sections
+          subs = %w[07-main] + (10..14).map { "#{it}-other" }
+          occurrences = sections_in(subs) + [occurrence('15-x', headed: false)]
+          links, = index_links(occurrences, config: { max_sub_references: 3 })
+
+          assert_equal 4, links.size, '主要参照 1 + 副次参照 3'
+          refute_includes linked_chapters(links), '15-x'
+        end
+
+        # 「まずここ」を示せないまま出現を削ると、語が索引から消える
+        def test_terms_without_a_main_reference_keep_every_occurrence
+          links, = index_links([occurrence('03-a', headed: false), occurrence('03-a', headed: false, section: 1),
+                                occurrence('04-b', section: 1)])
+
+          assert_equal 3, links.size
+        end
+
+        # 主要参照が別の巻にある語は、この巻に主要参照の章が無いので、案内だけになる
+        def test_other_volume_terms_over_the_threshold_keep_only_the_guide
+          dd, builder = guided_index((10..22).map { occurrence("#{it}-other") }, config: { max_sub_references: 0 })
+
+          assert_equal '<dd><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>', dd
+          assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
+        end
+
         # === 用語集ページ ===
 
         def test_build_glossary_returns_nil_when_no_terms
@@ -381,6 +464,64 @@ module VivlioStarter
 
           html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'カスタム用語集'
+        end
+
+        # === 用語集のページ番号を索引にそろえる（index-sub-reference-selection-spec.md R8） ===
+
+        def glossary_backlinks_html(occurrences, flags: 'ig', config: {}, guides: {})
+          create_index_cache(
+            { '用語集' => occurrences },
+            backlinks: { '用語集' => [{ 'chapter' => '01-intro', 'occurrence' => 1,
+                                        'anchor_id' => 'gls-src-01-intro-用語集-1' }] }
+          )
+          builder = UnifiedPageBuilder.new(index_config: config, other_volume_guides: guides)
+          builder.build_index!
+          builder.build_glossary!([{ 'term' => '用語集', 'yomi' => 'ようごしゅう', 'definition' => '説明', 'flags' => flags }])
+          [File.read(GLOSSARY_OUTPUT_FILE)[%r{<p class="glossary-backlinks">.*?</p>}m], builder]
+        end
+
+        def test_glossary_lists_the_same_references_as_the_index
+          html, builder = glossary_backlinks_html([occurrence('12-a'), occurrence('33-index', main: true),
+                                                   occurrence('41-b', headed: false)])
+
+          assert_equal [['33-index.html#idx-33-index', 'glossary-backlink main-ref'],
+                        ['12-a.html#idx-12-a', 'glossary-backlink']],
+                       html.scan(/<a href="([^"]+)" class="([^"]+)">/), '主要参照が先頭で太字・選んだ副次参照が続く'
+          assert_equal ['用語集'], builder.reference_limitation.terms, '用語集で選び直しても二重に数えない'
+        end
+
+        def test_glossary_only_terms_keep_the_chapter_first_occurrences
+          html, = glossary_backlinks_html([occurrence('33-index', main: true)], flags: 'g')
+
+          assert_includes html, 'gls-src-01-intro-用語集-1'
+          refute_includes html, 'idx-'
+        end
+
+        def test_glossary_with_all_keeps_the_chapter_first_occurrences
+          html, = glossary_backlinks_html([occurrence('33-index', main: true)], config: { reference_style: 'all' })
+
+          assert_includes html, 'gls-src-01-intro-用語集-1'
+        end
+
+        def test_glossary_terms_without_a_main_reference_keep_the_chapter_first_occurrences
+          html, = glossary_backlinks_html([occurrence('12-a'), occurrence('41-b')])
+
+          assert_includes html, 'gls-src-01-intro-用語集-1'
+        end
+
+        def test_glossary_with_main_only_lists_only_the_main_reference
+          html, = glossary_backlinks_html([occurrence('12-a'), occurrence('33-index', main: true)],
+                                          config: { reference_style: 'main_only' })
+
+          assert_equal ['33-index.html#idx-33-index'], html.scan(/href="([^"]+)"/).flatten
+        end
+
+        # 別の巻の案内は、索引と同じく末尾に「,」で区切って太字で置く
+        def test_glossary_appends_the_other_volume_guide
+          html, = glossary_backlinks_html([occurrence('21-a')], guides: { '用語集' => '上巻 第7章' })
+
+          assert_match %r{<a href="21-a\.html#idx-21-a" class="glossary-backlink"></a>, <span class="index-other-volume"><strong>上巻 第7章</strong></span></p>\z},
+                       html
         end
 
         # === 統合テスト ===

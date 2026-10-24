@@ -119,6 +119,7 @@ module VivlioStarter
           @section_warned = Set[]
           @current_heading_level = nil
           @current_lineno = nil
+          reset_section!
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
           @term_yomis = {}
@@ -244,15 +245,50 @@ module VivlioStarter
           @current_chapter = file_basename
 
           lines = content.lines
+          reset_section!
           Masking.each_prose_line(content) do |line, lineno|
             # 行が見出しなら、そのレベル。主要参照をどこに落とすかの判断に使う（R1）
             @current_heading_level = line[HEADING_LINE, 1]&.size
             @current_lineno = lineno
+            enter_section(lineno) if @current_heading_level.to_i >= 2
             lines[lineno - 1] = process_line(lines[lineno - 1], file_basename)
           end
           @current_heading_level = nil
           @current_lineno = nil
           lines.join
+        end
+
+        # 出現が属する節（index-sub-reference-selection-spec.md R1）。
+        #
+        # 節は直近の見出し（h2〜h6）から始まり、最初の `##` より前は「章の冒頭」（0）。
+        # 章題（h1）は節を始めない——章題に語があっても、章のすべての節が
+        # その語を掲げたことにはならない（主要参照で章題を数えないのと同じ立場）。
+        def reset_section!
+          @section_line = 0
+          @section_terms = Set[]
+          @h2_terms = Set[]
+        end
+
+        # 見出しが掲げた語は、その見出しの行をタグ付けしながら集める（headed_section?）。
+        # 見出しは続く本文より先に処理されるので、本文の出現の時点で引ける
+        def enter_section(lineno)
+          @section_line = lineno
+          @section_terms = Set[]
+          @h2_terms = Set[] if @current_heading_level == 2
+        end
+
+        # この出現の節が、語を見出しに掲げているか。節の見出しか、それを含む `##` 見出しで見る
+        # ——「## イベントで操作に反応する」の下の「### addEventListener で処理を登録する」も
+        # イベントの節である（実測で、節の見出しだけでは「まとまり」の 3 割を取りこぼした）。
+        # 当たったかどうかはタグ付けそのもので決まるので、長い語を先に当てる解釈がそのまま効く
+        # ——「### 即時関数を外す」は「関数」を掲げたことにならない
+        def headed_section?(term_text)
+          level = @current_heading_level.to_i
+          if level >= 2
+            @section_terms << term_text
+            @h2_terms << term_text if level == 2
+          end
+          @section_terms.include?(term_text) || @h2_terms.include?(term_text)
         end
 
         # 主要参照の落とし先を決めるための下見（index-main-reference-section-spec.md R1）。
@@ -641,13 +677,16 @@ end
 
           tag_name = is_first ? 'dfn' : 'span'
 
-          # 索引データの蓄積（Set で重複を自動排除）
+          # 索引データの蓄積（Set で重複を自動排除）。
+          # section・headed は副次参照の選び方に使う（index-sub-reference-selection-spec.md R1・R2）
           @index_data[term_text] << {
             'yomi' => yomi,
             'link' => "#{file_basename}.html##{anchor_id}",
             'file' => file_basename,
             'is_definition' => is_first,
-            'is_main' => is_main
+            'is_main' => is_main,
+            'section' => @section_line,
+            'headed' => headed_section?(term_text)
           }
 
           # マッチ情報を記録

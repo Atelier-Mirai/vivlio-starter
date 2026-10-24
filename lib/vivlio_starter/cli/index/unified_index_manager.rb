@@ -629,19 +629,25 @@ module VivlioStarter
       # 参照を絞ったことをビルド末尾で報告する（R6・no silent caps）。
       #
       # 索引が短くなった理由が設定にあると分からないと、著者は「索引語が
-      # 消えた」と読む。何語をどの設定で絞ったかまで書く。
+      # 消えた」と読む。何語をどの選び方で絞ったかまで書く。
+      # 主要参照の章だけにした語は名前を挙げる——境目を上げるかを著者が判断できるように
+      # （index-sub-reference-selection-spec.md R7）。
       # @param builder [UnifiedPageBuilder] 生成を終えたビルダー
       def report_reference_style(builder)
         limitation = builder.reference_limitation
         return unless limitation.any?
 
-        message = if limitation.style == 'main_only'
-                    "💡 索引を主要参照のみで組みました（index.reference_style: main_only・#{limitation.size} 語）"
-                  else
-                    "💡 索引の副次参照を #{limitation.size} 語で #{limitation.limit} 件までに絞りました" \
-                    "（index.max_sub_references: #{limitation.limit}）"
-                  end
-        IndexCommands.add_post_build_message(message)
+        lines = if limitation.style == 'main_only'
+                  ["💡 索引を主要参照のみで組みました（index.reference_style: main_only・#{limitation.size} 語）"]
+                else
+                  ["💡 索引の副次参照を、語を見出しに掲げた節に絞りました（#{limitation.size} 語）"]
+                end
+        narrowed = limitation.main_chapter_only
+        if narrowed.any?
+          lines << "   見出しに出る節が多い #{narrowed.size} 語は、主要参照の章の節だけにしました: #{narrowed.join('・')}"
+          lines << "   （index.main_chapter_only_over: #{limitation.threshold}）"
+        end
+        IndexCommands.add_post_build_message(lines.join("\n"))
       end
 
       # 広く散らばっているのに主要参照が未指定の索引語を促す（R7）。

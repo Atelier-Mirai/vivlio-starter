@@ -177,10 +177,24 @@ body.vs-kindle .glossary-title {
   content: target-counter(attr(href url), page);
 }
 
-/* 複数のバックリンク間の区切り */
-.glossary-backlink + .glossary-backlink::before {
+/* 複数のバックリンク間の区切り。
+ * 連続ページを範囲表記（12–15）に畳んだ段落には class="resolved" が付き、
+ * 区切りは文字で持つ（範囲の <span> を挟むと兄弟の前提が壊れるため）。
+ * 畳むのは PDF 経路だけ——EPUB / Kindle はこちらで組まれる。 */
+.glossary-backlinks:not(.resolved) .glossary-backlink + .glossary-backlink::before {
   content: ", ";
   color: #666;
+}
+
+/* ページ範囲のダッシュの前後で行を割らない */
+.glossary-backlinks .page-range {
+  white-space: nowrap;
+}
+
+/* 主要参照（索引と同じ参照を並べる語の、説明している所）。索引の太字にそろえる */
+.glossary-backlink.main-ref {
+  font-weight: bold;
+  font-family: "Noto Sans JP", sans-serif;
 }
 
 /* ----------------------------------------------------------------

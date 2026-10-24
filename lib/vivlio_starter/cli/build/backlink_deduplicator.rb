@@ -47,11 +47,12 @@ module VivlioStarter
           @body_removed = 0
           @index_removed = 0
           @index_ranges = 0
+          @glossary_ranges = 0
           @files_modified = []
         end
 
-        # 索引ページで範囲表記へ畳んだ箇所の数（R8・テストと進捗表示から見る）
-        attr_reader :index_ranges
+        # 索引ページ・用語集ページで範囲表記へ畳んだ箇所の数（R8・テストと進捗表示から見る）
+        attr_reader :index_ranges, :glossary_ranges
 
         # 重複排除を実行するメインメソッド
         # @return [Result] 処理結果
@@ -66,9 +67,13 @@ module VivlioStarter
           end
 
           # --- Phase 2: 用語集バックリンク重複排除 ---
+          # 索引にも載る語のページ番号は索引の参照（idx-…）を指すので、両方から引く
+          # （index-sub-reference-selection-spec.md R8）。用語集の語がすべて索引語の本では
+          # † の位置（gls-src-…）がリンクの飛び先にならず、/Dests に 1 件も出ない
+          deduplicate_glossary_backlinks!(anchor_to_page.merge(index_anchor_to_page))
+          Common.log_info("[backlink-dedup] 用語集の連続ページを #{@glossary_ranges} 箇所で範囲表記にまとめました") if @glossary_ranges.positive?
           unless anchor_to_page.empty?
             Common.log_info("[backlink-dedup] #{anchor_to_page.size} 件の glossary anchor → page マッピングを構築しました")
-            deduplicate_glossary_backlinks!(anchor_to_page)
             deduplicate_body_glossary_links!(anchor_to_page) if @body
           end
 
@@ -103,7 +108,7 @@ module VivlioStarter
           return unless File.exist?(glossary_file)
 
           doc = Nokogiri::HTML5(File.read(glossary_file, encoding: 'utf-8'))
-          removed_before = @glossary_removed
+          before = [@glossary_removed, @glossary_ranges]
           @removed_links = []
 
           # 各 .glossary-backlinks（用語ごとのバックリンク群）を処理
@@ -111,7 +116,7 @@ module VivlioStarter
             deduplicate_backlinks_in_paragraph!(backlinks_p, anchor_to_page)
           end
 
-          write_if_changed!(glossary_file, doc, changed: @glossary_removed > removed_before, witness: @witness)
+          write_if_changed!(glossary_file, doc, changed: [@glossary_removed, @glossary_ranges] != before, witness: @witness)
         end
 
         # 1つの <p class="glossary-backlinks"> 内の重複を排除
@@ -142,6 +147,9 @@ module VivlioStarter
             remove_link_and_adjacent_whitespace!(link)
             @glossary_removed += 1
           end
+
+          # 索引と同じ参照を並べる語は、範囲表記も索引にそろえる（R8）
+          @glossary_ranges += compress_page_ranges!(paragraph, anchor_to_page)
         end
 
         # --- 本文 HTML の†重複排除 ---
@@ -247,7 +255,7 @@ module VivlioStarter
             @index_removed += 1
           end
 
-          compress_page_ranges!(dd, index_anchor_to_page)
+          @index_ranges += compress_page_ranges!(dd, index_anchor_to_page)
         end
 
         # --- 索引ページのページ範囲圧縮（index-main-reference-spec.md R8） ---
@@ -262,17 +270,20 @@ module VivlioStarter
         # 持つ形へ書き換える。従来の `a:not(:last-child)::after` によるカンマ生成は
         # <span> でくくると兄弟の前提が壊れるため、CSS 側を `dd:not(.resolved)` へ
         # 限定してある（§8.2）。EPUB / Kindle は dedup を通らないので従来の組み方のまま。
+        # 用語集の <p class="glossary-backlinks"> も同じ形で畳む（glossary.css も `:not(.resolved)` で限定）。
+        # @return [Integer] 畳んだ範囲の数
         def compress_page_ranges!(dd, index_anchor_to_page)
           minimum = page_range_min
-          return if minimum < 2
+          return 0 if minimum < 2
 
           entries = dd.css('a').map { occurrence_of(it, index_anchor_to_page) }
-          return if entries.size < minimum
+          return 0 if entries.size < minimum
 
           items = group_into_ranges(entries, minimum)
-          return if items.none? { it.size > 1 }
+          return 0 if items.none? { it.size > 1 }
 
           rebuild_dd!(dd, items)
+          items.count { it.size > 1 }
         end
 
         # 索引リンク 1 本ぶんの判定材料
@@ -315,6 +326,7 @@ module VivlioStarter
         # 作り直しても末尾に「,」で区切って残す（index-other-volume-main-spec.md R4）
         def rebuild_dd!(dd, items)
           doc = dd.document
+          # 用語集が案内の手前に文字で持つ「,」は、ほかの区切りと一緒に作り直す
           guide = dd.at_css('> span.index-other-volume')
           dd.children.unlink
 
@@ -328,7 +340,6 @@ module VivlioStarter
           end
 
           dd['class'] = [dd['class'], 'resolved'].compact.reject { it.to_s.strip.empty? }.join(' ')
-          @index_ranges += items.count { it.size > 1 }
         end
 
         # 範囲は <span> でひとまとまりにする。ダッシュの前後で行が割れないよう

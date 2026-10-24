@@ -1095,6 +1095,88 @@ module VivlioStarter
 
           refute_includes @scanner.matches.map { it['term'] }, '用語'
         end
+
+        # --- phase: 出現が属する節（index-sub-reference-selection-spec.md R1）---
+
+        # 語ごとの [section, headed] を出現の順に返す
+        def scan_sections(markdown, terms)
+          scanner = build_scanner(terms.map { { 'term' => it, 'yomi' => 'よみ', 'flags' => 'i' } })
+          scanner.send(:process_content_with_code_block_exclusion, markdown, '11-probe')
+          terms.to_h { |term| [term, scanner.index_data[term].map { [it['section'], it['headed']] }] }
+        end
+
+        def test_should_mark_occurrences_in_a_section_whose_heading_names_the_term
+          result = scan_sections(<<~MD, %w[イベント])
+            # 章
+
+            ## ほかの話
+
+            イベントに触れます。
+
+            ### イベントの情報を受け取る
+
+            イベントを説明します。
+          MD
+
+          assert_equal [[3, false], [7, true], [7, true]], result['イベント'],
+                       '見出しの行の出現はその見出しの節に属し、続く本文も候補になる'
+        end
+
+        # 「## イベントで操作に反応する」の下の「### addEventListener で処理を登録する」もイベントの節
+        def test_should_mark_occurrences_under_a_parent_h2_that_names_the_term
+          result = scan_sections(<<~MD, %w[イベント])
+            ## イベントで操作に反応する
+
+            ### 処理を登録する
+
+            イベントを登録します。
+
+            ## 次の話
+
+            ### 細かな話
+
+            イベントにまた触れます。
+          MD
+
+          assert_equal [[1, true], [3, true], [9, false]], result['イベント'],
+                       '親の ## が語を掲げていれば候補・別の ## の下では候補にならない'
+        end
+
+        # 索引のタグ付けは長い語を先に当てる。見出しの判定もそれにそろえる
+        def test_should_not_count_a_shorter_term_inside_a_longer_one_in_the_heading
+          result = scan_sections(<<~MD, %w[関数 即時関数])
+            ### 即時関数を外す
+
+            関数を呼びます。
+          MD
+
+          assert_equal [[1, false]], result['関数'], '本文の「関数」は、「即時関数」の見出しの節では候補にならない'
+          assert_equal [[1, true]], result['即時関数']
+        end
+
+        # 章題に語があっても、章のすべての節が候補になるわけではない
+        def test_should_not_count_the_chapter_title
+          result = scan_sections(<<~MD, %w[Canvas])
+            # Canvas で描く
+
+            Canvas に触れます。
+
+            ## 座標
+
+            Canvas の座標。
+          MD
+
+          assert_equal [[0, false], [0, false], [5, false]], result['Canvas'],
+                       '章題の行と章の冒頭は「章の冒頭」（0）で、候補にならない'
+        end
+
+        def test_should_reset_sections_for_each_chapter
+          scanner = build_scanner([{ 'term' => 'URL', 'yomi' => 'ゆーあーるえる', 'flags' => 'i' }])
+          scanner.send(:process_content_with_code_block_exclusion, "## URL とは\n\nURL です。\n", '11-a')
+          scanner.send(:process_content_with_code_block_exclusion, "URL の話。\n", '12-b')
+
+          assert_equal [[1, true], [1, true], [0, false]], scanner.index_data['URL'].map { [it['section'], it['headed']] }
+        end
       end
     end
   end

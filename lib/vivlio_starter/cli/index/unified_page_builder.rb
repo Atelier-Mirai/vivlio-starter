@@ -57,6 +57,7 @@ module VivlioStarter
         REFERENCE_STYLES = %w[main_and_sub main_only all].freeze
         DEFAULT_REFERENCE_STYLE = 'main_and_sub'
         DEFAULT_MAX_SUB_REFERENCES = 8
+        DEFAULT_MAIN_CHAPTER_ONLY_OVER = 12
 
         attr_reader :index_data, :limited_reference_terms
 
@@ -69,6 +70,10 @@ module VivlioStarter
           @glossary_backlinks = {}
           # 間引いた語（no silent caps: 絞ったことは呼び出し元から必ず報告する）
           @limited_reference_terms = []
+          # 見出しに出る節が多すぎて、主要参照の章の節だけにした語（R7 で名前を挙げる）
+          @main_chapter_only_terms = []
+          # 語 → 選んだ参照。索引と用語集が同じ選び方を一度だけ通す（R8）
+          @selected_references = {}
         end
 
         # --- Phase: 索引ページ生成 ---
@@ -111,6 +116,8 @@ module VivlioStarter
           # バックリンクはそのビルドのスキャン結果（中間 YAML）から導出する（R2）。
           # 辞書の backlink_sources は読まない——前回ビルドの幽霊リンクを持ち込まないため
           @glossary_backlinks = load_glossary_backlinks
+          # 索引にも載る語は、索引の項目と同じ参照を並べる（R8）。索引を組んだ後なら読み込み済み
+          load_index_data! if @index_data.empty? && File.exist?(Common::INDEX_MATCHES_FILE)
 
           sorted_terms = terms.sort_by { yomi_order(it['yomi'] || it['term']) }
           html = generate_glossary_html(sorted_terms)
@@ -120,14 +127,16 @@ module VivlioStarter
           GLOSSARY_OUTPUT_FILE
         end
 
-        # 参照を絞った事実。呼び出し元が必ず報告する（no silent caps・R6）
-        Limitation = Data.define(:style, :limit, :terms) do
+        # 参照を絞った事実。呼び出し元が必ず報告する（no silent caps・R6）。
+        # main_chapter_only は、見出しに出る節が threshold を超えて主要参照の章の節だけにした語
+        Limitation = Data.define(:style, :limit, :terms, :threshold, :main_chapter_only) do
           def any? = terms.any?
           def size = terms.size
         end
 
         def reference_limitation
-          Limitation.new(style: reference_style, limit: max_sub_references, terms: @limited_reference_terms)
+          Limitation.new(style: reference_style, limit: max_sub_references, terms: @limited_reference_terms,
+                         threshold: main_chapter_only_over, main_chapter_only: @main_chapter_only_terms)
         end
 
         # 以前のビルドで残ったファイルを削除
@@ -307,17 +316,13 @@ module VivlioStarter
         # 間引きもせず、Phase 2 以前とまったく同じ索引を組む。
         def generate_index_page_links(term)
           highlight = reference_style != 'all'
-          occurrences = if highlight
-                          apply_reference_style(term, order_occurrences(@index_data[term]))
-                        else
-                          @index_data[term].to_a
-                        end
+          occurrences = highlight ? selected_references(term) : @index_data[term].to_a
 
           links = occurrences.map do |occ|
             link = occ['link'] || occ[:link]
             classes = []
             classes << 'main-ref' if highlight && main_occurrence?(occ)
-            classes << 'frontmatter' if preface_basenames.include?(link[/\A[^#]+?(?=\.html|#|\z)/])
+            classes << 'frontmatter' if frontmatter_link?(link)
             attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
             %(<a href="#{link}"#{attr}></a>)
           end.join
@@ -348,6 +353,15 @@ module VivlioStarter
           @preface_basenames ||= TokenResolver::Resolver.new.resolve.select { it.kind == :preface }.map(&:basename)
         end
 
+        def frontmatter_link?(link) = preface_basenames.include?(link.to_s[/\A[^#]+?(?=\.html|#|\z)/])
+
+        # 主要参照を先頭へ並べ、副次参照を選んだ参照。`all` 以外の索引と用語集が使う。
+        # 選び方は一つの関数を通し、二重に持たない（R8）。覚えておくのは、用語集で
+        # もう一度選んだときに、絞った語を二重に数えないため
+        def selected_references(term)
+          @selected_references[term] ||= apply_reference_style(term, order_occurrences(@index_data[term]))
+        end
+
         # 主要参照を先頭へ。同種のなかでは元の走査順（章順）を保つ。
         def order_occurrences(occurrences)
           occurrences.to_a.partition { main_occurrence?(it) }.flatten(1)
@@ -355,7 +369,10 @@ module VivlioStarter
 
         def main_occurrence?(occ) = (occ['is_main'] || occ[:is_main]) ? true : false
 
-        # 副次参照を間引く（R6）。`all` は呼び出し側で分岐済み。
+        # 副次参照を選ぶ（index-sub-reference-selection-spec.md R1〜R5）。`all` は呼び出し側で分岐済み。
+        #
+        # 載せるのは、索引を引く手間に見合う所——語を見出しに掲げた節だけである。
+        # 名前が出ているだけの所と、別の話題の中の一文ほどの説明は載せない。
         #
         # **主要参照が無い語は間引かない。** 「まずここを読めばよい」を示せないまま
         # 出現箇所だけ削ると、語が索引から実質消える——絞り込みは主要参照という
@@ -364,20 +381,48 @@ module VivlioStarter
         # 主要参照が別の巻にある語は、巻の名前で案内するので、主要参照のある語と同じく絞る
         # （index-other-volume-main-spec.md R2）。`main_only` なら案内だけを載せる。
         def apply_reference_style(term, occurrences)
-          style = reference_style
           main, sub = occurrences.partition { main_occurrence?(it) }
           return occurrences if main.empty? && !other_volume_guide(term)
 
-          if style == 'main_only'
+          if reference_style == 'main_only'
             @limited_reference_terms << term if sub.any?
             return main
           end
 
-          limit = max_sub_references
-          return occurrences if limit.zero? || sub.size <= limit
+          # --- Phase: 見出しに語を掲げた節の、最初の出現（R1・R2） ---
+          selected = first_of_headed_sections(main, sub)
 
-          @limited_reference_terms << term
-          main + trim_across_chapters(sub, limit)
+          # --- Phase: 多すぎる語は主要参照の章だけ（R3） ---
+          selected = main_chapter_sections(term, main, selected)
+
+          # --- Phase: 上限と章をまたぐ公平さ（R5） ---
+          limit = max_sub_references
+          selected = trim_across_chapters(selected, limit) unless limit.zero? || selected.size <= limit
+
+          @limited_reference_terms << term if selected.size < sub.size
+          main + selected
+        end
+
+        # 読者は索引から節へ飛び、その節を読む。同じ節の 2 回目以降の出現は同じ所を指すだけなので、
+        # 節の入り口の 1 件で足りる。主要参照の節は主要参照が入り口を受け持つ
+        def first_of_headed_sections(main, sub)
+          taken = main.to_set { section_key(it) }
+          sub.select { (it['headed'] || it[:headed]) && taken.add?(section_key(it)) }
+        end
+
+        def section_key(occ) = [occurrence_chapter(occ), occ['section'] || occ[:section]]
+
+        # ふつうの言葉（関数・状態）は作例の見出しにも出て、語を使っているだけの節まで選んでしまう。
+        # 語を説明している節は主要参照の章に集まるので、節が多すぎる語だけをそこへ絞る（R3）。
+        # 主要参照の章は辞書の `main:` で確定したもの——`main?` の推測は、ふつうの言葉ほど外れる。
+        # 主要参照が別の巻にある語は、この巻に残る節が無くなり、巻の名前の案内だけになる
+        def main_chapter_sections(term, main, selected)
+          over = main_chapter_only_over
+          return selected if over.zero? || selected.size <= over
+
+          @main_chapter_only_terms << term
+          chapters = main.to_set { occurrence_chapter(it) }
+          selected.select { chapters.include?(occurrence_chapter(it)) }
         end
 
         # 上限に収める。**章をまたいで公平に**残すのが要点。
@@ -417,6 +462,13 @@ module VivlioStarter
         def max_sub_references
           value = @index_config[:max_sub_references]
           value.nil? ? DEFAULT_MAX_SUB_REFERENCES : [value.to_i, 0].max
+        end
+
+        # 0 は「絞らない」。12 は、実測で Canvas（11 節）と関数（16 節）の間に引いた線。
+        # 厚い本では名前のような語でも見出しに出る節が増えるので、著者が上げられるようにする（R4）
+        def main_chapter_only_over
+          value = @index_config[:main_chapter_only_over]
+          value.nil? ? DEFAULT_MAIN_CHAPTER_ONLY_OVER : [value.to_i, 0].max
         end
 
         # ================================================================
@@ -580,9 +632,40 @@ module VivlioStarter
           data['glossary_backlinks'] || {}
         end
 
-        # 用語集のバックリンクを構築
+        # 用語集のバックリンクを構築。
+        # 索引にも載る語は、索引の項目と同じ所を指す（R8）。用語集の説明を読んだ読者が次に
+        # 知りたいのは本文で詳しく扱っている所で、索引で選んだ所と同じ理由で同じ所が答えになる。
+        # 用語集だけの語・主要参照の無い語・`all` は、章ごとの初出（† の位置）を並べる
         def build_glossary_backlinks(term)
-          sources = @glossary_backlinks[term['term']]
+          index_backlinks(term['term'], term['flags']) || chapter_backlinks(term['term'])
+        end
+
+        # 索引の項目と同じ参照。並びも太字も別の巻の案内も索引にそろえる。
+        # 太字はクラスで付ける——<strong> でくくると、区切りの「,」を付ける
+        # `.glossary-backlink + .glossary-backlink` が主要参照の直後で効かなくなる。
+        # 案内の手前の「,」は文字で持つ。用語集の CSS は次のリンクの ::before で区切るので、
+        # 案内の手前には付かない（古い glossary.css のままの本でも同じに組める）
+        # @return [String, nil] 索引の参照を使わない語なら nil
+        def index_backlinks(name, flags)
+          return nil unless flags.to_s.include?('i') && @index_data.key?(name)
+          return nil if reference_style == 'all'
+          return nil if @index_data[name].none? { main_occurrence?(it) } && !other_volume_guide(name)
+
+          links = selected_references(name).map do |occ|
+            link = occ['link'] || occ[:link]
+            classes = ['glossary-backlink']
+            classes << 'main-ref' if main_occurrence?(occ)
+            classes << 'frontmatter' if frontmatter_link?(link)
+            %(<a href="#{link}" class="#{classes.join(' ')}"></a>)
+          end
+          guide = other_volume_guide(name)
+          tail = guide ? "#{', ' if links.any?}#{other_volume_guide_html(guide)}" : ''
+          %(<p class="glossary-backlinks">#{links.join(' ')}#{tail}</p>)
+        end
+
+        # 章ごとの初出（† の位置）を章の順に並べる
+        def chapter_backlinks(name)
+          sources = @glossary_backlinks[name]
           return '' unless sources&.any?
 
           sorted_sources = sources.sort_by do |source|

@@ -821,7 +821,65 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
 
+  # --- 用語集のページ番号が索引の参照を指すとき（index-sub-reference-selection-spec.md R8） ---
+
+  # 用語集の語がすべて索引語の本では、† の位置（gls-src-…）が飛び先にならず /Dests に出ない。
+  # 索引の参照（idx-…）のページだけでも、重複除去と範囲表記が効くこと
+  def test_should_deduplicate_and_compress_glossary_links_to_index_references
+    paragraph, deduplicator, result = dedup_glossary_paragraph(pages: [5, 10, 10, 11, 12], main: 0)
+
+    assert_equal 1, result.glossary_removed, '同じページの 2 件目を消す'
+    assert_includes paragraph['class'], 'resolved'
+    assert_equal 'glossary-backlink main-ref', paragraph.css('a').first['class'], '主要参照は単独で先頭に残る'
+    assert_equal %w[#idx-2 #idx-5], paragraph.css('span.page-range a').map { it['href'][/#.*/] }
+    assert_equal 1, deduplicator.glossary_ranges
+    assert_equal 0, deduplicator.index_ranges, '用語集の範囲は索引の数に混ぜない'
+  end
+
+  # 案内の手前の「,」は用語集が文字で持つ。作り直しても 1 つだけ残る
+  def test_should_keep_one_comma_before_the_other_volume_guide_in_the_glossary
+    paragraph, = dedup_glossary_paragraph(
+      pages: [10, 11, 12],
+      tail: ', <span class="index-other-volume"><strong>上巻 第7章</strong></span>'
+    )
+
+    assert_equal 'index-other-volume', paragraph.element_children.last['class']
+    assert_equal ', ', paragraph.element_children.last.previous_sibling.text
+    refute_includes paragraph.text, ', , '
+  end
+
   private
+
+  # 用語集の <p class="glossary-backlinks"> を 1 つだけ持つページを組んで dedup を通す。
+  # リンクは索引の参照（idx-…）を指し、ページの対応も索引の側にしか無い
+  def dedup_glossary_paragraph(pages:, main: nil, tail: '')
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        links = pages.each_index.map do |i|
+          classes = ['glossary-backlink', ('main-ref' if main == i)].compact.join(' ')
+          %(<a href="01-life.html#idx-#{i + 1}" class="#{classes}"></a>)
+        end
+        File.write(pdf_path('_glossarypage.html'), <<~HTML, encoding: 'utf-8')
+          <!DOCTYPE html>
+          <html lang="ja"><head><meta charset="UTF-8"><title>用語集</title></head>
+          <body class="glossary-page"><dl class="glossary-list">
+          <dt>ファイル</dt><dd><p class="glossary-backlinks">#{links.join(' ')}#{tail}</p></dd>
+          </dl></body></html>
+        HTML
+
+        mapping = build_page_mapping(
+          index_mappings: pages.each_with_index.map do |page, i|
+            { anchor_id: "idx-#{i + 1}", page_index: page, spine_index: 0 }
+          end
+        )
+
+        deduplicator = Deduplicator.new(mapping)
+        result = deduplicator.deduplicate!
+        doc = Nokogiri::HTML5(File.read(pdf_path('_glossarypage.html')))
+        return [doc.at_css('p.glossary-backlinks'), deduplicator, result]
+      end
+    end
+  end
 
   # 索引の <dd> を 1 つだけ持つページを組んで dedup を通し、結果の <dd> を返す。
   # @param pages [Array<Integer>] リンクの通しページ番号（この順に並べる）
