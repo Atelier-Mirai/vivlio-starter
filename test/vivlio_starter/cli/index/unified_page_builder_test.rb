@@ -229,7 +229,8 @@ module VivlioStarter
         def test_other_volume_guide_leads_and_thins_sub_references
           dd, builder = guided_index((21..25).map { occurrence("#{it}-chapter") }, config: { max_sub_references: 2 })
 
-          assert_match %r{\A<dd><span class="index-other-volume">→ 上巻 第7章&#x3000;</span><a }, dd
+          assert_match %r{</a><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>\z}, dd,
+                       'ページ番号の後ろに太字で置く（先頭だと後ろの番号が別の巻のページに読める）'
           assert_equal 2, dd.scan('<a ').size
           assert_equal ['用語集'], builder.reference_limitation.terms, '絞ったことを知らせる'
         end
@@ -245,8 +246,7 @@ module VivlioStarter
         def test_other_volume_guide_alone_with_main_only
           dd, = guided_index([occurrence('21-a'), occurrence('22-b')], config: { reference_style: 'main_only' })
 
-          assert_includes dd, '→ 上巻 第7章'
-          refute_includes dd, '<a '
+          assert_equal '<dd><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>', dd
         end
 
         # `all` は逃げ道。案内も間引きもしない

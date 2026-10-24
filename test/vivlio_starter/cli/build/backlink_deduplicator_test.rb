@@ -693,16 +693,17 @@ class TestBacklinkDeduplicator < Minitest::Test
     assert_equal %w[#idx-1 #idx-3 #idx-4], dd.css('a').map { it['href'][/#.*/] }
   end
 
-# 別の巻の主要参照の案内はリンクではない。範囲を畳んで作り直しても先頭に残す
-# （index-other-volume-main-spec.md R4）
-def test_should_keep_other_volume_guide_when_compressing
-  dd, = dedup_index_dd(pages: [10, 11, 12, 40], guide: '<span class="index-other-volume">→ 上巻 第7章</span>')
+  # 別の巻の主要参照の案内はリンクではない。範囲を畳んで作り直しても、末尾に「,」で区切って残す
+  # （index-other-volume-main-spec.md R4）
+  def test_should_keep_other_volume_guide_when_compressing
+    dd, = dedup_index_dd(pages: [10, 11, 12, 40],
+                         guide: '<span class="index-other-volume"><strong>上巻 第7章</strong></span>')
 
-  assert_equal 'resolved', dd['class']
-  assert_equal 'index-other-volume', dd.element_children.first['class']
-  assert_equal '→ 上巻 第7章', dd.element_children.first.text
-  assert_equal 1, dd.css('span.page-range').size
-end
+    assert_equal 'resolved', dd['class']
+    assert_equal 'index-other-volume', dd.element_children.last['class']
+    assert_equal ', ', dd.element_children.last.previous_sibling.text
+    assert_equal 1, dd.css('span.page-range').size
+  end
 
   # 主要参照は太字の一点であることに意味があるので、範囲に飲み込まない
   def test_should_never_absorb_the_main_reference_into_a_range
@@ -840,7 +841,7 @@ end
           <!DOCTYPE html>
           <html lang="ja"><head><meta charset="UTF-8"><title>索引</title></head>
           <body class="index-page"><dl class="index-list">
-          <dt>ファイル</dt><dd>#{guide}#{links.join}</dd>
+          <dt>ファイル</dt><dd>#{links.join}#{guide}</dd>
           </dl></body></html>
         HTML
 

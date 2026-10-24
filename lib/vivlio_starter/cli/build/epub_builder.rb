@@ -801,8 +801,8 @@ module VivlioStarter
           # Step 2: 同一番号（同一章＝EPUB 上の同一ページ）を指す連続リンクを併合
           html = dedup_sequential_number_links(html)
 
-          # Step 3: 連続する </a><a を </a>, <a に変換（カンマ区切り）
-          html = html.gsub(%r{</a>\s*(<a\s+href=")}, '</a>, \1')
+          # Step 3: 連続する </a><a を </a>, <a に変換（カンマ区切り）。末尾の別の巻の案内の前も区切る
+          html = html.gsub(%r{</a>\s*(<a\s+href="|<span class="index-other-volume">)}, '</a>, \1')
 
           File.write(path, html, encoding: 'utf-8')
           Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番リンク＋併合＋区切り挿入）")

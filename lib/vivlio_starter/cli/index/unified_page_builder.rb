@@ -322,8 +322,17 @@ module VivlioStarter
             %(<a href="#{link}"#{attr}></a>)
           end.join
           guide = highlight && other_volume_guide(term)
-          # ページ番号との間の全角空白は文字で持つ。CSS で空けると、雛形を写した本の index.css が古いままでは効かない
-          guide ? %(<span class="index-other-volume">→ #{CGI.escapeHTML(guide)}&#x3000;</span>#{links}) : links
+          guide ? "#{links}#{other_volume_guide_html(guide)}" : links
+        end
+
+        # 案内は、この巻のページ番号の後ろに、ほかの参照と同じく「,」で区切って置く。
+        # 先頭に置くと、すぐ後ろのページ番号が別の巻のページに読める（「下巻 付録 E 4」）。
+        # 「→」を付けると、直前のページの続きが別の巻にあるように読める。
+        # 太字は主要参照と同じ「ここに説明がある」の印。CSS でなく <strong> で付ける
+        # ——本の index.css は雛形を写したもので、vs upgrade するまで新しい規則が届かない。
+        # 区切りの「,」は、PDF では最後の <a> に付く CSS が、範囲を畳んだ索引と EPUB では文字が受け持つ
+        def other_volume_guide_html(guide)
+          %(<span class="index-other-volume"><strong>#{CGI.escapeHTML(guide)}</strong></span>)
         end
 
         # 主要参照が別の巻にあり、組む巻には主要参照の出現が無い語の案内（index-other-volume-main-spec.md R1）。

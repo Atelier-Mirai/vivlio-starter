@@ -312,16 +312,19 @@ module VivlioStarter
         end
 
         # 別の巻の主要参照の案内（`<span class="index-other-volume">`）はリンクではないので、
-        # 作り直しても先頭に残す（index-other-volume-main-spec.md R4）
+        # 作り直しても末尾に「,」で区切って残す（index-other-volume-main-spec.md R4）
         def rebuild_dd!(dd, items)
           doc = dd.document
           guide = dd.at_css('> span.index-other-volume')
           dd.children.unlink
-          dd.add_child(guide) if guide
 
           items.each_with_index do |item, position|
             dd.add_child(doc.create_text_node(', ')) if position.positive?
             dd.add_child(item.size == 1 ? item.first.link : build_page_range(doc, item))
+          end
+          if guide
+            dd.add_child(doc.create_text_node(', ')) if items.any?
+            dd.add_child(guide)
           end
 
           dd['class'] = [dd['class'], 'resolved'].compact.reject { it.to_s.strip.empty? }.join(' ')

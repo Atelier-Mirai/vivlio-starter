@@ -75,6 +75,25 @@ module VivlioStarter
         assert_match(%r{<a href="11-basics.html#idx-bbb-1">1</a>}, result, '実在リンクに連番章番号が入る')
       end
 
+      # 別の巻の主要参照の案内は、最後のページ番号の後ろに「,」で区切って残る（index-other-volume-main-spec.md R5）
+      def test_index_separates_other_volume_guide_with_comma
+        write_file('11-basics.html', <<~HTML)
+          <html><body><p><span id="idx-bbb-1" class="index-term">用語B</span></p></body></html>
+        HTML
+        index_path = write_file('_indexpage.html', <<~HTML)
+          <section class="index">
+          <dl class="index-list">
+          <dt>用語B</dt><dd><a href="11-basics.html#idx-bbb-1"></a><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>
+          </dl>
+          </section>
+        HTML
+
+        Builder.post_process_index_glossary_for_epub!(html_files)
+
+        assert_includes File.read(index_path, encoding: 'utf-8'),
+                        '</a>, <span class="index-other-volume"><strong>上巻 第7章</strong></span>'
+      end
+
       # コード例として本文に載ったエスケープ済み id（&lt;span id="…"&gt;）は実在 id と見なさず、
       # それを指す索引リンクは解除される（実 DOM を見ない正規表現収集の偽陽性回帰・本番 RSC-012 残存の真因）
       def test_index_unlinks_link_to_escaped_id_in_code

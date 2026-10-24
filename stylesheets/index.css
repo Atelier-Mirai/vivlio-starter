@@ -172,6 +172,12 @@ body.vs-kindle .index h1 {
   content: target-counter(attr(href url), page, lower-roman) ", ";
 }
 
+/* 最後の参照が前付けのとき。これが無いと、上の「最後のリンクはカンマなし」の規則
+   （dd:not(.resolved) a:last-child::after）のほうが詳しいので勝ち、iv が 4 と出る */
+.index-list dd:not(.resolved) a.frontmatter:last-child::after {
+  content: target-counter(attr(href url), page, lower-roman);
+}
+
 /* ----------------------------------------------------------------
  * 索引語マーク（本文中）の体裁は base.css が持つ
  * ----------------------------------------------------------------
