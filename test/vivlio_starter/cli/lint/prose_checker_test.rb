@@ -1095,6 +1095,13 @@ class TestProseChecker < Minitest::Test
     assert_equal body, PC.fix_affix_spacing(body)
   end
 
+  # 裸 URL は全角の記号の手前で終わる。その先の文には空白を入れる
+  def test_should_fix_spacing_after_url_and_full_width_symbol
+    fixed = PC.fix_hiragana_spacing("公式（https://example.com/）とAIの話。\n")
+
+    assert_equal "公式（https://example.com/）と AI の話。\n", fixed
+  end
+
   # --fix は英字の語と一覧の語の間に空白を入れる。リンクの文字は直し、リンク先は残す
   def test_should_fix_affix_spacing
     fixed = PC.fix_affix_spacing("[EPUB用](https://example.com/a用)とRe:VIEW用、Node.js版。\n")

@@ -905,7 +905,7 @@ module VivlioStarter
         # 空白を入れてはいけない綴り。参照名（`@ch-build用` を `@ch-build 用` にすると参照が
         # 切れる）・リンク先・URL・脚注の名前・HTML タグ・コードを伏せた目印。
         # 位置を保つため、同じ長さの記号で伏せる
-        SPACING_OPAQUE = %r{@[\w:./-]+|\]\([^)]*\)|https?://\S+|\[\^[^\]]*\]|<[^>]*>|#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__}
+        SPACING_OPAQUE = %r{@[\w:./-]+|\]\([^)]*\)|#{Masking::URL}|\[\^[^\]]*\]|<[^>]*>|#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__}
 
         # @param patterns [Array<Regexp>] 2 つ目のグループの頭が、空白を入れる位置
         def spacing_findings(text, patterns, rule, note)

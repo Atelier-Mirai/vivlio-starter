@@ -45,6 +45,10 @@ module VivlioStarter
         # ファイル単位の検証結果
         ValidationReport = Data.define(:filename, :image_issues, :link_issues)
 
+        # 本文に直書きされた URL。リンク記法の中（`](URL)`）・括弧の中・@qr: の引数は除く。
+        # 全角の記号の手前で切る（Masking::URL_TERMINATORS）
+        BARE_URL = %r{(?<!\]\()(?<!\()(?<!@qr:)https?://[^\s)\]>#{Masking::URL_TERMINATORS}]+}
+
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new
         @reports = []
@@ -453,7 +457,7 @@ module VivlioStarter
               # `@qr:https://…` は QR コード記法の引数で、著者が読ませたい URL では
               # ないので除外する（前処理後は <img> になり上の gsub で落ちるが、
               # この検証は原稿に対して走るため、ここで名指しで外す必要がある）。
-              line_without_inline_code.scan(%r{(?<!\]\()(?<!\()(?<!@qr:)https?://[^\s)\]>]+}) do |url|
+              line_without_inline_code.scan(BARE_URL) do |url|
                 # Markdown リンクの URL 部分として使われていないか再確認
                 # [text](URL) のパターンに含まれる URL は脚注化で処理済み
                 next if line.include?("](#{url})")

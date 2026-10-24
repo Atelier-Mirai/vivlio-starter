@@ -523,6 +523,17 @@ module VivlioStarter
 
         def normalize_link_id(id) = id.strip.gsub(/\s+/, ' ').downcase
 
+        # 全角の記号がすぐ後に続く裸 URL。自動リンク `<…>` と HTML の属性値の中は除く
+        DELIMITABLE_BARE_URL = /(?<![<"'=])#{LinkImageValidator::BARE_URL}(?=[#{Masking::URL_TERMINATORS}])/
+
+        # 全角の記号がすぐ後に続く裸 URL を自動リンク `<URL>` で囲む。
+        # 囲まないと、空白の手前までがリンクになる。「（https://example.com/）を使います。」の
+        # リンク先は `https://example.com/）を使います。` になり、たどっても開けない
+        def delimit_bare_urls(md_text)
+          protected_text, spans = Masking.protect_code(md_text.to_s)
+          Masking.restore_code(protected_text.gsub(DELIMITABLE_BARE_URL) { "<#{it}>" }, spans)
+        end
+
         # book-card 内のMarkdownを事前整形
         def normalize_book_card_md(md_text)
           lines = md_text.to_s.split(/\r?\n/, -1)

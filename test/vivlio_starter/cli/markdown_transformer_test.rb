@@ -224,6 +224,28 @@ module VivlioStarter
         end
 
         # =================================================================
+        # delimit_bare_urls
+        # =================================================================
+
+        # 全角の記号が続く裸 URL だけを <URL> で囲む。空白で終わる URL・リンク記法・
+        # 自動リンク・HTML の属性値・コードの中は書いたとおりに残す
+        def test_delimit_bare_urls_wraps_only_urls_followed_by_full_width_symbols
+          md = <<~MD
+            「RubyInstaller」（https://rubyinstaller.org/）を使います。https://ja.wikipedia.org/wiki/日本語。
+            https://example.com/ を見ます。[公式](https://example.com/a)。<https://example.com/b>。
+            <a href="https://example.com/c">c</a>。`https://example.com/d）`
+
+            ```
+            https://example.com/e）
+            ```
+          MD
+          result = delimit_bare_urls(md)
+
+          assert_includes result, '（<https://rubyinstaller.org/>）を使います。<https://ja.wikipedia.org/wiki/日本語>。'
+          assert_equal md.lines.drop(1), result.lines.drop(1)
+        end
+
+        # =================================================================
         # normalize_book_card_md
         # =================================================================
         def test_normalize_book_card_md_adds_blank_after_image
@@ -993,6 +1015,13 @@ module VivlioStarter
 
           assert_empty result[:errors], "リンク内の @ で未定義警告が出てはいけない: #{result[:errors].inspect}"
           assert_includes result[:content], '[npmjs.com/@vivliostyle/cli](https://www.npmjs.com/package/@vivliostyle/cli)'
+        end
+
+        # 裸 URL は全角の記号の手前で終わる。その先に書いた参照は参照として読む
+        def test_replace_references_reads_reference_after_url_and_full_width_symbol
+          result = replace_references("公式（https://example.com/）は@ch-missingで扱う。\n", {}, 'test.md')
+
+          assert_equal 1, result[:errors].size, result[:errors].inspect
         end
 
         # 索引・用語集の手動登録マークアップ（[用語|読み]・[@用語]）内の @ は参照として扱わない

@@ -205,6 +205,13 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'for'
   end
 
+  # URL は全角の記号の手前で終わり、その先の語は検査することを確認する
+  def test_url_ends_before_full_width_symbol
+    words = T.tokenize("公式（https://example.com/）の「Mistaek」を選ぶ\n").map { _1[0] }
+    refute_includes words, 'example'
+    assert_includes words, 'Mistaek'
+  end
+
   # Markdownリンクのリンクテキストは残りURLは除去されることを確認する
   def test_markdown_link_text_kept_url_removed
     words = T.tokenize("See [Ruby docs](https://ruby-lang.org) for info\n").map { _1[0] }

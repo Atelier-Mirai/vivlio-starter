@@ -164,7 +164,7 @@ module VivlioStarter
           # URL は**ラベルより先に**落とす。`@qr:https://example.com/Foo` のように
           # 値が URL の記法があり、先にラベルを削ると `@qr:https` までが消えて
           # 残りが URL と認識されなくなる（実測: リポジトリ名が未知語になった）
-          cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去
+          cleaned.gsub!(Masking::URL, ' ')                       # URLを除去
           # 相互参照ラベル @id（メールは除外）。`@pageref:見出しラベル` のように
           # コロンで続く形も 1 つの記法なので、まとめて落とす
           cleaned.gsub!(/(?<![A-Za-z0-9_])@[A-Za-z][A-Za-z0-9-]*(?::[A-Za-z][A-Za-z0-9-]*)?/, ' ')

@@ -794,7 +794,7 @@ module VivlioStarter
           # - 単独の角括弧 [ … ]: 索引・用語集の手動登録（[用語|読み]・[@用語]）や脚注参照 [^url1]
           # - 裸 URL: リンク脚注化が追記する脚注定義行（[^url1]: https://…/@scope/pkg）など、
           #   角括弧の外に現れる URL 内の @
-          MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)]+}
+          MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)#{Masking::URL_TERMINATORS}]+}
 
           def initialize(content, labels_map, filename, chapter_order: nil, other_volumes: {})
             @content = content

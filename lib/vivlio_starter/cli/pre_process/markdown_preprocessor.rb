@@ -117,6 +117,7 @@ module VivlioStarter
           transform_qr_codes!
           validate_images!
           transform_showcases!
+          delimit_bare_urls!
           transform_mermaid!
           transform_talk!
           process_code_includes!
@@ -367,6 +368,13 @@ module VivlioStarter
             source_filename: context.filename
           )
           Common.log_success('図解注釈（showcase）を合成画像へ変換しました') if context.content != before
+        end
+
+        # 全角の記号がすぐ後に続く裸 URL を `<URL>` で囲み、リンク先を URL だけにする。
+        # 表・箇条書きなどを HTML へ起こす段より前でなければならない（HTML の中の `<URL>` は
+        # リンクにならない）。showcase の後なのは、画像へ焼き込む注釈の文字に `< >` を残さないため
+        def delimit_bare_urls!
+          context.content = MarkdownTransformer.delimit_bare_urls(context.content)
         end
 
         # ```mermaid フェンスを mmdc で図（PDF=ベクタ SVG / EPUB・Kindle=ラスター）へ変換し

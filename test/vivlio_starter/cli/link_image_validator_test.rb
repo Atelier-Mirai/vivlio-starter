@@ -195,6 +195,19 @@ module VivlioStarter
           assert_equal 'https://foobar.com/hoge?fuga=piyo', report.link_issues.first.url
         end
 
+        # 全角の括弧・句読点の手前で URL を切ること。日本語のパスは URL のうちに数える
+        def test_should_end_bare_url_before_full_width_symbols
+          content = <<~MD
+            公式の「RubyInstaller」（https://rubyinstaller.org/）を使います。「Ruby+Devkit 4.0」を選びます。
+            詳しくは https://ja.wikipedia.org/wiki/日本語。
+          MD
+
+          report = LinkImageValidator.validate(content, 'test.md')
+
+          assert_equal ['https://rubyinstaller.org/', 'https://ja.wikipedia.org/wiki/日本語'],
+                       report.link_issues.map(&:url)
+        end
+
         # =================================================================
         # 外部 URL 収集
         # =================================================================

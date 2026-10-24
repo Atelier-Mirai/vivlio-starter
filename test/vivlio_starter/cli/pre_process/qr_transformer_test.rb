@@ -62,6 +62,16 @@ class QrTransformerTest < Minitest::Test
     end
   end
 
+  # 全角の記号の手前でも URL を切る
+  def test_should_stop_url_at_full_width_symbol
+    in_tmp do
+      out = QT.transform("QR（@qr:https://example.com/x）を読む。\n", source_filename: '31-usage.md')
+
+      assert_includes out, 'alt="https://example.com/x">'
+      assert_includes out, '）を読む。'
+    end
+  end
+
   # {width=25mm} で 1 個だけ大きさを変える。属性は URL に含めない（改善案.md #12）
   def test_should_apply_width_attribute_without_folding_it_into_url
     in_tmp do
