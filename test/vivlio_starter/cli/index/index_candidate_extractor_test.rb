@@ -401,6 +401,22 @@ module VivlioStarter
           assert_includes candidates, '銀行口座クラス'
         end
 
+        # 番号付けに助詞で続けた見出しの語（「課題3のポーカー」）も外す。
+        # 番号の後ろに言葉が直に付いた語（「第2正規形」）は一つの語なので残す
+        def test_numbered_label_phrases_are_discarded_but_compounds_are_kept
+          mecab!
+          # spiral-ruby では「課題165のポーカーとは、…そっくり同じです」が定義文の型に当たっていた
+          markdown = (1..2).map { "## 課題#{it}　口座\n\n課題#{it}を読みます。\n\n" }.join +
+                     "## 役の判定\n\n課題3のポーカーとは、点数の数え方を除いてそっくり同じです。\n"
+          candidates = extract(markdown)
+
+          refute_includes candidates, '課題3のポーカー'
+
+          label = IndexCandidateExtractor::NUMBERED_LABEL
+          assert_equal '課題', '課題3の図2'[label, :label], '言葉は最短で取る'
+          refute_match label, '第2正規形', '番号の後ろに言葉が直に付いた語は形が違う'
+        end
+
         # 番号違いが二つまでなら、番号付けとは決めない。英字の名前（UTF-8・UTF-16・UTF-32）も対象外
         def test_names_with_numbers_are_kept
           mecab!
