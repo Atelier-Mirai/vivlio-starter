@@ -329,6 +329,18 @@ module VivlioStarter
           refute(candidates.any? { it.include?('Terms HTML') }, candidates.inspect)
         end
 
+        # 裸 URL と脚注の定義行の URL から、語を候補にしない
+        def test_bare_urls_are_not_read
+          candidates = extract(<<~MD)
+            公式（https://rubyinstaller.org/）を使います。Devkit を選びます。
+
+            [^url1]: https://example.com/Vivliostyle/docs
+          MD
+
+          refute(candidates.any? { it.match?(/rubyinstaller|Vivliostyle|example/i) }, candidates.inspect)
+          assert_includes candidates, 'Devkit'
+        end
+
         # 図解注釈の注釈行・画像の代替テキスト・ラベルは、紙面の本文ではない
         def test_machine_data_image_alt_and_labels_are_not_read
           candidates = extract(<<~MD)

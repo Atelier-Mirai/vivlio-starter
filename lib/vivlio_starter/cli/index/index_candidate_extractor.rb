@@ -548,6 +548,9 @@ module VivlioStarter
           # Markdownリンク記法の URL 部分を除外
           text.gsub!(/\]\([^)]+\)/, '] ')
 
+          # 裸 URL と脚注の定義行の URL。`https://rubyinstaller.org/` から「rubyinstaller」を候補にしない
+          text = Masking.strip_urls(text)
+
           # インラインコード
           text.gsub!(/`[^`]+`/, ' ')
 

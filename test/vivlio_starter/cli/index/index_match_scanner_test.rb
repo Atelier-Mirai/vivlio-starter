@@ -53,6 +53,18 @@ module VivlioStarter
           refute_match(/index-term/, out)
         end
 
+        # 裸 URL の中の語には索引を当てない（当てると URL の途中にタグが入り、リンクも壊れる）。
+        # URL は全角の記号の手前で終わり、その先の語には当てる
+        def test_should_not_tag_terms_inside_bare_urls
+          scanner = build_scanner([{ 'term' => 'Ruby', 'yomi' => 'るびー', 'flags' => 'i' }])
+          line = "解説（https://ja.wikipedia.org/wiki/Ruby）はRubyの話。\n[^url1]: https://example.com/Ruby/docs\n"
+          out = scanner.send(:process_content_with_code_block_exclusion, line, '11-probe')
+
+          assert_includes out, '（https://ja.wikipedia.org/wiki/Ruby）'
+          assert_includes out, '[^url1]: https://example.com/Ruby/docs'
+          assert_equal 1, out.scan('index-term').size
+        end
+
         # 読みを添えてあるのは索引へ載せる意思表示。3 文字以上や日本語の語は従来どおり載る
         def test_should_tag_short_terms_with_reading_and_ordinary_terms
           scanner = build_scanner([])

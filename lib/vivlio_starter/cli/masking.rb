@@ -56,11 +56,13 @@ module VivlioStarter
       # URL の終わりとみなす全角の記号（句読点・括弧・かぎ括弧など）。URL に全角の記号は
       # 入らないので、「（https://example.com/）を使う」の「）」から先は URL ではない。
       # 和文の文字（漢字・かな）は止めない。日本語のパスを持つ URL があるため
-      URL_TERMINATORS = "　-〿！-／：-＠［-｀｛-･"
+      URL_TERMINATORS = "\u3000-\u303F\uFF01-\uFF0F\uFF1A-\uFF20\uFF3B-\uFF40\uFF5B-\uFF65"
 
-      # 本文に書かれた URL の範囲。校正・相互参照・裸 URL の検出が URL を処理から外すときに使う。
+      # 本文に書かれた URL の範囲。校正・相互参照・索引・裸 URL の検出が URL を処理から外すときに使う。
       # 空白の手前までとすると、上の例の「）を使う」が URL に呑まれ、校正にかからない
-      URL = %r{https?://[^\s#{URL_TERMINATORS}]+}
+      # 半角の `)` `]` `>` でも止める（`[文字](URL)を参照` の「)を参照」、`<URL>は` の「>は」）。
+      # ただし URL の中で対になった `( )` は URL に含める（`…/File:Alan_Kay_(cropped).jpg`）
+      URL = %r{https?://(?:[^\s()\]>#{URL_TERMINATORS}]|\([^\s()\]>#{URL_TERMINATORS}]*\))+}
 
       # --- (a) コード外の行だけを走査する -----------------------------------
 
@@ -94,6 +96,10 @@ module VivlioStarter
       # 索引の記法と見なしていた（改善案 #99）。
       INLINE_CODE_SPAN_IN_LINE = /(?<!`)(`+)(?!`)[^\n]+?(?<!`)\1(?!`)/
       def strip_inline_code(text) = text.gsub(INLINE_CODE_SPAN_IN_LINE, ' ')
+
+      # URL を空白 1 つにしたテキストを返す。行数は保つ。
+      # 語を数える処理が、URL の中の綴り（`https://ja.wikipedia.org/wiki/Ruby`）を語と数えないように
+      def strip_urls(text) = text.gsub(URL, ' ')
 
       # --- (c) トップレベルのフェンスブロックを選択的に置換する -------------
 

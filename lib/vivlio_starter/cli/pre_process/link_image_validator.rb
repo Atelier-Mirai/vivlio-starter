@@ -46,8 +46,8 @@ module VivlioStarter
         ValidationReport = Data.define(:filename, :image_issues, :link_issues)
 
         # 本文に直書きされた URL。リンク記法の中（`](URL)`）・括弧の中・@qr: の引数は除く。
-        # 全角の記号の手前で切る（Masking::URL_TERMINATORS）
-        BARE_URL = %r{(?<!\]\()(?<!\()(?<!@qr:)https?://[^\s)\]>#{Masking::URL_TERMINATORS}]+}
+        # URL の範囲は Masking::URL（全角の記号の手前で切る）
+        BARE_URL = /(?<!\]\()(?<!\()(?<!@qr:)#{Masking::URL}/
 
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new

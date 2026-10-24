@@ -715,7 +715,7 @@ module VivlioStarter
       # 章の本文（コードを除く）。原稿が見つからなければ nil
       def chapter_body(chapter)
         path = IndexCommands::ChapterSource.path(chapter)
-        path && IndexCommands::CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+        path && Masking.strip_urls(IndexCommands::CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
       end
       private :chapter_body
 

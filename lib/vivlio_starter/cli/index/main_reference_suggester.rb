@@ -98,7 +98,7 @@ module VivlioStarter
           chapters.filter_map { ChapterSource.path(it) }
                   .sort_by { File.basename(it, '.md') }
                   .map do |path|
-            body = CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+            body = Masking.strip_urls(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
             headings = Hash.new { |h, k| h[k] = [] }
             body.scan(HEADING) { |mark, text| headings[mark.size] << text }
             Chapter.new(basename: File.basename(path, '.md'), headings:, body:)

@@ -18,7 +18,7 @@
 #
 # 数え方の約束:
 #   - 照合は辞書の pattern（無ければ完全一致）。IndexMatchScanner と同じ綴り
-#   - 本文は CodeBlockStripper を通す。コード例の出現で広さを膨らませない
+#   - 本文は CodeBlockStripper と Masking.strip_urls を通す。コード例と URL の中の綴りで広さを膨らませない
 #   - 1 章に何回出ても 1 章と数える（頻度ではなく広がりを見る指標なので）
 #
 # 仕様: index-term-selection-spec.md §3 R5.1
@@ -90,7 +90,7 @@ module VivlioStarter
             path = ChapterSource.path(chapter)
             next unless path
 
-            CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
+            Masking.strip_urls(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
           end
         end
         private_class_method :load_bodies

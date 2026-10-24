@@ -271,7 +271,9 @@ module VivlioStarter
 
           sections = []
           prose = []
-          Masking.each_prose_line(content) do |line, _|
+          Masking.each_prose_line(content) do |raw, _|
+            # URL の中の綴りは本文の出現に数えない（タグ付けも URL には当てない）
+            line = Masking.strip_urls(raw)
             case line[HEADING_LINE, 1]&.size
             when nil then prose << line
             when 1 then nil # 章題は数えない
@@ -567,6 +569,9 @@ end
           mask.protect!(Masking::HTML_INLINE_CODE)
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
           mask.protect!(MARKDOWN_LINK_PATTERN) # リンク・画像記法 [ラベル](URL)
+          # 裸 URL と、リンクを脚注にした定義行（`[^url1]: https://…`）の URL。
+          # 当てると URL の途中にタグが入り、リンク先が壊れる
+          mask.protect!(Masking::URL)
           mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}
           # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
           # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。

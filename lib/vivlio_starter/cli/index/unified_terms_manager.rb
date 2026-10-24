@@ -371,7 +371,7 @@ module VivlioStarter
       def absent_listed_terms
         bodies = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
                     .reject { File.basename(it).start_with?('_') }
-                    .map { IndexCommands::CodeBlockStripper.strip(File.read(it, encoding: 'utf-8')) }
+                    .map { Masking.strip_urls(IndexCommands::CodeBlockStripper.strip(File.read(it, encoding: 'utf-8'))) }
 
         load_terms.reject { it['flags'].to_s.empty? }.reject do |term|
           pattern = IndexCommands::TermPattern.for(term)

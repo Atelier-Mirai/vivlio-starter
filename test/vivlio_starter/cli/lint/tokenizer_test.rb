@@ -212,6 +212,13 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'Mistaek'
   end
 
+  # URL の中で対になった括弧は URL に含め、リンクの後の語は検査することを確認する
+  def test_url_keeps_balanced_parentheses
+    words = T.tokenize("[Photo](https://commons.wikimedia.org/wiki/File:Kay_(cropped).jpg)\" in Mistaek\n").map { _1[0] }
+    refute_includes words, 'cropped'
+    assert_includes words, 'Mistaek'
+  end
+
   # Markdownリンクのリンクテキストは残りURLは除去されることを確認する
   def test_markdown_link_text_kept_url_removed
     words = T.tokenize("See [Ruby docs](https://ruby-lang.org) for info\n").map { _1[0] }

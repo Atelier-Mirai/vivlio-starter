@@ -56,6 +56,18 @@ module VivlioStarter
           assert_equal 1, spread.chapter_count, 'コードブロック内の出現は数えない'
         end
 
+        # URL の中の綴りは数えない。索引は URL の中に当てないので、広さにも数えない
+        def test_ignores_occurrences_inside_urls
+          chapters = write_chapters([
+                                      "地の文に Ruby があります。\n",
+                                      "解説（https://ja.wikipedia.org/wiki/Ruby）を読む。\n"
+                                    ])
+
+          spread = TermSpread.measure([term('Ruby', pattern: '/\bRuby\b/')], chapters)['Ruby']
+
+          assert_equal 1, spread.chapter_count, 'URL の中の出現は数えない'
+        end
+
         # 辞書の pattern をそのまま使う（IndexMatchScanner と同じ綴りの約束）。
         # 語境界 \b が効くので Rubyist は別語として数えない。
         def test_uses_dictionary_pattern_when_present
