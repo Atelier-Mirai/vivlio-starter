@@ -53,6 +53,15 @@ module VivlioStarter
           refute_match(/index-term/, out)
         end
 
+        # 区間の表記と、画像の説明文の中の角かっこは、本文の表記のまま残す
+        def test_should_leave_intervals_and_image_alt_brackets_as_text
+          scanner = build_scanner([])
+          md = "閉区間 [0,1] と配列 [1, 2, 3]。\n![[CSS] で組んだ図](fig.svg)\n"
+          out = scanner.send(:process_content_with_code_block_exclusion, md, '11-probe')
+
+          assert_equal md, out
+        end
+
         # 裸 URL の中の語には索引を当てない（当てると URL の途中にタグが入り、リンクも壊れる）。
         # URL は全角の記号の手前で終わり、その先の語には当てる
         def test_should_not_tag_terms_inside_bare_urls

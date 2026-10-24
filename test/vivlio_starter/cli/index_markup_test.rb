@@ -183,6 +183,31 @@ module VivlioStarter
         refute IndexMarkup.other_notation?(matches_in('索引語 [基本情報技術者] です。').first, [])
       end
 
+      # --- 本文の角かっこを記法と取り違えない（spiral-ruby で辞書が汚れた 3 例） ---
+
+      # 区間の `[0,1)` から次の `]` までを一語にしない。ビルドの TERM_PATTERN と同じ読み方
+      def test_dictionary_patterns_should_not_span_other_brackets
+        line = 'Ruby の rand は [0,1)、すなわち 1.0 を返しません。半開 [0,1) か閉 [0,1] か。'
+
+        assert_equal [['0,1']], line.scan(IndexMarkup::TERM_ONLY_PATTERN)
+        assert_empty "[A\nB|よみ]".scan(IndexMarkup::TERM_WITH_YOMI_PATTERN), '行をまたがない'
+        assert_equal [%w[語 よみ]], '[0,1) と [語|よみ]'.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN), '区間の [ から始めない'
+      end
+
+      # 区間・座標・配列は、カンマを含む数の並びとして記法にしない
+      def test_number_lists_are_not_index_terms
+        ['0,1', '1, 2, 3', '-1, 1', '0.5,1'].each { assert IndexMarkup.skip_term?(it), "#{it} は数の並び" }
+        ['3', 'CSS', '1, 2 章', 'x,y'].each { refute IndexMarkup.skip_term?(it), "#{it} は数の並びではない" }
+      end
+
+      # 画像の説明文の中の添字（table[4]）は本文の表記。索引語にすると画像の記法が壊れる
+      def test_image_alt_brackets_are_other_notation
+        alt = '![失敗関数 table[4]=3 にしたがい、[CSS] を比べる図](070-kmp-shift.svg) と [索引語]'
+        found = matches_in(alt).to_h { [it[1], IndexMarkup.other_notation?(it, [])] }
+
+        assert_equal({ '4' => true, 'CSS' => true, '索引語' => false }, found)
+      end
+
       # --- 数式の退避（改善案 #115） ---
 
       # 4 種類の区切りを退避し、数式の外の印だけが照合に残る

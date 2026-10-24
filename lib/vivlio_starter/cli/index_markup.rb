@@ -49,11 +49,15 @@ module VivlioStarter
       TERM_PATTERN = /(?<!\^)\[([^\[\]\n]+)\](?!\()/
 
       # 読み付き `[用語|読み]`。辞書登録が読みを取り出すために使う。
-      TERM_WITH_YOMI_PATTERN = /(?<!\^)\[([^\]|]+)\|([^\]]+)\]/
+      #
+      # 中身に `[` と改行を許さないのは TERM_PATTERN と同じ。許すと、本文の区間の表記
+      # `[0,1)` から同じ行の次の `]` までを一語として辞書へ登録していた（実測: 205 字の
+      # 「語」が入った）。ビルドはその語を一語とは読まないので、辞書だけが汚れる。
+      TERM_WITH_YOMI_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\|([^\[\]\n]+)\]/
 
       # 読みなし `[用語]` のみ（`|` を含むものは TERM_WITH_YOMI_PATTERN の担当）。
       # 辞書登録が 2 パターンを順に当てる方式のため、こちらは `|` を持たない。
-      TERM_ONLY_PATTERN = /(?<!\^)\[([^\]|]+)\](?!\()/
+      TERM_ONLY_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\](?!\()/
 
       # --- 参照リンク（CommonMark）との共存 -------------------------------
       #
@@ -133,24 +137,53 @@ module VivlioStarter
         match.post_match.empty? || match.post_match.match?(/\A[ \t\r\n]/)
       end
 
+      # --- 画像の説明文との共存 --------------------------------------------
+      #
+      # 画像の説明文（`![…](path)` の `…`）は読み上げ用の文で、中の角かっこは
+      # 本文の表記である（「失敗関数 table[4]=3 にしたがい」）。索引語にすると
+      # 説明文の中へタグが入り、画像の記法そのものが壊れる。説明文の中の角かっこは
+      # 1 段まで入れ子を認める（`table[4]` のような添字）。
+
+      # 画像の記法の、説明文から `](` まで
+      IMAGE_ALT = /!\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\(/
+
+      # そのマッチは画像の説明文の中にあるか。
+      # @param match [MatchData] TERM_PATTERN のマッチ
+      # @return [Boolean]
+      def image_alt?(match)
+        return false unless match.pre_match.include?('![')
+
+        start = match.begin(0)
+        match.string.to_enum(:scan, IMAGE_ALT).any? do
+          alt = ::Regexp.last_match
+          alt.begin(0) < start && start < alt.end(0)
+        end
+      end
+
       # そのマッチは索引マークアップ**ではない**（他の記法が持つブラケット）か。
       # 消費側はこれ 1 つを見ればよい——記法が増えたらここへ 1 行足す。
       # @param match [MatchData] TERM_PATTERN のマッチ
       # @param labels [Array<String>] link_labels の戻り
       # @return [Boolean]
       def other_notation?(match, labels = [])
-        reference_link?(match, labels) || task_list_marker?(match)
+        reference_link?(match, labels) || task_list_marker?(match) || image_alt?(match)
       end
 
+      # 数の並び。区間 `[0,1]`、座標や配列 `[1, 2, 3]` の表記で、カンマを含むものだけ。
+      # カンマの無い `[3]` は単位の表記（SHORT_ASCII_TERM）の側で扱う
+      NUMBER_LIST = /\A[\d\s.+\-−]+(?:,[\d\s.+\-−]+)+\z/
+
       # ブラケットの中身が索引語として無効か。
-      # パターンが弾けない「中身で見分ける記法」——参照脚注 `[^id]`——を落とす。
+      # パターンが弾けない「中身で見分ける記法」——参照脚注 `[^id]` と数の並び——を落とす。
+      # 数の並びを索引語にしたい著者はいない。区間を本文に書く本（`[0,1]`）で、
+      # 「0,1」が索引語になっていた
       # @param term_text [String, nil] ブラケットの中身
       # @return [Boolean] 索引語として扱わないなら true
       def skip_term?(term_text)
         return true if term_text.nil? || term_text.empty?
 
         # 脚注参照 [^id]。著者が意図的にマークアップした [!] [&&] [<h1>] は除外しない
-        term_text.start_with?('^')
+        term_text.start_with?('^') || term_text.match?(NUMBER_LIST)
       end
 
       # --- 単位・記号表記の見分け -------------------------------------------

@@ -189,6 +189,25 @@ module VivlioStarter
         refute_includes load_all_terms, 'x'
       end
 
+      # 回帰: 区間の表記と画像の説明文の角かっこを、手動登録の語にしない。
+      # spiral-ruby で、205 字の文の断片と「…失敗関数table[4」が辞書に入っていた
+      def test_auto_process_ignores_intervals_and_image_alt_brackets
+        File.write('contents/41-random.md', <<~MD)
+          # Random
+
+          Ruby の rand は [0,1)、すなわち 1.0 を返しません。乱数の区間が半開 [0,1) か閉 [0,1] か。
+
+          ![失敗関数table[4]=3にしたがい比較を続ける図](070-kmp-shift.svg)
+
+          本文の [乱数] は索引語です。
+        MD
+
+        output, = capture_io { @manager.auto_process!(['41-random']) }
+
+        assert_equal ['乱数'], load_all_terms, '本文の [乱数] だけを登録する'
+        refute_includes output, '[4] は単位・記号表記', '画像の説明文の中は記法として見ない'
+      end
+
       # 回帰: 数式の単位 `[\Omega]` や `\[…\]` の中身を手動登録の語にしない（改善案 #115）。
       # book_hobby_tech で `\Omega`・`\text{W}`・`\text{A}` が辞書に入っていた
       def test_auto_process_ignores_brackets_inside_math

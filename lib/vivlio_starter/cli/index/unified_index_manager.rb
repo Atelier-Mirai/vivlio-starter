@@ -1135,11 +1135,14 @@ module VivlioStarter
           # 数式の中のブラケット（`$$5\,[\Omega]$$`）も印ではない。行数を保って退避する（改善案.md #115）
           content_without_code, = IndexMarkup.protect_math(content_without_code)
           chapter_name = File.basename(chapter_path, '.*')
+          labels = IndexMarkup.link_labels(content_without_code)
 
           # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）。
           # 綴りの定義元は IndexMarkup（インライン脚注 ^[A|B] を除外する）。
+          # 画像の説明文の中などの、他の記法が持つ角かっこはビルドと同じく除く
           content_without_code.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN) do |term, yomi|
             next if term.nil? || term.empty?
+            next if IndexMarkup.other_notation?(::Regexp.last_match, labels)
 
             lineno = content_without_code[0...::Regexp.last_match.begin(0)].count("\n") + 1
             context = extract_surrounding_context(content, term)
@@ -1160,7 +1163,6 @@ module VivlioStarter
           # 参照リンクとタスクリストのマーカー（`- [x]`）は、ビルドや lint と同じく
           # IndexMarkup.other_notation? で除く。マーカーの判定は行頭からの並びを見るので、
           # 行ごとに照合する（改善案 #99: 21 章の `- [x]` を単位・記号として警告していた）
-          labels = IndexMarkup.link_labels(content_without_code)
           matches = content_without_code.each_line.with_index(1).flat_map do |line, lineno|
             line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).map { [::Regexp.last_match, lineno] }
           end
