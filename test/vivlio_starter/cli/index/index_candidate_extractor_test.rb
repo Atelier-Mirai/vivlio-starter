@@ -534,6 +534,31 @@ module VivlioStarter
           assert_includes candidates, '互いに素', '「に」を含んでも語として成り立つ'
         end
 
+        # 英字の番号付け（Player0〜Player9）・変数と助数詞（n 個・n 回）・重ねた言い回し（一つ一つ）・
+        # 「ただ一か所」・引用符の断片（S_"）は語ではない
+        def test_more_non_terms_from_the_spiral_review
+          mecab!
+          players = (0..9).map { "Player#{it}" }.join('、')
+          markdown = "#{players}が対戦します。Player5が首位、Player0が二位です。\n\n" +
+                     ("n 個の要素を n 回くり返します。一つ一つ確かめます。値がただ一か所に現れます。" \
+                      "パターンは \"_R_S_\" です。\n\n" * 3)
+          candidates = extract(markdown)
+
+          bad = %w[Player0 Player5 n\ 個 n\ 回 n\ 回くり 一つ一つ ただ一か所]
+          assert_empty bad & candidates, "残った: #{bad & candidates}"
+          assert_empty candidates.grep(/"/), '引用符の断片は残らない'
+        end
+
+        # 形容詞の語幹＋「さ」は名詞。「深さ優先探索」を語として拾い、「さ優先」を残さない
+        def test_adjective_stem_with_sa_starts_a_noun_sequence
+          mecab!
+          markdown = %w[探します 調べます 確かめます].map { "深さ優先探索で#{it}。\n\n" }.join
+          candidates = extract(markdown)
+
+          assert_includes candidates, '深さ優先探索'
+          refute(candidates.any? { it.start_with?('さ') }, "「さ」で始まる断片: #{candidates.grep(/\Aさ/)}")
+        end
+
         # 外す決まりが、語を巻き込まないこと（spiral-ruby で一度巻き込んだ語）
         def test_real_terms_survive_the_value_and_number_rules
           mecab!

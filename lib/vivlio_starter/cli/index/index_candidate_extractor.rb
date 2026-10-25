@@ -54,7 +54,7 @@ module VivlioStarter
         # 語として成立しない文字列。定義文の切り出しや名詞連続に混ざる残骸を落とす。
         # 記法の断片（`###MATTR` `**Linux` `|画像`）、句読点をまたいだ文、
         # 記号で始まる・終わる語が対象。
-        JUNK_TERM_PATTERN = /[。、！？\r\n\t#*|`>~\[\]()（）「」『』【】〓]|:{3}|\A[[:space:]\-.:：]|[[:space:]\-.:：]\z/
+        JUNK_TERM_PATTERN = /[。、！？\r\n\t#*|`>~\[\]()（）「」『』【】〓"“”]|:{3}|\A[[:space:]\-.:：]|[[:space:]\-.:：]\z/
 
         # MeCab が 1 語と認識する複合語（「相対性理論」など）を拾う下限。
         #
@@ -246,6 +246,10 @@ module VivlioStarter
           !term.match?(/\A[ぁ-ん]|[こご]\z|(?:い|た|ない)\z|[がを]|から|という/)
         end
 
+        # 同じかたまりを重ねた言い回し（「一つ一つ」「一行一行」「一日一日」）。カタカナだけの語
+        # （「ヨーヨー」）は名前のことがあるので含めない
+        def repeated?(term) = term.match?(/\A(.+)\1\z/) && !term.match?(/\A[ァ-ヶー]+\z/)
+
         # 専門用語パターンから候補を抽出
         def extract_technical_terms!
           @documents.each do |chapter, content|
@@ -289,7 +293,13 @@ module VivlioStarter
         # @yieldparam nouns [Array<Array(String, Boolean, String)>] [表層形, 直前に空白があったか, 品詞細分類]
         def each_noun_sequence(mecab, text)
           text.each_line do |line|
-            each_noun_sequence_in_line(mecab, line.chomp) { yield without_trailing_number(without_okurigana_suffix(it)) }
+            each_noun_sequence_in_line(mecab, line.chomp) do |nouns|
+              # 形容詞の語幹＋「さ」だけの語（「高さ」「難しさ」）は、ありふれた言葉。つなぐのは
+              # 後ろに中身のある名詞が続く形（「深さ優先探索」）のため
+              next if nouns.first&.[](2) == '形容詞' && nouns.drop(2).all? { it[2] == '接尾' || QUANTITY_SUFFIXES.include?(it[0]) }
+
+              yield without_trailing_number(without_okurigana_suffix(nouns))
+            end
           end
         end
 
@@ -321,6 +331,9 @@ module VivlioStarter
         # 「書記たち」→「書記」）
         def without_okurigana_suffix(nouns)
           nouns = nouns.dup
+          # 「くり返す」を MeCab は くり（栗）＋返す と切るので、末尾に「くり」が残る（「n 回くり」）。
+          # 「くり返し」は くり＋返し の名詞の連続なので、末尾でなければ残す
+          nouns.pop if nouns.size > 1 && nouns.last[0] == 'くり'
           nouns.pop while nouns.size > 1 && nouns.last[2] == '接尾' &&
                           (PHRASE_SUFFIXES.include?(nouns.last[0]) || PERSON_SUFFIXES.include?(nouns.last[0]))
           nouns
@@ -333,9 +346,9 @@ module VivlioStarter
         RANGE_WORDS = %w[以下 以上 未満 以内 以外 以降 以前 以後 以来 程度 前後 付近 同士 どうし].freeze
 
         # 語の一部にならない名詞。「自分自身」「式そのもの」「人全員」「あと一桁」「まま計算」
-        # 「いちばん左」が候補になっていた（spiral-ruby）。「あと」「まま」「すべて」は IPADIC で
-        # 副詞可能だが、同じ品詞に「時間」（「時間計算量」）もあるので、品詞でなく綴りで見る
-        FUNCTION_NOUNS = %w[自身 そのもの それぞれ 全員 すべて 全て あと まま いちばん 一番 ひとつ ふたつ].freeze
+        # 「いちばん左」「ただ一か所」が候補になっていた（spiral-ruby）。「あと」「まま」「すべて」は
+        # IPADIC で副詞可能だが、同じ品詞に「時間」（「時間計算量」）もあるので、品詞でなく綴りで見る
+        FUNCTION_NOUNS = %w[自身 そのもの それぞれ 全員 すべて 全て あと まま いちばん 一番 ひとつ ふたつ ただ].freeze
 
         # 名詞の連続をここで切るか。範囲の語・語の一部にならない名詞に加えて、
         # 非自立の名詞（こと・もの・とき・ほう・よう）と代名詞（これ・それ）でも切る
@@ -346,6 +359,7 @@ module VivlioStarter
         # 1 行ぶん。行ごとに解析するのは、名詞連続が行をまたいでつながらないようにするため
         def each_noun_sequence_in_line(mecab, line)
           current_nouns = []
+          adjective = nil # 直前の形容詞（「深さ」の「深」）
           mecab.parse(line) do |node|
             if node.is_eos?
               yield current_nouns
@@ -363,7 +377,13 @@ module VivlioStarter
             # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
             # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す。
             # 範囲を表す語（RANGE_WORDS）でも切る
-            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !sequence_break?(node.surface, pos_detail)
+            # 形容詞の語幹＋「さ」「み」は名詞（「深さ」「重み」）。IPADIC は語幹を形容詞と切るので、
+            # そのままでは連続が「さ」から始まり、「深さ優先探索」が「さ優先」として候補になっていた
+            if pos == '名詞' && pos_detail == '接尾' && %w[さ み].include?(node.surface) && current_nouns.empty? && adjective
+              current_nouns << adjective << token
+              # 語幹が仮名だけの形（「読みやすさ」の「やす」）はつながない
+              current_nouns.clear unless adjective[0].match?(/[ァ-ヶ一-龯]/)
+            elsif pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !sequence_break?(node.surface, pos_detail)
               current_nouns << token
             elsif pos == '接頭詞' && pos_detail == '名詞接続'
               # 接頭辞は次の名詞と 1 語をなす（「単章ビルド」「同梱画像」）。
@@ -374,6 +394,7 @@ module VivlioStarter
               yield current_nouns
               current_nouns = []
             end
+            adjective = pos == '形容詞' ? [node.surface, token[1], '形容詞', nil] : nil
           end
         end
 
@@ -476,7 +497,8 @@ module VivlioStarter
 
         # 数か。「数百桁」の「数」は、文脈によって MeCab が普通の名詞（かず）と切るので、
         # 「数」「何」「幾」は品詞にかかわらず数とみなす（一つでも取りこぼすと候補になる）
-        def numeral?(token) = token[2] == '数' || %w[数 何 幾 半].include?(token[0])
+        # 変数 1 字（「n 個」「n 回」の n）も数と同じに数える
+        def numeral?(token) = token[2] == '数' || %w[数 何 幾 半].include?(token[0]) || token[0].match?(/\A[a-z]\z/)
 
         def counter?(token)
           (token[3] == '助数詞' && token[0].length == 1) || COUNTER_WORDS.include?(token[0])
@@ -486,7 +508,7 @@ module VivlioStarter
         NATIVE_COUNT = /\A[一二三四五六七八九十幾何]つ\z/
 
         # 2 字以上でも量にしか使わない助数詞。「つめ」は「三つめ」を MeCab が 三＋つめ（一般）と切るため
-        COUNTER_WORDS = %w[箇所 ヶ所 か所 カ所 回り 種類 通り 時間 世紀 文字 段階 つめ つ目
+        COUNTER_WORDS = %w[箇所 ヶ所 か所 カ所 回り 種類 通り 時間 世紀 文字 段階 つめ つ目 個 回
                            か月 ヶ月 カ月 ケ月 切れ 等分 号].freeze
 
         # 数と助数詞の後ろに付いても量の表現のままの接尾語（「三年目」「一年後」）。
@@ -596,10 +618,14 @@ module VivlioStarter
         # 本文で、同じ言葉に違う番号が NUMBERED_LABEL_MIN_VARIANTS 以上付いているか。
         # 候補でなく本文で数えるのは、番号違いの多くが候補に上がらない（1 回しか出ない）ため
         def numbered_label?(term)
-          label = term[NUMBERED_LABEL, :label] or return false
+          label = term[NUMBERED_LABEL, :label] || term[ASCII_NUMBERED_LABEL, :label] or return false
 
           numbered_label_variants(label) >= NUMBERED_LABEL_MIN_VARIANTS
         end
+
+        # 英字の番号付けの呼び名（「Player0」〜「Player9」）。大文字で始まる小文字の語に、空白なしで
+        # 番号が付いた形に限る——`ES2015`・`HTML5`・`Windows 10` は製品や規格の名前
+        ASCII_NUMBERED_LABEL = /\A(?<label>[A-Z][a-z]{2,})[0-9]+\z/
 
         # 言葉ごとの、本文に出る番号の種類の数（「課題」なら 180）
         def numbered_label_variants(label)
@@ -806,6 +832,7 @@ module VivlioStarter
           return false if term.match?(FRAGMENT_HEAD) || term.match?(FRAGMENT_TAIL) || term.match?(MEASUREMENT)
           return false if term.match?(NUMBERS_ONLY) || term.match?(MATH_SYMBOL) || BOOK_STRUCTURE_WORDS.include?(term)
           return false if term.match?(VALUE_FORM) || term.match?(NATIVE_COUNT) || term.match?(PHRASE_FORM)
+          return false if repeated?(term)
           return false if term.match?(DATE_FORM)
 
           # HTMLタグの断片を除外
