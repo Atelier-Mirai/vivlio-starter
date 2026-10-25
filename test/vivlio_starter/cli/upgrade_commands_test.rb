@@ -269,6 +269,23 @@ module VivlioStarter
         end
       end
 
+      # --- gem 自身のリポジトリ: book.yml があっても雛形追従はしない（Gemfile・README が競合として上書きされうる）---
+      def test_should_skip_scaffold_sync_in_the_gem_repository
+        within_project do |scaffold|
+          write(scaffold, 'Gemfile', "gem 'vivlio-starter'\n")
+          write(scaffold, 'sources/quickstart.pdf', "%PDF\n")
+          File.write('vivlio-starter.gemspec', "# gemspec\n")
+          File.write('Gemfile', "gemspec\n")
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_match(/開発リポジトリのため、雛形の追従はスキップ/, out)
+          assert_equal "gemspec\n", File.read('Gemfile'), 'gem 開発用の Gemfile に触れない'
+          refute File.exist?('sources/quickstart.pdf'), '雛形の新しいファイルも足さない'
+          refute File.exist?('config/scaffold.lock'), 'lock を書かない'
+        end
+      end
+
       # --- 終了コード: ツール更新フェーズの失敗（1）が全体の終了コードに反映される ---
       def test_should_propagate_tool_phase_failure_to_exit_code
         within_project do |scaffold|

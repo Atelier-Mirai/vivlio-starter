@@ -134,7 +134,9 @@ module VivlioStarter
 
         # --- Phase: ② 雛形追従＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
         scaffold_code = 0
-        if File.exist?(File.join('config', 'book.yml'))
+        if gem_repository?
+          Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
+        elsif File.exist?(File.join('config', 'book.yml'))
           scaffold_code = sync_scaffold!(cmd)
           refresh_gemfile_lock!(options)
           tidy_author_data!(options)
@@ -151,6 +153,11 @@ module VivlioStarter
 
         [self_result == :failed ? 1 : 0, scaffold_code, tools_code].max
       end
+
+      # gem 自身のリポジトリか。ここにも config/book.yml（本書の原稿の設定）があるので、
+      # book.yml だけで判断すると書籍プロジェクトと取り違える。scaffold.lock が無いため差分が
+      # すべて競合になり、[y] で gem 開発用の Gemfile・README.md が雛形のものに置き換わる
+      def gem_repository? = File.exist?('vivlio-starter.gemspec')
 
       # 本体 gem の自己更新。新版があれば確認のうえ gem update し、新しい版の vs で
       # 同じ upgrade を再実行する（relaunch! で exec に置き換わり、戻ってこない）。
