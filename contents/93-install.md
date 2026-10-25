@@ -47,7 +47,7 @@ Ruby は、今使っている Ruby に合わせて用意します。
 | オプション | 働き |
 | :--- | :--- |
 | `-y` | 確認をスキップして自動導入 |
-| `-v 4.0.7` | 指定した版の Ruby を rbenv で導入 |
+| `-v 4.0.9` | 指定した版の Ruby を rbenv で導入 |
 | `--no-bundler` | bundler の導入をスキップ |
 
 スクリプトの中身は、gem に同梱の `bin/install.zsh` と同じです。実行する前に GitHub で読むこともできます。
@@ -125,8 +125,8 @@ brew install rbenv ruby-build
 echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
 source ~/.zprofile
 
-rbenv install 4.0.7
-rbenv global 4.0.7
+rbenv install 4.0.9
+rbenv global 4.0.9
 ruby -v
 ```
 
@@ -194,7 +194,7 @@ node -v && npm -v
 sudo apt-get install -y libssl-dev libreadline-dev zlib1g-dev
 curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
 export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init - bash)"
-rbenv install 4.0.7 && rbenv global 4.0.7
+rbenv install 4.0.9 && rbenv global 4.0.9
 ruby -v
 ```
 

@@ -18,7 +18,7 @@
 # 使い方（Usage）:
 #   bin/install.zsh                      # 対話モード、最新安定版を導入
 #   bin/install.zsh -y                   # 非対話モード（自動確認）
-#   bin/install.zsh -v 4.0.7             # 特定の Ruby バージョンを導入
+#   bin/install.zsh -v 4.0.9             # 特定の Ruby バージョンを導入
 #   bin/install.zsh --gem ./vivlio-starter.gem   # 手元の gem を入れる（公開前の確かめ用）
 #   bin/install.zsh --pdf-gem ./vivlio-starter-pdf.gem   # vivlio-starter-pdf も手元の gem から
 #
@@ -36,7 +36,7 @@ set -euo pipefail
 # **Vivlio Starter が実際に試験している版**を置く（Rakefile の
 # SUPPORTED_RUBY_VERSIONS。install_script_test が一致を見張る）。
 # ここが外れると、解決に失敗した人だけ未検証の Ruby を掴むことになる。
-FALLBACK_VERSION="4.0.7"
+FALLBACK_VERSION="4.0.9"
 
 # Vivlio Starter が求める Ruby の版（gemspec の required_ruby_version。install_script_test が
 # 一致を見張る）。これ以上の Ruby がすでにあれば、新しく組まずにそれを使う

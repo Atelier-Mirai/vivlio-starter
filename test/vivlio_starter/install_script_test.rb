@@ -108,7 +108,7 @@ end
                  '-v で版を指定されたら rbenv で入れる'
 
     stopped = ruby_mode_for('.local/share/mise/installs/ruby/3.3.6/bin/ruby', '3.3.6')
-    assert_includes stopped, 'mise use -g ruby@4.0.7'
+    assert_includes stopped, 'mise use -g ruby@4.0.9'
     assert_includes stopped, 'exit=1'
     assert_includes ruby_mode_for('.rvm/rubies/ruby-3.3.6/bin/ruby', '3.3.6'), 'rvm install'
   end
