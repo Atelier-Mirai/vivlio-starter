@@ -520,6 +520,16 @@ module VivlioStarter
           assert_equal ['用語集'], builder.reference_limitation.terms, '用語集で選び直しても二重に数えない'
         end
 
+        # 区切りの「, 」は CSS の ::before が付ける。リンクの間に空白があると「935 , 843」になる。
+        # 索引の参照を並べる語も、章ごとの初出を並べる語も同じ
+        def test_glossary_backlinks_have_no_space_between_links
+          index_html, = glossary_backlinks_html([occurrence('12-a'), occurrence('33-index', main: true)])
+          chapter_html, = glossary_backlinks_html([occurrence('33-index', main: true)], flags: 'g')
+
+          [index_html, chapter_html].each { refute_match(%r{</a>\s+<a}, it) }
+          assert_match(%r{</a><a}, index_html, 'リンクが 2 本並ぶ形で確かめる')
+        end
+
         def test_glossary_only_terms_keep_the_chapter_first_occurrences
           html, = glossary_backlinks_html([occurrence('33-index', main: true)], flags: 'g')
 

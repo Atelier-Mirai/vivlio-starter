@@ -672,7 +672,9 @@ module VivlioStarter
           end
           guide = other_volume_guide(name)
           tail = guide ? "#{', ' if links.any?}#{other_volume_guide_html(guide)}" : ''
-          %(<p class="glossary-backlinks">#{links.join(' ')}#{tail}</p>)
+          # リンクの間に空白を置かない。区切りの「, 」は CSS の ::before が付けるので、
+          # 空白があると「935 , 843」と、コンマの前にも空いてしまう（索引の側と同じつなぎ方）
+          %(<p class="glossary-backlinks">#{links.join}#{tail}</p>)
         end
 
         # 章ごとの初出（† の位置）を章の順に並べる
@@ -698,8 +700,9 @@ module VivlioStarter
             %(<a href="#{chapter}.html##{anchor_id}" class="#{classes.join(' ')}"></a>)
           end
 
+          # 空白でつながない理由は index_backlinks と同じ
           <<~HTML.chomp
-            <p class="glossary-backlinks">#{links.join(' ')}</p>
+            <p class="glossary-backlinks">#{links.join}</p>
           HTML
         end
 
