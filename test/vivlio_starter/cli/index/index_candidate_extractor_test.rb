@@ -559,6 +559,18 @@ module VivlioStarter
           refute(candidates.any? { it.start_with?('さ') }, "「さ」で始まる断片: #{candidates.grep(/\Aさ/)}")
         end
 
+        # 「「〜」は」の型が拾った強調のかぎ括弧の句（述語を含む）は語ではない。
+        # 名詞として使う連用形（「繰り返し」「交ぜ書き」）と、形容詞の語幹＋さ（「再帰の深さ」）は残す
+        def test_quoted_phrases_with_predicates_are_not_candidates
+          mecab!
+          markdown = "山までの「歩いて測る距離」は、誤差が出やすいものでした。元の分布が持っていた「歪んだ形」は消えません。" \
+                     "「繰り返し」は、同じ処理を何度も行うことです。「交ぜ書き」は、漢字と仮名を交ぜて書くことです。「再帰の深さ」は、呼び出しの段数です。\n"
+          candidates = extract(markdown)
+
+          %w[歩いて測る距離 歪んだ形].each { refute_includes candidates, it }
+          %w[繰り返し 交ぜ書き 再帰の深さ].each { assert_includes candidates, it }
+        end
+
         # 外す決まりが、語を巻き込まないこと（spiral-ruby で一度巻き込んだ語）
         def test_real_terms_survive_the_value_and_number_rules
           mecab!

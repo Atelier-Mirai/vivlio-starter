@@ -243,7 +243,24 @@ module VivlioStarter
         # 「こ」「ご」や活用語尾（い・た・ない）で終わる・助詞（が・を・から・という）を含むものは外す。
         # 「に」は含めない——「互いに素」が語として成り立つ
         def definition_term?(term)
-          !term.match?(/\A[ぁ-ん]|[こご]\z|(?:い|た|ない)\z|[がを]|から|という/)
+          !term.match?(/\A[ぁ-ん]|[こご]\z|(?:い|た|ない)\z|[がを]|から|という/) && !predicate_phrase?(term)
+        end
+
+        # 述語を含む句か。「「〜」は」の型は、強調のかぎ括弧（山までの「歩いて測る距離」は、…）も
+        # 定義と取り違えて拾う。MeCab で解析し、助動詞（歪んだ）・接続助詞（歩いて）・連用形以外の
+        # 動詞と形容詞（測る・咲く）を含むものを句とみなす。名詞として使う連用形（「繰り返し」
+        # 「交ぜ書き」の交ぜ）は IPADIC では動詞になるので、連用形だけなら句とみなさない。
+        # 形容詞の語幹＋「さ」「み」（「再帰の深さ」）も名詞なので、句とみなさない
+        def predicate_phrase?(term)
+          return false unless @yomi_inferrer.available?
+
+          nodes = (@phrase_mecab ||= Natto::MeCab.new).enum_parse(term).reject(&:is_eos?)
+          nodes.each_with_index.any? do |node, i|
+            pos, detail, _, _, _, form = node.feature.split(',')
+            next false if pos == '形容詞' && %w[さ み].include?(nodes[i + 1]&.surface)
+
+            pos == '助動詞' || detail == '接続助詞' || (%w[動詞 形容詞].include?(pos) && !form.to_s.start_with?('連用'))
+          end
         end
 
         # 同じかたまりを重ねた言い回し（「一つ一つ」「一行一行」「一日一日」）。カタカナだけの語
