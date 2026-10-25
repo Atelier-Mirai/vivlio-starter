@@ -718,6 +718,71 @@ module VivlioStarter
           assert_operator scores['交ぜ書き'], :>, scores['体言止め'], '同じ出方なら見出しに出る語が上'
         end
 
+        # --- phase: 候補に挙がらなかった要語（spiral-ruby の 継承・マチンの公式・ミラー・ラビン法） ---
+
+        # 動作の名詞（サ変接続）でも、見出しの頭に「──」の説明や括弧の補足を従えて立てば節の話題。
+        # 1 語だけの見出しと「：」の見出しは節の種類の札（証明・実測・補足）なので拾わない
+        def test_should_pick_an_action_noun_that_heads_a_heading_as_its_topic
+          mecab!
+          markdown = "#### 継承 ── 違いだけを書くということ\n\n親の手順を受け継ぎます。\n\n" \
+                     "#### 証明\n\n式を変形します。\n\n### 実測：差が出る\n\n測ります。\n"
+          candidates = extract(markdown)
+
+          assert_includes candidates, '継承'
+          assert_includes @extractor.scoring.breakdown('継承')[:traits], :heading
+          %w[証明 実測].each { refute_includes candidates, it }
+        end
+
+        # 太字にして「〜といいます」と名付けた語は、2 字でも候補にする。太字だけ（対比の強調・
+        # 項目名）では拾わない
+        def test_should_pick_a_bold_term_that_is_named_in_the_sentence
+          mecab!
+          markdown = "中身のない**番兵**を一つ置きます。これを**番兵**といいます。\n\n" \
+                     "**衝突**（コリジョン）と呼びます。\n\n素の挿入ソートは**安定**です。\n\n- **名前**\n"
+          candidates = extract(markdown)
+
+          %w[番兵 衝突].each { assert_includes candidates, it }
+          %w[安定 名前].each { refute_includes candidates, it }
+          assert_includes @extractor.scoring.breakdown('番兵')[:traits], :definition
+        end
+
+        # 「の」を越えて 1 つの名前になる形（人名・地名＋公式・定理・塔・篩・〜法、数＋補数）は
+        # つないで候補にする。句（「負の数の表現」）や、名前でない語の後ろ（「Rubyの公式」）はつながない
+        def test_should_join_a_name_and_its_head_across_no
+          mecab!
+          markdown = %w[述べます 確かめます 使います].map do |verb|
+            "マチンの公式を#{verb}。ガウスの消去法を#{verb}。課題168のハノイの塔を#{verb}。" \
+              "エラトステネスの篩を#{verb}。2の補数を#{verb}。負の数の表現を#{verb}。Rubyの公式サイトを#{verb}。\n\n"
+          end.join
+          candidates = extract(markdown)
+
+          %w[マチンの公式 ガウスの消去法 ハノイの塔 エラトステネスの篩 2の補数].each { assert_includes candidates, it }
+          %w[負の数 負の数の表現 Rubyの公式].each { refute_includes candidates, it }
+        end
+
+        # カタカナの名前を「・」「＝」でつないだ形は 1 語にまとめる。辞書にある普通名詞どうしは
+        # 並べた語なのでつながない
+        def test_should_join_katakana_names_across_dots
+          mecab!
+          markdown = %w[述べます 確かめます 使います].map do |verb|
+            "ミラー・ラビン法を#{verb}。ガウス＝ルジャンドルのアルゴリズムを#{verb}。" \
+              "フローチャート・シーケンス図を#{verb}。\n\n"
+          end.join
+          candidates = extract(markdown)
+
+          %w[ミラー・ラビン法 ガウス＝ルジャンドルのアルゴリズム].each { assert_includes candidates, it }
+          %w[ラビン法 フローチャート・シーケンス図].each { refute_includes candidates, it }
+        end
+
+        # IPADIC が動詞接続とする漢字 1 字の接頭辞（「相」）で名詞の連続を切らない
+        def test_should_keep_a_kanji_prefix_with_the_noun_that_follows
+          mecab!
+          candidates = extract("相加相乗平均に収束します。相加相乗平均を求めます。\n\n" * 3)
+
+          assert_includes candidates, '相加相乗平均'
+          refute_includes candidates, '加相乗平均'
+        end
+
         # --- phase: 候補の出どころ（改善案 #99） ---
 
         # 長い語の中の一致を数えない。「TeX」が「LaTeX」の出現を自分の出現として数えていた

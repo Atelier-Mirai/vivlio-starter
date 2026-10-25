@@ -147,6 +147,7 @@ module VivlioStarter
 
           # 各種抽出を実行
           extract_definition_patterns!
+          extract_emphasized_terms!
           extract_technical_terms!
           extract_noun_sequences! if @yomi_inferrer.available?
           extract_heading_terms!
@@ -235,6 +236,42 @@ module VivlioStarter
               end
             end
           end
+        end
+
+        # 太字にして「〜といいます」「〜と呼びます」と名付けた語（「これを**分割統治**といいます」
+        # 「**衝突**（コリジョン）といいます」）。本文の名詞連続は 2 字の単独名詞を拾わない
+        # （「方法」「場合」で埋まる）ので、「番兵」「位数」のような 2 字の要語は、ここか見出しでしか
+        # 候補にならない。太字だけでは拾わない——見出し代わりの「**まとめ**」、項目名の「- **名前**」、
+        # 対比の「**安定**です」のように、太字は語の導入以外にも使うため（spiral-ruby の実測で、
+        # 太字だけの 2〜3 字の語は 87 語中の半分ほどが語でなかった。名付ける形は 23 語すべてが語）
+        EMPHASIS = /\*\*(#{TERM_CHAR}{2,20})\*\*(?:（[^）\n]*）)?と(?:いい|いう|いわ|呼|言|名付)/
+
+        def extract_emphasized_terms!
+          return unless @yomi_inferrer.available?
+
+          require 'natto'
+          mecab = Natto::MeCab.new
+          @documents.each do |chapter, content|
+            sanitize_content_for_extraction(content).scan(EMPHASIS) do |(term)|
+              next unless valid_term?(term) && emphasized_term?(mecab, term)
+
+              @scoring.mark(term, :definition)
+              @term_contexts[term] << { chapter: chapter, context: extract_context(content, term) }
+            end
+          end
+        rescue LoadError
+          # natto が利用できない場合はスキップ
+        end
+
+        # 太字の中身が、名詞の連続 1 つでできているか（「必ず」「送ったメッセージ」は外す）。
+        # 「・」の並び（「カプセル化・継承・多態性」）は語の列挙なので、カタカナの名前を
+        # つないだ形（「ミラー・ラビン法」）だけを通す
+        def emphasized_term?(mecab, term)
+          sequences = []
+          each_noun_sequence_in_line(mecab, term) { sequences << it }
+          nouns = sequences.find { join_nouns(it) == term } or return false
+
+          !quantity?(nouns) && !(nouns.size == 1 && term.match?(/[・＝]/))
         end
 
         # 定義文の型で取り出した語が、語の形をしているか。型は「〜とは」の手前の文字を
@@ -373,47 +410,118 @@ module VivlioStarter
           RANGE_WORDS.include?(surface) || FUNCTION_NOUNS.include?(surface) || %w[非自立 代名詞].include?(pos_detail)
         end
 
+        # MeCab の 1 語。token は名詞連続の受け渡しに使う形
+        # [表層形, 直前に空白があったか, 品詞細分類, 細分類 2]。unknown は辞書に無い語（読みが付かない）
+        Morpheme = Data.define(:surface, :spaced, :pos, :detail, :detail2, :unknown) do
+          def token = [surface, spaced, detail, detail2]
+          # カタカナだけの名詞か。つないだ名前（「リュカ・レーマー」）も含める——3 つ目をつなぐため
+          def katakana? = pos == '名詞' && surface.match?(/\A[ァ-ヶー]+(?:[・＝][ァ-ヶー]+)*\z/)
+          # 名前らしいか。辞書に無いカタカナ語は、文脈しだいで固有名詞にも一般名詞にもなる
+          # （「ルジャンドル」は単独なら固有名詞、「ガウス＝ルジャンドルの」の中では一般）ので、両方を見る
+          def name? = detail == '固有名詞' || unknown
+        end
+
         # 1 行ぶん。行ごとに解析するのは、名詞連続が行をまたいでつながらないようにするため
         def each_noun_sequence_in_line(mecab, line)
           current_nouns = []
           adjective = nil # 直前の形容詞（「深さ」の「深」）
-          mecab.parse(line) do |node|
-            if node.is_eos?
-              yield current_nouns
-              current_nouns = []
-              next
-            end
+          before_no = nil # 「の」の手前の名詞連続。「の」の直後から次の連続が始まる間だけ持つ
+          flush = lambda do
+            yield current_nouns
+            yield [*before_no, NO_TOKEN, *current_nouns] if before_no && name_phrase?(before_no, current_nouns)
+          end
 
-            pos, pos_detail, pos_detail2 = node.feature.split(',')
-            # 直前に空白があったか（rlength は前の空白を含む長さ）。連結で空白を
-            # 落とすと「閲覧用 PDF」が「閲覧用PDF」になり、本文と一致しなくなる。
-            # 細分類の 2 段目は助数詞の見分けに使う（quantity?）
-            token = [node.surface, node.rlength > node.length, pos_detail, pos_detail2]
-
+          morphemes(mecab, line).each do |m|
             # 空白の後に置かれた記号だけの名詞（IPADIC は `/` を名詞とする）は連続を切る。
             # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
             # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す。
             # 範囲を表す語（RANGE_WORDS）でも切る
             # 形容詞の語幹＋「さ」「み」は名詞（「深さ」「重み」）。IPADIC は語幹を形容詞と切るので、
             # そのままでは連続が「さ」から始まり、「深さ優先探索」が「さ優先」として候補になっていた
-            if pos == '名詞' && pos_detail == '接尾' && %w[さ み].include?(node.surface) && current_nouns.empty? && adjective
-              current_nouns << adjective << token
+            if m.pos == '名詞' && m.detail == '接尾' && %w[さ み].include?(m.surface) && current_nouns.empty? && adjective
+              current_nouns << adjective << m.token
               # 語幹が仮名だけの形（「読みやすさ」の「やす」）はつながない
               current_nouns.clear unless adjective[0].match?(/[ァ-ヶ一-龯]/)
-            elsif pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !sequence_break?(node.surface, pos_detail)
-              current_nouns << token
-            elsif pos == '接頭詞' && pos_detail == '名詞接続'
+            elsif m.pos == '名詞' && !(m.spaced && !m.surface.match?(/[\p{L}\p{N}]/)) && !sequence_break?(m.surface, m.detail)
+              current_nouns << m.token
+            elsif m.pos == '接頭詞' && (m.detail == '名詞接続' || (m.detail == '動詞接続' && m.surface.match?(/\A\p{Han}\z/)))
               # 接頭辞は次の名詞と 1 語をなす（「単章ビルド」「同梱画像」）。
-              # 連続の途中で切ると「章ビルド」「梱画像」という断片が候補になる
-              yield current_nouns
-              current_nouns = [token]
+              # 連続の途中で切ると「章ビルド」「梱画像」という断片が候補になる。
+              # IPADIC が動詞接続とする漢字 1 字の接頭辞（「相加相乗平均」の「相」）も同じ。
+              # 切ると「加相乗平均」が候補になっていた。数接続（「約」「第」）は「約49万年」を作るので含めない
+              flush.call
+              before_no = nil
+              current_nouns = [m.token]
             else
-              yield current_nouns
+              flush.call
+              before_no = m.surface == 'の' && m.detail == '連体化' && current_nouns.any? ? current_nouns : nil
               current_nouns = []
             end
-            adjective = pos == '形容詞' ? [node.surface, token[1], '形容詞', nil] : nil
+            adjective = m.pos == '形容詞' ? [m.surface, m.spaced, '形容詞', nil] : nil
+          end
+          flush.call
+        end
+
+        # 行を MeCab の語の列にする。カタカナの名前を「・」「＝」でつないだ形（「ミラー・ラビン」
+        # 「ガウス＝ルジャンドル」）は 1 語にまとめる——IPADIC は記号で切るので、そのままでは
+        # 「ミラー・ラビン法」から「ラビン法」だけが候補になっていた。
+        # 「・」でつなぐのは、どちらかが名前らしいときだけ。辞書にある普通名詞どうしは並べた語
+        # （「フローチャート・シーケンス図」「アルゴリズム・データ構造」）である。「＝」は人名の組にしか
+        # 使わないので、いつもつなぐ。前後に空白のある記号は区切りなので、つながない。
+        # 辞書に無い語は素性の欄が少ない（読みと発音が無い）ことで見分ける
+        def morphemes(mecab, line)
+          list = mecab.enum_parse(line).filter_map do |node|
+            next if node.is_eos?
+
+            pos, detail, detail2 = node.feature.split(',')
+            # 直前に空白があったか（rlength は前の空白を含む長さ）。連結で空白を
+            # 落とすと「閲覧用 PDF」が「閲覧用PDF」になり、本文と一致しなくなる
+            Morpheme.new(node.surface, node.rlength > node.length, pos, detail, detail2, node.feature.count(",") < 8)
+          end
+
+          list.each_with_object([]) do |m, joined|
+            dot = joined.last if joined.size >= 2 && NAME_JOINERS.include?(joined.last.surface)
+            name = joined[-2] if dot
+            if dot && !dot.spaced && !m.spaced && m.katakana? && name.katakana? && (dot.surface == '＝' || [m, name].any?(&:name?))
+              joined.pop(2)
+              joined << name.with(surface: "#{name.surface}#{dot.surface}#{m.surface}", detail: '固有名詞')
+            else
+              joined << m
+            end
           end
         end
+
+        # カタカナの名前どうしをつなぐ記号
+        NAME_JOINERS = %w[・ ＝].freeze
+
+        # 名詞連続のあいだに戻す「の」
+        NO_TOKEN = ['の', false, '連体化', nil].freeze
+
+        # 「の」の後ろに来て、手前の名前と合わせて 1 つの名前を作る語（「マチンの公式」「ハノイの塔」
+        # 「エラトステネスの篩」）。「の」を越えてつなぐと「負の数の表現」のような句まで候補になるので、
+        # 後ろが名前を作る語で、手前が人名・地名のような名前のときだけつなぐ
+        NAME_HEADS = %w[公式 定理 法則 予想 塔 篩 三角形 恒等式 不等式 積分].freeze
+
+        # 「の」の手前（before）と後ろ（after）の名詞連続が、合わせて 1 つの名前になるか。
+        # 手前は 3 字以上のカタカナ 1 語か、和文の固有名詞（「・」「＝」でまとめた名前を含む）。
+        # 英字（「Rubyの公式」）と 2 字のカタカナ（「ニュートン」の切れ端の「トン」）は外す。
+        # 後ろは NAME_HEADS で終わるか、「消去法」「互除法」のように 2 語以上で「法」で終わる語。
+        # 「アルゴリズム」は、手前がつないだ人名のときだけ（「ガウス＝ルジャンドルのアルゴリズム」）——
+        # 「オセロのアルゴリズム」は名前ではない。
+        # 数の後ろの「補数」（「2の補数」）は、名前ではないが 1 語として使われる
+        def name_phrase?(before, after)
+          return false if before.size != 1 || after.empty?
+
+          name = before.first[0]
+          head = join_nouns(after)
+          return head == '補数' if before.first[2] == '数'
+          return head.end_with?('アルゴリズム') || name_head?(head, after) if name.match?(/[・＝]/)
+          return false unless name.match?(/\A[ァ-ヶー]{3,}\z/) || (before.first[2] == '固有名詞' && name.match?(/[一-龯]/))
+
+          name_head?(head, after)
+        end
+
+        def name_head?(head, after) = NAME_HEADS.any? { head.end_with?(it) } || (after.size >= 2 && after.last[0] == '法')
 
         # 節の見出し（## 〜 ####）
         HEADING = /^\#{2,4}[ \t]+(.+?)[ \t]*$/
@@ -440,7 +548,7 @@ module VivlioStarter
             headings.each do |heading|
               each_noun_sequence(mecab, heading) do |nouns|
                 term = join_nouns(nouns)
-                chapters_by_term[term] << chapter if heading_term?(term, nouns)
+                chapters_by_term[term] << chapter if heading_term?(term, nouns, heading)
               end
             end
           end
@@ -482,13 +590,26 @@ module VivlioStarter
         POSITION_WORDS = %w[前 後ろ 上 下 左 右 横 隣 奥 手前 端 途中 外側 内側 真ん中 まん中].freeze
 
         # 見出しから拾ってよい語か。短い語も通すが、ひらがなだけの語（「とき」「もの」）と
-        # 1 字の語（「章」「図」）は語として弱いので落とす
-        def heading_term?(term, nouns)
-          return false if nouns.size == 1 && !HEADING_SINGLE_NOUN_KINDS.include?(nouns.first[2])
-          return false if nouns.size == 1 && POSITION_WORDS.include?(term)
+        # 1 字の語（「章」「図」）は語として弱いので落とす。
+        # 動作の名詞（サ変接続）でも、見出しの頭に 1 語で立っていれば節の話題である
+        # （「#### 継承 ── 違いだけを書くということ」）。「## 指摘の見方」の「指摘」は話題を修飾する側
+        def heading_term?(term, nouns, heading)
+          if nouns.size == 1
+            kind = nouns.first[2]
+            return false unless HEADING_SINGLE_NOUN_KINDS.include?(kind) || (kind == 'サ変接続' && heading_topic_word?(term, heading))
+            return false if POSITION_WORDS.include?(term)
+          end
           return false if quantity?(nouns)
 
           term.length >= 2 && term.match?(/[ァ-ヶ一-龯A-Za-z]/) && valid_term?(term)
+        end
+
+        # 見出しの頭に、その語が話題として立っているか。後ろに続くのが「──」の説明か括弧の補足のときだけ
+        # （「#### 継承 ── 違いだけを書くということ」「## 集合（Set）」）。1 語だけの見出し（「#### 証明」
+        # 「### 参考」）と「：」の見出し（「### 実測：…」「### 補足：…」）は節の種類を表す札で、
+        # 3 冊の実測ではほとんどがそれだった
+        def heading_topic_word?(term, heading)
+          heading.match?(/\A#{Regexp.escape(term)}(?:[\s　]*[―─—]|[（(])/)
         end
 
         # 数と助数詞だけの並び（「三年」「二倍」「三年目」）。量の表現であって語ではない。
@@ -830,11 +951,12 @@ module VivlioStarter
         # 日本語を含む長い語だけを通す。英字のみの単独名詞は `section` `table`
         # `column` のように CSS クラス名や記法由来のものが大半で、実測 153 件中
         # 136 件がそれだった。「・」でつないだ並び（「ヘッダー・フッター・ノンブル」）も
-        # 語ではなく列挙なので落とす。
+        # 語ではなく列挙なので落とす。「＝」でつないだ人名の組（「ガウス＝ルジャンドル」）も、
+        # 後ろに語が続いて（「〜のアルゴリズム」）はじめて索引の語になる。
         def compound_noun?(term)
           term.length >= SINGLE_NOUN_MIN_LENGTH &&
             term.match?(/[ぁ-んァ-ヶ一-龯]/) &&
-            !term.include?('・')
+            !term.match?(/[・＝]/)
         end
 
         # 抽出された用語が有効かどうかを判定
