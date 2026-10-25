@@ -372,12 +372,49 @@ module VivlioStarter
         def test_should_notice_new_ruby_patch_with_rbenv_steps
           deps = stub_deps(fetch: { ToolUpgrader::RUBY_RELEASES_URL => RELEASES_YAML })
 
-          lines = ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :rbenv)
+          lines = ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :rbenv, plugin: false, version_file: nil)
 
           assert lines.any? { it.include?('4.0.5') && it.include?('4.0.3') }, '新旧バージョンを明示する'
           assert lines.any? { it.include?('rbenv install 4.0.5') && it.include?('rbenv global 4.0.5') }
-          assert lines.any? { it.include?('gem install vivlio-starter') && it.include?('再インストール') },
+          assert lines.any? { it.include?('gem install vivlio-starter ') && it.include?('再インストール') },
                  'gem 再インストールの注意を必ず添える'
+          refute lines.any? { it.include?('vivlio-starter-pdf') }, 'プラグインが無ければ挙げない'
+          refute lines.any? { it.include?('rbenv local') }, '.ruby-version が無ければ添えない'
+        end
+
+        # プラグインを入れ直さないと、黙って MIT 版の経路に落ちて PDF のしおりが付かなくなる
+        def test_should_ask_to_reinstall_the_plugin_when_it_is_installed
+          deps = stub_deps(fetch: { ToolUpgrader::RUBY_RELEASES_URL => RELEASES_YAML })
+
+          lines = ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :rbenv, plugin: true, version_file: nil)
+
+          assert lines.any? { it.include?('gem install vivlio-starter vivlio-starter-pdf') }
+        end
+
+        # rbenv は .ruby-version を global より優先する。global を上げても、その場所では古い版のまま
+        def test_should_tell_how_to_switch_a_folder_pinned_by_ruby_version
+          deps = stub_deps(fetch: { ToolUpgrader::RUBY_RELEASES_URL => RELEASES_YAML })
+          Dir.mktmpdir do |dir|
+            dir = File.realpath(dir)
+            File.write(File.join(dir, '.ruby-version'), "4.0.3\n")
+            FileUtils.mkdir_p(File.join(dir, 'sub'))
+
+            here = Dir.chdir(dir) do
+              ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :rbenv, plugin: false)
+            end
+            below = Dir.chdir(File.join(dir, 'sub')) do
+              ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :rbenv, plugin: false)
+            end
+            mise = Dir.chdir(dir) do
+              ToolUpgrader.ruby_update_notice(deps, current: '4.0.3', route: :mise, plugin: false)
+            end
+
+            assert here.any? { it.include?('rbenv local 4.0.5') }, 'この場所の .ruby-version は rbenv local で上げる'
+            assert below.any? { it.include?("#{dir}/.ruby-version") && it.include?('4.0.5') },
+                   '上のフォルダの .ruby-version は、ここで rbenv local せずにそのファイルを名指しする'
+            refute below.any? { it.include?('rbenv local') }
+            refute mise.any? { it.include?('.ruby-version') || it.include?('rbenv local') }, 'rbenv 以外には添えない'
+          end
         end
 
         # 最新なら何も出ない

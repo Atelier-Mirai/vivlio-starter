@@ -34,6 +34,7 @@ require 'date'
 require 'net/http'
 require 'uri'
 require 'shellwords'
+require 'pathname'
 
 require_relative '../common'
 require_relative '../../version'
@@ -500,8 +501,11 @@ module VivlioStarter
         # 起動中の Ruby と同一 patch 系列（X.Y.*）の新版があれば、導入経路に合った
         # 更新手順を案内する。マイナー/メジャー更新は gemspec の required_ruby_version との
         # 整合確認を伴うため対象外（リリースノートの責務・spec §1.4）
+        # @param plugin [Boolean] vivlio-starter-pdf が入っているか（テストで差し替える）
+        # @param version_file [String, nil] この場所の版を決めている .ruby-version（テストで差し替える）
         # @return [Array<String>] お知らせ行（新版がなければ空）
-        def ruby_update_notice(deps, current: RUBY_VERSION, route: nil)
+        def ruby_update_notice(deps, current: RUBY_VERSION, route: nil, plugin: plugin_installed?,
+                               version_file: local_ruby_version_file)
           latest = latest_ruby_patch(deps, current)
           return [] unless latest
 
@@ -511,7 +515,7 @@ module VivlioStarter
                     else
                       "Ruby #{latest} が公開されています（現在 #{current}）。#{route} 環境の更新手順:"
                     end
-          [heading] + ruby_route_lines(route, latest)
+          [heading] + ruby_route_lines(route, latest, plugin:, version_file:)
         end
 
         # ruby-lang.org 公式リリースデータから、current と同一 patch 系列の最新版を返す。
@@ -547,9 +551,13 @@ module VivlioStarter
         end
 
         # 経路別の更新手順。Ruby はバージョンごとに gem 領域が分かれるため、
-        # 切替後の gem 再インストール（vs が見つからなくなる事故の予防）を必ず添える
-        def ruby_route_lines(route, latest)
-          gem_note = '  gem install vivlio-starter   # Ruby 切替後は gem の再インストールが必要です'
+        # 切替後の gem 再インストール（vs が見つからなくなる事故の予防）を必ず添える。
+        # プラグインも入れ直さないと、黙って MIT 版の経路に落ちて PDF のしおりが付かなくなる。
+        # rbenv は .ruby-version を global より優先するので、それがある場所では global を上げても
+        # 古い版のまま——その場所の版の上げ方も添える（2026-10-25 に実際にここで迷った）
+        def ruby_route_lines(route, latest, plugin: false, version_file: nil)
+          gems = plugin ? 'vivlio-starter vivlio-starter-pdf' : 'vivlio-starter'
+          gem_note = "  gem install #{gems}   # Ruby 切替後は gem の再インストールが必要です"
           steps = case route
                   when :rbenv then "  brew upgrade ruby-build && rbenv install #{latest} && rbenv global #{latest}"
                   when :rvm   then "  rvm install #{latest} && rvm --default use #{latest}"
@@ -558,7 +566,29 @@ module VivlioStarter
                   when :homebrew then '  brew upgrade ruby'
                   else '  導入経路を判別できませんでした。https://www.ruby-lang.org/ja/downloads/ を参照してください。'
                   end
-          [steps, gem_note]
+          [steps, (local_version_line(version_file, latest) if route == :rbenv), gem_note].compact
+        end
+
+        # .ruby-version がこの場所にあれば rbenv local で書き換える。上のフォルダにあるなら、
+        # ここで rbenv local すると別の .ruby-version が増えるだけなので、そのファイルを名指しする
+        def local_version_line(version_file, latest)
+          return nil unless version_file
+
+          if File.dirname(version_file) == Dir.pwd
+            "  rbenv local #{latest}   # このフォルダの .ruby-version が global より優先されるため"
+          else
+            "  #{version_file.sub(Dir.home, '~')} の版を #{latest} に書き換えてください（global より優先されるため）"
+          end
+        end
+
+        # rbenv と同じく、今いるフォルダから上へたどって最初の .ruby-version を返す
+        def local_ruby_version_file(dir = Dir.pwd)
+          Pathname(dir).ascend.map { it.join('.ruby-version') }.find(&:file?)&.to_s
+        end
+
+        # Pdf.provider を呼ぶとプラグインの読み込みまで走るので、gemspec が入っているかだけを見る
+        def plugin_installed?
+          Gem.path.any? { |home| Dir.glob(File.join(home, 'specifications', 'vivlio-starter-pdf-*.gemspec')).any? }
         end
 
         def latest_gem_version(deps, gem_name)

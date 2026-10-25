@@ -275,6 +275,7 @@
 
 ### Fixed
 
+- **`vs upgrade` の Ruby の新しい版の案内が、プラグインの入れ直しと `.ruby-version` に触れていなかった**。案内どおりに Ruby を切り替えて `gem install vivlio-starter` だけを入れ直すと、vivlio-starter-pdf が無いまま黙って MIT 版の経路に落ち、PDF のしおりが付かなくなっていた。プラグインが入っていれば `gem install vivlio-starter vivlio-starter-pdf` と挙げる。また rbenv は `.ruby-version` を global より優先するので、それがある場所では `rbenv global` を上げても古い版のままだった。その場所の版の上げ方（同じフォルダなら `rbenv local`、上のフォルダならそのファイル）を添える。
 - **`vs upgrade` を vivlio-starter の開発リポジトリで実行すると、gem 開発用の Gemfile・README.md を雛形のものに置き換えかけた**。リポジトリにも `config/book.yml` があるので書籍プロジェクトと受け取り、`scaffold.lock` が無いため差分をすべて競合として尋ねていた（[y] で置き換わる）。`vivlio-starter.gemspec` がある所では雛形の追従を飛ばし、外部ツールの更新だけを行う。
 - **雛形に、git で管理していない `sources/quickstart.pdf`（3.8MB）が入り、`vs new`・`vs upgrade` で配られていた**。gemspec が `lib/` の下を `Dir.glob` で集めていたので、`.gitignore` で外したファイルも gem に入っていた。ビルドのたびに作り直す `stylesheets/twemoji/vs-techbook/`（50 ファイル）も同じ経路で入っていた。雛形から PDF を消し、gemspec は `git ls-files` で git が管理するファイルだけを集めるようにした。
 - **用語集のページ番号で、コンマの前に空白が入っていた**（「→ p.935 , 843 , 941」）。リンクを空白でつないでいたところへ、区切りの「, 」を CSS の `::before` が付けていたため。索引の側と同じく、空白を挟まずにつなぐ。範囲表記にまとめない用語集（EPUB と、範囲の無い PDF の語）で起きていた。
