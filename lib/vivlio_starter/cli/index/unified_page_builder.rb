@@ -56,7 +56,10 @@ module VivlioStarter
         # 参照の出し方（book.yml の index.reference_style）
         REFERENCE_STYLES = %w[main_and_sub main_only all].freeze
         DEFAULT_REFERENCE_STYLE = 'main_and_sub'
-        DEFAULT_MAX_SUB_REFERENCES = 8
+        # 主要参照のある語に残す副次参照の上限（R5）。設定にしないのは、選び方（見出しに語を掲げた節・
+        # ## でまとめる・12 を超えたら ### を省く）が件数を絞る仕事をほぼ担い、上限が効く語がまれなため
+        # ——book_ai_web_starter の 286 語で、8 を超えたのは HTML（11 件）の 1 語だけだった
+        MAX_SUB_REFERENCES = 8
         # 見出しに語を掲げた節がこれより多い語は、主要参照の章の外の `###` を省く（R3）。
         # 実測で Canvas（11 節）と関数（15〜16 節）の間に引いた線。設定にしないのは、厚い本（spiral-ruby・3 巻）でも
         # 12 で足り、上げると関数のようなふつうの言葉が絞られなくなるため（R4・§7.3）
@@ -65,7 +68,10 @@ module VivlioStarter
         attr_reader :index_data, :limited_reference_terms
 
         # @param other_volume_guides [Hash{String => String}] 主要参照が別の巻にある語の案内（OtherVolumeMain.guides）
-        def initialize(glossary_config: {}, index_config: nil, other_volume_guides: {})
+        # @param sub_reference_limit [Integer] 副次参照の上限（0 で無制限）。テストで小さな上限を当てるために差し替える
+        def initialize(glossary_config: {}, index_config: nil, other_volume_guides: {},
+                       sub_reference_limit: MAX_SUB_REFERENCES)
+          @sub_reference_limit = sub_reference_limit
           @index_data = {}
           @other_volume_guides = other_volume_guides
           @glossary_config = glossary_config
@@ -138,7 +144,7 @@ module VivlioStarter
         end
 
         def reference_limitation
-          Limitation.new(style: reference_style, limit: max_sub_references, terms: @limited_reference_terms,
+          Limitation.new(style: reference_style, limit: @sub_reference_limit, terms: @limited_reference_terms,
                          main_chapter_only: @main_chapter_only_terms)
         end
 
@@ -399,7 +405,7 @@ module VivlioStarter
           selected = main_chapter_sections(term, main, sub, selected)
 
           # --- Phase: 上限と章をまたぐ公平さ（R5） ---
-          limit = max_sub_references
+          limit = @sub_reference_limit
           selected = trim_across_chapters(selected, limit) unless limit.zero? || selected.size <= limit
 
           @limited_reference_terms << term if selected.size < sub.size
@@ -475,12 +481,6 @@ module VivlioStarter
             )
           end
           DEFAULT_REFERENCE_STYLE
-        end
-
-        # 0 は「無制限」。nil（未設定）は既定値
-        def max_sub_references
-          value = @index_config[:max_sub_references]
-          value.nil? ? DEFAULT_MAX_SUB_REFERENCES : [value.to_i, 0].max
         end
 
         # ================================================================

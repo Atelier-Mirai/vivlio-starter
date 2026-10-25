@@ -370,12 +370,11 @@ Markdown ……… 156, 12, 24, 38, 51, 66, 88, 102, …
 ```yaml
 index:
   reference_style: main_and_sub   # 既定
-  max_sub_references: 8           # 副次参照の上限（0 で無制限）
 ```
 
 | 値 | 出力 |
 |:---|:---|
-| `main_and_sub` | 主要参照を太字で先頭に置き、語を見出しに掲げた節の副次参照を `max_sub_references` 件まで続けます（既定） |
+| `main_and_sub` | 主要参照を太字で先頭に置き、語を見出しに掲げた節の副次参照を、多くても 8 件続けます（既定） |
 | `main_only` | 主要参照だけを載せます。ページ数を詰めたい本向けです |
 | `all` | 太字も並べ替えも間引きもしません。主要参照の候補の提示とビルド時の知らせも止まります |
 
@@ -505,7 +504,6 @@ index:
   auto_approve: false            # true: 推奨する語を自動で辞書へ登録する
   common_term_ratio: 0.5         # この比率以上の章に出る語は「一般語」として外す印を付ける
   reference_style: main_and_sub  # 主要参照と副次参照の出し方
-  max_sub_references: 8          # 副次参照の上限（0 で無制限）
   page_range_min: 3              # この数以上の連続ページを範囲にまとめる
 
 glossary:

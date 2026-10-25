@@ -127,9 +127,10 @@ module VivlioStarter
             'section' => section || @section_seq, 'headed' => headed, 'h2' => h2 }.compact
         end
 
-        def index_links(occurrences, config: {})
+        # limit は副次参照の上限（0 で無制限）。book.yml では変えられないので、ビルダーの引数で当てる
+        def index_links(occurrences, config: {}, limit: UnifiedPageBuilder::MAX_SUB_REFERENCES)
           create_index_cache({ '用語集' => occurrences })
-          builder = UnifiedPageBuilder.new(index_config: config)
+          builder = UnifiedPageBuilder.new(index_config: config, sub_reference_limit: limit)
           builder.build_index!
           [File.read(INDEX_OUTPUT_FILE).scan(/<a href="([^"]+)"(?: class="([^"]+)")?>/), builder]
         end
@@ -173,7 +174,7 @@ module VivlioStarter
         def test_max_sub_references_caps_the_tail
           occurrences = [occurrence('33-index', main: true)] +
                         (10..14).map { occurrence("#{it}-chapter") }
-          links, = index_links(occurrences, config: { max_sub_references: 2 })
+          links, = index_links(occurrences, limit: 2)
 
           assert_equal 3, links.size, '主要参照 1 + 副次参照 2'
           assert_equal '33-index.html#idx-33-index', links.first[0]
@@ -186,7 +187,7 @@ module VivlioStarter
           occurrences = [occurrence('43-cover', main: true)] +
                         Array.new(5) { occurrence('43-cover') } +
                         [occurrence('44-build')]
-          links, = index_links(occurrences, config: { max_sub_references: 2 })
+          links, = index_links(occurrences, limit: 2)
 
           chapters = links.map { it[0][/\A[^.]+/] }
           assert_equal 3, chapters.size, '主要参照 1 + 副次参照 2'
@@ -197,18 +198,19 @@ module VivlioStarter
         def test_thinning_prefers_breadth_when_chapters_outnumber_the_limit
           occurrences = [occurrence('10-a', main: true)] +
                         %w[20-b 20-b 30-c 40-d].map { occurrence(it) }
-          links, = index_links(occurrences, config: { max_sub_references: 2 })
+          links, = index_links(occurrences, limit: 2)
 
           chapters = links.map { it[0][/\A[^.]+/] }
           assert_equal %w[10-a 20-b 30-c], chapters, '同じ章の 2 件目より別の章を優先する'
         end
 
-        def test_zero_means_unlimited
+        # 上限は設定にしない（廃止キー）。古い book.yml に残っていても読まず、8 件で絞る
+        def test_book_yml_max_sub_references_is_ignored
           occurrences = [occurrence('33-index', main: true)] +
-                        (10..14).map { occurrence("#{it}-chapter") }
+                        (10..21).map { occurrence("#{it}-chapter") } # 12 章 → 上限 8 に絞られる
           links, = index_links(occurrences, config: { max_sub_references: 0 })
 
-          assert_equal 6, links.size
+          assert_equal 1 + UnifiedPageBuilder::MAX_SUB_REFERENCES, links.size, '主要参照 1 + 副次参照 8'
         end
 
         # `all` は主要参照の扱いを丸ごと切る逃げ道。Phase 2 以前と同じ索引になる
@@ -223,16 +225,17 @@ module VivlioStarter
 
         # === 主要参照が別の巻にある語（index-other-volume-main-spec.md） ===
 
-        def guided_index(occurrences, config: {}, guides: { '用語集' => '上巻 第7章' })
+        def guided_index(occurrences, config: {}, guides: { '用語集' => '上巻 第7章' },
+                         limit: UnifiedPageBuilder::MAX_SUB_REFERENCES)
           create_index_cache({ '用語集' => occurrences })
-          builder = UnifiedPageBuilder.new(index_config: config, other_volume_guides: guides)
+          builder = UnifiedPageBuilder.new(index_config: config, other_volume_guides: guides, sub_reference_limit: limit)
           builder.build_index!
           [File.read(INDEX_OUTPUT_FILE)[%r{<dd>.*?</dd>}m], builder]
         end
 
         # 組む巻に主要参照が無くても、別の巻の章を案内して副次参照を絞る（R1・R2）
         def test_other_volume_guide_leads_and_thins_sub_references
-          dd, builder = guided_index((21..25).map { occurrence("#{it}-chapter") }, config: { max_sub_references: 2 })
+          dd, builder = guided_index((21..25).map { occurrence("#{it}-chapter") }, limit: 2)
 
           assert_match %r{</a><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>\z}, dd,
                        'ページ番号の後ろに太字で置く（先頭だと後ろの番号が別の巻のページに読める）'
@@ -257,7 +260,7 @@ module VivlioStarter
         # `all` は逃げ道。案内も間引きもしない
         def test_other_volume_guide_is_off_with_all
           dd, = guided_index((21..25).map { occurrence("#{it}-chapter") },
-                             config: { reference_style: 'all', max_sub_references: 2 })
+                             config: { reference_style: 'all' }, limit: 2)
 
           refute_includes dd, 'index-other-volume'
           assert_equal 5, dd.scan('<a ').size
@@ -267,7 +270,7 @@ module VivlioStarter
         def test_thinning_is_reported_not_silent
           occurrences = [occurrence('33-index', main: true)] +
                         (10..14).map { occurrence("#{it}-chapter") }
-          _, builder = index_links(occurrences, config: { max_sub_references: 2 })
+          _, builder = index_links(occurrences, limit: 2)
 
           limitation = builder.reference_limitation
 
@@ -325,7 +328,7 @@ module VivlioStarter
         # ふつうの言葉は作例の見出しにも出る。多すぎる語だけ主要参照の章へ絞る（R3）
         def test_terms_over_the_threshold_keep_only_main_chapter_sections
           subs = %w[07-main 07-main] + (10..20).map { "#{it}-other" } # 13 節
-          links, builder = index_links(sections_in(subs), config: { max_sub_references: 0 })
+          links, builder = index_links(sections_in(subs), limit: 0)
 
           assert_equal %w[07-main 07-main 07-main], linked_chapters(links), '主要参照 1 + 主要参照の章の節 2'
           assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
@@ -333,7 +336,7 @@ module VivlioStarter
 
         def test_terms_at_the_threshold_are_not_narrowed
           subs = %w[07-main] + (10..20).map { "#{it}-other" } # 12 節
-          links, builder = index_links(sections_in(subs), config: { max_sub_references: 0 })
+          links, builder = index_links(sections_in(subs), limit: 0)
 
           assert_equal 13, links.size
           assert_empty builder.reference_limitation.main_chapter_only
@@ -362,7 +365,7 @@ module VivlioStarter
           h2_sections = [3, 5, 7].map { occurrence('10-topic', section: it, h2: 3) } # 1 つの ## に 3 節
           plain = (11..20).map { occurrence("#{it}-other") } # ### だけ 10 節 → 計 13 節
           links, builder = index_links([occurrence('07-main', main: true)] + h2_sections + plain,
-                                       config: { max_sub_references: 0 })
+                                       limit: 0)
 
           assert_equal %w[07-main 10-topic], linked_chapters(links), '主要参照 1 + 章の外の ## の 1 件'
           assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
@@ -371,7 +374,7 @@ module VivlioStarter
         # 省いた ### が無ければ、絞ったとは知らせない
         def test_narrowing_that_drops_nothing_is_not_reported
           subs = (10..22).map { occurrence("#{it}-topic", section: 2, h2: 2) } # 章の外の ## が 13
-          links, builder = index_links([occurrence('07-main', main: true)] + subs, config: { max_sub_references: 0 })
+          links, builder = index_links([occurrence('07-main', main: true)] + subs, limit: 0)
 
           assert_equal 14, links.size
           assert_empty builder.reference_limitation.main_chapter_only
@@ -381,7 +384,7 @@ module VivlioStarter
         def test_the_cap_applies_after_selecting_sections
           subs = %w[07-main] + (10..14).map { "#{it}-other" }
           occurrences = sections_in(subs) + [occurrence('15-x', headed: false)]
-          links, = index_links(occurrences, config: { max_sub_references: 3 })
+          links, = index_links(occurrences, limit: 3)
 
           assert_equal 4, links.size, '主要参照 1 + 副次参照 3'
           refute_includes linked_chapters(links), '15-x'
@@ -397,7 +400,7 @@ module VivlioStarter
 
         # 主要参照が別の巻にある語は、この巻に主要参照の章が無いので、案内だけになる
         def test_other_volume_terms_over_the_threshold_keep_only_the_guide
-          dd, builder = guided_index((10..22).map { occurrence("#{it}-other") }, config: { max_sub_references: 0 })
+          dd, builder = guided_index((10..22).map { occurrence("#{it}-other") }, limit: 0)
 
           assert_equal '<dd><span class="index-other-volume"><strong>上巻 第7章</strong></span></dd>', dd
           assert_equal ['用語集'], builder.reference_limitation.main_chapter_only

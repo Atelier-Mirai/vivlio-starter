@@ -140,7 +140,6 @@ module VivlioStarter
       %i[index auto_approve]                          => Spec[default: false],
       %i[index common_term_ratio]                     => Spec[default: 0.5],
       %i[index reference_style]                       => Spec[default: "main_and_sub"],
-      %i[index max_sub_references]                    => Spec[default: 8],
       %i[index page_range_min]                        => Spec[default: 3],
 
       # ------- glossary -------
@@ -257,7 +256,8 @@ module VivlioStarter
       %i[vivliostyle]                            => Spec[retired: "vivliostyle の進行表示は常に抑制します（reading_progression は元から読んでいません）"],
       %i[book title]                             => Spec[retired: "書名は book.main_title に書きます（title は初期実装の名残で、main_title が空のときだけ使われていました）"],
       %i[metrics clause_length]                  => Spec[retired: "節の長さの基準は使っていません（宣言だけが残っていました）"],
-      %i[output cover]                           => Spec[retired: "巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
+      %i[index max_sub_references]               => Spec[retired: "副次参照は、語を見出しに掲げた節から選び、多くても 8 件に絞ります（選び方が件数を絞るので、上限を変える理由がなくなりました）"],
+      %i[output cover]                           => Spec[retired:"巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
       }.freeze
 
       # 現役キーと廃止キーを合わせた全宣言

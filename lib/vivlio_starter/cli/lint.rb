@@ -690,9 +690,8 @@ module VivlioStarter
         #   未指定 … nil（ProseChecker の既定 100 字）
         #   0      … :off（一文の長さを検査しない）
         #   正の数 … その値を上限にする
-        # 0 を「制限しない」に当てるのは book.yml 内の既存の流儀に揃えたもの
-        # （index.max_sub_references が「0 で無制限」）。上限を変えるのも
-        # 検査を切るのも同じキーで済み、disabled_rules を知らなくてよくなる。
+        # 0 を「制限しない」に当てるのは、上限を変えるのも検査を切るのも
+        # 同じキーで済み、disabled_rules を知らなくてよくなるため。
         def sentence_length_max
           value = Common::CONFIG.lint.sentence_length_max
           return nil if Common.blank?(value)

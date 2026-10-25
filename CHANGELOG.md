@@ -823,6 +823,7 @@
 
 ### Removed
 
+- **`index.max_sub_references` をやめた**。副次参照は、語を見出しに掲げた節から選び、`##` でまとめ、見出しに出る節が多すぎる語は主要参照の章の外の `###` を省く。件数を絞る仕事はこの選び方が担い、上限の 8 が効く語はまれになった（book_ai_web_starter の主要参照のある 286 語で、8 を超えたのは HTML の 1 語だけ）。上限を変える理由が無いので、8 を定数にした。rc.3 の book.yml に入っていたので廃止キーとして扱い、`vs upgrade` で book.yml から消せる（消すまでは読まずに案内を出す）。
 - **`typography.column.font_size` をやめた**。CSS 変数 `--column-font-size` に値を入れるだけで読む CSS が無く、一度も効いていなかった。既定の `8pt` を効かせると、どの本のコラムも本文より 2 割ほど小さくなるため、効かせるのではなくやめる。コラムは本文と同じ大きさで組む。変えるなら `stylesheets/custom.css` に `.column { font-size: 9pt; }` のように書く。`book.yml` に残っていれば 🟡 で知らせ、`vs upgrade` で消せる。41 章の例からも外した。
 - **1.0 より前の抑止コメント `<!-- vs-lint-disable-next-line -->`・`<!-- vs-lint-disable -->`・`<!-- vs-lint-enable -->` を廃止した**。`<!-- no-lint -->`・`<!-- no-lint-start -->`・`<!-- no-lint-end -->` に一本化する。原稿に旧形式が残っていると、もう指摘は止めず、`vs lint` が行番号と置き換え先を添えて 🟡 で知らせる（`L3: <!-- vs-lint-disable --> → <!-- no-lint-start -->`）。あわせて、`vs lint --fix` が textlint の記法を書き戻すときに旧形式を書いていたのを `no-lint` 系に、閉じ忘れの警告の文言も新しい書き方に直した。31 章の「旧形式も受け付けます」の注記を外した。
 - **内部コマンド `vs create:cover` と、`vs cover` の引数（`a4`・`b5`・`a5`・`epub`）を外した**（改善案.md #93）。表紙は `vs cover` か `vs build` で作り、判型は `book.yml` の `page.use`、作るものは `output.targets` に従う。判型の引数は、SVG のテーマでは効いておらず（`book.yml` の判型で作っていた）、本と違う判型の表紙は使い道も無かった。
