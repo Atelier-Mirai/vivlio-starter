@@ -141,7 +141,6 @@ module VivlioStarter
       %i[index common_term_ratio]                     => Spec[default: 0.5],
       %i[index reference_style]                       => Spec[default: "main_and_sub"],
       %i[index max_sub_references]                    => Spec[default: 8],
-      %i[index main_chapter_only_over]                => Spec[default: 12],
       %i[index page_range_min]                        => Spec[default: 3],
 
       # ------- glossary -------

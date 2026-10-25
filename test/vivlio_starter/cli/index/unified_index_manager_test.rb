@@ -1614,7 +1614,7 @@ module VivlioStarter
 
       def reported_message(main_chapter_only:, style: 'main_and_sub')
         limitation = IndexCommands::UnifiedPageBuilder::Limitation.new(
-          style:, limit: 8, terms: %w[関数 状態 Firefox], threshold: 12, main_chapter_only:
+          style:, limit: 8, terms: %w[関数 状態 Firefox], main_chapter_only:
         )
         out, err = capture_io do
           @manager.send(:report_reference_style, ReportedBuilder.new(limitation))
@@ -1623,20 +1623,21 @@ module VivlioStarter
         out + err
       end
 
-      # 境目を上げるか判断できるよう、主要参照の章だけにした語は名前を挙げる
+      # 索引が短い理由が分かるよう、主要参照の章の外の ### を省いた語は名前を挙げる。
+      # 境目は設定にしないので、設定の名前は添えない（R4・R7 改訂）
       def test_report_names_terms_narrowed_to_the_main_chapter
         message = reported_message(main_chapter_only: %w[関数 状態])
 
         assert_match(/索引の副次参照を、語を見出しに掲げた節に絞りました（3 語）/, message)
-        assert_match(/見出しに出る節が多い 2 語は、主要参照の章の節だけにしました: 関数・状態/, message)
-        assert_match(/index\.main_chapter_only_over: 12/, message, '変える設定を示す')
+        assert_match(/見出しに出る節が多い 2 語は、主要参照の章の外の ### の節を省きました: 関数・状態/, message)
+        refute_match(/main_chapter_only_over/, message)
       end
 
       def test_report_omits_the_narrowing_line_when_no_term_was_narrowed
         message = reported_message(main_chapter_only: [])
 
         assert_match(/語を見出しに掲げた節に絞りました/, message)
-        refute_match(/main_chapter_only_over/, message)
+        refute_match(/見出しに出る節が多い/, message)
       end
 
       private

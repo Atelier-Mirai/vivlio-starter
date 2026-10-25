@@ -120,11 +120,11 @@ module VivlioStarter
         # 「腰を据えて説明している箇所」を先頭に立てて太字にする。
         #
         # 既定では、出現ごとに別の節で、その節が語を見出しに掲げている（副次参照の候補になる）。
-        # 節の選び方を確かめるテストだけが section・headed を指定する
-        def occurrence(chapter, main: false, headed: true, section: nil)
+        # 節の選び方を確かめるテストだけが section・headed・h2 を指定する
+        def occurrence(chapter, main: false, headed: true, section: nil, h2: nil)
           @section_seq = @section_seq.to_i + 1
           { 'yomi' => 'ようごしゅう', 'link' => "#{chapter}.html#idx-#{chapter}", 'is_main' => main,
-            'section' => section || @section_seq, 'headed' => headed }
+            'section' => section || @section_seq, 'headed' => headed, 'h2' => h2 }.compact
         end
 
         def index_links(occurrences, config: {})
@@ -329,7 +329,6 @@ module VivlioStarter
 
           assert_equal %w[07-main 07-main 07-main], linked_chapters(links), '主要参照 1 + 主要参照の章の節 2'
           assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
-          assert_equal 12, builder.reference_limitation.threshold
         end
 
         def test_terms_at_the_threshold_are_not_narrowed
@@ -340,11 +339,42 @@ module VivlioStarter
           assert_empty builder.reference_limitation.main_chapter_only
         end
 
-        def test_zero_threshold_never_narrows_to_the_main_chapter
-          subs = (10..29).map { "#{it}-other" }
-          links, = index_links(sections_in(subs), config: { max_sub_references: 0, main_chapter_only_over: 0 })
+        # 「## 課題33　素数」の下の「### 解説」「### 勘所」は同じまとまりの続き。## ごとに 1 件にする（R2 改訂）
+        def test_sections_under_an_h2_naming_the_term_count_as_one
+          links, = index_links([occurrence('03-a', main: true),
+                                occurrence('07-b', section: 4, h2: 4), occurrence('07-b', section: 6, h2: 4),
+                                occurrence('07-b', section: 9, h2: 4), occurrence('07-b', section: 20)])
 
-          assert_equal 21, links.size
+          assert_equal %w[03-a 07-b 07-b], linked_chapters(links), '## の 1 件と、別の ## の下の ### の 1 件'
+        end
+
+        # 主要参照のある ## の中は、主要参照が入り口を受け持つ
+        def test_sections_in_the_main_references_h2_are_dropped
+          links, = index_links([occurrence('03-a', main: true, section: 5, h2: 5),
+                                occurrence('03-a', section: 8, h2: 5), occurrence('09-c')])
+
+          assert_equal %w[03-a 09-c], linked_chapters(links)
+        end
+
+        # 多すぎるかは ## でまとめる前の ### ごとに数える。まとめた後で数えると、ふつうの言葉が
+        # 境目を下回って作例の見出しが戻る。絞っても、## の見出しに語を掲げた節は章の外でも残す（R3 改訂）
+        def test_narrowing_counts_sections_before_collapsing_and_keeps_h2_sections
+          h2_sections = [3, 5, 7].map { occurrence('10-topic', section: it, h2: 3) } # 1 つの ## に 3 節
+          plain = (11..20).map { occurrence("#{it}-other") } # ### だけ 10 節 → 計 13 節
+          links, builder = index_links([occurrence('07-main', main: true)] + h2_sections + plain,
+                                       config: { max_sub_references: 0 })
+
+          assert_equal %w[07-main 10-topic], linked_chapters(links), '主要参照 1 + 章の外の ## の 1 件'
+          assert_equal ['用語集'], builder.reference_limitation.main_chapter_only
+        end
+
+        # 省いた ### が無ければ、絞ったとは知らせない
+        def test_narrowing_that_drops_nothing_is_not_reported
+          subs = (10..22).map { occurrence("#{it}-topic", section: 2, h2: 2) } # 章の外の ## が 13
+          links, builder = index_links([occurrence('07-main', main: true)] + subs, config: { max_sub_references: 0 })
+
+          assert_equal 14, links.size
+          assert_empty builder.reference_limitation.main_chapter_only
         end
 
         # 上限と公平さは、節を選んだ後に当てる（R5）

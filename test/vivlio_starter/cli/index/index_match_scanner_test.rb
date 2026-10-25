@@ -1151,6 +1151,29 @@ module VivlioStarter
                        '親の ## が語を掲げていれば候補・別の ## の下では候補にならない'
         end
 
+        # 「## 課題33　素数」の下の「### 解説」は、課題 33 という一つのまとまりの続き（R2 改訂）。
+        # 副次参照を ## ごとに 1 件にまとめられるよう、語を掲げた ## の行を残す
+        def test_should_record_the_h2_line_only_when_the_h2_names_the_term
+          scanner = build_scanner([{ 'term' => '素数', 'yomi' => 'そすう', 'flags' => 'i' }])
+          scanner.send(:process_content_with_code_block_exclusion, <<~MD, '11-probe')
+            ## 課題33　素数
+
+            ### 解説
+
+            素数を数えます。
+
+            ## 次の課題
+
+            ### 素数の表
+
+            素数を並べます。
+          MD
+
+          assert_equal [[1, 1], [3, 1], [9, nil], [9, nil]],
+                       scanner.index_data['素数'].map { [it['section'], it['h2']] },
+                       '## が語を掲げていればその行・### だけが掲げた節では h2 を書かない'
+        end
+
         # 索引のタグ付けは長い語を先に当てる。見出しの判定もそれにそろえる
         def test_should_not_count_a_shorter_term_inside_a_longer_one_in_the_heading
           result = scan_sections(<<~MD, %w[関数 即時関数])

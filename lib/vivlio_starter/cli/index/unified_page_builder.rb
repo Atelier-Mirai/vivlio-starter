@@ -57,7 +57,10 @@ module VivlioStarter
         REFERENCE_STYLES = %w[main_and_sub main_only all].freeze
         DEFAULT_REFERENCE_STYLE = 'main_and_sub'
         DEFAULT_MAX_SUB_REFERENCES = 8
-        DEFAULT_MAIN_CHAPTER_ONLY_OVER = 12
+        # 見出しに語を掲げた節がこれより多い語は、主要参照の章の外の `###` を省く（R3）。
+        # 実測で Canvas（11 節）と関数（15〜16 節）の間に引いた線。設定にしないのは、厚い本（spiral-ruby・3 巻）でも
+        # 12 で足り、上げると関数のようなふつうの言葉が絞られなくなるため（R4・§7.3）
+        MAIN_CHAPTER_ONLY_OVER = 12
 
         attr_reader :index_data, :limited_reference_terms
 
@@ -70,7 +73,7 @@ module VivlioStarter
           @glossary_backlinks = {}
           # 間引いた語（no silent caps: 絞ったことは呼び出し元から必ず報告する）
           @limited_reference_terms = []
-          # 見出しに出る節が多すぎて、主要参照の章の節だけにした語（R7 で名前を挙げる）
+          # 見出しに出る節が多すぎて、主要参照の章の外の `###` を省いた語（R7 で名前を挙げる）
           @main_chapter_only_terms = []
           # 語 → 選んだ参照。索引と用語集が同じ選び方を一度だけ通す（R8）
           @selected_references = {}
@@ -128,15 +131,15 @@ module VivlioStarter
         end
 
         # 参照を絞った事実。呼び出し元が必ず報告する（no silent caps・R6）。
-        # main_chapter_only は、見出しに出る節が threshold を超えて主要参照の章の節だけにした語
-        Limitation = Data.define(:style, :limit, :terms, :threshold, :main_chapter_only) do
+        # main_chapter_only は、見出しに出る節が多すぎて、主要参照の章の外の `###` を省いた語
+        Limitation = Data.define(:style, :limit, :terms, :main_chapter_only) do
           def any? = terms.any?
           def size = terms.size
         end
 
         def reference_limitation
           Limitation.new(style: reference_style, limit: max_sub_references, terms: @limited_reference_terms,
-                         threshold: main_chapter_only_over, main_chapter_only: @main_chapter_only_terms)
+                         main_chapter_only: @main_chapter_only_terms)
         end
 
         # 以前のビルドで残ったファイルを削除
@@ -392,8 +395,8 @@ module VivlioStarter
           # --- Phase: 見出しに語を掲げた節の、最初の出現（R1・R2） ---
           selected = first_of_headed_sections(main, sub)
 
-          # --- Phase: 多すぎる語は主要参照の章だけ（R3） ---
-          selected = main_chapter_sections(term, main, selected)
+          # --- Phase: 多すぎる語は、主要参照の章の外の `###` を省く（R3） ---
+          selected = main_chapter_sections(term, main, sub, selected)
 
           # --- Phase: 上限と章をまたぐ公平さ（R5） ---
           limit = max_sub_references
@@ -404,25 +407,41 @@ module VivlioStarter
         end
 
         # 読者は索引から節へ飛び、その節を読む。同じ節の 2 回目以降の出現は同じ所を指すだけなので、
-        # 節の入り口の 1 件で足りる。主要参照の節は主要参照が入り口を受け持つ
+        # 節の入り口の 1 件で足りる。主要参照の節は主要参照が入り口を受け持つ。
+        # `##` の見出しが語を掲げていれば、その `##` 全体を 1 節とする（R2 改訂）——「## 課題33　素数」の下の
+        # 「### 解説」「### 勘所」は同じまとまりの続きで、読者は `##` の頭から読み進める
         def first_of_headed_sections(main, sub)
-          taken = main.to_set { section_key(it) }
-          sub.select { (it['headed'] || it[:headed]) && taken.add?(section_key(it)) }
+          taken = main.to_set { unit_key(it) }
+          sub.select { headed?(it) && taken.add?(unit_key(it)) }
         end
 
-        def section_key(occ) = [occurrence_chapter(occ), occ['section'] || occ[:section]]
+        def unit_key(occ) = [occurrence_chapter(occ), occ['h2'] || occ[:h2] || section_of(occ)]
+        def section_key(occ) = [occurrence_chapter(occ), section_of(occ)]
+        def section_of(occ) = occ['section'] || occ[:section]
+        def headed?(occ) = occ['headed'] || occ[:headed]
+        def headed_by_h2?(occ) = !(occ['h2'] || occ[:h2]).nil?
 
         # ふつうの言葉（関数・状態）は作例の見出しにも出て、語を使っているだけの節まで選んでしまう。
-        # 語を説明している節は主要参照の章に集まるので、節が多すぎる語だけをそこへ絞る（R3）。
+        # 語を説明している節は主要参照の章に集まるので、節が多すぎる語は、主要参照の章の外の `###` を省く（R3）。
+        #
+        # 多すぎるかは `##` でまとめる前の `###` ごとの数で見る。まとめた後で数えると、関数（15 節 → 11 節）が
+        # 12 を下回って作例の見出しが戻る。省くのは `###` だけで、`##` の見出しに語を掲げた節は章の外でも残す
+        # ——`##` の見出しに語があるのは、その語を主題にしたまとまり（「## 課題33　素数」）だから（R3 改訂・§7.3）。
         # 主要参照の章は辞書の `main:` で確定したもの——`main?` の推測は、ふつうの言葉ほど外れる。
-        # 主要参照が別の巻にある語は、この巻に残る節が無くなり、巻の名前の案内だけになる
-        def main_chapter_sections(term, main, selected)
-          over = main_chapter_only_over
-          return selected if over.zero? || selected.size <= over
+        # 主要参照が別の巻にある語は、この巻の `###` が残らず、`##` の節と巻の名前の案内になる
+        def main_chapter_sections(term, main, sub, selected)
+          return selected if headed_section_count(main, sub) <= MAIN_CHAPTER_ONLY_OVER
 
-          @main_chapter_only_terms << term
           chapters = main.to_set { occurrence_chapter(it) }
-          selected.select { chapters.include?(occurrence_chapter(it)) }
+          kept = selected.select { chapters.include?(occurrence_chapter(it)) || headed_by_h2?(it) }
+          @main_chapter_only_terms << term if kept.size < selected.size
+          kept
+        end
+
+        # 見出しに語を掲げた `###` ごとの節の数（主要参照の節を除く）。R3 の判定に使う
+        def headed_section_count(main, sub)
+          taken = main.to_set { section_key(it) }
+          sub.count { headed?(it) && taken.add?(section_key(it)) }
         end
 
         # 上限に収める。**章をまたいで公平に**残すのが要点。
@@ -462,13 +481,6 @@ module VivlioStarter
         def max_sub_references
           value = @index_config[:max_sub_references]
           value.nil? ? DEFAULT_MAX_SUB_REFERENCES : [value.to_i, 0].max
-        end
-
-        # 0 は「絞らない」。12 は、実測で Canvas（11 節）と関数（16 節）の間に引いた線。
-        # 厚い本では名前のような語でも見出しに出る節が増えるので、著者が上げられるようにする（R4）
-        def main_chapter_only_over
-          value = @index_config[:main_chapter_only_over]
-          value.nil? ? DEFAULT_MAIN_CHAPTER_ONLY_OVER : [value.to_i, 0].max
         end
 
         # ================================================================

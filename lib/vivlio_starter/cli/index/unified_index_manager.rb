@@ -652,8 +652,8 @@ module VivlioStarter
       #
       # 索引が短くなった理由が設定にあると分からないと、著者は「索引語が
       # 消えた」と読む。何語をどの選び方で絞ったかまで書く。
-      # 主要参照の章だけにした語は名前を挙げる——境目を上げるかを著者が判断できるように
-      # （index-sub-reference-selection-spec.md R7）。
+      # 主要参照の章の外の ### を省いた語は名前を挙げる——その語の索引が短い理由が分かるように
+      # （index-sub-reference-selection-spec.md R7。境目は設定にしないので、設定の名前は添えない）。
       # @param builder [UnifiedPageBuilder] 生成を終えたビルダー
       def report_reference_style(builder)
         limitation = builder.reference_limitation
@@ -666,8 +666,7 @@ module VivlioStarter
                 end
         narrowed = limitation.main_chapter_only
         if narrowed.any?
-          lines << "   見出しに出る節が多い #{narrowed.size} 語は、主要参照の章の節だけにしました: #{narrowed.join('・')}"
-          lines << "   （index.main_chapter_only_over: #{limitation.threshold}）"
+          lines << "   見出しに出る節が多い #{narrowed.size} 語は、主要参照の章の外の ### の節を省きました: #{narrowed.join('・')}"
         end
         IndexCommands.add_post_build_message(lines.join("\n"))
       end

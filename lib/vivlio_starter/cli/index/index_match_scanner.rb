@@ -266,6 +266,7 @@ module VivlioStarter
         def reset_section!
           @section_line = 0
           @section_terms = Set[]
+          @h2_line = 0
           @h2_terms = Set[]
         end
 
@@ -274,7 +275,10 @@ module VivlioStarter
         def enter_section(lineno)
           @section_line = lineno
           @section_terms = Set[]
-          @h2_terms = Set[] if @current_heading_level == 2
+          return unless @current_heading_level == 2
+
+          @h2_line = lineno
+          @h2_terms = Set[]
         end
 
         # この出現の節が、語を見出しに掲げているか。節の見出しか、それを含む `##` 見出しで見る
@@ -290,6 +294,11 @@ module VivlioStarter
           end
           @section_terms.include?(term_text) || @h2_terms.include?(term_text)
         end
+
+        # `##` の見出しがこの語を掲げていれば、その `##` の行（R2 改訂）。
+        # 「## 課題33　素数」の下の「### 解説」「### 勘所」は課題 33 という一つのまとまりの続きなので、
+        # 副次参照は `##` ごとに 1 件でよい。見出しの行の語は headed_section? で集まるので、その後に呼ぶ
+        def headed_h2_line(term_text) = @h2_terms.include?(term_text) ? @h2_line : nil
 
         # 主要参照の落とし先を決めるための下見（index-main-reference-section-spec.md R1）。
         #
@@ -678,7 +687,9 @@ end
           tag_name = is_first ? 'dfn' : 'span'
 
           # 索引データの蓄積（Set で重複を自動排除）。
-          # section・headed は副次参照の選び方に使う（index-sub-reference-selection-spec.md R1・R2）
+          # section・headed・h2 は副次参照の選び方に使う（index-sub-reference-selection-spec.md R1・R2）。
+          # h2 は `##` の見出しが語を掲げたときだけ書く——大半の出現には無く、YAML を膨らませない
+          headed = headed_section?(term_text)
           @index_data[term_text] << {
             'yomi' => yomi,
             'link' => "#{file_basename}.html##{anchor_id}",
@@ -686,8 +697,9 @@ end
             'is_definition' => is_first,
             'is_main' => is_main,
             'section' => @section_line,
-            'headed' => headed_section?(term_text)
-          }
+            'headed' => headed,
+            'h2' => headed_h2_line(term_text)
+          }.compact
 
           # マッチ情報を記録
           @matches << {
