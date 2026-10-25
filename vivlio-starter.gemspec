@@ -19,10 +19,11 @@ Gem::Specification.new do |spec|
   # 実行コードは bin/ と lib/ のみ。新規プロジェクトの雛形（フォント・CSS・原稿サンプル）は
   # lib/project_scaffold/ に集約されているため、リポジトリ直下の config/ や stylesheets/
   # （このリポジトリ自身の書籍ビルド用）は配布物に含めない。
-  # FNM_DOTMATCH は scaffold 内の .gitignore / .textlintrc.yml を拾うために必要。
-  spec.files = Dir.glob('{bin,lib}/**/*', File::FNM_DOTMATCH)
-                  .select { |f| File.file?(f) }
-                  .reject { |f| File.basename(f) == '.DS_Store' }
+  # git が管理しているファイルだけを集める。Dir.glob だと、手元に残っただけのファイルが配られる
+  # ——git の外の sources/quickstart.pdf（3.8MB）や、ビルドのたびに作り直す
+  # stylesheets/twemoji/vs-techbook/ が雛形に入っていた。配りたいファイルは git で管理する。
+  # scaffold 内の .gitignore / .textlintrc.yml のようなドットファイルも、管理していればそのまま入る。
+  spec.files = `git ls-files -z bin lib`.split("\x0")
   spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]

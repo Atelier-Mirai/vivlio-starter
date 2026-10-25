@@ -75,16 +75,19 @@ class PackagingTest < Minitest::Test
     end
   end
 
-  # PK-01: scaffold の全ファイルと bin/ が gem に含まれる（ホワイトリスト退行の検知）
+  # PK-01: git が管理する scaffold の全ファイルと bin/ が gem に含まれ、管理外のファイルは含まれない
+  # （ホワイトリスト退行の検知）。手元に残っただけのファイル（git の外の sources/quickstart.pdf や、
+  # ビルドのたびに作り直す stylesheets/twemoji/vs-techbook/）は配らない
   def test_should_package_entire_scaffold_and_binaries
     contents = self.class.gem_contents
 
-    scaffold_files = Dir.glob("lib/project_scaffold/**/*", File::FNM_DOTMATCH, base: REPO_ROOT)
-                        .select { File.file?(File.join(REPO_ROOT, it)) }
-                        .reject { File.basename(it) == ".DS_Store" }
+    tracked = IO.popen(%w[git ls-files -z bin lib], chdir: REPO_ROOT, &:read).split("\x0")
+    scaffold_files = tracked.select { it.start_with?("lib/project_scaffold/") }
     missing = scaffold_files - contents
+    untracked = contents - tracked - %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
 
     assert_empty missing, "scaffold のファイルが gem に含まれていません:\n  #{missing.first(20).join("\n  ")}"
+    assert_empty untracked, "git で管理していないファイルが gem に含まれています:\n  #{untracked.first(20).join("\n  ")}"
     assert_includes contents, "bin/vs"
     assert_includes contents, "bin/vivlio-starter"
     assert_includes contents, "README.md"
