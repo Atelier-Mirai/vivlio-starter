@@ -110,6 +110,16 @@ module VivlioStarter
           assert_match(/[ぁ-ん]+/, result)
         end
 
+        # 辞書に無いカタカナ（未知語）も、辞書にあるカタカナ語と同じくひらがなの読みにする。
+        # 旧字体の「關」のように読みの取れない漢字だけが残る
+        def test_infer_converts_unknown_katakana_to_hiragana
+          skip 'MeCab が利用できない環境ではスキップ' unless @inferrer.available?
+          @inferrer.instance_variable_set(:@overrides, {})
+
+          assert_equal 'ゆりうす', @inferrer.infer('ユリウス')
+          assert_equal 'うるうどしに關するけん', @inferrer.infer('閏年ニ關スル件')
+        end
+
         def test_infer_converts_katakana_to_hiragana_when_mecab_available
           skip 'MeCab not available' unless @inferrer.available?
 

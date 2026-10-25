@@ -113,8 +113,10 @@ module VivlioStarter
         # 読みを表層形で済ませられない（漢字を含むのに読みがない）語でないか
         def readable?(surface, features) = reading?(features) || !surface.match?(/\p{Han}/)
 
-        # 1 語の読み。読みが取れない語（英字・未知語）は表層形のまま
-        def reading_of(surface, features) = reading?(features) ? katakana_to_hiragana(features[7]) : surface
+        # 1 語の読み。読みが取れない語（英字・未知語）は表層形を使い、カタカナはひらがなに直す。
+        # 辞書にあるカタカナ語は読みがひらがなになる（「コンピュータ」→「こんぴゅーた」）のに、
+        # 未知語は「ユリウス」のままで揃わず、「閏年ニ關スル件」の「ニ」「スル」もカタカナで残っていた
+        def reading_of(surface, features) = katakana_to_hiragana(reading?(features) ? features[7] : surface)
 
         # 読みの個人辞書（config/index_yomi_overrides.yml）を一度だけ読み込む。
         def overrides = @overrides ||= YomiOverrides.load
