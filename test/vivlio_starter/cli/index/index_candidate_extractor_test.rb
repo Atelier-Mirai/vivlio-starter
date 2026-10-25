@@ -501,6 +501,53 @@ module VivlioStarter
           refute_includes candidates, 'ユリウス'
         end
 
+        # --- spiral-ruby の「残りの語」のレビューで挙がった語 ---
+
+        # 値の形（日付・分数・記号つきの値・数の並び・繰り返し）は語ではない
+        def test_value_forms_are_not_candidates
+          markdown = ("明治三十一年と1992年9月と五月五日の話です。2/n と 5分の1 を比べます。" \
+                      "降水確率40%、158°、52! 通り、2^n、base=2、R→G、三十五、0・1・2、倍々です。\n\n" * 3)
+          candidates = extract(markdown)
+
+          bad = %w[明治三十一年 1992年9月 五月五日 2/n 5分の1 降水確率40% 158° 52! 2^n base=2 R→G 三十五 0・1・2 倍々]
+          assert_empty bad & candidates, "値の形が残った: #{bad & candidates}"
+        end
+
+        # 文の言い回しの断片（「自分自身」「式そのもの」「あと一桁」「ひとまとまり」「数 e」）は語ではない
+        def test_phrase_fragments_are_not_candidates
+          mecab!
+          markdown = ("自分自身で確かめます。式そのものを見ます。あと一桁で届きます。ひとまとまりにします。" \
+                      "数 e を使います。いちばん左に置きます。9とおりあります。半世紀かかりました。\n\n" * 3)
+          candidates = extract(markdown)
+
+          bad = %w[自分自身 式そのもの あと一桁 ひとまとまり 数\ e いちばん左 9とおり 半世紀]
+          assert_empty bad & candidates, "断片が残った: #{bad & candidates}"
+        end
+
+        # 定義文の型（「〜とは」）が取り出した文の断片（「やるこ」「速い」「候補が少ない順」）は語ではない
+        def test_definition_pattern_fragments_are_not_candidates
+          markdown = "やることは決まっています。速いとは何かを考えます。候補が少ない順とは、こういう意味です。" \
+                     "互いに素とは、公約数が1だけであることです。\n"
+          candidates = extract(markdown)
+
+          %w[やるこ 速い 候補が少ない順].each { refute_includes candidates, it }
+          assert_includes candidates, '互いに素', '「に」を含んでも語として成り立つ'
+        end
+
+        # 外す決まりが、語を巻き込まないこと（spiral-ruby で一度巻き込んだ語）
+        def test_real_terms_survive_the_value_and_number_rules
+          mecab!
+          markdown = %w[確かめます 数えます 調べます].map do |verb|
+            "超越数と合成数を#{verb}。掛算九九の表を#{verb}。15パズルを解きます。アリアン5を打ち上げます。" \
+              "待ち行列の M/M/1 と HTTP/2 を#{verb}。まつもとゆきひろさんの話です。\n\n"
+          end.join
+          candidates = extract(markdown)
+
+          %w[超越数 合成数 掛算九九 15パズル アリアン5 M/M/1 HTTP/2 まつもとゆきひろ].each do
+            assert_includes candidates, it
+          end
+        end
+
         # 敬称と複数の接尾語（「まつもとさん」「書記たち」）を付けたまま候補にしない
         def test_person_suffixes_are_stripped
           mecab!
@@ -567,14 +614,17 @@ module VivlioStarter
           refute_match label, '第2正規形', '番号の後ろに言葉が直に付いた語は形が違う'
         end
 
-        # 番号違いが二つまでなら、番号付けとは決めない。英字の名前（UTF-8・UTF-16・UTF-32）も対象外
-        def test_names_with_numbers_are_kept
+        # 日本語の語の後ろの番号は外す（「課題1」→「課題」・「ニム和0」→「ニム和」）。
+        # 英字の名前（UTF-8・UTF-16・UTF-32）は番号までが名前なので残す
+        def test_trailing_numbers_are_stripped_from_japanese_words_only
           mecab!
           markdown = "## 課題1　口座\n\n課題1と課題2の違いです。課題1を読みます。\n\n" \
+                     "## ニム和0の局面\n\nニム和0なら後手が勝ちます。ニム和を求めます。\n\n" \
                      "## 文字コード\n\nUTF-8 と UTF-16 と UTF-32 を比べます。UTF-8 を使います。\n"
           candidates = extract(markdown)
 
-          assert_includes candidates, '課題1'
+          %w[課題1 ニム和0].each { refute_includes candidates, it }
+          assert_includes candidates, 'ニム和'
           refute_nil candidates.find { it.start_with?('UTF-') }, "UTF の候補が残る: #{candidates.grep(/UTF/)}"
         end
 

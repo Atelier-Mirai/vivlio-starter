@@ -86,14 +86,26 @@ module VivlioStarter
         FRAGMENT_TAIL = /[^ぁ-ん][のをがはにへでとやも]\z/
 
         # 数と単位（`1mm`・`2,894`・`50%`・`1 語`）。値であって語ではない
-        MEASUREMENT = /\A[\d.,]+\s*(?:[a-zA-Z%]+|[ぁ-んァ-ヶ一-龯]{1,2})?\z/
+        MEASUREMENT = /\A[\d.,]+\s*(?:[a-zA-Z%]+|[ぁ-んァ-ヶ一-龯]{1,2}|#{Regexp.union(%w[ビット バイト ページ ピクセル ドット ポイント ミリ センチ メートル キロ グラム コマ マス とおり 通り])})?\z/
 
         # 数字・カンマ・スラッシュだけの語（「31, 30,」「1/239」「355/113」）。値であって語ではない。
         # 分数を索引に立てるなら、その式の名前（「マチンの公式」「密率」）の側
         NUMBERS_ONLY = %r{\A[\d.,\s/]+\z}
 
         # 数学の記号を含む語（「√n」「log₂n」「10⁻¹³」）。数式を地の文に書いた跡で、語ではない
-        MATH_SYMBOL = /[√∑∏∫±×÷≤≥≠≈∞⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻₀₁₂₃₄₅₆₇₈₉]/
+        MATH_SYMBOL = /[√∑∏∫±×÷≤≥≠≈∞⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻₀₁₂₃₄₅₆₇₈₉°^=→←↔⇒⇔]|\d!|\d%|(?<![A-Za-z0-9.])\d+(?:\.\d+)?\/|\A\//
+
+        # 値の形。分数（「5分の1」）、漢数字や数字だけの並び（「三十五」「万・億・兆」「0・1・2」）、
+        # 同じ字の繰り返し（「倍々」「日々」）。どれも語ではない
+        VALUE_FORM = /\A(?:[\d一二三四五六七八九十百千]+分の[\d一二三四五六七八九十百千]+|[\d〇一二三四五六七八九十百千万億兆・\s]+|.々)\z/
+
+        # 日付（「明治三十一年」「1992年9月」「五月五日」）。元号・西暦・紀元前と年月日だけの語
+        KANJI_NUMBER = '[\d〇一二三四五六七八九十百千]+'
+        DATE_FORM = /\A(?=.*[年月日]\z)(?:明治|大正|昭和|平成|令和|西暦|紀元前)?\s?(?:#{KANJI_NUMBER}年\s?)?(?:#{KANJI_NUMBER}月\s?)?(?:#{KANJI_NUMBER}日)?\z/
+
+        # 文の中の言い回し。「ひと＋ひらがな」の和語（「ひとまとまり」「ひととおり」）と、
+        # 日本語の後ろに付いた変数 1 字（「数 e」「ベクトルb」）
+        PHRASE_FORM = /\Aひと[ぁ-ん]+\z|[ぁ-んァ-ヶ一-龯]\s?[a-z]\z/
 
         # 本の構成の言葉。章末の演習や補遺は本の部品の名前で、索引から案内する語ではない。
         # 「付録」「コラム」は記法の名前として索引語にする本（本書）があるので含めない
@@ -211,7 +223,7 @@ module VivlioStarter
             DEFINITION_PATTERNS.each do |pattern|
               sanitized.scan(pattern) do |match|
                 term = match[0]&.strip
-                next unless valid_term?(term)
+                next unless valid_term?(term) && definition_term?(term)
 
                 # 性質を記録するだけ（語ごと 1 回）。出現ごとに加算すると
                 # TF を二重に数えることになり、頻出語ほど高スコアになる。
@@ -223,6 +235,15 @@ module VivlioStarter
               end
             end
           end
+        end
+
+        # 定義文の型で取り出した語が、語の形をしているか。型は「〜とは」の手前の文字を
+        # 何でも取るので、文の断片が混ざる——「やることは」から「やるこ」（「こと」の途中で切れた）、
+        # 「速いとは」から「速い」、「候補が少ない順とは」から節ごと。仮名で始まる・
+        # 「こ」「ご」や活用語尾（い・た・ない）で終わる・助詞（が・を・から・という）を含むものは外す。
+        # 「に」は含めない——「互いに素」が語として成り立つ
+        def definition_term?(term)
+          !term.match?(/\A[ぁ-ん]|[こご]\z|(?:い|た|ない)\z|[がを]|から|という/)
         end
 
         # 専門用語パターンから候補を抽出
@@ -268,8 +289,22 @@ module VivlioStarter
         # @yieldparam nouns [Array<Array(String, Boolean, String)>] [表層形, 直前に空白があったか, 品詞細分類]
         def each_noun_sequence(mecab, text)
           text.each_line do |line|
-            each_noun_sequence_in_line(mecab, line.chomp) { yield without_okurigana_suffix(it) }
+            each_noun_sequence_in_line(mecab, line.chomp) { yield without_trailing_number(without_okurigana_suffix(it)) }
           end
+        end
+
+        # 漢字・ひらがなで終わる語の後ろに付いた番号を外す（「ニム和0」→「ニム和」・「配列1本」→「配列」）。
+        # 英字やカタカナの名前（`HTML5`・`Windows 10`・「アリアン5」）は番号までが名前なので外さない。
+        # 外すのは算用数字だけ——「数」の字まで数とみなすと「超越数」「奇数乗」を、漢数字まで見ると
+        # 「掛算九九」を壊す
+        def without_trailing_number(nouns)
+          number = ->(token) { token[0].match?(/\A[0-9０-９]+\z/) }
+          rest = nouns.dup
+          rest.pop if rest.size > 2 && counter?(rest.last) && number.(rest[-2])
+          rest.pop while rest.size > 1 && number.(rest.last)
+          return nouns if rest.size == nouns.size || !rest.last[0].match?(/[ぁ-ん一-龯]\z/)
+
+          rest
         end
 
         # 語の後ろに付いて句を作る接尾語。IPADIC はこれらを名詞（接尾）とするので、名詞連続に
@@ -297,6 +332,17 @@ module VivlioStarter
         # 品詞でなく綴りで見る
         RANGE_WORDS = %w[以下 以上 未満 以内 以外 以降 以前 以後 以来 程度 前後 付近 同士 どうし].freeze
 
+        # 語の一部にならない名詞。「自分自身」「式そのもの」「人全員」「あと一桁」「まま計算」
+        # 「いちばん左」が候補になっていた（spiral-ruby）。「あと」「まま」「すべて」は IPADIC で
+        # 副詞可能だが、同じ品詞に「時間」（「時間計算量」）もあるので、品詞でなく綴りで見る
+        FUNCTION_NOUNS = %w[自身 そのもの それぞれ 全員 すべて 全て あと まま いちばん 一番 ひとつ ふたつ].freeze
+
+        # 名詞の連続をここで切るか。範囲の語・語の一部にならない名詞に加えて、
+        # 非自立の名詞（こと・もの・とき・ほう・よう）と代名詞（これ・それ）でも切る
+        def sequence_break?(surface, pos_detail)
+          RANGE_WORDS.include?(surface) || FUNCTION_NOUNS.include?(surface) || %w[非自立 代名詞].include?(pos_detail)
+        end
+
         # 1 行ぶん。行ごとに解析するのは、名詞連続が行をまたいでつながらないようにするため
         def each_noun_sequence_in_line(mecab, line)
           current_nouns = []
@@ -317,7 +363,7 @@ module VivlioStarter
             # インラインコードを消した「`error` / `warn` / `info`」の跡が「/ / /」という候補に
             # なっていた。空白を挟まない記号は語の一部（`Re:VIEW`・`Node.js`）なので残す。
             # 範囲を表す語（RANGE_WORDS）でも切る
-            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !RANGE_WORDS.include?(node.surface)
+            if pos == '名詞' && !(token[1] && !node.surface.match?(/[\p{L}\p{N}]/)) && !sequence_break?(node.surface, pos_detail)
               current_nouns << token
             elsif pos == '接頭詞' && pos_detail == '名詞接続'
               # 接頭辞は次の名詞と 1 語をなす（「単章ビルド」「同梱画像」）。
@@ -395,7 +441,7 @@ module VivlioStarter
         HEADING_SINGLE_NOUN_KINDS = %w[一般 固有名詞].freeze
 
         # 見出しに 1 語で出ても、節の話題ではない位置の言葉（「### 後ろから挿入する」）
-        POSITION_WORDS = %w[前 後ろ 上 下 左 右 横 隣 奥 手前 端 途中 外側 内側].freeze
+        POSITION_WORDS = %w[前 後ろ 上 下 左 右 横 隣 奥 手前 端 途中 外側 内側 真ん中 まん中].freeze
 
         # 見出しから拾ってよい語か。短い語も通すが、ひらがなだけの語（「とき」「もの」）と
         # 1 字の語（「章」「図」）は語として弱いので落とす
@@ -422,14 +468,15 @@ module VivlioStarter
           return nouns.drop(1).all? { QUANTITY_SUFFIXES.include?(it[0]) } if nouns.first[0].match?(NATIVE_COUNT)
 
           counter, *rest = nouns.drop_while { numeral?(it) }
-          return false if counter.nil? || counter.equal?(nouns.first)
+          return true if counter.nil? # 数だけの並び（「三十五」「六百六十」）
+          return false if counter.equal?(nouns.first)
 
           counter?(counter) && rest.all? { QUANTITY_SUFFIXES.include?(it[0]) }
         end
 
         # 数か。「数百桁」の「数」は、文脈によって MeCab が普通の名詞（かず）と切るので、
         # 「数」「何」「幾」は品詞にかかわらず数とみなす（一つでも取りこぼすと候補になる）
-        def numeral?(token) = token[2] == '数' || %w[数 何 幾].include?(token[0])
+        def numeral?(token) = token[2] == '数' || %w[数 何 幾 半].include?(token[0])
 
         def counter?(token)
           (token[3] == '助数詞' && token[0].length == 1) || COUNTER_WORDS.include?(token[0])
@@ -439,11 +486,12 @@ module VivlioStarter
         NATIVE_COUNT = /\A[一二三四五六七八九十幾何]つ\z/
 
         # 2 字以上でも量にしか使わない助数詞。「つめ」は「三つめ」を MeCab が 三＋つめ（一般）と切るため
-        COUNTER_WORDS = %w[箇所 ヶ所 か所 カ所 回り 種類 通り 時間 世紀 文字 段階 つめ つ目].freeze
+        COUNTER_WORDS = %w[箇所 ヶ所 か所 カ所 回り 種類 通り 時間 世紀 文字 段階 つめ つ目
+                           か月 ヶ月 カ月 ケ月 切れ 等分 号].freeze
 
         # 数と助数詞の後ろに付いても量の表現のままの接尾語（「三年目」「一年後」）。
         # 「以上」「程度」は RANGE_WORDS が名詞の連続を切るので、ここには要らない
-        QUANTITY_SUFFIXES = %w[目 め 間 後 前 分 あたり ごろ 頃 ぶり あまり 余り 足らず
+        QUANTITY_SUFFIXES = %w[目 め 間 後 前 分 ぶん きり あたり ごろ 頃 ぶり あまり 余り 足らず
                                越し 近く ずつ おき ごと 毎 じゅう 中 弱 強 半].freeze
 
         # 名詞連続を 1 語へ。空白があった位置には空白を残す
@@ -520,7 +568,8 @@ module VivlioStarter
         # 言葉は最短で取る——「課題3の図2」の言葉は「課題」。
         # 番号には英大文字 1 字も含める（「補遺A」「付録B」）
         LABEL_NUMBER = /(?:[0-9０-９]+|[A-ZＡ-Ｚ](?![A-Za-z]))/
-        NUMBERED_LABEL = /\A(?<label>[^A-Za-z]*?[ぁ-んァ-ヶ一-龯])[ \t]?#{LABEL_NUMBER}(?:[のでをはがとにも].*)?\z/
+        # 「課題93・94」のように番号を並べた形も含める
+        NUMBERED_LABEL = /\A(?<label>[^A-Za-z]*?[ぁ-んァ-ヶ一-龯])[ \t]?#{LABEL_NUMBER}(?:・#{LABEL_NUMBER})*(?:[のでをはがとにも].*)?\z/
 
         # 同じ言葉に違う番号がこの数以上付いていれば、番号付けとみなす
         NUMBERED_LABEL_MIN_VARIANTS = 3
@@ -568,9 +617,9 @@ module VivlioStarter
         # 番号を付けただけの形（版や規格の違い）のときだけ外す。どんな長い候補でも数えると、
         # 「ベクトルb」「固有ベクトル」が「ベクトル」を、「将棋盤バージョン」のような断片が
         # 「バージョン」を覆い、それ自体が索引に立つ概念の語まで消していた。
-        # カタカナの名前が、どの長い候補でも後ろに語を従える形（「グレゴリオ暦」「ハフマン符号」
-        # 「適応型ハフマン符号」）も外す。名前だけでは索引から何を引くのか定まらず、長い語のほうが
-        # 引く語になる。名前で終わる形（「固有ベクトル」）が混ざれば、短いほうも語として残す。
+        # 英字を含まない語が、どの長い候補でも後ろに語を従える形（「グレゴリオ暦」「適応型ハフマン符号」
+        # 「浮動小数点数」）も外す。単独では索引から何を引くのか定まらず、長い語のほうが引く語になる。
+        # その語で終わる形（「固有ベクトル」）が混ざれば、短いほうも語として残す。
         # そのうえで長い候補の出現を伏せ、短いほうが単独で残るかを本文で数える
         def enclosed?(term)
           tf = term_frequencies[term].to_i
@@ -592,9 +641,10 @@ module VivlioStarter
           prose_documents.none? { it.gsub(covering, "\u0000").match?(pattern) }
         end
 
-        # カタカナだけの名前（「グレゴリオ」「チュドノフスキー」）。英字の略語（HTTP・ISO・IoT）は、
-        # 長い語の頭に立つだけでも単独で引かれる概念なので対象外（UTF は番号付きの形の判定で外れる）
-        NAME_ONLY = /\A[ァ-ヶー・]+\z/
+        # 頭の判定にかける語。英字を含まない語（「グレゴリオ」「浮動小数点」「時間割編成」）。
+        # 英字の略語（HTTP・ISO・IoT）は、長い語の頭に立つだけでも単独で引かれる概念なので対象外
+        # （UTF は番号付きの形の判定で外れる）
+        NAME_ONLY = /\A[^A-Za-z]+\z/
 
         # 長さ 3 字以上の候補と出現数（enclosed? の照合相手）
         def longer_terms = @longer_terms ||= term_frequencies.select { |term, tf| term.length >= 3 && tf.positive? }
@@ -755,6 +805,8 @@ module VivlioStarter
           return false if term.match?(JUNK_TERM_PATTERN)
           return false if term.match?(FRAGMENT_HEAD) || term.match?(FRAGMENT_TAIL) || term.match?(MEASUREMENT)
           return false if term.match?(NUMBERS_ONLY) || term.match?(MATH_SYMBOL) || BOOK_STRUCTURE_WORDS.include?(term)
+          return false if term.match?(VALUE_FORM) || term.match?(NATIVE_COUNT) || term.match?(PHRASE_FORM)
+          return false if term.match?(DATE_FORM)
 
           # HTMLタグの断片を除外
           return false if term.include?('<') || term.include?('>')
