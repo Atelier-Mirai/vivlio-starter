@@ -57,14 +57,38 @@ module VivlioStarter
 
         def chapter_number_offset = @chapter_number_offset || 0
 
-        # 章番号を振るか。直接ビルドで章が 1 つだけの配布資料には振らない（改善案 #84）。
-        # 振らないときは章扉に「第N章」を出さず、節番号を 1, 2, …、図表番号を「図 1」とする
-        # （CrossReferenceProcessor も見る）。既定は振る。
+        # 直接ビルドで章が 1 つだけの配布資料には、章番号を振らない（改善案 #84）。
+        # book.yml の page.heading_numbering より強い（chapter_and_section の本でも振らない）
         def chapter_numbering=(enabled)
           @chapter_numbering = enabled
         end
 
-        def chapter_numbering? = @chapter_numbering != false
+        # page.heading_numbering が取りうる値（heading-numbering-spec.md R1）。
+        # chapter_and_section … 章と節に振る／chapter … 章にだけ振る／none … 振らない
+        HEADING_NUMBERING_VALUES = %w[chapter_and_section chapter none].freeze
+        DEFAULT_HEADING_NUMBERING = ConfigKeys::KEYS[%i[page heading_numbering]].default
+
+        # テストから page.heading_numbering を差し替える。nil で book.yml の値に戻す
+        def heading_numbering=(value)
+          @heading_numbering = value
+        end
+
+        def heading_numbering = normalize_heading_numbering(@heading_numbering || Common::CONFIG&.page&.heading_numbering)
+
+        # 解釈できない値・未設定は既定へ倒す。**警告は出さない**——章ごと・参照ごとに呼ばれるので、
+        # ここで鳴らすと同じ警告が何度も出る。警告は BookSettingsCss がビルドに 1 回だけ出す
+        def normalize_heading_numbering(raw)
+          value = raw.to_s.strip.downcase
+          HEADING_NUMBERING_VALUES.include?(value) ? value : DEFAULT_HEADING_NUMBERING
+        end
+
+        # 章（「第N章」「付録 A」）に番号を振るか。振らないときは章扉に番号を出さず、
+        # 図表番号を「図 1」とする（CrossReferenceProcessor・OutlineExtractor も見る）
+        def chapter_numbering? = @chapter_numbering != false && heading_numbering != 'none'
+
+        # 節（「N-M」「A-1」）に番号を振るか。章番号を振らない配布資料（#84）でも、
+        # chapter_and_section なら節は 1, 2, … と振る
+        def section_numbering? = heading_numbering == 'chapter_and_section'
 
         # 見出し(h1..hN)に本文参照用のマーカー（class と data 属性）を付与
         # @param html_paths [Array<String>] HTMLファイルパスの配列
@@ -202,7 +226,7 @@ module VivlioStarter
                                       resolve_main_chapter_display_number(chapter_token,
                                                                           chapter_number_i)
                                     end,
-            appendix_letter: if chapter_number_i && entry.kind == :appendix
+            appendix_letter: if chapter_number_i && entry.kind == :appendix && chapter_numbering?
                                resolve_appendix_letter(chapter_token, chapter_number_i)
                              end,
             process_headings: %i[chapter appendix].include?(entry.kind)
@@ -249,8 +273,10 @@ module VivlioStarter
           modified
         end
 
-        # h2 の番号テキストを構築
+        # h2 の番号テキストを構築。節に番号を振らない本では nil（番号の要素を作らない・R4）
         def build_h2_number_text(context, section_index)
+          return nil unless section_numbering?
+
           if context[:file_type] == 'appendix'
             context[:appendix_letter] ? "#{context[:appendix_letter]}-#{section_index}" : section_index.to_s
           elsif context[:chapter_display_number]

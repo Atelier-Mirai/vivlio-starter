@@ -36,6 +36,7 @@ require_relative '../font_manager'
 require_relative '../theme_color'
 require_relative '../build/vivliostyle_config_writer'
 require_relative 'css_updater'
+require_relative '../post_process/heading_processor'
 require_relative 'frontmatter_generator'
 require_relative 'talk_registry'
 
@@ -104,6 +105,7 @@ module VivlioStarter
             }
             #{section_pagebreak_rule(page_cfg)}
             #{chapter_pagebreak_rule(page_cfg)}
+            #{heading_numbering_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
@@ -503,6 +505,52 @@ module VivlioStarter
             "   before: chapter_pagebreak: #{raw}\n" \
             "   after : chapter_pagebreak: #{DEFAULT_CHAPTER_PAGEBREAK}\n" \
             "   今回は既定の #{DEFAULT_CHAPTER_PAGEBREAK} で処理しました。"
+          )
+        end
+
+        # ================================================================
+        # 見出しの番号（heading-numbering-spec.md R3）
+        # ================================================================
+        # 目次の番号は HTML ではなく toc.css の CSS カウンタで振っている。toc.css は著者の本へ
+        # 写す雛形なので、そこで切ると vs upgrade するまで効かない。番号を切る規則はビルドのたびに
+        # 作るこのファイルに出す。セレクタに #toc を前置するのは、toc.css の付録の節の規則
+        # （li.toc-chapter-appendix > ul .toc-section::before）にも特異度で勝つため。
+        # 項（###）の番号「3-2-1」は節の番号を含むので、節と一緒に切る。
+        TOC_SECTION_NUMBER_SELECTORS = ['#toc .toc-section::before', '#toc .toc-subsection::before'].freeze
+        TOC_CHAPTER_NUMBER_SELECTORS = ['#toc .toc-chapter::before', '#toc .toc-chapter-appendix::before'].freeze
+
+        # 既定（chapter_and_section）では何も出さず、toc.css の番号をそのまま生かす
+        def heading_numbering_rule(page_cfg)
+          warn_unknown_heading_numbering!(page_cfg)
+
+          selectors = case PostProcessCommands::HeadingProcessor.normalize_heading_numbering(page_cfg[:heading_numbering])
+                      when 'chapter' then TOC_SECTION_NUMBER_SELECTORS
+                      when 'none' then TOC_CHAPTER_NUMBER_SELECTORS + TOC_SECTION_NUMBER_SELECTORS
+                      else return ''
+                      end
+
+          <<~CSS.chomp
+            /* page.heading_numbering — 目次の番号を出さない（章扉・節の見出しには番号の要素を作らない） */
+            #{selectors.join(",\n")} {
+              content: none;
+            }
+          CSS
+        end
+
+        # 綴り間違いが黙って既定へ戻ると著者は気づけないので知らせる。鳴らすのは CSS 生成の 1 回だけ
+        # （HeadingProcessor.heading_numbering は章ごとに呼ばれるので、そちらでは鳴らさない）
+        def warn_unknown_heading_numbering!(page_cfg)
+          raw = page_cfg[:heading_numbering].to_s.strip
+          values = PostProcessCommands::HeadingProcessor::HEADING_NUMBERING_VALUES
+          return if raw.empty? || values.include?(raw.downcase)
+
+          default = PostProcessCommands::HeadingProcessor::DEFAULT_HEADING_NUMBERING
+          Common.log_warn(
+            "config/book.yml の page.heading_numbering の値が不正です（#{raw}）\n" \
+            "   使える値: #{values.join(' / ')}\n" \
+            "   before: heading_numbering: #{raw}\n" \
+            "   after : heading_numbering: #{default}\n" \
+            "   今回は既定の #{default} で処理しました。"
           )
         end
 

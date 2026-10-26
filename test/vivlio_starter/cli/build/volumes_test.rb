@@ -499,6 +499,33 @@ module VivlioStarter
           end
         end
 
+        # 全巻目次も page.heading_numbering に従う（heading-numbering-spec.md R5）。
+        # chapter は節の番号だけを、none は章・付録・節の番号をすべて出さない
+        def test_should_follow_heading_numbering_in_whole_toc
+          with_project do
+            File.write('contents/11-apply.md', "# 11-apply\n\n## 準備する\n")
+            File.write('contents/92-links.md', "# 92-links\n\n## 公式サイト\n")
+            Volumes.select!(Volumes.find('upper'))
+
+            markdown_for = lambda do |value|
+              PostProcessCommands::HeadingProcessor.heading_numbering = value
+              TocCommands::HeadingExtractor.stub(:configured_depth, 2) { WholeTocGenerator.markdown }
+            ensure
+              PostProcessCommands::HeadingProcessor.heading_numbering = nil
+            end
+
+            chapter = markdown_for.call('chapter')
+            assert_includes chapter, '<span class="whole-toc-number">第3章</span>11-apply'
+            assert_includes chapter, '<li class="whole-toc-section">準備する</li>', '節の番号は出さない'
+            assert_includes chapter, '<li class="whole-toc-section">公式サイト</li>'
+
+            none = markdown_for.call('none')
+            refute_includes none, 'whole-toc-number', '章・付録・節とも番号を出さない'
+            assert_includes none, '<li class="whole-toc-chapter">11-apply'
+            assert_includes none, '<li class="whole-toc-appendix">92-links'
+          end
+        end
+
         def test_should_include_whole_toc_only_for_volume_asking_for_it
           with_project(catalog: CATALOG.sub("    id: middle\n", "    id: middle\n    whole_toc: true\n")) do
             Volumes.select!(Volumes.find('middle'))

@@ -120,6 +120,11 @@ page:
                # 3 … 項（### 見出し）まで（既定）
                # 付録は 3 でも節までです
 
+  heading_numbering: chapter_and_section # 見出しに番号を振るか
+                                         # chapter_and_section … 章「第1章」と節「1-1」に振る（既定）
+                                         # chapter             … 章にだけ振る
+                                         # none                … 振らない（見出しに自分で番号を書く本）
+
 # ======= タイポグラフィ設定（書体・色・装飾） =======
 typography:
   # ------- 標準添付書体（page-settings.css の @font-face で定義） -------

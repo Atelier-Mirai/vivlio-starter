@@ -88,6 +88,7 @@ module VivlioStarter
       %i[page section_pagebreak]                      => Spec[default: true],
       %i[page chapter_pagebreak]                      => Spec[default: "recto"],
       %i[page toc_depth]                              => Spec[default: 3],
+      %i[page heading_numbering]                      => Spec[default: "chapter_and_section"],
 
       # ------- typography -------
       %i[typography body font]                        => Spec[default: "Noto Serif JP"],

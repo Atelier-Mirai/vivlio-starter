@@ -1327,10 +1327,13 @@ module VivlioStarter
           base.match?(/\A\d{2}(?=-|\z)/) && TokenResolver::Resolver.new.resolve_file(base).kind == :chapter
         end
 
-        # 章扉（data-chapter-number-display を持つ h1）へファクシミリ合成画像を注入する。
+        # 本文の章の h1 へファクシミリ合成画像を注入する。
         # PDF の縦長章扉（左上飾り→番号→タイトル→リード→右下飾り）を 1 枚に焼き込み、
         # リフローでも千切れない完全なページとして運ぶ（epub-frontispiece-facsimile-spec.md）。
         # 焼き込みに成功した章のみ、二重表示を避けるため HTML 側の chapter-lead を取り除く。
+        #
+        # 章扉かどうかは番号ではなく章の種類で決める（呼び出し側の main_chapter_file?）。
+        # 章番号を振らない本（heading-numbering-spec.md R4）でも、番号の行を空けて題とリードを焼き込む
         def inject_frontispiece_headings!(doc, context)
           return false unless context[:frontispiece]
 
@@ -1339,9 +1342,9 @@ module VivlioStarter
             next if h1['class'].to_s.split.include?('vs-image-heading-epub') # 冪等ガード（§4.5）
 
             number = h1['data-chapter-number-display'].to_s.strip
-            next if number.empty?
-
             title = h1['data-chapter-title'].to_s.strip
+            next if number.empty? && title.empty?
+
             lead_el = frontispiece_lead_element(h1)
             lead = extract_lead_text(lead_el)
 

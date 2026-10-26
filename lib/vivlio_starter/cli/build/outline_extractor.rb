@@ -38,7 +38,10 @@ module VivlioStarter
         module_function
 
         # 付録ラベル取得
+        # 章番号を振らない本（heading-numbering-spec.md）では、章扉に「付録 A」が無いので付けない
         def appendix_label_for_basename(basename)
+          return nil unless PostProcessCommands::HeadingProcessor.chapter_numbering?
+
           entry = TokenResolver::Resolver.new.resolve_file(basename)
           return nil unless entry.number && entry.kind == :appendix
 
@@ -613,6 +616,9 @@ module VivlioStarter
         def resolve_chapter_number_display(basename, heading)
           number_display = heading[:number_display].to_s.strip
           return number_display unless number_display.empty?
+
+          # 章番号を振らない本では、章扉に無い「第N章」をしおりにも足さない（heading-numbering-spec.md）
+          return '' unless PostProcessCommands::HeadingProcessor.chapter_numbering?
 
           # 前書き・後書きは番号の範囲によらず番号を付けない（PREFACE の `20-vol2-intro` を「第10章」としない）
           entry = TokenResolver::Resolver.new.resolve_file(basename)

@@ -188,7 +188,10 @@ module VivlioStarter
             context[:chapter_display_number] = index && (index + 1 + Build::Volumes.chapter_offset)
           elsif entry.kind == :appendix
             context[:file_type] = 'appendix'
-            context[:appendix_letter] = Common.appendix_number_to_letter(entry.number)&.upcase
+            # 章番号を振らない本では「付録 A」も出さない（heading-numbering-spec.md R2）
+            if PostProcessCommands::HeadingProcessor.chapter_numbering?
+              context[:appendix_letter] = Common.appendix_number_to_letter(entry.number)&.upcase
+            end
           end
           context
         end
@@ -336,7 +339,8 @@ module VivlioStarter
             # 本文章・前後付では nil となり従来どおり章番号を用いる。
             chapter_label = CrossReferenceProcessor.appendix_letter_for(@source_file) || @chapter_number
             label_id = info[:auto] ? "#{type}-#{chapter_label}-#{count}" : info[:id]
-            # 章番号を振らない配布資料では「図 1」（HeadingProcessor.chapter_numbering?・改善案 #84）
+            # 章番号を振らない本では「図 1」（HeadingProcessor.chapter_numbering?・改善案 #84・
+            # heading-numbering-spec.md）。付録の記号（表 A-1）も外す
             number = PostProcessCommands::HeadingProcessor.chapter_numbering? ? "#{chapter_label}-#{count}" : count.to_s
             Label.new(label_id, type, @chapter_number, number, info[:title], @source_file, line_number, info[:auto])
           end

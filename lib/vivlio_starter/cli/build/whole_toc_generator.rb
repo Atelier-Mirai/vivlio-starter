@@ -132,7 +132,8 @@ module VivlioStarter
           %(<li class="#{css_class}">#{label}#{CGI.escapeHTML(title)}#{sections}</li>)
         end
 
-        # 節（##）の並び。番号は章扉の節と同じ「13-2」「A-1」（HeadingProcessor.build_h2_number_text）
+        # 節（##）の並び。番号は章扉の節と同じ「13-2」「A-1」（HeadingProcessor.build_h2_number_text）。
+        # 節に番号を振らない本（page.heading_numbering）では番号の要素を作らない
         def section_list(basename)
           return '' unless sections?
 
@@ -142,8 +143,8 @@ module VivlioStarter
           context = PreProcessCommands::CrossReferenceProcessor.heading_number_context_for(basename)
           items = titles.each_with_index.map do |title, index|
             number = PostProcessCommands::HeadingProcessor.build_h2_number_text(context, index + 1)
-            %(<li class="whole-toc-section"><span class="whole-toc-number">#{CGI.escapeHTML(number)}</span>) +
-              %(#{CGI.escapeHTML(title)}</li>)
+            label = number ? %(<span class="whole-toc-number">#{CGI.escapeHTML(number)}</span>) : ''
+            %(<li class="whole-toc-section">#{label}#{CGI.escapeHTML(title)}</li>)
           end
           %(\n<ul class="whole-toc-sections">\n#{items.join("\n")}\n</ul>\n)
         end
