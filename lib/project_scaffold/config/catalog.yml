@@ -92,6 +92,7 @@ POSTFACE:
 # 【分冊にする】
 # 上下巻などに分ける場合は、現在の設定を次の VOLUMES: から始まる構成に置き換えます。
 # VOLUMES: の下に巻を並べ、PREFACE:・CHAPTERS:・APPENDICES:・POSTFACE: は各巻の中に書きます。
+# 本全体の前書き・後書きは、VOLUMES: と並べて一番上の PREFACE:・POSTFACE: に書けます。
 # name には「上巻」などの呼び名を書きます。
 # id には、出力ファイル名や vs build --volume で巻を指定するための名前を書きます。
 # id に使える文字は、半角の英小文字・数字・アンダースコア（_）です。
