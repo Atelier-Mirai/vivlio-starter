@@ -152,10 +152,6 @@ module VivlioStarter
           # 奥付を偶数ページ（左ページ）に配置するため、必要なら空白ページを挿入
           segments = insert_blank_page_before_colophon(segments)
 
-          # アウトライン付与の基点補正用に、前付より前に結合される表紙 PDF の
-          # ページ数を記録しておく（Step 11 で参照）。
-          @front_matter_offset = compute_front_matter_offset(segments)
-
           if merge_pdfs_with_qpdf!(segments, output: merged_output_pdf, base_pdf: base_pdf_for(segments))
             Common.log_success('[Step 10] output.pdf を生成しました')
             true
@@ -255,21 +251,6 @@ module VivlioStarter
           false
         end
 
-        # output.pdf 先頭に結合される表紙 PDF など、前付より前に並ぶページ数を返す。
-        # アウトラインのページ位置計算の基点（本扉の実ページ番号 = offset + 1）を
-        # 補正するために用いる。merge_all_pdfs! 実行時に算出される。
-        # 未算出時は 0（表紙なし相当）。
-        def front_matter_offset = @front_matter_offset || 0
-
-        # 区間列のうち、前付より前のページ数を合算する。
-        # 前付が見つからない場合は 0 を返す（従来挙動と互換）。
-        def compute_front_matter_offset(segments)
-          idx = segments.index { it.role == :front_matter }
-          return 0 unless idx
-
-          segments[0...idx].sum(&:pages)
-        end
-
         # ================================================================
         # 5. アウトライン付与 (Step 11)
         # ================================================================
@@ -285,9 +266,8 @@ module VivlioStarter
           end
 
           Common.log_action('[Step 11] PDF ブックマークを付与します…')
-          # 表紙 PDF のページ数を基点に加味して、前付・本文・巻末のページ範囲を正しく算出する。
-          OutlineExtractor.add_outline_from_headings!(merged_output_pdf, chapter_htmls, max_level: 3,
-                                                                                        start_page: front_matter_offset + 1)
+          # ページは結合した PDF の飛び先から引くので、表紙のページ数を足す補正は要らない
+          OutlineExtractor.add_outline_from_headings!(merged_output_pdf, chapter_htmls)
           true
         end
       end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'cgi'
 require 'fileutils'
 
 require_relative '../create'
@@ -7,6 +8,7 @@ require_relative '../techbook/processor'
 require_relative '../code_line_blocks'
 require_relative 'derived_image'
 require_relative 'derived_svg'
+require_relative 'outline_extractor'
 require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
 
@@ -35,6 +37,9 @@ module VivlioStarter
         # 切り出して並べ替えるため。
         SPECIAL_PAGE_BASENAMES = %w[_titlepage _legalpage _colophon].freeze
 
+        # 見出しの飛び先を作るリンクの印（inject_heading_anchors!）。2 回目の書き込みを避けるのに使う
+        HEADING_ANCHOR_CLASS = 'vs-heading-anchor'
+
         # 地色を持つブロック。この中の画像は PDF 向けでも**透過を保つ**（`keep_alpha?`）。
         #
         # CSS から `background` / `background-color` を持つクラスを拾った（`column` `memo`
@@ -57,6 +62,7 @@ module VivlioStarter
           end
           inject_matter_anchors!
           inject_rotate_table_anchors!
+          inject_heading_anchors!
           convert_code_lines_for_pdf!
           swap_images_for_pdf!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
@@ -121,6 +127,51 @@ module VivlioStarter
 
             links = ids.map { %(<a href="##{it}" style="position:absolute"></a>) }.join
             File.write(path, html.sub(/<body[^>]*>/) { "#{it}#{links}" }, encoding: 'utf-8')
+          end
+        end
+
+        # しおりに載せる見出し（`h1`〜`h3`）の id を、リンクの飛び先にする。
+        #
+        # 前付・奥付・回転テーブルと同じ落とし穴で、`/Dests` に出るのは目次から指される
+        # 見出しだけだった。目次に載らない見出し（付録の項・前書きの節・`toc_depth` より深い項）は
+        # 飛び先を持たず、しおりがそのページを PDF から引けない
+        # （pdf-outline-heading-id-spec.md §1.2・§3 R1）。
+        #
+        # リンクは回転テーブルと同じく body の直後へまとめて置き、見出しの中には入れない。
+        # 柱の string-set や見出しの CSS に関わらせないためで、飛び先の位置は見出しの位置で決まる。
+        # 空のリンクは注釈を作らず、組版も変えない（同 §1.3 の実測）。目次に載る見出しにも足すのは、
+        # 目次の深さで出たり出なかったりする分かれ目を作らないため（飛び先が重なるだけ）。
+        #
+        # 節・項は、見出しのすぐ外の要素（節絵の `article.section-topic` か `section`）にも id を
+        # 振って飛び先にする。vivliostyle の飛び先は見出しの箱の上端ではなく文字の行の上端を指すので、
+        # 節絵の帯のように文字より上へ描く見出しでは、そこへ飛ぶと帯と文字の上半分が画面の外へ出る
+        # （実測: 帯の上端より 32〜38pt 下）。外の要素の飛び先は帯の上端に来るので、しおりは位置を
+        # そちらから取る（OutlineExtractor.heading_top）。囲む section まで遡らないのは、章の最初の
+        # 節の section が章扉のページから始まり、飛び先が出なかったため（本書の 15-1）。
+        # 外の要素に著者の id があればそれを使い、無ければ振る。body には振らない。
+        #
+        # 書き込むのは pdf/ のコピーだけなので、EPUB / Kindle には現れない。
+        def inject_heading_anchors!
+          Utilities.outline_target_htmls.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            body = doc.at_css('body')
+            next if body.nil? || doc.at_css("a.#{HEADING_ANCHOR_CLASS}")
+
+            ids = doc.css(OutlineExtractor::HEADING_SELECTOR).each_with_index.flat_map do |heading, index|
+              # 索引・用語集が組む見出し（「索引」「A」「あ」）は id を持たない。しおりは同じ pdf/ の HTML から
+              # 見出しを読むので、ここで振れば飛び先から引ける
+              heading['id'] = "vs-heading-#{index + 1}" if heading['id'].to_s.empty?
+              box = OutlineExtractor.heading_box(heading)
+              box['id'] = OutlineExtractor.box_anchor_id(heading['id']) if box && box['id'].to_s.empty?
+              [heading['id'], box&.[]('id')].compact
+            end.uniq
+            next if ids.empty?
+
+            links = ids.map do
+              %(<a class="#{HEADING_ANCHOR_CLASS}" href="##{CGI.escapeHTML(it)}" style="position:absolute"></a>)
+            end
+            body.prepend_child(links.join)
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
           end
         end
 

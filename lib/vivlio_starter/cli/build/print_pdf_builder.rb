@@ -260,9 +260,8 @@ module VivlioStarter
 
           return if chapter_htmls.empty?
 
-          Build::OutlineExtractor.add_outline_from_headings!(
-            output_print_pdf, chapter_htmls, max_level: 3, start_page: 1
-          )
+          # 位置は入稿用 PDF の飛び先から読む。トンボ・塗り足しで座標がずれているので、閲覧用の値は使えない
+          Build::OutlineExtractor.add_outline_from_headings!(output_print_pdf, chapter_htmls)
         end
 
         # 入稿用 PDF をルート直下の最終ファイル名へ移動する（P4 §3.4-6:

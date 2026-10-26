@@ -179,11 +179,41 @@ class TestPdfPageMapExtractor < Minitest::Test
     end
   end
 
+  # ================================================================
+  # positions_by_document: [文書, id] → ページと上端（PDF のしおりが使う）
+  # ================================================================
+
+  # 見出しの id は章をまたいで重なるので、文書ごとに分けて引く（pdf-outline-heading-id-spec.md R2）
+  def test_should_tell_apart_the_same_id_in_two_documents
+    Dir.mktmpdir do |dir|
+      pdf_path = create_pdf_with_dests(dir, same_id_in_two_documents: true)
+
+      positions = Extractor.new(pdf_path).positions_by_document
+
+      assert_equal Extractor::Position.new(page: 2, top: 400.0), positions[%w[08-web idx-08-web-2]]
+      assert_equal Extractor::Position.new(page: 1, top: 250.5), positions[%w[11-intro 概要]]
+      assert_equal Extractor::Position.new(page: 3, top: 120.0), positions[%w[12-usage 概要]]
+    end
+  end
+
+  # 上端を持つのは `/XYZ` の飛び先だけ。ページ全体（`/Fit`）なら nil
+  def test_should_leave_top_empty_for_destinations_without_position
+    Dir.mktmpdir do |dir|
+      pdf_path = create_pdf_with_dests(dir, fit_dest: true)
+
+      assert_equal Extractor::Position.new(page: 3, top: nil), Extractor.new(pdf_path).positions_by_document[%w[99-end fit]]
+    end
+  end
+
+  def test_should_return_no_positions_when_pdf_is_missing
+    assert_empty Extractor.new('/nonexistent/output.pdf').positions_by_document
+  end
+
   private
 
   # vivliostyle と同形の PDF を作る:
   # 文書カタログ直下の /Dests 辞書に、`:XXXX` エスケープ済みの名前と明示 destination 配列を持つ。
-  def create_pdf_with_dests(dir, extra_plain_dest: false)
+  def create_pdf_with_dests(dir, extra_plain_dest: false, same_id_in_two_documents: false, fit_dest: false)
     path = File.join(dir, 'sections.pdf')
 
     Prawn::Document.generate(path, page_size: [400, 600], margin: 0) do |pdf|
@@ -202,6 +232,11 @@ class TestPdfPageMapExtractor < Minitest::Test
           [pages[2], :XYZ, 0, 300, nil]
       }
       dests[:'viv-id-no-fragment'] = [pages[0], :Fit] if extra_plain_dest
+      if same_id_in_two_documents # 概要 = U+6982 U+8981
+        dests[:'viv-id-http:003a:002f:002fx:002f11-intro:002ehtml:0023:6982:8981'] = [pages[0], :XYZ, 56.25, 250.5, 0]
+        dests[:'viv-id-http:003a:002f:002fx:002f12-usage:002ehtml:0023:6982:8981'] = [pages[2], :XYZ, 56.25, 120, 0]
+      end
+      dests[:'viv-id-http:003a:002f:002fx:002f99-end:002ehtml:0023fit'] = [pages[2], :Fit] if fit_dest
 
       store.root.data[:Dests] = store.ref(dests)
     end

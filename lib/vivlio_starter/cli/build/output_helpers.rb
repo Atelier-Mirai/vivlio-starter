@@ -104,21 +104,12 @@ module VivlioStarter
                         when 3 then 'H3'
                         else "H#{item[:level]}"
                         end
-            Common.log_always format('  %<ch>s / [%<tag>s] %<txt>s -> page %<pg>d',
-                                      ch: item[:chapter], tag: level_tag, txt: item[:text], pg: item[:page])
-          end
-
-          chapter_ranges = outline_info[:chapter_ranges] || {}
-          chapter_order  = outline_info[:chapter_order] || []
-          return unless chapter_ranges.any?
-
-          Common.log_always '-- Chapter Ranges --'
-          order = chapter_order.is_a?(Array) && !chapter_order.empty? ? chapter_order : chapter_ranges.keys.sort
-          order.each do |bn|
-            rng = chapter_ranges[bn]
-            next unless rng
-
-            Common.log_always format('  %<bn>s %<s>s %<e>s', bn: bn, s: rng[0] || '-', e: rng[1] || '-')
+            # 飛び先が無く前の項目のページを借りた見出しは「(no dest)」と添える（pdf-outline-heading-id-spec.md R3）
+            where = item[:top] ? format('page %<pg>d y=%<y>.1f', pg: item[:page], y: item[:top]) : "page #{item[:page]}"
+            borrowed = outline_info[:missing]&.any? { it[:chapter] == item[:chapter] && it[:id] == item[:id] }
+            Common.log_always format('  %<ch>s / [%<tag>s] %<txt>s -> %<where>s%<note>s',
+                                      ch: item[:chapter], tag: level_tag, txt: item[:text], where:,
+                                      note: borrowed ? ' (no dest)' : '')
           end
         end
 

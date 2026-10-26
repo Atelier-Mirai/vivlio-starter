@@ -8,8 +8,8 @@
 #   マップを取り出す。backlink dedup（Step 8）の判定材料になる。
 #
 # なぜ PDF から読めるのか:
-#   vivliostyle build は、id を持つ全要素の named destination を PDF 文書カタログの
-#   `/Dests` 辞書に書き出す。名前には元 URL とアンカー ID がそのまま埋まっており
+#   vivliostyle build は、リンクの飛び先になっている要素の named destination を
+#   PDF 文書カタログの `/Dests` 辞書に書き出す（id を持つだけの要素は出ない）。名前には元 URL とアンカー ID がそのまま埋まっており
 #   （例: `viv-id-http://…/00-preface.html#gls-src-00-preface-pdf-2`）、
 #   値の destination 配列から実ページを解決できる。
 #
@@ -41,6 +41,9 @@ module VivlioStarter
 
         # 索引語（idx-*）のマッピングエントリ
         IndexMappingEntry = Data.define(:anchor_id, :page_index, :spine_index)
+
+        # 飛び先の位置。top は飛び先が `/XYZ` のときの上端の y（PDF の座標）で、ほかの形なら nil
+        Position = Data.define(:page, :top)
 
         # vivliostyle が付ける named destination の接頭辞（アンカー ID は最初の `#` 以降）
         GLOSSARY_PREFIX = 'gls-src-'
@@ -128,6 +131,23 @@ module VivlioStarter
           end
         end
 
+        # 「文書の basename と id の組 → 飛び先の位置」を引く。PDF のしおりが使う
+        # （pdf-outline-heading-id-spec.md §3 R2）。
+        #
+        # `pages_for` と違い、文書ごとに分けて引く。見出しの id は章をまたいで重なる
+        # （「概要」はどの章にもある）ので、id だけで引くと別の章のページを指してしまう。
+        # 引けるのは `/Dests` に出る id だけで、見出しには PdfBuilder.inject_heading_anchors! が
+        # リンクを足して出している。
+        #
+        # @return [Hash{Array(String, String) => Position}] 例 { ['11-intro', '概要'] => Position(page: 12, top: 640.5) }
+        def positions_by_document
+          return {} unless File.exist?(pdf_path)
+
+          each_destination(::PDF::Reader.new(pdf_path)).to_h do |document, anchor, page, top|
+            [[File.basename(document.to_s, '.html'), anchor], Position.new(page:, top:)]
+          end
+        end
+
         # vivliostyle の `:XXXX`（UTF-16 コードユニットの 4 桁 hex）エスケープを復号する。
         # 元名前中の `:` や `#` はすべてエスケープされるため、区切りの取り違えは起きない。
         # 想定外の入力では復号せず元文字列を返し、呼び出し側の `#` 判定で自然に捨てられる。
@@ -170,7 +190,7 @@ module VivlioStarter
           each_destination(reader).to_h { |_document, anchor_id, page| [anchor_id, page] }
         end
 
-        # `/Dests` を 1 件ずつ走査し、[文書 URL, アンカー ID, 通しページ番号] を返す。
+        # `/Dests` を 1 件ずつ走査し、[文書 URL, アンカー ID, 通しページ番号, 上端の y] を返す。
         # アンカー ID を持たない dest とページを解決できない dest は落とす。
         # @return [Enumerator]
         def each_destination(reader)
@@ -185,8 +205,9 @@ module VivlioStarter
             document, anchor_id = self.class.decode_destination_name(name).split('#', 2)
             next if anchor_id.nil? || anchor_id.empty?
 
-            page = resolve_page_number(objects, dest, page_numbers)
-            [document, anchor_id, page] if page
+            value = destination_array(objects, dest)
+            page = resolve_page_number(value, page_numbers)
+            [document, anchor_id, page, top_of(value)] if page
           end.each
         end
 
@@ -204,12 +225,22 @@ module VivlioStarter
           numbers
         end
 
-        # destination（明示配列、または `/D` を持つ辞書）からページ番号を解決する
-        def resolve_page_number(objects, dest, page_numbers)
+        # destination（明示配列、または `/D` を持つ辞書）を配列にそろえる
+        def destination_array(objects, dest)
           value = objects.deref(dest)
           value = objects.deref(value[:D]) if value.is_a?(Hash)
-          page_ref = Array(value).first
+          Array(value)
+        end
+
+        # 配列の先頭のページ参照からページ番号を解決する
+        def resolve_page_number(value, page_numbers)
+          page_ref = value.first
           page_ref.respond_to?(:id) ? page_numbers[page_ref.id] : nil
+        end
+
+        # `[ページ, /XYZ, 左端, 上端, 倍率]` の上端。vivliostyle は見出しごとにこの形で書く
+        def top_of(value)
+          value[1] == :XYZ && value[3].is_a?(Numeric) ? value[3].to_f : nil
         end
       end
     end

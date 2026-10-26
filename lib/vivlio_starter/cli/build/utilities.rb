@@ -82,10 +82,10 @@ module VivlioStarter
         # PDF アウトライン抽出の対象 HTML を、ワークスペースの pdf/ から選ぶ。
         # 閲覧用（PdfMerger）と入稿用（PrintPdfBuilder）が同じ選び方を共有する——
         # 片方だけ直すと、同じ本なのに 2 つの PDF でしおりの構成が食い違う。
+        # 見出しに飛び先を作る PdfBuilder.inject_heading_anchors! も、同じ選び方で HTML を選ぶ。
         #
         # 対象は「アウトライン対象の章番号を持つ HTML」＋「目次・用語集・索引」。
-        # 前付（_titlepage / _legalpage）と奥付は OutlineExtractor が page_range_* で
-        # 別途扱うため、ここでは拾わない。
+        # 前付（_titlepage / _legalpage）と奥付は、しおりに載せないので拾わない。
         #
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
         # @return [Array<String>] 対象 HTML のパス配列
