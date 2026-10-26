@@ -57,8 +57,16 @@ h1 .chapter-number {
   string-set: chapter-number content(text);
 }
 
-h1 .chapter-title {
+/* 柱の章題は、見出しの題の文字（data-chapter-title。HeadingProcessor が作る）から取る。
+   題の span の文字には、用語集の印 † が入る（章扉の見出しでは用語集へのリンクとして残す）。
+   柱は毎ページ繰り返すだけで用語を引く所ではないので、印の無い文字を使う。
+   data 属性が無い見出し（HeadingProcessor を通らない HTML）は今までどおり span から取る */
+h1:not([data-chapter-title]) .chapter-title {
   string-set: chapter-title content(text);
+}
+
+h1[data-chapter-title] {
+  string-set: chapter-title attr(data-chapter-title);
 }
 
 /* 見出し末尾の泣き別れ防止（HeadingProcessor が章題・節題の末尾 2 文字を括る）。
