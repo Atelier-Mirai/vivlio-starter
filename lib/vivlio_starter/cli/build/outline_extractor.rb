@@ -23,6 +23,7 @@
 
 require 'nokogiri'
 require 'open3'
+require_relative '../index/index_match_scanner' # 用語集の印（GLOSSARY_INDICATOR）
 
 module VivlioStarter
   module CLI
@@ -260,7 +261,10 @@ module VivlioStarter
         def build_search_helpers(pdf_path, total_pages)
           page_texts = nil
           normalized_cache = {}
-          normalize = ->(str) { str.to_s.gsub(/[[:space:]\u00A0\u2000-\u200B\u202F\u205F\u3000]+/, '') }
+          # \u7A7A\u767D\u306B\u52A0\u3048\u3066\u3001\u7528\u8A9E\u96C6\u306E\u5370\uFF08\u2020\uFF09\u3082\u5916\u3057\u3066\u6BD4\u3079\u308B\u3002\u7D19\u9762\u306E\u7AE0\u6249\u3067\u306F\u7AE0\u984C\u306E\u7528\u8A9E\u306B\u5370\u304C\u4ED8\u304F\uFF08\u300C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u6307\u5411 \u2020 \u7DE8\u300D\uFF09\u304C\u3001
+          # \u898B\u51FA\u3057\u306E\u6587\u5B57\u306B\u306F\u4ED8\u304B\u306A\u3044\u306E\u3067\u3001\u305D\u306E\u307E\u307E\u3067\u306F\u7AE0\u6249\u306B\u4E00\u81F4\u305B\u305A\u3001\u5370\u306E\u7121\u3044\u76EE\u6B21\u30DA\u30FC\u30B8\u306E\u7AE0\u984C\u306B\u4E00\u81F4\u3057\u3066\u3044\u305F
+          mark = IndexCommands::IndexMatchScanner::GLOSSARY_INDICATOR
+          normalize = ->(str) { str.to_s.gsub(/[[:space:]\u00A0\u2000-\u200B\u202F\u205F\u3000]+/, '').delete(mark) }
 
           # 全ページを pdftotext 1 回で読み、改ページ（\f）で分ける。1 ページずつ呼ぶと
           # 起動のたびに PDF を開き直し、300 ページの本で 10 秒ほどかかっていた
@@ -301,6 +305,8 @@ module VivlioStarter
           # 本文中の偶発的な語（例: 前書き本文に出てくる「目次」）に誤マッチせず、
           # そのセクションが実際に始まるページを特定するために用いる。
           # 直前に柱（ランニングヘッダ）が入る可能性を考慮し、先頭の有意行 2 行を見る。
+          # 章扉で番号と題が 2 行に分かれる組み方（「第1部」「基礎編」）もあるので、2 行をつないだものとも比べる。
+          # 比べないと、章扉に「第1章」が出ない本で、本文の奥の「第1章」という見出しを最初の章の位置と取り違えた
           find_page_by_first_line = lambda do |term, from_page, to_page|
             normalized_term = normalize.call(term)
             return nil if normalized_term.empty?
@@ -311,7 +317,7 @@ module VivlioStarter
 
             (from_page..to_page).each do |page|
               lead = fetch_page_text.call(page).to_s.lines.map(&:strip).reject(&:empty?).first(2)
-              return page if lead.any? { |line| normalize.call(line) == normalized_term }
+              return page if [*lead, lead.join].any? { |line| normalize.call(line) == normalized_term }
             end
             nil
           end
@@ -485,16 +491,12 @@ module VivlioStarter
           [start_page, end_page]
         end
 
+        # 目次 = 前付の後ろ。detect_front_matter_spans が目次の見出しで見つけたページ（前付の始まり + 前付のページ数）。
+        # 先頭の前書きの範囲の終わりからは数えない。2 本目以降の前書きや全巻目次が見つかると、先頭の前書きの
+        # 終わりがその手前に切られるので、目次の始まりが前へずれる。すると目次の終わりも本当の目次の途中になり、
+        # 章のしおりが、その後ろの目次ページに載った章題へ吸い寄せられる（前書き 4 本の本で、章の大半が目次を指した）
         def page_range_toc(ctx)
-          preface_start = ctx[:from_base] + 2
-          preface_end = ctx[:chapter_ranges][ctx[:preface_bn]]&.[](1) || (preface_start + ctx[:preface_pages] - 1)
-          start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : preface_start
-          # 全巻目次が前にあるときは、前書きの終わりが全巻目次の手前で切られている。目次の見出しをその後ろで探す
-          if (whole = ctx[:chapter_ranges][WholeTocGenerator::BASENAME])
-            start_candidate = ctx[:find_page_by_first_line].call(toc_heading_title, whole[0] + 1, ctx[:total_pages]) ||
-                              (whole[0] + 1)
-          end
-          start_page = [start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+          start_page = (ctx[:from_base] + 2 + ctx[:preface_pages]).clamp(1, ctx[:total_pages])
           end_page = if ctx[:toc_pages].positive?
                        (start_page + ctx[:toc_pages] - 1).clamp(1,
                                                                 ctx[:total_pages])
@@ -537,12 +539,16 @@ module VivlioStarter
           nil
         end
 
+        # 章の始まりは、目印のどれかがページ先頭の見出しとして現れる最も早いページ。見つからないときだけ全文で探す。
+        # 全文で目印を順に試すと、章扉に出ない目印（「第2章」を出さず「第2部」と組む本）が、本文の奥の
+        # 「第2章」という見出しや文中の語に先に一致し、章のしおりがそこへ飛んでいた
         def page_range_default(basename, ctx, prev_bn)
           search_from = [ctx[:chapter_starts][prev_bn] || ctx[:from_base], ctx[:from_base]].max.clamp(1,
                                                                                                       ctx[:total_pages])
           markers = ctx[:chapter_markers][basename] || []
-          start_page = search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
-                                                 ctx[:total_pages])
+          start_page = markers.filter_map { ctx[:find_page_by_first_line].call(it, search_from, ctx[:total_pages]) }.min
+          start_page ||= search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
+                                                   ctx[:total_pages])
           [start_page, ctx[:total_pages]]
         end
 
