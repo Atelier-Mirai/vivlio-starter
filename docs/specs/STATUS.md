@@ -13,7 +13,7 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| `heading-numbering-spec.md` | 見出しの番号を振るかを `page.heading_numbering`（`chapter_and_section`・`chapter`・`none`）で選べるようにする。目次の番号は `book-settings.css` で切る。EPUB の章扉は番号なしでも合成する | 仕様書を書いた（2026-10-26）。未着手。§5 に未決 1 件 |
+| `heading-numbering-spec.md` | 見出しの番号を振るかを `page.heading_numbering`（`chapter_and_section`・`chapter`・`none`）で選べるようにする。目次の番号は `book-settings.css` で切る。EPUB の章扉は番号なしでも合成する | 仕様書を書いた（2026-10-26）。未決は無い。未着手 |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
