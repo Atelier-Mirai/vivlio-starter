@@ -163,7 +163,23 @@ module VivlioStarter
           modified |= set_attr_if_changed(heading, 'data-heading', label)
           modified |= set_attr_if_changed(heading, "data-h#{level}", label)
           modified |= set_h1_id(heading, text) if level == 1
+          modified |= sync_document_title!(heading, label) if level == 1
           modified
+        end
+
+        # 文書の <title> を、見出しの題の文字（heading_label_text）にそろえる。
+        #
+        # VFM は <title> を最初の見出しの文字から作るので、見出しに付いた用語集の印 `†` が入り、
+        # 数式は抜ける（EPUB の目次（nav）は各章の <title> から作られ、「オブジェクト指向†編」と出た）。
+        # <title> が見出しの素の文字と同じとき——VFM が見出しから作ったとき——だけ置き換え、
+        # 著者が frontmatter に書いた title は触らない。
+        def sync_document_title!(heading, label)
+          title = heading.document.at_css('head > title')
+          return false unless title && title.text != label
+          return false unless squeeze_formatting_whitespace(title.text) == squeeze_formatting_whitespace(heading.text)
+
+          title.content = label
+          true
         end
 
         # 属性値が変わった場合のみ設定

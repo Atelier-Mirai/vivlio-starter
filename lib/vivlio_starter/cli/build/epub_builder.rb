@@ -810,7 +810,7 @@ module VivlioStarter
 
         # 用語集 HTML を EPUB 用に書き換える
         # - 空バックリンクに連番の章番号を挿入
-        #   CSS の ::before が "→ p." を付加するため記号は不要
+        #   CSS の ::before が "→ " を付加するため記号は不要
         #
         # @param path [String] _glossarypage.html のパス
         # @param chapter_map [Hash{String => Integer}] プレフィックス → 連番

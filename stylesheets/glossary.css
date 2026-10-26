@@ -156,7 +156,7 @@ body.vs-kindle .glossary-title {
 }
 
 .glossary-backlinks::before {
-  content: "→ p.";
+  content: "→ ";
 }
 
 .glossary-backlink {

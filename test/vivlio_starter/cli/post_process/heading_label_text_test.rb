@@ -64,7 +64,34 @@ module VivlioStarter
           end
         end
 
+        # EPUB の目次（nav）は各章の <title> から作られる。VFM が見出しから作った <title> には
+        # 用語集の印 † が入っていた（spiral-ruby の「第2部　オブジェクト指向†編」）
+        def test_should_drop_glossary_marks_from_the_document_title
+          html = '<html><head><title>第2部　オブジェクト指向†編</title></head><body>' \
+                 '<h1>第2部　オブジェクト指向<a id="g" class="glossary-link" href="_glossarypage.html#gls-a"><sup>†</sup></a>編</h1>' \
+                 '</body></html>'
+
+          assert_equal '第2部　オブジェクト指向編', title_after_markers(html)
+        end
+
+        # 著者が frontmatter に書いた title（見出しと違う文字）は触らない
+        def test_should_keep_a_title_the_author_wrote
+          html = '<html><head><title>著者の題</title></head><body>' \
+                 '<h1>第2部　オブジェクト指向<a class="glossary-link"><sup>†</sup></a>編</h1></body></html>'
+
+          assert_equal '著者の題', title_after_markers(html)
+        end
+
         private
+
+        def title_after_markers(html)
+          Dir.mktmpdir('vs-heading-title') do |dir|
+            path = File.join(dir, '12-object-oriented.html')
+            File.write(path, html)
+            Common.stub(:log_info, nil) { HeadingProcessor.inject_heading_markers!([path], max_level: 3) }
+            Nokogiri::HTML(File.read(path)).at_css('title').text
+          end
+        end
 
         def with_chapter
           Dir.mktmpdir('vs-heading-label') do |dir|
