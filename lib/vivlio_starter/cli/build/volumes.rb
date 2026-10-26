@@ -14,12 +14,20 @@ module VivlioStarter
       # 目次を読むほかの処理を直さずに済むよう、CatalogLoader.load_catalog は、ここで選んだ範囲の目次を
       # 今と同じ形の Hash（PREFACE・CHAPTERS・APPENDICES・POSTFACE）で返す（§3.4）。選び方は 3 通り:
       #   - 巻（Volume）… vs build --volume lower。その巻の目次
-      #   - :combined   … 巻を選ばない vs build（合本）。最初の巻の前書き・全巻の本文と付録・最後の巻の後書き（§4.3）
+      #   - :combined   … 巻を選ばない vs build（合本）。本全体の前書き（無ければ最初の巻の前書き）・全巻の本文と付録・
+      #                   本全体の後書き（無ければ最後の巻の後書き）（§4.3・multivolume-book-matter-spec.md R2）
       #   - :all        … 既定。どれかの巻に載った原稿すべて。原稿の検査と、章の種類の解決に使う（§6.1）
       # 選択はプロセスに一つだけ持つ。全巻を続けて組むとき（--volume all）は巻ごとに別のプロセスで組む（§4.2）。
+      #
+      # VOLUMES と同じ高さに書いた PREFACE・POSTFACE は、本全体の前書き・後書き（multivolume-book-matter-spec.md）。
+      # 巻の目次（sections_of）では、本全体の前書きを最初の巻の、後書きを最後の巻のものとして重ねる。
+      # Volume#sections は巻に書いたものだけを持つ（合本で巻の前書き・後書きを外すのに要る）。
       # ------------------------------------------------
       module Volumes
         KEY = 'VOLUMES'
+
+        # VOLUMES と同じ高さに書ける区分（本全体の前書き・後書き）。本文の章・付録は巻の中にだけ書く
+        BOOK_MATTER_KEYS = %w[PREFACE POSTFACE].freeze
 
         # 巻そのものの設定。大文字のキーはその巻の目次（CatalogLoader::SECTION_KEYS）
         VOLUME_KEYS = %w[name id chapter_start appendix_start whole_toc].freeze
@@ -96,10 +104,40 @@ module VivlioStarter
           list(catalog).find { it.id == key } || list(catalog).find { it.name == key }
         end
 
-        # basename を載せた最初の巻（付録のように二つ以上の巻に載る原稿は最初の巻）
+        # 本全体の前書き・後書き（VOLUMES と同じ高さの PREFACE・POSTFACE）。中身の無い区分は書いていないとみなす
+        # @return [Hash{String => Array}]
+        def book_matter(catalog = raw_catalog)
+          return {} unless defined_in?(catalog)
+
+          catalog.slice(*BOOK_MATTER_KEYS).transform_values { Array(it) }.reject { |_, items| items.empty? }
+        end
+
+        # 巻の目次（区分 => 項目）。本全体の前書きは最初の巻の前書きに、後書きは最後の巻の後書きに重ねる
+        # （multivolume-book-matter-spec.md R3）。巻が一つなら両方とも載る。巻の前書き・後書きにも書いた原稿は、
+        # 本全体の側に一度だけ残す。紙面の並びは、組版が区分の中を原稿の名前の順に決める（ChapterConfig.htmls_for_kind）
+        # @return [Hash]
+        def sections_of(volume, catalog = raw_catalog)
+          matter = book_matter(catalog)
+          sections = volume.sections
+          if volume.index.zero? && matter.key?('PREFACE')
+            sections = sections.merge('PREFACE' => matter['PREFACE'] + own_items(sections, 'PREFACE', matter))
+          end
+          if volume.index == list(catalog).size - 1 && matter.key?('POSTFACE')
+            sections = sections.merge('POSTFACE' => own_items(sections, 'POSTFACE', matter) + matter['POSTFACE'])
+          end
+          sections
+        end
+
+        # 巻の区分の項目から、本全体の同じ区分に書いた原稿を外したもの
+        def own_items(sections, key, matter)
+          first_appearances(Array(sections[key]), CatalogLoader.flatten_section(matter[key]).to_set)
+        end
+
+        # basename を載せた最初の巻（付録のように二つ以上の巻に載る原稿は最初の巻。本全体の前書きは最初の巻、
+        # 後書きは最後の巻）
         # @return [Volume, nil]
         def containing(basename, catalog = raw_catalog)
-          list(catalog).find { |volume| basenames_of(volume).include?(basename) }
+          list(catalog).find { |volume| basenames_of(volume, catalog).include?(basename) }
         end
 
         # 選択に応じた目次（区分 => 項目）。VOLUMES が無ければ catalog をそのまま返す
@@ -109,18 +147,20 @@ module VivlioStarter
 
           volumes = list(catalog)
           case selection
-          in Volume => chosen then (volumes.find { it.id == chosen.id } || chosen).sections
-          in :combined then combined_sections(volumes)
-          else merged_sections(volumes)
+          in Volume => chosen then sections_of(volumes.find { it.id == chosen.id } || chosen, catalog)
+          in :combined then combined_sections(volumes, catalog)
+          else merged_sections(volumes, catalog)
           end
         end
 
-        # 全巻の目次を区分ごとに巻の順でつなぐ。二つ以上の巻に載る原稿（共通の付録・共通の章。§3.6）は、
-        # 最初に載った所に一度だけ残す。部の中に書いた章も原稿の名前で見るので、部ごとに別物とみなさない
-        def merged_sections(volumes)
+        # 全巻の目次（本全体の前書き・後書きを含む）を区分ごとに巻の順でつなぐ。二つ以上の巻に載る原稿
+        # （共通の付録・共通の章。§3.6）は、最初に載った所に一度だけ残す。部の中に書いた章も原稿の名前で見るので、
+        # 部ごとに別物とみなさない
+        def merged_sections(volumes, catalog)
+          each_sections = volumes.map { sections_of(it, catalog) }
           CatalogLoader::SECTION_KEYS.to_h do |key|
             seen = Set.new
-            [key, volumes.flat_map { first_appearances(Array(it.sections[key]), seen) }]
+            [key, each_sections.flat_map { first_appearances(Array(it[key]), seen) }]
           end
         end
 
@@ -147,21 +187,29 @@ module VivlioStarter
         # 全巻の原稿を、区分ごとに巻の順でつないだ並び。merged_sections と違い、二つ以上の巻に載る原稿は
         # 載った巻ごとに現れる（「前の章」の検査で、巻ごとの前後を見るため。§3.6）
         # @return [Array<String>] basename
-        def reading_order(volumes = list)
+        def reading_order(catalog = raw_catalog)
+          each_sections = list(catalog).map { sections_of(it, catalog) }
           CatalogLoader::SECTION_KEYS.flat_map do |key|
-            volumes.flat_map { CatalogLoader.flatten_section(it.sections[key]) }
+            each_sections.flat_map { CatalogLoader.flatten_section(it[key]) }
           end
         end
 
-        # 合本: 最初の巻の前書き → 全巻の本文 → 全巻の付録 → 最後の巻の後書き（§4.3）
-        def combined_sections(volumes)
-          merged_sections(volumes).merge('PREFACE' => Array(volumes.first&.sections&.[]('PREFACE')),
-                                         'POSTFACE' => Array(volumes.last&.sections&.[]('POSTFACE')))
+        # 合本: 前書き → 全巻の本文 → 全巻の付録 → 後書き（§4.3）。前書きは、本全体の前書きを書いた本ではそれだけ、
+        # 書いていない本では最初の巻の前書き。後書きも同じく、本全体の後書きか最後の巻の後書き。前書きと後書きは
+        # 別々に決める（multivolume-book-matter-spec.md R2）。書いていない本を最初の巻・最後の巻に任せるのは、
+        # 上巻の前書きが本全体の前書きを兼ねる上下巻の本で、合本から前書きが消えないようにするため
+        def combined_sections(volumes, catalog)
+          matter = book_matter(catalog)
+          merged_sections(volumes, catalog).merge(
+            'PREFACE' => matter.fetch('PREFACE') { Array(volumes.first&.sections&.[]('PREFACE')) },
+            'POSTFACE' => matter.fetch('POSTFACE') { Array(volumes.last&.sections&.[]('POSTFACE')) }
+          )
         end
 
-        # 巻に載った原稿の basename
-        def basenames_of(volume)
-          CatalogLoader::SECTION_KEYS.flat_map { CatalogLoader.flatten_section(volume.sections[it]) }
+        # 巻に載った原稿の basename（本全体の前書きは最初の巻に、後書きは最後の巻に含める）
+        def basenames_of(volume, catalog = raw_catalog)
+          sections = sections_of(volume, catalog)
+          CatalogLoader::SECTION_KEYS.flat_map { CatalogLoader.flatten_section(sections[it]) }
         end
 
         # --- 番号（§5） ---

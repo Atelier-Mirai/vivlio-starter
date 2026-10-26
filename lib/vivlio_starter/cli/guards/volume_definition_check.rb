@@ -6,7 +6,8 @@ module VivlioStarter
       # catalog.yml の巻（VOLUMES）の書き方を確かめる（multivolume-spec.md §3.3）。
       #
       # 止めるのは、組む範囲やファイル名を決められない書き方だけ:
-      #   - VOLUMES と、一番上の PREFACE・CHAPTERS などが同じファイルにある（どちらが目次か決められない）
+      #   - VOLUMES と、一番上の CHAPTERS・APPENDICES が同じファイルにある（どちらが目次か決められない）。
+      #     一番上の PREFACE・POSTFACE は本全体の前書き・後書きなので通す（multivolume-book-matter-spec.md）
       #   - 巻の name・id が無い、id の形が正しくない、id が all（ファイル名と --volume に使えない）
       #   - 二つの巻の id・name が同じ（--volume でどちらを指すか決められない）
       # 前書き・付録・後書き、本文の章も、二つ以上の巻に書いてよい（共通の付録・共通の章。§3.6）。
@@ -38,13 +39,15 @@ module VivlioStarter
                 detail: ['VOLUMES:', '  - name: 上巻', '    id: upper', '    CHAPTERS:', '      - 01-intro'])
         end
 
+        # 一番上の PREFACE・POSTFACE は本全体の前書き・後書きなので止めない（multivolume-book-matter-spec.md R1）
         def mixed_sections_error(catalog)
-          top = Build::CatalogLoader::SECTION_KEYS.select { catalog.key?(it) }
+          top = (Build::CatalogLoader::SECTION_KEYS - Build::Volumes::BOOK_MATTER_KEYS).select { catalog.key?(it) }
           return [] if top.empty?
 
           [error("config/catalog.yml に VOLUMES と、一番上の #{top.join('・')} が並んでいます",
                  detail: ['どちらが目次か決められないため、止めています。',
-                          "→ 一番上の #{top.join('・')} を、どれかの巻の中へ移してください"])]
+                          "→ 一番上の #{top.join('・')} を、どれかの巻の中へ移してください",
+                          '一番上に書けるのは、本全体の前書き・後書き（PREFACE・POSTFACE）だけです。'])]
         end
 
         def volume_errors(volume)

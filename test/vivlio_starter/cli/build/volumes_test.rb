@@ -13,6 +13,7 @@
 #   - 巻に書いた book: の値（書名・ISBN・発行日・表紙）を book.yml に重ねる。ISBN の共有を 🟡（§3.2・§4.7）
 #   - vs cover --volume が巻ごとの値で表紙を作る（§4.8）
 #   - 本文の章を二つ以上の巻に載せる: 巻ごとの位置の番号・合本には一度だけ（§3.6）
+#   - 本全体の前書き・後書き: 合本・最初の巻・最後の巻・全巻目次・目次の書き換え（multivolume-book-matter-spec.md）
 #
 # 2 巻だけで確かめると「最初の巻でなければ最後の巻」という思い込みが隠れるので、上中下の 3 巻で確かめる（§2）。
 # ================================================================
@@ -105,6 +106,149 @@ module VivlioStarter
             assert_equal BASENAMES.sort, kinds.keys.sort, '既定では全巻の原稿を見る'
             assert_equal :preface, kinds['10-vol2-intro']
             assert_equal :preface, kinds['20-vol3-intro']
+          end
+        end
+
+        # --- 本全体の前書き・後書き（multivolume-book-matter-spec.md） ---
+
+        BOOK_MATTER_CATALOG = <<~YAML
+          PREFACE:
+            - 00-about
+            - 08-series
+          POSTFACE:
+            - 99-postface
+
+          VOLUMES:
+            - name: 上巻
+              id: upper
+              PREFACE:
+                - 08-series
+                - 02-upper
+              CHAPTERS:
+                - 11-apply
+              POSTFACE:
+                - 19-to-middle
+            - name: 中巻
+              id: middle
+              PREFACE:
+                - 03-middle
+              CHAPTERS:
+                - 12-more
+            - name: 下巻
+              id: lower
+              PREFACE:
+                - 04-lower
+              CHAPTERS:
+                - 13-deep
+              POSTFACE:
+                - 29-lower-end
+        YAML
+
+        BOOK_MATTER_BASENAMES = %w[00-about 08-series 99-postface 02-upper 11-apply 19-to-middle 03-middle 12-more
+                                   04-lower 13-deep 29-lower-end].freeze
+
+        def test_should_put_only_book_matter_into_combined_edition
+          with_project(catalog: BOOK_MATTER_CATALOG, basenames: BOOK_MATTER_BASENAMES) do
+            assert_empty Guards::VolumeDefinitionCheck.new.validate, '一番上の PREFACE・POSTFACE は止めない'
+            Volumes.select!(:combined)
+            catalog = CatalogLoader.load_catalog
+
+            assert_equal %w[00-about 08-series], catalog['PREFACE'], '巻の前書きは合本に載せない'
+            assert_equal ['99-postface'], catalog['POSTFACE'], '巻の後書きは合本に載せない'
+            assert_equal %w[11-apply 12-more 13-deep], catalog['CHAPTERS']
+          end
+        end
+
+        def test_should_fall_back_to_last_volume_postface_when_only_book_preface_is_written
+          catalog = BOOK_MATTER_CATALOG.sub("POSTFACE:\n  - 99-postface\n", '')
+          with_project(catalog:, basenames: BOOK_MATTER_BASENAMES) do
+            Volumes.select!(:combined)
+            combined = CatalogLoader.load_catalog
+
+            assert_equal %w[00-about 08-series], combined['PREFACE']
+            assert_equal ['29-lower-end'], combined['POSTFACE'], '前書きと後書きは別々に決める'
+          end
+        end
+
+        def test_should_put_book_matter_into_first_and_last_volumes
+          with_project(catalog: BOOK_MATTER_CATALOG, basenames: BOOK_MATTER_BASENAMES) do
+            sections = ->(id) { Volumes.select!(Volumes.find(id)) && CatalogLoader.load_catalog }
+
+            upper = sections.('upper')
+            assert_equal %w[00-about 08-series 02-upper], upper['PREFACE'],
+                         '本全体の前書き → 巻の前書き。両方に書いた原稿は本全体の側に一度だけ'
+            assert_equal ['19-to-middle'], upper['POSTFACE']
+
+            middle = sections.('middle')
+            assert_equal ['03-middle'], middle['PREFACE'], '途中の巻には載せない'
+            assert_nil middle['POSTFACE']
+
+            lower = sections.('lower')
+            assert_equal ['04-lower'], lower['PREFACE']
+            assert_equal %w[29-lower-end 99-postface], lower['POSTFACE'], '巻の後書き → 本全体の後書き'
+          end
+        end
+
+        def test_should_put_book_matter_into_only_volume
+          catalog = <<~YAML
+            PREFACE:
+              - 00-about
+            POSTFACE:
+              - 99-postface
+            VOLUMES:
+              - name: 第1分冊
+                id: vol1
+                PREFACE:
+                  - 02-upper
+                CHAPTERS:
+                  - 11-apply
+                POSTFACE:
+                  - 19-to-middle
+          YAML
+          with_project(catalog:, basenames: BOOK_MATTER_BASENAMES) do
+            Volumes.select!(Volumes.find('vol1'))
+            sections = CatalogLoader.load_catalog
+
+            assert_equal %w[00-about 02-upper], sections['PREFACE']
+            assert_equal %w[19-to-middle 99-postface], sections['POSTFACE'], '巻が一つなら、最初の巻でも最後の巻でもある'
+          end
+        end
+
+        def test_should_build_book_matter_with_first_or_last_volume_and_check_it_with_all
+          with_project(catalog: BOOK_MATTER_CATALOG, basenames: BOOK_MATTER_BASENAMES) do
+            assert_equal 'upper', Volumes.containing('00-about').id, '本全体の前書きは最初の巻で組む'
+            assert_equal 'upper', Volumes.containing('08-series').id
+            assert_equal 'lower', Volumes.containing('99-postface').id, '本全体の後書きは最後の巻で組む'
+
+            kinds = TokenResolver::Resolver.new.resolve.to_h { [it.basename, it.kind] }
+            assert_equal BOOK_MATTER_BASENAMES.sort, kinds.keys.sort, '原稿の検査は本全体の前書き・後書きも見る'
+            assert_equal :preface, kinds['00-about']
+            assert_equal :postface, kinds['99-postface']
+          end
+        end
+
+        def test_should_list_book_matter_at_ends_of_whole_toc
+          with_project(catalog: BOOK_MATTER_CATALOG, basenames: BOOK_MATTER_BASENAMES) do
+            Volumes.select!(Volumes.find('middle'))
+            upper, middle, lower = WholeTocGenerator.markdown.split('<section').drop(1)
+
+            assert_match(/whole-toc-preface">00-about.*whole-toc-preface">02-upper.*whole-toc-preface">08-series/m, upper,
+                         '本全体の前書きと巻の前書きは、組版と同じく原稿の名前の順に並ぶ')
+            refute_includes middle, '00-about'
+            assert_match(/whole-toc-postface">29-lower-end.*whole-toc-postface">99-postface/m, lower)
+            assert_equal 1, WholeTocGenerator.markdown.scan('>08-series<').size, '両方に書いた原稿は一度だけ'
+          end
+        end
+
+        def test_should_rename_and_remove_book_matter_written_at_top
+          with_project(catalog: BOOK_MATTER_CATALOG, basenames: BOOK_MATTER_BASENAMES) do
+            CatalogUpdater.rename_chapter('08-series', '08-the-series')
+            text = File.read('config/catalog.yml')
+            assert_includes text, "PREFACE:\n  - 00-about\n  - 08-the-series\n", '一番上の行も書き換える'
+            assert_includes text, "    PREFACE:\n      - 08-the-series\n", '巻の行も'
+
+            CatalogUpdater.remove_chapter('99-postface')
+            refute_includes File.read('config/catalog.yml'), '99-postface'
           end
         end
 
@@ -395,6 +539,8 @@ module VivlioStarter
           catalog = <<~YAML
             CHAPTERS:
               - 05-stray
+            APPENDICES:
+              - 95-stray
             VOLUMES:
               - name: 上巻
                 id: Upper
@@ -410,7 +556,7 @@ module VivlioStarter
             violations = Guards::VolumeDefinitionCheck.new.validate
             messages = violations.map(&:message)
 
-            assert(messages.any? { it.include?('一番上の CHAPTERS') }, '一番上の区分と VOLUMES の併記')
+            assert(messages.any? { it.include?('一番上の CHAPTERS・APPENDICES') }, '一番上の本文の章・付録と VOLUMES の併記')
             assert(messages.any? { it.include?('英小文字・数字・_') }, 'id の形')
             assert(messages.any? { it.include?('all は使えません') }, 'id の all')
             assert(messages.any? { it.include?('name が 上巻 で同じ') }, 'name の重なり')
@@ -594,13 +740,13 @@ module VivlioStarter
           Guards.stub(:precheck, nil) { SamovarCommands::CoverCommand.new(argv).call }
         end
 
-        def with_project(catalog: CATALOG, book_yml: nil)
+        def with_project(catalog: CATALOG, book_yml: nil, basenames: BASENAMES)
           Dir.mktmpdir('vs-volumes') do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p(%w[config contents])
               File.write('config/catalog.yml', catalog)
               File.write('config/book.yml', book_yml) if book_yml
-              BASENAMES.each { File.write("contents/#{it}.md", "# #{it}\n") }
+              basenames.each { File.write("contents/#{it}.md", "# #{it}\n") }
               Common.stub(:log_info, nil) { yield }
             end
           end

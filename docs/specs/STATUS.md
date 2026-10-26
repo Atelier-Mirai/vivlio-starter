@@ -13,7 +13,6 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| `multivolume-book-matter-spec.md` | 分冊の本に、本全体の前書き・後書きを書けるようにする（`VOLUMES` と同じ高さの `PREFACE`・`POSTFACE`）。合本は本全体のものだけ、巻は自分のものを載せ、本全体のものは最初の巻と最後の巻に載せる | 仕様書を書いた（2026-10-26）。未着手 |
 | `heading-numbering-spec.md` | 見出しの番号を振るかを `page.heading_numbering`（`chapter_and_section`・`chapter`・`none`）で選べるようにする。目次の番号は `book-settings.css` で切る。EPUB の章扉は番号なしでも合成する | 仕様書を書いた（2026-10-26）。未着手。§5 に未決 1 件 |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
