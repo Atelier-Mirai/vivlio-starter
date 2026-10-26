@@ -53,6 +53,31 @@ module VivlioStarter
           basenames
         end
 
+        # 本の並び（catalog-written-order-spec.md R1）。組む範囲の目次を、区分の順・区分の中は書いた順に読み、
+        # 二度目に現れた原稿を落とす。紙面・目次・章番号・付録の記号・しおりは、どれもこの並びで数える。
+        # 番号の順に並べ直さないのは、種類を区分で決めるようになって、番号が並びを表さなくなったため（§0）
+        # @return [Array<String>] basename（catalog.yml が無い・読めないときは空）
+        def book_order
+          return [] unless File.exist?(CATALOG_FILE)
+
+          catalog = load_catalog
+          SECTION_KEYS.flat_map { flatten_section(catalog[it]) }.uniq
+        rescue StandardError
+          []
+        end
+
+        # items を本の並びに並べる。並びに無いものは最後に、名前の順で置く（R4。黙って落とさないため）
+        # @param items [Array] 並べるもの
+        # @param order [Array<String>] 本の並び（何度も並べるときに読み直さないよう渡せる）
+        # @yieldparam item 並べるもの
+        # @yieldreturn [String] その basename（省略すると item そのもの）
+        # @return [Array]
+        def in_book_order(items, order = book_order, &basename)
+          basename ||= :itself.to_proc
+          position = order.each_with_index.to_h
+          items.sort_by { [position.fetch(basename.call(it), order.size), basename.call(it)] }
+        end
+
         # catalog.yml を読み込み、存在するファイルのみをフィルタした basename 配列を返す
         # @return [Array<String>] 存在するファイルの basename 配列
         def load_existing_basenames

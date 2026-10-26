@@ -33,29 +33,18 @@ module VivlioStarter
       module SectionBuilder
         module_function
 
-        # 章順序を取得（ベース名配列から）
+        # 章順序を取得（ベース名配列から）。html/ に組んだ原稿を本の並び（catalog.yml に書いた順）に先に置き、
+        # 組んでいないものをその後ろに置く（catalog-written-order-spec.md R3）。
         # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
         def chapter_order_from(basenames, base_dir = Common::BUILD_HTML_DIR)
           basenames = Array(basenames).map { |bn| bn.to_s.strip }.reject(&:empty?).uniq
           return [] if basenames.empty?
 
-          resolver = TokenResolver::Resolver.new
-          sort_key = lambda do |bn|
-            entry = resolver.resolve_file(bn)
-            entry.number ? [entry.number.to_i, bn] : [Float::INFINITY, bn]
-          end
+          order = CatalogLoader.book_order
+          html_basenames = Dir.glob(File.join(base_dir, '*.html')).map { |path| File.basename(path, '.html') }.uniq
+          ordered = CatalogLoader.in_book_order(html_basenames.select { |bn| basenames.include?(bn) }, order)
 
-          html_basenames = Dir.glob(File.join(base_dir, '*.html'))
-                              .map { |path| File.basename(path, '.html') }
-                              .uniq
-                              .sort_by { |bn| sort_key.call(bn) }
-
-          ordered = html_basenames.select { |bn| basenames.include?(bn) }
-
-          remaining = basenames - ordered
-          remaining_sorted = remaining.sort_by { |bn| sort_key.call(bn) }
-
-          ordered + remaining_sorted
+          ordered + CatalogLoader.in_book_order(basenames - ordered, order)
         end
 
 

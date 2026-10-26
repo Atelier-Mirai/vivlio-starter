@@ -61,8 +61,9 @@ module VivlioStarter
           IndexCommands.stub(:index_enabled?, false) do
             order = Build::OutlineExtractor.build_chapter_order(BASENAMES.shuffle(random: Random.new(1)))
 
+            # APPENDICES に書いた 05-glossary は、本文の章の後ろ（番号の順では本文の章の間に入っていた）
             assert_equal %w[_titlepage _legalpage 00-preface 20-vol2-intro _toc
-                            01-intro 05-glossary 21-janken 90-how-to-ask 98-afterword], order
+                            01-intro 21-janken 05-glossary 90-how-to-ask 98-afterword], order
           end
         end
       end

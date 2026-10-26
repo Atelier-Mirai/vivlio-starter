@@ -114,7 +114,7 @@ module VivlioStarter
 
         # 巻の目次（区分 => 項目）。本全体の前書きは最初の巻の前書きに、後書きは最後の巻の後書きに重ねる
         # （multivolume-book-matter-spec.md R3）。巻が一つなら両方とも載る。巻の前書き・後書きにも書いた原稿は、
-        # 本全体の側に一度だけ残す。紙面の並びは、組版が区分の中を原稿の名前の順に決める（ChapterConfig.htmls_for_kind）
+        # 本全体の側に一度だけ残す。この並びがそのまま紙面の並びになる（catalog-written-order-spec.md R2）
         # @return [Hash]
         def sections_of(volume, catalog = raw_catalog)
           matter = book_matter(catalog)
@@ -253,11 +253,11 @@ module VivlioStarter
           index && ('a'..'z').to_a[index]
         end
 
-        # 巻の付録の番号（番号の順）
+        # 巻の付録の番号（書いた順。catalog-written-order-spec.md R3）
         def appendix_numbers(volume)
           CatalogLoader.flatten_section(volume.sections['APPENDICES']).filter_map do
             CatalogLoader.extract_chapter_number(it)
-          end.uniq.sort
+          end.uniq
         end
 
         # 「A」→ 0。読めない値は 0

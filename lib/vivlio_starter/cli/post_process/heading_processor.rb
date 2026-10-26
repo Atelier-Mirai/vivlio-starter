@@ -523,7 +523,8 @@ module VivlioStarter
           if override && !override.empty?
             tokens = normalize_and_filter_tokens(override)
             if tokens && !tokens.empty?
-              @main_chapter_order = tokens
+              # 指定した順でなく、本の並びで数える（catalog-written-order-spec.md R5）
+              @main_chapter_order = Build::CatalogLoader.in_book_order(tokens)
               return @main_chapter_order
             end
           end
@@ -535,10 +536,9 @@ module VivlioStarter
         # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
         # @return [Array<String>] 章トークンの配列
         def discovered_main_chapter_tokens
-          resolver = TokenResolver::Resolver.new
           html_tokens = Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html'))
                            .map { |path| File.basename(path, '.html') }
-          normalize_and_filter_tokens(html_tokens).sort_by { |token| resolver.resolve_file(token).number.to_i }
+          Build::CatalogLoader.in_book_order(normalize_and_filter_tokens(html_tokens))
         end
 
         # トークンリストを正規化してフィルタ

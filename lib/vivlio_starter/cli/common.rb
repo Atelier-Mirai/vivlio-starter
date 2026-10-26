@@ -793,10 +793,10 @@ module VivlioStarter
         end
 
         appendix_entries = if entries && !entries.empty?
-                             entries.select { it.kind == :appendix }.sort_by { it.number.to_i }
+                             Build::CatalogLoader.in_book_order(entries.select { it.kind == :appendix }, &:basename)
                            else
                              resolver = TokenResolver::Resolver.new
-                             resolver.resolve.select { it.kind == :appendix }.sort_by { it.number.to_i }
+                             Build::CatalogLoader.in_book_order(resolver.resolve.select { it.kind == :appendix }, &:basename)
                            end
 
         # 付録の中での並びの位置から振る。付録の種類は catalog.yml の区分で決まり、番号が 90〜98 に

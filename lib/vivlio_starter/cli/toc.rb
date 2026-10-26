@@ -169,7 +169,12 @@ module VivlioStarter
         # @param depth [Integer] 本文の章で載せる見出しの深さ（page.toc_depth）
         def initialize(entry_map, base_dir:, depth: HeadingExtractor.configured_depth)
           @entry_map = entry_map
-          @targets = entry_map.keys.sort_by { [KIND_ORDER.index(entry_map[it]&.kind) || KIND_ORDER.index(:chapter), it] }
+          # 種類の中は本の並び（catalog-written-order-spec.md R3）
+          position = Build::CatalogLoader.book_order.each_with_index.to_h
+          @targets = entry_map.keys.sort_by do
+            [KIND_ORDER.index(entry_map[it]&.kind) || KIND_ORDER.index(:chapter),
+             position.fetch(File.basename(it.to_s, '.html'), position.size), it]
+          end
           @base_dir = Pathname.new(base_dir)
           @depth = depth
         end

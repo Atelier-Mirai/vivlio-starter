@@ -84,7 +84,6 @@ module VivlioStarter
             Guards::ChapterFileNameCheck.new,
             Guards::DuplicateNumberCheck.new,
             Guards::CatalogSectionCheck.new,
-            Guards::CatalogOrderCheck.new,
             Guards::VolumeDefinitionCheck.new,
             Guards::DuplicateSlugCheck.new,
             Guards::ContentsDirCheck.new,
@@ -195,13 +194,13 @@ module VivlioStarter
           rows.each { |label, counts| Common.log_always("   #{format_label(label)} #{issue_mark(counts)}") }
         end
 
-        # 表の行（[ラベル, Counts]）を章番号順に組み立てる。
+        # 表の行（[ラベル, Counts]）を本の並び（catalog.yml に書いた順）に組み立てる。
         # registry のキーが entries に無い場合（コードインクルードの '(不明)' 等）も
         # 末尾へ足し、集計した指摘を表から取りこぼさない。
         # 範囲外でも catalog.yml にある章なら、ほかの行と同じ「番号＋章タイトル」で出す
         # （basename のままだと、同じ表の中で章の書き方が二通りになる）。
         def chapter_summary_rows(entries, by_chapter)
-          sorted = entries.sort_by { it.number.to_i }
+          sorted = Build::CatalogLoader.in_book_order(entries, &:basename)
           rows = sorted.map { [chapter_summary_label(it), by_chapter[it.basename] || NO_ISSUES] }
 
           extras = by_chapter.keys.compact - sorted.map(&:basename)

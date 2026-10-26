@@ -42,7 +42,7 @@ module VivlioStarter
         def generate_toc_html!(base_dir = '.', entries_or_keep = nil)
           targets_for_toc = %i[preface chapter appendix postface].flat_map do
             Build::ChapterConfig.htmls_for_kind(base_dir, it, entries_or_keep)
-          end.uniq.sort
+          end.uniq
 
           if targets_for_toc.empty?
             Common.log_warn('[Step 6] 対象HTMLが見つかりません。スキップします。')

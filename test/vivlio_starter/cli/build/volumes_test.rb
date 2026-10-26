@@ -232,8 +232,8 @@ module VivlioStarter
             Volumes.select!(Volumes.find('middle'))
             upper, middle, lower = WholeTocGenerator.markdown.split('<section').drop(1)
 
-            assert_match(/whole-toc-preface">00-about.*whole-toc-preface">02-upper.*whole-toc-preface">08-series/m, upper,
-                         '本全体の前書きと巻の前書きは、組版と同じく原稿の名前の順に並ぶ')
+            assert_match(/whole-toc-preface">00-about.*whole-toc-preface">08-series.*whole-toc-preface">02-upper/m, upper,
+                         '本全体の前書きを書いた順に、その後に巻の前書き（組版と同じ）')
             refute_includes middle, '00-about'
             assert_match(/whole-toc-postface">29-lower-end.*whole-toc-postface">99-postface/m, lower)
             assert_equal 1, WholeTocGenerator.markdown.scan('>08-series<').size, '両方に書いた原稿は一度だけ'
@@ -299,8 +299,9 @@ module VivlioStarter
             Volumes.select!(Volumes.find('upper'))
             assert_equal %w[第1章 第2章], [number.('01-intro'), number.('02-basics')]
             Volumes.select!(Volumes.find('lower'))
-            # 巻の中の本文の章は番号の順に数える（catalog.yml に書いた順ではない。組版・目次と同じ）
-            assert_equal %w[第4章 第5章 第6章], [number.('01-intro'), number.('02-basics'), number.('21-final')],
+            # 巻の中の本文の章は catalog.yml に書いた順に数える（組版・目次と同じ。catalog-written-order-spec.md R1）。
+            # 番号の順では、部「応用編」の 21-final より、後ろの部の 02-basics が先に数えられていた
+            assert_equal %w[第4章 第5章 第6章], [number.('01-intro'), number.('21-final'), number.('02-basics')],
                          '下巻では下巻の位置の番号'
           end
         end
@@ -333,8 +334,8 @@ module VivlioStarter
           with_project do
             Volumes.select!(Volumes.find('lower'))
 
-            assert_equal 'a', Common.appendix_number_to_letter(90), '下巻の付録だけを番号の順に A から振る'
-            assert_equal 'b', Common.appendix_number_to_letter(92)
+            assert_equal 'a', Common.appendix_number_to_letter(92), '下巻の付録だけを、書いた順に A から振る'
+            assert_equal 'b', Common.appendix_number_to_letter(90)
           end
         end
 
@@ -457,8 +458,8 @@ module VivlioStarter
             assert_includes markdown, '<li class="whole-toc-chapter"><span class="whole-toc-number">第1章</span>21-final</li>',
                             '下巻は chapter_start: 1 で始め直す'
             assert_includes markdown, '<li class="whole-toc-preface">10-vol2-intro</li>', '前書きは番号なし'
-            assert_includes markdown, '<span class="whole-toc-number">付録 B</span>92-links</li>',
-                            '下巻は appendix_start: A で、下巻の付録だけを振り直す（90 が A・92 が B）'
+            assert_includes markdown, '<span class="whole-toc-number">付録 A</span>92-links',
+                            '下巻は appendix_start: A で、下巻の付録だけを書いた順に振り直す（92 が A・90 が B）'
             refute_includes markdown, 'href', 'リンクにしない'
           end
         end
@@ -490,7 +491,7 @@ module VivlioStarter
                                       "\n" \
                                       '<li class="whole-toc-section"><span class="whole-toc-number">3-2</span>組む</li>'
             refute_includes markdown, 'コードの中の見出し'
-            assert_includes markdown, '<span class="whole-toc-number">B-1</span>公式サイト', '付録の節は付録の記号で'
+            assert_includes markdown, '<span class="whole-toc-number">A-1</span>公式サイト', '付録の節は付録の記号で'
             refute_includes markdown, '前書きの節', '前書きの節は載せない（詳しい目次と同じ）'
 
             chapters_only = TocCommands::HeadingExtractor.stub(:configured_depth, 1) { WholeTocGenerator.markdown }

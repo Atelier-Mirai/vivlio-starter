@@ -381,7 +381,7 @@ module VivlioStarter
         def main_chapter_order
           hp = PostProcessCommands::HeadingProcessor
           override = hp.chapter_tokens_override
-          return hp.normalize_and_filter_tokens(override) if override&.any?
+          return Build::CatalogLoader.in_book_order(hp.normalize_and_filter_tokens(override)) if override&.any?
 
           main_chapters_from_catalog
         end
@@ -402,7 +402,7 @@ module VivlioStarter
                                  .map(&:basename)
                                  .select { hp.main_chapter_token?(it) }
                                  .uniq
-                                 .sort_by { it[/\A\d+/].to_i }
+                                 .then { Build::CatalogLoader.in_book_order(it) }
         end
         private_class_method :main_chapters_from_catalog
 

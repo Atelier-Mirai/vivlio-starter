@@ -93,16 +93,15 @@ module VivlioStarter
         end
 
         # 巻の目次の項目（<li>）。番号は、その巻を選んだ状態で章扉と同じ規則で数える（§5）。
-        # 本全体の前書きは最初の巻に、後書きは最後の巻に載る（multivolume-book-matter-spec.md R4）。前書き・後書きは、
-        # 組版（ChapterConfig.htmls_for_kind）と同じく原稿の名前の順に並べる。書いた順では、本全体の前書きと巻の前書きが
-        # 番号で入り組むとき（00・07 と 01）、巻の紙面と並びが食い違う
+        # 本全体の前書きは最初の巻に、後書きは最後の巻に載る（multivolume-book-matter-spec.md R4）。並びは紙面と同じく
+        # 書いた順（catalog-written-order-spec.md R2。本全体の前書き → 巻の前書き）
         def volume_items(volume)
           sections = Volumes.sections_of(volume)
           [
-            *CatalogLoader.flatten_section(sections['PREFACE']).sort.map { item('whole-toc-preface', it) },
+            *CatalogLoader.flatten_section(sections['PREFACE']).map { item('whole-toc-preface', it) },
             *chapter_items(sections['CHAPTERS']),
             *CatalogLoader.flatten_section(sections['APPENDICES']).map { item('whole-toc-appendix', it) },
-            *CatalogLoader.flatten_section(sections['POSTFACE']).sort.map { item('whole-toc-postface', it) }
+            *CatalogLoader.flatten_section(sections['POSTFACE']).map { item('whole-toc-postface', it) }
           ].compact
         end
 
