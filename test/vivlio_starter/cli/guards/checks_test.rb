@@ -608,6 +608,96 @@ module VivlioStarter
         end
       end
 
+      # ------------------------------------------------------------------
+      # CatalogOrderCheck
+      #
+      # 組版は区分の中を番号の順に並べ、部の見出しと全巻目次は書いた順に並ぶ。書いた順が番号の順と違うと
+      # 目次と紙面がずれるので、行番号と直し方を添えて知らせる。
+      # ------------------------------------------------------------------
+      def test_should_warn_when_chapter_is_written_out_of_number_order
+        with_temp_project do
+          write_catalog(chapters: %w[11-a 13-c 15-e 12-b])
+          %w[11-a 12-b 13-c 15-e].each { write_content(it) }
+
+          violations = Guards::CatalogOrderCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :warn?
+          assert_includes violations.first.message, 'config/catalog.yml:6 の 12-b'
+          assert_includes violations.first.message, '紙面では 13-c の前に載る'
+          assert_equal ['書いた所に載せるなら: vs renumber 12-b 16-b',
+                        '番号の順でよいなら: この行を 13-c の前へ移す'], violations.first.detail
+        end
+      end
+
+      # 動かす数が一番少なくなる原稿を知らせる。[15, 11, 12, 13] なら 15 の一つ
+      def test_should_warn_only_the_fewest_files_to_move
+        with_temp_project do
+          write_catalog(chapters: %w[15-e 11-a 12-b 13-c])
+          %w[11-a 12-b 13-c 15-e].each { write_content(it) }
+
+          violations = Guards::CatalogOrderCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_includes violations.first.message, '15-e'
+          assert_equal ['書いた所に載せるなら: vs renumber 15-e 01-e',
+                        '番号の順でよいなら: この行を 13-c の後ろへ移す'], violations.first.detail
+        end
+      end
+
+      # 本全体の前書きと巻の前書きは別々の所に書くので、番号の順で混ざっても知らせない
+      # （multivolume-book-matter-spec.md R3）
+      def test_should_not_compare_book_matter_with_volume_preface
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            PREFACE:
+              - 00-about
+              - 08-series
+            VOLUMES:
+              - name: 上巻
+                id: upper
+                PREFACE:
+                  - 01-volume-1
+                CHAPTERS:
+                  - 11-a
+              - name: 下巻
+                id: lower
+                CHAPTERS:
+                  - 21-b
+          YAML
+          %w[00-about 08-series 01-volume-1 11-a 21-b].each { write_content(it) }
+
+          assert_empty Guards::CatalogOrderCheck.new.validate
+        end
+      end
+
+      # 合本は巻の区別なく番号の順に組む。後から上巻に足した大きな番号の章は、合本では下巻の章の後ろに載る
+      def test_should_warn_when_combined_edition_breaks_volume_order
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            VOLUMES:
+              - name: 上巻
+                id: upper
+                CHAPTERS:
+                  - 11-a
+                  - 12-b
+                  - 26-z
+              - name: 下巻
+                id: lower
+                CHAPTERS:
+                  - 21-c
+                  - 22-d
+          YAML
+          %w[11-a 12-b 26-z 21-c 22-d].each { write_content(it) }
+
+          violations = Guards::CatalogOrderCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_includes violations.first.message, 'config/catalog.yml:7 の 26-z（上巻）は、合本では 下巻の 22-d の後ろに載ります'
+          assert_equal '上巻の位置に載せるなら: vs renumber 26-z 13-z', violations.first.detail
+        end
+      end
+
       private
 
       # config/ contents/ を備えた一時プロジェクトへ chdir して検証する
