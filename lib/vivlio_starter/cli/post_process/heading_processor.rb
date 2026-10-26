@@ -4,6 +4,7 @@ require 'digest'
 require 'nokogiri'
 require_relative '../common'
 require_relative '../heading_segmenter'
+require_relative '../build/math_text_renderer'
 require_relative 'html_parser'
 
 module VivlioStarter
@@ -157,9 +158,10 @@ module VivlioStarter
           text = extract_heading_core_text(heading)
           return false if text.nil? || text.empty?
 
+          label = heading_label_text(heading)
           modified = false
-          modified |= set_attr_if_changed(heading, 'data-heading', text)
-          modified |= set_attr_if_changed(heading, "data-h#{level}", text)
+          modified |= set_attr_if_changed(heading, 'data-heading', label)
+          modified |= set_attr_if_changed(heading, "data-h#{level}", label)
           modified |= set_h1_id(heading, text) if level == 1
           modified
         end
@@ -241,7 +243,7 @@ module VivlioStarter
           title_text = extract_heading_core_text(h1)
           number_text = build_h1_number_text(context)
           modified = rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
-          update_h1_data_attributes(h1, number_text, title_text)
+          update_h1_data_attributes(h1, number_text, title_text && heading_label_text(h1))
           modified
         end
 
@@ -268,7 +270,7 @@ module VivlioStarter
             number_text = build_h2_number_text(context, section_index)
             modified |= rebuild_heading_with_spans(h2, number_text, title_text, :section, doc)
             h2['data-section-number-display'] = number_text if number_text
-            h2['data-section-title'] = title_text if title_text
+            h2['data-section-title'] = heading_label_text(h2) if title_text
           end
           modified
         end
@@ -293,7 +295,7 @@ module VivlioStarter
           doc.css('h3').each do |h3|
             title_text = extract_heading_core_text(h3)
             modified |= rebuild_heading_with_spans(h3, marker, title_text, :subsection, doc)
-            h3['data-subsection-title'] = title_text if title_text
+            h3['data-subsection-title'] = heading_label_text(h3) if title_text
           end
           modified
         end
@@ -478,11 +480,41 @@ module VivlioStarter
         # @param node [Nokogiri::XML::Element] 見出し要素
         # @return [String] 見出しテキスト
         def extract_heading_core_text(node)
+          heading_plain_text(core_title_node(node))
+        end
+
+        # 見出しの題の部分（番号の span を除いた題の span、無ければ見出しそのもの）
+        def core_title_node(node)
           %w[chapter-title section-title subsection-title].each do |cls|
             span = node.at_css("span.#{cls}")
-            return heading_plain_text(span) if span
+            return span if span
           end
-          heading_plain_text(node)
+          node
+        end
+
+        # data 属性（PDF のしおりの題・EPUB の合成見出し画像）に入れる題の文字（改善案 #119）。
+        #
+        # extract_heading_core_text と違い、数式の画像（img.vs-math。alt に TeX がある）を文字に戻し、
+        # HTML の整形で入った改行と字下げを 1 つの空白に詰める。素の text では画像が抜けて
+        # 「円周率を ⏎ （空白 13 個）の値として書く」になっていた。題の span の組み直しの判定と
+        # h1 の id は extract_heading_core_text のまま——ここを変えると、組み直すたびに題が違うと
+        # 判定され、既存の id も変わる。全角空白は詰めない（「第1部　基礎編」のように題の一部）。
+        def heading_label_text(node)
+          copy = core_title_node(node).dup
+          copy.css('a.glossary-link').each(&:remove)
+          copy.css('img.vs-math').each do |img|
+            latex = img['alt'].to_s.sub(/\A\$+|\A\\\(/, '').sub(/\$+\z|\\\)\z/, '')
+            # 前後の空白は原稿のまま（「補題 1：$G(0)$」に空白を足さない）
+            img.replace(Nokogiri::XML::Text.new(Build::MathTextRenderer.plain_text(latex), img.document))
+          end
+          squeeze_formatting_whitespace(copy.text.to_s.delete(WORD_JOINER))
+        end
+
+        # HTML の整形で入った空白を詰める。数式の画像の手前には、整形の改行と字下げが入る
+        # （「補題 1：⏎␣␣␣<img>」）。原稿に書いた空白はその改行より前に残る（「を␣⏎␣␣␣<img>」）ので、
+        # 改行から始まる空白は消し、空白から始まるものは 1 つにする。全角空白は題の一部なので触れない。
+        def squeeze_formatting_whitespace(text)
+          text.gsub(/[ \t]*\r?\n[ \t\r\n]*/) { it.start_with?(' ', "\t") ? ' ' : '' }.gsub(/[ \t]+/, ' ').strip
         end
 
         # 見出しの素のテキスト。data 属性（EPUB の合成見出し画像・目次の素材）に入れるため、

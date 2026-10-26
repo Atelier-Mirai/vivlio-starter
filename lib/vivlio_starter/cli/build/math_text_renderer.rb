@@ -250,6 +250,89 @@ module VivlioStarter
 
         # 出力の HTML 予約文字をエスケープする（< > & のみ。" は属性化しないので不要）。
         def escape_html(str) = str.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+
+        # ================================================================
+        # 書式を持てない所（PDF のしおりの題）へ数式を文字で書く（改善案 #119）
+        # ================================================================
+
+        # Unicode の上付き・下付き文字。しおりを表示する書体にまずある字だけにする
+        # （θ の上付き `ᶿ` のような字は無いことが多く、文字化けする）。
+        SUPERSCRIPTS = '0123456789+-−=()ni'.chars.zip('⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱ'.chars).to_h.freeze
+        SUBSCRIPTS = '0123456789+-−=()'.chars.zip('₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎'.chars).to_h.freeze
+
+        # render の HTML（<i>/<sup>/<sub> だけ）を区切る
+        PLAIN_TOKEN = %r{<(/?)(i|sup|sub)>|([^<]+)}
+
+        # 文字にするときだけ、組み方の指定を外し、render が知る書き方へ寄せる。紙面の大きさを
+        # 変えるだけの指定（\dfrac・\displaystyle）と、括弧を省いた \sqrt2 は、見出しに実際に
+        # 書かれていた（spiral-ruby の特別編）。render そのものは変えない——Kindle の数式の
+        # テキスト化は、組み方の指定のある式を SVG のまま運ぶ方針である。
+        PLAIN_REWRITES = [
+          [/\\[dt]frac(?![A-Za-z])/, '\\frac'],
+          [/\\(?:displaystyle|textstyle|scriptstyle)(?![A-Za-z])\s*/, ''],
+          [/\\sqrt\s*([0-9A-Za-z])/, '\\sqrt{\1}'],
+          [/\\[,:;!]|\\q?quad(?![A-Za-z])/, ' ']
+        ].freeze
+
+        # LaTeX（デリミタ除去済み）を、書式の無い文字にする。
+        #
+        #   x^2 = x                          → x²=x
+        #   e^{i\theta}=\cos\theta+i\sin\theta → e^(iθ)=cosθ+i sinθ
+        #
+        # 上付き・下付きは、中身がすべて Unicode の上付き・下付き文字にできるときだけ置き換え、
+        # できなければ `^( )`・`_( )` で書く。斜体を外すと「i と sin」が `isinθ` と続いて
+        # 読めないので、斜体の文字と関数名の境目に空白を 1 つ入れる。render が拒否する式は、
+        # TeX から `$` と `\` を外した文字にする（抜けて読めなくなるよりはよい）。
+        # @param latex [String] $…$ / \(…\) を剥いだ LaTeX 本文
+        # @return [String]
+        def plain_text(latex)
+          html = render(PLAIN_REWRITES.inject(latex.to_s) { |src, (pattern, to)| src.gsub(pattern, to) })
+          return latex.to_s.delete('$\\').strip unless html
+
+          out = +''
+          italic = false
+          previous = nil # 直前に書いた文字の種類（:italic / :upright）
+          script = nil # 読んでいる上付き・下付き（[タグ, 中身]）
+          html.scan(PLAIN_TOKEN) do |slash, tag, text|
+            case [tag, slash]
+            in ['i', ''] then italic = true
+            in ['i', '/'] then italic = false
+            in [('sup' | 'sub'), ''] then script = [tag, +'']
+            in [('sup' | 'sub'), '/']
+              out << script_text(*script)
+              script = nil
+              previous = nil
+            else
+              text = unescape_html(text)
+              next script[1] << text if script
+
+              kind = italic ? :italic : :upright
+              out << ' ' if function_boundary?(out, previous, text, kind)
+              out << text
+              previous = kind
+            end
+          end
+          # 大型演算子の後の細空白（U+2009）は、しおりの書体に無いことがあるので普通の空白にする
+          out.tr(" ", ' ')
+        end
+
+        # 上付き・下付きの中身を、Unicode の文字か `^( )`・`_( )` にする
+        def script_text(tag, text)
+          table = tag == 'sup' ? SUPERSCRIPTS : SUBSCRIPTS
+          return text.chars.map { table[it] }.join if text.chars.all? { table.key?(it) }
+
+          "#{tag == 'sup' ? '^' : '_'}(#{text})"
+        end
+
+        # 斜体の文字の後ろに関数名が来る（`i sin`）か、関数名の後ろに斜体の文字が来る（`sin x`）なら空白を入れる
+        def function_boundary?(out, previous, text, kind)
+          return false if previous.nil? || previous == kind
+          return false unless out.match?(/\p{L}\z/) && text.match?(/\A\p{L}/)
+
+          kind == :upright ? FUNCTIONS.any? { text.start_with?(it) } : FUNCTIONS.any? { out.end_with?(it) }
+        end
+
+        def unescape_html(str) = str.gsub('&lt;', '<').gsub('&gt;', '>').gsub('&amp;', '&')
       end
     end
   end

@@ -524,13 +524,16 @@ module VivlioStarter
             inline_html(clone).strip
           end
 
-          # 子ノードをたどり、<code> だけを残して HTML 断片にする。
+          # 子ノードをたどり、<code> と数式の画像だけを残して HTML 断片にする。
           # 用語集の † リンクは落とす。目次はその語を説明する場所ではなく、記号だけが残る
           # （heading_processor.rb の heading_plain_text と同じ扱い）。
+          # 数式の画像（img.vs-math）は、子を持たないので素通りすると抜ける（改善案 #119）。
+          # 目次は本文と同じ html/ に置くので、画像の相対パスはそのまま通る。
           def inline_html(node)
             node.children.map do |child|
               if child.text? then CGI.escapeHTML(child.text)
               elsif child.matches?('a.glossary-link') then ''
+              elsif child.matches?('img.vs-math') then child.to_html
               elsif child.name == 'code' then "<code>#{CGI.escapeHTML(child.text)}</code>"
               else inline_html(child)
               end

@@ -233,6 +233,20 @@ module VivlioStarter
         assert_equal '扉絵と装飾画像', headings[0].text
       end
 
+      # 数式の画像は子を持たないので、素通りすると目次から抜けていた（改善案 #119）
+      def test_should_keep_math_images_in_toc
+        html_file = create_html_file('11-sample.html', <<~HTML)
+          <html><body>
+            <h2 id="b"><span class="section-title">ブール代数 <img class="vs-math vs-math-inline" src="images/math/11-sample/a.svg" alt="$x^2 = x$"></span></h2>
+          </body></html>
+        HTML
+
+        headings = TocCommands::HeadingExtractor.new(html_file, make_entry('11-sample', kind: :chapter)).headings
+
+        assert_match %r{\Aブール代数 <img class="vs-math vs-math-inline" src="images/math/11-sample/a.svg" alt="\$x\^2 = x\$">\z},
+                     headings[0].text
+      end
+
       private
 
       def create_html_file(filename, content)

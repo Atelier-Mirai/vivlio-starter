@@ -182,6 +182,40 @@ module VivlioStarter
             assert_equal '<i>x</i>∈<i>A</i>∪<i>B</i>', R.render('x \in A \cup B')
             assert_equal '<i>f</i>∘<i>g</i>', R.render('f \circ g')
           end
+
+        # 書式を持てない所（PDF のしおりの題）へ書く文字（改善案 #119）
+        def test_should_write_formulas_as_plain_text
+          assert_equal 'x²=x', R.plain_text('x^2 = x'), '上付きは Unicode の上付き文字に'
+          assert_equal '2ⁿ', R.plain_text('2^n')
+          assert_equal '10⁻³', R.plain_text('10^{-3}')
+          assert_equal 'a₁+a₁₀', R.plain_text('a_1 + a_{10}')
+          assert_equal 'π', R.plain_text('\pi')
+          assert_equal 'a<b', R.plain_text('a < b'), 'HTML の予約文字は戻す'
+        end
+
+        # 上付き文字が書体に無い中身は `^( )`・`_( )` で書く。斜体を外した後、関数名との境目に空白を入れる
+        def test_should_fall_back_to_carets_and_separate_function_names
+          assert_equal 'e^(iθ)=cosθ+i sinθ', R.plain_text('e^{i\theta}=\cos\theta+i\sin\theta')
+          assert_equal 'x_(i)', R.plain_text('x_i')
+          assert_equal 'sin x', R.plain_text('\sin x')
+          assert_equal 'arctan', R.plain_text('\arctan'), '関数名の中に空白を入れない'
+          assert_equal 'ab', R.plain_text('ab'), '斜体どうしは詰めたまま'
+        end
+
+        # 組み方の指定（\dfrac・\displaystyle）と括弧を省いた \sqrt2 は、文字にするときだけ外す。
+        # spiral-ruby の特別編の見出しに実際にあり、外さないと「pi < dfrac{22}{7}」になっていた
+        def test_should_drop_layout_commands_only_for_plain_text
+          assert_equal 'π<22/7', R.plain_text('\pi < \dfrac{22}{7}')
+          assert_equal '√2', R.plain_text('\sqrt2')
+          assert_equal '∫₀¹ f(x)dx', R.plain_text('\displaystyle\int_0^1 f(x)\,dx')
+          assert_nil R.render('\dfrac{22}{7}'), 'Kindle のテキスト化（render）は今までどおり SVG に任せる'
+        end
+
+        # render が拒否する式は、TeX から `$` と `\` を外す（抜けて読めなくなるよりはよい）
+        def test_should_strip_tex_markers_from_rejected_formulas
+          assert_nil R.render('\begin{pmatrix} a \end{pmatrix}')
+          assert_equal 'begin{pmatrix} a end{pmatrix}', R.plain_text('\begin{pmatrix} a \end{pmatrix}')
+        end
       end
     end
   end
