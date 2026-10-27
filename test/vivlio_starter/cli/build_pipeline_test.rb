@@ -144,7 +144,8 @@ module VivlioStarter
           'merge all pdfs',
           'apply outline to output pdf',
           'shorten destination names',
-          'compress, rename and final clean'
+          'compress, rename and final clean',
+          'check type 3 fonts'
         ]
         labels = pipeline.timings.map(&:first)
         assert_equal expected_labels, labels
@@ -555,18 +556,19 @@ module VivlioStarter
         assert_equal 10, pipeline.timings.length, 'single mode は 10 ステップを記録するべき'
       end
 
-      def test_full_mode_timings_has_19_entries
+      def test_full_mode_timings_has_20_entries
         pipeline = build_full_pipeline
         stub_pipeline_steps(pipeline)
 
         with_build_stubs { pipeline.run }
 
-        # full mode（pdf専用）は 19 ステップ。前付・奥付の HTML 生成
+        # full mode（pdf専用）は 20 ステップ。前付・奥付の HTML 生成
         # （front-back-matter-single-render-spec.md §2.1）とカバー資産の生成
         # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶんで
         # 元の 15 から 2 つ、過剰解像度の縮小（image-format-per-target-spec.md §3.6）で
-        # さらに 1 つ、リンク先の名前の付け替え（改善案 #81）でもう 1 つ増えている。
-        assert_equal 19, pipeline.timings.length, 'full mode は 19 ステップを記録するべき'
+        # さらに 1 つ、リンク先の名前の付け替え（改善案 #81）でもう 1 つ、
+        # Type 3 書体の点検（改善案 #124）でもう 1 つ増えている。
+        assert_equal 20, pipeline.timings.length, 'full mode は 20 ステップを記録するべき'
       end
 
       private

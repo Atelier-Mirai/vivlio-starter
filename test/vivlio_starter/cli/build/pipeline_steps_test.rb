@@ -38,26 +38,27 @@ module VivlioStarter
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
       PDF_ONLY = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter',
-        'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'compress, rename and final clean'
+        'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'compress, rename and final clean',
+        'check type 3 fonts'
       ]).freeze
 
       # 入稿用のみ・導出フロー（既定）。導出のソースとして閲覧用の中間 PDF を作るため、
       # print_pdf 単独でも 'build overall pdf' / 'build front and back matter' が入る。
       # 最終成果物（merge 以降）は t.pdf 次第なので閲覧用 output.pdf は生まれない。
       PRINT_ONLY = (PREFIX + [
-        'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'print pdf', 'final clean'
+        'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'print pdf', 'check type 3 fonts', 'final clean'
       ]).freeze
 
       # 入稿用のみ・従来フロー（output.print_pdf.full_bleed: true）。
       # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config だけを用意する。
       # 前付・奥付の HTML は共通前処理で作り済みなので、ここに専用ステップは無い。
       PRINT_ONLY_FULL_BLEED = (PREFIX + [
-        'generate entries.js', 'shrink oversized images', 'backlink dedup', 'print pdf', 'final clean'
+        'generate entries.js', 'shrink oversized images', 'backlink dedup', 'print pdf', 'check type 3 fonts', 'final clean'
       ]).freeze
 
       PDF_PRINT = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'merge all pdfs',
-        'apply outline to output pdf', 'shorten destination names', 'compress and rename', 'print pdf', 'final clean'
+        'apply outline to output pdf', 'shorten destination names', 'compress and rename', 'print pdf', 'check type 3 fonts', 'final clean'
       ]).freeze
 
       EPUB_ONLY = (PREFIX + ['generate epub', 'final clean']).freeze
@@ -67,18 +68,18 @@ module VivlioStarter
       PDF_EPUB = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup',
         'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names',
-        'compress and rename', 'generate epub', 'final clean'
+        'compress and rename', 'check type 3 fonts', 'generate epub', 'final clean'
       ]).freeze
 
       PRINT_EPUB = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup',
-        'build front and back matter', 'print pdf', 'generate epub', 'final clean'
+        'build front and back matter', 'print pdf', 'check type 3 fonts', 'generate epub', 'final clean'
       ]).freeze
 
       ALL = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup',
         'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names',
-        'compress and rename', 'print pdf', 'generate epub', 'final clean'
+        'compress and rename', 'print pdf', 'check type 3 fonts', 'generate epub', 'final clean'
       ]).freeze
 
       # Kindle 用の回転テーブル画像は本文 PDF のページから切り出すため、
@@ -200,7 +201,7 @@ module VivlioStarter
         'generate entries.js' => :pdf, 'shrink oversized images' => :pdf, 'backlink dedup' => :pdf,
         'build front and back matter' => :pdf, 'merge all pdfs' => :pdf,
         'apply outline to output pdf' => :pdf, 'shorten destination names' => :pdf, 'compress, rename and final clean' => :pdf,
-        'compress and rename' => :pdf, 'print pdf' => :pdf,
+        'compress and rename' => :pdf, 'print pdf' => :pdf, 'check type 3 fonts' => :pdf,
         'generate epub' => :epub,
         'final clean' => :join
       }.freeze

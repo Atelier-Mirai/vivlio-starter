@@ -5,6 +5,7 @@ require 'tmpdir'
 
 require_relative 'backlink_dedup_orchestrator'
 require_relative 'destination_names'
+require_relative 'type3_font_check'
 require_relative 'epub_builder'
 require_relative 'epub_flow'
 require_relative 'print_pdf_builder'
@@ -345,6 +346,10 @@ module VivlioStarter
              t.pdf && (t.print_pdf || t.epub_or_kindle?), :pdf, :whole_book],
             ['print pdf', -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! },
              t.print_pdf, :pdf, :whole_book],
+            # 本の書体に無い字が OS の書体（Type 3）で混ざっていないか、仕上がった PDF で調べる（改善案 #124）。
+            # 入稿用と閲覧用は同じ紙面なので、閲覧用があればそちらを、無ければ入稿用を 1 回だけ見る。
+            ['check type 3 fonts', -> { Build::Type3FontCheck.check!(t.pdf ? Common.generate_output_filename('pdf') : Common.generate_print_pdf_filename) },
+             t.any_pdf?, :pdf, :whole_book],
             # --- :epub 枝（EPUB → Kindle。枝の中は逐次） ---
             ['generate epub', -> { epub_flow.run! }, t.epub_or_kindle?, :epub, :whole_book],
             # --- :join 合流（ワークスペースを消すので両枝の完了後） ---
