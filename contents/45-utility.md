@@ -53,15 +53,12 @@ vs preflight intro   # スラッグが intro の章をチェック
 | コードインクルードファイル不在 | 🔴 |
 | QueryStream 雛形ファイル不在 | 🔴 |
 | ラベル ID重複 | 🔴 |
-| 裸URL | 🟡 |
 | 孤立ラベル | 🟡 |
 
 たとえば `vs preflight 11 95` で二つの章を点検すると、次のように出力されます。
 
 :::{.output}
 ```text
-🟡 95-sample.md:201 - 裸 URL を検出しました
-        URL: https://www.nobelprize.org/prizes/physics/1926/perrin/lecture/
 🔴 95-sample.md:571 - 雛形ファイル '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
         雛形の場所: templates/_physics_book.full.md
         ヒント: templates/_physics_book.md は存在します。スタイル名を確認してください。
@@ -75,13 +72,12 @@ vs preflight intro   # スラッグが intro の章をチェック
 🔍 リンク・画像検証の結果:
         画像: 1 件の課題（存在しない画像: 1）
         ソースコード: 1 件の課題（存在しないファイル: 1）
-        リンク: 1 件の問題（裸 URL: 1）
         外部URL到達性チェック: スキップ（--verify-links で有効化）
 
 📋 章別サマリー
    11 執筆ワークフローとクイック… 🔴 エラー 1 件
-   95 挑戦することの贈り物        🔴 エラー 3 件・🟡 警告 2 件
-❌ Preflight 完了: エラー 4 件・警告 2 件 — 詳細は上記を確認してください
+   95 挑戦することの贈り物        🔴 エラー 3 件・🟡 警告 1 件
+❌ Preflight 完了: エラー 4 件・警告 1 件 — 詳細は上記を確認してください
    文章校正（表記揺れ・スペル）は vs lint で行えます。
 ```
 :::

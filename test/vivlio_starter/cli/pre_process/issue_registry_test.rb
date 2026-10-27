@@ -32,8 +32,8 @@ module VivlioStarter
         # record した指摘が severity 別に集計される
         def test_should_count_issues_by_severity
           IssueRegistry.record(chapter: '21-images', severity: :error, category: :image, message: '存在しない画像: a.png')
-          IssueRegistry.record(chapter: '21-images', severity: :warn, category: :link, message: '裸 URL: https://example.com')
-          IssueRegistry.record(chapter: '10-intro', severity: :warn, category: :link, message: '裸 URL: https://example.org')
+          IssueRegistry.record(chapter: '21-images', severity: :warn, category: :cross_reference, message: '参照の問題: @chapref:a')
+          IssueRegistry.record(chapter: '10-intro', severity: :warn, category: :cross_reference, message: '参照の問題: @chapref:b')
 
           counts = IssueRegistry.counts
           assert_equal 1, counts.errors

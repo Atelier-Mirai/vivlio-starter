@@ -15,6 +15,9 @@ module VivlioStarter
           }
         end
 
+        # 存在しない画像（ImagePathNormalizer が置き換えたプレースホルダー）を 1 つ含む原稿
+        def missing_image = "![テスト](data:image/svg+xml;charset=utf-8,%3Csvg%3E%3Ctext%3E%3Ctspan%3Emissing.webp%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E)\n"
+
         def teardown
           Thread.current[:vs_verify_options] = nil
         end
@@ -63,173 +66,80 @@ module VivlioStarter
         end
 
         # =================================================================
-        # 裸 URL 検出
+        # 外部 URL の収集（--verify-links のリンク切れの確かめ）
         # =================================================================
+        # 裸 URL は警告しない（改善案 #123）。代わりに、リンク記法と同じく
+        # リンク切れの確かめの対象に集める。
 
-        # 裸 URL が検出されること
-        def test_should_detect_bare_urls
+        def urls_of(content) = LinkImageValidator.external_urls(content, 'test.md').map { it[:url] }
+
+        # 直書きの URL は警告せず、リンク切れの確かめに集めること
+        def test_should_not_warn_bare_urls_but_collect_them
           content = <<~MD
             詳しくは https://example.com/page を参照してください。
           MD
 
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_equal 1, report.link_issues.size
-          assert_equal :bare_url, report.link_issues.first.issue_type
-          assert_equal 'https://example.com/page', report.link_issues.first.url
+          assert_empty LinkImageValidator.validate(content, 'test.md').link_issues
+          assert_equal ['https://example.com/page'], urls_of(content)
         end
 
-        # Markdown リンク記法の URL は裸 URL として検出されないこと
-        def test_should_not_flag_markdown_links
+        # リンク記法・自動リンク・直書き・脚注や参照リンクの定義の URL を、どれも集めること。
+        # 以前はリンク記法の URL しか集めず、出典の一覧に書いた URL のリンク切れを確かめていなかった
+        def test_should_collect_urls_in_every_notation
           content = <<~MD
-            [参考ページ](https://example.com/page)
+            [参考ページ](https://a.example.com/) と <https://b.example.com/> と https://c.example.com/
+            RubyInstaller (https://d.example.com/) も使います。
+
+            [^1]: https://e.example.com/
+            [ref]: https://f.example.com/
           MD
 
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.link_issues
+          assert_equal %w[https://a.example.com/ https://b.example.com/ https://c.example.com/
+                          https://d.example.com/ https://e.example.com/ https://f.example.com/],
+                       urls_of(content)
         end
 
-        # コードブロック内の URL は無視されること
-        def test_should_skip_urls_in_code_blocks
+        # コードブロック・インラインコード・HTML コメント・HTML の属性値・@qr: の引数の URL は集めないこと
+        def test_should_skip_urls_that_readers_do_not_follow
           content = <<~MD
             ```bash
-            curl https://example.com/api
+            curl https://fence.example.com/api
             ```
+            URL は `https://code.example.com/api` です。
+            <!-- https://comment.example.com はコメントアウトされています -->
+            <img src="qr.png" alt="https://alt.example.com/">
+            サンプルはこちら: @qr:https://qr.example.com
           MD
 
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.link_issues
+          assert_empty urls_of(content)
         end
 
-        # インラインコード内の URL は無視されること
-        def test_should_skip_urls_in_inline_code
-          content = <<~MD
-            URL は `https://example.com/api` です。
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.link_issues
-        end
-
-        # 脚注定義行の URL は裸 URL として検出されないこと
-        def test_should_skip_footnote_definition_urls
-          content = <<~MD
-            [^url1]: https://example.com/page
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.link_issues
-        end
-
-        # 同じ URL が何度も出てくる原稿でも、裸 URL の行番号が丸められないこと
-        def test_should_report_actual_line_of_bare_url
+        # 同じ URL が何度も出てくる原稿でも、行番号が丸められないこと
+        def test_should_record_the_actual_line_of_each_url
           content = <<~MD
             1 行目: [リンク](https://example.com) は正規の記法です。
             2 行目
             3 行目
-            4 行目: https://example.com が裸 URL です。
+            4 行目: https://example.com も同じ URL です。
           MD
 
-          issues = LinkImageValidator.validate_links(content, 'test.md')
-
-          assert_equal 1, issues.size
-          assert_equal 4, issues.first.line_number
+          lines = LinkImageValidator.external_urls(content, 'test.md').map { it[:line_number] }
+          assert_equal [1, 4], lines
         end
 
-        # HTML コメント内の URL は裸 URL として検出されないこと
-        def test_should_skip_urls_in_html_comments
-          content = <<~MD
-            <!-- https://example.com はコメントアウトされています -->
-          MD
-
-          assert_empty LinkImageValidator.validate_links(content, 'test.md')
-        end
-
-        # QR コード記法の URL は裸 URL として検出されないこと
-        def test_should_skip_qr_directive_urls
-          content = <<~MD
-            サンプルはこちら: @qr:https://example.com
-          MD
-
-          assert_empty LinkImageValidator.validate_links(content, 'test.md')
-        end
-
-        # 参照リンクの定義行の URL は裸 URL として検出されないこと
-        def test_should_skip_reference_link_definition_urls
-          content = <<~MD
-            参照リンク: [リンクテキスト][ref]
-
-            [ref]: https://example.com
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.link_issues
-        end
-
-        # 参照リンクの定義に見えても、本文中の裸 URL は検出されること
-        def test_should_detect_bare_url_after_bracket_text
-          content = <<~MD
-            [参考] https://example.com を見てください。
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_equal 1, report.link_issues.size
-          assert_equal :bare_url, report.link_issues.first.issue_type
-        end
-
-        # クエリパラメータ付き裸 URL が正しく検出されること
-        def test_should_detect_bare_url_with_query_params
-          content = <<~MD
-            https://foobar.com/hoge?fuga=piyo
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_equal 1, report.link_issues.size
-          assert_equal 'https://foobar.com/hoge?fuga=piyo', report.link_issues.first.url
+        # クエリパラメータ付きの URL を丸ごと取ること
+        def test_should_collect_url_with_query_params
+          assert_equal ['https://foobar.com/hoge?fuga=piyo'], urls_of("https://foobar.com/hoge?fuga=piyo\n")
         end
 
         # 全角の括弧・句読点の手前で URL を切ること。日本語のパスは URL のうちに数える
-        def test_should_end_bare_url_before_full_width_symbols
+        def test_should_end_url_before_full_width_symbols
           content = <<~MD
             公式の「RubyInstaller」（https://rubyinstaller.org/）を使います。「Ruby+Devkit 4.0」を選びます。
             詳しくは https://ja.wikipedia.org/wiki/日本語。
           MD
 
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_equal ['https://rubyinstaller.org/', 'https://ja.wikipedia.org/wiki/日本語'],
-                       report.link_issues.map(&:url)
-        end
-
-        # =================================================================
-        # 外部 URL 収集
-        # =================================================================
-
-        # Markdown リンクから外部 URL が正しく抽出されること
-        def test_should_extract_external_urls_from_markdown_links
-          Thread.current[:vs_verify_options] = {
-            verify_external_links: true
-          }
-
-          content = <<~MD
-            [Google](https://www.google.com)
-            [Example](https://example.com/path)
-          MD
-
-          LinkImageValidator.validate(content, 'test.md')
-
-          # 外部 URL が蓄積されていることを確認（print_summary で集約される）
-          # 直接アクセスできないため、サマリー出力が正常に動くことで間接確認
-          assert_output(/リンク・画像の検証が完了しました/) do
-            Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
-          end
+          assert_equal ['https://rubyinstaller.org/', 'https://ja.wikipedia.org/wiki/日本語'], urls_of(content)
         end
 
         # =================================================================
@@ -262,15 +172,13 @@ module VivlioStarter
           assert_output(/画像: 1 件の課題/) { LinkImageValidator.print_summary }
         end
 
-        # 裸 URL があるときのサマリー出力
-        def test_should_print_bare_url_issues_in_summary
-          content = <<~MD
-            https://example.com/bare
-          MD
+        # 裸 URL だけなら問題として数えないこと（改善案 #123）
+        def test_should_not_count_bare_urls_in_summary
+          LinkImageValidator.validate("https://example.com/bare\n", 'test.md')
 
-          LinkImageValidator.validate(content, 'test.md')
-
-          assert_output(/裸 URL: 1/) { LinkImageValidator.print_summary }
+          assert_output(/良好な状態です/) do
+            Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
+          end
         end
 
         # =================================================================
@@ -279,8 +187,7 @@ module VivlioStarter
 
         # reset! でレポートがクリアされること
         def test_should_clear_reports_on_reset
-          content = "https://example.com/bare\n"
-          LinkImageValidator.validate(content, 'test.md')
+          LinkImageValidator.validate(missing_image, 'test.md')
           LinkImageValidator.reset!
 
           # reset 後はサマリーに何も出力されない
@@ -293,10 +200,10 @@ module VivlioStarter
 
         # 複数ファイルのレポートが正しく蓄積されること
         def test_should_accumulate_reports_from_multiple_files
-          LinkImageValidator.validate("https://example.com/bare1\n", 'file1.md')
-          LinkImageValidator.validate("https://example.com/bare2\n", 'file2.md')
+          LinkImageValidator.validate(missing_image, 'file1.md')
+          LinkImageValidator.validate(missing_image, 'file2.md')
 
-          assert_output(/裸 URL: 2/) { LinkImageValidator.print_summary }
+          assert_output(/画像: 2 件の課題/) { LinkImageValidator.print_summary }
         end
       end
     end

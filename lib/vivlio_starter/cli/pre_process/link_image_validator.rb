@@ -8,16 +8,19 @@
 #
 # 検証内容:
 #   - ローカル画像パスの存在チェック（プレースホルダー置換済みの data: URI を検出）
-#   - 裸 URL（Markdown リンク記法でない直書き URL）の検出
-#   - 外部 URL の HTTP 到達性チェック（オプション）
+#   - 外部 URL の HTTP 到達性チェック（オプション）。リンク記法・自動リンク（<URL>）・
+#     直書きの URL のどれも対象にする
 #   - 危険スキーム（file:// / javascript:）の検出 — セキュリティ保護、常時有効
 #
 # 設計方針:
 #   - ビルドを止めない（警告のみ）
 #   - ImagePathNormalizer が置換済みの data: URI を検出する方式（方式 A）
-#   - 画像の実在と裸 URL は常に検査する（止める設定は持たない。警告の原因を直せば消える）
+#   - 画像の実在は常に検査する（止める設定は持たない。警告の原因を直せば消える）
 #   - 外部 URL チェックはオプション（--verify-links / book.yml）
 #   - 危険スキームの検出はセキュリティ保護であり、常に有効
+#   - 直書きの URL（裸 URL）は警告しない（改善案 #123）。全角の記号が続くものは前処理が
+#     <URL> で囲み直し、ほかは VFM がリンクにするので、紙面もリンク先も正しい。出典の一覧の
+#     ように URL を見せる書き方は正当で、リンク記法にすると URL が脚注へ移って読みにくくなる
 #
 # セキュリティ観点（堅牢性仕様 11-1）:
 #   原稿内の `<img src="file:///etc/passwd">` 等によるローカルファイル漏洩を
@@ -46,8 +49,12 @@ module VivlioStarter
         ValidationReport = Data.define(:filename, :image_issues, :link_issues)
 
         # 本文に直書きされた URL。リンク記法の中（`](URL)`）・括弧の中・@qr: の引数は除く。
-        # URL の範囲は Masking::URL（全角の記号の手前で切る）
+        # URL の範囲は Masking::URL（全角の記号の手前で切る）。前処理が `<URL>` で囲み直す
+        # 対象を決めるのに使う（MarkdownTransformer::DELIMITABLE_BARE_URL）
         BARE_URL = /(?<!\]\()(?<!\()(?<!@qr:)#{Masking::URL}/
+
+        # リンク切れを確かめる URL。QR コード記法の引数（`@qr:https://…`）は除く
+        CHECKABLE_URL = /(?<!@qr:)#{Masking::URL}/
 
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new
@@ -65,7 +72,7 @@ module VivlioStarter
 
           # 原稿に書かれたリンクを検証する。**前処理にかける前の原稿**へ適用すること。
           #
-          # 裸 URL の対象は著者が原稿へ直に書いたものだけで、前処理が生成する要素
+          # 対象は著者が原稿へ直に書いた URL だけで、前処理が生成する要素
           # （`@qr` の `<img alt="URL">` など）は含まない。原稿をそのまま見るので
           # 行番号の付け替えが要らない——同じ URL が何度も出てくる原稿でも、
           # 指摘した行がそのまま著者の手元の行になる。
@@ -75,22 +82,13 @@ module VivlioStarter
           # @param config [Hash] 検証設定（verify_external_links）
           # @return [Array<LinkIssue>]
           def validate_links(content, filename, config: resolve_config)
-            link_issues = scan_bare_urls(content, filename)
-
-            link_issues.each do |issue|
-              Common.log_warn(
-                "#{issue.filename}:#{issue.line_number} - 裸 URL を検出しました",
-                detail: "URL: #{issue.url}"
-              )
-            end
-
             # セキュリティ検証（11-1）: 危険スキームの検出は常時有効
             # file:// / javascript: 等はどの設定でも無効化しない
-            link_issues += scan_dangerous_schemes(content, filename)
+            link_issues = scan_dangerous_schemes(content, filename)
 
             # 外部 URL チェック用に URL を蓄積（後でバッチ実行）
             if config[:verify_external_links]
-              urls = extract_external_urls(content, filename)
+              urls = external_urls(content, filename)
               @monitor.synchronize { @external_urls.concat(urls) }
             end
 
@@ -181,13 +179,11 @@ module VivlioStarter
             detail_lines << "ソースコード: #{total_missing_code} 件の課題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
 
             if total_link.positive?
-              bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
               unreachable = reports.sum { it.link_issues.count { |i| i.issue_type == :unreachable } }
               dangerous = reports.sum { it.link_issues.count { |i| i.issue_type == :dangerous_scheme } }
               parts = []
               parts << "危険スキーム: #{dangerous}" if dangerous.positive?
               parts << "リンク切れ: #{unreachable}" if unreachable.positive?
-              parts << "裸 URL: #{bare}" if bare.positive?
               detail_lines << "リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
             end
 
@@ -233,6 +229,22 @@ module VivlioStarter
             record_to_registry(issue)
           end
 
+          # 本文に書かれた外部 URL を集める（--verify-links のリンク切れの確かめに使う）。
+          # リンク記法・自動リンク（<URL>）・直書きの URL・脚注や参照リンクの定義の URL を、
+          # 行ごとに 1 回ずつ数える。以前はリンク記法の URL しか集めず、直書きの URL は
+          # リンク切れを確かめていなかった（改善案 #123）。
+          # コード・HTML コメント・HTML の属性値（@qr の <img alt> など）・@qr: の引数は除く。
+          # @return [Array<Hash>] { url:, filename:, line_number: }
+          def external_urls(content, filename)
+            urls = []
+            Masking.each_prose_line(blank_out_html_comments(content)) do |line, line_number|
+              # インラインコードと、自動リンク以外の HTML タグを外す
+              text = line.gsub(/`[^`]+`/, '').gsub(%r{<(?!https?://)[^>]+>}, '')
+              text.scan(CHECKABLE_URL).uniq.each { urls << { url: it, filename:, line_number: } }
+            end
+            urls
+          end
+
           # 同じファイルのレポートへ issue を足し込む。
           # 検証は段階ごとに分かれて走る（リンクは原稿、画像はパス解決後、コード
           # インクルードはさらにあと）が、集計は 1 ファイル 1 レポートに保つ。
@@ -258,7 +270,6 @@ module VivlioStarter
           # 重要度は逐次ログの絵文字（log_error / log_warn）と一致させる。
           # この重要度が preflight の終了コードを決める（:error が 1 件でもあれば 1）:
           #   欠落画像・欠落コード・リンク切れ・危険スキーム = 🔴 error
-          #   裸 URL（記法の推奨に過ぎない）                = 🟡 warn
           def record_to_registry(issue)
             severity, category, message =
               case issue
@@ -270,8 +281,6 @@ module VivlioStarter
                 [:error, :link, "リンク切れ: #{url}（#{msg}）"]
               in LinkIssue[issue_type: :dangerous_scheme, url:]
                 [:error, :link, "危険なスキーム: #{url}"]
-              in LinkIssue[issue_type: :bare_url, url:]
-                [:warn, :link, "裸 URL: #{url}"]
               else
                 [:warn, :link, "検証で指摘されました（#{issue.issue_type}）"]
               end
@@ -308,9 +317,9 @@ module VivlioStarter
           # cli_opts に載るのは CLI で**明示された**指定だけ（`setup_verify_options!`）。
           # ここの fetch 第 2 引数が book.yml の既定として効くのは、その前提があってこそ。
           #
-          # 画像の実在と裸 URL は常に検査する。以前は `--no-verify` と `verify.images` /
-          # `verify.bare_urls` で止められたが、どちらも正しい警告を黙らせるだけで原因は
-          # 直らないため撤去した（改善案.md #41）。
+          # 画像の実在は常に検査する。以前は `--no-verify` と `verify.images` で止められたが、
+          # 正しい警告を黙らせるだけで原因は直らないため撤去した（改善案.md #41）。
+          # `verify.bare_urls` は、裸 URL の警告そのものを廃止した（改善案 #123）。
           def resolve_config
             verify_cfg = Common::CONFIG.verify
             cli_opts = Thread.current[:vs_verify_options] || {}
@@ -427,77 +436,11 @@ module VivlioStarter
             )
           end
 
-          # --- Phase: 裸 URL 検出 ---
-
-          # Markdown リンク記法でない直書き URL を検出する
-          def scan_bare_urls(content, filename)
-            issues = []
-
-            # コードフェンスの除外は Masking（唯一の実装）に委ねる。
-            Masking.each_prose_line(blank_out_html_comments(content)) do |line, line_number|
-              # インラインコード内はスキップ
-              line_without_inline_code = line.gsub(/`[^`]+`/, '')
-              # HTML タグの属性値（<a href="…"> / <img alt="…">）は「本文に直書きされた
-              # 裸 URL」ではないので走査対象から外す。前処理が生成する要素（@qr の
-              # <img alt="URL">）もここで除外される。
-              line_without_inline_code = line_without_inline_code.gsub(/<[^>]+>/, '')
-
-              # 脚注定義行はスキップ
-              next if line_without_inline_code.match?(/^\[\^[^\]]+\]:/)
-
-              # 参照リンクの定義行（`[ref]: https://…`）もスキップする。CommonMark の
-              # 標準記法で「本文に直書きされた裸 URL」ではない。この行の URL は
-              # `[テキスト][ref]` から参照される先なので、リンク記法への書き換えを
-              # 促しても直しようがない（雛形 templates/chapter.md がまさにこれで
-              # 毎回 🟡 を出していた）。
-              next if line_without_inline_code.match?(/^\s*\[[^\]]+\]:\s*\S/)
-
-              # 裸 URL を検出（Markdown リンク記法の中にある URL は除外）
-              # ](https://...) や [text](https://...) は正規のリンク記法。
-              # `@qr:https://…` は QR コード記法の引数で、著者が読ませたい URL では
-              # ないので除外する（前処理後は <img> になり上の gsub で落ちるが、
-              # この検証は原稿に対して走るため、ここで名指しで外す必要がある）。
-              line_without_inline_code.scan(BARE_URL) do |url|
-                # Markdown リンクの URL 部分として使われていないか再確認
-                # [text](URL) のパターンに含まれる URL は脚注化で処理済み
-                next if line.include?("](#{url})")
-
-                issues << LinkIssue.new(
-                  filename:,
-                  line_number:,
-                  url:,
-                  issue_type: :bare_url,
-                  status_code: nil,
-                  message: '裸 URL です（リンク記法 [テキスト](URL) の使用を推奨します）'
-                )
-              end
-            end
-
-            issues
-          end
-
           # HTML コメントの中身を空白へ潰す（改行は残して行数を保つ）。
-          # コメントアウトされた記述の URL を「裸 URL」と指摘しても直しようがない。
+          # コメントアウトされた記述の URL は、読者の目に触れないので確かめない。
           # 行数を保つのは、この検証が原稿の行番号をそのまま使うため。
           def blank_out_html_comments(content)
             content.gsub(/<!--.*?-->/m) { it.gsub(/[^\n]/, ' ') }
-          end
-
-          # --- Phase: 外部 URL 収集 ---
-
-          # Markdown リンク記法から外部 URL を抽出する
-          def extract_external_urls(content, filename)
-            urls = []
-
-            # コードフェンスの除外は Masking（唯一の実装）に委ねる。
-            Masking.each_prose_line(content) do |line, line_number|
-              # Markdown リンク記法 [text](https://...)
-              line.scan(%r{\[([^\]]*)\]\((https?://[^\s)]+)\)}) do
-                urls << { url: ::Regexp.last_match(2), filename:, line_number: }
-              end
-            end
-
-            urls
           end
 
           # --- Phase: HTTP 到達性チェック ---

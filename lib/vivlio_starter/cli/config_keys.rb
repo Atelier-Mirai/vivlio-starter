@@ -235,7 +235,7 @@ module VivlioStarter
       # 廃止したら book.yml と scaffold からもキーを消し、ここへ 1 行足す。
       RETIRED = {
       %i[verify images]                          => Spec[retired: "画像の実在は常に確かめます。警告が出たら画像のパスかファイル名を直してください"],
-      %i[verify bare_urls]                       => Spec[retired: "裸の URL は常に確かめます。警告が出たら `[テキスト](URL)` の形で書いてください"],
+      %i[verify bare_urls]                       => Spec[retired: "裸の URL の警告は廃止しました。URL はそのまま書いて構いません"],
       %i[index auto_approve_threshold]           => Spec[retired: "索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます"],
       %i[index review_threshold]                 => Spec[retired: "同上。レビュー対象は目安語数と index.candidate_pool で決まります"],
       %i[index high_candidates_ratio]            => Spec[retired: "推奨候補／一般候補の分割は目安語数が決めるため、比率の指定は不要です"],

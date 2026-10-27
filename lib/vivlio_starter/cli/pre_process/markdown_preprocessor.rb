@@ -286,9 +286,9 @@ module VivlioStarter
         end
 
         # @qr:URL を QR コード SVG（ビルド生成物）の <img> へ変換する。
-        # normalize_image_paths! の直後・validate_links_and_images! の前に置くのが要点:
-        # 変換後は HTML <img> になるため Markdown 画像記法しか見ない normalizer には掛からず、
-        # かつ validate より前に変換しないと @qr: 内の URL が裸 URL として 🟡 誤警告される。
+        # normalize_image_paths! の直後に置くのが要点: 変換後は HTML <img> になるため、
+        # Markdown 画像記法しか見ない normalizer には掛からない。リンクの検証（validate_links!）は
+        # これより前の原稿に当たり、@qr: の引数はリンク切れの確かめの対象から外している。
         def transform_qr_codes!
           before = context.content.dup
           context.content = QrTransformer.transform(context.content, source_filename: context.filename)

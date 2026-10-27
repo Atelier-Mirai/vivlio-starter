@@ -108,7 +108,7 @@ module VivlioStarter
       class LinkImageValidatorSummaryIntegrationTest < Minitest::Test
         def setup
           LinkImageValidator.reset!
-          # デフォルト設定（画像・裸URL検証ON、外部URLチェックOFF）
+          # デフォルト設定（画像の検証ON、外部URLチェックOFF）
           Thread.current[:vs_verify_options] = {
             verify_external_links: false
           }
@@ -118,9 +118,16 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = nil
         end
 
+        # ImagePathNormalizer が置換した data: URI（存在しない画像）を 1 つ含む原稿
+        def missing_image
+          placeholder = 'data:image/svg+xml;charset=utf-8,' \
+                        '%3Csvg%20width%3D%22600%22%3E%3Ctext%3E%3Ctspan%3Emissing.webp%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E'
+          "![代替テキスト](#{placeholder})\n"
+        end
+
         # 問題なし時に「問題なし」サマリーが出力されること
         def test_should_print_no_issues_summary_when_all_content_is_valid
-          # Arrange: 正常なコンテンツ（画像も裸URLもなし）
+          # Arrange: 正常なコンテンツ（欠落画像なし）
           content = <<~MD
             # 第1章
 
@@ -154,37 +161,36 @@ module VivlioStarter
           end
         end
 
-        # 裸 URL がある場合にサマリーに件数が表示されること
-        def test_should_print_bare_url_count_in_summary
+        # 裸 URL（直書きの URL）は問題として数えないこと（改善案 #123）
+        def test_should_not_report_bare_urls
           # Arrange: 裸 URL を含むコンテンツ
           content = "詳しくは https://example.com/page を参照してください。\n"
 
           # Act
           LinkImageValidator.validate(content, '12-markdown-tutorial.md')
 
-          # Assert: 裸 URL の件数がサマリーに含まれる
-          assert_output(/裸 URL: 1/) do
-            LinkImageValidator.print_summary
+          # Assert: 「問題なし」のサマリーになる
+          assert_output(/良好な状態です/) do
+            Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
           end
         end
 
         # 複数ファイルにまたがる問題が正しく集計されること
         def test_should_aggregate_issues_across_multiple_files
-          # Arrange: 2ファイルそれぞれに裸 URL
-          LinkImageValidator.validate("https://example.com/bare1\n", '01-quickstart.md')
-          LinkImageValidator.validate("https://example.com/bare2\n", '12-markdown-tutorial.md')
+          # Arrange: 2ファイルそれぞれに欠落画像
+          LinkImageValidator.validate(missing_image, '01-quickstart.md')
+          LinkImageValidator.validate(missing_image, '12-markdown-tutorial.md')
 
           # Assert: 合計 2 件として集計される
-          assert_output(/裸 URL: 2/) do
+          assert_output(/画像: 2 件の課題/) do
             LinkImageValidator.print_summary
           end
         end
 
         # 外部URLチェックがOFFの場合にスキップメッセージが表示されること
         def test_should_print_skip_message_when_external_link_check_is_disabled
-          # Arrange: 裸 URL を含むコンテンツ（問題ありにしてサマリーを表示させる）
-          content = "https://example.com/bare\n"
-          LinkImageValidator.validate(content, 'test.md')
+          # Arrange: 欠落画像を含むコンテンツ（問題ありにしてサマリーを表示させる）
+          LinkImageValidator.validate(missing_image, 'test.md')
 
           # Assert: スキップメッセージが含まれる
           assert_output(/外部URL到達性チェック: スキップ/) do
@@ -327,8 +333,8 @@ module VivlioStarter
             verify_external_links: true
           }
 
-          # 裸 URL を含むコンテンツ（問題ありにしてサマリーを表示させる）
-          content = "https://example.com/bare\n"
+          # 直書きの URL も確かめの対象になる（改善案 #123）。外へ出ないよう手元のサーバーを指す
+          content = "http://localhost:#{@server.port}/page\n"
           LinkImageValidator.validate(content, 'test.md')
           LinkImageValidator.check_external_urls!
 
@@ -352,17 +358,17 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = nil
         end
 
-        # book.yml の設定がない場合はデフォルト（画像・裸URL ON）が適用されること
+        # book.yml の設定がない場合はデフォルト（画像の検査 ON・外部 URL OFF）が適用されること
         def test_should_use_default_config_when_book_yml_has_no_verify_section
-          # Arrange: CONFIG が nil の状態（book.yml 未設定）
-          content = "https://example.com/bare\n"
+          # Arrange: CONFIG が nil の状態（book.yml 未設定）。危険スキームは常に検出する
+          content = "[x](javascript:alert(1))\n"
 
           # Act
-          report = LinkImageValidator.validate(content, 'test.md')
+          report = Common.stub(:log_error, nil) { LinkImageValidator.validate(content, 'test.md') }
 
-          # Assert: デフォルトで裸 URL が検出される
-          assert_equal 1, report.link_issues.size
-          assert_equal :bare_url, report.link_issues.first.issue_type
+          # Assert: 既定でも危険スキームは検出され、外部 URL の確かめはしない
+          assert_equal [:dangerous_scheme], report.link_issues.map(&:issue_type)
+          assert_silent { LinkImageValidator.check_external_urls! }
         end
       end
     end

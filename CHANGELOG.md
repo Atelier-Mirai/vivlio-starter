@@ -284,6 +284,7 @@
 
 ### Fixed
 
+- **`--verify-links` が、リンク記法の URL しかリンク切れを確かめていなかった**（改善案 #123・`LinkImageValidator.external_urls`）。本文にそのまま書いた URL・`<URL>`・脚注や参照リンクの定義の URL も確かめる。コード・HTML コメント・HTML の属性値・`@qr:` の引数は除く。
 - **章の番号を振らない本（`page.heading_numbering: none`）の目次で、前書きの最後の項目と最初の章の間が詰まっていた**（`BookSettingsCss.heading_numbering_rule`）。章の番号の行（「第 N 章」）が持っていた上の余白が、行と一緒に消えていた。番号を消すときは、章の項目の前に番号の無い章と同じ余白を置く。ビルドのたびに作る `book-settings.css` に出すので、`vs upgrade` しなくても効く。
 - **目次の題と最初の項目の間に余白が無く、項目の数式（√2）の根号の横線が題の字に触れていた**（`stylesheets/toc.css`）。`body.toc h1` の下に 1em の余白を置く。雛形の CSS なので、今の本は `vs upgrade` で取り込む。
 - **素の表記の `√−163` が数式にならず、根号の横線が付かなかった**（改善案 #122・`PlainMathTranspiler`）。`√` の直後の数・文字に付いた負の符号も根号の中に入れる（`\sqrt{−163}`）。`√ − 1` のように符号の後ろに空白があれば、今までどおり引き算として扱う。
@@ -855,6 +856,7 @@
 
 ### Removed
 
+- **本文にそのまま書いた URL（裸 URL）の 🟡 を廃止した**（改善案 #123・`LinkImageValidator`）。勧める理由が無く、出典の一覧のように URL を見せる正当な書き方まで警告していた。裸の URL も、全角の記号が続くものは前処理が `<URL>` で囲み直し、ほかは VFM がリンクにするので、紙面もリンク先も正しい。`book.yml` に `verify.bare_urls` が残っていると、廃止キーとして案内する。
 - **`index.max_sub_references` をやめた**。副次参照は、語を見出しに掲げた節から選び、`##` でまとめ、見出しに出る節が多すぎる語は主要参照の章の外の `###` を省く。件数を絞る仕事はこの選び方が担い、上限の 8 が効く語はまれになった（book_ai_web_starter の主要参照のある 286 語で、8 を超えたのは HTML の 1 語だけ）。上限を変える理由が無いので、8 を定数にした。rc.3 の book.yml に入っていたので廃止キーとして扱い、`vs upgrade` で book.yml から消せる（消すまでは読まずに案内を出す）。
 - **`typography.column.font_size` をやめた**。CSS 変数 `--column-font-size` に値を入れるだけで読む CSS が無く、一度も効いていなかった。既定の `8pt` を効かせると、どの本のコラムも本文より 2 割ほど小さくなるため、効かせるのではなくやめる。コラムは本文と同じ大きさで組む。変えるなら `stylesheets/custom.css` に `.column { font-size: 9pt; }` のように書く。`book.yml` に残っていれば 🟡 で知らせ、`vs upgrade` で消せる。41 章の例からも外した。
 - **1.0 より前の抑止コメント `<!-- vs-lint-disable-next-line -->`・`<!-- vs-lint-disable -->`・`<!-- vs-lint-enable -->` を廃止した**。`<!-- no-lint -->`・`<!-- no-lint-start -->`・`<!-- no-lint-end -->` に一本化する。原稿に旧形式が残っていると、もう指摘は止めず、`vs lint` が行番号と置き換え先を添えて 🟡 で知らせる（`L3: <!-- vs-lint-disable --> → <!-- no-lint-start -->`）。あわせて、`vs lint --fix` が textlint の記法を書き戻すときに旧形式を書いていたのを `no-lint` 系に、閉じ忘れの警告の文言も新しい書き方に直した。31 章の「旧形式も受け付けます」の注記を外した。

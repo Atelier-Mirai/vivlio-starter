@@ -8,7 +8,7 @@
 #   （preflight-chapter-summary-spec.md §2.2・§3-3）
 #
 # 検証内容:
-#   - LinkImageValidator: 欠落画像 🔴 / 裸 URL 🟡 が category 付きで積まれる
+#   - LinkImageValidator: 欠落画像 🔴 が category 付きで積まれる（裸 URL は積まない）
 #   - コードインクルード: record_code_include_error が :code_include で積まれる
 #   - Guards::Guard: :warn 違反が chapter なしで :guard として積まれる
 #   - クロスリファレンス: ラベルID 重複 🔴・未定義参照/孤立ラベル 🟡 が積まれる
@@ -62,18 +62,14 @@ module VivlioStarter
           assert_includes issue.message, 'foo.webp'
         end
 
-        # 裸 URL は 🟡 warn・category :link として積まれ、逐次ログも従来どおり出る
-        def test_should_record_bare_url_as_warning_and_keep_log
+        # 裸 URL は警告しない（改善案 #123）。章別の集計にも積まず、ログも出さない
+        def test_should_not_record_bare_url
           out, = capture_io do
             LinkImageValidator.validate("詳しくは https://example.com/page を参照。\n", '10-intro.md')
           end
 
-          assert_includes out, '🟡'
-          assert_includes out, '裸 URL'
-          counts = IssueRegistry.summary_by_chapter['10-intro']
-          assert_equal 0, counts.errors
-          assert_equal 1, counts.warns
-          assert_equal :link, IssueRegistry.issues.first.category
+          refute_includes out, '裸 URL'
+          assert_empty IssueRegistry.issues
         end
 
         # コードインクルードの欠落は :code_include の 🔴 error として積まれる

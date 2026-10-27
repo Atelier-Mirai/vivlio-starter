@@ -223,7 +223,7 @@ module VivlioStarter
               chapter: '21-beta.md', severity: :error, category: :image, message: '存在しない画像: a.webp'
             )
             PreProcessCommands::IssueRegistry.record(
-              chapter: '21-beta.md', severity: :warn, category: :link, message: '裸 URL'
+              chapter: '21-beta.md', severity: :warn, category: :cross_reference, message: '参照の問題'
             )
           end
 
@@ -273,13 +273,13 @@ module VivlioStarter
           assert_includes output, '✅ Preflight 完了: 良好な状態です'
         end
 
-        # 裸 URL の警告だけなら終了コード 0（🟡 しか出ていないのに CI が落ちる食い違いの解消）。
+        # 🟡 の警告だけなら終了コード 0（🟡 しか出ていないのに CI が落ちる食い違いの解消）。
         # 従来は LinkImageValidator.any_issues? が severity を見ず 1 を返していた。
-        def test_should_exit_0_when_only_bare_url_warnings_exist
+        def test_should_exit_0_when_only_warnings_exist
           output, status = run_preflight(entries: fixture_entries('10-alpha')) do
             PreProcessCommands::IssueRegistry.record(
               chapter: '10-alpha.md', line: 12, severity: :warn,
-              category: :link, message: '裸 URL: https://example.com'
+              category: :cross_reference, message: '参照の問題: @chapref:nope が見つかりません'
             )
           end
 

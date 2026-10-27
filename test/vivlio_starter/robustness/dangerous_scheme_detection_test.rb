@@ -162,7 +162,7 @@ module VivlioStarter
 
       # ----------------------------------------------------------------
       # H. 外部 URL の検査を切った設定でも危険スキーム検出は常時有効
-      #    （切り替えられる検査は外部 URL だけ。画像と裸 URL は常に検査する）
+      #    （切り替えられる検査は外部 URL だけ。画像は常に検査する）
       # ----------------------------------------------------------------
       def test_dangerous_scheme_detection_is_not_disabled_with_external_links_off
         md = %(<img src="file:///etc/passwd">\n)
@@ -222,7 +222,7 @@ module VivlioStarter
         }
       end
 
-      # 危険スキームは 🔴（log_error）、裸 URL 等は 🟡（log_warn）で報告されるため、
+      # 危険スキームは 🔴（log_error）、ほかの指摘は 🟡（log_warn）で報告されるため、
       # 「報告されたか」を見るこのテスト群では両方を同じ入れ物へ集める。
       def stub_common_log_warn
         collect = ->(msg, detail: nil) { @warn_messages << msg }

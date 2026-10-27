@@ -16,7 +16,8 @@
 #   丸ごと無視されていた（2026-08-07 修正）。
 #
 #   その後、verify.images / bare_urls と --no-verify は撤去した（改善案.md #41）。
-#   画像の実在と裸 URL は常に検査し、選べるのは外部 URL の検査だけになった。
+#   画像の実在は常に検査し、選べるのは外部 URL の検査だけになった。裸 URL の警告は
+#   廃止した（改善案 #123）。
 #
 #   キー名は resolve_config に出現するため book_yml_consumption_test は
 #   素通りする。「値が実際に効くか」はここで固定する。
@@ -53,8 +54,8 @@ module VivlioStarter
         end
 
         # 撤去した verify.images / bare_urls が古い book.yml に false で残っていても、
-        # 画像と裸 URL は検査する（読まれないキーは Common が廃止として案内する）
-        def test_should_always_check_images_and_bare_urls
+        # 画像は検査し、裸 URL は警告しない（読まれないキーは Common が廃止として案内する）
+        def test_should_always_check_images_and_never_warn_bare_urls
           with_verify_config(images: false, bare_urls: false)
           Thread.current[:vs_verify_options] = NO_OPTIONS
           LinkImageValidator.reset!
@@ -64,7 +65,7 @@ module VivlioStarter
             LinkImageValidator.validate("https://example.com/bare\n\n#{missing}\n", 'ch.md')
           end
 
-          assert_equal [:bare_url], report.link_issues.map(&:issue_type)
+          assert_empty report.link_issues
           assert_equal ['missing.webp'], report.image_issues.map(&:image_path)
         ensure
           LinkImageValidator.reset!

@@ -10,7 +10,7 @@
 #  • page         : ページ設定（版面レイアウト・用紙サイズ）
 #  • typography   : タイポグラフィ設定（書体）
 #  • output       : 出力設定（PDF、印刷用PDF、EPUB、表紙）
-#  • verify       : 原稿の検証（画像パス、裸URL、外部URL）
+#  • verify       : 原稿の検証（画像パス、外部URL）
 #  • legal        : リーガル情報（免責、商標）
 #  ── 機能ごとの詳細設定 ──────────────────
 #  • index_glossary : 索引・用語集の共通設定
@@ -213,7 +213,7 @@ output:
     # メタデータは book セクションから自動流用。KPF 変換は Kindle Previewer を使用。
 
 # ======= 原稿の検証（vs build と vs preflight に共通） =======
-# 画像の実在と裸 URL は常に確かめます。外部 URL を調べるかどうかだけを選べます
+# 画像の実在は常に確かめます。外部 URL を調べるかどうかだけを選べます
 # （CLI の --verify-links で、その場かぎり調べることもできます）。
 verify:
   external_links: false # 外部 URL の HTTP 到達性チェック（毎回調べるなら true）
