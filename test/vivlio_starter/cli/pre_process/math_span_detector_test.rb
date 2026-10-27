@@ -14,6 +14,7 @@
 #   MD-05 言語付きフェンスは常にコード（```math を除く）
 #   MD-05b ```math は宣言なので判定を通さずディスプレイ数式にする
 #   MD-06 実行結果の貼り付けを弾く（`【…】` 見出し・矢印）
+#   MD-06b 空白を 2 つ以上並べて桁をそろえた塊を弾く（等幅で読ませる表）
 #   MD-07 `$` を含む綴りは触らない（デリミタが壊れる）
 #   MD-08 フェンスの中のコードスパンを拾わない
 #   MD-09 冪等
@@ -170,6 +171,22 @@ class MathSpanDetectorTest < Minitest::Test
       "```\n341: base=2だけで判定 → 合成数と判定（正しい）\n```\n",
       "```\n選んだ品物: 黄金の仮面\n価値の合計: 69\n```\n"
     ].each { |md| assert_equal md, D.transform(md), "実行結果は数式にしない:\n#{md}" }
+  end
+
+  # MD-06b: 字と字の間に空白を 2 つ以上並べて桁をそろえた塊は、等幅で読ませる表なので弾く。
+  # 数式に組むと空白が詰まり、横に並べた式・注記・実行結果の列がつながる（spiral-ruby で実測）。
+  def test_should_reject_blocks_aligned_with_runs_of_spaces
+    [
+      "```\n  反復1: π近似=3.1405792505221686  誤差=1.013e-03\n```\n",
+      "```\nM₁ = 1      M₂ = 3      M₃ = 7\n```\n",
+      "```\nω + ω̄ = 4                        ← s₀ がこれ\nω · ω̄ = 1\n```\n",
+      "```\n面積　　　 = π × r × r\n円周の長さ = 2 × π × r\n```\n"
+    ].each { |md| assert_equal md, D.transform(md), "桁をそろえた塊は数式にしない:\n#{md}" }
+  end
+
+  # 弾くのは字と字の間の空白だけ。行頭の字下げと、1 つずつの空白は数式のまま組む。
+  def test_should_still_detect_indented_display_math
+    assert_includes D.transform("```\n  π(n) ≈ n / ln(n)\n```\n"), '$$'
   end
 
   # MD-02 の要: 1 文字だけの綴りは記号そのものの説明であって式ではない。

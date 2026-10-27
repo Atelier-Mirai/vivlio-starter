@@ -92,6 +92,12 @@ module VivlioStarter
         # 本物の数式で、同じ字を使う。弾く根拠は「見出し行がある」「矢印で結果を書いている」に置く。
         OUTPUT_MARKERS = /【.*】|→|⇒/
 
+        # 字と字の間に空白を 2 つ以上並べて、桁をそろえた行。等幅で読ませる表として書かれて
+        # いるので、ディスプレイ候補から弾く（仕様 §6.2）。数式に組むと空白が詰まり、横に並べた
+        # 式（`M₁ = 1      M₂ = 3`）・注記（`= 0b1010   ← 元に戻った`）・実行結果の列
+        # （`π近似=3.14…  誤差=1.0e-03`）がつながってしまう。行頭の字下げは数えない（strip 後に見る）。
+        ALIGNED_COLUMNS = /[^ 　][ 　]{2,}[^ 　]/
+
         # ディスプレイ候補の上限行数。これを超えるものは実行結果の貼り付けとみなす。
         MAX_DISPLAY_LINES = 8
 
@@ -166,7 +172,7 @@ module VivlioStarter
           return "\n$$\n#{display_body(body)}\n$$\n" if explicit
 
           return nil if body.size > MAX_DISPLAY_LINES
-          return nil if body.any? { it.match?(OUTPUT_MARKERS) }
+          return nil if body.any? { it.match?(OUTPUT_MARKERS) || it.strip.match?(ALIGNED_COLUMNS) }
           return nil unless body.all? { it.match?(RELATION) && math?(it) }
 
           "\n$$\n#{display_body(body)}\n$$\n"
