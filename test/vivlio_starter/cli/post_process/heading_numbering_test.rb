@@ -173,6 +173,16 @@ module VivlioStarter
           end
         end
 
+        # 章の番号の行を消すと、その上の余白も消え、前書きの最後の項目と最初の章が詰まる。
+        # 番号を消すときだけ、章の項目の前に余白を置く（章の番号を残す chapter では置かない）
+        def test_should_keep_space_above_chapters_when_their_numbers_are_cut
+          none = BSC.heading_numbering_rule({ heading_numbering: 'none' })
+          chapter = BSC.heading_numbering_rule({ heading_numbering: 'chapter' })
+
+          assert_match(/#toc > ul > li\.toc-chapter \{\s*margin-block-start:/, none)
+          refute_includes chapter, 'margin-block-start'
+        end
+
         def test_should_warn_once_and_fall_back_for_unknown_value
           warned = []
           Common.stub(:log_warn, ->(msg) { warned << msg }) do

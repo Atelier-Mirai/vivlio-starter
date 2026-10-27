@@ -523,19 +523,31 @@ module VivlioStarter
         def heading_numbering_rule(page_cfg)
           warn_unknown_heading_numbering!(page_cfg)
 
-          selectors = case PostProcessCommands::HeadingProcessor.normalize_heading_numbering(page_cfg[:heading_numbering])
-                      when 'chapter' then TOC_SECTION_NUMBER_SELECTORS
-                      when 'none' then TOC_CHAPTER_NUMBER_SELECTORS + TOC_SECTION_NUMBER_SELECTORS
-                      else return ''
-                      end
+          selectors, spacing = case PostProcessCommands::HeadingProcessor.normalize_heading_numbering(page_cfg[:heading_numbering])
+                               when 'chapter' then [TOC_SECTION_NUMBER_SELECTORS, nil]
+                               when 'none' then [TOC_CHAPTER_NUMBER_SELECTORS + TOC_SECTION_NUMBER_SELECTORS,
+                                                 TOC_CHAPTER_SPACING_RULE]
+                               else return ''
+                               end
 
-          <<~CSS.chomp
+          rule = <<~CSS.chomp
             /* page.heading_numbering — 目次の番号を出さない（章扉・節の見出しには番号の要素を作らない） */
             #{selectors.join(",\n")} {
               content: none;
             }
           CSS
+          [rule, spacing].compact.join("\n")
         end
+
+        # 章の番号の行（「第 N 章」の ::before）は上に余白を持ち、前の項目との区切りになっていた。
+        # 行を消すと余白も消え、前書きの最後の項目と最初の章が詰まる（spiral-ruby で実測）。
+        # 番号の無い章（toc.css の li.toc-chapter-no-number）と同じ前の余白を置く。章と章の間は
+        # 下の余白（6mm）と重なって大きい方になるので変わらない
+        TOC_CHAPTER_SPACING_RULE = <<~CSS.chomp
+          #toc > ul > li.toc-chapter {
+            margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+          }
+        CSS
 
         # 綴り間違いが黙って既定へ戻ると著者は気づけないので知らせる。鳴らすのは CSS 生成の 1 回だけ
         # （HeadingProcessor.heading_numbering は章ごとに呼ばれるので、そちらでは鳴らさない）
