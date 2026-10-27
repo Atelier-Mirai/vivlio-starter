@@ -154,10 +154,11 @@ module VivlioStarter
           MD
         end
 
-        # 目次の題。分冊の巻を選んで組むときは「下巻目次」のように巻の名前を添え、前に置く全巻目次と見分ける
+        # 目次の題。分冊の巻を選んで組むときは「下巻 目次」のように巻の名前を添え、前に置く全巻目次と見分ける。
+        # 巻の名前と「目次」の間は空ける。続けると「第5分冊目次」のように区切りが読み取りにくい
         def self.heading
           volume = Build::Volumes.current
-          volume ? "#{volume.name}目次" : '目次'
+          volume ? "#{volume.name} 目次" : '目次'
         end
 
         # 目次に並べる種類の順。区分で種類が決まるので（catalog-section-kind-spec.md §2.1）、

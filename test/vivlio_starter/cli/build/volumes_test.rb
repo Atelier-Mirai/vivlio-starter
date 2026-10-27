@@ -362,11 +362,11 @@ module VivlioStarter
           end
         end
 
-        # 巻を選んで組む目次は「中巻目次」とし、前に置く全巻目次と見分ける。合本は「目次」のまま
+        # 巻を選んで組む目次は「中巻 目次」とし、前に置く全巻目次と見分ける（巻の名前と「目次」の間は空ける）。合本は「目次」のまま
         def test_should_name_toc_after_selected_volume
           with_project do
             Volumes.select!(Volumes.find('middle'))
-            assert_includes TocCommands::TocDocumentBuilder.front_matter, "# 中巻目次\n"
+            assert_includes TocCommands::TocDocumentBuilder.front_matter, "# 中巻 目次\n"
 
             Volumes.select!(:combined)
             assert_includes TocCommands::TocDocumentBuilder.front_matter, "# 目次\n"
