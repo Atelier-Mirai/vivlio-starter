@@ -57,7 +57,7 @@ class MathTransformerTest < Minitest::Test
       assert_match(/<img class="vs-math vs-math-inline"/, result)
       # 参照パスは消費者 dir 相対（asset_prefix 無し・P4b §2.1）
       assert_match(%r{src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
-      assert_match(/alt="\$E=mc\^2\$"/, result)
+      assert_equal '$E=mc^2$', Nokogiri::HTML5.fragment(result).at_css('img')['alt']
       # MathJax SVG の ex 値が <img> の style に写る
       assert_match(/vertical-align: -0\.5ex; width: 3ex; height: 2ex;/, result)
     end
@@ -72,7 +72,7 @@ class MathTransformerTest < Minitest::Test
       assert_match(%r{<img src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
       assert_match(/width: 3ex; height: 2ex;/, result)
       # alt は改行を畳んで 1 行になる
-      assert_match(/alt="\$\$ \\nu_0 = \\frac\{\\phi\}\{h\} \$\$"/, result)
+      assert_equal '$$ \nu_0 = \frac{\phi}{h} $$', Nokogiri::HTML5.fragment(result).at_css('img')['alt']
     end
   end
 
@@ -205,8 +205,9 @@ class MathTransformerTest < Minitest::Test
     in_tmp do
       result = MT.transform("面積は $√n$ です\n", chapter_slug: 'plain', renderer: FakeRenderer.new)
 
-      assert_includes result, 'alt="$√n$"'
-      assert_includes result, 'data-vs-tex="\\sqrt{n}"'
+      img = Nokogiri::HTML5.fragment(result).at_css('img')
+      assert_equal '$√n$', img['alt']
+      assert_equal '\sqrt{n}', img['data-vs-tex']
     end
   end
 
@@ -314,6 +315,21 @@ class MathTransformerTest < Minitest::Test
       refute_match(/alt="[^"]*\[/, result, 'alt に生の [ が残らない')
       # Nokogiri で読み出す側（Kindle テキスト化・章扉の焼き込み）は復号された [ を受け取る
       assert_equal '$$∫[0, π/2] sin(x) dx$$', Nokogiri::HTML5.fragment(result).at_css('img')['alt']
+    end
+  end
+
+  # Markdown の記法の記号も、alt と data-vs-tex の中で数値文字参照へ退避する。VFM は
+  # 地の文で開いた記法を属性の中の同じ記号で閉じるので、`B_pubを使って $B_pub^a mod p$` の
+  # `_` どうしが強調と組まれ、<img> が文字のまま本文に出ていた（実測）。
+  def test_should_escape_markdown_signs_in_attributes_to_keep_the_tag_intact
+    in_tmp do
+      result = MT.transform("B_pubを使って $B_pub^a mod p$ を計算する\n", chapter_slug: 'md', renderer: FakeRenderer.new)
+      tag = result[/<img[^>]*>/]
+
+      refute_match(/[_*~$`{}|]/, tag.sub(/ style="[^"]*"/, ''), '属性に記法の記号が生で残らない')
+      img = Nokogiri::HTML5.fragment(result).at_css('img')
+      assert_equal '$B_pub^a mod p$', img['alt']
+      assert_equal 'B_{pub}^{a} \bmod p', img['data-vs-tex']
     end
   end
 
