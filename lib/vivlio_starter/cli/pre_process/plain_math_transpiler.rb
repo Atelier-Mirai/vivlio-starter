@@ -209,8 +209,10 @@ module VivlioStarter
                  elsif scanner.scan(/\{/)
                    run(scanner, stop: /\}/).tap { scanner.scan(/\}/) }
                  else
-                   # 数は丸ごと 1 トークン。1 文字ずつ取ると `√163` が `\sqrt{1}63` になる
-                   scanner.scan(/\d+(?:\.\d+)?|[[:alpha:]]/)
+                   # 数は丸ごと 1 トークン。1 文字ずつ取ると `√163` が `\sqrt{1}63` になる。
+                   # 直前に付いた負の符号もトークンに含める（`√−163` は虚二次体の √(−163)）。
+                   # 符号の後ろに空白があれば引き算なので含めない（`√ − 1` は `√` と `− 1`）
+                   scanner.scan(/[-−]?(?:\d+(?:\.\d+)?|[[:alpha:]])/)
                  end
           return "\\sqrt{#{body.strip}}" if body && !body.strip.empty?
 

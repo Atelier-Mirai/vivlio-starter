@@ -73,6 +73,11 @@ class PlainMathTranspilerTest < Minitest::Test
     assert_equal '\\sqrt{x+1}',  tex('√(x+1)')
     assert_equal 'e^{π\\sqrt{163}}', tex('e^(π√163)')
     assert_equal '\\sqrt{12345}',    tex('√12345')
+    # 直前の負の符号はトークンに含める。`√−163` が `√−163` のまま MathJax へ渡り、
+    # 根号の横線が付かなかった（spiral-ruby 課題160 の虚二次体）
+    assert_equal '\\sqrt{−163}',         tex('√−163')
+    assert_equal 'a+b\\sqrt{−163}',      tex('a+b√−163')
+    assert_equal '(1+\\sqrt{-2})/2',     tex('(1+√-2)/2')
   end
 
   # PT-02: TeX の演算子名 38 種。`liminf` を `lim` + `inf` に割らないこと。
