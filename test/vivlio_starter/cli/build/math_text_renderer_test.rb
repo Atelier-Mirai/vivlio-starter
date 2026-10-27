@@ -187,6 +187,7 @@ module VivlioStarter
         def test_should_write_formulas_as_plain_text
           assert_equal 'x²=x', R.plain_text('x^2 = x'), '上付きは Unicode の上付き文字に'
           assert_equal '2ⁿ', R.plain_text('2^n')
+          assert_equal 'eˣ', R.plain_text('e^{x}'), 'ˣ も書体にまずある（spiral-ruby 課題147 の題名）'
           assert_equal '10⁻³', R.plain_text('10^{-3}')
           assert_equal 'a₁+a₁₀', R.plain_text('a_1 + a_{10}')
           assert_equal 'π', R.plain_text('\pi')

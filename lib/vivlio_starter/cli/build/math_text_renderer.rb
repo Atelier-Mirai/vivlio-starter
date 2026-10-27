@@ -256,8 +256,9 @@ module VivlioStarter
         # ================================================================
 
         # Unicode の上付き・下付き文字。しおりを表示する書体にまずある字だけにする
-        # （θ の上付き `ᶿ` のような字は無いことが多く、文字化けする）。
-        SUPERSCRIPTS = '0123456789+-−=()ni'.chars.zip('⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱ'.chars).to_h.freeze
+        # （θ の上付き `ᶿ` のような字は無いことが多く、文字化けする）。`ˣ` は `eˣ` のために足した
+        # （macOS の Helvetica・Lucida Grande、Windows の Arial にある。2026-10-27）。
+        SUPERSCRIPTS = '0123456789+-−=()nix'.chars.zip('⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁻⁼⁽⁾ⁿⁱˣ'.chars).to_h.freeze
         SUBSCRIPTS = '0123456789+-−=()'.chars.zip('₀₁₂₃₄₅₆₇₈₉₊₋₋₌₍₎'.chars).to_h.freeze
 
         # render の HTML（<i>/<sup>/<sub> だけ）を区切る
