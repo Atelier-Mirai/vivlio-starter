@@ -60,6 +60,7 @@ project:
 ```yaml
 theme:
   style: simple      # image: 扉絵あり / simple: 扉絵なし
+  lead_size: 1.2     # リード文の文字の大きさ（本文に対する倍率）
 
   color: blue        # アクセントカラー（下記カラーパレットから選択）
   preface_color: indigo   # 前書き・後書き専用カラー（省略時は color と同じ）
@@ -71,6 +72,7 @@ theme:
     heading_offset: 15mm  # 見出しブロック（章番号〜リード）を下げる量
     heading_chars: 8      # 章題を 1 行に何文字入れるか
     lead_chars: 20        # リード文を 1 行に何文字入れるか
+    lead_size: 1.1        # 章扉のリード文の大きさ（省略時は theme.lead_size）
 
   ornament:          # 節見出しの装飾画像（style: image のときのみ有効）
     image: sakura
@@ -91,6 +93,8 @@ theme:
 | カスタム | `'#ff0000'` のような HEX 記法も指定可 |
 
 `style: simple` を選ぶと、`frontispiece` と `ornament` の設定は使われません。扉絵を使わずに仕上げたい本なら、この設定から始められます。
+
+`lead_size` は、章のリード文（`:::{.chapter-lead}`）を本文の何倍の大きさで組むかを決めます。1.0〜2.0 の値を書け、既定は 1.2 です。`simple` の章や付録にも効きます。`image` の章扉だけを変えたいときは、`frontispiece` の `lead_size` に書きます。
 
 ### page — ページ設定
 
@@ -247,7 +251,7 @@ legal:
 
 ### verify — 原稿の検証
 
-`vs build` と `vs preflight` は、画像の参照先と裸 URL（Markdown のリンク記法で書いていない URL）を毎回確かめます。ここで選べるのは、外部 URL に実際にアクセスして確かめるかどうかです。公開前のリンク確認に使います。
+`vs build` と `vs preflight` は、画像の参照先を毎回確かめます。ここで選べるのは、原稿に書いた外部 URL（リンク記法の URL も、そのまま書いた URL も）に実際にアクセスして確かめるかどうかです。公開前のリンク確認に使います。
 
 ```yaml
 verify:
