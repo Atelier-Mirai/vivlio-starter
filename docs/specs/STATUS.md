@@ -13,7 +13,7 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| `chapter-lead-size-spec.md` | 章リードの文字の大きさ（`theme.lead_size`・章扉だけの上書き `theme.frontispiece.lead_size`）・章扉からのはみ出しの検出・EPUB の章扉を横長の扉絵に（改善案 #125） | 段階 1 実装済み（2026-10-28）・段階 2 実装待ち |
+| `chapter-lead-size-spec.md` | 章リードの文字の大きさ（`theme.lead_size`・章扉だけの上書き `theme.frontispiece.lead_size`）・章扉からのはみ出しの検出・EPUB の章扉を横長の扉絵に（改善案 #125） | 実装済み（2026-10-28） |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 

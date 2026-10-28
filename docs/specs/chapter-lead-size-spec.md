@@ -1,13 +1,13 @@
 # 章リードの文字の大きさを選べるようにする仕様書
 
 > 作成日: 2026-10-28
-> ステータス: **段階 1 実装済み（2026-10-28）・段階 2（はみ出しの検出）実装待ち**（2026-10-28 に §8 の論点をすべて決定）
+> ステータス: **実装済み**（段階 1・2 とも 2026-10-28。§8 の論点はすべて決定）
 > 対象: 改善案 #125「章扉のリードの文字の大きさを選べず、長いリードが章扉からはみ出す・飾りの絵に重なる」
 > 決定事項（spiral-ruby の第7部で実測。根拠は §1）:
 > - **`theme.lead_size` と `theme.frontispiece.lead_size` の 2 つを足す。** 本文の基準の大きさに対する倍率で、`1.2` とも `1.2em` とも書ける。1.0〜2.0、刻みは自由（1.05 も可）（§2.3・§3）
 > - **`theme.lead_size` は本全体のリードの大きさ**（既定 1.2 = 今の `font-size: larger`）。`simple` の章・付録にも効く。**`theme.frontispiece.lead_size` は `image` の章扉だけの上書き**で、書かなければ `theme.lead_size` に従う。`theme.color` と `theme.appendix_color` の関係（改善案 #73）と同じ形（§2.2）
 > - **`image` の章扉では、1 行の字数（`lead_chars`）は変わらない。** 幅も倍率に合わせて動くので、行数は変わらず、高さだけが倍率に比例して縮む。幅を保ちたいときは `lead_chars` を増やす（§1）
-> - **章扉からはみ出したリードを、組んだ PDF から見つけて 🟡 で知らせる。** 収まる倍率を計算して添える（§4）
+> - **章扉からはみ出したリードを、組んだ PDF から見つけて 🟡 で知らせる。** 縮める字数と、収まる `lead_size`・`lead_chars` の目安を添える（§4）
 > - **飾りの絵との重なりは知らせない。** 扉絵ごとに飾りの位置が違い、どこまで許すかも著者によって違う（§5）
 > - **EPUB の章扉は、横長の扉絵に章番号と章題だけを焼き込む。** リードは焼き込まず、扉絵の次に本文の文字として、画面いっぱいの幅で流す。大きさは PDF と同じ `lead_size` に従う。節題は、章題に対する大きさの比を PDF にそろえる（§2.2.1・2026-10-28 に Kindle Previewer で 4 通りを見比べて決定）
 > 関連: `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（`chapter_lead_advance_mm`・`chapter_lead_size_rules`）, `stylesheets/chapter-common.css`・`stylesheets/image-header.css`（`.chapter-lead`）, `lib/vivlio_starter/cli/build/heading_image_composer.rb`（`frontispiece_svg`）, `lib/vivlio_starter/cli/build/epub_builder.rb`（`inject_frontispiece_headings!`・`epub_ornament_chars`）, `lib/vivlio_starter/cli/build/type3_font_check.rb`（組んだ PDF を調べる先例）, `heading-metrics-spec.md`（`lead_chars` の設計）, `epub-frontispiece-facsimile-spec.md`（リードを焼き込んでいた縦長の章扉。§2.2.1 で改めた）, `config-key-criteria-guidelines.md`
@@ -158,31 +158,39 @@ EPUB（クリーン・Kindle）の章扉は、横長の扉絵に章番号と章�
 `simple` の章は対象外。章題・リードの後にそのまま本文が続くので、リードがページをまたいでも崩れない。
 
 ```
-🟡 33 章のリードが章扉に収まらず、最後の 2 行が次のページへ送られています（contents/33-networks-and-systems.md）
-   リードを 50 字ほど縮めるか、
-   book.yml: theme.frontispiece.lead_size: 1.2 → 1.1
+🟡 リードが章扉に収まらず、次のページへ送られている章があります（2 章）
+   contents/33-networks-and-systems.md（第7部　通信・システム編）: 3 行が次のページへ。リードを 80 字ほど縮める
+   contents/12-object-oriented.md（第2部　オブジェクト指向編）: 1 行が次のページへ。リードを 30 字ほど縮める
+   book.yml で直すなら、次のどれか 1 つ:
+     theme.frontispiece.lead_size: 1.2 → 1.05
+     theme.frontispiece.lead_chars: 24 → 28
+     theme.frontispiece.lead_size: 1.2 → 1.1 と lead_chars: 24 → 27（リードの幅はそのまま）
 ```
 
-- 案は「縮める字数」と「収まる倍率」の 2 つ。縮める字数 = 送られた行数 × `lead_chars`（2 行 × 28 字 ≒ 50 字。10 字単位に丸める）
-- **収まる倍率** = 今の倍率 × 章扉に収まった行数 ÷ リードの全部の行数。§1.1 のとおり行数は倍率で変わらず、上端も動かないので、この比で収まる。案として見せる値は 0.05 刻みに切り下げる（読みやすさのため。設定に書ける値の刻みは自由、§2.3）。1.0 を下回るときは倍率の案を出さず、縮める案だけにする
-- 倍率の案は**いつも `theme.frontispiece.lead_size` で出す**。はみ出しは章扉の問題なので、直しても `simple` の章・付録のリードは小さくならない。`theme.frontispiece.lead_size` が空欄（`theme.lead_size` に従っている）なら、「`theme.frontispiece.lead_size: 1.1` を書き足す」と出す
-- 章扉の倍率はすべての章扉に効く。ほかの章扉のリードも小さくなることは、警告には書かない（著者は book.yml のコメントで分かる）
+- 1 回のビルドで 1 つの 🟡 にまとめる。章ごとの行に、送られた行数と「縮める字数」を添える。縮める字数 = 送られた行数 × `lead_chars`（10 字単位に切り上げる）
+- book.yml の案は、**はみ出したすべての章が収まる値**を 1 組だけ出す。キーは本全体に効くので、章ごとに違う値を出しても書けない。3 通りある（2026-10-28 ユーザー判断: `lead_size` だけでなく `lead_chars` の目安も出す）
+  - **大きさだけ**: 今の倍率 × 章扉に収まった行数 ÷ リードの全部の行数。§1.1 のとおり行数は倍率で変わらず、上端も動かないので、この比で収まる。0.05 刻みに切り下げる（読みやすさのため。設定に書ける値の刻みは自由、§2.3）。1.0 を下回るときは出さない
+  - **字数だけ**: 大きさはそのままで、1 行の字数を増やして行数を減らす。段落ごとの字数から、`lead_chars` を 1 ずつ増やしたときの行数を見積もり、収まる最小の字数を出す。1 行に入る字は、字数の指定より平均 0.5 字少ないとみる（行頭に来られない字や、途中で折れない語で、行の終わりが空く。満杯で数えると、段落の最後の行がぎりぎりの案を出し、組むと 1 行あふれた。spiral-ruby の 33 章で、25 字・9.91 行 → 実際は 11 行）。そのうえで、今の字数での見積もりと PDF の実際の行数の比で補正する。リードの幅が版面を超える字数（`warn_if_wider_than_text_area` が 🟡 を出す字数）になるときは出さない
+  - **大きさと字数の組**: 大きさを下げ、幅が変わらないように字数を増やす（spiral-ruby で選んだ 1.2 倍・28 字 → 1.1 倍・30 字の形）。字は小さく、1 行の字数は多くなるので、高さは倍率の 2 乗で縮む。大きさは 0.05 刻みで今より下げていき、収まる最初の値を出す。字数 = 今の字数 × 今の倍率 ÷ 新しい倍率（切り上げ）
+- 見積もりで出す案なので、組み直すと 1 行ずれることがある。ずれて収まらなければ、組み直したときにまた 🟡 が出る
+- 倍率の案は**いつも `theme.frontispiece.lead_size` で出す**。はみ出しは章扉の問題なので、直しても `simple` の章・付録のリードは小さくならない。`theme.frontispiece.lead_size` が空欄（`theme.lead_size` に従っている）なら「`（空欄）→ 1.05`」、`lead_chars` を書いていなければ「`20（既定）→ 28`」と出す
+- 章扉の倍率と字数はすべての章扉に効く。ほかの章扉のリードも変わることは、警告には書かない（著者は book.yml のコメントで分かる）
 
 ### 4.2 調べ方
 
-1. 組んだ HTML から、章ごとにリードの文（`.chapter-lead` の段落）を取る。対象は `theme.style: image` の章だけ（付録は常に `simple` なので入らない）
-2. 組んだ PDF を `pdftotext` で読み（`OutlineExtractor` が既に使っている）、リードの**最初の 15 字ほど**があるページと、**最後の 15 字ほど**があるページを探す。照合は、空白・改行・脚注の記号を除いた字の並びで行う（PDF の文字には行の折り返しと、用語の印「†」が混ざる）
-3. 2 つのページが違えば、はみ出している。`pdftotext -bbox-layout` で、章扉のページと次のページにあるリードの行数を数え、§4.1 の数を出す
+1. 組んだ HTML から、章ごとにリードの文（`.chapter-lead` の段落）を取る。対象は `<body>` に `vs-header-image` の付いた章だけ（付録は常に `vs-header-simple` なので入らない。前書きの章扉は入る）
+2. 組んだ PDF を `pdftotext` で 1 回読み、ページごとの文字にする。リードの**最初の 15 字**があるページと、**最後の 15 字**があるページを探す。最初の 15 字は、ほかのページにも出ることがある（前の部の終わりで「第3部は、整列とデータ構造編です」と次の部を案内する文。spiral-ruby で実際にあった）ので、出てくるページをすべて試す。照合は、空白・改行と用語の印「†」を除いた字の並びで行う（PDF の文字には行の折り返しと「†」が混ざる）
+3. 2 つのページが違えば、はみ出している。その 2 ページだけを `pdftotext -bbox-layout` で読み、リードの字の並びが通る行を数えて、章扉のページの行数と次のページの行数を出す
 
-- 900 ページの合本でも数秒で終わること。しおり（`OutlineExtractor`）から章の最初のページを引き、そのページと次のページだけを読めば、全ページを読まずに済む
+- 899 ページの合本（spiral-ruby）で、`pdftotext` の 1 回の読み取りは 2.1 秒（2026-10-28 実測）。しおりを引かなくても足りる
 - 見つからない章（リードの文が PDF の文字と一致しない）は、黙って飛ばす。誤った警告を出すより、ここは見逃す方を選ぶ（はみ出しの判定を間違えると、収まっている章に「縮めて」と言うことになる）
 
 ### 4.3 いつ走らせるか
 
 - **全章ビルド（`:full`）と単章ビルド（`:single`）の両方。** Type 3 の確かめと違い、単章でも章扉の組み方は同じなので結果が当てになる。リードを推敲する著者は単章で組み直すので、単章で出る方が役に立つ
-- PDF を作るときだけ。EPUB の章扉にはリードを焼き込まず、リードは本文の文字として流れるので、はみ出しは起きない（§2.2.1）
+- 閲覧用 PDF を作るときだけ。入稿用 PDF だけを組むビルドでは調べない（読む HTML は、閲覧用 PDF の仕上げで片付けられる前に読む必要がある。入稿用だけの本は少なく、閲覧用と紙面は同じ）。EPUB の章扉にはリードを焼き込まず、リードは本文の文字として流れるので、はみ出しは起きない（§2.2.1）
 - `theme.style: simple` の本では走らせない
-- ステップは `check chapter leads`。`:full` では `check type 3 fonts` の隣、`:single` では `entries.js + pdf` の後
+- ステップは `check chapter leads`。`:full` では、結合した閲覧用 PDF の仕上げ（`shorten destination names`）の後で、名前の付け替えと片付けの前。`:single` では `shorten single pdf destination names` の後
 
 ## 5. 飾りの絵との重なりは知らせない
 
@@ -228,7 +236,7 @@ EPUB（クリーン・Kindle）の章扉は、横長の扉絵に章番号と章�
 
 ### 6.4 はみ出しの検出
 
-- `Build::ChapterLeadCheck`（新設・`type3_font_check.rb` と同じ形の `check!(pdf_path)`）
+- `Build::ChapterLeadCheck`（新設・`type3_font_check.rb` と同じ形の `check!(pdf_path, entries)`）
 - 章ごとのリードの文は、組んだ HTML（`.cache` の章の HTML）から Nokogiri で取る
 - PDF の読み取りは `pdftotext`（poppler・`doctor` が確かめている依存）
 
@@ -256,6 +264,7 @@ EPUB（クリーン・Kindle）の章扉は、横長の扉絵に章番号と章�
 7. **EPUB の章扉は、横長の扉絵に章番号と章題だけを焼き込む。** リードは焼き込まず、扉絵の次に本文の文字として流す。縦長の扉絵とリードの組み合わせを 4 通り試し、Kindle Previewer の tablet・phone で見比べて決めた（§2.2.1）
 8. **EPUB のリードは画面いっぱいの幅で、大きさは `lead_size` に従う**（§2.2.1）
 9. **EPUB の節題は、章題に対する大きさの比を PDF にそろえて小さくする**（§2.2.1）
+10. **はみ出しの 🟡 には、`lead_size` だけでなく `lead_chars` の目安も添える。** 大きさだけ・字数だけ・大きさと字数の組の 3 通り（§4.1）
 
 検討した置き場所の案（不採用）:
 
@@ -270,7 +279,7 @@ EPUB（クリーン・Kindle）の章扉は、横長の扉絵に章番号と章�
 1. `book_settings_css_test`: 既定（1.2）で `--frontispiece-lead-width` が今と同じ値（回帰）。`theme.frontispiece.lead_size: 1.1`・`lead_chars: 28`・10.5pt で 114.09mm と `body.vs-header-image .chapter-lead { font-size: 1.1em; }`（EPUB 向けに `vs-epub` で除かない）、本全体の規則は 1.2em のまま。`theme.lead_size: 1.1` だけを書けば、2 つの規則と幅がすべて 1.1 倍に従う。`1.05` で `1.05em`（刻みが丸められない）。`1.2em` は `1.2` と同じ出力
 2. `frontmatter_generator_test`（または `parse_theme_settings` のテスト）: 2 つのキーそれぞれで、0.9 → 1.0 と 🟡、2.5 → 2.0 と 🟡、`12pt` → 書かなかった扱いと 🟡（倍率への直し方を含む）、`abc` → 書かなかった扱いと 🟡。`theme.frontispiece.lead_size` の空欄・行の削除 → `theme.lead_size` に従う（既定の 1.2 に化けない）。`theme.style: simple` でも `lead_size_value` が返る
 3. `epub_builder` のテスト: 章扉の画像の alt は章番号と章題だけで、リードは扉絵の後に本文の文字として残る（数式もそのまま・警告なし）。節題の字数が PDF の比から出る（A4・10 字・14 字で 18 字）。扉絵は `theme.frontispiece.image` の横長版を探す。`heading_image_composer` のテスト: 横長の扉絵の寸法・上下中央・中央 60% での折り返し（10 字指定で、ちょうど 10 字の章題が 1 行に収まる）
-4. `chapter_lead_check_test`: Prawn で作った PDF（1 ページ目にリードの頭、2 ページ目に尾）で、送られた行数と「収まる倍率」を出す。収まっている PDF・リードの無い章・文が一致しない章・`simple` の本では何も出さない。PDF は Prawn で作り、pdf-reader / pdftotext で読む（HexaPDF に頼らない）
+4. `chapter_lead_check_test`: Prawn で作った PDF（1 ページ目にリードの頭、2 ページ目に尾）で、送られた行数と 3 通りの案を出す。案の計算（大きさだけ・字数だけ・組）は、行数と段落の字数を与えて単体で確かめる（版面を超える字数・1.0 を下回る倍率では出さない）。収まっている PDF・リードの無い章・文が一致しない章・`simple` の本では何も出さない。PDF は Prawn で作り、pdf-reader / pdftotext で読む（HexaPDF に頼らない）
 5. 定義したテストの数と実行された数を照合する
 
 ## 10. 検証（実装後）

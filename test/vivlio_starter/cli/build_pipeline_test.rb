@@ -144,6 +144,7 @@ module VivlioStarter
           'merge all pdfs',
           'apply outline to output pdf',
           'shorten destination names',
+          'check chapter leads',
           'compress, rename and final clean',
           'check type 3 fonts'
         ]
@@ -290,6 +291,7 @@ module VivlioStarter
           'convert sections html',
           'entries.js + pdf',
           'shorten single pdf destination names',
+          'check chapter leads',
           'rename output pdfs',
           'final clean'
         ]
@@ -539,7 +541,7 @@ module VivlioStarter
         end
       end
 
-      def test_single_mode_timings_has_10_entries
+      def test_single_mode_timings_has_11_entries
         pipeline = build_single_pipeline(['45-test'])
         stub_single_pipeline_steps(pipeline)
 
@@ -549,14 +551,14 @@ module VivlioStarter
           end
         end
 
-        # single mode は 10 ステップ。章単位の 6 つ（clean / optimize images /
+        # single mode は 11 ステップ。章単位の 6 つ（clean / optimize images /
         # prepare theme images / preprocess sections / index scan and build /
-        # convert sections html）を full mode の表から導出し、単章固有の出力を 4 つ足す
-        # （リンク先の名前の付け替え・改善案 #81 を含む）
-        assert_equal 10, pipeline.timings.length, 'single mode は 10 ステップを記録するべき'
+        # convert sections html）を full mode の表から導出し、単章固有の出力を 5 つ足す
+        # （リンク先の名前の付け替え・改善案 #81、章扉のリードの確かめ・改善案 #125 を含む）
+        assert_equal 11, pipeline.timings.length, 'single mode は 11 ステップを記録するべき'
       end
 
-      def test_full_mode_timings_has_20_entries
+      def test_full_mode_timings_has_21_entries
         pipeline = build_full_pipeline
         stub_pipeline_steps(pipeline)
 
@@ -567,8 +569,8 @@ module VivlioStarter
         # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶんで
         # 元の 15 から 2 つ、過剰解像度の縮小（image-format-per-target-spec.md §3.6）で
         # さらに 1 つ、リンク先の名前の付け替え（改善案 #81）でもう 1 つ、
-        # Type 3 書体の点検（改善案 #124）でもう 1 つ増えている。
-        assert_equal 20, pipeline.timings.length, 'full mode は 20 ステップを記録するべき'
+        # Type 3 書体の点検（改善案 #124）でもう 1 つ、章扉のリードの確かめ（改善案 #125）でもう 1 つ増えている。
+        assert_equal 21, pipeline.timings.length, 'full mode は 21 ステップを記録するべき'
       end
 
       private

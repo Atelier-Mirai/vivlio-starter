@@ -38,7 +38,7 @@ module VivlioStarter
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
       PDF_ONLY = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter',
-        'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'compress, rename and final clean',
+        'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'check chapter leads', 'compress, rename and final clean',
         'check type 3 fonts'
       ]).freeze
 
@@ -58,7 +58,7 @@ module VivlioStarter
 
       PDF_PRINT = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'merge all pdfs',
-        'apply outline to output pdf', 'shorten destination names', 'compress and rename', 'print pdf', 'check type 3 fonts', 'final clean'
+        'apply outline to output pdf', 'shorten destination names', 'check chapter leads', 'compress and rename', 'print pdf', 'check type 3 fonts', 'final clean'
       ]).freeze
 
       EPUB_ONLY = (PREFIX + ['generate epub', 'final clean']).freeze
@@ -67,7 +67,7 @@ module VivlioStarter
       # 'snapshot pre-dedup html for epub' ステップは撤去された（P4 §3.4-3）。
       PDF_EPUB = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup',
-        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names',
+        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'check chapter leads',
         'compress and rename', 'check type 3 fonts', 'generate epub', 'final clean'
       ]).freeze
 
@@ -78,7 +78,7 @@ module VivlioStarter
 
       ALL = (PREFIX + [
         'build overall pdf', 'shrink oversized images', 'backlink dedup',
-        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names',
+        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf', 'shorten destination names', 'check chapter leads',
         'compress and rename', 'print pdf', 'check type 3 fonts', 'generate epub', 'final clean'
       ]).freeze
 
@@ -122,7 +122,7 @@ module VivlioStarter
       SINGLE_MODE = [
         'clean', 'optimize images', 'prepare theme images',
         'preprocess sections', 'index scan and build', 'convert sections html',
-        'entries.js + pdf', 'shorten single pdf destination names', 'rename output pdfs', 'final clean'
+        'entries.js + pdf', 'shorten single pdf destination names', 'check chapter leads', 'rename output pdfs', 'final clean'
       ].freeze
 
       PREFLIGHT_MODE = [
@@ -200,7 +200,7 @@ module VivlioStarter
         'build overall pdf' => :pdf, 'extract rotate table images' => :pdf,
         'generate entries.js' => :pdf, 'shrink oversized images' => :pdf, 'backlink dedup' => :pdf,
         'build front and back matter' => :pdf, 'merge all pdfs' => :pdf,
-        'apply outline to output pdf' => :pdf, 'shorten destination names' => :pdf, 'compress, rename and final clean' => :pdf,
+        'apply outline to output pdf' => :pdf, 'shorten destination names' => :pdf, 'check chapter leads' => :pdf, 'compress, rename and final clean' => :pdf,
         'compress and rename' => :pdf, 'print pdf' => :pdf, 'check type 3 fonts' => :pdf,
         'generate epub' => :epub,
         'final clean' => :join

@@ -6,6 +6,7 @@ require 'tmpdir'
 require_relative 'backlink_dedup_orchestrator'
 require_relative 'destination_names'
 require_relative 'type3_font_check'
+require_relative 'chapter_lead_check'
 require_relative 'epub_builder'
 require_relative 'epub_flow'
 require_relative 'print_pdf_builder'
@@ -336,6 +337,10 @@ module VivlioStarter
             # 結合までは長い名前を手がかりに使うので、付け替えは仕上がった閲覧用 PDF にだけ行う
             ['shorten destination names', -> { Build::DestinationNames.shorten!(Build::PdfMerger.merged_output_pdf) },
              t.pdf, :pdf, :whole_book],
+            # 章扉に収まらず次のページへ送られたリードを、仕上がった閲覧用 PDF で調べる（chapter-lead-size-spec.md §4）。
+            # リードの文は HTML から取るので、片付け（compress, rename and final clean）より前に置く
+            ['check chapter leads', -> { Build::ChapterLeadCheck.check!(Build::PdfMerger.merged_output_pdf, entries) },
+             t.pdf, :pdf, :whole_book],
             # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。この行が立つのは他ターゲットが
             # 無いときだけなので、掃除を :pdf 相に含めても EPUB 枝と競合しない。
             ['compress, rename and final clean', -> { run_step12_rename_and_clean },
@@ -392,6 +397,8 @@ module VivlioStarter
           add_step('entries.js + pdf',   -> { generate_entries_and_pdf })
           # 全章の 'shorten destination names' とは対象の PDF が違うので、名前も分ける
           add_step('shorten single pdf destination names', -> { Build::DestinationNames.shorten!(single_mode_output_pdf) })
+          # リードを推敲する著者は単章で組み直すので、単章でも章扉からのはみ出しを知らせる（chapter-lead-size-spec.md §4.3）
+          add_step('check chapter leads', -> { Build::ChapterLeadCheck.check!(single_mode_output_pdf, entries) })
           add_step('rename output pdfs', -> { rename_single_mode_pdf })
           add_step('final clean',        -> { run_final_clean })
         end
