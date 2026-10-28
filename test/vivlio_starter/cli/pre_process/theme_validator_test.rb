@@ -101,6 +101,57 @@ module VivlioStarter
         end
       end
 
+      # 章リードの倍率: 範囲外は寄せた値と書き直し案を示す（chapter-lead-size-spec.md §2.3）
+      def test_lead_size_out_of_range_warns_with_fix
+        small = capture_stdout { TV.validate_lead_size('theme.lead_size', 0.9) }
+        large = capture_stdout { TV.validate_lead_size('theme.frontispiece.lead_size', 2.5) }
+
+        assert_match(/theme\.lead_size は 1\.0 以上にしてください/, small)
+        assert_match(/lead_size: 0\.9 → 1\.0/, small)
+        assert_match(/theme\.frontispiece\.lead_size は 2\.0 以下にしてください/, large)
+        assert_match(/lead_size: 2\.5 → 2\.0/, large)
+      end
+
+      # 直接の大きさは、今の判型の本文の大きさで割った倍率を示す（本文 10.5pt で 12pt → 1.14）
+      def test_lead_size_length_suggests_ratio_of_base_font
+        out = PreProcessCommands::BookSettingsCss.stub(:build_page_cfg, { base_font_size: '10.5pt' }) do
+          capture_stdout { TV.validate_lead_size('theme.lead_size', '12pt') }
+        end
+
+        assert_match(/本文に対する倍率（1\.0〜2\.0）で書いてください（12pt）。1\.2 倍で組みます/, out)
+        assert_match(/lead_size: 12pt → 1\.14/, out)
+      end
+
+      # 章扉の倍率が読めなければ、本全体に従うと案内する
+      def test_frontispiece_lead_size_invalid_falls_back_to_book
+        out = capture_stdout { TV.validate_lead_size('theme.frontispiece.lead_size', 'large') }
+
+        assert_match(/theme\.lead_size に従います/, out)
+        assert_match(/lead_size: large → 1\.2 など/, out)
+      end
+
+      # 範囲内・em 付き・空欄は警告しない
+      def test_valid_lead_sizes_do_not_warn
+        assert_empty capture_stdout { TV.validate_lead_size('theme.lead_size', 1.1) }
+        assert_empty capture_stdout { TV.validate_lead_size('theme.lead_size', '1.05em') }
+        assert_empty capture_stdout { TV.validate_lead_size('theme.frontispiece.lead_size', nil) }
+      end
+
+      # validate! : 本全体の倍率は simple でも検証し、章扉の倍率は image のときだけ検証する
+      def test_validate_bang_checks_frontispiece_lead_size_only_for_image_style
+        with_temp_theme_images do |_root|
+          simple = { theme: { style: 'simple', lead_size: 0.5, frontispiece: { lead_size: 0.5 } } }
+          image = { theme: { style: 'image', lead_size: 1.2, frontispiece: { lead_size: 0.5 } } }
+
+          simple_out = capture_stdout { TV.validate!(simple) }
+          image_out = capture_stdout { TV.validate!(image) }
+
+          assert_match(/theme\.lead_size は/, simple_out)
+          refute_match(/theme\.frontispiece\.lead_size/, simple_out)
+          assert_match(/theme\.frontispiece\.lead_size は 1\.0 以上/, image_out)
+        end
+      end
+
       # theme_image_available? : base 画像があれば true（バリアント未生成でも生成元になる）
       def test_theme_image_available_true_for_base_image
         with_temp_theme_images do |root|

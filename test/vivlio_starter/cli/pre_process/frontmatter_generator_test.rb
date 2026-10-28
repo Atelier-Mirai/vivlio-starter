@@ -109,6 +109,15 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
     assert_includes config[:path], 'not_a_real_theme_image_xyz.webp',
                     'プレースホルダーSVGに画像名が埋め込まれるべき（CGIロード順の回帰）'
   end
+
+  # 章扉の倍率は空欄・読めない値なら書かなかった扱い（parse_theme_settings が本全体へ寄せる）。
+  # 画像名だけの短縮形にも倍率は無い
+  def test_should_read_frontispiece_lead_size_or_leave_it_unset
+    assert_equal 1.1, FG.parse_frontispiece_config({ image: 'not_a_real_theme_image_xyz', lead_size: 1.1 })[:lead_size]
+    assert_nil FG.parse_frontispiece_config({ image: 'not_a_real_theme_image_xyz', lead_size: nil })[:lead_size]
+    assert_nil FG.parse_frontispiece_config({ image: 'not_a_real_theme_image_xyz', lead_size: '12pt' })[:lead_size]
+    assert_nil FG.parse_frontispiece_config('not_a_real_theme_image_xyz')[:lead_size]
+  end
 end
 
 # theme.color のパース（無効値のフォールバック）を検証
@@ -131,5 +140,45 @@ class FrontmatterGeneratorThemeColorTest < Minitest::Test
     assert_equal ['green', 'var(--accent-green)'], result
     assert_empty out, 'parse_theme_color は章ごとに呼ばれるため警告を出さないこと'
     assert_empty err
+  end
+end
+
+# 章リードの倍率（theme.lead_size / theme.frontispiece.lead_size）の読み方（chapter-lead-size-spec.md §2.2.1）
+class FrontmatterGeneratorLeadSizeTest < Minitest::Test
+  FG = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator
+
+  # 数値と em 付きは同じ倍率。刻みは丸めない
+  def test_should_read_number_and_em_as_same_ratio
+    assert_equal [1.2, nil], FG.parse_lead_size(1.2)
+    assert_equal [1.2, nil], FG.parse_lead_size('1.2em')
+    assert_equal [1.05, nil], FG.parse_lead_size('1.05')
+    assert_equal [1.0, nil], FG.parse_lead_size(1)
+  end
+
+  # 範囲外は端へ寄せ、寄せた理由を返す（警告は ThemeValidator が一度だけ出す）
+  def test_should_clamp_out_of_range_with_reason
+    assert_equal [1.0, :too_small], FG.parse_lead_size(0.9)
+    assert_equal [2.0, :too_large], FG.parse_lead_size('2.5em')
+  end
+
+  # 直接の大きさと読めない値は、書かなかった扱い（nil）と理由。空欄は理由なし
+  def test_should_treat_lengths_and_garbage_as_unset
+    assert_equal [nil, :length], FG.parse_lead_size('12pt')
+    assert_equal [nil, :length], FG.parse_lead_size('16Q')
+    assert_equal [nil, :invalid], FG.parse_lead_size('large')
+    assert_equal [nil, :invalid], FG.parse_lead_size('110%')
+    assert_equal [nil, nil], FG.parse_lead_size(nil)
+    assert_equal [nil, nil], FG.parse_lead_size('')
+  end
+
+  # 章扉の倍率を書かなければ、本全体の倍率に従う（既定値 1.2 に化けない）
+  def test_should_fall_back_to_book_lead_size_for_frontispiece
+    config = VivlioStarter::CLI::Common::CONFIG
+    cfg = config.with(theme: config.theme.with(lead_size: 1.1, frontispiece: config.theme.frontispiece.with(lead_size: nil)))
+
+    settings = FG.parse_theme_settings(cfg)
+
+    assert_equal 1.1, settings[:lead_size_value]
+    assert_equal 1.1, settings[:frontispiece_lead_size_value]
   end
 end

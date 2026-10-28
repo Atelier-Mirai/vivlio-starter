@@ -372,7 +372,7 @@ module VivlioStarter
           # 共通フェーズの最後に置く——このフェーズは「参照先 id が EPUB に実在するか」を
           # 照合して死リンクを解除する（RSC-012 恒常対策）ので、id を消しうる処理が
           # すべて終わったあとの DOM を見なければならない。以前は先頭に置いており、
-          # あとから走る inject_heading_images_for_epub! が見出し・章リードの中身を
+          # あとから走る inject_heading_images_for_epub! が見出しの中身を
           # 合成画像へ差し替えた時点でアンカーが消え、照合をすり抜けた死リンクが
           # そのまま残っていた（実測 102 件）。
           post_process_index_glossary_for_epub!(chapter_htmls)
@@ -1028,8 +1028,6 @@ module VivlioStarter
             frontispiece: theme[:frontispiece],
             ornament: theme[:ornament],
             font_family: epub_heading_font_family,
-            lead_font_family: epub_lead_font_family,
-            lead_ratio: frontispiece_lead_ratio,
             metrics: epub_heading_metrics,
             number_color: theme[:number_color],
             flavor:
@@ -1039,75 +1037,35 @@ module VivlioStarter
           html_files
         end
 
-        # リード焼き込み用の本文フォントスタック（PDF の本文=明朝系に合わせる）。
-        def epub_lead_font_family
-          body_font = Common::CONFIG.typography.body.font.to_s.strip
-          stack = []
-          stack << "'#{body_font}'" unless body_font.empty?
-          stack.concat(["'Hiragino Mincho ProN'", "'Noto Serif JP'", "'Noto Serif CJK JP'", 'serif'])
-          stack.join(', ')
-        end
-
-        # リード焼き込み幅の画像幅比 ＝ 章リードの幅 ÷ 判型幅（page.width）。
-        # page.width が明示された構成では実比を導き、preset 構成（width 未指定）や単位不明時は
-        # 0.60（A5 で 88/148 相当・モック検証値）へフォールバックする。portrait 画像幅は綴じ補正で
-        # 判型幅と数 % ずれ得るが誤差として許容する。
-        #
-        # リード幅は book.yml では「1 行の文字数」で指定される（heading-metrics-spec §1-2）ため、
-        # PDF 側と同じ換算（文字数 × 1 字の送り）で mm へ戻してから比を取る。換算を共有するのは
-        # ここと PDF で幅が食い違うと同じ原稿の扉が両ターゲットで別物になるため（§5-1）。
-        def frontispiece_lead_ratio
-          settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
-          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
-          lead_mm = frontispiece_lead_width_mm(settings, page_cfg)
-          # page.width は book.yml では未指定が普通（page.use のプリセット由来）なので、
-          # 解決済みの page_cfg から取る。CONFIG.page[:width] を直接見ると nil になり
-          # 既定 0.60 へ落ちて PDF の扉と幅がずれる。
-          page_mm = Units.length_to_mm(page_cfg[:width])
-          lead_ratio_from(lead_mm, page_mm)
-        rescue StandardError
-          0.60
-        end
-
-        # 章リードの幅（mm）。文字数指定が無ければ theme.css の既定（88.9mm）に相当する
-        # 20 文字として扱う。
-        def frontispiece_lead_width_mm(settings, page_cfg = nil)
-          chars = epub_heading_metrics(settings)[:lead_chars]
-          page_cfg ||= PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
-          chars * PreProcessCommands::BookSettingsCss.chapter_lead_advance_mm(page_cfg)
-        end
-
-        # 見出しの寸法（book.yml の文字数指定）。合成画像側の字面・折返しをこれで決める。
+        # 見出しの寸法。合成画像側の字面・折返しをこれで決める。
         # 既定値は PDF 側（BookSettingsCss::DEFAULT_*_CHARS ＝ theme.css の既定）と共有する
         # ——別々に持つと同じ原稿の扉・節絵が PDF と EPUB で違う字数に組まれる（§5-2）。
+        # 節題だけは、字数でなく章題との大きさの比を PDF にそろえる（epub_ornament_chars）。
         # @return [Hash]
         def epub_heading_metrics(settings = nil)
           settings ||= PreProcessCommands::FrontmatterGenerator.parse_theme_settings
           bsc = PreProcessCommands::BookSettingsCss
-          {
-            heading_chars: settings[:heading_chars_value] || bsc::DEFAULT_HEADING_CHARS,
-            lead_chars: settings[:lead_chars_value] || bsc::DEFAULT_LEAD_CHARS,
-            ornament_chars: settings[:ornament_heading_chars_value] || bsc::DEFAULT_ORNAMENT_HEADING_CHARS,
-            heading_offset_ratio: heading_offset_ratio(settings)
-          }
+          heading_chars = settings[:heading_chars_value] || bsc::DEFAULT_HEADING_CHARS
+          ornament_chars = settings[:ornament_heading_chars_value] || bsc::DEFAULT_ORNAMENT_HEADING_CHARS
+          { heading_chars:, ornament_chars: epub_ornament_chars(heading_chars, ornament_chars) }
         end
 
-        # 見出しブロックの下げ量を判型比へ換算する。合成画像は判型と縦横比が揃っているので、
-        # mm 指定をそのまま画像高さの比として使える（PDF と同じ見え方になる）。
-        def heading_offset_ratio(settings)
-          offset_mm = Units.length_to_mm(settings[:heading_offset_value]) or return 0.0
-          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
-          page_mm = Units.length_to_mm(page_cfg[:height])
-          return 0.0 unless page_mm&.positive?
-
-          (offset_mm / page_mm).clamp(0.0, 0.25)
-        end
-
-        # リード幅比の純計算。導けない（幅欠落・非正）ときは 0.60、導ける場合は [0.40, 0.75] に収める。
-        def lead_ratio_from(lead_mm, page_mm)
-          return 0.60 unless lead_mm && page_mm&.positive?
-
-          (lead_mm / page_mm).clamp(0.40, 0.75)
+        # EPUB の節題の字数。章題に対する節題の大きさを、PDF と同じ比にそろえる。
+        #
+        # PDF の章題は判型で決まる大きさ、節題は版面幅 ÷ ornament.heading_chars で、A4 なら
+        # 節題は章題の 0.73 倍になる。EPUB の章扉は横長の帯で、左右の飾りを避けて章題を
+        # 中央 60% に組むぶん、PDF より小さい。節題を book.yml の字数のまま組むと、章題と
+        # ほぼ同じ大きさに見える（Kindle Previewer で 0.94 倍）。そこで節題を、PDF の比に
+        # なる字数へ置き換える（A4・章題 10 字・節題 14 字なら 18 字）。
+        def epub_ornament_chars(heading_chars, ornament_chars)
+          bsc = PreProcessCommands::BookSettingsCss
+          page_cfg = bsc.build_page_cfg(Common::CONFIG)
+          scale = bsc.paper_scale_of(page_cfg)
+          section_q = bsc.section_title_font_q(ornament_chars, bsc.text_area_width_mm(page_cfg), scale).to_f
+          ratio = section_q / bsc.chapter_title_font_q(scale)
+          HeadingImageComposer::ORNAMENT_TEXT_WIDTH / (ratio * HeadingImageComposer.frontispiece_title_ratio(heading_chars))
+        rescue StandardError
+          ornament_chars
         end
 
         # 図解注釈（showcase）の生成物サブディレクトリ（images/showcase/）。
@@ -1183,13 +1141,23 @@ module VivlioStarter
           palette_css = File.exist?(theme_css_path) ? File.read(theme_css_path, encoding: 'utf-8') : ''
 
           {
-            frontispiece: resolve_theme_image_file(theme_image_rel(settings[:frontispiece_path])),
+            frontispiece: resolve_theme_image_file(theme_image_rel(frontispiece_landscape_path(settings))),
             ornament: resolve_theme_image_file(theme_image_rel(settings[:ornament_path])),
             number_color: resolve_css_color(palette_css, settings[:theme_accent_value])
           }
         rescue StandardError => e
           Common.log_warn("[EPUB] テーマ設定の読み取りに失敗（扉絵の画像化をスキップ）: #{e.message}")
           nil
+        end
+
+        # EPUB の扉絵に使う、theme.frontispiece.image の横長（landscape）版。PDF の章扉は縦長版を
+        # ページの背景に敷くが、EPUB の章扉は見出しだけの横長の帯にする（chapter-lead-size-spec.md §2.2.1）。
+        # 横長版は節絵と同じ解決で探し、無ければ生成する（著者が置いた画像でも作れる。
+        # 未指定なら既定の sakura）。
+        def frontispiece_landscape_path(settings)
+          raw = settings[:theme_cfg]&.dig(:frontispiece)
+          source = raw.is_a?(String) ? raw : raw&.dig(:image)
+          PreProcessCommands::ThemeImageResolver.resolve_ornament_path(source, allow_generation: true)
         end
 
         # テーマ画像の解決結果（素の相対パス or url(...) or 外部 URL）から
@@ -1327,13 +1295,12 @@ module VivlioStarter
           base.match?(/\A\d{2}(?=-|\z)/) && TokenResolver::Resolver.new.resolve_file(base).kind == :chapter
         end
 
-        # 本文の章の h1 へファクシミリ合成画像を注入する。
-        # PDF の縦長章扉（左上飾り→番号→タイトル→リード→右下飾り）を 1 枚に焼き込み、
-        # リフローでも千切れない完全なページとして運ぶ（epub-frontispiece-facsimile-spec.md）。
-        # 焼き込みに成功した章のみ、二重表示を避けるため HTML 側の chapter-lead を取り除く。
+        # 本文の章の h1 へ扉絵の合成画像を注入する。
+        # 横長の扉絵に章番号と章題だけを焼き込む。リード（chapter-lead）は焼き込まず、扉絵の
+        # 次に本文の文字として残す——端末の文字サイズに従い、切れない（chapter-lead-size-spec.md §2.2.1）。
         #
         # 章扉かどうかは番号ではなく章の種類で決める（呼び出し側の main_chapter_file?）。
-        # 章番号を振らない本（heading-numbering-spec.md R4）でも、番号の行を空けて題とリードを焼き込む
+        # 章番号を振らない本（heading-numbering-spec.md R4）でも、番号の行を空けて題を焼き込む
         def inject_frontispiece_headings!(doc, context)
           return false unless context[:frontispiece]
 
@@ -1345,63 +1312,17 @@ module VivlioStarter
             title = h1['data-chapter-title'].to_s.strip
             next if number.empty? && title.empty?
 
-            lead_el = frontispiece_lead_element(h1)
-            lead = extract_lead_text(lead_el)
-
             src = heading_image_src(
               image_path: context[:frontispiece], number:, title:, kind: :frontispiece,
-              lead:, lead_font_family: context[:lead_font_family], lead_ratio: context[:lead_ratio],
               metrics: context[:metrics],
               font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
 
-            apply_image_heading!(h1, src, [number, title, lead], doc, also_from: lead_el)
-            lead_el&.remove # 焼き込み成功時のみ除去（合成失敗なら実テキストのまま simple 縮退）
+            apply_image_heading!(h1, src, [number, title], doc)
             changed = true
           end
           changed
-        end
-
-        # h1 直後の chapter-lead 要素（無ければ nil）。
-        def frontispiece_lead_element(h1)
-          el = h1.next_element
-          el && el['class'].to_s.split.include?('chapter-lead') ? el : nil
-        end
-
-        # chapter-lead の段落テキストを抽出する。段落は "\n" 区切り（合成側で段落ごとに字下げ）。
-        # インライン装飾はプレーン文字化される（仕様 §2.1）。空白・改行は 1 空白へ正規化する。
-        #
-        # リード内の <img>（インライン数式 SVG 等）は alt テキストへ置換して統合する——
-        # .text だけだと <img> は無音で脱落する。数式 SVG の alt には元 LaTeX が保存されている
-        # （math_transformer.rb）ため、$…$ / \(…\) デリミタを剥いだ素の式文字列を焼き込む。
-        # 注意: 本注入は両フレーバ共通フェーズで走り、Kindle 数式テキスト化
-        # （kindle-inline-math-textify-spec.md・Kindle 専用フェーズ）より前にリードを除去する。
-        # リード内数式の救済は本メソッドが唯一の機会（同仕様側では対処不能）。
-        def extract_lead_text(lead_el)
-          return '' unless lead_el
-
-          el = lead_el.dup # 元ノードは呼び出し側が remove する。ここでの img 置換は複製に対して行う
-          imgs = el.css('img')
-          imgs.each do |img|
-            alt = img['alt'].to_s.sub(/\A\s*(?:\$|\\\()/, '').sub(/(?:\$|\\\))\s*\z/, '').strip
-            img.replace(Nokogiri::XML::Text.new(alt, img.document))
-          end
-          warn_lead_contains_images(lead_el, imgs.size) unless imgs.empty?
-
-          paragraphs = el.css('p')
-          texts = paragraphs.empty? ? [el.text] : paragraphs.map(&:text)
-          texts.map { |t| t.gsub(/\s+/, ' ').strip }.reject(&:empty?).join("\n")
-        end
-
-        # リード内に画像（インライン数式等）があるときの著者向け警告。alt で焼き込む旨と回避策を添える。
-        def warn_lead_contains_images(lead_el, count)
-          h1 = lead_el.previous_element
-          chapter = h1 ? h1['data-chapter-number-display'].to_s.strip : ''
-          Common.log_warn(
-            "[EPUB] 章リードに画像/数式が #{count} 件あります#{chapter.empty? ? '' : "（#{chapter}）"}",
-            detail: '章扉画像へは alt テキストとして焼き込みます。数式・画像はリードでなく本文へ移すことを推奨します'
-          )
         end
 
         # 節扉（article.section-topic 直下の h2）に節絵画像を注入する。
@@ -1444,10 +1365,9 @@ module VivlioStarter
         # `@chapref:ch-build` は章題の中のアンカーを行き先にしているので、章扉を画像にすると
         # 章への参照がすべて行き先を失う（chapter-reference-spec.md §6）。
         #
-        # @param also_from [Nokogiri::XML::Element, nil] 見出しと一緒に消える要素（章リード）
-        def apply_image_heading!(heading, src, segments, doc, also_from: nil)
+        def apply_image_heading!(heading, src, segments, doc)
           label = segments.reject(&:empty?).join(' ')
-          anchor_ids = link_anchor_ids_within(heading, also_from)
+          anchor_ids = link_anchor_ids_within(heading)
 
           heading.children.remove
           add_class(heading, 'vs-image-heading-epub')
@@ -1499,23 +1419,21 @@ module VivlioStarter
         # 出力先は base_dir（消費者 dir）配下の images/headings/（著者 dir を汚さない・P4 §5.2-b）。
         # ツール不在・合成失敗時は nil（→ simple 縮退）。
         def heading_image_src(image_path:, number:, title:, kind:, font_family:,
-                              lead: '', lead_font_family: nil, lead_ratio: 0.60,
                               number_color: '#333333', flavor: :epub, base_dir: '.', metrics: nil)
-          # LAYOUT_VERSION ソルトでレイアウト刷新（帯切り出し→全高＋リード焼き込み）を鍵に反映する——
+          # LAYOUT_VERSION ソルトでレイアウト刷新（縦長→横長の扉絵など）を鍵に反映する——
           # image_path/番号/タイトルが同じでもレイアウトが変わるため、--no-clean 時に残る旧画像を
-          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio / metrics も鍵に含め、リードや
-          # 文字数指定の差異を取りこぼさない（字数を変えたのに旧画像が使われる事故を防ぐ）。
+          # 掴む事故を防ぐ（§4.4）。metrics も鍵に含め、文字数指定の差異を取りこぼさない
+          # （字数を変えたのに旧画像が使われる事故を防ぐ）。
           key = Digest::SHA256.hexdigest(
             [HeadingImageComposer::LAYOUT_VERSION, flavor, kind, image_path,
-             number, title, lead, lead_ratio, metrics, font_family, lead_font_family, number_color].join('|')
+             number, title, metrics, font_family, number_color].join('|')
           )[0, 16]
           dir = File.join(base_dir, Common.images_dir, HEADINGS_REL_SUBDIR)
           filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
           abs = File.join(dir, filename)
 
           unless File.exist?(abs)
-            composer_args = { image_path:, number:, title:, kind:, font_family:,
-                              lead:, lead_font_family:, lead_ratio:, number_color: }
+            composer_args = { image_path:, number:, title:, kind:, font_family:, number_color: }
             composer_args[:metrics] = metrics if metrics
             data = if flavor == :kindle
                      HeadingImageComposer.render(**composer_args)

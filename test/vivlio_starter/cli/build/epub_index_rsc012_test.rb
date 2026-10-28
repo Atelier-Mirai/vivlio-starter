@@ -165,7 +165,8 @@ module VivlioStarter
       # 見出しの中身は合成画像へ置き換わるが、索引・用語集のアンカーは空 span として残す。
       # 索引はこの id を行き先にしているので、要素ごと消すと行き先の無いリンクになり
       # RSC-012 になる。主要参照は「章題にしか無い語はその章題を指すほかない」の分岐で
-      # 章題・章リードへ着地しやすく、実測では 89 件中 27 件がここで消えていた。
+      # 章題へ着地しやすく、実測では 89 件中 27 件がここで消えていた。章リードは画像にせず
+      # 本文の文字として残すので、リードのアンカーはリードの中にそのまま残る。
       def test_should_keep_index_anchors_when_heading_becomes_an_image
         doc = PostProcessCommands::HtmlParser.parse_html_document(<<~HTML)
           <html><body>
@@ -176,12 +177,13 @@ module VivlioStarter
         h1 = doc.css('h1').first
         lead = doc.css('.chapter-lead').first
 
-        Builder.apply_image_heading!(h1, 'images/headings/x.svg', %w[第14章 ビルド], doc, also_from: lead)
+        Builder.apply_image_heading!(h1, 'images/headings/x.svg', %w[第14章 ビルド], doc)
 
         assert_equal 1, h1.css('img').size, '見出しの中身は合成画像 1 枚になる'
         assert_equal '第14章 ビルド', h1.css('img').first['alt'], '見出しテキストは alt へ格納される'
-        assert_equal %w[idx-amazon-3 idx-kindle-7], h1.css('span.vs-epub-anchor').map { it['id'] },
-                     '見出しと章リードの索引アンカーが空 span として残る'
+        assert_equal %w[idx-amazon-3], h1.css('span.vs-epub-anchor').map { it['id'] },
+                     '見出しの索引アンカーが空 span として残る'
+        assert_equal 1, lead.css('#idx-kindle-7').size, '章リードのアンカーはリードの中に残る'
         assert_empty h1.css('#fnref9'),
                      '索引・用語集以外の id は復活させない（別フェーズが意図して外した id と競合するため）'
       end

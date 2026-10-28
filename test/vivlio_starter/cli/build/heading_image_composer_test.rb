@@ -8,7 +8,7 @@
 #   （lib/vivlio_starter/cli/build/heading_image_composer.rb）
 #
 # 検証内容:
-#   - 扉絵（frontispiece）SVG が <image>（data URI）＋ 番号・タイトル <text> を組むこと
+#   - 扉絵（frontispiece）SVG が横長の <image>（data URI）＋ 番号・タイトル <text> を組むこと
 #   - 節絵（ornament）SVG が番号色付き <tspan> ＋ タイトルを組むこと
 #   - 長いタイトルが複数行（tspan）へ折り返されること
 #   - HTML/XML 予約文字がエスケープされること
@@ -40,13 +40,13 @@ module VivlioStarter
           ((width * HeadingImageComposer::ORNAMENT_TEXT_WIDTH) / chars).round
         end
 
-        def test_should_compose_frontispiece_with_image_and_heading_text
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第1章', '春のお花見', '', FONT, nil, 0.60, METRICS)
+        # 扉絵は横長（landscape）の画像に章番号と章題だけを焼き込む（chapter-lead-size-spec.md §2.2.1）
+        def test_should_compose_frontispiece_band_with_image_and_heading_text
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '第1章', '春のお花見', FONT, METRICS)
 
           assert svg.start_with?('<svg')
-          # 原画は全高で出す（帯切り出しは廃止・facsimile 仕様）
-          assert_includes svg, %(viewBox="0 0 1000 1414")
-          assert_includes svg, %(width="1000" height="1414")
+          assert_includes svg, %(viewBox="0 0 2880 1205")
+          assert_includes svg, %(width="2880" height="1205")
           assert_includes svg, %(xlink:href="#{DATA_URI}")
           assert_includes svg, 'aria-label="第1章 春のお花見"'
           assert_includes svg, '第1章'
@@ -55,66 +55,48 @@ module VivlioStarter
           assert_includes svg, '<line'
         end
 
-        # リードを渡すと段落先頭が全角字下げされた <tspan> として焼き込まれる
-        def test_should_bake_lead_paragraphs_into_frontispiece
-          lead = "最初の段落です。\n二つ目の段落です。"
-          svg = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', '章タイトル', lead, FONT, nil, 0.60, METRICS)
+        # 番号と章題の塊は帯の上下中央に置く（左上・右下の飾りの間）
+        def test_should_center_heading_block_vertically_in_band
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '第1章', '春のお花見', FONT, METRICS)
+          ys = svg.scan(/<(?:text|tspan) [^>]*\by="(\d+)"/).flatten.map(&:to_i)
 
-          assert_includes svg, '　最初の段落です。', '段落先頭は全角 1 字下げ'
-          assert_includes svg, '　二つ目の段落です。', '2 段落目も字下げ'
-          assert_includes svg, 'aria-label="第3章 章タイトル 最初の段落です。'
+          assert_equal 2, ys.size, '番号と章題の 2 行'
+          assert(ys.all? { (1205 * 0.25..1205 * 0.75).cover?(it) }, "上下中央に寄る: #{ys}")
         end
 
-        # リードが空なら扉絵にリード <text> ブロックは現れない（従来相当の SVG）
-        def test_should_omit_lead_block_when_lead_blank
-          with_lead    = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', 'T', 'リード文', FONT, nil, 0.60, METRICS)
-          without_lead = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', 'T', '', FONT, nil, 0.60, METRICS)
+        # 章題は飾りを避けた中央 60% で折り返す。10 字指定なら 30 字の章題は 3 行
+        def test_should_wrap_frontispiece_title_within_central_area
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '', 'あ' * 30, FONT, { heading_chars: 10 })
 
-          assert_operator with_lead.scan('<text').size, :>, without_lead.scan('<text').size,
-                          'リードありは <text> が 1 つ多い'
+          assert_equal 3, svg.scan('<tspan').size
         end
 
-        # 極端に長いリードは基準フォントより縮小され、下限で止まる。
-        # 基準は「リード領域の幅 ÷ lead_chars」（旧 LEAD_FONT_RATIO 固定から変更）。
-        def test_should_shrink_long_lead_font_down_to_floor
-          base_size, = HeadingImageComposer.lead_layout(2880, 4153, '短い。', 0.60, METRICS[:lead_chars])
-          long = '長い文章。' * 400
-          long_size, = HeadingImageComposer.lead_layout(2880, 4153, long, 0.60, METRICS[:lead_chars])
-          floor = (2880 * HeadingImageComposer::LEAD_FONT_FLOOR).round
-
-          assert_equal ((2880 * 0.60) / METRICS[:lead_chars]).round, base_size, '短文は字数から導いた基準フォント'
-          assert_operator long_size, :<, base_size, '長文は縮小される'
-          assert_operator long_size, :>=, floor, '下限を割らない'
+        # リードは焼き込まない。収まるかの判定・縮める処理・下限は廃止した（回帰防止）
+        def test_lead_baking_is_removed
+          %i[lead_fits? lead_layout frontispiece_lead].each do |name|
+            refute HeadingImageComposer.respond_to?(name), "#{name} は削除済み"
+          end
+          refute HeadingImageComposer.const_defined?(:LEAD_FONT_FLOOR), 'LEAD_FONT_FLOOR は削除済み'
         end
 
-        # lead_chars を減らすと 1 行の字数が減る＝字面が大きくなる（PDF の箱幅指定と同じ意図）
-        def test_should_enlarge_lead_font_when_fewer_chars_requested
-          few, = HeadingImageComposer.lead_layout(2880, 4153, '短い。', 0.60, 12)
-          many, = HeadingImageComposer.lead_layout(2880, 4153, '短い。', 0.60, 30)
-
-          assert_operator few, :>, many, '字数が少ないほど字面は大きい'
-        end
-
-        # リード内の Latin 語は語中で折れない（wrap_text_by_width 経由）
-        def test_should_not_break_latin_word_in_lead
-          lead = 'コマンド --no-compress を実行します。' * 3
-          _size, lines = HeadingImageComposer.lead_layout(2880, 4153, lead, 0.60, METRICS[:lead_chars])
-
-          assert lines.none? { |l| l.match?(/--no-\z/) || (l.match?(/\A(?:compress)/) && l.length < 8) },
-                 'Latin 語が語中で分断されない'
-          assert lines.any? { |l| l.include?('--no-compress') }, '語が 1 つの塊として残る行がある'
-        end
-
-        # レイアウト版数はキャッシュ鍵ソルト。コンパクト帯＋文字数指定は v3 以上。
-        # 上げ忘れると --no-clean 時に旧レイアウトの合成画像を掴む（§5-3）。
-        def test_layout_version_reflects_compact_band
-          assert_operator HeadingImageComposer::LAYOUT_VERSION, :>=, 3
+        # レイアウト版数はキャッシュ鍵ソルト。横長の扉絵は v5 以上。
+        # 上げ忘れると --no-clean 時に旧レイアウト（縦長・リード入り）の合成画像を掴む（§5-3）。
+        def test_layout_version_reflects_frontispiece_band
+          assert_operator HeadingImageComposer::LAYOUT_VERSION, :>=, 5
         end
 
         # 裾帯 SVG（frontispiece_tail_svg）と FRONTISPIECE_SPLIT は廃止された（回帰防止）
         def test_frontispiece_tail_svg_is_removed
           refute HeadingImageComposer.respond_to?(:frontispiece_tail_svg), 'frontispiece_tail_svg は削除済み'
           refute HeadingImageComposer.const_defined?(:FRONTISPIECE_SPLIT), 'FRONTISPIECE_SPLIT 定数は削除済み'
+        end
+
+        # 節題の字数は小数も受ける（EPUB の節題は章題との比から導いた字数で組む）
+        def test_should_accept_fractional_ornament_chars
+          size = ->(svg) { svg[/<text [^>]*font-size="(\d+)"/, 1].to_i }
+          svg = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '1-1', '導入', FONT, '#f0a000', 18.0)
+
+          assert_equal ((1196 * HeadingImageComposer::ORNAMENT_TEXT_WIDTH) / 18.0).round, size.call(svg)
         end
 
         def test_should_compose_ornament_with_colored_number_tspan
@@ -202,7 +184,7 @@ module VivlioStarter
 
           assert_equal ((1000 * HeadingImageComposer::FRONTISPIECE_TITLE_WIDTH) / 8).round, few
           assert_operator few, :>, many, '字数が少ないほど字面は大きい'
-          # 極端な指定でも番号・リードとの階層を壊さない安全域に収まる
+          # 極端な指定でも帯の高さと番号との階層を壊さない安全域に収まる
           assert_equal (1000 * HeadingImageComposer::FRONTISPIECE_TITLE_SIZE_RANGE.end).round,
                        HeadingImageComposer.frontispiece_title_size(1000, 2)
           assert_equal (1000 * HeadingImageComposer::FRONTISPIECE_TITLE_SIZE_RANGE.begin).round,
@@ -211,14 +193,14 @@ module VivlioStarter
 
         def test_should_wrap_long_frontispiece_title_into_multiple_tspans
           long_title = 'あ' * 30
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第2章', long_title, '', FONT, nil, 0.60, METRICS)
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '第2章', long_title, FONT, METRICS)
 
           tspan_count = svg.scan('<tspan').size
           assert_operator tspan_count, :>=, 2, 'long title should wrap into multiple tspans'
         end
 
         def test_should_escape_xml_reserved_characters_in_heading_text
-          svg = HeadingImageComposer.frontispiece_svg(800, 1131, DATA_URI, '第3章', 'A < B & "C"', '', FONT, nil, 0.60, METRICS)
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '第3章', 'A < B & "C"', FONT, METRICS)
 
           assert_includes svg, '&lt;'
           assert_includes svg, '&amp;'
@@ -226,7 +208,7 @@ module VivlioStarter
         end
 
         def test_should_omit_number_markup_when_number_blank
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '', 'タイトルのみ', '', FONT, nil, 0.60, METRICS)
+          svg = HeadingImageComposer.frontispiece_svg(2880, 1205, DATA_URI, '', 'タイトルのみ', FONT, METRICS)
 
           refute_includes svg, '<line', 'no underline when number is blank'
           assert_includes svg, 'タイトルのみ'

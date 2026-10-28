@@ -39,6 +39,10 @@ module VivlioStarter
       module FrontmatterGenerator
         ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
 
+        # 章リードの倍率として受ける範囲（chapter-lead-size-spec.md §3）。本文より小さいリードは
+        # 本文より軽く見え、2 倍を超えると章題・節題と張り合う。
+        LEAD_SIZE_RANGE = (1.0..2.0)
+
         module_function
 
         # テーマ設定を解析して構造化データを返す
@@ -56,6 +60,7 @@ module VivlioStarter
 
           frontispiece_cfg = parse_frontispiece_config(frontispiece_raw)
           ornament_cfg = parse_ornament_config(ornament_raw)
+          lead_size = parse_lead_size(theme_cfg[:lead_size]).first || BookSettingsCss::DEFAULT_LEAD_SIZE
 
           {
             theme_name: theme_name,
@@ -67,6 +72,9 @@ module VivlioStarter
             heading_offset_value: frontispiece_cfg[:heading_offset],
             heading_chars_value: frontispiece_cfg[:heading_chars],
             lead_chars_value: frontispiece_cfg[:lead_chars],
+            # 本全体のリードの倍率と、image の章扉の倍率（空なら本全体に従う）
+            lead_size_value: lead_size,
+            frontispiece_lead_size_value: frontispiece_cfg[:lead_size] || lead_size,
             ornament_path: ornament_cfg[:path],
             ornament_heading_chars_value: ornament_cfg[:heading_chars]
           }
@@ -89,8 +97,31 @@ module VivlioStarter
                                                  label: 'theme.frontispiece.heading_offset'),
             heading_chars: normalize_char_count(cfg&.dig(:heading_chars),
                                                 label: 'theme.frontispiece.heading_chars'),
-            lead_chars: normalize_char_count(cfg&.dig(:lead_chars), label: 'theme.frontispiece.lead_chars')
+            lead_chars: normalize_char_count(cfg&.dig(:lead_chars), label: 'theme.frontispiece.lead_chars'),
+            lead_size: parse_lead_size(cfg&.dig(:lead_size)).first
           }
+        end
+
+        # 章リードの倍率（theme.lead_size / theme.frontispiece.lead_size）を読む。
+        # `1.1` と `1.1em` は同じ意味で、本文の基準の大きさに対する倍率。範囲外は端へ寄せる。
+        # `12pt` のような直接の大きさは受けない——判型を変えるとリードだけが取り残される。
+        # 警告はここでは出さない。章ごとに呼ばれるので、ThemeValidator が一度だけ出す。
+        # @return [Array(Float, nil), Array(Float, Symbol), Array(nil, Symbol), Array(nil, nil)]
+        #   [倍率, 直した理由]。理由は :too_small / :too_large（端へ寄せた）、
+        #   :length / :invalid（読めないので書かなかった扱い）。書かれていなければ [nil, nil]
+        def parse_lead_size(raw)
+          text = raw.to_s.strip
+          case text
+          in '' then [nil, nil]
+          in /\A(\d+(?:\.\d+)?)(?:em)?\z/i
+            ratio = Regexp.last_match(1).to_f
+            if ratio < LEAD_SIZE_RANGE.min then [LEAD_SIZE_RANGE.min, :too_small]
+            elsif ratio > LEAD_SIZE_RANGE.max then [LEAD_SIZE_RANGE.max, :too_large]
+            else [ratio, nil]
+            end
+          in /\A\d+(?:\.\d+)?\s*(?:mm|cm|in|pt|q)\z/i then [nil, :length]
+          else [nil, :invalid]
+          end
         end
 
         # ornament 設定を解析。frontispiece と同じく「スカラー＝画像名だけの短縮形」と

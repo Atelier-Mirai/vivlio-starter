@@ -149,6 +149,83 @@ class BookSettingsCssThemeTest < Minitest::Test
   end
 end
 
+# ================================================================
+# 章リードの文字の大きさ（chapter-lead-size-spec.md §6.2）
+# ================================================================
+# theme.lead_size は本全体、theme.frontispiece.lead_size は image の章扉だけの上書き。
+# 章扉の幅は「字数 × 1 字の送り」で、送りが倍率に比例するので、1 行の字数は変わらない。
+class BookSettingsCssLeadSizeTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  Common = VivlioStarter::CLI::Common
+  # 本文 10.5pt の A4（spiral-ruby の 33 章で実測した判型）
+  A4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm',
+         paper_scale: 1.0, base_font_size: '10.5pt' }.freeze
+
+  # 既定の 1.2 倍のままなら規則を出さず、幅も今と同じ値（chapter-common.css の larger に任せる）
+  def test_should_keep_current_output_when_lead_size_is_default
+    settings = { lead_chars_value: 20, lead_size_value: 1.2, frontispiece_lead_size_value: 1.2 }
+
+    assert_equal '', BSC.chapter_lead_size_rules(settings)
+    assert_includes BSC.heading_metric_declarations(settings, A4), '--frontispiece-lead-width: 88.9mm;'
+  end
+
+  # 章扉だけ 1.1 倍にすると、章扉の規則だけが出て、幅も 1.1 倍の送りで出る（28 字 × 10.5pt × 1.1）
+  def test_should_shrink_only_frontispiece_lead_when_overridden
+    settings = { lead_chars_value: 28, lead_size_value: 1.2, frontispiece_lead_size_value: 1.1 }
+
+    rules = BSC.chapter_lead_size_rules(settings)
+
+    assert_includes rules, 'body.vs-header-image .chapter-lead { font-size: 1.1em; }'
+    refute_includes rules, 'body .chapter-lead', '本全体（simple の章・付録）は 1.2 倍のまま'
+    # EPUB にも効かせる。EPUB の章扉はリードを焼き込まず、本文の文字として流す（§2.2.1）
+    refute_includes rules, 'vs-epub'
+    assert_includes BSC.heading_metric_declarations(settings, A4), '--frontispiece-lead-width: 114.09mm;'
+  end
+
+  # 本全体だけを書けば、章扉もそれに従う（規則は 1 本で、章扉の幅も同じ倍率）
+  def test_should_apply_book_lead_size_to_frontispiece_when_not_overridden
+    cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(
+      lead_size: 1.1, frontispiece: Common::CONFIG.theme.frontispiece.with(lead_size: nil, lead_chars: 28)
+    ))
+    settings = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.parse_theme_settings(cfg)
+
+    rules = BSC.chapter_lead_size_rules(settings)
+
+    assert_equal 1.1, settings[:frontispiece_lead_size_value]
+    assert_includes rules, 'body .chapter-lead { font-size: 1.1em; }'
+    refute_includes rules, 'body.vs-header-image', '章扉が本全体と同じなら上書きの規則は要らない'
+  end
+
+  # 刻みは丸めない（1.05 は 1.05em）。`1.2em` は `1.2` と同じ意味なので規則を出さない
+  def test_should_keep_fine_steps_and_accept_em_unit
+    fine = BSC.chapter_lead_size_rules({ lead_size_value: 1.05, frontispiece_lead_size_value: 1.05 })
+    assert_includes fine, 'body .chapter-lead { font-size: 1.05em; }'
+
+    cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(lead_size: '1.2em'))
+    settings = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.parse_theme_settings(cfg)
+    assert_equal 1.2, settings[:lead_size_value]
+  end
+
+  # 字数を書かずに倍率だけ変えても、既定の字数（20）で幅を出し直す。theme.css の既定幅は
+  # 1.2 倍の送りで決めてあるので、そのままだと 1 行の字数がずれる
+  def test_should_resolve_default_chars_when_only_lead_size_changes
+    unchanged = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
+    changed = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
+
+    refute(unchanged.any? { it.start_with?('--frontispiece-lead-width:') }, '既定のままなら theme.css に任せる')
+    assert_includes changed, '--frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
+  end
+
+  # 生成した CSS 全文に、リードの規則が入る
+  def test_should_render_lead_size_rules
+    cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(
+      lead_size: 1.2, frontispiece: Common::CONFIG.theme.frontispiece.with(lead_size: 1.1)
+    ))
+
+    assert_includes BSC.render(cfg), 'body.vs-header-image .chapter-lead { font-size: 1.1em; }'
+  end
+end
+
 class BookSettingsCssUrlRebaseTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
   PREFIX = '../../stylesheets/'

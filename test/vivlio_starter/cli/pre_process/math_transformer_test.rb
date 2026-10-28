@@ -200,7 +200,7 @@ class MathTransformerTest < Minitest::Test
   end
 
   # alt は**著者の原文のまま**でなければならない（§7.6）。TeX は data-vs-tex で渡す。
-  # alt を TeX にすると章扉リードの焼き込み（extract_lead_text）が `\sqrt{2}` を描いてしまう。
+  # alt を TeX にすると、読み上げや画像が出ないときの代わりの文字が `\sqrt{2}` になる。
   def test_should_keep_the_author_source_in_alt_and_put_tex_in_a_data_attribute
     in_tmp do
       result = MT.transform("面積は $√n$ です\n", chapter_slug: 'plain', renderer: FakeRenderer.new)

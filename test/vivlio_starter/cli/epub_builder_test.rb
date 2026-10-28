@@ -46,14 +46,12 @@ module VivlioStarter
         FileUtils.rm_rf(@test_dir)
       end
 
-      # 扉絵/節絵注入テスト用の context（リードフォント・幅比も含む facsimile 仕様）
+      # 扉絵/節絵注入テスト用の context。扉絵も節絵も横長（landscape）の画像を使う
       def heading_context(flavor: :kindle)
         {
-          frontispiece: 'dummy_portrait.webp',
+          frontispiece: 'dummy_landscape.webp',
           ornament: 'dummy_landscape.webp',
           font_family: "'Noto Sans JP', sans-serif",
-          lead_font_family: "'Noto Serif JP', serif",
-          lead_ratio: 0.60,
           number_color: '#f0a000',
           flavor:
         }
@@ -107,11 +105,12 @@ module VivlioStarter
         # h1 に EPUB クラスと合成画像 <img>（JPEG）が入る
         assert_match(%r{<h1[^>]*class="[^"]*vs-image-heading-epub}, html)
         assert_includes html, 'class="vs-image-heading-img"'
-        # 見出しテキスト＋リードが alt に格納（章扉画像へ焼き込んだリードの読み上げフォールバック）
-        assert_includes html, 'alt="第1章 春のお花見 春の章のリード文です。"'
+        # 見出しテキストが alt に格納される。リードは焼き込まないので alt に入れない
+        assert_includes html, 'alt="第1章 春のお花見"'
         refute_includes html, 'vs-visually-hidden', '隠し span（clip）は使わない'
-        # リードは章扉画像へ焼き込むため HTML からは除去される（二重表示回避・facsimile 仕様）
-        refute_includes html, 'chapter-lead', 'chapter-lead は焼き込み成功時に除去される'
+        # リードは扉絵の次に本文の文字として残る（chapter-lead-size-spec.md §2.2.1）
+        assert_match %r{class="chapter-lead"><p>春の章のリード文です。</p>}, html
+        assert_operator html.index('vs-image-heading-img'), :<, html.index('chapter-lead'), 'リードは扉絵の後'
         # 裾飾り（旧方式）は全廃した
         refute_includes html, 'vs-frontispiece-tail', '裾飾りは廃止済み'
         # 節絵: 親 article に EPUB 用クラス、h2 に画像（alt に節番号＋タイトル）
@@ -122,7 +121,7 @@ module VivlioStarter
         assert Dir.glob('images/headings/ornament-*.jpg').any?, '節絵 JPEG が書き出されるべき'
       end
 
-      # 冪等: 既に vs-image-heading-epub の付いた h1 は再注入されず、リードが空合成へ差し替わらない
+      # 冪等: 既に vs-image-heading-epub の付いた h1 は再注入されず、リードもそのまま残る
       def test_inject_heading_images_is_idempotent
         File.write('11-summer.html', <<~HTML)
           <!DOCTYPE html><html><head><title>夏</title></head><body>
@@ -141,7 +140,8 @@ module VivlioStarter
           second = File.read('11-summer.html')
 
           assert_equal first, second, '2 回目の注入で HTML は変化しない'
-          assert_includes second, 'alt="第2章 夏 夏のリード。"', 'リードが空合成へ差し替わっていない'
+          assert_includes second, 'alt="第2章 夏"'
+          assert_includes second, '<p>夏のリード。</p>', 'リードは本文の文字のまま'
         end
       end
 
@@ -166,24 +166,27 @@ module VivlioStarter
         assert_includes html, 'chapter-lead', 'リードは実テキストのまま残る'
       end
 
-      # リード内のインライン数式 <img> は alt（元 LaTeX・デリミタ除去）で焼き込まれる
-      def test_extract_lead_text_absorbs_inline_math_alt
-        doc = PostProcessCommands::HtmlParser.parse_html_document(<<~HTML)
-          <!DOCTYPE html><html><body>
-          <h1 data-chapter-number-display="第4章"></h1>
+      # リード内のインライン数式は画像に焼き込まず、本文の数式のまま残す。以前は alt の
+      # 文字列で章扉へ焼き込み、警告を出していた
+      def test_inject_heading_images_keeps_inline_math_in_lead
+        File.write('13-winter.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>冬</title></head><body>
+          <h1 data-chapter-number-display="第4章" data-chapter-title="冬"></h1>
           <div class="chapter-lead"><p>公式 <img class="vs-math-inline" alt="$E=mc^2$"> が有名です。</p></div>
           </body></html>
         HTML
-        lead_el = doc.css('div.chapter-lead').first
 
         warned = []
         Common.stub(:log_warn, ->(msg, **_) { warned << msg }) do
-          text = Build::EpubBuilder.extract_lead_text(lead_el)
-          assert_includes text, 'E=mc^2', 'デリミタを剥いだ式が焼き込まれる'
-          refute_includes text, '$', 'デリミタ $ は残さない'
+          Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+            Build::EpubBuilder.inject_heading_images_into_file!('13-winter.html', heading_context)
+          end
         end
-        assert_equal 1, warned.size, '警告は 1 回'
-        assert_includes lead_el.to_html, '<img', '元ノードは破壊しない（dup 処理）'
+
+        html = File.read('13-winter.html')
+        assert_includes html, 'alt="第4章 冬"'
+        assert_match(/chapter-lead.*<img class="vs-math-inline" alt="\$E=mc\^2\$">/m, html)
+        assert_empty warned
       end
 
       # 付録（番号 90..98）には扉絵/節絵を注入せず simple 版にすることを確認（PDF と整合）
@@ -224,30 +227,32 @@ module VivlioStarter
         refute_includes html, 'vs-image-heading-epub', '番号なし見出し（前付）には注入しない'
       end
 
-      # リード焼き込み幅比の純計算: lead_width ÷ 判型幅。導けない場合は 0.60 へフォールバック
-      def test_lead_ratio_from_derives_or_falls_back
-        assert_in_delta 88.0 / 148.0, Build::EpubBuilder.lead_ratio_from(88.0, 148.0), 0.001, '88/148 ≒ 0.595'
-        assert_in_delta 0.60, Build::EpubBuilder.lead_ratio_from(nil, nil), 0.001, '幅欠落時は 0.60'
-        assert_in_delta 0.60, Build::EpubBuilder.lead_ratio_from(88.0, 0), 0.001, '判型幅が非正なら 0.60'
-        assert_in_delta 0.75, Build::EpubBuilder.lead_ratio_from(200.0, 210.0), 0.001, '上限 0.75 にクランプ'
-        assert_in_delta 0.40, Build::EpubBuilder.lead_ratio_from(50.0, 210.0), 0.001, '下限 0.40 にクランプ'
+      # EPUB の節題は、章題に対する大きさの比を PDF にそろえた字数で組む。A4 の PDF では
+      # 節題（14 字）は章題の 0.73 倍。横長の扉絵の章題（10 字・幅の 6%）にその比を掛けると、
+      # 節題は 1 行 18 字になる（chapter-lead-size-spec.md §2.2.1）。判型が読めないときは A4 相当
+      def test_epub_ornament_chars_keeps_pdf_title_ratio
+        PreProcessCommands::BookSettingsCss.stub(:build_page_cfg, {}) do
+          assert_in_delta 18.0, Build::EpubBuilder.epub_ornament_chars(10, 14), 0.01
+          # 章題の字数が少ないと帯の章題は上限の大きさ（幅の 7.5%）で止まり、節題もそのぶん大きい
+          assert_in_delta 14.4, Build::EpubBuilder.epub_ornament_chars(8, 14), 0.01
+          # 節題の字数を増やした著者の指定は、EPUB でも小さくなる向きに効く
+          assert_operator Build::EpubBuilder.epub_ornament_chars(10, 18), :>, 18.0
+        end
       end
 
-      # preset 構成（book.yml に page.width 無し）でも、解決済みの版面幅から実比を導く。
-      # CONFIG.page[:width] を直接見ると nil で既定 0.60 に落ち、PDF の扉と幅がずれていた。
-      # 期待値は lead_chars × 1 字の送り ÷ 判型幅 を PDF 側と同じ換算で組み立てる
-      # （リポジトリの book.yml の値に依存しないよう、実装と同じ入口から導出する）。
-      def test_frontispiece_lead_ratio_derives_from_resolved_page_width
-        bsc = PreProcessCommands::BookSettingsCss
-        page_cfg = bsc.build_page_cfg(Common::CONFIG)
-        chars = Build::EpubBuilder.epub_heading_metrics[:lead_chars]
-        expected = Build::EpubBuilder.lead_ratio_from(
-          chars * bsc.chapter_lead_advance_mm(page_cfg), Units.length_to_mm(page_cfg[:width])
-        )
+      # EPUB の扉絵は theme.frontispiece.image の横長版を使う（縦長版は PDF の章扉の背景）
+      def test_frontispiece_landscape_path_uses_landscape_variant_of_frontispiece_image
+        calls = []
+        resolver = lambda do |source, **opts|
+          calls << [source, opts]
+          'x'
+        end
+        PreProcessCommands::ThemeImageResolver.stub(:resolve_ornament_path, resolver) do
+          Build::EpubBuilder.frontispiece_landscape_path({ theme_cfg: { frontispiece: { image: 'ume' } } })
+          Build::EpubBuilder.frontispiece_landscape_path({ theme_cfg: { frontispiece: 'suisen' } })
+        end
 
-        assert_in_delta expected, Build::EpubBuilder.frontispiece_lead_ratio, 0.001
-        refute_in_delta 0.60, Build::EpubBuilder.frontispiece_lead_ratio, 0.0001,
-                        'preset 構成でもフォールバック 0.60 に落ちない'
+        assert_equal [['ume', { allow_generation: true }], ['suisen', { allow_generation: true }]], calls
       end
 
       # Kindle 数式テキスト化: 単純式 img は span 化され、複雑式 img は無傷で残る

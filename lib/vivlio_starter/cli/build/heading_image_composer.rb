@@ -55,7 +55,7 @@ module VivlioStarter
         EMBED_MAX_EDGE = 1400
 
         # ラスタライズ後の出力幅（px）。viewBox 比からの縦は rsvg が自動算出する。
-        # 扉絵はリード文字を焼き込むため 1400 に引き上げる（Kindle 端末幅 1072px 以上での可読性）。
+        # 扉絵・節絵とも段幅いっぱいに出すので、Kindle 端末幅 1072px より大きくとる。
         RENDER_WIDTH = { frontispiece: 1400, ornament: 1400 }.freeze
 
         # 合成レイアウトの版数。座標・方式を変えたら +1 する（EpubBuilder が生成キャッシュのキーに混ぜる）。
@@ -63,31 +63,21 @@ module VivlioStarter
         # v3: 寸法を book.yml の文字数指定（heading_chars / lead_chars / ornament.heading_chars）から
         #     導き、節絵を左右並びのコンパクト帯へ（heading-metrics-spec §5-2・§5-3）。
         # v4: リード列の左寄せ（右下飾り回避）を廃し、左右中央へ。
-        LAYOUT_VERSION = 4
+        # v5: 扉絵を横長の帯にし、章番号と章題だけを焼き込む。リードは本文の文字として残す
+        #     （chapter-lead-size-spec.md §2.2.1）。
+        LAYOUT_VERSION = 5
 
         # 文字数指定の既定。theme.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
         # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
-        DEFAULT_METRICS = { heading_chars: 8, lead_chars: 20, ornament_chars: 14,
-                            heading_offset_ratio: 0.0 }.freeze
-
-        # リード焼き込みの規格（画像 width / height 比・モック実証値）。
-        # 基準フォントは lead_chars から導くため LEAD_FONT_RATIO は廃止した。
-        # 下限は「合成画像を端末幅で見たときに読める大きさ」で決まる。字数指定が多いと
-        # 字面がいくらでも小さくなるため、ここで止める（epub_h1.png 実測で 0.018 では
-        # 読めなかった。Kindle 端末幅 1072px 換算でおよそ 8pt 相当を確保する）。
-        LEAD_FONT_FLOOR   = 0.026  # 縮小の下限（画像幅比）
-        LEAD_LINE_HEIGHT  = 1.70   # 行送り（フォントサイズ比）
-        LEAD_BOTTOM_RATIO = 0.88   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
-
-        # 章番号のベースライン（height 比）。ここから章番号 → 章題 → リードを下へ積む。
-        # PDF の章扉と同じく**ページ上部から**始める。中ほどから始めると、リードが長い章で
-        # 下の飾りへ食い込む余地が無くなる（epub_h1_chapter6.png 実測）。
-        FRONTISPIECE_TOP_RATIO = 0.17
+        DEFAULT_METRICS = { heading_chars: 8, ornament_chars: 14 }.freeze
 
         # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
-        FRONTISPIECE_TITLE_WIDTH = 0.80
-        # 字面サイズの安全域（画像幅比）。極端な字数指定でも番号・リードとの階層を壊さない。
-        FRONTISPIECE_TITLE_SIZE_RANGE = (0.045..0.115)
+        # 横長の扉絵は左上と右下に飾りがあるので、その間の中央 60% に収める。
+        FRONTISPIECE_TITLE_WIDTH = 0.60
+        # 字面サイズの安全域（画像幅比）。上限は 2 行の章題が帯の高さ（幅の約 0.42）に収まる大きさ。
+        FRONTISPIECE_TITLE_SIZE_RANGE = (0.040..0.075)
+        # 章番号の字面（章題比）
+        FRONTISPIECE_NUMBER_RATIO = 0.55
 
         module_function
 
@@ -97,11 +87,9 @@ module VivlioStarter
         #
         # @param (see #compose)
         # @return [String, nil] JPEG バイト列。画像不読・ツール不在・失敗時は nil（→ simple 縮退）
-        def render(image_path:, number:, title:, kind:, font_family:,
-                   lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333',
+        def render(image_path:, number:, title:, kind:, font_family:, number_color: '#333333',
                    metrics: DEFAULT_METRICS)
-          svg = compose(image_path:, number:, title:, kind:, font_family:,
-                        lead:, lead_font_family:, lead_ratio:, number_color:, metrics:)
+          svg = compose(image_path:, number:, title:, kind:, font_family:, number_color:, metrics:)
           return nil unless svg
 
           rasterize_to_jpeg(svg, RENDER_WIDTH.fetch(kind, 1000))
@@ -109,21 +97,17 @@ module VivlioStarter
 
         # 飾り画像＋見出しを焼き込んだ合成 SVG（中間表現）を生成する。
         #
-        # @param image_path [String] 飾り画像の実ファイルパス（portrait/landscape webp 等）
+        # @param image_path [String] 飾り画像の実ファイルパス（landscape webp 等）
         # @param number [String] 見出し番号（"第1章" / "1-1" 等。空可）
         # @param title [String] 見出しタイトル
-        # @param kind [Symbol] :frontispiece（扉絵・縦。リード込み）/ :ornament（節絵・横）
+        # @param kind [Symbol] :frontispiece（扉絵・横長の帯）/ :ornament（節絵・コンパクト帯）
         # @param font_family [String] <text> 用フォントスタック（単一引用符で囲んだ名前の羅列）
-        # @param lead [String] 章リード文（:frontispiece のみ。段落は "\n" 区切り。空可）
-        # @param lead_font_family [String, nil] リード用フォント（nil なら font_family で代用）
-        # @param lead_ratio [Float] リード焼き込み幅の画像幅比（判型 lead_width÷page.width 由来）
         # @param number_color [String] 節絵の番号色（CSS 色。既定はダーク）
+        # @param metrics [Hash] 1 行の文字数（heading_chars / ornament_chars）。
+        #   PDF 側（BookSettingsCss）と同じ値から導くことで、同じ原稿の扉・節絵が両ターゲットで
+        #   同じ見え方に組まれる（heading-metrics-spec §5-2）。
         # @return [String, nil] SVG 文字列。画像が読めない/寸法不明時は nil（→ simple 縮退）
-        # @param metrics [Hash] book.yml の文字数指定（heading_chars / lead_chars / ornament_chars）。
-        #   PDF 側（BookSettingsCss）と同じ値を渡すことで、同じ原稿の扉・節絵が両ターゲットで
-        #   同じ字数に組まれる（heading-metrics-spec §5-2）。
-        def compose(image_path:, number:, title:, kind:, font_family:,
-                    lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333',
+        def compose(image_path:, number:, title:, kind:, font_family:, number_color: '#333333',
                     metrics: DEFAULT_METRICS)
           return nil unless image_path && File.exist?(image_path)
 
@@ -135,109 +119,55 @@ module VivlioStarter
           width, height = dims
           case kind
           when :frontispiece
-            frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip,
-                             lead.to_s, font_family, lead_font_family, lead_ratio, m)
+            frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family, m)
           when :ornament
             ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip,
                          font_family, number_color, m[:ornament_chars])
           end
         end
 
-        # 扉絵（portrait）全面の合成 SVG。PDF の縦長章扉（左上飾り→番号→タイトル→リード→
-        # 右下飾り）を 1 枚に焼き込む。番号を上部・タイトルを中央・リードをその下へ縦に重ね、
-        # 原画の下側（右下飾り）まで含めて全高で出す。リフローでも千切れない完全な章扉ページを
-        # 実現するため、旧実装の上下分割（62% 帯＋裾飾り注入）は廃止した（facsimile 仕様）。
-        def frontispiece_svg(width, height, data_uri, number, title, lead, font_family, lead_font_family,
-                             lead_ratio, metrics)
-          number_size = (width * 0.052).round
-          # 字面は「タイトル領域の幅 ÷ heading_chars」で決める。以前は 0.072 固定
-          # （= 1 行 11 字）というマジックナンバーで、PDF の箱幅とは無関係だった。
+        # 横長（landscape）の扉絵に、章番号と章題だけを焼き込んだ合成 SVG。
+        # 番号 → 下線 → 章題の塊を、左上・右下の飾りの間（中央 FRONTISPIECE_TITLE_WIDTH）の
+        # 上下中央に置く。
+        #
+        # リードは焼き込まない。画像の中の字は端末の文字サイズに従わず画面に合わせて縮むので、
+        # 長いリードは本文より小さくなり、収まらなければ切れていた。縦長の扉絵から外しても、
+        # tablet では空白が残り、phone では扉絵の下にリードが入り込んだ（Kindle Previewer で確認・
+        # chapter-lead-size-spec.md §2.2.1）。
+        def frontispiece_svg(width, height, data_uri, number, title, font_family, metrics)
           title_size  = frontispiece_title_size(width, metrics[:heading_chars])
+          number_size = (title_size * FRONTISPIECE_NUMBER_RATIO).round
+          # 1 行の字数は丸める前の比から出す。丸めた字面で割ると 10 字指定が 9.99 字になり、
+          # ちょうど 10 字の章題が 2 行に折れる
+          lines       = wrap_text_by_width(title, FRONTISPIECE_TITLE_WIDTH / frontispiece_title_ratio(metrics[:heading_chars]))
+          line_step   = (title_size * 1.4).round
           halo        = [(title_size * 0.14).round, 1].max
 
-          # --- Phase: タイトルを段組み（表示幅ベース・半角 0.55 換算） ---
-          lines      = wrap_text_by_width(title, width * FRONTISPIECE_TITLE_WIDTH / title_size)
-          line_step  = (title_size * 1.4).round
-
-          # --- Phase: 縦位置 ---
-          # 章番号と章題は同じ見出しなので近づけ、章題とリードの間を空ける（近接の原則）。
-          # 全体の下げ量は book.yml の theme.frontispiece.heading_offset（判型比）で追い込める。
-          # 章番号 → 章題 → リードを**上から順に積む**（PDF の章扉と同じ流れ）。
-          # 以前は章題を height の一定比に centering していたため、長い章題（4 行）が
-          # 上へ伸びて章番号と重なっていた（epub_h1_kasanari.png 実測）。
-          # 積み上げ方式なら行数がいくつでも重ならず、下へ伸びるだけになる。
-          offset      = height * metrics[:heading_offset_ratio].to_f
-          number_y    = (height * FRONTISPIECE_TOP_RATIO + offset).round
-          underline_y = number_y + (number_size * 0.45).round
+          # --- Phase: 縦位置（番号 → 下線 → 章題の塊を上下中央へ） ---
           # 章番号と章題は同じ見出しの一部なので近づける（近接の原則）
-          first_y     = (underline_y + (title_size * 1.05)).round
-          title_last_y = first_y + ((lines.size - 1) * line_step)
-          # 章題とリードの間は空ける
-          lead_top     = title_last_y + (title_size * 1.30)
+          number_block = number.empty? ? 0 : number_size + (number_size * 0.45) + (title_size * 1.05)
+          block        = number_block + title_size + ((lines.size - 1) * line_step)
+          top          = (height - block) / 2.0
+          number_y     = (top + number_size).round
+          underline_y  = number_y + (number_size * 0.45).round
+          first_y      = (number.empty? ? top + title_size : underline_y + (title_size * 1.05)).round
 
           parts = [image_element(width, height, data_uri)]
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
           parts << frontispiece_title(lines, width, first_y, line_step, title_size, halo, font_family) unless lines.empty?
-          unless lead.empty?
-            parts << frontispiece_lead(lead, width, height, lead_font_family || font_family,
-                                       lead_ratio, metrics[:lead_chars], lead_top)
-          end
-
-          svg_wrapper(width, height, [number, title, lead], parts)
+          svg_wrapper(width, height, [number, title], parts)
         end
 
-        # 扉絵タイトルの字面（px）。「タイトル領域の幅 ÷ 字数」を安全域に収める。
-        def frontispiece_title_size(width, chars)
+        # 扉絵タイトルの字面（画像幅比）。「タイトル領域の幅 ÷ 字数」を安全域に収める。
+        # EpubBuilder が節題の大きさをこの比から導くので公開している。
+        def frontispiece_title_ratio(chars)
           chars = chars.to_i
           chars = DEFAULT_METRICS[:heading_chars] unless chars.positive?
-          raw = (width * FRONTISPIECE_TITLE_WIDTH) / chars
-          raw.clamp(width * FRONTISPIECE_TITLE_SIZE_RANGE.begin, width * FRONTISPIECE_TITLE_SIZE_RANGE.end).round
+          (FRONTISPIECE_TITLE_WIDTH / chars).clamp(FRONTISPIECE_TITLE_SIZE_RANGE.begin, FRONTISPIECE_TITLE_SIZE_RANGE.end)
         end
 
-        # リード段落の焼き込み。段落は "\n" 区切りで受け、各段落の先頭を全角 1 字下げする。
-        # 基準フォントで LEAD_BOTTOM_RATIO に収まらない長文だけ 8% ずつ縮小する（下限 LEAD_FONT_FLOOR）。
-        def frontispiece_lead(lead, width, height, font_family, lead_ratio, lead_chars, lead_top = nil)
-          first_y   = (lead_top || (height * 0.62)).round
-          font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars, first_y)
-          halo      = [(font_size * 0.14).round, 1].max
-          step      = (font_size * LEAD_LINE_HEIGHT).round
-          # リード列は左右中央に置く。以前は右下の飾りを避けて左寄せ（余白の 45%）にして
-          # いたが、扉を上部起点へ改めた（FRONTISPIECE_TOP_RATIO）ことでリードが飾りの高さ
-          # まで下りてこなくなり、避ける必要が無くなった。左寄せのままだと右に 3 字ぶんの
-          # 余白が残り、PDF の章扉（margin-inline: auto で中央）と揃わない（epub_h1_justify.png）。
-          left_x    = (width * (1.0 - lead_ratio) * 0.5).round
-
-          tspans = lines.each_with_index.map do |line, i|
-            %(<tspan x="#{left_x}" y="#{first_y + (i * step)}">#{escape_text(line)}</tspan>)
-          end.join
-          %(<text text-anchor="start" font-family="#{font_family}" font-size="#{font_size}" ) +
-            %(font-weight="400" fill="#1a1a1a" paint-order="stroke" stroke="#ffffff" ) +
-            %(stroke-width="#{halo}" stroke-linejoin="round">#{tspans}</text>)
-        end
-
-        # リードのフォントサイズと行分割。折返しは既存 wrap_text_by_width（半角 0.55 換算・
-        # Latin 語は空白で折る——"--no-compress" 等の語中折れを防ぐ）を必ず使う。
-        #
-        # 基準の字面は「リード領域の幅 ÷ lead_chars」——リード幅比（lead_ratio）自体が
-        # lead_chars × 1 字の送り ÷ 判型幅なので、これで PDF と同じ字面比になる。
-        # 縦に収まらない長文だけ 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
-        # @return [Array(Integer, Array<String>)] [フォントサイズ, 折り返し済み行の配列]
-        def lead_layout(width, height, lead, lead_ratio, lead_chars, top_y = nil)
-          paragraphs = lead.split("\n")
-          chars = lead_chars.to_i
-          chars = DEFAULT_METRICS[:lead_chars] unless chars.positive?
-          top       = top_y || (height * 0.62)
-          floor     = (width * LEAD_FONT_FLOOR).round
-          font_size = [((width * lead_ratio) / chars).round, floor].max
-          loop do
-            capacity = (width * lead_ratio) / font_size
-            lines = paragraphs.flat_map { |p| wrap_text_by_width("　#{p}", capacity) }
-            bottom = top + ((lines.size - 1) * font_size * LEAD_LINE_HEIGHT)
-            return [font_size, lines] if bottom <= height * LEAD_BOTTOM_RATIO || font_size <= floor
-
-            font_size = [(font_size * 0.92).round, floor].max
-          end
-        end
+        # 扉絵タイトルの字面（px）。
+        def frontispiece_title_size(width, chars) = (width * frontispiece_title_ratio(chars)).round
 
         # 節絵タイトルの最大行数。これを超える長さのときだけフォントを縮小する。
         ORNAMENT_MAX_LINES = 2
@@ -328,9 +258,11 @@ module VivlioStarter
         # 節絵のフォントサイズと行分割を決める。
         # 字面は「節題領域の幅 ÷ 字数」。ORNAMENT_MAX_LINES 行に収まらない長い節題だけ
         # 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
+        # 字数は小数も受ける。EPUB の節題は章題との比から導いた字数で、整数とは限らない
+        # （EpubBuilder#epub_ornament_chars）。
         # @return [Array(Integer, Array<Hash>)] [フォントサイズ, {number:, text:} の行配列]
         def ornament_layout(width, number, title, chars)
-          count = chars.to_i
+          count = chars.to_f
           count = DEFAULT_METRICS[:ornament_chars] unless count.positive?
           avail = width * ORNAMENT_TEXT_WIDTH
           floor = (width * ORNAMENT_FONT_FLOOR).round

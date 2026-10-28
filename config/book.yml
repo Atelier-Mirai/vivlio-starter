@@ -62,6 +62,9 @@ theme:
   style: image # image: 画像あり / simple: 画像なし
                # image にすると下の扉絵・節絵が有効になります。（付録は常に simple）
 
+  lead_size: 1.2 # 章リード文の文字の大きさ（本文に対する倍率・1.0〜2.0）
+                 # simple の章・付録にも効く。image の章扉は frontispiece の lead_size で変えられる
+
   # ------- 章扉の背景画像 -------
   frontispiece:
     image: sakura   # suisen / ume / nanohana / sakura
@@ -72,6 +75,8 @@ theme:
     heading_offset: 15mm # 章扉の見出しブロック（章番号〜リード）を下げる量
     heading_chars:  10   # 章題を 1 行に何文字入れるか（全角換算）
     lead_chars:     24   # 章リード文を 1 行に何文字入れるか（全角換算）
+    lead_size:           # 章リード文の文字の大きさ（空欄なら上の theme.lead_size に従う）
+                         # 長いリードは、1.1 に下げて lead_chars を増やすと章扉に収まりやすい
 
   # ------- 節見出しの背景画像 -------
   ornament:

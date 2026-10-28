@@ -106,6 +106,7 @@ module VivlioStarter
             #{section_pagebreak_rule(page_cfg)}
             #{chapter_pagebreak_rule(page_cfg)}
             #{heading_numbering_rule(page_cfg)}
+            #{chapter_lead_size_rules(settings)}
             #{font_synthesis_rules(cfg)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
@@ -203,10 +204,15 @@ module VivlioStarter
                                          chapter_title_advance_mm(scale), text_mm)
           end
 
-          if (chars = settings[:lead_chars_value])
-            lines << "--frontispiece-lead-width: #{format_mm(chars * chapter_lead_advance_mm(page_cfg))};"
-            warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars,
-                                         chapter_lead_advance_mm(page_cfg), text_mm)
+          # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率に比例する。字数が
+          # 未指定でも倍率を変えたなら、theme.css の既定幅（既定の字数 × 1.2 倍）のままでは
+          # 字数が合わなくなるので、既定の字数で幅を出し直す。
+          lead_size = settings[:frontispiece_lead_size_value] || DEFAULT_LEAD_SIZE
+          chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless lead_size == DEFAULT_LEAD_SIZE)
+          if chars
+            advance_mm = chapter_lead_advance_mm(page_cfg, lead_size)
+            lines << "--frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
+            warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm)
           end
 
           if (chars = settings[:ornament_heading_chars_value])
@@ -222,20 +228,46 @@ module VivlioStarter
         DEFAULT_LEAD_CHARS = 20
         DEFAULT_ORNAMENT_HEADING_CHARS = 14
 
+        # 章リードの倍率の既定（chapter-common.css の `font-size: larger` と同じ 1.2 倍）。
+        DEFAULT_LEAD_SIZE = ConfigKeys::KEYS[%i[theme lead_size]].default
+
         # 章題 1 字の送り（mm）。image-header.css の .chapter-title の
         # `font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q)` と
         # `letter-spacing: 0.08em` を再現する。CSS 側を変えたらここも直すこと
         # （回帰テストで両者の一致を固定してある）。
         def chapter_title_advance_mm(scale)
-          font_q = (scale * 48).clamp(34, 50)
-          font_q * 0.25 * 1.08
+          chapter_title_font_q(scale) * 0.25 * 1.08
         end
 
-        # 章リード 1 字の送り（mm）。.chapter-lead は font-size: larger（= 親の 1.2 倍）で
-        # letter-spacing は本文既定（0）。基準は page プリセットの base_font_size。
-        def chapter_lead_advance_mm(page_cfg)
+        # 章題の字の大きさ（Q）。EpubBuilder も、PDF の章題と節題の比を取るのに使う。
+        def chapter_title_font_q(scale) = (scale * 48).clamp(34, 50)
+
+        # 章リード 1 字の送り（mm）。リードは本文の基準の大きさ（page プリセットの
+        # base_font_size）の lead_size 倍で、letter-spacing は本文既定（0）。
+        def chapter_lead_advance_mm(page_cfg, lead_size = DEFAULT_LEAD_SIZE)
           base_mm = Units.length_to_mm(page_cfg[:base_font_size]) || (10.5 * 25.4 / 72.0)
-          base_mm * 1.2
+          base_mm * lead_size
+        end
+
+        # 章リードの文字の大きさ（chapter-lead-size-spec.md §6.2）。既定の 1.2 倍のままなら
+        # 何も出さず、chapter-common.css の `larger` に任せる。
+        #
+        # 本全体（simple の章・付録も）と、image の章扉の 2 本に分ける。付録の body には image の
+        # 本でも vs-header-simple が付くので、2 本目は付録に当たらない。
+        # var() を使わずリテラルで書くのは、Kindle が var() を含む宣言を丸ごと捨てるため。
+        # EPUB にも同じ規則を効かせる。EPUB の章扉はリードを焼き込まず、リードは本文の文字として
+        # 流れるので、PDF と同じ倍率で本文と区別する（chapter-lead-size-spec.md §2.2.1）。
+        def chapter_lead_size_rules(settings)
+          book = settings[:lead_size_value] || DEFAULT_LEAD_SIZE
+          frontispiece = settings[:frontispiece_lead_size_value] || book
+          rules = []
+          rules << "body .chapter-lead { font-size: #{format_number(book)}em; }" unless book == DEFAULT_LEAD_SIZE
+          unless frontispiece == book
+            rules << "body.vs-header-image .chapter-lead { font-size: #{format_number(frontispiece)}em; }"
+          end
+          return '' if rules.empty?
+
+          ['/* 章リードの文字の大きさ（theme.lead_size / theme.frontispiece.lead_size） */', *rules].join("\n")
         end
 
         # 節題の基準フォントサイズ（Q）。節絵の帯は版面幅から左右の飾り避け（padding-inline）を

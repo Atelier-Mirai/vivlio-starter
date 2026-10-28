@@ -216,7 +216,7 @@ module VivlioStarter
 
               html = File.read('11-basics.html')
               assert_includes html, 'vs-image-heading-epub'
-              assert_includes html, 'alt="第1部　基礎編 基礎を固めます。"', '番号の無い alt'
+              assert_includes html, 'alt="第1部　基礎編"', '番号の無い alt'
             end
           end
         end

@@ -73,11 +73,15 @@ module VivlioStarter
       %i[theme preface_color]                         => Spec[default: nil],
       %i[theme appendix_color]                        => Spec[default: nil],
       %i[theme style]                                 => Spec[default: "image"],
+      %i[theme lead_size]                             => Spec[default: 1.2],
       %i[theme frontispiece image]                    => Spec[default: "sakura"],
       %i[theme frontispiece edge_inset]               => Spec[default: "5mm"],
       %i[theme frontispiece heading_offset]           => Spec[default: "15mm"],
       %i[theme frontispiece heading_chars]            => Spec[default: 10],
       %i[theme frontispiece lead_chars]               => Spec[default: 24],
+      # 章扉だけのリードの大きさ。書かなければ theme.lead_size に従う（chapter-lead-size-spec.md §2.2）。
+      # appendix_color と同じく、既定値を持たせると行を消しても空欄にしてもこの値が入り、従わなくなる
+      %i[theme frontispiece lead_size]                => Spec[default: nil],
       %i[theme ornament image]                        => Spec[default: "sakura"],
       %i[theme ornament heading_chars]                => Spec[default: 14],
       %i[theme markers h3]                            => Spec[default: "♣"],
