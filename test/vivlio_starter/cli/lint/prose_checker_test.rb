@@ -1143,4 +1143,42 @@ class TestProseChecker < Minitest::Test
     assert_includes PC::FIXABLE_RULES, 'hiragana-spacing'
     assert_empty check("IDの話です。\n", disabled_rules: ['hiragana-spacing'])
   end
+
+  # --- accidental-emphasis（改善案 #128） ---
+
+  def emphasis_labels(body) = check(body).select { it.rule == 'accidental-emphasis' }.map { [it.line, it.label] }
+
+  # 英字の直後の `*` が次の `*` と対になると、間が強調になって `*` が消える（spiral-ruby の 61 章）。
+  # 行をまたいでも同じ段落なら対になる。知らせるのは開きの行
+  def test_should_report_asterisk_after_a_letter_that_pairs_into_emphasis
+    labels = emphasis_labels("課題60と同じです。A*も骨格は同じです。\nダイクストラ法に、A*はここに見積もりを足します。\n")
+
+    assert_equal 1, labels.size
+    assert_equal 1, labels.first.first
+    assert_includes labels.first.last, '「A*も骨格は同じ'
+    assert_includes labels.first.last, '字として書くなら `A\*`'
+  end
+
+  # VFM では語の途中の `_` も開く（CommonMark と違う）。閉じは後ろに英数字が続かないもの
+  def test_should_report_underscore_inside_a_word_that_pairs_into_emphasis
+    labels = emphasis_labels("近似分数はp_k = a_k*p_(k-1)+p_(k-2)という漸化式です。\n")
+
+    assert_equal 1, labels.size
+    assert_includes labels.first.last, '「p_k = a_k*p_」の `_`'
+    assert_includes labels.first.last, '式なら `$…$`'
+  end
+
+  # 強調にならないもの・意図した強調は知らせない（VFM 2.7.2 の出力で確かめた形）
+  def test_should_not_report_emphasis_that_vfm_does_not_form_or_that_is_intended
+    ['x_k = y_k です', 'snake_case_name と foo_bar', 'これは*重要*です', '*Elements*, と *Anthology*,',
+     'A\*探索とA\*は', '`A*` と `A*`', '$a_k$ と $b_k$', "A*探索。\n\nA*は別の段落", "* A*探索\n* A*は",
+     '| A*x | A*y |', '[図](images/a_b_c.png) と d_e', '**太字**とA*だけ', 'a*b だけ'].each do |body|
+      assert_empty emphasis_labels("#{body}\n"), body
+    end
+  end
+
+  def test_accidental_emphasis_can_be_disabled
+    refute_includes PC::FIXABLE_RULES, 'accidental-emphasis'
+    assert_empty check("A*探索とA*は\n", disabled_rules: ['accidental-emphasis']).select { it.rule == 'accidental-emphasis' }
+  end
 end

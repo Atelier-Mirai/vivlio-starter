@@ -17,6 +17,7 @@
 #     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
 #     - ja-no-weak-phrase    断定を避ける言い回し（「かもしれません」「思います」）
 #     - index-term-spacing   索引・用語集の辞書の語と空白だけ違う書き方。--fix できる（改善案 #102）
+#     - accidental-emphasis  英数字の直後の `*`・`_` が強調の記号と読まれ、次の記号までが強調になる箇所（改善案 #128）
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -41,6 +42,7 @@ require 'yaml'
 
 require_relative '../common'
 require_relative '../masking'
+require_relative '../math_delimiters'
 require_relative '../index/term_pattern'
 require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
@@ -73,6 +75,7 @@ module VivlioStarter
         INDEX_TERM_SPACING_RULE = 'index-term-spacing'
         AFFIX_SPACING_RULE   = 'affix-spacing'
         HIRAGANA_SPACING_RULE = 'hiragana-spacing'
+        ACCIDENTAL_EMPHASIS_RULE = 'accidental-emphasis'
 
         # --fix で直せるルール。どれも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE, INDEX_TERM_SPACING_RULE, AFFIX_SPACING_RULE,
@@ -229,6 +232,7 @@ module VivlioStarter
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(multiple_chapter_heading_findings(text)) unless rules.include?(MULTIPLE_CHAPTER_HEADINGS_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
+          findings.concat(accidental_emphasis_findings(text))  unless rules.include?(ACCIDENTAL_EMPHASIS_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
           findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
           unless rules.include?(LONG_PARENTHETICAL_RULE) || parenthetical_max == :off
@@ -367,6 +371,110 @@ module VivlioStarter
           pairs
         end
         private_class_method :slash_pairs
+
+        # --- 強調に化ける `*`・`_` ------------------------------------------------
+
+        # 地の文の `A*探索` の `*` は、Markdown では強調の記号にもなれる。同じ段落に次の `*` があると、
+        # その間が強調（本の CSS では下線）になり、`*` は 2 つとも消える（改善案 #128。spiral-ruby の
+        # 61 章で「A*も骨格は同じです。…A*はここに」が「A も骨格…A はここに」と下線付きで組まれた）。
+        #
+        # 対の作り方は VFM（2.7.2）の実測に合わせる。CommonMark の決まりとは違うところがある:
+        #   - `*`・`_` とも、後ろに空白でない字が続けば開く。語の途中の `_` も開く
+        #     （`p_k = a_k+p_(k-1)` → `p<em>k = a_k+p</em>(k-1)`）
+        #   - `*` は前が空白でなければ閉じる。`_` はさらに、後ろに英数字が続くと閉じない
+        #     （`x_k = y_k` も `snake_case_name` も強調にならない）
+        #
+        # 知らせるのは、対になって強調ができ、しかも開きの記号の直前が英数字のものだけ。
+        # 意図した強調（`*Elements*,`・`これは*重要*です`）は、開きの前が空白・約物・和文になる。
+        # 対にならない `*`（掛け算の `a*b` が 1 つだけ）は紙面に害がないので知らせない。
+        def accidental_emphasis_findings(text)
+          emphasis_units(text).flat_map do |start, raw|
+            masked = mask_for_emphasis(raw)
+            %w[* _].flat_map { emphasis_pairs(masked, it) }.filter_map do |open, close|
+              next unless open.positive? && masked[open - 1].match?(/[A-Za-z0-9]/)
+
+              char = raw[open]
+              excerpt = raw[open - 1..close].gsub(/\s+/, ' ')
+              excerpt = "#{excerpt[0, 12]}…#{excerpt[-6..]}" if excerpt.length > 20
+              Finding.new(line: start + raw[0, open].count("\n"), rule: ACCIDENTAL_EMPHASIS_RULE,
+                          label: "「#{excerpt}」の `#{char}` が強調の記号と読まれ、間が強調になります" \
+                                 "（字として書くなら `#{raw[open - 1]}\\#{char}`#{'、式なら `$…$`' if char == '_'}）")
+            end
+          end
+        end
+
+        # 強調が閉じる範囲（段落・リストの項目・見出し・表のセル）ごとの原稿。
+        # @return [Array(Integer, String)] 先頭の行番号と、行をつないだ原稿
+        def emphasis_units(text)
+          units = []
+          authored_prose_lines(text).each do |lineno, line|
+            body = line.chomp
+            if body.strip.empty?
+              units << nil
+              next
+            end
+
+            last = units.last
+            if last && !body.match?(BLOCK_START) && last[:next] == lineno && !last[:table]
+              last[:raw] << "\n" << body
+            elsif body.lstrip.start_with?('|')
+              # 表のセルどうしでは強調は閉じない。セルを空白に替えた区切りで分ける
+              body.split('|').each { units << { start: lineno, raw: +it, table: true } }
+              units << nil
+              next
+            else
+              units << { start: lineno, raw: +body, table: false }
+            end
+            units.last[:next] = lineno + 1
+          end
+          units.compact.map { [it[:start], it[:raw]] }
+        end
+        private_class_method :emphasis_units
+
+        # 強調の対に関わらない所を、長さを変えずに伏せる（位置を原稿と合わせたまま数えるため）。
+        # 伏せる字は空白でも英数字でもない字にする——空白にすると、隣の記号が開けなくなる
+        EMPHASIS_NEUTRAL = "\u0001"
+        EMPHASIS_MASKS = [
+          /\A[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]/,   # リストの記号（`* 項目`）
+          /\A[ \t]*(?:\#{1,6}[ \t]|>[ \t]?)/,     # 見出し・引用の記号
+          Masking::INLINE_CODE_SPAN,
+          *MathDelimiters::ALL,
+          Masking::URL,
+          /\]\([^()\n]*\)/,                       # リンク・画像の行き先（`images/a_b.png`）
+          /\{[^{}\n]*\}/,                         # 属性・振り仮名（`{#fig:a_b}`）
+          /<[^>\n]*>/,                            # HTML のタグとコメント
+          /@[a-z]+:[^\s　、。）]+/,               # 書籍の指示（`@chapref:ch-a_b`）
+          /\\[*_]/,                               # 字として書いた記号（`A\*`）
+          /\*\*|__/                               # 太字の記号
+        ].freeze
+
+        def mask_for_emphasis(raw)
+          EMPHASIS_MASKS.reduce(raw.dup) do |masked, pattern|
+            masked.gsub(pattern) { it.gsub(/[^\n]/, EMPHASIS_NEUTRAL) }
+          end
+        end
+        private_class_method :mask_for_emphasis
+
+        # VFM と同じ順で記号の対を作る。開いた記号は、閉じられる記号が来るまで持ち越す
+        # @return [Array(Integer, Integer)] 開きと閉じの位置
+        def emphasis_pairs(masked, char)
+          pairs = []
+          open = nil
+          masked.each_char.with_index do |current, i|
+            next unless current == char
+
+            before = i.positive? ? masked[i - 1] : nil
+            after = masked[i + 1]
+            if open.nil?
+              open = i if after && !after.match?(/\s/)
+            elsif before && !before.match?(/\s/) && (char == '*' || after.nil? || !after.match?(/[A-Za-z0-9]/))
+              pairs << [open, i]
+              open = nil
+            end
+          end
+          pairs
+        end
+        private_class_method :emphasis_pairs
 
         # --- 長すぎる補足 -----------------------------------------------------
 
