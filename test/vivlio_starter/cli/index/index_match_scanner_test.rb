@@ -108,6 +108,38 @@ module VivlioStarter
           assert_equal ['Ruby'], scanner.index_data.keys
         end
 
+        # --- phase: 章に出てくる語だけを行に当てる（narrow_terms_to_chapter）---
+
+        # 本文の不等号は、行をまたいでタグとみなさない。またぐと、間の行の語を章に無いと見て落とす
+        def test_should_keep_terms_between_inequality_signs_on_different_lines
+          scanner = build_scanner([{ 'term' => '字下げ', 'yomi' => 'じさげ', 'flags' => 'i' }])
+          out = scanner.send(:process_content_with_code_block_exclusion,
+                             "x < 3 のとき\n\n字下げをそろえる。\n\ny > 1 のとき\n", '11-probe')
+
+          assert_match(/class="index-term"[^>]*>字下げ</, out)
+        end
+
+        # 棄却した語の印を外すと、前の字と続いて辞書の語になる。その語も当てる
+        def test_should_tag_terms_formed_by_unwrapping_rejected_markup
+          File.write('config/index_glossary_terms.yml',
+                     { 'terms' => [{ 'term' => '仮想環境', 'yomi' => 'かそうかんきょう', 'flags' => 'i' }] }.to_yaml)
+          File.write('config/index_glossary_rejected.yml', { 'rejected_terms' => [{ 'term' => '環境' }] }.to_yaml)
+          scanner = IndexMatchScanner.new
+          out = scanner.send(:process_content_with_code_block_exclusion, "仮想[環境]を作ります。\n", '11-probe')
+
+          assert_match(/class="index-term"[^>]*>仮想環境</, out)
+        end
+
+        # 前の章でふるった語の並びを、次の章へ持ち越さない
+        def test_should_narrow_terms_for_each_chapter
+          scanner = build_scanner([{ 'term' => 'Ruby', 'yomi' => 'るびー', 'flags' => 'i' },
+                                   { 'term' => 'Python', 'yomi' => 'ぱいそん', 'flags' => 'i' }])
+          scanner.send(:process_content_with_code_block_exclusion, "Ruby の話。\n", '11-probe')
+          out = scanner.send(:process_content_with_code_block_exclusion, "Python の話。\n", '12-probe')
+
+          assert_match(/class="index-term"[^>]*>Python</, out)
+        end
+
         # --- phase: scan_and_tag_file! tests ---
 
         def test_scan_detects_term_with_yomi

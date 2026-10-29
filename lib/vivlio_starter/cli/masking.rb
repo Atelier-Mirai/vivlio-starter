@@ -152,12 +152,25 @@ module VivlioStarter
       # 内包しうる（行を跨ぐバッククォート対がフェンス置換後のプレースホルダを
       # 巻き込むケース）。この入れ子を正しく巻き戻すため、挿入の逆順（LIFO /
       # reverse_each）で外側→内側の順に開く。FIFO だと未復元のプレースホルダが残留する。
+      #
+      # 本文は 1 回なめるだけにし、開いた原文の中だけを、それより先に退避した目印で開き直す
+      # （上の逆順と同じ結果になる）。目印ごとに本文全体を gsub すると、コードの多い章では
+      # 目印の数 × 本文の長さになり、spiral-ruby の前処理の 3 分の 2 をここが占めていた。
+      # 長い目印を先に試すのは、ほかの退避（目印の形が違う）で一方が他方の頭になっても
+      # 取り違えないため
       def restore_code(text, spans)
         restored = text.to_s
-        spans.reverse_each do |placeholder, original|
-          restored = restored.gsub(placeholder) { original }
+        return restored if spans.empty?
+
+        order = spans.keys.each_with_index.to_h
+        pattern = Regexp.union(spans.keys.sort_by { -it.size })
+        open = lambda do |str, limit|
+          str.gsub(pattern) do |key|
+            index = order[key]
+            index < limit ? open.(spans[key], index) : key
+          end
         end
-        restored
+        open.(restored, spans.size)
       end
 
       # --- (d) 強調記法を外した文字列を返す ---------------------------------

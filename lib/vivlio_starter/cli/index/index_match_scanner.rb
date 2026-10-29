@@ -123,6 +123,9 @@ module VivlioStarter
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
           @term_yomis = {}
+          # 今の章に出てくる語だけ（narrow_terms_to_chapter）。章を読む前は辞書のすべて
+          @chapter_index_terms = @config_terms
+          @chapter_glossary_only_terms = @glossary_only_terms
         end
 
         # 統合用語辞書（config/index_glossary_terms.yml）を読み込む
@@ -243,6 +246,7 @@ module VivlioStarter
           # ここで一度だけ集める（markdown-notation-collision-spec.md §3）。
           @link_labels = IndexMarkup.link_labels(Masking.strip_code(content))
           @current_chapter = file_basename
+          narrow_terms_to_chapter(content)
 
           lines = content.lines
           reset_section!
@@ -256,6 +260,33 @@ module VivlioStarter
           @current_heading_level = nil
           @current_lineno = nil
           lines.join
+        end
+
+        # 行ごとに当てる語を、章のどこかに出てくる語だけに絞る。
+        #
+        # 語は行ごとに辞書の頭から 1 語ずつ当てるので、手間は「行数 × 辞書の語数」になる。
+        # spiral-ruby では 30,570 行 × 1,072 語の 3,300 万回で、当たるのは 13,602 回
+        # （0.04%）だった。章に出てくる語は平均 86 語なので、先に章で一度ふるえば
+        # 行ごとの空振りが 12 分の 1 になる。
+        #
+        # 章に無い語は、章のどの行にも無い。ただし行の側は、`[語|よみ]` の印を処理した後の
+        # 文字で当てる。用語集だけの語や棄却した語の印は、角かっこと読みを外した語に
+        # 置き換わり、前後の字と新しく続く（`X[語|ご]Y` → `X語Y`）。その形でも探しておく。
+        # HTML のタグは行の側でも退避して語を当てないので、探す前に区切りの字へ替える。数式の
+        # <img> の代替テキストで前処理後の原稿は 3 倍に膨らんでおり、ふるう手間の大半がそこだった。
+        # タグを消さずに区切りへ替えるのは、退避の目印と同じく前後の字を続けないため。
+        # 行頭・行末の \A・\z は、章の全文では最初と最後の行にしか当たらないので、ふるわない
+        def narrow_terms_to_chapter(content)
+          text = content.gsub(/<[^>\n]+>/, "\u0000")
+          unmarked = text.each_line.grep(INDEX_TERM_PATTERN).join
+                         .gsub(INDEX_TERM_PATTERN) { IndexMarkup.plain_text(::Regexp.last_match(1)) }
+          probe = "#{text}\n#{unmarked}"
+          present = lambda do |config|
+            pattern = index_term_pattern(config)
+            pattern.source.match?(/\\[AzZ]/) || pattern.match?(probe)
+          end
+          @chapter_index_terms = @config_terms.select(&present)
+          @chapter_glossary_only_terms = @glossary_only_terms.select(&present)
         end
 
         # 出現が属する節（index-sub-reference-selection-spec.md R1）。
@@ -568,12 +599,12 @@ end
 
         # config/index_glossary_terms.yml に基づく自動タグ付けを適用
         def apply_auto_indexing(line, file_basename)
-          return line if @config_terms.empty?
+          return line if @chapter_index_terms.empty?
 
           mask = LineMask.new(line)
           protect_untouchable_regions!(mask)
 
-          @config_terms.each do |config|
+          @chapter_index_terms.each do |config|
             yomi = term_yomi(config)
             mask.substitute!(index_term_pattern(config)) do |match|
               # 退避トークンへのマッチは触らない（念のための保険）
@@ -646,12 +677,12 @@ end
         # 用語そのものの文字は伏せない——従来も †リンクの <a> タグだけが退避対象で、
         # 用語の文字は次の用語から見えていたため、その粒度を保つ。
         def apply_glossary_only_linking(line, file_basename)
-          return line if @glossary_only_terms.empty?
+          return line if @chapter_glossary_only_terms.empty?
 
           mask = LineMask.new(line)
           protect_untouchable_regions!(mask)
 
-          @glossary_only_terms.each do |config|
+          @chapter_glossary_only_terms.each do |config|
             term = config['term']
             # 索引語と同じ解釈で当てる。完全一致のままだと `CSS` が `CSS3` の中にも
             # †リンクを付けてしまい、索引側と挙動が食い違う
