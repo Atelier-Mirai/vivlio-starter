@@ -22,7 +22,8 @@
 #   書体も字形も変わるので、本の書体に無い字はすべて知らせる。
 #
 # 絵文字・囲み数字・全角のチルダは、techbook（既定）なら PDF を組む前に画像や別の字へ置き換える
-# （Techbook::Processor）ので数えない。図の SVG の中は置き換えないので数える。
+# （Techbook::Processor）ので数えない。図の SVG の中は、中身が絵文字だけの字を twemoji の図形に
+# 差し替える（Build::FigureEmoji）ので数えず、文字と混ざった絵文字だけを数える。
 # ================================================================
 
 require 'cgi'
@@ -31,6 +32,7 @@ require_relative '../masking'
 require_relative 'svg_font_embedder'
 require_relative '../build/font_metrics'
 require_relative '../build/derived_svg'
+require_relative '../build/figure_emoji'
 
 module VivlioStarter
   module CLI
@@ -147,7 +149,8 @@ module VivlioStarter
             svg = File.read(path, encoding: 'utf-8')
             next if svg.include?('data:font/') # 生成した SVG は書体を抱えている
 
-            missing = missing_chars(svg_text(svg), figure_fonts(svg))
+            # 絵文字だけの字は、DerivedSvg が twemoji の図形に差し替える（FigureEmoji）
+            missing = missing_chars(svg_text(Build::FigureEmoji.replace(svg)), figure_fonts(svg))
             next if missing.empty?
 
             Finding.new(line: source_line(source, File.basename(path), nil), chars: missing, where: "図 #{File.basename(path)}")

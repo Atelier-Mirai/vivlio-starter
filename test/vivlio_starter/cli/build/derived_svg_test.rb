@@ -189,6 +189,23 @@ module VivlioStarter
         end
       end
 
+      # 絵文字だけの字は twemoji の図形に差し替える（改善案 #127 段階 3）。埋める書体が無い図でも
+      # 派生を作り、素材は書き換えない
+      def test_should_replace_emoji_with_twemoji_shapes_in_the_copy
+        with_project do
+          FileUtils.mkdir_p('stylesheets/twemoji')
+          FileUtils.cp(File.join(BUNDLED_FONTS, '../twemoji/270a.svg'), 'stylesheets/twemoji/')
+          original = %(<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="17" font-size="17">✊</text></svg>)
+          source = write_svg('hand.svg', original)
+
+          derived = DerivedSvg.prepare(source)
+
+          refute_nil derived, '絵文字だけの図にも派生が作られていない'
+          assert_equal original, File.read(source)
+          assert_includes File.read(derived), '<g role="img" aria-label="✊"><svg x="0" y="2.55" width="17" height="17"'
+        end
+      end
+
       # 書体の設定を変えたら作り直す。ここを素材の mtime だけで見ていると、著者が
       # typography.*.font を変えても古い書体を抱えた派生が残る（notes §5.1 の取りこぼし）。
       def test_should_rebuild_the_derivative_when_the_font_setting_changes

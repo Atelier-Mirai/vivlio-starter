@@ -478,10 +478,13 @@ Kindle だけは KFX が SVG を扱えないので `stage_author_svg_for_epub!` 
 
 絵文字（`\p{Extended_Pictographic}`）は補わない（`FALLBACK_EXCLUDED`）。DejaVu は `✌` などを白黒の字で
 持つが、techbook は地の文の絵文字を twemoji の色付きの画像で組むので、それとそろえる。
+図の SVG の中の絵文字は、中身が絵文字だけの `<text>` を twemoji の図形に差し替えて組む（`FigureEmoji`）。
+色付きの絵文字の書体を埋める方法は採らなかった。Apple Color Emoji が Type 3 になったのと同じく、色付きの字形は
+Type 3 で書き出される見込み（COLR の書体では確かめていない）。
 `GlyphCoverageCheck` も、予備の書体の絵文字は「ある」と数えない。
 
 ### 10.4 実測（spiral-ruby）
 
-`vs preflight` の「本の書体にない字」は 14 件 → 1 件（図の中の絵文字 `✊✌✋`）。単章ビルドの
+`vs preflight` の「本の書体にない字」は 14 件 → 0 件（図の中の絵文字 `✊✌✋` は FigureEmoji で twemoji の図形に）。単章ビルドの
 11・32・51・52・53 章の PDF に Type 3 と OS の書体は無く、DejaVuSansMono・DejaVuSans が
 埋め込まれた。コードの `sᵢ₊₁ = sᵢ² − 2` は 1 字 0.6 字の幅のまま組まれ、上の行と `=` の位置がそろう。

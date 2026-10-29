@@ -4,6 +4,7 @@ require 'digest'
 require 'fileutils'
 require_relative '../pre_process/svg_font_embedder'
 require_relative 'derived_image'
+require_relative 'figure_emoji'
 
 module VivlioStarter
   module CLI
@@ -48,7 +49,8 @@ module VivlioStarter
         # 派生の版。書体の寄せ方を変えたら上げる（既存の派生を捨てさせるため）。
         # v2: 名指しした書体の手前に OS の書体があるとき、名指しした書体を先頭へ出す（2026-10-12）。
         # v3: 図の書体に無い字を、予備の書体（HackGen）で補う（2026-10-29・改善案 #127）。
-        SCHEMA = 'v3'
+        # v4: 絵文字だけの字を twemoji の図形に差し替える（2026-10-30・改善案 #127 段階 3）。
+        SCHEMA = 'v4'
 
         # 作り直しの要否を見る目印。SVG は XML で、宣言より前には何も置けないので、
         # ファイル先頭ではなくルート（`<svg>`）の直下へ差し込む。
@@ -93,10 +95,13 @@ module VivlioStarter
         def prepare(source)
           # --- Phase: 埋め込む必要があるか ---
           svg = File.read(source, encoding: 'utf-8')
-          chars = Embedder.characters_in(svg)
-          return nil if chars.empty?
           # 生成 SVG（showcase / mermaid）は既に自分で書体を抱えている。二重に埋めない。
           return nil if svg.include?('data:font/')
+
+          # 絵文字だけの字は、書体ではなく twemoji の図形で組む（FigureEmoji・改善案 #127 段階 3）
+          emojified = FigureEmoji.replace(svg)
+          chars = Embedder.characters_in(emojified)
+          return nil if chars.empty? && emojified == svg
 
           # --- Phase: 使える派生があれば作り直さない ---
           dest = derived_path(source)
@@ -104,10 +109,11 @@ module VivlioStarter
           return dest if fresh?(dest, marker)
 
           # --- Phase: 書体を実体のあるものへ寄せ、その字だけを埋める ---
-          rewritten, families = resolve_families(svg)
-          default = default_family(svg)
-          style = Embedder.font_faces_style(chars, families: families + [default], default_family: default)
-          return nil unless style
+          rewritten, families = resolve_families(emojified)
+          default = default_family(emojified)
+          style = chars.empty? ? nil : Embedder.font_faces_style(chars, families: families + [default], default_family: default)
+          # 絵文字を差し替えた図は、埋める書体が無くても派生を作る
+          return nil if style.nil? && emojified == svg
 
           embedded = Embedder.inject(rewritten, "#{marker}#{style}")
           # `<svg>` が見つからず差し込めなかった（壊れた SVG）。素材のまま運ぶ。
