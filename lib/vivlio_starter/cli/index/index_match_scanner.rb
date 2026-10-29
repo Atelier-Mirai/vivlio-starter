@@ -612,7 +612,9 @@ end
 
               # 生成したタグ（索引タグ＋用語集リンク）を丸ごと隠す。従来は次の用語の
               # 保護 gsub が同じ範囲を 1 トークンへ退避していたので粒度も等しい。
-              mask.stash(process_term(match, yomi, file_basename))
+              # 語の名前は `\` を外した形（辞書と同じ）で数え、印の中身は原稿の字面のまま
+              # 残す（`A\*探索` の `\` を落とすと、Markdown が `*` を強調の記号と読む）
+              mask.stash(process_term(TermPattern.unescape(match), yomi, file_basename, display: match))
             end
           end
 
@@ -698,8 +700,8 @@ end
           mask.restore
         end
 
-        # 索引語を処理してタグを生成
-        def process_term(term_text, yomi, file_basename)
+        # 索引語を処理してタグを生成。display は印の中身にする原稿の字面（省略時は term_text）
+        def process_term(term_text, yomi, file_basename, display: term_text)
           @term_occurrence[term_text] += 1
           occurrence_num = @term_occurrence[term_text]
 
@@ -744,7 +746,7 @@ end
           }
 
           # タグを生成して返す（HTMLタグをエスケープ）
-          escaped_term = CGI.escapeHTML(term_text)
+          escaped_term = CGI.escapeHTML(display)
           escaped_yomi = CGI.escapeHTML(yomi.to_s)
           index_tag = %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{escaped_yomi}">#{escaped_term}</#{tag_name}>)
 

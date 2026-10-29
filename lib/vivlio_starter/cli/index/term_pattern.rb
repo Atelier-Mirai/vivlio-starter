@@ -80,12 +80,24 @@ module VivlioStarter
         # （spacing_insensitive）や、綴りを直したときの原稿の書き換えと同じ規則になる。
         # 解釈の側で足すので、既存の辞書を書き換える必要はない。著者が手で書いた正規表現は
         # 書かれたとおりに読む。
+        #
+        # 語の中の記号は、原稿で前に `\` を付けて書いてあっても当てる（改善案 #128）。
+        # `A*探索` の `*` は、そのまま書くと Markdown が強調の記号と読むので、原稿には
+        # `A\*探索` と書く。辞書の綴りをそのまま当てると、この語が索引から落ちる。
         def literal(entry)
           term = entry['term'].to_s
           head = ASCII_WORD_BEHIND if term.match?(/\A[A-Za-z0-9]/)
           tail = ASCII_WORD_AHEAD if term.match?(/[A-Za-z0-9]\z/)
-          Regexp.new("#{head}#{Regexp.escape(term)}#{tail}")
+          body = term.each_char.map { it.match?(MARKDOWN_ESCAPABLE) ? "\\\\?#{Regexp.escape(it)}" : Regexp.escape(it) }.join
+          Regexp.new("#{head}#{body}#{tail}")
         end
+
+        # Markdown で、前に `\` を付けて字として書ける記号（CommonMark の ASCII の約物）
+        MARKDOWN_ESCAPABLE = /[!-\/:-@\[-`{-~]/
+
+        # 原稿の字面から、記号の前の `\` を外す（`A\*探索` → `A*探索`）。当たった字面を
+        # 辞書の語と同じ名前で数えるため
+        def unescape(text) = text.gsub(/\\(#{MARKDOWN_ESCAPABLE.source})/) { ::Regexp.last_match(1) }
 
         # 語の一部とみなす字種（英数字・カタカナ）
         SAME_SCRIPT = [/[A-Za-z0-9]/, /[ァ-ヶー]/].freeze

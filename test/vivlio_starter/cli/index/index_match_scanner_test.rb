@@ -1241,6 +1241,28 @@ module VivlioStarter
 
           assert_equal [[1, true], [1, true], [0, false]], scanner.index_data['URL'].map { [it['section'], it['headed']] }
         end
+
+        # 原稿に `A\*探索` と書いた語にも印を付ける（改善案 #128）。語の名前（ID・用語集）は
+        # 辞書と同じ `A*探索` で数え、印の中身は原稿の字面のまま `\` を残す。
+        # 落とすと、Markdown が `*` を強調の記号と読む
+        def test_auto_indexing_tags_a_term_written_with_an_escaped_symbol
+          File.write('config/index_glossary_terms.yml', <<~YAML)
+            terms:
+              - term: A*探索
+                yomi: A*たんさく
+                pattern: "/A\\\\*探索/"
+                flags: ig
+          YAML
+          File.write('22-escaped.md', "ここで登場するのがA\\*探索です。A\\*探索は速い。\n")
+
+          IndexMatchScanner.new.scan_and_tag_file!('22-escaped.md')
+
+          tagged = File.read('22-escaped.md')
+          id = "idx-#{Digest::SHA1.hexdigest('A*探索')[0, 12]}"
+          assert_includes tagged, %(<dfn id="#{id}-1" class="index-term" data-yomi="A*たんさく">A\\*探索</dfn>)
+          assert_includes tagged, %(<span id="#{id}-2" class="index-term")
+          assert_match(/glossary-link/, tagged, '用語集の語として †リンクが付く')
+        end
       end
     end
   end

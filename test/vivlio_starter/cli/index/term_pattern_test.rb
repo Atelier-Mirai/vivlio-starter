@@ -84,6 +84,17 @@ module VivlioStarter
 
           assert_match pattern, 'Type 30 の例'
         end
+
+        # 語の中の記号は、原稿で前に `\` を付けて書いても当たる（改善案 #128）。
+        # `A*探索` は、そのまま書くと Markdown が `*` を強調の記号と読むので `A\*探索` と書く
+        def test_should_match_a_term_whose_symbol_is_escaped_in_the_manuscript
+          pattern = TermPattern.for({ 'term' => 'A*探索', 'pattern' => '/A\*探索/' })
+
+          assert_match pattern, '課題174のA\*探索でも'
+          assert_match pattern, '課題174のA*探索でも'
+          refute_match pattern, '課題174のA探索でも'
+          assert_equal 'A*探索と C++', TermPattern.unescape('A\*探索と C\+\+')
+        end
       end
     end
   end
