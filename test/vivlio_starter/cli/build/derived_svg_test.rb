@@ -33,6 +33,8 @@ module VivlioStarter
       # 同梱書体の実体。サブセットまで通す 1 本だけが使う。
       REAL_FONT = File.expand_path('../../../../stylesheets/fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf',
                                    __dir__)
+      # 同梱書体の置き場。予備の書体で補う 1 本が、書体の実物をそのまま持ち込む
+      BUNDLED_FONTS = File.expand_path('../../../../stylesheets/fonts', __dir__)
 
       # 汎用名しか書いていない図は、書籍の見出し書体をスタックの先頭へ足す。
       # ここが効かないと、独立文書では何も解決できず OS フォント（Type 3）へ落ちる。
@@ -162,6 +164,27 @@ module VivlioStarter
           assert_includes embedded, 'Noto Sans JP, sans-serif'
           # サブセットなので、和文フォント丸ごと（2〜4MB）と違い実質太らない
           assert_operator File.size(derived), :<, 200_000
+        end
+      end
+
+      # 図の書体に無い字（≒・ⁿ）は、同じファミリ名の HackGen の面を unicode-range でその字に
+      # 絞って足し、補う（改善案 #127）。太さの面ごとに足す。どの書体にも無い字（⟹）は補えない。
+      # 図の font-family は、寄せ先を足すほかは書き換えない
+      def test_should_fill_characters_the_figure_font_lacks_with_the_fallback_font
+        skip '同梱書体が無い環境では検証できない' unless File.file?(REAL_FONT)
+
+        with_project do
+          FileUtils.cp_r(Dir[File.join(BUNDLED_FONTS, '{Noto_Sans_JP,Noto_Serif_JP,hackgen35}')], 'stylesheets/fonts')
+          source = write_svg('curve.svg', %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="sans-serif">面積 ≒ xⁿ ⟹</text></svg>))
+
+          embedded = File.read(DerivedSvg.prepare(source))
+          fallback, own = embedded.scan(/@font-face\{[^}]*\}/).partition { it.include?('unicode-range') }
+
+          assert_equal 2, own.size, 'Noto Sans JP の Regular と Bold'
+          assert_equal ['font-weight:400;unicode-range:U+2252,U+207F;', 'font-weight:700;unicode-range:U+2252,U+207F;'],
+                       fallback.map { it[/font-weight:\d+;unicode-range:[^;]+;/] }
+          assert(fallback.all? { it.include?('font-family:"Noto Sans JP"') })
+          assert_includes embedded, 'font-family="Noto Sans JP, sans-serif"'
         end
       end
 

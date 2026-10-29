@@ -75,6 +75,26 @@ class GlyphCoverageCheckTest < Minitest::Test
     end
   end
 
+  # 図の書体に無い字は、DerivedSvg が予備の書体（HackGen）で補う（改善案 #127）。
+  # 補える字（≒・ⁿ）は数えず、HackGen にも無い字（⟹）だけを数える
+  def test_should_count_fallback_font_in_figure_fonts
+    original = VivlioStarter::CLI::Common::CONFIG
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        FileUtils.mkdir_p('stylesheets')
+        FileUtils.cp_r(FONTS, 'stylesheets/fonts')
+        VivlioStarter::CLI::Common.install_configuration!(
+          VivlioStarter::CLI::Common.build_direct_configuration(typography: { heading: { font: 'Noto Sans JP' } })
+        )
+        svg = '<svg><text font-family="sans-serif">面積 ≒ xⁿ ⟹</text></svg>'
+
+        assert_equal ['⟹'], Check.missing_chars(Check.svg_text(svg), Check.figure_fonts(svg))
+      end
+    end
+  ensure
+    VivlioStarter::CLI::Common.install_configuration!(original)
+  end
+
   # 数式の画像の中の字（MathJax が字のまま描いたもの）は、埋めた本文の書体だけで描かれる
   def test_should_check_text_in_math_svg
     Dir.mktmpdir do |dir|

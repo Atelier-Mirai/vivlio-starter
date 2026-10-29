@@ -32,6 +32,7 @@
 require 'ttfunk'
 require 'ttfunk/subset'
 require_relative '../common'
+require_relative '../build/font_metrics'
 
 module VivlioStarter
   module CLI
@@ -84,7 +85,7 @@ module VivlioStarter
         def font_faces_style(chars, families:, default_family: nil)
           return nil if chars.empty?
 
-          faces = Array(families).compact.uniq.flat_map { face_rules(chars, it) }
+          faces = Array(families).compact.uniq.flat_map { face_rules(chars, it) + fallback_face_rules(chars, it) }
           return nil if faces.empty?
 
           # 合成禁止は独立文書にも要る。1 面しか埋まらなかった書体に太字を要求されると
@@ -107,6 +108,40 @@ module VivlioStarter
             %(@font-face{font-family:"#{family}";#{descriptor}) +
               %(src:url("data:font/ttf;base64,#{[data].pack('m0')}") format("truetype");})
           end
+        end
+
+        # 書体 1 つぶんに無い字を、予備の書体（FALLBACK_FONTS）で補う @font-face（改善案 #127）。
+        #
+        # 本文の HTML は `"Noto Serif JP", "HackGen35 Console NF", serif` の並びで組むので、
+        # 本文書体に無い ≒ や ⁿ も HackGen で組める。図の SVG は独立文書で、図が名指しする書体しか
+        # 埋めていなかったため、同じ字が OS の書体へ落ちて Type 3 になっていた。
+        #
+        # 図の書体の並び（font-family）は書き換えず、**同じファミリ名**の面を後ろに足し、
+        # unicode-range をその字だけに絞る。同じ名前の面が重なる字は後の面が優先されるので、
+        # 補った字だけが予備の書体で、ほかの字は元の書体で組まれる。並びを書き換える方法だと、
+        # `font-family` の書ける 3 か所（notes §5）すべてと、ルートの既定の受け皿を直す必要がある。
+        def fallback_face_rules(chars, family)
+          return [] if FALLBACK_FONTS.any? { comparable(it) == comparable(family) }
+
+          face_paths(family).flat_map do |weight, path|
+            missing = chars.reject { Build::FontMetrics.load(path).glyph?(it) }
+            FALLBACK_FONTS.filter_map do |fallback|
+              fallback_path = font_path(fallback, weight: weight == 700 ? :bold : :regular)
+              next if missing.empty? || fallback_path.nil?
+
+              covered, missing = missing.partition { Build::FontMetrics.load(fallback_path).glyph?(it) }
+              data = covered.empty? ? nil : subset(covered, fallback_path)
+              next unless data
+
+              descriptor = weight ? "font-weight:#{weight};" : ''
+              range = covered.map { format('U+%04X', it.ord) }.join(',')
+              %(@font-face{font-family:"#{family}";#{descriptor}unicode-range:#{range};) +
+                %(src:url("data:font/ttf;base64,#{[data].pack('m0')}") format("truetype");})
+            end
+          end
+        rescue StandardError => e
+          Common.log_debug("[svg-font] 予備の書体で補えませんでした: #{family} (#{e.message})")
+          []
         end
 
         # 書体 1 つぶんの、埋め込むべき字面。
@@ -234,6 +269,10 @@ module VivlioStarter
         DEFAULT_FONT = 'Noto Sans JP'
         DEFAULT_BODY_FONT = 'Noto Serif JP'
         DEFAULT_CODE_FONT = 'HackGen35 Console NF'
+
+        # 図の書体に無い字を補う予備の書体。上から順に探す。page-settings.css の本文・見出しの
+        # 並び（`--font-body`・`--font-header`）で、本の書体の次に置いている書体と同じにする
+        FALLBACK_FONTS = [DEFAULT_CODE_FONT].freeze
 
         # 指定の字だけを含む TTF を作る。フォントが読めない場合は nil。
         def subset(chars, path)

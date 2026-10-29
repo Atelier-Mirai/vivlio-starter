@@ -14,7 +14,8 @@
 #   - 本文・見出し: 本文（見出し）の書体 → HackGen（page-settings.css の --font-body・--font-header）
 #   - コード: コードの書体だけ（--font-code の次は monospace = OS の書体）
 #   - 数式の画像: SVG に埋めた本文の書体だけ（MathTransformer#embed_text_font）
-#   - 図の SVG: SVG に埋めた書体だけ（DerivedSvg が、図の名指しする書体と見出しの書体を埋める）
+#   - 図の SVG: SVG に埋めた書体だけ（DerivedSvg が、図の名指しする書体と見出しの書体を埋め、
+#     それらに無い字は予備の書体 SvgFontEmbedder::FALLBACK_FONTS で補う・改善案 #127）
 #   spiral-ruby では、本文の ≒ は HackGen で組めていて、図の中の ≒・ⁿ・✊、コードの中の ⌃・ₙ が
 #   Type 3 になっていた。OS の書体が TrueType なら Type 3 にはならない（コードの ⟹ など）が、組む PC で
 #   書体も字形も変わるので、本の書体に無い字はすべて知らせる。
@@ -183,10 +184,10 @@ module VivlioStarter
           end
         end
 
-        # 図に埋める書体（DerivedSvg と同じ寄せ方）
+        # 図に埋める書体（DerivedSvg と同じ寄せ方）と、それらに無い字を補う予備の書体
         def figure_fonts(svg)
           _, families = Build::DerivedSvg.resolve_families(svg)
-          families = [*families, Build::DerivedSvg.default_family(svg)].compact.uniq
+          families = [*families, Build::DerivedSvg.default_family(svg), *SvgFontEmbedder::FALLBACK_FONTS].compact.uniq
           families.flat_map { SvgFontEmbedder.face_paths(it).values }.uniq.select { File.file?(it) }.map { Build::FontMetrics.load(it) }
         end
 
