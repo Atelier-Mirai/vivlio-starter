@@ -91,6 +91,17 @@ Notes:
 - `stylesheets/fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf` および `.../ZenMaruGothic-Bold.ttf` をバンドルし、コラムの丸ゴシック体に使用しています。
 - ライセンスの参考訳は `stylesheets/fonts/Zen_Maru_Gothic/OFL-ja.md` に記載しています。
 
+### DejaVu Sans / DejaVu Sans Mono
+- License: Bitstream Vera Fonts License（DejaVu による変更はパブリックドメイン）／Arev Fonts License
+- Project: https://dejavu-fonts.github.io/
+- Source: https://github.com/dejavu-fonts/dejavu-fonts（version 2.37）
+- Copyright: (c) 2003 by Bitstream, Inc. / (c) 2006 by Tavmjong Bah
+- License Text: included at `stylesheets/fonts/DejaVu_Sans/LICENSE` および `stylesheets/fonts/DejaVu_Sans_Mono/LICENSE`
+
+Notes:
+- `DejaVuSans-Regular.ttf`・`DejaVuSans-Bold.ttf`・`DejaVuSansMono-Regular.ttf`・`DejaVuSansMono-Bold.ttf` を同梱し、本の書体と HackGen のどちらにも無い記号（`⟹`・`⌃`・下付きの `ₙ` など）の予備として使用しています（PDF のみ）。配布物のファイル名に `-Regular` を補ったほかは未改変です。
+- 改変したフォントには "Bitstream"・"Vera"・"Arev" の名を付けて配布できません。PDF などへの埋め込みは許可されています。
+
 ### Keyboard JP
 - License: SIL Open Font License 1.1 (OFL-1.1)
 - Project: https://github.com/n-yuji/keyboard-font

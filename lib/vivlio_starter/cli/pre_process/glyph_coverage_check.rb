@@ -12,7 +12,8 @@
 #   Chromium は字を書体の並び（font-family）の順に探し、どれにも無ければ OS の書体で描く。
 #   その書体が Type 3 で埋め込まれる。どの書体の並びで探すかは、字の置き場所で違う:
 #   - 本文・見出し: 本文（見出し）の書体 → HackGen（page-settings.css の --font-body・--font-header）
-#   - コード: コードの書体だけ（--font-code の次は monospace = OS の書体）
+#     → DejaVu Sans Mono → DejaVu Sans（book-settings.css が HackGen と同じ書体名の面として足す・改善案 #127）
+#   - コード: コードの書体だけ（--font-code の次は monospace = OS の書体）。HackGen なら DejaVu も
 #   - 数式の画像: SVG に埋めた本文の書体だけ（MathTransformer#embed_text_font）
 #   - 図の SVG: SVG に埋めた書体だけ（DerivedSvg が、図の名指しする書体と見出しの書体を埋め、
 #     それらに無い字は予備の書体 SvgFontEmbedder::FALLBACK_FONTS で補う・改善案 #127）
@@ -47,6 +48,11 @@ module VivlioStarter
 
         # 見つけた字。line は原稿の行（引けなければ nil）、where は字のある所（「コード」「図 x.svg」など）
         Finding = Data.define(:line, :chars, :where)
+
+        # 予備の書体（SvgFontEmbedder::FALLBACK_FONTS）。絵文字は補わない
+        Fallback = Data.define(:metrics) do
+          def glyph?(char) = !char.match?(SvgFontEmbedder::FALLBACK_EXCLUDED) && metrics.glyph?(char)
+        end
 
         # 書体に関わらない字（空白・制御文字・結合文字・異体字セレクタ）
         IGNORED = /[[:space:]\p{Cc}\p{Cf}\p{M}\u{FE00}-\u{FE0F}\u{E0100}-\u{E01EF}]/
@@ -174,11 +180,15 @@ module VivlioStarter
             embedder = SvgFontEmbedder
             load = ->(name) { (path = embedder.font_path(name, weight: :regular)) && File.file?(path) ? Build::FontMetrics.load(path) : nil }
             body = load.(embedder.configured_body_font)
-            hackgen = load.(SvgFontEmbedder::DEFAULT_CODE_FONT)
+            # HackGen と、その後ろの予備の書体（book-settings.css が HackGen と同じ書体名の面として足す）
+            hackgen = [load.(SvgFontEmbedder::DEFAULT_CODE_FONT),
+                       *SvgFontEmbedder::FALLBACK_FONTS.drop(1).filter_map { load.(it) }.map { Fallback.new(it) }].compact
+            code_font = embedder.configured_code_font
+            code_hackgen = embedder.comparable(code_font) == embedder.comparable(SvgFontEmbedder::DEFAULT_CODE_FONT)
             body && {
-              body: [body, hackgen].compact,
-              heading: [load.(embedder.configured_heading_font), hackgen].compact,
-              code: [load.(embedder.configured_code_font)].compact,
+              body: [body, *hackgen],
+              heading: [load.(embedder.configured_heading_font), *hackgen].compact,
+              code: code_hackgen ? hackgen : [load.(code_font)].compact,
               math: [body]
             }
           end
@@ -187,8 +197,9 @@ module VivlioStarter
         # 図に埋める書体（DerivedSvg と同じ寄せ方）と、それらに無い字を補う予備の書体
         def figure_fonts(svg)
           _, families = Build::DerivedSvg.resolve_families(svg)
-          families = [*families, Build::DerivedSvg.default_family(svg), *SvgFontEmbedder::FALLBACK_FONTS].compact.uniq
-          families.flat_map { SvgFontEmbedder.face_paths(it).values }.uniq.select { File.file?(it) }.map { Build::FontMetrics.load(it) }
+          load = ->(names) { names.flat_map { SvgFontEmbedder.face_paths(it).values }.uniq.select { File.file?(it) }.map { Build::FontMetrics.load(it) } }
+          own = load.([*families, Build::DerivedSvg.default_family(svg)].compact.uniq)
+          own + load.(SvgFontEmbedder::FALLBACK_FONTS).map { Fallback.new(it) }
         end
 
         # 原稿の行番号。前処理後の行で字の前後にある字を、元の原稿の行から探す。

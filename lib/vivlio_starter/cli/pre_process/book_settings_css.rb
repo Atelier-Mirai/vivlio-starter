@@ -39,6 +39,7 @@ require_relative 'css_updater'
 require_relative '../post_process/heading_processor'
 require_relative 'frontmatter_generator'
 require_relative 'talk_registry'
+require_relative 'svg_font_embedder'
 
 module VivlioStarter
   module CLI
@@ -108,6 +109,7 @@ module VivlioStarter
             #{heading_numbering_rule(page_cfg)}
             #{chapter_lead_size_rules(settings)}
             #{font_synthesis_rules(cfg)}
+            #{fallback_font_rules(image_prefix:)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
@@ -136,6 +138,34 @@ module VivlioStarter
                    'body, body *, body *::before, body *::after { font-synthesis-weight: none; }']
           rules.concat(emphasis_fallback_rules) unless FontManager.bold_available?(typo.dig(:body, :font))
           rules.join("\n")
+        end
+
+        # 本の書体にも HackGen にも無い字（⟹・⌃・ₙ など）を、DejaVu で組む（改善案 #127 段階 2）。
+        #
+        # HackGen と同じ書体名の面を足し、unicode-range を HackGen に無い字に絞る。同じ名前の面が重なる
+        # 字は後の面が優先されるので、HackGen を並びに含む本文・見出し・コラム・コード・ノンブルの
+        # すべてで、HackGen の次に DejaVu が探される。雛形の page-settings.css の並びを書き換えないので、
+        # vs upgrade で CSS を上げなくても効く（書体のファイルは雛形と一緒に届く）。
+        # 書体のファイルが無いプロジェクトでは何も出さない。EPUB は @font-face を取り除く（EpubBuilder）。
+        def fallback_font_rules(image_prefix:)
+          family = SvgFontEmbedder::DEFAULT_CODE_FONT
+          { 400 => :regular, 700 => :bold }.flat_map do |weight, face|
+            SvgFontEmbedder.html_fallback_faces(face).map do |name, path, codepoints|
+              src = rebase_relative(path.delete_prefix("#{Common.stylesheets_dir}/"), image_prefix:)
+              %(@font-face { /* #{name} */ font-family: "#{family}"; font-style: normal; font-weight: #{weight}; ) +
+                %(unicode-range: #{unicode_ranges(codepoints)}; src: url("#{src}") format("truetype"); })
+            end
+          end.join("\n")
+        rescue StandardError => e
+          Common.log_debug("[book-settings] 予備の書体の面を出せませんでした: #{e.message}")
+          ''
+        end
+
+        # コードポイントの並びを、続いた所をまとめた unicode-range の値にする（U+2190-21FF, U+2303）
+        def unicode_ranges(codepoints)
+          codepoints.sort.slice_when { |a, b| b != a + 1 }.map do |run|
+            run.size == 1 ? format('U+%04X', run.first) : format('U+%04X-%04X', run.first, run.last)
+          end.join(', ')
         end
 
         # 本文書体に太字が無いときの強調（ゴシック代用）。

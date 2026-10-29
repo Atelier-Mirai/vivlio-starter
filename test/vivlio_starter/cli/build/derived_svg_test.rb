@@ -167,22 +167,23 @@ module VivlioStarter
         end
       end
 
-      # 図の書体に無い字（≒・ⁿ）は、同じファミリ名の HackGen の面を unicode-range でその字に
-      # 絞って足し、補う（改善案 #127）。太さの面ごとに足す。どの書体にも無い字（⟹）は補えない。
+      # 図の書体に無い字は、同じファミリ名の予備の書体の面を unicode-range でその字に絞って足し、
+      # 補う（改善案 #127）。予備の書体は HackGen（≒・ⁿ）→ DejaVu Sans Mono（ₙ）→ DejaVu Sans（⟹）の順に
+      # 探し、太さの面ごとに足す。絵文字（✌）は DejaVu にあっても補わない。
       # 図の font-family は、寄せ先を足すほかは書き換えない
       def test_should_fill_characters_the_figure_font_lacks_with_the_fallback_font
         skip '同梱書体が無い環境では検証できない' unless File.file?(REAL_FONT)
 
         with_project do
-          FileUtils.cp_r(Dir[File.join(BUNDLED_FONTS, '{Noto_Sans_JP,Noto_Serif_JP,hackgen35}')], 'stylesheets/fonts')
-          source = write_svg('curve.svg', %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="sans-serif">面積 ≒ xⁿ ⟹</text></svg>))
+          FileUtils.cp_r(Dir[File.join(BUNDLED_FONTS, '{Noto_Sans_JP,Noto_Serif_JP,hackgen35,DejaVu_Sans,DejaVu_Sans_Mono}')], 'stylesheets/fonts')
+          source = write_svg('curve.svg', %(<svg xmlns="http://www.w3.org/2000/svg"><text font-family="sans-serif">面積 ≒ xⁿ Hₙ ⟹ ✌</text></svg>))
 
           embedded = File.read(DerivedSvg.prepare(source))
           fallback, own = embedded.scan(/@font-face\{[^}]*\}/).partition { it.include?('unicode-range') }
 
           assert_equal 2, own.size, 'Noto Sans JP の Regular と Bold'
-          assert_equal ['font-weight:400;unicode-range:U+2252,U+207F;', 'font-weight:700;unicode-range:U+2252,U+207F;'],
-                       fallback.map { it[/font-weight:\d+;unicode-range:[^;]+;/] }
+          assert_equal %w[400:U+2252,U+207F 400:U+2099 400:U+27F9 700:U+2252,U+207F 700:U+2099 700:U+27F9],
+                       fallback.map { it[/font-weight:(\d+);unicode-range:([^;]+);/].then { "#{$1}:#{$2}" } }
           assert(fallback.all? { it.include?('font-family:"Noto Sans JP"') })
           assert_includes embedded, 'font-family="Noto Sans JP, sans-serif"'
         end

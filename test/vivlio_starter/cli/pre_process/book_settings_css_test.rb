@@ -17,6 +17,7 @@
 # ================================================================
 
 require_relative '../../../test_helper'
+require 'tmpdir'
 require 'vivlio_starter/cli/loader'
 
 class BookSettingsCssThemeTest < Minitest::Test
@@ -833,5 +834,48 @@ class BookSettingsCssTalkTest < Minitest::Test
 
     assert_empty BSC.talk_variable_declarations(empty)
     assert_equal '', BSC.talk_class_rules(empty)
+  end
+end
+
+# 本の書体にも HackGen にも無い字を DejaVu で組む面（改善案 #127 段階 2）。
+# 同梱の書体（リポジトリの stylesheets/fonts）で、面の書体名・ファイル・unicode-range を確かめる
+class BookSettingsCssFallbackFontTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+
+  # 書体ごとの面の unicode-range が、その字を含むか
+  def covers?(face, char)
+    face[/unicode-range: ([^;]+);/, 1].split(', ').any? do |range|
+      first, last = range.delete_prefix('U+').split('-').map { it.to_i(16) }
+      char.ord.between?(first, last || first)
+    end
+  end
+
+  # HackGen と同じ書体名で、DejaVu Sans Mono → DejaVu Sans の面を太さごとに足す。
+  # HackGen にある字（≒）と絵文字（✌）は含めず、Mono にある字（ₙ）は Sans に回さない
+  def test_should_add_dejavu_faces_under_the_hackgen_family
+    faces = BSC.fallback_font_rules(image_prefix: '../../stylesheets/').lines
+
+    assert_equal ['DejaVu Sans Mono 400', 'DejaVu Sans 400', 'DejaVu Sans Mono 700', 'DejaVu Sans 700'],
+                 faces.map { "#{it[%r{/\* (.+?) \*/}, 1]} #{it[/font-weight: (\d+)/, 1]}" }
+    assert(faces.all? { it.include?('font-family: "HackGen35 Console NF"') })
+    assert_includes faces.first, 'url("../../stylesheets/fonts/DejaVu_Sans_Mono/DejaVuSansMono-Regular.ttf")'
+    mono, sans = faces.first(2)
+
+    assert covers?(mono, 'ₙ')
+    refute covers?(sans, 'ₙ'), 'Mono で組める字は Sans に回さない'
+    assert covers?(sans, '⟹')
+    refute(faces.any? { covers?(it, '≒') }, 'HackGen にある字は HackGen で組む')
+    refute(faces.any? { covers?(it, '✌') }, '絵文字は補わない')
+  end
+
+  # 書体のファイルが無いプロジェクト（vs upgrade 前）では何も出さない
+  def test_should_emit_nothing_without_the_font_files
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) { assert_equal '', BSC.fallback_font_rules(image_prefix: '../../stylesheets/') }
+    end
+  end
+
+  def test_should_merge_consecutive_codepoints_into_ranges
+    assert_equal 'U+2190-2192, U+2303', BSC.unicode_ranges([0x2303, 0x2191, 0x2190, 0x2192])
   end
 end

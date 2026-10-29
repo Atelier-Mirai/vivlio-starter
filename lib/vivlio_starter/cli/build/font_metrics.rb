@@ -43,6 +43,9 @@ module VivlioStarter
         # 書体にある字か
         def glyph?(char) = !glyph_id(char).nil?
 
+        # 書体にある字のコードポイント（予備の書体の unicode-range を作る）
+        def codepoints = @cmap.code_map.filter_map { |code, id| code if id.positive? }
+
         # 字の送り（字の大きさに対する比）。書体に無い字は nil
         def advance(char)
           @advances.fetch(char) do

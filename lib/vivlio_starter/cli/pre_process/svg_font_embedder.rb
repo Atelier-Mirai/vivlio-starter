@@ -120,12 +120,13 @@ module VivlioStarter
         # unicode-range をその字だけに絞る。同じ名前の面が重なる字は後の面が優先されるので、
         # 補った字だけが予備の書体で、ほかの字は元の書体で組まれる。並びを書き換える方法だと、
         # `font-family` の書ける 3 か所（notes §5）すべてと、ルートの既定の受け皿を直す必要がある。
+        # 絵文字は補わない（FALLBACK_EXCLUDED）。
         def fallback_face_rules(chars, family)
-          return [] if FALLBACK_FONTS.any? { comparable(it) == comparable(family) }
+          fallbacks = FALLBACK_FONTS.reject { comparable(it) == comparable(family) }
 
           face_paths(family).flat_map do |weight, path|
-            missing = chars.reject { Build::FontMetrics.load(path).glyph?(it) }
-            FALLBACK_FONTS.filter_map do |fallback|
+            missing = chars.reject { it.match?(FALLBACK_EXCLUDED) || Build::FontMetrics.load(path).glyph?(it) }
+            fallbacks.filter_map do |fallback|
               fallback_path = font_path(fallback, weight: weight == 700 ? :bold : :regular)
               next if missing.empty? || fallback_path.nil?
 
@@ -270,9 +271,35 @@ module VivlioStarter
         DEFAULT_BODY_FONT = 'Noto Serif JP'
         DEFAULT_CODE_FONT = 'HackGen35 Console NF'
 
-        # 図の書体に無い字を補う予備の書体。上から順に探す。page-settings.css の本文・見出しの
-        # 並び（`--font-body`・`--font-header`）で、本の書体の次に置いている書体と同じにする
-        FALLBACK_FONTS = [DEFAULT_CODE_FONT].freeze
+        # 本の書体に無い字を補う予備の書体。上から順に探す（改善案 #127）。
+        # HackGen は page-settings.css の本文・見出しの並び（`--font-body`・`--font-header`）で
+        # 本の書体の次に置いている書体。DejaVu は HackGen にも無い字（⟹・⌃・ₙ など）の受け皿で、
+        # 本文の HTML へは book-settings.css が HackGen と同じ書体名の面として足す（BookSettingsCss）。
+        # Mono を先にするのは、字幅が HackGen の半角と同じ 0.6 字で、コードの桁がずれないため
+        FALLBACK_FONTS = [DEFAULT_CODE_FONT, 'DejaVu Sans Mono', 'DejaVu Sans'].freeze
+
+        # 予備の書体で補わない字。絵文字は、techbook が twemoji の画像で組む
+        FALLBACK_EXCLUDED = /\p{Extended_Pictographic}/
+
+        # HackGen の後ろの予備の書体ごとに、その書体で補う字（前の予備の書体に無く、その書体にある字）。
+        # book-settings.css が HackGen と同じ書体名の面の unicode-range にする。
+        # @param weight [Symbol] :regular か :bold
+        # @return [Array(String, String, Array<Integer>)] 書体名・TTF のパス・コードポイントの並び
+        def html_fallback_faces(weight)
+          earlier = []
+          FALLBACK_FONTS.filter_map do |name|
+            path = font_path(name, weight:)
+            next unless path && File.file?(path)
+
+            codepoints = Build::FontMetrics.load(path).codepoints
+            covered = codepoints - earlier
+            earlier |= codepoints
+            next if name == DEFAULT_CODE_FONT
+
+            covered = covered.reject { [it].pack('U').match?(FALLBACK_EXCLUDED) }
+            [name, path, covered] unless covered.empty?
+          end
+        end
 
         # 指定の字だけを含む TTF を作る。フォントが読めない場合は nil。
         def subset(chars, path)
