@@ -37,6 +37,7 @@ require_relative 'markdown_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
 require_relative 'math_transformer'
+require_relative 'glyph_coverage_check'
 require_relative 'showcase_transformer'
 require_relative 'mermaid_transformer'
 require_relative 'talk_registry'
@@ -137,6 +138,7 @@ module VivlioStarter
           transform_links!
           expose_container_footnotes!
           strip_index_markup!
+          warn_missing_glyphs!
           write_output!
         end
 
@@ -448,12 +450,81 @@ module VivlioStarter
           Common.log_action('数式を SVG 化しています…')
           before = context.content.dup
           chapter_slug = File.basename(context.output_path, '.md')
-          context.content = MathTransformer.transform(context.content, chapter_slug:)
+          errors = []
+          context.content = MathTransformer.transform(context.content, chapter_slug:, errors:)
           if context.content == before
             Common.log_info('SVG 化対象の数式はありません')
           else
             Common.log_success('数式の SVG 化を適用しました')
           end
+          warn_math_errors(errors)
+        end
+
+        # MathJax の知らせ → 著者の次の一手。上から見て、最初に当たったものを使う
+        MATH_ERROR_ADVICE = [
+          [/\ADouble exponent/, '上付きが重なっています。{ } でまとめてください（例: x^a^b → x^{a^b}）'],
+          [/\ADouble subscripts/, '下付きが重なっています。{ } でまとめてください（例: x_i_j → x_{i_j}）'],
+          [/brace/i, '{ と } の数が合っていません。対になっているか確かめてください'],
+          [/\AUndefined control sequence (\S+)/, '%s は使えない命令です。綴りを確かめてください']
+        ].freeze
+
+        # 知らせに載せる式の長さの上限
+        MATH_EXCERPT_LENGTH = 60
+
+        # MathJax が組めなかった式を、原稿の行で知らせる。
+        # 組めない式も SVG にはなり、紙面には式の代わりに帯が出るだけなので、組んだ PDF を見ても
+        # 気づきにくい。前処理で拾えば、build と preflight の両方で同じ知らせが出る。
+        # 行番号は原稿から式を探して引く（この段の本文は include などで行がずれている）。
+        # 同じ式が何か所にもあれば、その行ごとに知らせる
+        def warn_math_errors(errors)
+          return if errors.empty?
+
+          source = File.read(context.source_path, encoding: 'utf-8')
+          errors.uniq { it[:original] }.each do |error|
+            formula = error[:original].gsub(/\s+/, ' ')
+            formula = "#{formula[0, MATH_EXCERPT_LENGTH]}…" if formula.length > MATH_EXCERPT_LENGTH
+            message = "数式が組めていません: #{formula}"
+            detail = "→ #{math_error_advice(error[:reason])}"
+            lines = []
+            from = 0
+            while (found = source.index(error[:original], from))
+              lines << (source[0, found].count("\n") + 1)
+              from = found + 1
+            end
+            if lines.empty?
+              Common.log_warn("#{context.filename} - #{message}", detail:)
+            else
+              lines.each { record_notation_warning(it, message, detail:) }
+            end
+          end
+        end
+
+        # 本の書体に無い字を、原稿の行で知らせる（GlyphCoverageCheck）。PDF の Type 3 の確かめは全章の
+        # build でしか走らないので、preflight と単章の build でも同じ字が分かるようにする。
+        # 知らせた字は覚えておき、Type3FontCheck が重ねて言わない
+        def warn_missing_glyphs!
+          source = File.read(context.source_path, encoding: 'utf-8')
+          GlyphCoverageCheck.scan(context.content, source:).each do |finding|
+            GlyphCoverageCheck.remember(finding.chars)
+            where = finding.where ? "（#{finding.where}）" : ''
+            message = "本の書体にない字があります#{where}: #{finding.chars.join(' ')}"
+            fixes = finding.chars.group_by { GlyphCoverageCheck.advice_for(it) }.map { |advice, chars| "#{chars.join(' ')} → #{advice}" }
+            detail = "→ #{fixes.join(' ／ ')}（組む PC の書体で代わりに組まれ、Type 3 になると入稿で断られることがあります）"
+            if finding.line
+              record_notation_warning(finding.line, message, detail:)
+            else
+              Common.log_warn("#{context.filename} - #{message}", detail:)
+            end
+          end
+        rescue StandardError => e
+          Common.log_debug("[preprocess] 書体に無い字を調べられませんでした: #{e.message}")
+        end
+
+        def math_error_advice(reason)
+          pattern, advice = MATH_ERROR_ADVICE.find { reason.match?(it.first) }
+          return "式の書き方を直してください（MathJax: #{reason}）" unless advice
+
+          format(advice, *reason.match(pattern).captures)
         end
 
         # HTML ブロック終了タグの直後に Markdown 記法が続く場合、空行を挿入する

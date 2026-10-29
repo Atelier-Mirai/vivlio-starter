@@ -138,6 +138,47 @@ module VivlioStarter
         ensure
           MarkdownPreprocessor.math_renderer_warned = nil
         end
+
+        # --- phase: MathJax が組めなかった式（warn_math_errors） ---
+
+        # 原稿の行番号を添え、同じ式が何か所にもあれば行ごとに知らせる。直し方は MathJax の英語でなく日本語で
+        def test_should_warn_math_errors_with_source_lines_and_advice
+          File.write(@md_path, "# 見出し\n\n式 $x^a^b$ です。\n\nもう一度 $x^a^b$。\n")
+          pre = MarkdownPreprocessor.new(@md_path, @entry)
+          out, = capture_io do
+            pre.send(:warn_math_errors, [{ original: '$x^a^b$', reason: 'Double exponent: use braces to clarify' },
+                                         { original: '$x^a^b$', reason: 'Double exponent: use braces to clarify' }])
+          end
+
+          assert_includes out, '50-sample.md:3 - 数式が組めていません: $x^a^b$'
+          assert_includes out, '50-sample.md:5 - 数式が組めていません: $x^a^b$'
+          assert_includes out, '上付きが重なっています。{ } でまとめてください'
+          assert_equal 2, out.scan('数式が組めていません').size
+        end
+
+        # 本の書体に無い字を、原稿の行と直し方を添えて知らせ、Type 3 の確かめのために覚えておく
+        def test_should_warn_missing_glyphs_with_source_line
+          glyphs = GlyphCoverageCheck
+          finding = glyphs::Finding.new(line: 3, chars: %w[≒], where: '図 curve.svg')
+          pre = MarkdownPreprocessor.new(@md_path, @entry)
+          out, = capture_io { glyphs.stub(:scan, [finding]) { pre.send(:warn_missing_glyphs!) } }
+
+          assert_includes out, '50-sample.md:3 - 本の書体にない字があります（図 curve.svg）: ≒'
+          assert_includes out, '≒ → ≈ に置き換える'
+          assert_includes glyphs.reported, '≒'
+        ensure
+          GlyphCoverageCheck.reset!
+          IssueRegistry.reset!
+        end
+
+        # 直し方を用意していない知らせは、MathJax の言葉をそのまま添える
+        def test_should_show_mathjax_reason_for_unknown_math_error
+          pre = MarkdownPreprocessor.new(@md_path, @entry)
+
+          assert_equal '\foo は使えない命令です。綴りを確かめてください',
+                       pre.send(:math_error_advice, 'Undefined control sequence \foo')
+          assert_equal '式の書き方を直してください（MathJax: Misplaced &）', pre.send(:math_error_advice, 'Misplaced &')
+        end
       end
     end
   end

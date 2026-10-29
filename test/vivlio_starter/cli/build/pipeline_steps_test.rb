@@ -126,7 +126,8 @@ module VivlioStarter
       ].freeze
 
       PREFLIGHT_MODE = [
-        'optimize images', 'prepare theme images', 'preprocess sections', 'index scan and build'
+        'optimize images', 'prepare theme images', 'preprocess sections', 'index scan and build',
+        'estimate chapter leads'
       ].freeze
 
       def test_full_mode_step_sequences_for_all_target_combos

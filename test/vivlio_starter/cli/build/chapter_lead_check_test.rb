@@ -18,11 +18,11 @@ require 'tmpdir'
 
 require_relative '../../../../lib/vivlio_starter/cli/common'
 require_relative '../../../../lib/vivlio_starter/cli/pre_process/frontmatter_generator'
-require_relative '../../../../lib/vivlio_starter/cli/build/heading_image_composer'
 require_relative '../../../../lib/vivlio_starter/cli/build/chapter_lead_check'
 
 class TestChapterLeadCheck < Minitest::Test
   ChapterLeadCheck = VivlioStarter::CLI::Build::ChapterLeadCheck
+  Estimate = VivlioStarter::CLI::Build::FrontispieceEstimate
   Lead = ChapterLeadCheck::Lead
   Overflow = ChapterLeadCheck::Overflow
   # 章の代わり（basename と path だけを使う）
@@ -34,7 +34,7 @@ class TestChapterLeadCheck < Minitest::Test
     'mike november oscar papa quebec romeo',
     'sierra tango uniform victor whiskey xray yankee zulu'
   ].freeze
-  LEAD = Lead.new(path: 'contents/10-a.md', title: 'Chapter 1', paragraphs: [LEAD_LINES.join(' ')])
+  LEAD = Lead.new(path: 'contents/10-a.md', title: 'Chapter 1', paragraphs: [LEAD_LINES.join(' ')], chapter: nil)
 
   # 1 ページ目に収める行数を変えて、章扉の PDF を組む
   def write_pdf(path, on_first_page:)
@@ -92,6 +92,14 @@ class TestChapterLeadCheck < Minitest::Test
     end
   end
 
+  # 行の途中に数式の画像があると、pdftotext は画像の前と後ろを別の行として出す。高さのそろった行は
+  # 1 行として数える（まとめないと、spiral-ruby の 22 章で 22 行の送りを 24 行と言っていた）
+  def test_should_join_line_split_by_image
+    lines = [[0, 300.2, 250.0, %q(だけずれます。)], [0, 300.0, 200.0, %q(もとの点から)], [0, 320.0, 200.0, %q(次の行)]]
+
+    assert_equal [[0, %q(もとの点からだけずれます。)], [0, %q(次の行)]], ChapterLeadCheck.same_height_joined(lines)
+  end
+
   def test_should_find_nothing_when_lead_fits_on_frontispiece
     require_pdftotext
     Dir.mktmpdir do |dir|
@@ -106,7 +114,7 @@ class TestChapterLeadCheck < Minitest::Test
     require_pdftotext
     Dir.mktmpdir do |dir|
       pdf = write_pdf(File.join(dir, 'book.pdf'), on_first_page: 3)
-      other = Lead.new(path: 'contents/20-b.md', title: 'B', paragraphs: ['this lead text is not in the pdf at all'])
+      other = Lead.new(path: 'contents/20-b.md', title: 'B', paragraphs: ['this lead text is not in the pdf at all'], chapter: nil)
 
       assert_empty ChapterLeadCheck.scan(pdf, [other])
     end
@@ -133,85 +141,101 @@ class TestChapterLeadCheck < Minitest::Test
         entries = %w[10-a 90-b 20-c 30-missing].map { FakeEntry.new(basename: it, path: "contents/#{it}.md") }
         leads = ChapterLeadCheck.collect_leads(entries)
 
-        assert_equal [Lead.new(path: 'contents/10-a.md', title: '第1部　基礎編', paragraphs: ['最初の段落です。', '二つ目の 段落です。'])],
-                     leads
+        assert_equal [['contents/10-a.md', '第1部　基礎編', ['最初の段落です。', '二つ目の 段落です。']]],
+                     leads.map { [it.path, it.title, it.paragraphs] }
+        # 見積もりには、段落の HTML をそのまま渡す（インラインコードや太字で字の幅が変わる）
+        assert_equal ['最初の段落です。', "二つ目の\n段落です。"], leads.first.chapter.paragraphs
       end
     end
   end
 
   # --- 直し方の案 ---
+  #
+  # 案の選び方（倍率の並べ方・落とし方）を確かめる。収まるかの見積もりは FrontispieceEstimate の
+  # 仕事なので、ここでは単純な式に差し替える: 段落ごとに ceil(字数 / 1 行の字数) 行、章扉には
+  # 1.2 倍のときの行数 × 1.2 / 倍率 行入る（行の高さは字の大きさに比例する）
 
-  # 3 段落 × 164 字（頭の字下げ込み）。1 行は字数より 0.5 字少なく見積もるので、24 字で 164 / 23.5
-  # → 7 行 × 3 = 21 行。章扉には 18 行しか入らない。
-  #   大きさだけ: 21 行 × 倍率 / 1.2 ≤ 18 → 1.028 → 0.05 刻みで 1.0
-  #   字数だけ:   1 段落 6 行以下（164 / 27.5 = 5.96）→ 28 字
-  #   組:         1.05 倍・28 字（幅はそのまま）で 6 行 × 3 = 18 行、高さは 1.05 / 1.2
-  def test_should_suggest_size_chars_and_pair_that_fit
-    overflow = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 163] * 3), fitted: 18, overflow: 3)
+  # 段落の字数と、1.2 倍で章扉に入る行数を持つ、見積もり用の章
+  FakeChapter = Data.define(:paragraph_chars, :capacity_at_default)
 
-    found = ChapterLeadCheck.suggestions([overflow], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
-
-    assert_equal({ size: 1.0, chars: 28, pair: [1.05, 28] }, found)
+  def overflow_of(paragraph_chars, capacity, path: 'p')
+    chapter = FakeChapter.new(paragraph_chars:, capacity_at_default: capacity)
+    Overflow.new(lead: Lead.new(path:, title: 't', paragraphs: [], chapter:), fitted: capacity, overflow: 1)
   end
 
-  # 段落の最後の行がぎりぎり満杯になる字数は、行が空く分を見込んで 1 行多く数える。
-  # 満杯で数えた 25 字・248 字（9.92 行 → 10 行）の案は、組むと 11 行になった（spiral-ruby の 33 章）
-  def test_should_count_line_loss_from_line_breaking_rules
-    assert_equal 11, ChapterLeadCheck.estimated_lines(['あ' * 247], 25)
+  def fake_layout(chapter, _page, size:, chars:)
+    lines = chapter.paragraph_chars.sum { (it.to_f / chars).ceil }
+    capacity = ((chapter.capacity_at_default * 1.2 / size) + 1e-9).floor
+    Estimate::Layout.new(lines:, capacity:, fitted: [lines, capacity].min)
   end
 
-  # 組が大きさだけの案より小さくならないなら、組は出さない（大きさだけで足りる）
-  def test_should_drop_pair_that_needs_no_larger_size_than_size_alone
-    overflow = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 187] * 3), fitted: 21, overflow: 3)
+  def suggest(overflows, size: 1.2, chars: 24)
+    Estimate.stub(:layout, method(:fake_layout)) do
+      ChapterLeadCheck.suggestions(overflows, size:, chars:, max_chars: ->(_) { 36 }, page: :page)
+    end
+  end
 
-    found = ChapterLeadCheck.suggestions([overflow], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
+  # 3 段落 × 164 字・章扉に 18 行。24 字で 7 行 × 3 = 21 行
+  #   1.2 倍のまま: 1 段落 6 行以下 → 28 字
+  #   1.1 倍:       19 行まで → 1 段落 6 行 → 28 字（字が小さくなるだけなので出さない）
+  #   大きさだけ:   21 行入るのは 1.0 倍（18 × 1.2 / 1.05 = 20.6 行）
+  def test_should_suggest_least_chars_for_each_size
+    assert_equal [[1.2, 28], [1.0, 24]], suggest([overflow_of([164] * 3, 18)])
+  end
 
-    assert_equal({ size: 1.05, chars: 28, pair: nil }, found)
+  # はみ出しが大きく、大きさだけでは収まらないとき（1.0 倍でも 17% しか縮まない）も、
+  # 0.1 刻みの倍率ごとに、収まる字数を添えて出す。3 段落 × 164 字・14 字で 39 行、章扉には 24 行
+  #   1.2 倍: 1 段落 8 行 → 21 字
+  #   1.1 倍: 26 行まで → 1 段落 8 行 → 21 字（減らないので出さない）
+  #   1.0 倍: 28 行まで → 1 段落 9 行 → 19 字
+  def test_should_suggest_smaller_sizes_with_more_chars_when_size_alone_is_not_enough
+    assert_equal [[1.2, 21], [1.0, 19]], suggest([overflow_of([164] * 3, 24)], chars: 14)
+  end
+
+  # 字数を変えずに収まる倍率（大きさだけ）より下の倍率は、字を小さくするだけなので出さない。
+  # 3 段落 × 188 字・24 字で 24 行、章扉に 21 行 → 1.2 倍のままなら 1 段落 7 行の 27 字、1.05 倍で 24 行入る
+  def test_should_stop_at_size_that_fits_without_more_chars
+    assert_equal [[1.2, 27], [1.05, 24]], suggest([overflow_of([188] * 3, 21)])
   end
 
   # 1.0 を下回る倍率・版面を超える字数は出さない。どれも出せなければ縮める案だけになる
   def test_should_not_suggest_below_minimum_size_or_wider_than_text_area
-    overflow = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 163] * 3), fitted: 10, overflow: 11)
-
-    found = ChapterLeadCheck.suggestions([overflow], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
-
-    assert_equal({ size: nil, chars: nil, pair: nil }, found)
+    assert_empty suggest([overflow_of([164] * 3, 10)])
   end
 
   # 案は、はみ出したすべての章が収まる値（キーは本全体に効くので、章ごとには書けない）
   def test_should_suggest_values_that_fit_every_overflowing_chapter
-    mild = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 163] * 3), fitted: 20, overflow: 1)
-    severe = Overflow.new(lead: Lead.new(path: 'q', title: 'u', paragraphs: ['あ' * 163] * 3), fitted: 18, overflow: 3)
+    mild = overflow_of([164] * 3, 20)
+    severe = overflow_of([164] * 3, 18, path: 'q')
 
-    found = ChapterLeadCheck.suggestions([mild, severe], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
-
-    assert_equal ChapterLeadCheck.suggestions([severe], size: 1.2, chars: 24, max_chars: ->(_) { 36 }), found
+    assert_equal suggest([severe]), suggest([mild, severe])
   end
 
-  # 実際の行数が見積もり（24 字で 24 行）より多いとき（禁則・半角の字）は、その比で案を厳しくする。
-  # 25 行なら大きさは 1.2 × 21 / 25 = 1.008 → 1.0、字数は見積もりが 25 / 24 倍されるので 1 段落 6 行（32 字）まで要る
-  def test_should_scale_estimate_by_actual_line_count
-    estimated = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 187] * 3), fitted: 21, overflow: 3)
-    longer = Overflow.new(lead: Lead.new(path: 'p', title: 't', paragraphs: ['あ' * 187] * 3), fitted: 21, overflow: 4)
+  # 今の倍率では、今の字数を案にしない。build の PDF ではみ出した章を、見積もりが「収まる」と
+  # 言っても（見積もりの外れ）、今の組ではみ出したことは分かっている
+  def test_should_not_suggest_current_combination
+    fits_now = overflow_of([100] * 3, 18) # 24 字で 15 行。見積もりでは収まる
 
-    as_estimated = ChapterLeadCheck.suggestions([estimated], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
-    as_longer = ChapterLeadCheck.suggestions([longer], size: 1.2, chars: 24, max_chars: ->(_) { 36 })
+    found = suggest([fits_now])
 
-    assert_equal [1.05, 28], [as_estimated[:size], as_estimated[:chars]]
-    assert_equal [1.0, 32], [as_longer[:size], as_longer[:chars]]
+    refute_includes found, [1.2, 24]
+    assert_equal [1.2, 25], found.first
   end
 
   # --- 知らせ ---
 
   def test_should_warn_with_cut_chars_and_book_yml_suggestions
-    overflow = Overflow.new(lead: Lead.new(path: 'contents/33-net.md', title: '第7部　通信・システム編',
-                                           paragraphs: ['あ' * 163] * 3), fitted: 18, overflow: 3)
+    overflow = Overflow.new(lead: Lead.new(path: 'contents/33-net.md', title: '第7部　通信・システム編', paragraphs: [],
+                                           chapter: FakeChapter.new(paragraph_chars: [164] * 3, capacity_at_default: 18)),
+                            fitted: 18, overflow: 3)
     current = { size: 1.2, chars: 24, size_written: false, chars_written: true, max_chars: ->(_) { 36 } }
     warned = []
 
     ChapterLeadCheck.stub(:current_metrics, current) do
-      VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, detail: nil) { warned << [msg, detail] }) do
-        ChapterLeadCheck.warn_overflows([overflow])
+      Estimate.stub(:layout, method(:fake_layout)) do
+        VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, detail: nil) { warned << [msg, detail] }) do
+          ChapterLeadCheck.warn_overflows([overflow], page: :page)
+        end
       end
     end
 
@@ -219,20 +243,73 @@ class TestChapterLeadCheck < Minitest::Test
     assert_equal 'リードが章扉に収まらず、次のページへ送られている章があります（1 章）', message
     assert_equal <<~DETAIL.chomp, detail
       contents/33-net.md（第7部　通信・システム編）: 3 行が次のページへ。リードを 80 字ほど縮める
-      book.yml で直すなら、次のどれか 1 つ:
-        theme.frontispiece.lead_size: （空欄） → 1.0
-        theme.frontispiece.lead_chars: 24 → 28
-        theme.frontispiece.lead_size: （空欄） → 1.05 と lead_chars: 24 → 28（リードの幅はそのまま）
+      book.yml の theme.frontispiece を次の組み合わせのどれかにすると、すべての章が章扉に収まります:
+        lead_size: （空欄） のまま・lead_chars: 24 → 28
+        lead_size: （空欄） → 1.0・lead_chars: 24 のまま
     DETAIL
+  end
+
+  # 書体が見つからず見積もれないときは、直し方の案を添えない（章ごとの縮める字数は出す）
+  def test_should_warn_without_suggestions_when_estimate_is_unavailable
+    overflow = Overflow.new(lead: Lead.new(path: 'contents/33-net.md', title: 'T', paragraphs: [], chapter: nil),
+                            fitted: 18, overflow: 3)
+    current = { size: 1.2, chars: 24, size_written: false, chars_written: true, max_chars: ->(_) { 36 } }
+    warned = []
+
+    ChapterLeadCheck.stub(:current_metrics, current) do
+      VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, detail: nil) { warned << [msg, detail] }) do
+        ChapterLeadCheck.warn_overflows([overflow], page: nil)
+      end
+    end
+
+    assert_equal 'contents/33-net.md（T）: 3 行が次のページへ。リードを 80 字ほど縮める', warned.first.last
+  end
+
+  # preflight: 見積もりではみ出す章を、build と同じ形で知らせる
+  def test_should_estimate_overflows_without_pdf
+    chapter = Estimate::Chapter.new(path: 'contents/10-a.md', title: '第1部　基礎編', numbered: false, segments: [],
+                                    paragraphs: [])
+    current = { size: 1.2, chars: 24, chars_setting: 24, size_written: true, chars_written: true, max_chars: ->(_) { 36 } }
+    over = Estimate::Layout.new(lines: 30, capacity: 26, fitted: 25)
+    fits = Estimate::Layout.new(lines: 20, capacity: 26, fitted: 20)
+    warned = []
+
+    ChapterLeadCheck.stub(:image_style?, true) do
+      Estimate.stub(:current_page, :page) do
+        Estimate.stub(:chapters_from_markdown, [chapter]) do
+          Estimate.stub(:layout, ->(_c, _p, size:, chars:) { size == 1.2 && chars == 24 ? over : fits }) do
+            ChapterLeadCheck.stub(:current_metrics, current) do
+              VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, detail: nil) { warned << [msg, detail] }) do
+                overflows = ChapterLeadCheck.estimate!([])
+
+                assert_equal [[25, 5]], overflows.map { [it.fitted, it.overflow] }
+              end
+            end
+          end
+        end
+      end
+    end
+
+    assert_includes warned.first.last, 'contents/10-a.md（第1部　基礎編）: 5 行が次のページへ。リードを 120 字ほど縮める'
+    # preflight の章別サマリーにも数える
+    assert_equal 1, VivlioStarter::CLI::PreProcessCommands::IssueRegistry.summary_by_chapter['10-a'].warns
+  ensure
+    VivlioStarter::CLI::PreProcessCommands::IssueRegistry.reset!
+  end
+
+  # 案が 1 つだけなら「どれか」とは書かない
+  def test_should_word_heading_for_single_suggestion
+    assert_equal 'book.yml の theme.frontispiece をこう変えると、すべての章が章扉に収まります:',
+                 ChapterLeadCheck.suggestion_heading(1)
   end
 
   # 既定の字数のままなら「20（既定）」と見せる
   def test_should_show_default_chars_when_not_written
     current = { size: 1.1, chars: 20, size_written: true, chars_written: false }
 
-    lines = ChapterLeadCheck.suggestion_lines({ size: 1.05, chars: 22, pair: nil }, current)
+    lines = ChapterLeadCheck.suggestion_lines([[1.1, 22], [1.05, 20]], current)
 
-    assert_equal ['theme.frontispiece.lead_size: 1.1 → 1.05', 'theme.frontispiece.lead_chars: 20（既定） → 22'], lines
+    assert_equal ['lead_size: 1.1 のまま・lead_chars: 20（既定） → 22', 'lead_size: 1.1 → 1.05・lead_chars: 20（既定） のまま'], lines
   end
 
   def test_should_format_size_with_one_or_two_decimals

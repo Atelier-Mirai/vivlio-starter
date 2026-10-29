@@ -168,7 +168,7 @@ module VivlioStarter
           end
           return nil unless (mark = scanner.scan(/[\^_]/))
 
-          argument = script_argument(scanner)
+          argument = script_argument(scanner, mark)
           # 引数を読めなければ `^` をそのまま通す（`2^(` を `2^{}(` にしない）
           argument.nil? || argument.empty? ? mark : "#{mark}{#{argument}}"
         end
@@ -190,11 +190,20 @@ module VivlioStarter
         # `H₂O` が `H₂ₒ` と出た）。一方 `a^560` は 560 全体が指数でなければ
         # `a^5` の後ろに `60` が並んでしまう。数字の連なり／英字の連なりを
         # それぞれ 1 かたまりと見れば、どちらも正しくなる。
-        def script_argument(scanner)
+        #
+        # 英字の連なりの後に**同じ向きの**上下付きが続くなら、連なりの最後の 1 字はその土台である。
+        # TeX の `(-1)^jf^{(j)}` は「(-1) の j 乗」に「f の (j) 乗」が続く式で、`jf` を丸ごと取ると
+        # `(-1)^{jf}^{(j)}` と上付きが重なり、MathJax が組めない（spiral-ruby の 53 章で 3 か所）。
+        # 向きが違えば重ならない（`A_pub^2` は `A_{pub}^{2}` で正しい）ので、連なりのまま取る
+        def script_argument(scanner, mark)
           return balanced(scanner) if scanner.check(/\(/)
           return run(scanner, stop: /\}/).tap { scanner.scan(/\}/) } if scanner.scan(/\{/)
 
-          scanner.scan(/[-−+]?(?:\d+(?:\.\d+)?|[\p{Alpha}]+)/) || ''
+          argument = scanner.scan(/[-−+]?(?:\d+(?:\.\d+)?|[\p{Alpha}]+)/) || ''
+          return argument unless argument.match?(/\A\p{Alpha}{2,}\z/) && scanner.check(/#{Regexp.escape(mark)}/)
+
+          scanner.pos -= argument[-1].bytesize
+          argument[0...-1]
         end
 
         # `√` は直後の 1 トークンだけに掛かる。全体に掛けたければ `√(…)` と括る。

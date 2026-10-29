@@ -97,6 +97,46 @@ class MathTransformerTest < Minitest::Test
     end
   end
 
+  # MathJax が組めなかった式を集める。キャッシュから写した 2 回目も同じく集まる
+  def test_should_collect_formulas_mathjax_could_not_typeset
+    error_renderer = Class.new do
+      def render_batch(items)
+        items.to_h do |item|
+          [item[:id], %(<svg data-vs-height="2ex" viewBox="0 0 1 1"><g data-mml-node="merror" ) +
+                      %(data-mjx-error="Double exponent: use braces to clarify"/></svg>)]
+        end
+      end
+    end
+    in_tmp do
+      2.times do
+        errors = []
+        MT.transform('式 $x^a^b$ と $y$ です。', chapter_slug: 'ch', renderer: error_renderer.new, errors:)
+
+        assert_equal [{ original: '$x^a^b$', reason: 'Double exponent: use braces to clarify' },
+                      { original: '$y$', reason: 'Double exponent: use braces to clarify' }], errors
+      end
+    end
+  end
+
+  # 無い命令は組めない式にならず、名前を赤い字で描く。その名前を読み取って同じく集める
+  def test_should_collect_undefined_macros_drawn_in_red
+    red_renderer = Class.new do
+      def render_batch(items)
+        items.to_h do |item|
+          [item[:id], %(<svg viewBox="0 0 1 1"><g data-mml-node="mtext" fill="red" stroke="red">) +
+                      %(<path data-c="5C" d=""></path><path data-c="66" d=""></path><path data-c="6F" d=""></path>) +
+                      %(<path data-c="6F" d=""></path></g></svg>)]
+        end
+      end
+    end
+    in_tmp do
+      errors = []
+      MT.transform('式 $\\foo{y}$ です。', chapter_slug: 'ch', renderer: red_renderer.new, errors:)
+
+      assert_equal [{ original: '$\\foo{y}$', reason: 'Undefined control sequence \\foo' }], errors
+    end
+  end
+
   def test_should_not_convert_math_inside_code_spans
     in_tmp do
       md = "インラインコード `$5` と `$x$` は不変。フェンス:\n\n```\n$E=mc^2$\n```\n"

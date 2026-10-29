@@ -4,16 +4,17 @@
 # File: lib/vivlio_starter/cli/build/chapter_lead_check.rb
 # ================================================================
 # 責務:
-#   image の章扉に収まらず、終わりが次のページへ送られたリードを、組んだ PDF から見つけて
-#   🟡 で知らせる（chapter-lead-size-spec.md §4・改善案 #125 段階 2）。章ごとに縮める字数を、
-#   book.yml にはすべての章が収まる lead_size・lead_chars の目安を添える。
+#   image の章扉に収まらず、終わりが次のページへ送られたリードを見つけて 🟡 で知らせる
+#   （chapter-lead-size-spec.md §4・改善案 #125 段階 2）。章ごとに縮める字数を、
+#   book.yml にはすべての章が収まる lead_size・lead_chars の組を添える。
 #
-# なぜ PDF を調べるのか:
-#   リードが章扉に収まるかは、章題の行数・禁則・半角の字で決まり、組む前には見積もれない。
-#   組み上がった PDF を開いて見るまで気づけなかった（spiral-ruby の第7部で、最後の 1 文が
-#   次のページへ送られていた）。
+# build と preflight で調べ方が違う:
+#   - build（check!）: 組んだ PDF を読む。実物なので確か
+#   - preflight（estimate!）: 組まずに見積もる（FrontispieceEstimate）。PDF を作らない preflight でも、
+#     build と同じ知らせを出すため。章扉だけを組むと 20 秒ほど遅くなるので、計算で済ませる
+#   直し方の案は、どちらも FrontispieceEstimate で倍率と字数の組を試して選ぶ。
 #
-# 調べ方:
+# PDF の調べ方:
 #   1. 組んだ HTML から、章扉のある章（body.vs-header-image）のリードの段落を取る
 #   2. PDF を pdftotext で 1 回読み、リードの頭のページに尾が無ければ、はみ出しの候補にする
 #      （899 ページの合本で 2.1 秒）
@@ -26,6 +27,8 @@
 
 require 'nokogiri'
 require 'open3'
+require_relative 'frontispiece_estimate'
+require_relative '../pre_process/issue_registry'
 
 module VivlioStarter
   module CLI
@@ -40,14 +43,11 @@ module VivlioStarter
         # 縮める字数の丸め
         CUT_UNIT = 10
 
-        # 行の見積もりで、1 行あたり平均して空くとみる字数（estimated_lines）
-        LINE_LOSS = 0.5
-
         # 比べる前に除く字。PDF の文字には行の折り返しと、用語の印「†」が混ざる
         IGNORED = /[[:space:]†­]/
 
-        # 章扉のある章のリード。paragraphs は段落ごとの文字
-        Lead = Data.define(:path, :title, :paragraphs)
+        # 章扉のある章のリード。paragraphs は段落ごとの文字（PDF と照らす）、chapter は見積もりに使う章
+        Lead = Data.define(:path, :title, :paragraphs, :chapter)
 
         # はみ出したリード。fitted は章扉のページにある行数、overflow は次のページへ送られた行数
         Overflow = Data.define(:lead, :fitted, :overflow) do
@@ -76,10 +76,37 @@ module VivlioStarter
           []
         end
 
+        # 前処理を終えた原稿から、章扉からはみ出すリードを見積もって 🟡 で知らせる（preflight）。
+        # 書体のファイルが見つからないなど、見積もれないときは何もしない。
+        #
+        # @param entries [Array<TokenResolver::Entry>]
+        # @return [Array<Overflow>]
+        def estimate!(entries)
+          return [] unless image_style?
+
+          page = FrontispieceEstimate.current_page or return []
+          current = current_metrics
+          overflows = FrontispieceEstimate.chapters_from_markdown(entries).filter_map do |chapter|
+            layout = FrontispieceEstimate.layout(chapter, page, size: current[:size], chars: current[:chars_setting])
+            next if layout.fits?
+
+            lead = Lead.new(path: chapter.path, title: chapter.title, paragraphs: [], chapter:)
+            # preflight の章別サマリーと最後の件数に入れる（まとめの 🟡 だけでは「問題なし」と出てしまう）
+            PreProcessCommands::IssueRegistry.record(severity: :warn, category: :frontispiece, chapter: chapter.path,
+                                                     message: 'リードが章扉に収まらない')
+            Overflow.new(lead:, fitted: layout.fitted, overflow: layout.overflow)
+          end
+          warn_overflows(overflows, page:) unless overflows.empty?
+          overflows
+        rescue StandardError => e
+          Common.log_warn("章扉のリードが収まるかを見積もれませんでした: #{e.message}")
+          []
+        end
+
         def image_style? = Common::CONFIG.theme.style.to_s.strip.downcase == 'image'
 
         # 組んだ HTML から、章扉のある章のリードを取る。付録は image の本でも vs-header-simple
-        # なので入らない（前書きの章扉は入る）
+        # なので入らない
         def collect_leads(entries)
           entries.filter_map do |entry|
             html = File.join(Common::BUILD_HTML_DIR, "#{entry.basename}.html")
@@ -89,11 +116,13 @@ module VivlioStarter
             next unless doc.at_css('body')&.[]('class').to_s.split.include?('vs-header-image')
 
             lead = doc.at_css('.chapter-lead') or next
-            blocks = lead.css('p').empty? ? [lead] : lead.css('p')
-            paragraphs = blocks.map { it.text.gsub(/[[:space:]]+/, ' ').strip }.reject(&:empty?)
-            next if paragraphs.empty?
+            blocks = (lead.css('p').empty? ? [lead] : lead.css('p')).reject { it.text.strip.empty? }
+            next if blocks.empty?
 
-            Lead.new(path: entry.path || "#{entry.basename}.md", title: chapter_title(doc), paragraphs:)
+            path = entry.path || "#{entry.basename}.md"
+            title = chapter_title(doc)
+            Lead.new(path:, title:, paragraphs: blocks.map { it.text.gsub(/[[:space:]]+/, ' ').strip },
+                     chapter: FrontispieceEstimate.chapter_from_html(path, title, doc, blocks))
           end
         end
 
@@ -143,9 +172,9 @@ module VivlioStarter
           return nil unless status.success?
 
           lines = Nokogiri::HTML(out).css('page').each_with_index.flat_map do |page, index|
-            page.css('line').map { [index, normalize(it.css('word').map(&:text).join)] }
+            page.css('line').map { [index, it['ymin'].to_f, it['xmin'].to_f, normalize(it.css('word').map(&:text).join)] }
           end
-          lines = lines.select { |_, line| lead_line?(line, text) }
+          lines = same_height_joined(lines).select { |_, line| lead_line?(line, text) }
 
           joined = +''
           spans = lines.map do |index, line|
@@ -160,6 +189,15 @@ module VivlioStarter
           [hit.count(0), hit.count(&:positive?)]
         end
 
+        # 高さのそろった行を 1 行にまとめ、[ページ, 字] の並びにする。行の途中に数式の画像があると、
+        # pdftotext は画像の前と後ろを別の行として出す（画像は字を持たない）。まとめないと 1 行を
+        # 2 行と数え、spiral-ruby の 22 章では 22 行の送りを 24 行と言っていた
+        def same_height_joined(lines)
+          lines.sort_by { |page, top, left, _| [page, top, left] }
+               .chunk_while { |a, b| a[0] == b[0] && (a[1] - b[1]).abs < 1 }
+               .map { |row| [row.first[0], row.map(&:last).join] }
+        end
+
         # リードの一部である行か。数字だけの行（ノンブル）は、リードの中に同じ数があっても除く
         def lead_line?(line, text) = !line.empty? && !line.match?(/\A\d+\z/) && text.include?(line)
 
@@ -167,47 +205,40 @@ module VivlioStarter
 
         # --- 直し方の案 ---
 
-        # すべてのはみ出しが収まる book.yml の案。出せないものは nil
+        # すべてのはみ出しが収まる、倍率と字数の組。今の倍率から小さい方へ、その倍率で収まる
+        # いちばん少ない字数を添えて並べる（§4.1）。収まるかは FrontispieceEstimate で見積もる。
+        #
+        # 並べる倍率は、今の倍率（字数だけ増やす）、0.1 刻みの倍率、字数を変えずに収まる倍率
+        # （大きさだけ下げる）。字数を変えずに収まる倍率より下は、字を小さくするだけなので並べない。
+        # 倍率を下げても字数が減らない組も、字を小さくするだけなので落とす。
+        # 大きさだけ下げても行数は変わらず、高さが倍率に比例して縮むだけなので（§1.1）、
+        # はみ出しが大きいと大きさだけの組は出ない（1.2 倍から 1.0 倍へ下げても 17% しか縮まない）。
+        #
+        # 今の倍率では、今の字数より多い字数から探す。今の組ではみ出したことは分かっているので、
+        # 見積もりが「収まる」と言っても今の組は案にしない（build の PDF で見つけたはみ出しのとき）。
         #
         # @param size [Float] 今の章扉の倍率（theme.frontispiece.lead_size、空なら theme.lead_size）
         # @param chars [Integer] 今の 1 行の字数（theme.frontispiece.lead_chars）
         # @param max_chars [#call] 倍率 → リードの幅が版面に収まる最大の字数
-        # @return [Hash] { size: 倍率, chars: 字数, pair: [倍率, 字数] }
-        def suggestions(overflows, size:, chars:, max_chars:)
-          fits = ->(new_size, new_chars) { overflows.all? { fits?(it, size, chars, new_size, new_chars) } }
-          sizes = smaller_sizes(size)
-          # 大きさだけ。行数は変わらず、高さが倍率に比例して縮む（§1.1）
-          size_only = sizes.find { fits.(it, chars) }
-          # 大きさを下げ、幅が変わらないように字数を増やす（1.2 倍・28 字 → 1.1 倍・30 字の形）。
-          # 大きさだけの案より字を大きく保てるときだけ出す（同じだけ下げるなら、大きさだけで足りる）
-          pair = sizes.map { [it, keep_width_chars(chars, size, it)] }
-                      .find { |new_size, new_chars| new_chars <= max_chars.(new_size) && fits.(new_size, new_chars) }
-          pair = nil if pair && size_only && pair.first <= size_only
-          {
-            size: size_only,
-            # 字数だけ。大きさはそのままで、1 行の字数を増やして行を減らす
-            chars: ((chars + 1)..max_chars.(size)).find { fits.(size, it) },
-            pair:
-          }
+        # @param page [FrontispieceEstimate::Page]
+        # @return [Array<Array(Float, Integer)>] [倍率, 字数] の組。出せなければ空
+        def suggestions(overflows, size:, chars:, max_chars:, page:)
+          fits = lambda do |new_size, new_chars|
+            overflows.all? { FrontispieceEstimate.layout(it.lead.chapter, page, size: new_size, chars: new_chars).fits? }
+          end
+          smaller = smaller_sizes(size)
+          size_only = smaller.find { fits.(it, chars) }
+          sizes = [size, *smaller.select { tenth?(it) && (size_only.nil? || it > size_only) }, size_only].compact
+
+          sizes.each_with_object([]) do |new_size, combos|
+            from = new_size == size ? chars + 1 : chars
+            new_chars = (from..max_chars.(new_size)).find { fits.(new_size, it) } or next
+            combos << [new_size, new_chars] if combos.empty? || new_chars < combos.last[1]
+          end
         end
 
-        # 倍率と字数を変えたとき、章扉に収まるか。行数は段落の字数から見積もり、今の字数での
-        # 見積もりと PDF の実際の行数の比で補正する（禁則や半角の字で、割り算とずれるため）。
-        # 行の高さは字の大きさに比例する（line-height は単位の無い倍率）
-        def fits?(overflow, size, chars, new_size, new_chars)
-          paragraphs = overflow.lead.paragraphs
-          scale = overflow.lines.to_f / estimated_lines(paragraphs, chars)
-          # ちょうど収まる値（24 行 × 1.05 / 1.2 = 21 行）を、小数の誤差で外さないよう、わずかに許す
-          estimated_lines(paragraphs, new_chars) * scale * new_size / size <= overflow.fitted + 1e-9
-        end
-
-        # 段落ごとに、頭の 1 字下げを含めて何行になるか。
-        # 1 行に入る字は、字数の指定より平均 LINE_LOSS 字少ないとみる。行頭に来られない字（、。」）や、
-        # 途中で折れない語（BASIC・CRC・数）で、行の終わりが空くため。満杯で数えると、段落の最後の
-        # 行がぎりぎり（9.91 行 → 10 行）の案を出し、組むと 1 行あふれた（spiral-ruby の 33 章・25 字）
-        def estimated_lines(paragraphs, chars)
-          paragraphs.sum { ((HeadingImageComposer.display_width(it) + 1) / (chars - LINE_LOSS)).ceil }
-        end
+        # 1.1・1.0 のような 0.1 刻みの倍率か
+        def tenth?(value) = ((value * 10) - (value * 10).round).abs < 1e-9
 
         # 今より小さい倍率を、刻みにそろえて大きい順に（下限 1.0 まで）
         def smaller_sizes(size)
@@ -216,17 +247,16 @@ module VivlioStarter
           top.downto((min / SIZE_STEP).round).map { (it * SIZE_STEP).round(2) }
         end
 
-        # 倍率を下げても幅が変わらない字数（切り上げ）。小数の誤差で 1 字多くならないよう、わずかに引く
-        def keep_width_chars(chars, size, new_size) = ((chars * size / new_size) - 1e-9).ceil
-
         # --- 知らせ ---
 
-        def warn_overflows(overflows)
+        # @param page [FrontispieceEstimate::Page, nil] 見積もりに使う版面。nil なら今の book.yml から作る。
+        #   作れなければ（書体が見つからない）直し方の案は添えない
+        def warn_overflows(overflows, page: FrontispieceEstimate.current_page)
           current = current_metrics
           lines = overflows.map { overflow_line(it, current[:chars]) }
-          options = suggestion_lines(suggestions(overflows, size: current[:size], chars: current[:chars],
-                                                            max_chars: current[:max_chars]), current)
-          lines.push('book.yml で直すなら、次のどれか 1 つ:', *options.map { "  #{it}" }) unless options.empty?
+          combos = page ? suggestions(overflows, size: current[:size], chars: current[:chars], max_chars: current[:max_chars], page:) : []
+          options = suggestion_lines(combos, current)
+          lines.push(suggestion_heading(options.size), *options.map { "  #{it}" }) unless options.empty?
           Common.log_warn("リードが章扉に収まらず、次のページへ送られている章があります（#{overflows.size} 章）",
                           detail: lines.join("\n"))
         end
@@ -237,7 +267,8 @@ module VivlioStarter
           "#{lead.path}（#{lead.title}）: #{overflow.overflow} 行が次のページへ。リードを #{cut} 字ほど縮める"
         end
 
-        # 今の章扉の倍率と字数。書いていない値は、何に従っているかを添えて見せる
+        # 今の章扉の倍率と字数。書いていない値は、何に従っているかを添えて見せる。
+        # chars_setting は book.yml に書いた字数（無ければ nil。既定の幅で見積もる）
         def current_metrics
           settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
           bsc = PreProcessCommands::BookSettingsCss
@@ -248,23 +279,28 @@ module VivlioStarter
           {
             size: settings[:frontispiece_lead_size_value] || bsc::DEFAULT_LEAD_SIZE,
             chars: settings[:lead_chars_value] || bsc::DEFAULT_LEAD_CHARS,
+            chars_setting: settings[:lead_chars_value],
             size_written: !written.nil?,
             chars_written: !settings[:lead_chars_value].nil?,
             max_chars: ->(size) { ((text_mm / bsc.chapter_lead_advance_mm(page_cfg, size)) + 1e-9).floor }
           }
         end
 
-        def suggestion_lines(found, current)
+        # 案が 1 つなら「こう変えると」、2 つ以上なら「どれかにすると」。どの行も倍率と字数の組
+        def suggestion_heading(count)
+          change = count == 1 ? 'をこう変えると' : 'を次の組み合わせのどれかにすると'
+          "book.yml の theme.frontispiece #{change}、すべての章が章扉に収まります:"
+        end
+
+        # 組ごとに 1 行。変えない方の値も「のまま」と書き、行だけで設定が読めるようにする
+        def suggestion_lines(combos, current)
           size_from = current[:size_written] ? format_size(current[:size]) : '（空欄）'
           chars_from = current[:chars_written] ? current[:chars].to_s : "#{current[:chars]}（既定）"
-          lines = []
-          lines << "theme.frontispiece.lead_size: #{size_from} → #{format_size(found[:size])}" if found[:size]
-          lines << "theme.frontispiece.lead_chars: #{chars_from} → #{found[:chars]}" if found[:chars]
-          if (pair = found[:pair])
-            lines << "theme.frontispiece.lead_size: #{size_from} → #{format_size(pair[0])} と " \
-                     "lead_chars: #{chars_from} → #{pair[1]}（リードの幅はそのまま）"
+          combos.map do |size, chars|
+            size_part = size == current[:size] ? "#{size_from} のまま" : "#{size_from} → #{format_size(size)}"
+            chars_part = chars == current[:chars] ? "#{chars_from} のまま" : "#{chars_from} → #{chars}"
+            "lead_size: #{size_part}・lead_chars: #{chars_part}"
           end
-          lines
         end
 
         # 1.05・1.1・1.0 のように書く（1.0 を「1」にしない）

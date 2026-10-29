@@ -66,6 +66,14 @@ class PlainMathTranspilerTest < Minitest::Test
     assert_equal '2^{-52}', tex('2^-52'), '符号つきの指数も 1 かたまり'
   end
 
+  # 英字の連なりの後に同じ向きの上下付きが続くなら、最後の 1 字はその土台。
+  # 丸ごと取ると `(-1)^{jf}^{(j)}` と上付きが重なり、MathJax が組めない（spiral-ruby の 53 章）
+  def test_should_leave_base_of_following_script_out_of_a_bare_script
+    assert_equal '(-1)^{j}f^{(j)}(0)', tex('(-1)^jf^{(j)}(0)')
+    assert_equal 'x_{i}y_{j}',         tex('x_iy_j')
+    assert_equal 'A_{pub}^{2}',        tex('A_pub^2'), '向きが違えば重ならないので連なりのまま'
+  end
+
   # PT-02: `√` は直後の 1 トークンだけに掛かる（仕様 §5.2）。
   # 数は丸ごと 1 トークン——1 文字ずつ取ると `√163` が `\sqrt{1}63` になる。
   def test_should_bind_the_radical_to_a_single_token

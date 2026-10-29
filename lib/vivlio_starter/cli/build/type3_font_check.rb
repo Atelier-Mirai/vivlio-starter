@@ -40,6 +40,8 @@ require 'json'
 require 'open3'
 require 'pdf/reader'
 require 'tmpdir'
+require_relative '../pre_process/math_transformer'
+require_relative '../pre_process/glyph_coverage_check'
 
 module VivlioStarter
   module CLI
@@ -64,16 +66,6 @@ module VivlioStarter
         # 知らせるページの上限。絵文字を本文に多用した本でも、警告が画面を埋めないように
         MAX_LISTED_PAGES = 20
 
-        # 字ごとの直し方。上から順に見て、最初に当たったものを使う
-        ADVICE = [
-          [/≒/, '≈ に置き換える'],
-          [/[\u1D2C-\u1D6A\u2070-\u209F]/, '本文は $x^n$・$H_n$ の数式に、図（SVG）は <tspan baseline-shift="super"> で上付き・下付きに'],
-          [/[∛∜]/, '本文は $\sqrt[3]{x}$ の数式に、図（SVG）は ³√ のように'],
-          [/[⌃⌥⌘⇧]/, 'Control・Option・Command・Shift のように言葉で書く'],
-          [/\p{Extended_Pictographic}/, '言葉か画像に置き換える']
-        ].freeze
-        DEFAULT_ADVICE = '本の書体にある字に置き換える'
-
         module_function
 
         # 仕上がった PDF を調べ、Type 3 の字があれば 🟡 で知らせる。PDF が無ければ何もしない。
@@ -84,8 +76,27 @@ module VivlioStarter
           return [] unless File.exist?(pdf_path)
 
           findings = scan(pdf_path)
-          warn_findings(findings, File.basename(pdf_path)) unless findings.empty?
+          # 組めなかった式は、前処理が原稿の行で知らせている（MarkdownPreprocessor#warn_math_errors）。
+          # ここで重ねて言うのは、前処理で式を SVG にできなかった（mathjax-full が無い）ときだけ
+          listed = PreProcessCommands::MathTransformer.available? ? findings.reject(&:math_error?) : findings
+          listed = without_reported_chars(listed)
+          warn_findings(listed, File.basename(pdf_path)) unless listed.empty?
           findings
+        end
+
+        # 本の書体に無い字は、前処理が原稿の行で知らせている（GlyphCoverageCheck）。その字は外し、
+        # 残りの字が無くなったページは知らせない。前処理で見つからなかった字（書体の切り替えの
+        # 見込み違い・CSS で足した字など）だけが、ここで出る
+        def without_reported_chars(findings)
+          known = PreProcessCommands::GlyphCoverageCheck.reported
+          return findings if known.empty?
+
+          findings.filter_map do |finding|
+            next finding if finding.math_error?
+
+            rest = finding.text.each_grapheme_cluster.reject { known.include?(it.gsub(PreProcessCommands::GlyphCoverageCheck::IGNORED, '')) }
+            finding.with(text: rest.join) unless rest.join.strip.empty?
+          end
         end
 
         # @param pdf_path [String]
@@ -216,7 +227,8 @@ module VivlioStarter
           "#{place}: #{fixes.join(' ／ ')}"
         end
 
-        def advice_for(char) = ADVICE.find { |pattern, _| char.match?(pattern) }&.last || DEFAULT_ADVICE
+        # 字ごとの直し方は、前処理の確かめ（GlyphCoverageCheck）と共用
+        def advice_for(char) = PreProcessCommands::GlyphCoverageCheck.advice_for(char)
 
         # Type 3 の書体で描かれた字を集める。書体は描く時点の書体（PageState が q/Q で出し入れする）で見る
         class Type3TextReceiver < ::PDF::Reader::PageTextReceiver

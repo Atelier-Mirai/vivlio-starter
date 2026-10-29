@@ -362,14 +362,17 @@ module VivlioStarter
           ]
         end
 
-        # preflight mode: Step 1〜4 のみ実行（HTML変換・PDF生成なし）
+        # preflight mode: Step 1〜4 と章扉のリードの見積もり（HTML変換・PDF生成なし）
         # build 側の Step 1〜4 変更が自動追従するよう、既存メソッドを直接呼ぶ
         def register_preflight_steps
           [
             ['optimize images',      -> { run_step1_optimize_images }],
             ['prepare theme images', -> { Build::ImageOptimizer.prepare_theme_images! }],
             ['preprocess sections',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
-            ['index scan and build', -> { run_step4_index_processing }]
+            ['index scan and build', -> { run_step4_index_processing }],
+            # 章扉からはみ出すリードを、組まずに見積もって知らせる（chapter-lead-size-spec.md §4.4）。
+            # build は組んだ PDF で同じ知らせを出す。用語集の印 † も幅を取るので、索引の走査の後に置く
+            ['estimate chapter leads', -> { Build::ChapterLeadCheck.estimate!(entries) }]
           ].each { |label, handler| add_step(label, handler) }
         end
 

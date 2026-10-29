@@ -57,6 +57,36 @@ class TestType3FontCheck < Minitest::Test
     end
   end
 
+  # 組めなかった式は前処理が原稿の行で知らせるので、重ねて言わない。前処理で式を SVG に
+  # できなかった（mathjax-full が無い）ときだけ、PDF の側で知らせる
+  def test_should_leave_math_errors_to_preprocess_when_mathjax_is_available
+    math = VivlioStarter::CLI::PreProcessCommands::MathTransformer
+    Dir.mktmpdir do |dir|
+      pdf = write_type3_pdf(File.join(dir, 'book.pdf'))
+
+      out, = capture_io { math.stub(:available?, true) { Type3FontCheck.check!(pdf) } }
+      assert_includes out, '1 ページで'
+      refute_includes out, '数式が組めていません'
+
+      out, = capture_io { math.stub(:available?, false) { Type3FontCheck.check!(pdf) } }
+      assert_includes out, '2 ページで'
+      assert_includes out, '数式が組めていません'
+    end
+  end
+
+  # 前処理が原稿の行で知らせた字は外す。残りの字が無くなったページは知らせない
+  def test_should_leave_chars_reported_by_preprocess
+    glyphs = VivlioStarter::CLI::PreProcessCommands::GlyphCoverageCheck
+    glyphs.remember(%w[≒ ✌])
+    findings = [Finding.new(page: 2, text: '≒', heading: nil), Finding.new(page: 5, text: '✊✌️', heading: nil)]
+
+    left = Type3FontCheck.without_reported_chars(findings)
+
+    assert_equal [[5, '✊']], left.map { [it.page, it.text] }
+  ensure
+    glyphs.reset!
+  end
+
   def test_should_find_nothing_in_pdf_without_type3
     Dir.mktmpdir do |dir|
       pdf = File.join(dir, 'plain.pdf')

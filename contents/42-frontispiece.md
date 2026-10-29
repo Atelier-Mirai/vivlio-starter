@@ -188,16 +188,16 @@ frontispiece:
 
 指定できるのは 1.0〜2.0 で、`1.05` のような細かい値も書けます。`1.1em` と書いても同じ意味です。EPUB・Kindle でも、扉絵の下に続くリード文はこの大きさで組まれます。
 
-リード文が章扉に収まらず、次のページへ送られたときは、`vs build` が 🟡 で知らせます。章ごとに縮める字数と、すべての章扉に収まる `lead_size`・`lead_chars` の目安が示されます。
+リード文が章扉に収まらず、次のページへ送られたときは、`vs build` が 🟡 で知らせます。章ごとに縮める字数と、すべての章扉に収まる `lead_size` と `lead_chars` の組み合わせが示されます。組み合わせは、文字の大きさごとに 1 行ずつ並びます。どれか 1 行を選んで、その二つの値を書きます。
 
 :::{.output}
 ```text
 🟡 リードが章扉に収まらず、次のページへ送られている章があります（1 章）
    contents/33-networks-and-systems.md（第7部　通信・システム編）: 3 行が次のページへ。リードを 80 字ほど縮める
-   book.yml で直すなら、次のどれか 1 つ:
-     theme.frontispiece.lead_size: （空欄） → 1.05
-     theme.frontispiece.lead_chars: 24 → 26
-     theme.frontispiece.lead_size: （空欄） → 1.15 と lead_chars: 24 → 26（リードの幅はそのまま）
+   book.yml の theme.frontispiece を次の組み合わせのどれかにすると、すべての章が章扉に収まります:
+     lead_size: 1.2 のまま・lead_chars: 24 → 26
+     lead_size: 1.2 → 1.1・lead_chars: 24 → 25
+     lead_size: 1.2 → 1.05・lead_chars: 24 のまま
 ```
 :::
 
