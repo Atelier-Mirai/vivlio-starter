@@ -687,6 +687,7 @@ SourceSans
 FiraCode
 JetBrains
 HackGen
+DejaVu
 Cascadia
 Consolas
 Inconsolata

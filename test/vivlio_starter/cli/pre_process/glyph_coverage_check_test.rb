@@ -95,6 +95,20 @@ class GlyphCoverageCheckTest < Minitest::Test
     VivlioStarter::CLI::Common.install_configuration!(original)
   end
 
+  # 本の書体にない漢字は、形を取れる書体があれば PDF で字の形の図形にする（Build::Gaiji・改善案 #127 段階 4）
+  # ので数えない。取れなければ、その字を持つ書体を入れるよう案内する
+  def test_should_skip_han_that_gaiji_can_supply_and_advise_installing_a_font_otherwise
+    content = "祖暅は球の体積を求めた。\n"
+
+    VivlioStarter::CLI::Build::Gaiji.stub(:available?, true) do
+      assert_empty findings_of(content)
+    end
+    VivlioStarter::CLI::Build::Gaiji.stub(:available?, false) do
+      assert_equal [[1, ['暅'], nil]], findings_of(content)
+    end
+    assert_includes Check.advice_for('暅'), '思源宋体'
+  end
+
   # 数式の画像の中の字（MathJax が字のまま描いたもの）は、埋めた本文の書体だけで描かれる
   def test_should_check_text_in_math_svg
     Dir.mktmpdir do |dir|

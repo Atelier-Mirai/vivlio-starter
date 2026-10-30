@@ -21,6 +21,9 @@
 #   Type 3 になっていた。OS の書体が TrueType なら Type 3 にはならない（コードの ⟹ など）が、組む PC で
 #   書体も字形も変わるので、本の書体に無い字はすべて知らせる。
 #
+# 本の書体にない漢字（外字）は、その字を持つ書体から取った字の形の図形にして PDF に組む
+# （Build::Gaiji・改善案 #127 段階 4）ので、形を取れる字は数えない（本文・見出し・コード）。
+#
 # 絵文字・囲み数字・全角のチルダは、techbook（既定）なら PDF を組む前に画像や別の字へ置き換える
 # （Techbook::Processor）ので数えない。図の SVG の中は、中身が絵文字だけの字を twemoji の図形に
 # 差し替える（Build::FigureEmoji）ので数えず、文字と混ざった絵文字だけを数える。
@@ -33,6 +36,7 @@ require_relative 'svg_font_embedder'
 require_relative '../build/font_metrics'
 require_relative '../build/derived_svg'
 require_relative '../build/figure_emoji'
+require_relative '../build/gaiji'
 
 module VivlioStarter
   module CLI
@@ -44,7 +48,8 @@ module VivlioStarter
           [/[ᴬ-ᵪ⁰-₟]/, '本文は $x^n$・$H_n$ の数式に、図（SVG）は <tspan baseline-shift="super"> で上付き・下付きに'],
           [/[∛∜]/, '本文は $\sqrt[3]{x}$ の数式に、図（SVG）は ³√ のように'],
           [/[⌃⌥⌘⇧]/, 'Control・Option・Command・Shift のように言葉で書く'],
-          [/\p{Extended_Pictographic}/, '言葉か画像に置き換える']
+          [/\p{Extended_Pictographic}/, '言葉か画像に置き換える'],
+          [/\p{Han}/, 'この字を持つ書体（思源宋体・Noto Serif CJK など）を PC に入れると、字の形を取って組みます']
         ].freeze
         DEFAULT_ADVICE = '本の書体にある字に置き換える'
 
@@ -92,7 +97,8 @@ module VivlioStarter
 
           findings = []
           each_text_run(content) do |kind, text, processed_line|
-            missing = missing_chars(text, chains[kind], replaced: true)
+            # 本の書体にない漢字は、PDF では字の形の図形にして組む（Build::Gaiji・改善案 #127 段階 4）
+            missing = missing_chars(text, chains[kind], replaced: true).reject { Build::Gaiji.available?(it, kind) }
             next if missing.empty?
 
             findings << Finding.new(line: source_line(source, processed_line, missing.first),

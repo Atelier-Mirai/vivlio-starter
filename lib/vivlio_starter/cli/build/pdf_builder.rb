@@ -8,6 +8,7 @@ require_relative '../techbook/processor'
 require_relative '../code_line_blocks'
 require_relative 'derived_image'
 require_relative 'derived_svg'
+require_relative 'gaiji'
 require_relative 'outline_extractor'
 require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
@@ -64,6 +65,8 @@ module VivlioStarter
           inject_rotate_table_anchors!
           inject_heading_anchors!
           convert_code_lines_for_pdf!
+          # 本の書体にない漢字を字の形の図形に（改善案 #127 段階 4）。pdf/ だけなので EPUB には現れない
+          Gaiji.apply_to_dir!(Common::BUILD_PDF_DIR)
           swap_images_for_pdf!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
           # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
@@ -360,6 +363,7 @@ module VivlioStarter
 
             FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, "#{bn}.html"))
           end
+          Gaiji.apply_to_dir!(Common::BUILD_PDF_DIR)
         end
 
         # Step 8: 全体PDF生成
