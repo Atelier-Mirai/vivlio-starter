@@ -31,6 +31,13 @@
 #   読むだけなので QpdfJson.read は使わない（あれは更新のためにオブジェクトストリームを外し、
 #   PDF を書き直す）。JSON にはストリームの中のオブジェクトも並ぶので、外さなくても引ける。
 #
+# 本の書体のまま Type 3 になる字もある:
+#   字に縁取り（SVG の stroke・CSS の -webkit-text-stroke）を掛ける・太字を合成すると、書体を埋めていても
+#   Chromium は Type 3 で書き出す。字は書体にあるので「本の書体にある字に置き換える」は的外れになる。
+#   書体の名前（FontDescriptor の FontName）で見分け、別の直し方を案内する（改善案 #129）。
+#   図の縁取りした字は PDF の派生で組み替える（StrokedText）ので、ここへ来るのはその外の経路
+#   （原稿に直に書いた <svg>・CSS）で、図の名前は分からない。
+#
 # 全章ビルドだけで調べる:
 #   単章ビルドは絵文字を画像にしないなど組み方が違い、Type 3 の有無が当てにならない
 #   （SINGLE_MODE_SKIP の techbook post-process）。ステップは :whole_book なので単章では走らない。
@@ -48,8 +55,11 @@ module VivlioStarter
     module Build
       module Type3FontCheck
         # Type 3 で描かれた字のあるページ。text はその書体で描かれた字を描いた順に並べたもの、
-        # heading はしおりから引いたそのページの章・節の題（無ければ nil）
-        Finding = Data.define(:page, :text, :heading) do
+        # heading はしおりから引いたそのページの章・節の題（無ければ nil）、
+        # own_font_text は text のうち本の書体（図に埋めた書体を含む）のまま Type 3 になった字
+        Finding = Data.define(:page, :text, :heading, :own_font_text) do
+          def initialize(page:, text:, heading:, own_font_text: '') = super
+
           # 空白を除いた、重ならない字
           def chars = text.each_grapheme_cluster.reject { it.strip.empty? }.uniq
 
@@ -65,6 +75,12 @@ module VivlioStarter
 
         # 知らせるページの上限。絵文字を本文に多用した本でも、警告が画面を埋めないように
         MAX_LISTED_PAGES = 20
+
+        # TTFunk が部分集合の書体名の頭に付ける印（図に埋めた書体。`AAAAAA+f9c564_NotoSansJP-Regular`）
+        FIGURE_SUBSET_NAME = /\A(?:[A-Z]{6}\+)?\h{6}_/
+
+        # 本の書体のまま Type 3 になった字の直し方
+        OWN_FONT_ADVICE = '字の縁取り（SVG の stroke・CSS の -webkit-text-stroke）を外す／太字の面が無い書体なら太字をやめる'
 
         module_function
 
@@ -109,8 +125,8 @@ module VivlioStarter
           return [] if pages.empty?
 
           headings = outline_headings(document['outlines'] || [])
-          type3_texts(pdf_path, pages).zip(pages).map do |(text, top), page|
-            Finding.new(page:, text:, heading: heading_at(headings, page, top))
+          type3_texts(pdf_path, pages).zip(pages).map do |(text, top, own_font_text), page|
+            Finding.new(page:, text:, heading: heading_at(headings, page, top), own_font_text:)
           end
         end
 
@@ -122,21 +138,32 @@ module VivlioStarter
           end&.last
         end
 
-        # ページを抜き出した PDF を読み、ページごとに Type 3 の書体で描かれた字と、その最も高い位置を返す
+        # 本の書体（図に埋めた書体を含む）か。PDF の書体名は `AAAAAA+NotoSansJP-Regular` の形
+        def own_font?(name)
+          return true if name.match?(FIGURE_SUBSET_NAME)
+
+          embedder = PreProcessCommands::SvgFontEmbedder
+          stem = embedder.comparable(name.sub(/\A[A-Z]{6}\+/, '').sub(/-[^-]*\z/, ''))
+          [embedder.configured_body_font, embedder.configured_heading_font, embedder.configured_code_font]
+            .any? { embedder.comparable(it) == stem }
+        end
+
+        # ページを抜き出した PDF を読み、ページごとに Type 3 の書体で描かれた字と、その最も高い位置、
+        # そのうち本の書体のまま描かれた字を返す
         #
-        # @return [Array<Array(String, Float)>] pages と同じ順。高さは取れなければ nil
+        # @return [Array<Array(String, Float, String)>] pages と同じ順。高さは取れなければ nil
         def type3_texts(pdf_path, pages)
           Dir.mktmpdir('vs-type3') do |dir|
             extracted = File.join(dir, 'pages.pdf')
             unless system('qpdf', '--empty', '--pages', pdf_path, pages.join(','), '--', extracted, out: File::NULL, err: File::NULL)
               Common.log_warn("[pdf] Type 3 書体で描かれた字を取り出せませんでした（qpdf が失敗）: #{File.basename(pdf_path)}")
-              return pages.map { ['', nil] }
+              return pages.map { ['', nil, ''] }
             end
 
             ::PDF::Reader.new(extracted).pages.map do |page|
               receiver = Type3TextReceiver.new
               page.walk(receiver)
-              [receiver.text, receiver.top]
+              [receiver.text, receiver.top, receiver.own_font_text]
             end
           end
         end
@@ -208,7 +235,7 @@ module VivlioStarter
         def warn_findings(findings, pdf_name)
           lines = findings.first(MAX_LISTED_PAGES).map { finding_line(it) }
           lines << "ほか #{findings.size - MAX_LISTED_PAGES} ページ" if findings.size > MAX_LISTED_PAGES
-          Common.log_warn("#{findings.size} ページで、字が本の書体でなく OS の書体（Type 3）で組まれています。" \
+          Common.log_warn("#{findings.size} ページで、字が Type 3 で組まれています。" \
                           "印刷所の入稿で断られることがあります: #{pdf_name}",
                           detail: lines.join("\n"))
         end
@@ -223,7 +250,8 @@ module VivlioStarter
             return "#{place}: 数式が組めていません: #{excerpt} → 式の書き方を直す（^ や _ の重なりなど）"
           end
 
-          fixes = finding.chars.group_by { advice_for(it) }.map { |advice, chars| "#{chars.join(' ')} → #{advice}" }
+          fixes = finding.chars.group_by { finding.own_font_text.include?(it) ? OWN_FONT_ADVICE : advice_for(it) }
+                         .map { |advice, chars| "#{chars.join(' ')} → #{advice}" }
           "#{place}: #{fixes.join(' ／ ')}"
         end
 
@@ -238,9 +266,14 @@ module VivlioStarter
           # @return [Float, nil] Type 3 の字を描き始めた位置のうち、いちばん高いもの（PDF の座標・pt）
           attr_reader :top
 
+          # @return [String] text のうち、本の書体のまま Type 3 になった字
+          attr_reader :own_font_text
+
           def initialize
             super
             @text = +''
+            @own_font_text = +''
+            @own_fonts = {}
           end
 
           # 「'」と「"」の命令は中で show_text を呼ぶので、包むのはこの 2 つだけでよい
@@ -260,9 +293,16 @@ module VivlioStarter
             font = @state.current_font
             return unless font&.subtype == :Type3
 
-            strings.each { @text << font.to_utf8(it) }
+            drawn = strings.map { font.to_utf8(it) }.join
+            @text << drawn
+            @own_font_text << drawn if own_font?(font)
             y = @state.trm_transform_point(::PDF::Reader::Point.new(0, 0)).y
             @top = [@top, y].compact.max
+          end
+
+          def own_font?(font)
+            name = font.font_descriptor&.font_name.to_s
+            @own_fonts.fetch(name) { @own_fonts[name] = Type3FontCheck.own_font?(name) }
           end
         end
       end

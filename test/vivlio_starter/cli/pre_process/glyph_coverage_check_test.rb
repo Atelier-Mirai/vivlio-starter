@@ -75,6 +75,33 @@ class GlyphCoverageCheckTest < Minitest::Test
     end
   end
 
+  # 図の縁取りした字のうち、PDF 用に組み替えられない字（<tspan> の入れ子など）だけを、図の名前と原稿の行で
+  # 知らせる（改善案 #129）。組み替えられる字と、書体を抱えた生成 SVG は数えない
+  def test_should_report_stroked_labels_that_cannot_be_outlined
+    original = VivlioStarter::CLI::Common::CONFIG
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        FileUtils.mkdir_p(%w[stylesheets images/11-a])
+        FileUtils.cp_r(FONTS, 'stylesheets/fonts')
+        VivlioStarter::CLI::Common.install_configuration!(
+          VivlioStarter::CLI::Common.build_direct_configuration(typography: { heading: { font: 'Noto Sans JP' } })
+        )
+        File.write('images/11-a/labels.svg', '<svg xmlns="http://www.w3.org/2000/svg"><text stroke="#fff">半径</text>' \
+                                             '<text stroke="#fff">x<tspan dy="-3">2</tspan></text></svg>')
+        File.write('images/11-a/generated.svg', '<svg xmlns="http://www.w3.org/2000/svg"><style>@font-face{src:url("data:font/ttf;base64,AA")}</style>' \
+                                                '<text stroke="#fff">x<tspan dy="-3">2</tspan></text></svg>')
+        content = %(<img src="../../images/11-a/labels.svg" alt="図">\n<img src="../../images/11-a/generated.svg" alt="図">\n)
+        source = "前の段落。\n\n![図](labels.svg)\n"
+
+        findings = Check.stroked_figures(content, source:)
+
+        assert_equal [[3, %w[x2], 'labels.svg']], findings.map { [it.line, it.labels, it.figure] }
+      end
+    end
+  ensure
+    VivlioStarter::CLI::Common.install_configuration!(original)
+  end
+
   # 図の書体に無い字は、DerivedSvg が予備の書体（HackGen → DejaVu Sans Mono → DejaVu Sans）で補う
   # （改善案 #127）。補える字（≒・ⁿ・ₙ・⟹）は数えない。絵文字は予備の書体にあっても補わないので数える
   def test_should_count_fallback_font_in_figure_fonts

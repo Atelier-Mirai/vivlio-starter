@@ -2,7 +2,7 @@
 
 > 作成日: 2026-08-07
 > ステータス: **知見メモ（恒久参照）**
-> 対象: PDF へ Type 3 フォントが混入する 2 つの経路——(A) `<img>` 参照の生成 SVG（§2〜§5）と (B) 疑似太字の合成（§6）——の原因・切り分け手順・採った対策。
+> 対象: PDF へ Type 3 フォントが混入する経路——(A) `<img>` 参照の生成 SVG（§2〜§5）・(B) 疑似太字の合成（§6）・本の書体に無い字（§8・§10）・字の縁取り（§11）——の原因・切り分け手順・採った対策。
 > 関連: `fixtures/type3/README.md`（Type 3 を避ける理由と文字別の対策一覧はあちらが正典）, `explanatory-diagram-spec.md`, `mermaid-diagram-spec.md`
 > 実測環境: Vivliostyle cli 11.0.2 / core 2.43.2, macOS
 > 注記（2026-10-12）: 同梱書体は Zen Old Mincho / Zen Kaku Gothic New から Noto Serif JP / Noto Sans JP（Google Fonts 配信の静的 TTF）へ替えた。以下の実測と例は、当時の Zen の名前のまま残している。
@@ -17,6 +17,8 @@
   → 対策: SVG 自身にサブセットフォントを data: URI で持たせる
 - **(B) 疑似太字**: Bold 字面の無い書体に太字を要求すると合成される（§6）
   → 対策: 実 Bold を取得し、`font-synthesis-weight: none` で合成を止める
+
+**本の書体の名前のまま Type 3 になっていたら、字の縁取り（`stroke`）を疑う**（§11）。
 
 ---
 
@@ -515,3 +517,67 @@ Type 3 で書き出される見込み（COLR の書体では確かめていな�
 まま残る。これらは包まず、PDF では `Gaiji` が STIX Two Math（macOS 付属・OFL）から字の形を取る。
 描けるかどうかの判定は、1 字ずつ `$…$` で組んで SVG に `<text>` が残るかで測った（`MATHJAX_MISSING`）。
 mathjax-full の版を上げたら測り直す。
+
+---
+
+## 11. 字の縁取りは、書体を埋めていても Type 3 になる（2026-10-30・改善案 #129）
+
+図のラベルの白い縁取り（`stroke`・`paint-order="stroke"`）は、字が本の書体にあり、図に書体を埋めていても
+Type 3 になる。§9・§10 の経路とは違い、書体の解決は成功している。
+
+### 11.1 見分け方
+
+`pdffonts` で、**同じ書体名が Type 3 と CID TrueType の両方に出る**。
+
+```text
+AAAAAA+f9c564_NotoSansJP-Regular     Type 3            Custom           yes yes yes
+AAAAAA+f9c564_NotoSansJP-Regular     CID TrueType      Identity-H       yes yes yes
+```
+
+`f9c564_` は TTFunk が部分集合の書体名の頭に付ける印で、図に埋めた書体であることを示す
+（`Type3FontCheck::FIGURE_SUBSET_NAME`）。本文の書体にはこの印が無い。
+
+### 11.2 4 通りの比較（lives-mathematics の `liuhui-polygons.svg`・ラベル 10 個）
+
+| 描き方 | Type 3 | 図 1 枚の PDF | `pdftotext` の字 | 縁の形 |
+| :--- | :--- | :--- | :--- | :--- |
+| 元の図（`<text stroke paint-order>`） | 2 件 | 105 KB | 2 回ずつ | 元の形 |
+| 縁だけの `<text fill="none" stroke>` と本体の `<text>` に分ける | 2 件 | 105 KB | 2 回ずつ | 元の形 |
+| 塗りだけの字を 16 方向へずらして重ねる | 0 件 | 16 KB | 4 回ずつ | 波打つ |
+| **字の輪郭の `<path>` に stroke を掛け、本体の `<text>` を重ねる** | **0 件** | 31 KB | **1 回ずつ** | 元の形 |
+
+字を分けるだけでは直らない。stroke の掛かった字が 1 つでも `<text>` にあると Type 3 になる。
+4 番目を採った（`StrokedText`）。字の本体は `<text>` のままなので、PDF の検索と字の抜き出しは元より良くなる。
+ずらす案は縁の精度を方向の数でしか上げられず、検索にも余分に当たる。
+
+### 11.3 決めたこと
+
+- **PDF の派生の中だけで組み替える**（`DerivedSvg.prepare_for_pdf`・`.cache/vs/derived/svg-pdf/`）。Type 3 は PDF だけの
+  問題で、Kindle は図を OS の書体で焼く（§9.6）ので、本の書体の輪郭の縁では字とずれることがある。縁取りの
+  無い図は EPUB と同じ派生を指し、書体を 2 回埋めない
+- **字の送りを足すだけで位置が合う**。図に埋める部分集合（`TTFunk::Subset`）は GPOS を持たないので、図の字に
+  kern は当たらない（本文の `FontMetrics#kern` とは事情が違う）。新旧の PDF を 200 dpi で比べて、見て分かる差は無かった
+- **`stroke-linejoin` などは著者の値を写す**。既定は `miter` で、字の角に尖りが出るが、元の見た目を変えない
+- **`<style>` の規則の縁取りも組み替える**（`StrokedText::Cascade`）。規則どうしは書いた順だけを見て、詳細度は見ない
+- **字の位置を読めないものは組み替えず、知らせる**（`<tspan>`・`dx`/`dy`・`x` の複数指定・`letter-spacing`・
+  `dominant-baseline`・`em` の大きさ・`stroke-dasharray`・書体が見つからない字・複合の字形）。preflight と build が
+  図の名前と字を添えて 🟡 で知らせ（`GlyphCoverageCheck.stroked_figures`）、`Type3FontCheck` は重ねて言わない
+- 複合の字形（TrueType の部品の組み合わせ）を `GlyphOutline` は読まない。同梱の Noto Sans JP・Noto Serif JP・HackGen の
+  見本に複合の字形は無く、DejaVu の `é`・`½` などだけが当たる。読めない字のあるラベルは知らせに回る
+
+### 11.4 PDF の確かめの案内
+
+`Type3FontCheck` は書体の名前で「本の書体のまま Type 3」を見分け、「本の書体にある字に置き換える」ではなく
+縁取りを外す案内を出す。図の縁取りは組み替えるので、ここへ来るのは組み替えの外の経路（原稿に直に書いた `<svg>`・
+CSS の `-webkit-text-stroke`）で、図の名前は分からない。疑似太字も同じ書体名で出るので、案内に併記した。
+
+### 11.5 実測（lives-mathematics・3 巻の全章ビルド・2026-10-30）
+
+| 巻 | Type 3（前） | Type 3（後） | ページ数 | PDF の大きさ |
+| :--- | :--- | :--- | :--- | :--- |
+| 上巻 | 3 | 0 | 213 → 213 | 30.15 MB → 30.05 MB |
+| 中巻 | 4 | 0 | 233 → 233 | 36.70 MB → 36.65 MB |
+| 下巻 | 5 | 0 | 193 → 193 | 26.53 MB → 26.48 MB |
+
+10 枚の図の 54 個のラベルをすべて組み替え、preflight の知らせは 0 件。Type 3 のあった 10 ページを新旧で描いて
+比べた（200 dpi）。差は 1 ページあたり最大 90 画素相当で、拡大しても縁と字の位置は重なった。

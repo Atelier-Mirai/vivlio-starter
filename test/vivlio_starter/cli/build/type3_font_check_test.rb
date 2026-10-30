@@ -87,6 +87,33 @@ class TestType3FontCheck < Minitest::Test
     glyphs.reset!
   end
 
+  # 書体の名前が本の書体（図に埋めた書体を含む）なら、字は書体にあり、描き方の問題である（改善案 #129）
+  def test_should_tell_type3_in_the_books_own_font_from_os_fonts
+    Dir.mktmpdir do |dir|
+      own = write_type3_pdf(File.join(dir, 'own.pdf'), font_name: 'AAAAAA+f9c564_NotoSansJP-Regular')
+      os = write_type3_pdf(File.join(dir, 'os.pdf'), font_name: 'AAAAAA+HiraKakuProN-W3')
+
+      assert_equal '≒', Type3FontCheck.scan(own).first.own_font_text
+      assert_empty Type3FontCheck.scan(os).first.own_font_text
+      assert_empty Type3FontCheck.scan(write_type3_pdf(File.join(dir, 'bare.pdf'))).first.own_font_text, '書体の名前が無ければ OS の書体とみなす'
+    end
+  end
+
+  def test_should_recognise_book_font_names
+    assert Type3FontCheck.own_font?('AAAAAA+f9c564_ZenMaruGothic-Regular'), '図に埋めた書体（TTFunk の印）'
+    assert Type3FontCheck.own_font?('AAAAAA+NotoSerifJP-Regular'), '本文の書体'
+    refute Type3FontCheck.own_font?('AAAAAA+HiraKakuProN-W3')
+    refute Type3FontCheck.own_font?('')
+  end
+
+  # 本の書体のまま Type 3 になった字に「本の書体にある字に置き換える」は的外れ。縁取りを外す案内にする
+  def test_should_advise_removing_the_stroke_for_chars_in_the_books_own_font
+    line = Type3FontCheck.finding_line(Finding.new(page: 120, text: '中心≒', heading: '第2章', own_font_text: '中心'))
+
+    assert_equal '120 ページ目（第2章）: 中 心 → 字の縁取り（SVG の stroke・CSS の -webkit-text-stroke）を外す／' \
+                 '太字の面が無い書体なら太字をやめる ／ ≒ → ≈ に置き換える', line
+  end
+
   def test_should_find_nothing_in_pdf_without_type3
     Dir.mktmpdir do |dir|
       pdf = File.join(dir, 'plain.pdf')
@@ -129,7 +156,7 @@ class TestType3FontCheck < Minitest::Test
   private
 
   # Type 3 書体を持つ 3 ページの PDF を書き、パスを返す（ファイル冒頭の説明を参照）
-  def write_type3_pdf(path)
+  def write_type3_pdf(path, font_name: nil)
     to_unicode = <<~CMAP
       /CIDInit /ProcSet findresource begin
       12 dict begin
@@ -156,7 +183,7 @@ class TestType3FontCheck < Minitest::Test
       6 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
       7 => '<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1000 1000] /FontMatrix [0.001 0 0 0.001 0 0] ' \
            "/CharProcs << /g 15 0 R >> /Encoding << /Type /Encoding /Differences [1 /g 32 #{glyph_names}] >> " \
-           "/FirstChar 1 /LastChar 126 /Widths [#{widths}] /ToUnicode 12 0 R >>",
+           "/FirstChar 1 /LastChar 126 /Widths [#{widths}] /ToUnicode 12 0 R#{' /FontDescriptor 16 0 R' if font_name} >>",
       8 => stream('BT /F3 12 Tf 10 50 Td (\\\\pi^{a}^{b}) Tj ET',
                   '/Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /Font << /F3 7 0 R >> >>'),
       9 => '<< /Type /Outlines /First 13 0 R /Last 13 0 R /Count 1 >>',
@@ -167,6 +194,7 @@ class TestType3FontCheck < Minitest::Test
       14 => stream('/Fm1 Do'),
       15 => stream('500 0 d0')
     }
+    objects[16] = "<< /Type /FontDescriptor /FontName /#{font_name} /Flags 4 >>" if font_name
 
     body = +"%PDF-1.7\n"
     offsets = objects.map do |number, object|

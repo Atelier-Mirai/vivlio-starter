@@ -27,6 +27,9 @@
 # 絵文字・囲み数字・全角のチルダは、techbook（既定）なら PDF を組む前に画像や別の字へ置き換える
 # （Techbook::Processor）ので数えない。図の SVG の中は、中身が絵文字だけの字を twemoji の図形に
 # 差し替える（Build::FigureEmoji）ので数えず、文字と混ざった絵文字だけを数える。
+#
+# 図の縁取りした字は、書体にあっても Type 3 になる。PDF の派生で組み替える（Build::StrokedText）ので、
+# 組み替えられない字だけを知らせる（stroked_figures）。
 # ================================================================
 
 require 'cgi'
@@ -56,6 +59,9 @@ module VivlioStarter
 
         # 見つけた字。line は原稿の行（引けなければ nil）、where は字のある所（「コード」「図 x.svg」など）
         Finding = Data.define(:line, :chars, :where)
+
+        # 図の SVG の、組み替えられない縁取りの字（Build::StrokedText）。labels は字の並び
+        StrokedFinding = Data.define(:line, :labels, :figure)
 
         # 予備の書体（SvgFontEmbedder::FALLBACK_FONTS）。絵文字は補わない
         Fallback = Data.define(:metrics) do
@@ -165,17 +171,37 @@ module VivlioStarter
             missing = File.file?(path) ? missing_chars(svg_text(File.read(path, encoding: 'utf-8')), chains[:math]) : []
             missing.empty? ? [] : [Finding.new(line: source_line(source, nil, missing.first), chars: missing, where: '数式')]
           end
-          figures = content.scan(FIGURE_IMAGE).map { it.compact.first }.uniq.reject { it.include?('images/math/') }
-          math + figures.filter_map do |src|
-            path = figure_path(src) or next
-            svg = File.read(path, encoding: 'utf-8')
-            next if svg.include?('data:font/') # 生成した SVG は書体を抱えている
-
+          math + author_figures(content).filter_map do |path, svg|
             # 絵文字だけの字は、DerivedSvg が twemoji の図形に差し替える（FigureEmoji）
             missing = missing_chars(svg_text(Build::FigureEmoji.replace(svg)), figure_fonts(svg))
             next if missing.empty?
 
             Finding.new(line: source_line(source, File.basename(path), nil), chars: missing, where: "図 #{File.basename(path)}")
+          end
+        end
+
+        # 組み替えられない縁取りの字のある図。縁取りした字は、書体にあっても Type 3 になる（改善案 #129）
+        #
+        # @param content [String] 前処理を終えた原稿
+        # @param source [String] 元の原稿（行番号を引く）
+        # @return [Array<StrokedFinding>]
+        def stroked_figures(content, source:)
+          author_figures(content).filter_map do |path, svg|
+            rewritten, = Build::DerivedSvg.resolve_families(Build::FigureEmoji.replace(svg))
+            labels = Build::StrokedText.remaining(rewritten)
+            next if labels.empty?
+
+            StrokedFinding.new(line: source_line(source, File.basename(path), nil), labels:, figure: File.basename(path))
+          end
+        end
+
+        # 原稿が参照する著者の図の SVG（パスと中身の組）。生成した SVG は書体を抱えているので外す
+        def author_figures(content)
+          sources = content.scan(FIGURE_IMAGE).map { it.compact.first }.uniq.reject { it.include?('images/math/') }
+          sources.filter_map do |src|
+            path = figure_path(src) or next
+            svg = File.read(path, encoding: 'utf-8')
+            [path, svg] unless svg.include?('data:font/')
           end
         end
 

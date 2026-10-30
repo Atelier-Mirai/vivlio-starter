@@ -18,6 +18,7 @@
 # ================================================================
 
 require 'ttfunk'
+require_relative 'glyph_outline'
 
 module VivlioStarter
   module CLI
@@ -54,6 +55,9 @@ module VivlioStarter
           end
         end
 
+        # 字の輪郭（GlyphOutline::Outline）。書体に無い字・読めない輪郭は nil
+        def outline(char) = GlyphOutline.for(@font, char)
+        
         # 並んだ 2 字の送りの調整（字の大きさに対する比）。前の字の送りに足す
         def kern(left, right)
           @pairs.fetch([left, right]) do

@@ -5,6 +5,7 @@ require 'fileutils'
 require_relative '../pre_process/svg_font_embedder'
 require_relative 'derived_image'
 require_relative 'figure_emoji'
+require_relative 'stroked_text'
 
 module VivlioStarter
   module CLI
@@ -36,6 +37,8 @@ module VivlioStarter
       # 1 枚の中にゴシックのラベルと等幅の座標値が同居しうるし、太字も混ざる。
       # そこで図が名指ししている書体を集め、汎用名しか無いものは書籍の書体へ寄せる。
       #
+      # 縁取りした字は、書体を抱かせても Type 3 になる。PDF の派生でだけ組み替える（`prepare_for_pdf`）。
+      #
       # 詳細と実測は `type3-font-embedding-notes.md`。
       # ------------------------------------------------
       module DerivedSvg
@@ -45,12 +48,15 @@ module VivlioStarter
         # `DerivedImage` のラスタ派生が `derived/pdf/` に閉じているのは、あちらが PDF の
         # 都合（WebP を格納できない）で形式を変えるからで、こちらは形式を変えない。
         DERIVED_DIR = "#{DerivedImage::DERIVED_ROOT}/svg".freeze
+        # PDF だけが使う派生の置き場。縁取りした字のある図だけが、ここに別の 1 枚を持つ（StrokedText）
+        PDF_DERIVED_DIR = "#{DerivedImage::DERIVED_ROOT}/svg-pdf".freeze
 
         # 派生の版。書体の寄せ方を変えたら上げる（既存の派生を捨てさせるため）。
         # v2: 名指しした書体の手前に OS の書体があるとき、名指しした書体を先頭へ出す（2026-10-12）。
         # v3: 図の書体に無い字を、予備の書体（HackGen）で補う（2026-10-29・改善案 #127）。
         # v4: 絵文字だけの字を twemoji の図形に差し替える（2026-10-30・改善案 #127 段階 3）。
-        SCHEMA = 'v4'
+        # v5: PDF 用に、縁取りした字の縁を字の輪郭の図形にする（2026-10-30・改善案 #129）。
+        SCHEMA = 'v5'
 
         # 作り直しの要否を見る目印。SVG は XML で、宣言より前には何も置けないので、
         # ファイル先頭ではなくルート（`<svg>`）の直下へ差し込む。
@@ -73,7 +79,7 @@ module VivlioStarter
 
         module_function
 
-        # 素材群ぶんの派生をまとめて用意する。
+        # 素材群ぶんの PDF 用の派生をまとめて用意する。
         #
         # 文字を持たない SVG（純粋な図形）は対象に入らない——書体が要らないので
         # 素材のまま運べばよく、複製すればステージングが太るだけである。
@@ -81,7 +87,7 @@ module VivlioStarter
         # @return [Hash{String => String}] 素材パス => 派生パス（作れたものだけ）
         def prepare_all(sources)
           mapping = Array(sources).uniq.select { svg?(it) }.filter_map { |source|
-            derived = prepare(source)
+            derived = prepare_for_pdf(source)
             [source, derived] if derived
           }.to_h
           Common.log_info("[stage] SVG に書体を埋め込みました: #{mapping.size} 件") unless mapping.empty?
@@ -125,6 +131,26 @@ module VivlioStarter
         rescue StandardError => e
           Common.log_warn("SVG への書体埋め込みを見送りました（素材のまま組みます）: #{source} (#{e.message})")
           nil
+        end
+
+        # PDF に組む派生を用意する。縁取りした字（Chromium が Type 3 で書き出す）のある図だけ、
+        # `prepare` の派生から別の 1 枚を作り、縁を字の輪郭の図形にする（StrokedText・改善案 #129）。
+        # EPUB はこの段を通らない。Type 3 は PDF だけの問題で、Kindle は図を OS の書体で焼く。
+        def prepare_for_pdf(source)
+          derived = prepare(source) or return nil
+          svg = File.read(derived, encoding: 'utf-8')
+          dest = derived_path(source, dir: PDF_DERIVED_DIR)
+          return dest if fresh?(dest, svg[/<!--#{MARKER_NAME} \h+-->/])
+
+          outlined = StrokedText.outline(svg)
+          return derived if outlined == svg
+
+          FileUtils.mkdir_p(File.dirname(dest))
+          File.write(dest, outlined, encoding: 'utf-8')
+          dest
+        rescue StandardError => e
+          Common.log_warn("SVG の縁取りした字を組み替えられませんでした（Type 3 が残ります）: #{source} (#{e.message})")
+          derived
         end
 
         # 図が名指ししている書体を、実体のあるものへ寄せる。
@@ -221,9 +247,9 @@ module VivlioStarter
 
         # 素材のパス構造を派生側にも残す（`DerivedImage.derived_base` と同じ流儀）。
         # ハッシュ名にすると、どの図が効いているかを人が追えなくなる。
-        def derived_path(source)
+        def derived_path(source, dir: DERIVED_DIR)
           relative = source.sub(%r{\A\./}, '').delete_prefix('/')
-          File.join(DERIVED_DIR, relative)
+          File.join(dir, relative)
         end
 
         # 作り直しの判定に使う指紋。

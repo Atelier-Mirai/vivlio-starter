@@ -206,6 +206,48 @@ module VivlioStarter
         end
       end
 
+      # 縁取りした字は Type 3 になるので、PDF の派生でだけ縁を字の輪郭の図形にする（改善案 #129）。
+      # EPUB が配る派生は stroke のまま残し、素材も書き換えない。作り直しは素材が変わったときだけ
+      def test_should_outline_stroked_text_only_in_the_pdf_derivative
+        skip '同梱書体が無い環境では検証できない' unless File.file?(REAL_FONT)
+
+        with_project(real_font: true) do
+          original = %(<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="20" font-family="sans-serif" stroke="#fff" ) +
+                     %(stroke-width="3" paint-order="stroke">半径</text></svg>)
+          source = write_svg('labels.svg', original)
+
+          pdf = DerivedSvg.prepare_for_pdf(source)
+          shared = DerivedSvg.prepare(source)
+
+          assert_equal File.join(DerivedSvg::PDF_DERIVED_DIR, source), pdf
+          assert_equal File.join(DerivedSvg::DERIVED_DIR, source), shared
+          assert_equal({ source => pdf }, capture_io { @prepared = DerivedSvg.prepare_all([source]) }.then { @prepared })
+          assert_equal original, File.read(source), '素材が書き換えられている'
+
+          assert_includes File.read(pdf), '<path '
+          assert_includes File.read(pdf), 'data:font/ttf;base64,'
+          refute_includes File.read(shared), '<path '
+
+          File.write(pdf, '壊さないと作り直しが分からない', mode: 'a')
+          stale = File.read(pdf)
+          DerivedSvg.prepare_for_pdf(source)
+
+          assert_equal stale, File.read(pdf), '素材が同じなら作り直さない'
+        end
+      end
+
+      # 縁取りの無い図は別の 1 枚を作らず、EPUB と同じ派生を指す（書体の埋め込みを 2 回しない）
+      def test_should_share_the_derivative_when_nothing_is_stroked
+        skip '同梱書体が無い環境では検証できない' unless File.file?(REAL_FONT)
+
+        with_project(real_font: true) do
+          source = write_svg('coords.svg', %(<svg xmlns="http://www.w3.org/2000/svg"><line stroke="#000"/><text font-family="sans-serif">座標</text></svg>))
+
+          assert_equal DerivedSvg.prepare(source), DerivedSvg.prepare_for_pdf(source)
+          refute Dir.exist?(DerivedSvg::PDF_DERIVED_DIR)
+        end
+      end
+
       # 書体の設定を変えたら作り直す。ここを素材の mtime だけで見ていると、著者が
       # typography.*.font を変えても古い書体を抱えた派生が残る（notes §5.1 の取りこぼし）。
       def test_should_rebuild_the_derivative_when_the_font_setting_changes

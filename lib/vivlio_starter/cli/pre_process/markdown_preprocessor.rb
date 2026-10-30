@@ -140,6 +140,7 @@ module VivlioStarter
           expose_container_footnotes!
           strip_index_markup!
           warn_missing_glyphs!
+          warn_stroked_figures!
           write_output!
         end
 
@@ -523,6 +524,25 @@ module VivlioStarter
           end
         rescue StandardError => e
           Common.log_debug("[preprocess] 書体に無い字を調べられませんでした: #{e.message}")
+        end
+
+        # 図の縁取りした字のうち、PDF 用に組み替えられない字を、原稿の行で知らせる（Build::StrokedText）。
+        # 知らせた字は覚えておき、Type3FontCheck が重ねて言わない
+        def warn_stroked_figures!
+          source = File.read(context.source_path, encoding: 'utf-8')
+          GlyphCoverageCheck.stroked_figures(context.content, source:).each do |finding|
+            GlyphCoverageCheck.remember(finding.labels.join.chars)
+            message = "図の縁取りした字が Type 3 になります（図 #{finding.figure}）: #{finding.labels.join('・')}"
+            detail = '→ <tspan>・dy・letter-spacing・dominant-baseline を外して 1 行の <text> にすると、組むときに直ります。' \
+                     '縁取りをやめて字の下に白い <rect> を敷く手もあります（Type 3 は入稿で断られることがあります）'
+            if finding.line
+              record_notation_warning(finding.line, message, detail:)
+            else
+              Common.log_warn("#{context.filename} - #{message}", detail:)
+            end
+          end
+        rescue StandardError => e
+          Common.log_debug("[preprocess] 図の縁取りの字を調べられませんでした: #{e.message}")
         end
 
         def math_error_advice(reason)

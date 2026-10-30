@@ -17,6 +17,7 @@
 | † ダガー U+2020 | `.glossary-link sup` を明朝固定 + `font-weight: normal`（faux-bold 回避） |
 | ⁵ 等（本文・見出しの書体に無い記号） | 同梱 `hackgen35`(HackGen35ConsoleNF) をフォントスタック末尾に（Regular/Bold 両字面） |
 | キーキャップ Ctrl/S（keyfont） | keyfont を OTF→TTF 変換（`otf2ttf.py`） |
+| 図の SVG の縁取りした字（`stroke`） | PDF の派生で、縁を字の輪郭の図形に組み替える（`StrokedText`・`type3-font-embedding-notes.md` §11） |
 
 ## ファイル
 
