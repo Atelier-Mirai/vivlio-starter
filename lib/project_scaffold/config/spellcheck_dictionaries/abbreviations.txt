@@ -82,6 +82,7 @@ QED
 
 # Computing
 OS
+OFL
 GUI
 CLI
 IDE
