@@ -40,6 +40,10 @@ class PlainMathTranspilerTest < Minitest::Test
     assert_equal 'f^{(n)}(0) = n!×c_{n}', tex('f⁽ⁿ⁾(0) = n!×cₙ')
     assert_equal 'a+b',         tex('ａ＋ｂ')          # 全角は式ごと消える
     assert_equal 'a\\cdot b',   tex('a・b')           # U+30FB は丸ごと消える
+    # 英字の上付き・下付き（改善案 #130）。地の文の `𝔽ₚ`・`ℓᵖ` を数式に包んだときに要る
+    assert_equal '𝔽_{p}',      tex('𝔽ₚ')
+    assert_equal 'ℓ^{p}',      tex('ℓᵖ')
+    assert_equal 'a_{nm}',     tex('aₙₘ')
   end
 
   # PT-02: エラーにならないまま別の式として組まれる表記。

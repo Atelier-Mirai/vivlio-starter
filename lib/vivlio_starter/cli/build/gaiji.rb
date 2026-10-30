@@ -55,10 +55,11 @@ module VivlioStarter
         OFL = /Open Font License|scripts\.sil\.org\/OFL|openfontlicense/i
         # 保存する SVG に書く使用条件。OFL の書体から取った形かを、後でこれで見分ける
         OFL_NOTE = 'SIL Open Font License'
-        SERIF = /Serif|Mincho|Ming|Song|Kai|明朝|宋|楷/i
+        SERIF = /Serif|Mincho|Ming|Song|Kai|STIX|明朝|宋|楷/i
 
-        # 外字にする字（漢字だけ。記号や他の文字は予備の書体が受け持つ）
-        TARGET = /\p{Han}/
+        # 外字にする字。漢字と、数学用英数字（`𝓐`・`𝕜`・`𝛂` など。MathJax が描ける字は前処理で数式に
+        # 包まれる——PreProcessCommands::MathLetterWrapper）。記号や他の文字は予備の書体が受け持つ
+        TARGET = /\p{Han}|[\u{1D400}-\u{1D7FF}]/
 
         # 字の形を取れる書体の 1 面
         # @!attribute tier [Integer] 0 = OFL の書体・1 = 付属の書体
@@ -221,7 +222,9 @@ module VivlioStarter
           face = best_face(faces.select { contains?(it, char) }, style, bold) or return nil
 
           outline = GlyphOutline.for(open_face(face), char) or return nil
-          top = EM_TOP + (((outline.top + outline.bottom) / 2.0) - INK_CENTER)
+          # 漢字は字の黒い部分を字面の中ほどに置く。欧文の字（数学用英数字）は基線をそろえる——
+          # 小文字や下に伸びる字（`𝒿`）を中ほどへ寄せると、基線から浮く
+          top = char.match?(/\p{Han}/) ? EM_TOP + (((outline.top + outline.bottom) / 2.0) - INK_CENTER) : EM_TOP
           view_box = "0 #{GlyphOutline.number(top)} #{GlyphOutline.number(outline.advance)} 1000"
           license = face.tier.zero? ? OFL_NOTE : 'macOS 付属の書体（埋め込みを許すもの）'
           svg = %(<svg xmlns="http://www.w3.org/2000/svg" viewBox="#{view_box}">) +
@@ -245,16 +248,21 @@ module VivlioStarter
           @font_faces ||= begin
             author = AUTHOR_FONT_DIRS.flat_map { Dir.glob(File.join(File.expand_path(it), '**', FONT_FILES)) }
             system = SYSTEM_FONT_DIRS.flat_map { Dir.glob(File.join(it, FONT_FILES)) }
-            (author.map { [it, 0] } + system.map { [it, 1] }).uniq(&:first).flat_map { |path, tier| faces_in(path, tier) }
+            (author.map { [it, false] } + system.map { [it, true] }).uniq(&:first).flat_map { |path, system_font| faces_in(path, system_font) }
           end
         end
 
-        def faces_in(path, tier)
+        # OFL の書体は、付属の書体（STIX Two Math）でも OFL の書体として扱う（形をプロジェクトに保存してよい）。
+        # 付属の書体で OFL でないものは、埋め込みを許すものだけ。著者が入れた書体は OFL のものだけ
+        def faces_in(path, system_font)
           each_face(path).filter_map do |font, index|
             name = english_name(font)
             next if name.nil? || name.start_with?('.', 'LastResort')
-            next if tier.zero? && !ofl?(font)
-            next if tier == 1 && !embeddable?(font.os2.type)
+
+            tier = if ofl?(font) then 0
+                   elsif system_font && embeddable?(font.os2.type) then 1
+                   end
+            next unless tier
 
             Face.new(path:, index:, name:, tier:, style: name.match?(SERIF) ? :serif : :sans,
                      weight: font.os2.weight_class)

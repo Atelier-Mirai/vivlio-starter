@@ -49,7 +49,8 @@ module VivlioStarter
           [/[∛∜]/, '本文は $\sqrt[3]{x}$ の数式に、図（SVG）は ³√ のように'],
           [/[⌃⌥⌘⇧]/, 'Control・Option・Command・Shift のように言葉で書く'],
           [/\p{Extended_Pictographic}/, '言葉か画像に置き換える'],
-          [/\p{Han}/, 'この字を持つ書体（思源宋体・Noto Serif CJK など）を PC に入れると、字の形を取って組みます']
+          [/\p{Han}/, 'この字を持つ書体（思源宋体・Noto Serif CJK など）を PC に入れると、字の形を取って組みます'],
+          [/[\u{1D400}-\u{1D7FF}]/, 'この字を持つ書体（STIX Two Math など）を PC に入れると、字の形を取って組みます']
         ].freeze
         DEFAULT_ADVICE = '本の書体にある字に置き換える'
 

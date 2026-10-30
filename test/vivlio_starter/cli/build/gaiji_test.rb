@@ -112,6 +112,27 @@ module VivlioStarter
         assert_equal songti, Gaiji.best_face([songti, face.('Songti SC Black', 1, :serif, 900)], :serif, false)
       end
 
+      # 欧文の字（数学用英数字）は、漢字のように中ほどへ寄せず、基線をそろえる（字面の枠の上端のまま）
+      def test_should_keep_the_baseline_for_latin_letters
+        in_project do
+          face = Gaiji::Face.new(path: NOTO_SERIF, index: nil, name: 'Noto Serif JP', tier: 0, style: :serif, weight: 400)
+          Gaiji.stub(:font_faces, [face]) { Gaiji.resolve([['g', :serif, false]]) }
+
+          assert_includes File.read(File.join(Gaiji::CACHE_DIR, 'u0067-serif.svg')), 'viewBox="0 -880 '
+        end
+      end
+
+      # OFL の書体は、付属の書体の置き場にあっても OFL の書体として扱う（STIX Two Math）。著者が入れた
+      # 書体は OFL のものだけ使う。同梱の Noto Serif JP は使用条件の URL に OFL と書いてあり、HackGen は書いていない
+      def test_should_rank_ofl_fonts_first_wherever_they_are
+        hackgen = "#{FONTS}/hackgen35/HackGen35ConsoleNF-Regular.ttf"
+
+        assert_equal [0], Gaiji.faces_in(NOTO_SERIF, true).map(&:tier)
+        assert_equal [0], Gaiji.faces_in(NOTO_SERIF, false).map(&:tier)
+        assert_empty Gaiji.faces_in(hackgen, false), '使用条件の分からない著者の書体は使わない'
+        assert_equal [1], Gaiji.faces_in(hackgen, true).map(&:tier), '付属の書体なら埋め込みの制限で決める'
+      end
+
       # 付属の書体は、埋め込みの制限（fsType）が許すものだけ。埋め込み不可（2）とビットマップだけ（0x200）は使わない
       def test_should_use_only_embeddable_system_fonts
         assert Gaiji.embeddable?(0x0000)

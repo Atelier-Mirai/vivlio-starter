@@ -107,6 +107,7 @@ class GlyphCoverageCheckTest < Minitest::Test
       assert_equal [[1, ['暅'], nil]], findings_of(content)
     end
     assert_includes Check.advice_for('暅'), '思源宋体'
+    assert_includes Check.advice_for('𝓐'), 'STIX Two Math'
   end
 
   # 数式の画像の中の字（MathJax が字のまま描いたもの）は、埋めた本文の書体だけで描かれる

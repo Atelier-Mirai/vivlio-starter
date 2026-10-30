@@ -36,6 +36,7 @@ require_relative 'image_trimmer'
 require_relative 'markdown_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
+require_relative 'math_letter_wrapper'
 require_relative 'math_transformer'
 require_relative 'glyph_coverage_check'
 require_relative 'showcase_transformer'
@@ -432,9 +433,13 @@ module VivlioStarter
         def detect_plain_math!
           before = context.content
           context.content = MathSpanDetector.transform(before)
-          return if context.content == before
+          Common.log_info('バッククォートの数式を $…$ へ起こしました') unless context.content == before
 
-          Common.log_info('バッククォートの数式を $…$ へ起こしました')
+          # 地の文の数学用英数字（`𝔽`・`ℝ`）も数式に包む（改善案 #130）。本の書体に無く、
+          # 字のままでは組む PC の書体で代わりに組まれる
+          wrapped = MathLetterWrapper.wrap(context.content)
+          Common.log_info('地の文の数学用英数字を $…$ で包みました') unless wrapped == context.content
+          context.content = wrapped
         end
 
         # LaTeX 数式（$…$ / $$…$$ / \(…\) / \[…\]）を SVG 画像へ変換し <img> 化する。
