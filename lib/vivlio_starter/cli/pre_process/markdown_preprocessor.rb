@@ -513,7 +513,7 @@ module VivlioStarter
             GlyphCoverageCheck.remember(finding.chars)
             where = finding.where ? "（#{finding.where}）" : ''
             message = "本の書体にない字があります#{where}: #{finding.chars.join(' ')}"
-            fixes = finding.chars.group_by { GlyphCoverageCheck.advice_for(it) }.map { |advice, chars| "#{chars.join(' ')} → #{advice}" }
+            fixes = finding.chars.group_by { GlyphCoverageCheck.advice_for(it, where: finding.where) }.map { |advice, chars| "#{chars.join(' ')} → #{advice}" }
             detail = "→ #{fixes.join(' ／ ')}（組む PC の書体で代わりに組まれ、Type 3 になると入稿で断られることがあります）"
             if finding.line
               record_notation_warning(finding.line, message, detail:)

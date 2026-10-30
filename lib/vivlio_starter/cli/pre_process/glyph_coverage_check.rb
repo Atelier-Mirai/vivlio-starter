@@ -72,7 +72,22 @@ module VivlioStarter
 
         module_function
 
-        def advice_for(char) = ADVICE.find { |pattern, _| char.match?(pattern) }&.last || DEFAULT_ADVICE
+        # 図と数式の画像の中の外字（漢字・数学用英数字）の直し方。Build::Gaiji が字の形を取るのは
+        # 本文・見出し・コードだけなので、書体を入れても組めない——置き場所を変えるよう案内する
+        PLACE_ADVICE = {
+          figure: '図の外（本文・図の説明）に書くか、図の側で文字を図形（アウトライン）にする',
+          math: '数式の外の本文に書く'
+        }.freeze
+
+        # @param where [String, nil] 字のある所（Finding#where。「図 x.svg」「数式」「コード」・本文は nil）
+        def advice_for(char, where: nil)
+          place = if where.to_s.start_with?('図') then :figure
+                  elsif where == '数式' then :math
+                  end
+          return PLACE_ADVICE[place] if place && char.match?(Build::Gaiji::TARGET)
+
+          ADVICE.find { |pattern, _| char.match?(pattern) }&.last || DEFAULT_ADVICE
+        end
 
         # --- 知らせた字（Type3FontCheck が重ねて言わないため） ---
 

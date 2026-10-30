@@ -110,6 +110,16 @@ class GlyphCoverageCheckTest < Minitest::Test
     assert_includes Check.advice_for('𝓐'), 'STIX Two Math'
   end
 
+  # 図と数式の画像の中の外字には、字の形を取る仕組みが効かない。書体を入れても組めないので
+  # （Mac なら STIX Two Math はもう入っている）、置き場所を変えるよう案内する。コードは本文と同じ
+  def test_should_advise_moving_gaiji_out_of_figures_and_math
+    assert_includes Check.advice_for('暅', where: '図 a.svg'), '図の外'
+    assert_includes Check.advice_for('𝓐', where: '図 a.svg'), '図の外'
+    assert_equal '数式の外の本文に書く', Check.advice_for('𝓐', where: '数式')
+    assert_includes Check.advice_for('𝓐', where: 'コード'), 'STIX Two Math'
+    assert_equal '≈ に置き換える', Check.advice_for('≒', where: '図 a.svg'), '外字でない字は今までどおり'
+  end
+
   # 数式の画像の中の字（MathJax が字のまま描いたもの）は、埋めた本文の書体だけで描かれる
   def test_should_check_text_in_math_svg
     Dir.mktmpdir do |dir|
