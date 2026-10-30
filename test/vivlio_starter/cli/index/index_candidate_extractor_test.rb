@@ -341,6 +341,18 @@ module VivlioStarter
           assert_includes candidates, 'Devkit'
         end
 
+        # リンク先の URL に括弧があっても、URL の残り（`)_Portrait.jpg`）から語を候補にしない
+        def test_link_urls_with_parentheses_are_not_read
+          candidates = extract(<<~MD)
+            肖像は [Commons](https://commons.wikimedia.org/wiki/File:Lovelace_(cropped)_Portrait.jpg) から。Devkit を選びます。
+
+            ![肖像](images/Lovelace_(cropped)_Portrait.webp)
+          MD
+
+          refute(candidates.any? { it.match?(/Portrait|cropped|Lovelace/i) }, candidates.inspect)
+          assert_includes candidates, 'Devkit'
+        end
+
         # 図解注釈の注釈行・画像の代替テキスト・ラベルは、紙面の本文ではない
         def test_machine_data_image_alt_and_labels_are_not_read
           candidates = extract(<<~MD)

@@ -64,6 +64,11 @@ module VivlioStarter
       # ただし URL の中で対になった `( )` は URL に含める（`…/File:Alan_Kay_(cropped).jpg`）
       URL = %r{https?://(?:[^\s()\]>#{URL_TERMINATORS}]|\([^\s()\]>#{URL_TERMINATORS}]*\))+}
 
+      # リンク・画像の `[文字](…)` の括弧の中身（URL とタイトル）。`\(#{LINK_DESTINATION}\)` と使う。
+      # URL の中で対になった `( )` は中身に含める（CommonMark と同じ。`…/File:Karen_(2008).jpg`）。
+      # `[^)]*` で読むと最初の `)` で切れ、`.jpg)` が地の文に残る
+      LINK_DESTINATION = /(?:[^()\n]|\([^()\n]*\))*/
+
       # --- (a) コード外の行だけを走査する -----------------------------------
 
       # コード（フェンス区切り行・フェンス内容行）を除いた「地の文」の行だけを

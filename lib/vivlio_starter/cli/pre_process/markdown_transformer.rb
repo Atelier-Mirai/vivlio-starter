@@ -456,6 +456,12 @@ module VivlioStarter
         # `[vs]` だけの省略形は、索引の `[用語]` と見分けられないので扱わない。
         LINK_REFERENCE_USE = /(?<!!)\[([^\]]+)\]\[([^\]]*)\]/
 
+        # インラインリンク `[文字](URL)`。URL の中の対になった括弧は URL の一部として読む
+        # （CommonMark と同じ。Wikimedia の `File:…_(2008).jpg` など）。最初の `)` で切ると、
+        # 紙面に `.jpg)` が漏れ、脚注の URL も途中で切れる。
+        # 脚注を付け終えたリンク（`[文字](URL) [^url1]`）は除く（`\^` は文字の `^`。`^` だと行頭の意味になる）
+        INLINE_LINK = /(?<!!)\[(?<label>.+?)\]\((?<url>https?:(?<url_part>[^\s()]|\(\g<url_part>*\))+)\)(?!\s*\[\^url\d+\])/
+
         # Markdown内のリンク記法を脚注化
         #
         # 印刷した本ではリンクをたどれないので、URL を脚注に書き出す。参照リンクは、先に
@@ -475,9 +481,9 @@ module VivlioStarter
           url_id = {}
           replacements = []
 
-          replaced = text.gsub(/(?<!!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\s*\[^url\d+\])/) do |_match|
-            label = ::Regexp.last_match(1)
-            url   = ::Regexp.last_match(2)
+          replaced = text.gsub(INLINE_LINK) do |_match|
+            label = ::Regexp.last_match(:label)
+            url   = ::Regexp.last_match(:url)
             id = (url_id[url] ||= begin
               max_n += 1
               "url#{max_n}"

@@ -94,8 +94,8 @@ module VivlioStarter
         # 行内 Markdown を除いて、文章としての長さに近づける。
         def clean_line(line)
           line.gsub(/`[^`\n]*`/, ' ')              # インラインコード
-              .gsub(/!\[[^\]]*\]\([^)]*\)/, ' ')   # 画像
-              .gsub(/\[([^\]]+)\]\([^)]+\)/, '\1')  # リンク → テキスト
+              .gsub(/!\[[^\]]*\]\(#{Masking::LINK_DESTINATION}\)/, ' ')   # 画像
+              .gsub(/\[([^\]]+)\]\(#{Masking::LINK_DESTINATION}\)/, '\1') # リンク → テキスト
               .gsub(/\A\s*[-*+]\s+/, '')           # 箇条書きの行頭記号
               .gsub(/\A\s*\d+\.\s+/, '')           # 番号付きリストの行頭
               .gsub(/[*_~]/, '')                   # 強調記号

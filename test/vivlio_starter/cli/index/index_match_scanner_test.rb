@@ -392,6 +392,19 @@ module VivlioStarter
           assert_includes tagged, '``a`b WWW``', 'インラインコードの内容は逐語で保持される'
         end
 
+        # URL に括弧を含むリンク（Wikimedia の `…_(2008).jpg`）も、リンクの文字に用語を当てない。
+        # 当てると <a>†</a> がリンクの中に入れ子になり、紙面に `[…](…)` が漏れる
+        def test_should_not_tag_term_inside_link_with_parentheses_in_url
+          write_glossary_term('Wikimedia', yomi: 'うぃきめでぃあ')
+          File.write('22-link.md', "肖像：[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:K_(2008).jpg)。\n")
+
+          IndexMatchScanner.new.scan_and_tag_file!('22-link.md')
+
+          tagged = File.read('22-link.md')
+          assert_includes tagged, '[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:K_(2008).jpg)'
+          refute_match(/index-term|glossary-link/, tagged)
+        end
+
         # 短い語が長い語の一部を先に食うと、長いほうは二度と一致しない
         # （実測: <dfn>マスター</dfn>画像 と組まれ、用語集の「マスター画像」に
         # 本文リンクが 1 件も付かなかった）。辞書は読み順に並ぶため順序では守れない

@@ -195,6 +195,26 @@ module VivlioStarter
           assert_equal md, result.strip
         end
 
+        # URL の中の対になった括弧は URL の一部（CommonMark）。Wikimedia のファイル名に多い。
+        # 外側の括弧の中に書いたリンクも、閉じ括弧を URL に取り込まない
+        def test_should_keep_balanced_parentheses_in_link_url
+          md = '[Commons](https://commons.wikimedia.org/wiki/File:Karen_(2008).jpg)。' \
+               '（[Ruby](https://ruby-lang.org)）'
+          result = transform_links_to_footnotes(md)
+
+          assert_includes result, '[Commons](https://commons.wikimedia.org/wiki/File:Karen_(2008).jpg) [^url1]'
+          assert_includes result, '[^url1]: https://commons.wikimedia.org/wiki/File:Karen_(2008).jpg'
+          assert_includes result, '（[Ruby](https://ruby-lang.org) [^url2]）'
+        end
+
+        # 脚注を付け終えたリンク（`[文字](URL) [^url1]`）には、もう一度通しても脚注を足さない
+        def test_should_not_add_footnote_twice_when_transformed_again
+          once = transform_links_to_footnotes('[Ruby](https://ruby-lang.org) と [Commons](https://x.org/File:K_(2008).jpg)。')
+          twice = transform_links_to_footnotes(once)
+
+          assert_equal once, twice
+        end
+
         # 参照リンクも URL を脚注に書き出す（改善案.md #62）。同じ URL はインラインリンクと脚注を共有する
         def test_transform_links_to_footnotes_reference_links
           md = <<~MD

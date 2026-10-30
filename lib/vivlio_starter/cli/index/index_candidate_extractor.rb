@@ -14,6 +14,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../masking'
 require_relative 'yomi_inferrer'
 require_relative 'code_block_stripper'
 require_relative 'scoring_engine'
@@ -888,7 +889,7 @@ module VivlioStarter
 
           # 画像の記法。代替テキストは図の中身の説明で、索引から案内する本文ではない
           # （「バイオリンを弾くアインシュタイン」から人名や物が候補に挙がっていた）
-          text.gsub!(/!\[[^\]]*\]\([^)]*\)/, ' ')
+          text.gsub!(/!\[[^\]]*\]\(#{Masking::LINK_DESTINATION}\)/, ' ')
 
           # 相互参照のラベルと参照（`@prime`・`@pageref:ch-build`）。メールアドレスは除く
           text.gsub!(/(?<![\w.])@[\w:.-]+/, ' ')
@@ -905,7 +906,7 @@ module VivlioStarter
           text.gsub!(/\{[^}]*\}/, ' ')
 
           # Markdownリンク記法の URL 部分を除外
-          text.gsub!(/\]\([^)]+\)/, '] ')
+          text.gsub!(/\]\(#{Masking::LINK_DESTINATION}\)/, '] ')
 
           # 裸 URL と脚注の定義行の URL。`https://rubyinstaller.org/` から「rubyinstaller」を候補にしない
           text = Masking.strip_urls(text)

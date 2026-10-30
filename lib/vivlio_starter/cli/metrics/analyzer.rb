@@ -309,7 +309,7 @@ module VivlioStarter
         # Markdown 記法を除去する
         def strip_markdown(text)
           text.gsub(/^#+\s*/, '')
-              .gsub(/\[([^\]]+)\]\([^)]+\)/, '\1')
+              .gsub(/\[([^\]]+)\]\(#{Masking::LINK_DESTINATION}\)/, '\1')
               .gsub(/[*_`~]/, '')
               .gsub(/^>\s*/, '')
               .gsub(/^-\s*/, '')

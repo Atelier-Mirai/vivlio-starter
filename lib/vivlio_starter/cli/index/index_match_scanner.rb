@@ -594,8 +594,8 @@ end
         # `[...](...)` がリンクとして成立せず、`[Vivliostyle†](https://…) [^url2]`
         # が本文へ生のまま組まれていた（前書き「謝辞」で実際に発生）。
         # リンクラベルは行き先を指す文字列で索引の見出しには向かないから、
-        # 記法ごと退避して当てない。
-        MARKDOWN_LINK_PATTERN = /!?\[[^\[\]\n]*\]\([^()\n]*\)/
+        # 記法ごと退避して当てない。URL に括弧を含むリンク（`…_(2008).jpg`）も退避する。
+        MARKDOWN_LINK_PATTERN = /!?\[[^\[\]\n]*\]\(#{Masking::LINK_DESTINATION}\)/
 
         # config/index_glossary_terms.yml に基づく自動タグ付けを適用
         def apply_auto_indexing(line, file_basename)

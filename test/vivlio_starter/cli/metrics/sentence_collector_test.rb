@@ -52,6 +52,15 @@ module VivlioStarter
           assert_equal 6, sentence.length
         end
 
+        # リンクは文字だけを数える。URL に括弧があっても、URL の残り（`.jpg)`）を文に含めない
+        def test_link_with_parentheses_in_url_counts_only_its_text
+          content = "肖像は[Commons](https://commons.wikimedia.org/wiki/File:K_(2008).jpg)から。\n"
+
+          sentence = SentenceCollector.new.collect(content, 1).first
+
+          assert_equal '肖像はCommonsから。', sentence.text
+        end
+
         def test_skips_structural_lines
           content = "| 見出し | 列 |\n本文の文です。\n"
 

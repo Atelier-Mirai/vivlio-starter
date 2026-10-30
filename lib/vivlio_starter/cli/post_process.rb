@@ -33,6 +33,7 @@ require 'json'
 require 'yaml'
 require 'nokogiri'
 require_relative 'common'
+require_relative 'masking'
 require_relative 'post_process/html_parser'
 require_relative 'post_process/body_class_injector'
 require_relative 'post_process/html_replacer'
@@ -552,13 +553,14 @@ module VivlioStarter
             text = node.text
             next unless text.match?(/\[.+?\]\(.+?\)/)
 
-            # マークダウンリンクと脚注参照を分割（脚注参照は後で処理するので残す）
-            pattern = /(\[[^\]]+\]\([^)]+\))/
+            # マークダウンリンクと脚注参照を分割（脚注参照は後で処理するので残す）。
+            # URL の中で対になった括弧（`…_(2008).jpg`）は URL に含める
+            pattern = /(\[[^\]]+\]\(#{Masking::LINK_DESTINATION}\))/
             segments = text.split(pattern)
             next if segments.length == 1
 
             segments.each do |seg|
-              if (m = seg.match(/^\[([^\]]+)\]\(([^)]+)\)$/))
+              if (m = seg.match(/^\[([^\]]+)\]\((#{Masking::LINK_DESTINATION})\)$/))
                 # マークダウンリンク: [text](url) → <a>text</a>
                 link_text = m[1]
                 link_url = m[2]

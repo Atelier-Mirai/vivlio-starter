@@ -14,6 +14,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../masking'
 require_relative '../index_markup'
 require_relative '../build/catalog_loader'
 require_relative '../pre_process/issue_registry'
@@ -569,7 +570,7 @@ module VivlioStarter
           .gsub(/\*\*(.+?)\*\*/, '\1')  # **bold**
           .gsub(/\*(.+?)\*/, '\1')      # *italic*
           .gsub(/`(.+?)`/, '\1')        # `code`
-          .gsub(/\[(.+?)\]\(.+?\)/, '\1') # [link](url)
+          .gsub(/\[(.+?)\]\(#{Masking::LINK_DESTINATION}\)/, '\1') # [link](url)
           .gsub(/^#+\s*/, '')           # # heading
           .gsub(/^\s*[-*]\s+/, '')      # - list item
           .gsub(/\n+/, ' ')             # newlines to space
