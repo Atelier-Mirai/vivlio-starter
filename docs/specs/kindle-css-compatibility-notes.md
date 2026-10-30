@@ -103,6 +103,9 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
 | 数式が極大表示／表内数式が崩れる／フォント変更に非追従 | 画像を本文フォント相対にできない KFX の本質的制約 | **単純式は `textify_simple_math_for_kindle!`（`MathTextRenderer`）で HTML テキスト化**し 100% 追従させる（Kindle 限定・`convert_math_units_for_epub!` の直前）。テキスト化不可の複雑式のみ従来の px フォールバックで巨大化を防ぐ（`kindle-inline-math-textify-spec.md`） |
+| 表の中の数式が本文の 10 倍近くに膨らむ（`1/4 倍` のように文字が並ぶセルは正常） | セルの中身が画像だけだと、KFX が画像を列の幅まで引き伸ばす。`padding` が `clamp()` で捨てられて 0 になると起きやすい。**実物の CSS でないと再現しない**（素の表では起きない）。NBSP は空白として捨てられて効かない | 数式だけのセルへゼロ幅の空白 U+200B を添え（`keep_cell_math_inline_for_kindle!`）、`body.vs-kindle td` に具体値の余白を書く（`table.css`） |
+| 表の見出しの数式の周りだけ背景が白く抜ける | KFX は透過 PNG を行（`tr`）の背景色で塗りつぶす。`th` だけに背景があると白で塗られる。同じ画像を別の場所で使うと、塗った色が持ち越されることがある | `body.vs-kindle thead tr` にも背景色を書く（`table.css`） |
+| 索引が 1 列に潰れ、語とページ番号が別の行に分かれる | `columns` 非対応。**表で 2 列にすると、一度拡大しないとリンクをたどれない**（表の下に拡大の印が付く）。`float` は横に並ばず、行ごとに崩れる | 語を `display: inline-block; width: 49%` で並べる（`layout_index_columns_for_kindle!`）。語の間に空白を置かない（行頭に回ると字下げに見える）。ページの高さが読者の設定で変わるので、左の段を埋めてから右へ移る組み方はできない |
 
 ---
 

@@ -55,6 +55,9 @@ module VivlioStarter
         # 目次は EPUB リーダーが自動生成するため不要
         EXCLUDED_BASENAMES = %w[_toc].freeze
 
+        # 題を持たない HTML の、目次に出す題。奥付は <title> が無く、そのままではファイル名が出る。
+        EPUB_ENTRY_TITLES = { '_colophon' => '奥付' }.freeze
+
         # @page マージンボックス（@bottom-center 等）と @footnote at-rule を検出する正規表現。
         # epubcheck はこれらの構文そのものを CSS-008 ERROR として拒否する
         # （@footnote は Vivliostyle が float: footnote 要素を収めるマージン at-rule）。
@@ -368,7 +371,7 @@ module VivlioStarter
           convert_code_blocks_for_epub!(chapter_htmls)
           # 脚注に番号を実テキストで注入する（両フレーバ共通）。
           decorate_footnotes_for_epub!(chapter_htmls)
-          # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）。
+          # 索引・用語集を EPUB 用に書き換え（空リンクに章の短い名前を挿入）。
           # 共通フェーズの最後に置く——このフェーズは「参照先 id が EPUB に実在するか」を
           # 照合して死リンクを解除する（RSC-012 恒常対策）ので、id を消しうる処理が
           # すべて終わったあとの DOM を見なければならない。以前は先頭に置いており、
@@ -400,9 +403,11 @@ module VivlioStarter
             # より前に置き、差し替えた <img> にも px フォールバックが効くようにする。
             rasterize_display_math_for_kindle!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
+            keep_cell_math_inline_for_kindle!(chapter_htmls)
             inject_code_line_numbers_for_kindle!(chapter_htmls)
             decorate_admonitions_for_epub!(chapter_htmls)
             decorate_list_markers_for_epub!(chapter_htmls)
+            layout_index_columns_for_kindle!(chapter_htmls)
             # 回転テーブルを PDF ページの画像へ差し替える（KFX は transform も
             # position:absolute も解さない）。PDF 枝の成果物を待つ点だけが他と違う。
             replace_rotate_tables_for_kindle!(chapter_htmls)
@@ -565,7 +570,8 @@ module VivlioStarter
         # @param html_files [Array<String>] HTML ファイルパスの配列
         def write_epub_entries(base_dir, html_files)
           entries = html_files.map do |html|
-            CLI::EntriesCommands.build_entry(html).merge(path: "./#{File.basename(html)}")
+            entry = CLI::EntriesCommands.build_entry(html).merge(path: "./#{File.basename(html)}")
+            entry.merge(title: EPUB_ENTRY_TITLES.fetch(File.basename(html, '.html'), entry[:title]))
           end
 
           File.open(File.join(base_dir, EPUB_ENTRIES_FILE), 'w') do |f|
@@ -669,12 +675,12 @@ module VivlioStarter
         # ================================================================
 
         # 索引・用語集 HTML を EPUB 用に直接修正する
-        # ファイル名プレフィックス（00, 08, 11 等）を書籍構成順の連番（0, 1, 2 等）に変換
+        # リフローにページ番号は無いので、リンクの文字は章の短い名前（序章・第7部 など）にする
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列（書籍構成順）
         # @return [Array<String>] そのままの配列（パス変更なし）
         def post_process_index_glossary_for_epub!(html_files)
-          chapter_map = build_sequential_chapter_map(html_files)
+          chapter_map = build_chapter_label_map(html_files)
           # 索引・用語集の参照先 id が EPUB 内に実在するか照合するための id 集合（RSC-012 恒常対策）
           existing_ids = collect_existing_fragment_ids(html_files)
 
@@ -753,49 +759,57 @@ module VivlioStarter
           fragment # 壊れたエスケープ列は素のまま照合する（握り潰して死リンクを残さない）
         end
 
-        # HTML ファイルの構成順から、ファイル名プレフィックス → 連番 のマッピングを構築
-        # 例: { "00" => 0, "08" => 1, "11" => 2, "21" => 3, "91" => 4, "99" => 5 }
+        # ファイル名プレフィックス → リンクに出す章の名前 のマッピングを構築する。
+        # かつては書籍構成順の連番（0, 1, 2）を出していたが、読者にはどの章か分からなかった。
+        # 例: { "07" => "序章", "33" => "第7部", "53" => "特別編" }
+        # 題が読めない HTML だけ、構成順の番号で埋める。
         #
         # @param html_files [Array<String>] 書籍構成順の HTML ファイルパス
-        # @return [Hash{String => Integer}] プレフィックス → 連番
-        def build_sequential_chapter_map(html_files)
+        # @return [Hash{String => String}] プレフィックス → 章の短い名前
+        def build_chapter_label_map(html_files)
           mapping = {}
-          seq = 0
           html_files.each do |path|
             basename = File.basename(path, '.html')
             next unless basename.match?(/\A\d{2}(?=-|\z)/) # 番号だけの原稿（22.html）も章
 
-            prefix = basename[0, 2]
-            unless mapping.key?(prefix)
-              mapping[prefix] = seq
-              seq += 1
-            end
+            mapping[basename[0, 2]] ||= chapter_label(CLI::EntriesCommands.extract_html_title(path)) || mapping.size.to_s
           end
-          Common.log_info("[EPUB] 章番号マッピング: #{mapping.map { |k, v| "#{k}→#{v}" }.join(', ')}")
+          Common.log_info("[EPUB] 章の名前: #{mapping.map { |k, v| "#{k}→#{v}" }.join(', ')}")
           mapping
         end
 
+        # 章の題から、索引へ並べられる短い名前を取り出す。
+        # 「第7部　通信・システム編」→「第7部」、「第14章 ビルド」→「第14章」。
+        # 区切りの無い題はそのまま使い、長ければ切り詰める。
+        def chapter_label(title)
+          text = title.to_s.strip
+          return nil if text.empty?
+
+          head = text[/\A[^　]+(?=　)/] || text[/\A\S*[章部編](?=\s)/] || text
+          head.size > CHAPTER_LABEL_MAX ? "#{head[0, CHAPTER_LABEL_MAX]}…" : head
+        end
+
+
         # 索引 HTML を EPUB 用に書き換える
-        # - 空リンクに連番の章番号を挿入
+        # - 空リンクに章の名前を挿入
         # - 連続するリンク間に ", " 区切りを追加
         #
         # @param path [String] _indexpage.html のパス
-        # @param chapter_map [Hash{String => Integer}] プレフィックス → 連番
+        # @param chapter_map [Hash{String => String}] プレフィックス → 章の名前
         # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
         def rewrite_index_for_epub!(path, chapter_map, existing_ids)
           html = File.read(path, encoding: 'utf-8')
 
           # Step 0: 参照先 id が EPUB に実在しない索引リンクを解除（RSC-012 恒常対策）。
-          # 連番挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
+          # 名前の挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
           html, removed = unlink_missing_fragment_links(html, existing_ids)
           Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメント索引リンクを #{removed} 件解除しました") if removed.positive?
 
-          # Step 1: 空の <a> タグに連番の章番号を挿入
+          # Step 1: 空の <a> タグに章の名前を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
             tag_open = ::Regexp.last_match(1)
             prefix = ::Regexp.last_match(2)
-            chapter_num = chapter_map[prefix] || prefix.to_i
-            "#{tag_open}>#{chapter_num}</a>"
+            "#{tag_open}>#{chapter_map[prefix] || prefix.to_i}</a>"
           end
 
           # Step 2: 同一番号（同一章＝EPUB 上の同一ページ）を指す連続リンクを併合
@@ -805,15 +819,15 @@ module VivlioStarter
           html = html.gsub(%r{</a>\s*(<a\s+href="|<span class="index-other-volume">)}, '</a>, \1')
 
           File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番リンク＋併合＋区切り挿入）")
+          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（章の名前のリンク＋併合＋区切り挿入）")
         end
 
         # 用語集 HTML を EPUB 用に書き換える
-        # - 空バックリンクに連番の章番号を挿入
+        # - 空バックリンクに章の名前を挿入
         #   CSS の ::before が "→ " を付加するため記号は不要
         #
         # @param path [String] _glossarypage.html のパス
-        # @param chapter_map [Hash{String => Integer}] プレフィックス → 連番
+        # @param chapter_map [Hash{String => String}] プレフィックス → 章の名前
         # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
         def rewrite_glossary_for_epub!(path, chapter_map, existing_ids)
           html = File.read(path, encoding: 'utf-8')
@@ -824,23 +838,22 @@ module VivlioStarter
           html = split_glossary_groups_for_epub(html)
 
           # 参照先 id が EPUB に実在しない用語集バックリンク（#gls-src-…）を解除（RSC-012 恒常対策）。
-          # 連番挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
+          # 名前の挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
           html, removed = unlink_missing_fragment_links(html, existing_ids)
           Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメントバックリンクを #{removed} 件解除しました") if removed.positive?
 
-          # 空の <a> タグに連番の章番号を挿入
+          # 空の <a> タグに章の名前を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
             tag_open = ::Regexp.last_match(1)
             prefix = ::Regexp.last_match(2)
-            chapter_num = chapter_map[prefix] || prefix.to_i
-            "#{tag_open}>#{chapter_num}</a>"
+            "#{tag_open}>#{chapter_map[prefix] || prefix.to_i}</a>"
           end
 
           # 同一番号（同一章＝EPUB 上の同一ページ）を指す連続バックリンクを併合
           html = dedup_sequential_number_links(html)
 
           File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番バックリンク＋併合）")
+          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（章の名前のバックリンク＋併合）")
         end
 
         # 用語集の <dl> 直下のグループ見出し <div> を <dl> の外へ出し、頭文字ごとに <dl> を分割する。
@@ -861,19 +874,17 @@ module VivlioStarter
           split.gsub(%r{<dl class="glossary-list">\s*</dl>\s*}, '')
         end
 
-        # 索引・用語集の連番リンクのうち、同一番号（= 同一章 = EPUB 上の同一ページ扱い）を
-        # 指す連続リンクを最初の 1 つに併合する。PDF のページ番号併合（Step 8 の backlink
-        # dedup）に相当する処理を、EPUB の章連番に対して文字列処理で行う。
-        # 番号挿入後・カンマ区切り挿入前に適用する想定。空白区切りで隣接する
-        # <a ...>N</a> の連なりを対象とし、各連なり内で番号が初出のリンクだけを残す。
+        # 索引・用語集のリンクのうち、同じ章を指す連続リンクを最初の 1 つに併合する。
+        # PDF のページ番号併合（Step 8 の backlink dedup）に相当する処理を、章の名前に対して
+        # 文字列処理で行う。名前の挿入後・カンマ区切り挿入前に適用する想定。空白区切りで隣接する
+        # <a ...>名前</a> の連なりを対象とし、各連なり内で名前が初出のリンクだけを残す。
         #
-        # @param html [String] 番号挿入済みの索引/用語集 HTML
-        # @return [String] 同番号リンクを併合した HTML
+        # @param html [String] 章の名前を挿入済みの索引/用語集 HTML
+        # @return [String] 同じ章のリンクを併合した HTML
         def dedup_sequential_number_links(html)
-          html.gsub(%r{(?:<a\s[^>]*>\d+</a>\s*){2,}}) do |run|
-            links = run.scan(%r{<a\s[^>]*>\d+</a>})
-            # 番号（章連番）が初出のリンクだけを順序保持で残す
-            links.uniq { |link| link[%r{>(\d+)</a>\z}, 1] }.join(' ')
+          html.gsub(%r{(?:<a\s[^>]*>[^<]+</a>\s*){2,}}) do |run|
+            links = run.scan(%r{<a\s[^>]*>[^<]+</a>})
+            links.uniq { |link| link[%r{>([^<]+)</a>\z}, 1] }.join(' ')
           end
         end
 
@@ -1742,8 +1753,11 @@ module VivlioStarter
         # 同じ名前の画像が別の章にあれば両方残るが、消しすぎるより安全である。
         # 日本語のファイル名は href で %XX に符号化されうるので、復号した形も足しておく。
         # SVG を含めるのは、図版の中から別の画像を参照することがあるため。
+        # EPUB に入らない目次（_toc）は数えない。章題の数式の画像がここから参照され続け、
+        # Kindle パッケージに SVG が残っていた。
         def asset_reference_text(dir)
           text = Dir.glob(File.join(dir, '**', '*.{html,xhtml,css,svg}'))
+                    .reject { excluded_basename?(it) }
                     .map { File.read(it, encoding: 'utf-8') }
                     .join("\n")
           "#{text}\n#{CGI.unescapeURIComponent(text.scrub)}"
@@ -1929,6 +1943,12 @@ module VivlioStarter
         # 表セル内の数式（単位記号など）の最低高さ（em）。Kindle は多列の表を縮小しがちで、
         # ×0.5 だと単位記号が読めなくなるため、表内に限り最低この高さを確保し等比拡大する。
         MIN_TABLE_MATH_EM = 1.0
+
+        # 数式の画像だけのセルへ添える字（keep_cell_math_inline_for_kindle!）。ゼロ幅の空白。
+        CELL_MATH_GLUE = "\u200B"
+
+        # 索引・用語集のリンクに出す章の名前の長さの上限（字）。
+        CHAPTER_LABEL_MAX = 8
 
         # ディスプレイ数式のラスター化（Kindle 限定・§3-2.4）。
         # SVG は viewBox しか持たないので、焼く幅を <img> の ex 値から見積もる。
@@ -2269,6 +2289,66 @@ module VivlioStarter
 
         # 数式画像が表セル（td/th）内にあるか。
         def math_in_table?(img) = img.ancestors('td, th').any?
+
+        # 数式の画像だけのセルへ、ゼロ幅の空白を添える。
+        #
+        # KFX はセルの中身が画像だけだと、画像を列の幅いっぱいまで引き伸ばすことがある。
+        # 同じ表でも `$\frac14$ 倍` のように文字が並ぶセルは指定の大きさで描かれ、文字さえ
+        # あれば起きない。ただし字の種類を選ぶ——NBSP は空白として捨てられて効かず、
+        # ゼロ幅の空白は残る（Previewer の画面で確かめた。2026-10-30）。
+        # 字が既にあれば text が空にならないので、2 回通しても増えない。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def keep_cell_math_inline_for_kindle!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            cells = doc.css('td, th').select { it.at_css('img.vs-math-inline') && it.text.strip.empty? }
+            next if cells.empty?
+
+            cells.each { it.css('img.vs-math-inline').last.add_next_sibling(Nokogiri::XML::Text.new(CELL_MATH_GLUE, doc)) }
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の数式だけのセル #{cells.size} 件に字を添えました")
+          end
+          html_files
+        end
+
+        # 索引の語を、横に 2 つずつ並ぶ形へ組み替える（Kindle 限定）。
+        #
+        # KFX は `columns` を解さないので、PDF の 2 段組みは 1 列に潰れ、語とページ番号が別の行へ
+        # 分かれて画面の右半分が空く。表にすれば 2 列に組めるが、KFX の表は一度拡大しないと
+        # リンクをたどれず、索引の役目を果たさない。float は横に並ばなかった。
+        # `inline-block` の幅なら文字のリンクのまま 2 列になる（Previewer の画面で確かめた）。
+        #
+        # 並びは行ごとに左・右とする。リフローではページの高さが読者の設定で変わるので、
+        # 左の段を下まで埋めてから右の段へ移る組み方はできない。節の中だけ縦に並べると、
+        # 節がページをまたいだときに語の順が飛ぶ。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def layout_index_columns_for_kindle!(html_files)
+          path = html_files.find { File.basename(it, '.html') == '_indexpage' }
+          return html_files unless path
+
+          doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+          lists = doc.css('div.index-section dl.index-list')
+          return html_files if lists.empty?
+
+          lists.each { it.replace(doc.fragment(index_items_html(it))) }
+          PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          Common.log_info('[EPUB] 索引を 2 列に組み替えました')
+          html_files
+        end
+
+        # `index-list` を残すのは、リンクの体裁（太字の主要参照など）の規則をそのまま使うため。
+        # 語の間に空白を置かない——行頭に回った空白のぶん、語の先頭がずれる。
+        def index_items_html(list)
+          items = list.css('dt').map do |term|
+            %(<span class="vs-index-item"><span class="vs-index-term">#{term.inner_html}</span> ) +
+              %(<span class="vs-index-refs">#{term.next_element.inner_html}</span></span>)
+          end
+          %(<div class="index-list vs-index-items">#{items.join}</div>)
+        end
 
         # style 文字列の `<数値>ex` を em へ換算する。基本は ×0.5。表セル内で換算後の
         # height が MIN_TABLE_MATH_EM 未満になる場合は、height がその値になるよう全寸法を

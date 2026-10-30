@@ -201,3 +201,71 @@ h2 {
     /* typography */
     font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
 }
+
+/* Kindle の奥付。PDF の「ページの下寄せ・全幅の罫線」は vh・grid・absolute に頼っていて
+   KFX では組めないので、中央揃えの素直な流れで組み直す。 */
+body.vs-kindle {
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+body.vs-kindle .book-title {
+  font-size: 1.3em;
+  text-align: center;
+  margin: 4em 0 0;
+  padding-bottom: 0.6em;
+  border-bottom: 1px solid #333;
+}
+
+body.vs-kindle .subtitle {
+  font-size: 0.95em;
+  text-align: center;
+  margin: 0.6em 0 0;
+  padding: 0;
+  border: none;
+}
+
+body.vs-kindle .publication-info {
+  font-size: 0.9em;
+  text-align: center;
+  margin: 0.6em 0 0;
+}
+
+body.vs-kindle .info-list {
+  display: block;
+  margin: 1.6em 0 0;
+  text-align: center;
+}
+
+/* ::after の全幅の罫線は absolute なので、Kindle では小さな点だけが残る */
+body.vs-kindle .info-list::after {
+  content: none;
+}
+
+body.vs-kindle .info-list dt {
+  display: block;
+  font-size: 0.8em;
+  font-weight: normal;
+  color: #666;
+  text-align: center;
+  text-align-last: center;
+}
+
+body.vs-kindle .info-list dd {
+  display: block;
+  margin: 0 0 0.7em;
+}
+
+body.vs-kindle .copyright {
+  font-size: 0.85em;
+  text-align: center;
+  margin: 2em 0 0;
+}
+
+body.vs-kindle .powered-by {
+  font-size: 0.8em;
+  color: #888;
+  text-align: center;
+  margin: 0.4em 0 0;
+}

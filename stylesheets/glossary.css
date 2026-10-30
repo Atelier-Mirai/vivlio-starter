@@ -144,6 +144,37 @@ body.vs-kindle .glossary-title {
   margin: 0.2em 0;
 }
 
+/* Kindle では語と語の間が広がりすぎる。EPUB は見出しごとに <dl> を分けるので
+   （split_glossary_groups_for_epub）`.glossary-group-header + .glossary-term` が当たらず、
+   語の上の余白と点線が見出しの直後にも付く。余白は語の区切りの分だけに詰める。 */
+body.vs-kindle .glossary-group-header {
+  margin-top: 0.8em;
+  margin-bottom: 0.1em;
+  padding: 0 0.5em;
+}
+
+body.vs-kindle .glossary-term {
+  margin-top: 0.3em;
+  margin-bottom: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+body.vs-kindle .glossary-definition {
+  margin-bottom: 0;
+}
+
+body.vs-kindle .glossary-body,
+body.vs-kindle .glossary-text-line {
+  margin: 0;
+}
+
+body.vs-kindle .glossary-backlinks {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 /* ----------------------------------------------------------------
  * 本文へのバックリンク（ページ番号のみ表示）
  * ---------------------------------------------------------------- */

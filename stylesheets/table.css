@@ -129,6 +129,18 @@ th {
   hyphens: auto;
 }
 
+/* Kindle は clamp() を解さず padding の宣言ごと捨てるので、余白を具体値で書く。
+   余白が 0 のセルでは数式の画像が列の幅まで引き伸ばされる（keep_cell_math_inline_for_kindle!）。 */
+body.vs-kindle td {
+  padding: 0.15em 0.4em;
+}
+
+/* KFX は透過した画像を行の背景色で塗りつぶす。th だけに背景があると、
+   見出しの数式の周りが白く抜ける。 */
+body.vs-kindle thead tr {
+  background: #bbb;
+}
+
 th {
   background: #bbb;
   min-inline-size: 4em;

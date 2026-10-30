@@ -70,6 +70,70 @@ module VivlioStarter
         refute_includes style, 'ex'
       end
 
+      # 数式の画像だけのセルにゼロ幅の空白を添える（KFX が画像を列の幅まで引き伸ばさないよう）
+      def test_should_glue_zero_width_space_to_math_only_cell
+        html = '<html><body><table><tbody><tr>' \
+               '<td><img class="vs-math vs-math-inline" src="a.png" alt="A"></td>' \
+               '<td><img class="vs-math vs-math-inline" src="b.png" alt="B"> 倍</td>' \
+               '</tr></tbody></table></body></html>'
+        doc = process(html) do |files|
+          Builder.keep_cell_math_inline_for_kindle!(files)
+          Builder.keep_cell_math_inline_for_kindle!(files) # 2 回通しても増えない
+        end
+
+        cells = doc.css('td').map(&:text)
+        assert_equal [0x200B].pack('U'), cells[0], '数式だけのセルに 1 つだけ添える'
+        assert_equal ' 倍', cells[1], '文字が並ぶセルには足さない'
+      end
+
+      # 奥付は <title> が無いが、目次にはファイル名でなく「奥付」と出す
+      def test_should_title_colophon_entry_in_japanese
+        Dir.mktmpdir('vs-kindle-entries') do |dir|
+          path = File.join(dir, '_colophon.html')
+          File.write(path, '<html><body><h1 class="book-title">本</h1></body></html>')
+          Builder.write_epub_entries(dir, [path])
+
+          assert_includes File.read(File.join(dir, Builder::EPUB_ENTRIES_FILE)), '"title": "奥付"'
+        end
+      end
+
+      # 索引の語を横に並ぶ形へ組み替える（表にするとリンクをたどるのに拡大が要る）
+      def test_should_layout_index_items_without_table
+        html = <<~HTML
+          <html><body><section class="index"><h1>索引</h1>
+          <div class="index-section" data-initial="A"><h2>A</h2><dl class="index-list">
+          <dt>AI</dt><dd><a href="07.html#a" class="main-ref">序章</a>, <a href="33.html#a">第7部</a></dd>
+          <dt>API</dt><dd><a href="07.html#b">序章</a></dd>
+          </dl></div>
+          <div class="index-section" data-initial="B"><h2>B</h2><dl class="index-list">
+          <dt>BFS</dt><dd><a href="33.html#d">第7部</a></dd>
+          </dl></div>
+          </section></body></html>
+        HTML
+        doc = Dir.mktmpdir('vs-kindle-index') do |dir|
+          path = File.join(dir, '_indexpage.html')
+          File.write(path, html, encoding: 'utf-8')
+          Builder.layout_index_columns_for_kindle!([path])
+          Nokogiri::HTML5(File.read(path, encoding: 'utf-8'))
+        end
+
+        assert_empty doc.css('table, dl'), '表にも定義リストにもしない'
+        assert_equal %w[A B], doc.css('.index-section h2').map(&:text), '節の見出しは残す'
+        assert_equal ['AI 序章, 第7部', 'API 序章', 'BFS 第7部'], doc.css('.vs-index-item').map(&:text)
+        assert_equal 'main-ref', doc.at_css('.vs-index-item a')['class'], '主要参照の印は残す'
+      end
+
+      # 章の題から、索引へ並べる短い名前を取り出す
+      def test_should_shorten_chapter_title_to_label
+        assert_equal '第7部', Builder.chapter_label('第7部　通信・システム編')
+        assert_equal '序章', Builder.chapter_label('序章　螺旋階段を昇るように')
+        assert_equal '第14章', Builder.chapter_label('第14章 ビルド')
+        assert_equal 'はじめに', Builder.chapter_label('はじめに')
+        assert_equal 'Vivlio S…', Builder.chapter_label('Vivlio Starter 入門')
+        assert_nil Builder.chapter_label('')
+      end
+
+
       # 表の外の inline 数式は ×0.5 のまま（拡大しない）
       def test_should_not_enlarge_inline_math_outside_table
         html = '<html><body><p>' \

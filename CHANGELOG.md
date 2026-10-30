@@ -308,6 +308,15 @@
 
 ### Fixed
 
+- **Kindle で、表の中の数式が本文の 10 倍近くまで膨らんでいた**（`EpubBuilder#keep_cell_math_inline_for_kindle!`・`table.css`）。KFX はセルの中身が画像だけだと、画像を列の幅いっぱいまで引き伸ばすことがある。数式だけのセルへゼロ幅の空白を添え、Kindle で捨てられていたセルの余白（`clamp()` で書いていた）を具体値で足した。
+- **Kindle の表の見出しで、数式の周りだけ背景が白く抜けていた**（`table.css`）。KFX は透過した画像を、セルでなく行の背景色で塗りつぶす。見出しの行にも背景色を付けた。
+
+- **Kindle の索引が 1 列に潰れ、語とページ番号が別の行に分かれて画面の右半分が空いていた**（`EpubBuilder#layout_index_columns_for_kindle!`）。KFX は段組みを解さないので、語を `inline-block` で横に 2 つずつ並べる（表は一度拡大しないとリンクをたどれない）。Kindle の用語集も、語と語の間の余白を詰めた（`glossary.css`）。
+- **EPUB・Kindle の索引と用語集の番号が、何を指すか分からなかった**（`EpubBuilder#build_chapter_label_map`）。章の連番（0・1・2）をやめ、章の短い名前（序章・第7部 など）をリンクの文字にした。
+- **Kindle パッケージに SVG が残ることがあった**。EPUB に入らない目次（`_toc`）が章題の数式の画像を参照し続け、回収されなかった（`EpubBuilder#asset_reference_text`）。
+  - `FontMetrics.load` のキャッシュを絶対パスで引くようにした。相対パスのままだと、作業ディレクトリが違っても同じ書体を返す（テストの順番によって落ちていた）。
+- **Kindle の奥付が左に寄り、目次に `_colophon` と出ていた**（`colophon.css`・`EpubBuilder::EPUB_ENTRY_TITLES`）。中央揃えで組み直し、目次の題を「奥付」にした。
+
 - **URL に括弧を含むリンクが壊れ、紙面に Markdown が漏れて脚注の URL も途中で切れていた**（`MarkdownTransformer#transform_links_to_footnotes`）。`[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karen_Uhlenbeck_(2008).jpg)` のように、URL の中に対になった括弧があるリンク（CommonMark では正しい書き方。Wikimedia のファイル名に多い）を、最初の `)` で切っていた。対になった括弧は URL の一部として読むようにした。lives-mathematics の 22 か所が直った。
   - 同じ読み違いを、ほかの所でも直した（`Masking::LINK_DESTINATION` にまとめた）。sideimage の本文に残ったリンクを `<a>` にする所（URL が途中で切れていた）、索引の自動付与でリンクの文字を退避する所（括弧入りの URL ではリンクと見なされず、リンクの文字の用語に `<dfn>`・`†` が付いて、リンクが入れ子になり壊れていた）、索引候補の抽出（URL の残りから語を拾っていた）、`vs metrics` の文の長さ（URL の残りを数えていた）、`vs lint` の空白の規則がリンク先を伏せる所。
   - リンクを脚注にする処理を同じ原稿に二度かけると、脚注が二重に付いていた（`[^url3] [^url1]`）。脚注を付け終えたリンクを除く先読みが、`\[^url` の `^` を行頭と読んで、一度も効いていなかった。今は一度しか呼ばないので、紙面への影響は無かった。

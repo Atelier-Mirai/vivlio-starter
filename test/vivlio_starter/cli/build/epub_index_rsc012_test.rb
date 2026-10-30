@@ -70,9 +70,30 @@ module VivlioStarter
         refute_includes result, 'idx-missing-9', '実在しない索引リンクは解除され href から消える'
         assert_includes result, 'href="00-preface.html#idx-aaa-1"', '実在する索引リンクは残る'
         assert_includes result, 'href="11-basics.html#idx-bbb-1"', '実在する索引リンクは残る'
-        # 残ったリンクは連番章番号（00→0, 11→1）が挿入される
-        assert_match(%r{<a href="00-preface.html#idx-aaa-1">0</a>}, result, '実在リンクに連番章番号が入る')
-        assert_match(%r{<a href="11-basics.html#idx-bbb-1">1</a>}, result, '実在リンクに連番章番号が入る')
+        # 題の無い HTML のリンクは構成順の番号（00→0, 11→1）で埋まる
+        assert_match(%r{<a href="00-preface.html#idx-aaa-1">0</a>}, result, '題が無ければ構成順の番号が入る')
+        assert_match(%r{<a href="11-basics.html#idx-bbb-1">1</a>}, result, '題が無ければ構成順の番号が入る')
+      end
+
+      # 索引のリンクの文字は章の短い名前。同じ章を指す連続リンクは 1 つにまとめる
+      def test_index_labels_links_with_chapter_name_and_merges_same_chapter
+        write_file('33-network.html', <<~HTML)
+          <html><head><title>第7部　通信・システム編</title></head><body>
+          <p><span id="idx-a-1" class="index-term">語</span><span id="idx-a-2" class="index-term">語</span></p></body></html>
+        HTML
+        index_path = write_file('_indexpage.html', <<~HTML)
+          <section class="index">
+          <dl class="index-list">
+          <dt>語</dt><dd><a href="33-network.html#idx-a-1"></a><a href="33-network.html#idx-a-2"></a></dd>
+          </dl>
+          </section>
+        HTML
+
+        Builder.post_process_index_glossary_for_epub!(html_files)
+        result = File.read(index_path, encoding: 'utf-8')
+
+        assert_match(%r{<a href="33-network.html#idx-a-1">第7部</a>}, result)
+        refute_includes result, 'idx-a-2', '同じ章のリンクは 1 つにまとめる'
       end
 
       # 別の巻の主要参照の案内は、最後のページ番号の後ろに「,」で区切って残る（index-other-volume-main-spec.md R5）

@@ -26,7 +26,8 @@ module VivlioStarter
       class FontMetrics
         # @param path [String] TTF のパス
         # @return [FontMetrics] 同じ書体は一度だけ読む
-        def self.load(path) = (@cache ||= {})[path] ||= new(path)
+        # 鍵は絶対パス。相対パスのままだと、作業ディレクトリが変わっても別の書体を返してしまう
+        def self.load(path) = (@cache ||= {})[File.expand_path(path)] ||= new(path)
 
         # @return [Float] x ハイト（字の大きさに対する比）。CSS の ex の換算に使う
         attr_reader :x_height

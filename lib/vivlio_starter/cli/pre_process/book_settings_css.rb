@@ -697,6 +697,7 @@ module VivlioStarter
           [
             "body.vs-kindle .index h1 { border-bottom-color: #{acc}; }",
             "body.vs-kindle .index-section h2 { color: #{acc}; border-bottom-color: #{acc}; }",
+            "body.colophon.vs-kindle .book-title { border-bottom-color: #{acc}; }",
             "body.vs-kindle .glossary-title { border-bottom-color: #{acc}; }",
             "body.vs-kindle .glossary-group-header { color: #{acc}; border-left-color: #{acc}; " \
             "background: linear-gradient(90deg, #{colbg} 0%, transparent 100%); }",
