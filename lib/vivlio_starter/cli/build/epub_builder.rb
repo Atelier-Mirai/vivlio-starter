@@ -405,6 +405,7 @@ module VivlioStarter
             rasterize_display_math_for_kindle!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
             keep_cell_math_inline_for_kindle!(chapter_htmls)
+            align_code_cells_for_kindle!(chapter_htmls)
             inject_code_line_numbers_for_kindle!(chapter_htmls)
             decorate_admonitions_for_epub!(chapter_htmls)
             decorate_list_markers_for_epub!(chapter_htmls)
@@ -1948,6 +1949,9 @@ module VivlioStarter
         # 数式の画像だけのセルへ添える字（keep_cell_math_inline_for_kindle!）。ゼロ幅の空白。
         CELL_MATH_GLUE = "\u200B"
 
+        # コードで始まるセルの頭へ添える字（align_code_cells_for_kindle!）。ゼロ幅の空白。
+        CELL_CODE_GLUE = "\u200B"
+
         # 索引・用語集のリンクに出す章の名前の長さの上限（字）。
         CHAPTER_LABEL_MAX = 8
 
@@ -2067,11 +2071,15 @@ module VivlioStarter
                 target = layout_image_target(container)
                 next unless target
 
-                apply_inline_image_constraint!(target, rule)
-                # float は後ろの本文にしか回り込まない。本文 → 画像の順の原稿では、
-                # 画像が本文の下へ落ちるので先頭へ動かす。
-                first = container.element_children.first
-                first.add_previous_sibling(target) if target.parent == container && first != target
+                if target.parent == container && container.ancestors(FRAMED_BOX_SELECTOR).any?
+                  lay_out_in_table!(container, target, rule)
+                else
+                  apply_inline_image_constraint!(target, rule)
+                  # float は後ろの本文にしか回り込まない。本文 → 画像の順の原稿では、
+                  # 画像が本文の下へ落ちるので先頭へ動かす。
+                  first = container.element_children.first
+                  first.add_previous_sibling(target) if target.parent == container && first != target
+                end
                 changed = true
               end
             end
@@ -2081,6 +2089,36 @@ module VivlioStarter
             Common.log_info("[EPUB] #{File.basename(path)} の横並び画像を inline で制約しました")
           end
           html_files
+        end
+
+        # 枠の中の横並びを、float から 1 行の表へ組み替える。
+        #
+        # KFX は枠を中の float まで伸ばさないので、本文が画像より短いと画像が枠の下へはみ出す。
+        # clearfix・実体の clear・overflow・inline-block・vw の min-height はどれも効かず、
+        # 表のセルなら枠は画像の高さまで伸びる（Previewer の画面で確かめた。2026-11-01）。
+        # 枠の外は回り込みのほうが紙面を使い切れるので float のままにする。
+        # 表はページをまたげるので止める。止めないと、画像がページの残りの高さまで縮められる。
+        #
+        # @param container [Nokogiri::XML::Element] 横並びのコンテナ
+        # @param image [Nokogiri::XML::Element] コンテナ直下の画像（img または figure）
+        # @param rule [Hash] LAYOUT_IMAGE_RULES の 1 件
+        def lay_out_in_table!(container, image, rule)
+          apply_inline_image_constraint!(image, rule.merge(width: 100, float: 'none'))
+          add_inline_style(image, 'max-height: none; margin: 0;')
+
+          doc = container.document
+          left = rule[:float] == 'left'
+          gap = left ? '0 1em 0 0' : '0 0 0 1em'
+          image_cell = doc.create_element('td', style: "width: #{rule[:width]}%; border: none; padding: #{gap}; vertical-align: top;")
+          body_cell = doc.create_element('td', style: 'border: none; padding: 0; vertical-align: top;')
+          container.children.reject { it == image }.each { body_cell.add_child(it) }
+          image_cell.add_child(image)
+
+          row = doc.create_element('tr')
+          (left ? [image_cell, body_cell] : [body_cell, image_cell]).each { row.add_child(it) }
+          table = doc.create_element('table', style: 'width: 100%; border: none; margin: 0; page-break-inside: avoid;')
+          table.add_child(row)
+          container.add_child(table)
         end
 
         # コンテナ直下の画像要素（figure 優先・無ければ img、無ければ子孫 img）を返す。
@@ -2327,6 +2365,29 @@ module VivlioStarter
           html_files
         end
 
+        # コードで始まるセルの頭へ、ゼロ幅の空白を添える。
+        #
+        # KFX は、等幅の字が `-` や `.` で始まるセルだけ、1 行目を左へずらす。`:recto` や
+        # 地の文の `--plain`、段落や箇条書きの中ではずれない。padding・text-indent・white-space・
+        # 折り返しの指定は効かず、前に字を置くと揃う（Previewer の画面で確かめた。2026-11-01）。
+        # ずれる字を数え上げなくて済むよう、コードで始まるセルにはすべて添える。
+        # 字が既にあれば先頭が code でなくなるので、2 回通しても増えない。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def align_code_cells_for_kindle!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            codes = doc.css('td').filter_map { it.children.reject(&:blank?).first }.select { it.name == 'code' }
+            next if codes.empty?
+
+            codes.each { it.add_previous_sibling(Nokogiri::XML::Text.new(CELL_CODE_GLUE, doc)) }
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} のコードで始まるセル #{codes.size} 件に字を添えました")
+          end
+          html_files
+        end
+
         # 索引の語を、横に 2 つずつ並ぶ形へ組み替える（Kindle 限定）。
         #
         # KFX は `columns` を解さないので、PDF の 2 段組みは 1 列に潰れ、語とページ番号が別の行へ
@@ -2432,6 +2493,9 @@ module VivlioStarter
           'notice' => '【NOTICE】', 'note' => '【NOTE】',
           'output' => '【OUTPUT】', 'terminal' => '【TERMINAL】'
         }.freeze
+
+        # 枠を描く囲み。中の横並びは表で組む（lay_out_in_table!）。
+        FRAMED_BOX_SELECTOR = [*ADMONITION_LABELS.keys, 'diagram'].map { "div.#{it}" }.join(', ').freeze
 
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）

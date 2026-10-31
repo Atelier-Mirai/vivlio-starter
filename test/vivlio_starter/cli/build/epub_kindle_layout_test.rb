@@ -175,6 +175,60 @@ module VivlioStarter
         assert_equal 'figure', doc.at_css('.sideimage-right').element_children.first.name
       end
 
+      # KFX は枠を float まで伸ばさないので、枠の中の横並びは 1 行の表で組む（左に画像）
+      def test_should_lay_out_boxed_image_in_table
+        html = '<html><body><div class="output"><div class="book-card"><img src="images/a.jpg" alt="">' \
+               '<div class="book-info"><p>説明</p></div></div></div></body></html>'
+        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+
+        cells = doc.css('.book-card > table td')
+        assert_equal 2, cells.size
+        assert_equal 'img', cells[0].element_children.first.name
+        assert_includes cells[0]['style'], 'width: 40%'
+        assert_equal '説明', cells[1].text.strip
+        assert_includes doc.at_css('img')['style'], 'float: none'
+        assert_equal ['table'], doc.at_css('.book-card').element_children.map(&:name), '本文も表の中へ移す'
+      end
+
+      # 右に寄せる横並びは、本文 → 画像の順のセルになる。figure の内側の画像も列の幅に合わせる
+      def test_should_put_image_cell_last_for_right_layout
+        html = '<html><body><div class="note"><div class="sideimage-right"><figure><img src="images/a.jpg" alt=""></figure>' \
+               '<div class="sideimage-body"><p>本文</p></div></div></div></body></html>'
+        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+
+        cells = doc.css('.sideimage-right > table td')
+        assert_equal '本文', cells[0].text.strip
+        assert_equal 'figure', cells[1].element_children.first.name
+        assert_includes doc.at_css('figure img')['style'], 'width: 100%'
+      end
+
+      # 枠の外は float のまま本文を回り込ませる
+      def test_should_keep_float_outside_framed_box
+        html = '<html><body><div class="book-card"><img src="images/a.jpg" alt="">' \
+               '<div class="book-info"><p>説明</p></div></div></body></html>'
+        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+
+        assert_nil doc.at_css('table')
+        assert_includes doc.at_css('img')['style'], 'float: left'
+      end
+
+      # KFX は等幅の字が - や . で始まるセルを左へずらすので、コードで始まるセルに字を添える
+      def test_should_glue_zero_width_space_before_leading_code_in_cell
+        html = '<html><body><table><tbody><tr><td> <code>--cover</code></td>' \
+               '<td><code>--purge</code> / <code>-P</code></td><td>説明の <code>.aki</code></td>' \
+               '</tr></tbody></table></body></html>'
+        doc = process(html) do |files|
+          Builder.align_code_cells_for_kindle!(files)
+          Builder.align_code_cells_for_kindle!(files) # 2 回通しても増えない
+        end
+
+        glue = [0x200B].pack('U')
+        cells = doc.css('td').map { it.text.strip }
+        assert_equal "#{glue}--cover", cells[0]
+        assert_equal "#{glue}--purge / -P", cells[1]
+        assert_equal '説明の .aki', cells[2], '文字で始まるセルには足さない'
+      end
+
       # KFX は :is() を含む規則を丸ごと捨て、var() の宣言も落とす。layout-utils.css の 7 規則が
       # これで効いておらず、画像が枠の下へはみ出していた（kindle-css-compatibility-notes.md §2）。
       def test_should_not_use_is_or_var_in_kindle_rules

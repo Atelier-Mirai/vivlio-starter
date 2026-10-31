@@ -37,7 +37,7 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | `color-mix()` | ❌ | 宣言ごと消える | `ThemeColor.mix_with_white` で事前計算 |
 | `display: grid` / `display: flex` | ❌ | `block` に潰れる | `display: block` 等の素直なフローに縮退 |
 | `::before` / `::after` の `content` | **✅ 4 で変わった** | **実体の `<span>` として本文へ注入される。`display:block`・`background-color`・`padding`・`color`・`font-weight` も効く** | 回避策は現状維持（§2.2） |
-| `::after` の clearfix（`content: ""`） | ❌ | 枠は float まで伸びない。実体の `clear: both` の要素・`inline-block` でも同じ | 枠の中では本文を画像より長くする（`KNOWN_ISSUES.md`） |
+| `::after` の clearfix（`content: ""`） | ❌ | 枠は float まで伸びない。実体の `clear: both` の要素・`overflow`・`flow-root`・枠や子の `inline-block`・`flex`・`display: table`・`vw` の `min-height` でも同じ | 枠の中は実体の表で組む（`lay_out_in_table!`）。表は `page-break-inside: avoid` で止める。止めないと画像がページの残りの高さまで縮む |
 | `margin-inline: auto` | ❌ | 0 に解かれ、図が左へ寄る | `margin-left` / `margin-right` の `auto` で書く |
 | `::before` の `position: absolute` | ❌ | 位置指定は効かない | 通常フローで組む |
 | `linear-gradient()` | ❌ | 宣言は前処理を通るが、描画されない | 単色 `background` / `border` で代替 |
@@ -107,6 +107,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 | 回り込みの画像に余白が無く、上限も効かない | `layout-utils.css` の `body.vs-kindle` の 7 規則が `:is()` を使っていて、丸ごと捨てられていた | 明示セレクタへ展開。`epub_kindle_layout_test` が `stylesheets/` の実物を調べて再発を防ぐ |
 | 本文 → 画像の順の `.sideimage-right` で、画像が本文の下へ落ちる | float は後ろの本文にしか回り込まない | `constrain_layout_images_for_epub!` が画像を先頭へ動かす |
 | h3 の `♣`・h4 の `♦` が消えて字下げだけ残る | Techbook が印を WebP の背景で描き、Kindle には WebP も `var()` も届かない。h4 は `content: "" !important` で空にされている | h3 は `restore_h3_markers_for_kindle!` が文字へ戻す。h4 は `book-settings.css` に文字を `!important` で焼く |
+| 表の `--cover` や `.aki` のセルが左へずれる | KFX は等幅の字が `-` や `.` で始まるセルの 1 行目をずらす。`padding`・`text-indent`・`white-space` は効かない | `align_code_cells_for_kindle!` がコードで始まるセルの頭にゼロ幅の空白を添える |
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
 | 数式が極大表示／表内数式が崩れる／フォント変更に非追従 | 画像を本文フォント相対にできない KFX の本質的制約 | **単純式は `textify_simple_math_for_kindle!`（`MathTextRenderer`）で HTML テキスト化**し 100% 追従させる（Kindle 限定・`convert_math_units_for_epub!` の直前）。テキスト化不可の複雑式のみ従来の px フォールバックで巨大化を防ぐ（`kindle-inline-math-textify-spec.md`） |
