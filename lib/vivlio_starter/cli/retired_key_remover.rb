@@ -143,6 +143,9 @@ module VivlioStarter
         nil
       end
 
+      # 増えたキーの行を雛形から写すときにも使う（ScaffoldUpdates）
+      public :block_range
+
       # 消したキーとその下だけが無くなり、ほかのキーがそのまま残っているか
       def verified?(before, after, removed)
         expected = key_paths(before).reject { |path| removed.any? { path.first(it.size) == it } }

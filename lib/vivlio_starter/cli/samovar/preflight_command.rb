@@ -33,6 +33,7 @@ require_relative '../pre_process'
 require_relative '../token_resolver'
 require_relative '../clean'
 require_relative '../guards'
+require_relative '../scaffold_updates'
 require_relative 'vs_command'
 
 module VivlioStarter
@@ -128,6 +129,7 @@ module VivlioStarter
           print_chapter_summary(entries)
           print_preflight_summary
           Build::KindlePreviewerNotice.report
+          ScaffoldUpdates.report if targets.empty? # build と同じく、章を指定したら言わない
 
           # 終了コードは 🔴 の有無だけで決める。画面に出た絵文字と CI の成否が一致し、
           # 「❗ 警告 N 件（ビルドは可能です）」と言いながら 1 を返す食い違いが起きない。

@@ -15,8 +15,10 @@
 # 利用者:
 #   - NewCommands#expand_scaffold（vs new）: 展開末尾で生成
 #   - UpgradeCommands（vs upgrade）: 分類・適用後の更新
+#   - ScaffoldUpdates（vs build・vs preflight の知らせ）: 分類
 # ================================================================
 
+require 'date'
 require 'digest'
 require 'yaml'
 
@@ -26,6 +28,9 @@ module VivlioStarter
       extend self
 
       LOCK_RELATIVE = File.join('config', 'scaffold.lock')
+
+      # 雛形の中の book.yml
+      BOOK_RELATIVE = File.join('config', 'book.yml')
 
       # 著者データ領域（§1.3）: ハッシュ判定以前に一律で upgrade 対象外。
       # ディレクトリは最上位名で判定する。
@@ -78,9 +83,50 @@ module VivlioStarter
         end
       end
 
+      # 雛形が管理するファイル（著者データ以外）を三者比較で分類する。
+      # vs upgrade の計画と vs build の知らせが同じ判定を見るよう、ここに置く
+      # （project-upgrade-command-spec.md §1.2）。
+      # @param relative [String] プロジェクトルートからの相対パス
+      # @param scaffold_digest [String] 今の雛形のハッシュ
+      # @param lock_files [Hash{String => String}] lock の files 節
+      # @return [Symbol] :add / :update / :conflict / :latest
+      def classify(relative, scaffold_digest, lock_files)
+        return :add unless File.exist?(relative)
+
+        current_digest = file_digest(relative)
+        lock_digest = lock_files[relative]
+
+        if lock_digest.nil?
+          # lock なし（旧プロジェクト or 追跡外ファイル）: 一致なら最新、不一致は安全側で競合
+          current_digest == scaffold_digest ? :latest : :conflict
+        elsif scaffold_digest == lock_digest  then :latest
+        elsif current_digest == lock_digest   then :update
+        # 双方が別経路で同じ内容に到達した（著者が手で新版を当てた等）。lock だけが
+        # 取り残されている状態で、diff は空になる。ここを競合にすると、y/n の
+        # どちらを選んでも結果が変わらない問いを著者に投げることになる
+        elsif current_digest == scaffold_digest then :latest
+        else                                        :conflict
+        end
+      end
+
+      # book.yml のキー（親も含む）をドットでつないで返す。
+      # 日付を引用符なしで書いた book.yml も読めるよう、Date・Time を許す。
+      # @param text [String] book.yml の中身
+      # @return [Array<String>] 例: ["theme", "theme.lead_size"]
+      def book_keys(text)
+        key_paths(YAML.safe_load(text, permitted_classes: [Date, Time], aliases: true))
+      end
+
+      # 雛形の book.yml のキー（並べ替え済み）。lock の book_keys 節に書く
+      def scaffold_book_keys(scaffold_source)
+        book_keys(File.read(File.join(scaffold_source, BOOK_RELATIVE), encoding: 'utf-8')).sort
+      end
+
       # lock を読み込む。存在しない・壊れている場合は nil（呼び出し側で lock なしフォールバック）
       # @param project_root [String]
-      # @return [Hash{Symbol => Object}, nil] { version: String|nil, files: Hash }
+      # @return [Hash{Symbol => Object}, nil]
+      #   { version: String|nil, files: Hash, book_keys: Array|nil, declined: Hash }
+      #   book_keys が nil なら、キーの一覧を記録する前の版の lock
       def read(project_root = '.')
         path = File.join(project_root, LOCK_RELATIVE)
         return nil unless File.file?(path)
@@ -88,16 +134,24 @@ module VivlioStarter
         data = YAML.safe_load(File.read(path, encoding: 'utf-8'))
         return nil unless data.is_a?(Hash) && data['files'].is_a?(Hash)
 
-        { version: data['scaffold_version'], files: data['files'] }
+        { version: data['scaffold_version'], files: data['files'],
+          book_keys: data['book_keys'], declined: data['declined'] || {} }
       rescue StandardError
         nil
       end
 
       # lock を書き出す（自動生成ファイルである旨のヘッダ付き）
       # @param files [Hash{String => String}] relative → "sha256:…"
-      def write(project_root, version:, files:)
+      # @param book_keys [Array<String>, nil] 雛形の book.yml のキー
+      # @param declined [Hash{String => String}] vs upgrade で断ったファイル → そのときの雛形のハッシュ
+      def write(project_root, version:, files:, book_keys: nil, declined: {})
+        data = { 'scaffold_version' => version }
+        data['book_keys'] = book_keys if book_keys
+        data['declined'] = declined.sort.to_h if declined.any?
+        data['files'] = files.sort.to_h
+
         content = +"# vs new / vs upgrade が管理する自動生成ファイル。手動編集しない。\n"
-        content << YAML.dump({ 'scaffold_version' => version, 'files' => files.sort.to_h })
+        content << YAML.dump(data)
         File.write(File.join(project_root, LOCK_RELATIVE), content, encoding: 'utf-8')
       end
 
@@ -106,10 +160,22 @@ module VivlioStarter
       # 著者の手元ファイルの「展開時点ハッシュ」という意味を壊さないため）。
       def generate!(project_root, scaffold_source:, version:)
         files = digest_scaffold(scaffold_source)
-        if (existing = read(project_root))
-          files = files.merge(existing[:files])
+        existing = read(project_root)
+        files = files.merge(existing[:files]) if existing
+        write(project_root, version:, files:,
+                            book_keys: existing&.dig(:book_keys) || scaffold_book_keys(scaffold_source),
+                            declined: existing&.dig(:declined) || {})
+      end
+
+      private
+
+      def key_paths(node, prefix = nil)
+        return [] unless node.is_a?(Hash)
+
+        node.flat_map do |key, value|
+          path = [prefix, key].compact.join('.')
+          [path, *key_paths(value, path)]
         end
-        write(project_root, version:, files:)
       end
     end
   end

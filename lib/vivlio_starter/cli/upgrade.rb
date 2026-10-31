@@ -38,6 +38,7 @@ require 'fileutils'
 
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
+require_relative 'scaffold_updates'
 require_relative 'config_keys'
 require_relative 'retired_key_remover'
 require_relative 'token_resolver'
@@ -134,9 +135,11 @@ module VivlioStarter
 
         # --- Phase: ② 雛形追従＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
         scaffold_code = 0
+        lock_before = nil
         if gem_repository?
           Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
         elsif File.exist?(File.join('config', 'book.yml'))
+          lock_before = ScaffoldLock.read
           scaffold_code = sync_scaffold!(cmd)
           refresh_gemfile_lock!(options)
           tidy_author_data!(options)
@@ -151,6 +154,9 @@ module VivlioStarter
           deps: tool_deps
         )
 
+        # --- Phase: 増えた設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
+        ScaffoldUpdates.report_new_book_keys(lock_before, scaffold_source:)
+        
         [self_result == :failed ? 1 : 0, scaffold_code, tools_code].max
       end
 
@@ -214,7 +220,7 @@ module VivlioStarter
         return 0 if applied.nil? # 全体確認で中止
 
         # --- Phase: lock・基準の更新と完了報告 ---
-        save_lock_and_base!(scaffold_digests, lock, applied:)
+        save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
         print_summary(plan, applied, skipped, backup_dir)
         0
       end
@@ -436,7 +442,7 @@ module VivlioStarter
             if ScaffoldLock.author_data?(relative)
               classify_author_data(relative, scaffold_digest, lock_files, lock)
             else
-              classify_managed(relative, scaffold_digest, lock_files)
+              ScaffoldLock.classify(relative, scaffold_digest, lock_files)
             end
           next if status.nil? || status == :latest
 
@@ -472,26 +478,6 @@ module VivlioStarter
         # lock なしの旧プロジェクトでは現物との直接比較で代用する。
         reference = lock ? lock_files[relative] : ScaffoldLock.file_digest(relative)
         reference == scaffold_digest ? nil : :keep
-      end
-
-      # 雛形管理ファイル（著者データ以外）の分類（§1.2 の表）
-      def classify_managed(relative, scaffold_digest, lock_files)
-        return :add unless File.exist?(relative)
-
-        current_digest = ScaffoldLock.file_digest(relative)
-        lock_digest = lock_files[relative]
-
-        if lock_digest.nil?
-          # lock なし（旧プロジェクト or 追跡外ファイル）: 一致なら最新、不一致は安全側で競合
-          current_digest == scaffold_digest ? :latest : :conflict
-        elsif scaffold_digest == lock_digest  then :latest
-        elsif current_digest == lock_digest   then :update
-        # 双方が別経路で同じ内容に到達した（著者が手で新版を当てた等）。lock だけが
-        # 取り残されている状態で、diff は空になる。ここを競合にすると、y/n の
-        # どちらを選んでも結果が変わらない問いを著者に投げることになる
-        elsif current_digest == scaffold_digest then :latest
-        else                                        :conflict
-        end
       end
 
       STATUS_LABELS = {
@@ -647,9 +633,11 @@ module VivlioStarter
 
       # 適用結果を lock へ反映する。
       # - 適用済み・最新・著者データ: 現在の雛形ハッシュを記録
-      # - スキップ（競合で n）: 旧ハッシュのまま → 次回また競合として確認できる
+      # - スキップ（競合で n）: 旧ハッシュのまま → 次回また競合として確認できる。
+      #   断ったときの雛形のハッシュは declined に残す。残さないと、ビルドのたびに
+      #   同じ 💡 が出続ける（scaffold-update-notice-spec.md §3.2）
       # - 雛形から消えたファイルのエントリは除去（「保持」扱いで比較対象外のため）
-      def record_lock!(scaffold_digests, lock, applied:)
+      def record_lock!(scaffold_digests, lock, applied:, skipped: [])
         old_files = lock&.dig(:files) || {}
         applied_set = applied.map(&:relative)
 
@@ -665,15 +653,17 @@ module VivlioStarter
           recorded && [relative, recorded]
         end.to_h
 
-        ScaffoldLock.write('.', version: VivlioStarter::VERSION, files:)
+        ScaffoldLock.write('.', version: VivlioStarter::VERSION, files:,
+                                book_keys: ScaffoldLock.scaffold_book_keys(scaffold_source),
+                                declined: skipped.to_h { [it.relative, scaffold_digests.fetch(it.relative)] })
         files
       end
 
       # lock を更新し、同じ内容で次回の共通祖先（雛形の基準）を保管する。
       # **必ず lock と同時に**行う——基準だけが先に進むと、次回のマージが
       # 祖先＝新版となって雛形側の変更を黙って捨てる（ScaffoldBase 冒頭）。
-      def save_lock_and_base!(scaffold_digests, lock, applied:)
-        files = record_lock!(scaffold_digests, lock, applied:)
+      def save_lock_and_base!(scaffold_digests, lock, applied:, skipped: [])
+        files = record_lock!(scaffold_digests, lock, applied:, skipped:)
         ScaffoldBase.sync!('.', scaffold_source:, lock_files: files)
       end
 

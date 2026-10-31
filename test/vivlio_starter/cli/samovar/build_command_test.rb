@@ -101,6 +101,28 @@ module VivlioStarter
           end
         end
 
+        # 雛形の知らせは全章のビルドだけ。章の指定は執筆中に何度も打つので言わない
+        # （scaffold-update-notice-spec.md §2）
+        def test_only_a_full_build_reports_scaffold_updates
+          entries = sample_entries('11-sample')
+          reported = []
+
+          ScaffoldUpdates.stub(:report, -> { reported << :full }) do
+            with_resolver_sequence([ResolverStub.new(entries)]) do
+              with_pipeline_stub([]) { suppress_build_outputs(@command) { @command.call } }
+            end
+            assert_equal [:full], reported
+
+            with_resolver_sequence([ResolverStub.new(entries)]) do
+              with_pipeline_stub([]) do
+                command = BuildCommand.new(['11-sample'])
+                suppress_build_outputs(command) { command.call }
+              end
+            end
+            assert_equal [:full], reported, '章の指定では言わない'
+          end
+        end
+
         # 単章ビルドは output.targets によらず閲覧用 PDF だけを作るため、成果物の報告と
         # 自動オープンも targets ではなく「生成できた事実」で決める（targets: kindle でも報告する）
         def test_single_mode_reports_and_opens_generated_pdf_regardless_of_targets

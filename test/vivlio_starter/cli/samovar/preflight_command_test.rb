@@ -325,6 +325,19 @@ module VivlioStarter
           refute_match(/^\s+95-omega\s/, output)
         end
 
+        # 雛形の知らせは build と同じく全章のときだけ（scaffold-update-notice-spec.md §2）
+        def test_should_report_scaffold_updates_only_for_the_whole_book
+          reported = []
+
+          ScaffoldUpdates.stub(:report, -> { reported << :whole }) do
+            run_preflight(entries: fixture_entries('21-beta'))
+            assert_equal [:whole], reported
+
+            run_preflight(entries: fixture_entries('21-beta'), targets: ['21'])
+            assert_equal [:whole], reported, '章の指定では言わない'
+          end
+        end
+
         private
 
         # contents/ に実在しない basename を使い、章タイトルがスラッグへ縮退する形で固定する

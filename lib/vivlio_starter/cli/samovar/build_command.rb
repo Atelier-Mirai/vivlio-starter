@@ -33,6 +33,7 @@ require_relative '../epub'
 require_relative '../pdf'
 require_relative '../token_resolver'
 require_relative '../guards'
+require_relative '../scaffold_updates'
 require_relative 'vs_command'
 
 module VivlioStarter
@@ -263,7 +264,9 @@ module VivlioStarter
           Build::Volumes.find!(Build::Volumes::ALL) if volumes.empty? # 巻の無い本は書き方を案内して止める
           volumes.each do |volume|
             common.log_action("== #{volume.name}（#{volume.id}）を組みます（#{volume.index + 1}/#{volumes.size}）")
-            next if system(RbConfig.ruby, "-I#{File.expand_path('../../..', __dir__)}", $PROGRAM_NAME,
+            # 雛形の知らせは巻ごとでなく、全巻を組み終えた後に 1 回だけ出す
+            next if system({ ScaffoldUpdates::SILENT_ENV => '1' }, RbConfig.ruby,
+                           "-I#{File.expand_path('../../..', __dir__)}", $PROGRAM_NAME,
                            'build', volume.id, *passthrough_options)
 
             common.log_error("#{volume.name}（#{volume.id}）の組版に失敗したので、ここで止めます",
@@ -271,6 +274,7 @@ module VivlioStarter
             return 1
           end
           common.log_success("全 #{volumes.size} 巻を組みました: #{volumes.map(&:name).join('、')}")
+          ScaffoldUpdates.report
           0
         rescue Build::Volumes::SelectionError => e
           common.log_error(e.message, detail: e.detail)
@@ -360,6 +364,7 @@ module VivlioStarter
           print_outline_debug_info
           print_build_timings(build_timings, wall_time: pipeline.wall_time,
                                              parallel_labels: pipeline.parallel_step_labels)
+          ScaffoldUpdates.report
         end
 
         # 単章ビルドの成果物を開く。フルビルドの open_pdf と違い output.targets は見ない——

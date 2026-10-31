@@ -240,6 +240,74 @@ module VivlioStarter
       end
 
       # ==============================================================
+      # 雛形の更新の知らせ（scaffold-update-notice-spec.md）
+      # ==============================================================
+
+      def test_should_record_the_book_keys_of_the_scaffold_in_the_lock
+        within_project do |scaffold|
+          capture_io { run_upgrade(scaffold) }
+
+          assert_equal %w[book book.main_title], ScaffoldLock.read('.')[:book_keys]
+        end
+      end
+
+      def test_should_remember_a_declined_conflict_with_the_digest_of_the_scaffold
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', NEW_CSS)
+          write('.', 'stylesheets/custom.css', CUSTOM_CSS)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => OLD_CSS })
+
+          with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          lock = ScaffoldLock.read('.')
+          assert_equal digest(NEW_CSS), lock[:declined]['stylesheets/custom.css']
+          assert_equal digest(OLD_CSS), lock[:files]['stylesheets/custom.css'], '次回また尋ねるため lock は進めない'
+        end
+      end
+
+      def test_should_forget_a_declined_conflict_once_the_author_accepts_it
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', NEW_CSS)
+          write('.', 'stylesheets/custom.css', CUSTOM_CSS)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => OLD_CSS })
+
+          with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+          with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_empty ScaffoldLock.read('.')[:declined]
+        end
+      end
+
+      def test_should_list_new_book_keys_after_the_tool_updates_only_once
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+
+          out, = capture_io { run_upgrade(scaffold, tool_output: '外部ツールの更新の表示') }
+
+          assert_includes out, 'book.yml に書ける設定が 1 つ増えました'
+          assert_includes out, 'cover: master # 表紙'
+          assert_operator out.index('外部ツールの更新の表示'), :<, out.index('book.yml に書ける設定'),
+                          'ツールの更新で流れないよう、いちばん最後に出す'
+
+          again, = capture_io { run_upgrade(scaffold) }
+          refute_includes again, 'book.yml に書ける設定', '書かないと決めたキーを毎回並べない'
+        end
+      end
+
+      def test_should_list_new_book_keys_in_a_dry_run_without_advancing_the_lock
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, 'cover: master # 表紙'
+          assert_equal %w[book book.main_title], ScaffoldLock.read('.')[:book_keys]
+        end
+      end
+
+      # ==============================================================
       # 三段オーケストレーション（本体更新 → 雛形追従 → ツール更新）
       # ==============================================================
 
@@ -1007,11 +1075,15 @@ module VivlioStarter
       # 雛形追従フェーズだけを検証する（自己更新はフラグで、ツール更新はスタブで遮断）。
       # gem_paths は既定で空——実際にインストール済みの gem を祖先の候補にすると、
       # 開発機に何が入っているかでテストの結果が変わる
-      def run_upgrade(scaffold, dry_run: false, yes: false, gem_paths: [], deps: nil)
+      def run_upgrade(scaffold, dry_run: false, yes: false, gem_paths: [], deps: nil, tool_output: nil)
         UpgradeCommands.scaffold_source = scaffold
         UpgradeCommands.tool_deps = deps
         ScaffoldBase.gem_paths = gem_paths
-        DoctorCommands::ToolUpgrader.stub(:run!, 0) do
+        update_tools = lambda do |*, **|
+          puts tool_output if tool_output
+          0
+        end
+        DoctorCommands::ToolUpgrader.stub(:run!, update_tools) do
           UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run:, yes:, skip_self_update: true }))
         end
       ensure

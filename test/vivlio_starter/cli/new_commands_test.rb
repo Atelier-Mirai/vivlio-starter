@@ -236,6 +236,7 @@ module VivlioStarter
           lock = ScaffoldLock.read('lockbook')
           refute_nil lock, 'scaffold.lock が生成されるべき'
           assert_equal VivlioStarter::VERSION, lock[:version]
+          assert_includes lock[:book_keys], 'theme.lead_size', '雛形の book.yml のキーを記録するべき'
 
           scaffold_book_yml = File.join(NewCommands::SCAFFOLD_SOURCE, 'config', 'book.yml')
           assert_equal ScaffoldLock.file_digest(scaffold_book_yml), lock[:files]['config/book.yml'],
