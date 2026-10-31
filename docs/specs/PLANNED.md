@@ -167,6 +167,7 @@
 
 ## 開発者体験 / CLI UX
 
+- [Medium] **大きなファイルと長いメソッドを分ける（1.0.0 の後）**: 読み通せない大きさになっている。いちばん大きい `build/epub_builder.rb` は 3,477 行で、EPUB と Kindle の処理が一つに入っている。次に `doctor.rb`（1,647 行）・`index/unified_index_manager.rb`（1,564 行）。メソッドでは `execute_doctor`（400 行）・`apply_markdown_review!`（229 行）・`process_cross_references_for_files`（169 行）・`execute_post_process`（141 行）・`wrap_sideimage_blocks!`（129 行）。分けるときは Kindle Previewer の確認をやり直す（EPUB・Kindle の出力は `rake test` では確かめきれない）。`Label`・`Heading` の `Struct` も `Data.define` へ移す。
 - [Medium] **`vs renumber` を catalog.yml に書いた順に番号を振り直すものにする**: 本は書いた順に組むようになった（`catalog-written-order-spec.md`）が、`vs renumber` は今の番号の順に詰めて振り直す。書いた順に振れば、`contents/` のファイルの並びを本の並びにそろえる道具になる。番号の範囲（01〜89・90〜98）で本文と付録を分けているので、分冊の巻の前書き（`01-volume-1`・`20-vol2-intro`）を本文の章として振り直してしまう今の問題も、区分で見るように一緒に直す。
 - [Low] **Re:VIEW 本体で書いたプロジェクトの取り込み（要望が出たら）**: `vs import` が対応しているのは **Re:VIEW Starter の記法**で、本体だけで書いたプロジェクトは動作を確かめていない。2026-09-13 に Re:VIEW 2.5.0 の `compiler.rb` と突き合わせた結果は「命令の集合は Starter ⊃ 本体（本体の 101 種はすべて Starter が持つ）」だが、**行頭の `-` の意味が違う**——Starter では番号つきリスト、本体では段落。未知の命令ではないので 🔴 も出ず、黙って変わる。`//list` `//emlist` のように**引数の数やオプションが本体と Starter で異なる命令**もある。
 
