@@ -291,15 +291,6 @@ module VivlioStarter
           ].compact
         end
 
-        # CLI 引数から Entry 配列を解決する
-        # @return [Array<TokenResolver::Entry>] カタログに存在する章の Entry 配列
-        def resolve_target_entries
-          resolver = TokenResolver::Resolver.new
-          entries = resolver.resolve(targets)
-          # カタログに存在する章のみを対象とする
-          entries.select(&:in_catalog?)
-        end
-
         # 単章/選択ビルドを実行
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
         def run_single_mode_build(entries)
@@ -471,19 +462,6 @@ module VivlioStarter
 
           # Kindle を選んだ本で Kindle Previewer が無ければ、ビルドの終わりに入れ方を添える
           Build::KindlePreviewerNotice.report
-        end
-
-        # CLI の --verify-links オプションをスレッドローカルに設定する
-        # LinkImageValidator が resolve_config で参照する
-        #
-        # **明示された指定だけを載せる。** resolve_config は
-        # `cli_opts.fetch(:verify_external_links, 設定側の既定)` の形で book.yml をフォールバックに
-        # 置くため、キーを常に立てると既定値が一度も発火せず verify.external_links が
-        # 丸ごと無視される（2026-08-07 修正）。
-        def setup_verify_options!
-          opts = {}
-          opts[:verify_external_links] = true if options[:verify_links]
-          Thread.current[:vs_verify_options] = opts
         end
 
         def common

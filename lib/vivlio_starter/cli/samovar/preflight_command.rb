@@ -108,7 +108,7 @@ module VivlioStarter
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
 
-          entries = resolve_entries
+          entries = resolve_target_entries
           if entries.empty? && targets.any?
             Common.log_error('指定した章が catalog.yml に存在しません。preflight を中断します。')
             return 1
@@ -153,21 +153,6 @@ module VivlioStarter
         end
 
         private
-
-        # CLI 引数から Entry 配列を解決する
-        def resolve_entries
-          resolver = TokenResolver::Resolver.new
-          entries = resolver.resolve(targets)
-          entries.select(&:in_catalog?)
-        end
-
-        # 検証オプションをスレッドローカルに設定する（BuildCommand と同一ロジック）。
-        # 明示された指定だけを載せる理由は BuildCommand#setup_verify_options! を参照。
-        def setup_verify_options!
-          opts = {}
-          opts[:verify_external_links] = true if options[:verify_links]
-          Thread.current[:vs_verify_options] = opts
-        end
 
         # 章別サマリーを表示する（preflight-chapter-summary-spec.md §1）。
         # 前処理はファイル単位（並列）で流れるため 🔴🟡 が章をまたいで混在する。
