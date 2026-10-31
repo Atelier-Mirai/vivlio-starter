@@ -37,4 +37,11 @@ class MermaidRendererTest < Minitest::Test
   def test_render_returns_nil_for_blank_source
     assert_nil R.new.render("   \n", format: :svg)
   end
+
+  # 既定の 200 だと <br/> で区切った行まで語の途中で折れるので、行は原稿に任せる。
+  def test_config_should_widen_wrapping_so_author_line_breaks_win
+    config = JSON.parse(R.new.send(:mermaid_config_json, nil))
+
+    assert_operator config.dig('flowchart', 'wrappingWidth'), :>, 200
+  end
 end

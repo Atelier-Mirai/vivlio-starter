@@ -114,10 +114,12 @@ module VivlioStarter
         #
         # fontFamily を本書の和文フォントへ固定し（§5.1 案 1）、useMaxWidth:false で SVG に
         # 実寸（intrinsic size）を持たせる（vivliostyle-css-pitfalls-notes: SVG intrinsic size）。
+        # wrappingWidth は既定の 200 だと、<br/> で区切った行まで語の途中で折れる
+        # （`Gruber` が `Grub` / `er`）。行は原稿の <br/> で決める。
         def mermaid_config_json(font_family)
           config = { 'theme' => DEFAULT_THEME,
                      'htmlLabels' => false,
-                     'flowchart' => { 'useMaxWidth' => false, 'htmlLabels' => false } }
+                     'flowchart' => { 'useMaxWidth' => false, 'htmlLabels' => false, 'wrappingWidth' => 600 } }
           config['themeVariables'] = { 'fontFamily' => font_family } if font_family && !font_family.empty?
           JSON.generate(config)
         end
