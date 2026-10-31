@@ -152,7 +152,16 @@ module VivlioStarter
           error("指定した章が見つかりません: #{missing.map { it[:label] }.join(', ')}",
                 detail: ["#{Common::CONTENTS_DIR}/ に該当する原稿がありません。",
                          *suggestion_lines(missing),
-                         '対処: 章の綴りは config/catalog.yml で確認できます（番号だけでも指定できます）'])
+                         '対処: 章の綴りは config/catalog.yml で確認できます（番号だけでも指定できます）',
+                         *volume_hint])
+        end
+
+        # 分冊の本では、巻の指定の書き間違いかもしれないので、巻の書き方を添える
+        def volume_hint
+          ids = Build::Volumes.list.map(&:id)
+          return [] if ids.empty?
+
+          ["巻を指定するなら、巻の id を 1 語だけ書きます: #{ids.join('、')}、all（全巻）"]
         end
 
         # 候補は before → after の形で見せる。そのまま打ち直せる並びにする。

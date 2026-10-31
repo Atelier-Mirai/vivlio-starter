@@ -9,8 +9,8 @@ module VivlioStarter
       # 値を取るオプションの自動導出（options 定義が唯一の情報源であること）
       class OptionTokenNormalizerFlagDiscoveryTest < Minitest::Test
         def test_should_discover_value_flags_from_the_options_definition
-          assert_equal ['--theme', '--volume', '--log'], BuildCommand.value_option_flags
-          assert_equal ['--volume', '--log'], PreflightCommand.value_option_flags
+          assert_equal ['--theme', '--log'], BuildCommand.value_option_flags
+          assert_equal ['--log'], PreflightCommand.value_option_flags
           assert_equal ['--dpi', '--quality', '--pages', '--output'], PdfPagesCommand.value_option_flags
         end
 

@@ -13,11 +13,11 @@ module VivlioStarter
       #
       # 目次を読むほかの処理を直さずに済むよう、CatalogLoader.load_catalog は、ここで選んだ範囲の目次を
       # 今と同じ形の Hash（PREFACE・CHAPTERS・APPENDICES・POSTFACE）で返す（§3.4）。選び方は 3 通り:
-      #   - 巻（Volume）… vs build --volume lower。その巻の目次
+      #   - 巻（Volume）… vs build lower。その巻の目次
       #   - :combined   … 巻を選ばない vs build（合本）。本全体の前書き（無ければ最初の巻の前書き）・全巻の本文と付録・
       #                   本全体の後書き（無ければ最後の巻の後書き）（§4.3・multivolume-book-matter-spec.md R2）
       #   - :all        … 既定。どれかの巻に載った原稿すべて。原稿の検査と、章の種類の解決に使う（§6.1）
-      # 選択はプロセスに一つだけ持つ。全巻を続けて組むとき（--volume all）は巻ごとに別のプロセスで組む（§4.2）。
+      # 選択はプロセスに一つだけ持つ。全巻を続けて組むとき（vs build all）は巻ごとに別のプロセスで組む（§4.2）。
       #
       # VOLUMES と同じ高さに書いた PREFACE・POSTFACE は、本全体の前書き・後書き（multivolume-book-matter-spec.md）。
       # 巻の目次（sections_of）では、本全体の前書きを最初の巻の、後書きを最後の巻のものとして重ねる。
@@ -39,10 +39,11 @@ module VivlioStarter
         # 巻に書ける小文字のキーすべて
         SETTING_KEYS = (VOLUME_KEYS + BOOK_KEYS).freeze
 
-        # 巻の id。ファイル名と --volume に使う
-        ID_PATTERN = /\A[a-z0-9_]+\z/
+        # 巻の id。ファイル名と、コマンドの引数（vs build lower）に使う。英字で始め、数字は末尾だけにするので、
+        # 章の番号（21）や範囲（21-23）と読み分けられる。大文字と小文字は区別しない（list が小文字にそろえる）
+        ID_PATTERN = /\A[a-z]+[0-9]*\z/
 
-        # --volume all（全巻を続けて組む）のために、id には使えない名前
+        # vs build all（全巻を続けて組む）のために、id には使えない名前
         ALL = 'all'
 
         # 巻。index は並びでの位置（0 から）、sections はその巻の目次（区分 => 項目）
@@ -91,17 +92,17 @@ module VivlioStarter
           return [] unless defined_in?(catalog)
 
           Array(catalog[KEY]).select { it.is_a?(Hash) }.each_with_index.map do |entry, index|
-            Volume.new(index:, name: entry['name'].to_s, id: entry['id'].to_s,
+            Volume.new(index:, name: entry['name'].to_s, id: entry['id'].to_s.downcase,
                        settings: entry.slice(*SETTING_KEYS),
                        sections: entry.slice(*CatalogLoader::SECTION_KEYS))
           end
         end
 
-        # id か name で巻を探す
+        # id で巻を探す
         # @return [Volume, nil]
         def find(token, catalog = raw_catalog)
-          key = token.to_s.strip
-          list(catalog).find { it.id == key } || list(catalog).find { it.name == key }
+          key = token.to_s.strip.downcase
+          list(catalog).find { it.id == key }
         end
 
         # 本全体の前書き・後書き（VOLUMES と同じ高さの PREFACE・POSTFACE）。中身の無い区分は書いていないとみなす
@@ -138,6 +139,14 @@ module VivlioStarter
         # @return [Volume, nil]
         def containing(basename, catalog = raw_catalog)
           list(catalog).find { |volume| basenames_of(volume, catalog).include?(basename) }
+        end
+
+        # basenames をすべて載せた最初の巻。一つの巻に収まらなければ nil
+        # @return [Volume, nil]
+        def containing_all(basenames, catalog = raw_catalog)
+          return nil if basenames.empty?
+
+          list(catalog).find { (basenames - basenames_of(it, catalog)).empty? }
         end
 
         # 選択に応じた目次（区分 => 項目）。VOLUMES が無ければ catalog をそのまま返す
@@ -263,9 +272,32 @@ module VivlioStarter
         # 「A」→ 0。読めない値は 0
         def letter_index(letter) = [('a'..'z').to_a.index(letter.to_s.strip.downcase).to_i, 0].max
 
-        # --- --volume の指定（§4.5） ---
+        # --- 引数での巻の指定（改善案 #126） ---
 
-        # --volume で巻を選べないとき。detail は直し方
+        # コマンドの引数が巻の指定なら、その id か all（小文字）。巻は 1 語だけで指定する。
+        # ほかの引数と並べたものは章の指定として読むので、見つからない章として止まる
+        # @param arguments [Array<String>]
+        # @return [String, nil]
+        def token_in(arguments)
+          return nil unless arguments.size == 1 && enabled?
+
+          token = arguments.first.to_s.strip.downcase
+          token if token == ALL || find(token)
+        end
+
+        # 巻の指定ならその巻を選んで空を、章の指定ならそのまま返す。all は全巻の原稿を見る既定のまま
+        # （preflight・lint・metrics 用。vs build は巻の設定を重ねて組むので、自分で選ぶ）
+        # @param arguments [Array<String>]
+        # @return [Array<String>] 章の指定
+        def select_from_arguments!(arguments)
+          token = token_in(arguments)
+          return arguments unless token
+
+          select!(find(token)) unless token == ALL
+          []
+        end
+
+        # 巻を選べないとき。detail は直し方
         class SelectionError < StandardError
           attr_reader :detail
 
@@ -275,14 +307,14 @@ module VivlioStarter
           end
         end
 
-        # --volume の値に当たる巻
+        # id に当たる巻
         # @raise [SelectionError] 巻が書かれていない・見つからない
         # @return [Volume]
         def find!(token)
           volumes = list
           if volumes.empty?
             raise SelectionError.new(
-              "config/catalog.yml に巻（VOLUMES）が書かれていないので、--volume #{token} は使えません",
+              "config/catalog.yml に巻（VOLUMES）が書かれていないので、巻 #{token} を選べません",
               detail: ['分冊にするなら、config/catalog.yml を次のように巻ごとに書きます:',
                        'VOLUMES:', '  - name: 上巻', '    id: upper', '    CHAPTERS:', '      - 01-intro',
                        '  - name: 下巻', '    id: lower', '    CHAPTERS:', '      - 21-next']

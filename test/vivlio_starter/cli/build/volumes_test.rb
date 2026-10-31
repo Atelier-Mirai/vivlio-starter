@@ -7,11 +7,11 @@
 #   Build::Volumes と、分冊の目次を読む・書く各所
 #   - 目次の見え方: 巻・合本・全巻（§3.4・§4.3・§6.1）
 #   - 番号: 章番号は前の巻から続け、chapter_start で始め直す。付録は初めて出た巻で記号を振る（§5）
-#   - --volume の指定の誤り（§4.5）と、巻の書き方の検査（§3.3）
+#   - 引数での巻の指定と、巻の書き方の検査（§3.3・改善案 #126）
 #   - vs create / delete / rename が巻の中を書き換える（§7）
 #   - 出力ファイル名に巻の id を入れる（§4.6）
 #   - 巻に書いた book: の値（書名・ISBN・発行日・表紙）を book.yml に重ねる。ISBN の共有を 🟡（§3.2・§4.7）
-#   - vs cover --volume が巻ごとの値で表紙を作る（§4.8）
+#   - vs cover が巻ごとの値で表紙を作る（§4.8）
 #   - 本文の章を二つ以上の巻に載せる: 巻ごとの位置の番号・合本には一度だけ（§3.6）
 #   - 本全体の前書き・後書き: 合本・最初の巻・最後の巻・全巻目次・目次の書き換え（multivolume-book-matter-spec.md）
 #
@@ -224,6 +224,16 @@ module VivlioStarter
             assert_equal BOOK_MATTER_BASENAMES.sort, kinds.keys.sort, '原稿の検査は本全体の前書き・後書きも見る'
             assert_equal :preface, kinds['00-about']
             assert_equal :postface, kinds['99-postface']
+          end
+        end
+
+        # 共通の付録は最初の巻にも載るので、一緒に探す章の巻が選ばれる。巻にまたがれば選ばない（改善案 #126）
+        def test_should_find_the_volume_holding_all_basenames
+          with_project do
+            assert_equal 'middle', Volumes.containing_all(%w[90-how-to-ask 11-apply]).id
+            assert_equal 'upper', Volumes.containing_all(%w[90-how-to-ask]).id
+            assert_nil Volumes.containing_all(%w[01-intro 11-apply])
+            assert_nil Volumes.containing_all([]), '章が無ければ巻を選ばない'
           end
         end
 
@@ -539,11 +549,58 @@ module VivlioStarter
           end
         end
 
-        # --- --volume の指定 ---
+        # --- 引数での巻の指定（改善案 #126） ---
 
-        def test_should_find_volume_by_id_or_name_and_explain_unknown_one
+        def test_should_read_a_single_volume_id_or_all_as_a_volume
           with_project do
-            assert_equal 'lower', Volumes.find!('下巻').id
+            assert_equal 'upper', Volumes.token_in(%w[upper])
+            assert_equal 'lower', Volumes.token_in(%w[LOWER]), '大文字と小文字は区別しない'
+            assert_equal 'all', Volumes.token_in(%w[all])
+            assert_nil Volumes.token_in(%w[21]), '章の番号は巻ではない'
+            assert_nil Volumes.token_in(%w[nosuch])
+            assert_nil Volumes.token_in(%w[upper 21]), '巻は 1 語で指定する'
+            assert_nil Volumes.token_in([])
+          end
+        end
+
+        def test_should_show_how_to_write_a_volume_for_an_unknown_target
+          with_project do
+            violation = Guards::ChapterTargetCheck.new(%w[upper 21-final]).validate.first
+
+            assert_includes violation.message, 'upper'
+            assert(violation.detail.any? { it.include?('upper、middle、lower、all（全巻）') }, '書かれている巻を添える')
+          end
+        end
+
+        def test_should_not_read_a_volume_in_a_book_without_volumes
+          with_project(catalog: "CHAPTERS:\n  - 01-intro\n") do
+            assert_nil Volumes.token_in(%w[all]), '巻の無い本の all は章の指定'
+          end
+        end
+
+        def test_should_select_a_volume_for_lint_and_metrics_by_the_argument
+          with_project do
+            seen = []
+            record = ->(targets, _) { seen << [targets, Volumes.current&.id] && 0 }
+            Guards.stub(:precheck, nil) do
+              LintCommands.stub(:execute_lint, record) do
+                SamovarCommands::LintCommand.new(%w[upper]).call
+                SamovarCommands::LintCommand.new(%w[21]).call
+              end
+              MetricsCommands.stub(:execute_metrics, record) do
+                SamovarCommands::MetricsCommand.new(%w[lower]).call
+                SamovarCommands::MetricsCommand.new(%w[all]).call
+              end
+            end
+
+            assert_equal [[[], 'upper'], [%w[21], nil], [[], 'lower'], [[], nil]], seen
+          end
+        end
+
+        def test_should_find_volume_by_id_only_and_explain_unknown_one
+          with_project do
+            assert_equal 'lower', Volumes.find!('Lower').id
+            assert_nil Volumes.find('下巻'), '巻の呼び名では選ばない'
             error = assert_raises(Volumes::SelectionError) { Volumes.find!('vol9') }
             assert_includes error.detail, 'upper（上巻）、middle（中巻）、lower（下巻）'
           end
@@ -571,7 +628,7 @@ module VivlioStarter
               - 95-stray
             VOLUMES:
               - name: 上巻
-                id: Upper
+                id: vol_1
                 CHAPTERS:
                   - 01-intro
               - name: 上巻
@@ -585,7 +642,7 @@ module VivlioStarter
             messages = violations.map(&:message)
 
             assert(messages.any? { it.include?('一番上の CHAPTERS・APPENDICES') }, '一番上の本文の章・付録と VOLUMES の併記')
-            assert(messages.any? { it.include?('英小文字・数字・_') }, 'id の形')
+            assert(messages.any? { it.include?('半角英字で始め') }, 'id の形')
             assert(messages.any? { it.include?('all は使えません') }, 'id の all')
             assert(messages.any? { it.include?('name が 上巻 で同じ') }, 'name の重なり')
             assert(violations.any? { it.warn? && it.message.include?('colour') }, '知らない設定キーは 🟡')
@@ -653,7 +710,7 @@ module VivlioStarter
           with_project(catalog:, book_yml: BOOK_YML) { assert_empty Guards::VolumeDefinitionCheck.new.validate }
         end
 
-        # vs cover は vs build と同じく、--volume で巻・all で全巻・何も付けなければ合本の表紙を作る（§4.8）
+        # vs cover は vs build と同じく、巻の id で巻・all で全巻・何も付けなければ合本の表紙を作る（§4.8）
         def test_should_make_covers_with_values_of_each_volume
           catalog = CATALOG.sub("    id: upper\n", "    id: upper\n    cover: upper\n")
                            .sub("    id: lower\n", "    id: lower\n    cover: lower\n")
@@ -664,8 +721,8 @@ module VivlioStarter
 
             CoverCommands.stub(:execute_generate, ->(_ = nil) { record.call }) do
               Common.stub(:log_action, nil) do
-                run_cover('--volume', 'all')
-                run_cover('--volume', '中巻')
+                run_cover('all')
+                run_cover('middle')
                 run_cover
               end
             end
@@ -682,7 +739,7 @@ module VivlioStarter
 
         def test_should_stop_cover_for_unknown_volume
           with_project do
-            out, err = capture_io { assert_equal 1, run_cover('--volume', 'fourth') }
+            out, err = capture_io { assert_equal 1, run_cover('fourth') }
             assert_includes out + err, '巻 fourth が config/catalog.yml の VOLUMES に見つかりません'
           end
         end
@@ -699,6 +756,29 @@ module VivlioStarter
           end
         end
 
+        def test_should_choose_the_volume_of_a_new_chapter_by_its_number
+          catalog = <<~YAML
+            VOLUMES:
+              - name: 上巻
+                id: upper
+                CHAPTERS:
+                  - 11-one
+              - name: 下巻
+                id: lower
+                CHAPTERS:
+                  - 21-two
+          YAML
+          with_project(catalog:, basenames: %w[11-one 21-two]) do
+            %w[05-early 20-border 22-next].each { CatalogUpdater.add_chapter(it) }
+            upper = Volumes.basenames_of(Volumes.find('upper'))
+            lower = Volumes.basenames_of(Volumes.find('lower'))
+        
+            assert_includes upper, '05-early', '一つ前の章が無ければ最初の巻'
+            assert_includes upper, '20-border', '巻の境目の番号は前の巻'
+            assert_includes lower, '22-next'
+          end
+        end
+        
         def test_should_add_to_chosen_volume_and_part
           with_project do
             CatalogUpdater.add_chapter('03-extra', volume: Volumes.find('upper'))

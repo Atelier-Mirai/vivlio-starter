@@ -40,6 +40,9 @@ module VivlioStarter
 
       MAX_AUTO_CHAPTER = 98
 
+      # 本文の章の番号の上限
+      MAX_MAIN_CHAPTER = TokenResolver::Resolver::KIND_RANGES.fetch(:chapter).max
+
       # ================================================================
       # 章ファイル生成
       # ================================================================
@@ -96,7 +99,7 @@ module VivlioStarter
             next
           end
 
-          create_single_chapter(fname, entry, volume: options[:volume])
+          create_single_chapter(fname, entry)
           created << entry.basename
         rescue StandardError => e
           errors = true
@@ -257,14 +260,14 @@ module VivlioStarter
       # @param entry [TokenResolver::Entry] 章エントリ
       # @param volume [Build::Volumes::Volume, nil] 分冊の目次で章を足す巻（省くと番号から選ぶ）
       # @return [void]
-      def create_single_chapter(fname, entry, volume: nil)
+      def create_single_chapter(fname, entry)
         title   = generate_title(fname)
         content = generate_content_from_template(entry, title)
         path    = create_markdown_file(fname, content)
         create_image_directory(fname, {})
 
         basename = File.basename(fname, '.md')
-        Build::CatalogUpdater.add_chapter(basename, volume:)
+        Build::CatalogUpdater.add_chapter(basename)
 
         Common.log_success("#{path} を作成しました")
       end
@@ -436,6 +439,7 @@ module VivlioStarter
 
       def normalize_name_inputs(names, resolver)
         used_numbers = used_numbers_pool(resolver)
+        last_chapter = last_chapter_number(resolver)
 
         Array(names).map do |raw|
           token    = raw.to_s.strip
@@ -447,7 +451,7 @@ module VivlioStarter
             token
           else
             slug      = normalize_slug(basename)
-            number    = next_available_number!(used_numbers)
+            number    = next_available_number!(used_numbers, after: last_chapter)
             generated = "#{number}-#{slug}"
             Common.log_info("[create] #{basename} -> #{generated}")
             generated
@@ -530,8 +534,15 @@ module VivlioStarter
         end
       end
 
-      def next_available_number!(used_numbers)
-        (1..MAX_AUTO_CHAPTER).each do |candidate|
+      # 本文の最後の章の番号（本文の章が無ければ 0）
+      def last_chapter_number(resolver)
+        resolver.resolve([]).select { it.kind == :chapter }.filter_map(&:number).map(&:to_i).max.to_i
+      end
+
+      # 番号を省いた章は本の最後に足すので、本文の最後の章の次から探す。分冊の本では、この番号で最後の巻の末尾に入る。
+      # 本文の番号が尽きていれば、空いているいちばん小さい番号を使う（改善案 #126）
+      def next_available_number!(used_numbers, after:)
+        [*(after + 1)..MAX_MAIN_CHAPTER, *1..MAX_AUTO_CHAPTER].each do |candidate|
           number = format('%02d', candidate)
           next if used_numbers.include?(number)
 

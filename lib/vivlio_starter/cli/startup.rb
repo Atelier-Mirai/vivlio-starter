@@ -66,7 +66,8 @@ module VivlioStarter
     def print_usage_for_invalid_input(error)
       command = error.command
 
-      $stderr.puts error.message
+      # error.message は Samovar の英語（Could not parse token ...）なので著者へ見せない
+      $stderr.puts "🔴 「#{error.token}」は指定できません。"
 
       VivlioStarter::CLI::Common.log_warn('代わりに --help を表示します。') if defined?(VivlioStarter::CLI::Common)
 
@@ -74,11 +75,12 @@ module VivlioStarter
       # 選ぶため error.command が HelpCommand になる。この場合に help 自身の usage
       # （`help [-h/--help]`）を見せても手がかりにならないので、`vs --help` と同じ
       # 主要コマンド一覧を出す。既知コマンドのオプション誤りは、そのコマンドの
-      # 使い方を見せたいので従来どおり print_usage を呼ぶ。
+      # 使い方を見せたいので従来どおり print_usage を呼ぶ。preflight・open・resize・
+      # pdf:read は print_usage を private で書き直しているので、private も見る。
       if command.is_a?(VivlioStarter::CLI::SamovarCommands::HelpCommand)
         command.call
-      elsif command.respond_to?(:print_usage)
-        command.print_usage
+      elsif command.respond_to?(:print_usage, true)
+        command.send(:print_usage)
       else
         VivlioStarter::CLI::SamovarCommands::RootCommand.new(['--help']).print_usage
       end

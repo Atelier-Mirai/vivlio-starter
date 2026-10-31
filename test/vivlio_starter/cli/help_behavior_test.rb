@@ -41,9 +41,27 @@ module VivlioStarter
         end
 
         combined = "#{output}#{error}"
-        assert_includes combined, 'Could not parse token "--unknown-option"'
+        assert_includes combined, '🔴 「--unknown-option」は指定できません。'
+        refute_includes combined, 'Could not parse', 'Samovar の英語を著者へ見せない'
         assert_includes combined, 'build <targets...>'
         assert_includes combined, '書籍全体または指定章をビルドします'
+      end
+
+      # print_usage を private で書き直しているコマンドでも、全体の使い方でなく
+      # そのコマンドの使い方を出す
+      def test_commands_with_private_usage_display_their_own_help
+        [['preflight', '--unknown-option'], ['pdf:read', '--unknown-option'],
+         %w[open one two], %w[resize one two]].each do |name, *arguments|
+          output, error = capture_io do
+            status = ::VivlioStarter::CLI.start([name, *arguments])
+            assert_equal 1, status, name
+          end
+
+          combined = "#{output}#{error}"
+          assert_includes combined, "🔴 「#{arguments.last}」は指定できません。", name
+          assert_includes combined, "vs #{name} - ", name
+          refute_includes combined, 'Vivlio Starter CLI (Samovar)', name
+        end
       end
 
       # `vs clean --unknown-option` 実行時に clean コマンドのヘルプが表示され、
@@ -55,7 +73,7 @@ module VivlioStarter
         end
 
         combined = "#{output}#{error}"
-        assert_includes combined, 'Could not parse token "--unknown-option"'
+        assert_includes combined, '🔴 「--unknown-option」は指定できません。'
         assert_includes combined, 'clean [--purge/-P]'
         assert_includes combined, '生成物やキャッシュを削除します'
       end

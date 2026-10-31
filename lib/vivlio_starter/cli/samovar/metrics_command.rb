@@ -33,7 +33,6 @@ module VivlioStarter
           option '--warn', '警告がある章のみ節まで展開', default: false, key: :warn
           option '--json', 'JSON形式で出力（参考資料を含む）', default: false, key: :json
           option '--yaml', 'YAML形式で出力（参考資料を含む）', default: false, key: :yaml
-          option '--volume <name>', '分冊の巻の原稿だけを集計する（巻の id か name）', key: :volume
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -51,13 +50,8 @@ module VivlioStarter
           return guard_failure if guard_failure
 
           # 巻を選ばなければ、全巻の原稿を見る（multivolume-spec.md §6.1）
-          Build::Volumes.select!(Build::Volumes.find!(options[:volume])) if options[:volume]
-
-          targets = files || []
+          targets = Build::Volumes.select_from_arguments!(files || [])
           MetricsCommands.execute_metrics(targets, build_options)
-        rescue Build::Volumes::SelectionError => e
-          Common.log_error(e.message, detail: e.detail)
-          1
         rescue SystemExit => e
           e.status
         rescue StandardError => e
@@ -82,6 +76,7 @@ module VivlioStarter
                         複数指定:   vs metrics 1,3,5
                         範囲指定:   vs metrics 1-3
                         組み合わせ: vs metrics 1-3,5,8-10
+                        分冊の巻:   vs metrics upper
 
             オプション:
               --all       解析結果＋推敲用の参考資料も表示
@@ -89,7 +84,6 @@ module VivlioStarter
               --warn      警告がある章のみ節まで展開
               --json      JSON形式で出力（参考資料を含む）
               --yaml      YAML形式で出力（参考資料を含む）
-              --volume NAME  分冊の巻の原稿だけを集計（巻の id か name）
 
             例:
               vs metrics              # 全章の解析結果を表示

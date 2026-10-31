@@ -52,11 +52,10 @@ module VivlioStarter
         # 指摘ゼロの章に使う件数オブジェクト
         NO_ISSUES = PreProcessCommands::IssueRegistry::Counts.new(errors: 0, warns: 0)
 
-        many :targets, 'チェック対象（章番号 / 範囲 / スラッグ）', default: []
+        many :targets, 'チェック対象（章番号 / 範囲 / スラッグ / 分冊の巻の id）', default: []
 
         options do
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
-          option '--volume <name>', '分冊の巻を選んで点検する（巻の id か name。省くと全巻の原稿）', key: :volume
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -68,7 +67,7 @@ module VivlioStarter
           end
 
           # 巻を選ばなければ、全巻の原稿（2 巻目以降の前書きも）を見る（multivolume-spec.md §6.1）
-          Build::Volumes.select!(Build::Volumes.find!(options[:volume])) if options[:volume]
+          self.targets = Build::Volumes.select_from_arguments!(targets)
 
           # 章別サマリーの集計をリセットする。Guard の 🟡 警告も最終判定に含めるため、
           # Guard.run! より前に置く（preflight-chapter-summary-spec.md §2.2）
@@ -137,9 +136,6 @@ module VivlioStarter
           PreProcessCommands::IssueRegistry.counts.errors.positive? ? 1 : 0
         rescue Guards::GuardError
           # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
-          1
-        rescue Build::Volumes::SelectionError => e
-          Common.log_error(e.message, detail: e.detail)
           1
         rescue SystemExit => e
           raise e
@@ -299,11 +295,10 @@ module VivlioStarter
               vs preflight [targets...] [options]
 
             引数:
-              targets...          チェック対象（章番号 / 範囲 / スラッグ）。省略時は全章
+              targets...          チェック対象（章番号 / 範囲 / スラッグ / 分冊の巻の id）。省略時は全章
 
             オプション:
               --verify-links      外部 URL の HTTP 到達性チェックを実行する
-              --volume <name>     分冊の巻を選んで点検する（巻の id か name。省くと全巻の原稿）
               --log <level>       ログレベルを指定（error/warn/info/debug）
               -h, --help          このコマンドの使い方を表示
 

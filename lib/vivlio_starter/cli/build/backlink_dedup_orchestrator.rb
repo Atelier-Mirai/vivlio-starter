@@ -205,7 +205,7 @@ module VivlioStarter
 
         # --- 前回のページ対応の記録（§4.2） ---
 
-        # 巻ごとに分ける。--volume all は巻ごとに別のプロセスで組むので、ファイルが分かれていれば互いを壊さない
+        # 巻ごとに分ける。vs build all は巻ごとに別のプロセスで組むので、ファイルが分かれていれば互いを壊さない
         def record_path = File.join(Common::CACHE_DIR, "dedup-pages-#{Volumes.selection_key}.json")
 
         def save_record!(page_mapping, result)

@@ -7,7 +7,7 @@
 #   Samovar CLI の cover コマンドを実装する。
 #   カバー画像生成ロジック (CoverCommands) を呼び出す。
 #   分冊の本では vs build と同じく巻を選べる（multivolume-spec.md §4.8）:
-#     --volume <id|name> … その巻の表紙 / --volume all … 全巻の表紙 / 何も付けない … 合本の表紙
+#     vs cover <id> … その巻の表紙 / vs cover all … 全巻の表紙 / 何も付けない … 合本の表紙
 # ================================================================
 
 require_relative '../cover'
@@ -22,9 +22,10 @@ module VivlioStarter
         self.description = '表紙・裏表紙の画像を生成します（book.yml の判型と output.targets に従う）'
 
         options do
-          option '--volume <name>', '分冊の巻の表紙を作る（巻の id か name。all で全巻の表紙を作る）', key: :volume
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
+
+        one :volume, '分冊の巻の id（all で全巻の表紙。省くと合本の表紙）'
 
         def call
           return print_usage if options[:help]
@@ -52,7 +53,7 @@ module VivlioStarter
 
         # 表紙を作る巻。何も付けなければ空（合本の表紙を book.yml の値で作る）
         def selected_volumes
-          case options[:volume]
+          case volume&.downcase
           in nil then []
           in Build::Volumes::ALL
             # 巻の無い本は、書き方を案内して止める

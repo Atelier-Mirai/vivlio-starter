@@ -8,8 +8,8 @@ module VivlioStarter
       # 止めるのは、組む範囲やファイル名を決められない書き方だけ:
       #   - VOLUMES と、一番上の CHAPTERS・APPENDICES が同じファイルにある（どちらが目次か決められない）。
       #     一番上の PREFACE・POSTFACE は本全体の前書き・後書きなので通す（multivolume-book-matter-spec.md）
-      #   - 巻の name・id が無い、id の形が正しくない、id が all（ファイル名と --volume に使えない）
-      #   - 二つの巻の id・name が同じ（--volume でどちらを指すか決められない）
+      #   - 巻の name・id が無い、id の形が正しくない、id が all（ファイル名と巻の指定に使えない）
+      #   - 二つの巻の id・name が同じ（vs build upper でどちらを指すか決められない）
       # 前書き・付録・後書き、本文の章も、二つ以上の巻に書いてよい（共通の付録・共通の章。§3.6）。
       # 知らない設定キー・読めない chapter_start / appendix_start は、打ち間違いとして 🟡 で知らせる。
       # book.yml の ISBN を二つ以上の巻が上書きせずに使っているときも 🟡（同じ urn:isbn になる。§4.7）。
@@ -57,11 +57,11 @@ module VivlioStarter
           if volume.id.empty?
             problems << "#{label}に id がありません（例: id: upper）"
           elsif !volume.id.match?(Build::Volumes::ID_PATTERN)
-            problems << "#{label}の id #{volume.id} は、英小文字・数字・_ だけで書きます"
+            problems << "#{label}の id #{volume.id} は、半角英字で始め、数字は末尾にだけ使います（例: upper・vol1）"
           elsif volume.id == Build::Volumes::ALL
-            problems << "#{label}の id に all は使えません（vs build --volume all が全巻を組む指定のため）"
+            problems << "#{label}の id に all は使えません（vs build all が全巻を組む指定のため）"
           end
-          problems.map { error(it, detail: 'id は出力ファイル名と --volume に使います。') }
+          problems.map { error(it, detail: 'id は出力ファイル名と、vs build upper のように巻を選ぶのに使います。') }
         end
 
         def duplicate_errors(volumes)
@@ -69,7 +69,7 @@ module VivlioStarter
             volumes.reject { it.public_send(attr).empty? }.group_by(&attr).select { |_, group| group.size > 1 }
                    .map do |value, _|
               error("二つ以上の巻の #{attr} が #{value} で同じです",
-                    detail: '--volume でどの巻を指すか決められないため、止めています。巻ごとに違う値にしてください。')
+                    detail: 'どの巻を指すか決められないため、止めています。巻ごとに違う値にしてください。')
             end
           end
         end

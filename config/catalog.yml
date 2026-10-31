@@ -94,8 +94,8 @@ POSTFACE:
 # VOLUMES: の下に巻を並べ、PREFACE:・CHAPTERS:・APPENDICES:・POSTFACE: は各巻の中に書きます。
 # 本全体の前書き・後書きは、VOLUMES: と並べて一番上の PREFACE:・POSTFACE: に書けます。
 # name には「上巻」などの呼び名を書きます。
-# id には、出力ファイル名や vs build --volume で巻を指定するための名前を書きます。
-# id に使える文字は、半角の英小文字・数字・アンダースコア（_）です。
+# id には、出力ファイル名や vs build lower のように巻を指定するための名前を書きます。
+# id は半角英字で始め、数字は末尾にだけ使えます（upper・vol1 など）。記号は使えず、大文字と小文字は区別しません。all は使えません。
 # 章番号は前の巻から続きます。上巻が第12章で終わる場合、下巻は第13章から始まります。
 # 同じ付録を複数の巻に含める場合、その付録の記号（A・B など）はどの巻でも同じになります。
 # 2巻目以降にも前書きを付ける場合は、未使用の番号で原稿を作り、その巻の PREFACE: に書いてください。
@@ -128,10 +128,10 @@ POSTFACE:
 #     POSTFACE:
 #       - 99-postface
 #
-# 巻を指定してビルドするには、vs build --volume lower のように id を指定します。
-# vs build --volume all を実行すると、各巻を順番にビルドします。
+# 巻を指定してビルドするには、vs build lower のように id を指定します。
+# vs build all を実行すると、各巻を順番にビルドします。
 # 巻を指定せずに vs build を実行すると、全巻を一冊にまとめた合本を作ります。
-# 表紙を作る vs cover でも、--volume で巻を指定できます。
+# 表紙を作る vs cover でも、vs cover lower のように巻を指定できます。
 #
 # 巻ごとにタイトルや発行日などを変える場合は、各巻の中に設定を書きます。
 # book.yml の book: の下にある設定（main_title・subtitle・author・release・isbn・cover など）を、

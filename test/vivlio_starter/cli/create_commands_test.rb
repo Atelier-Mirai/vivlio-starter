@@ -52,7 +52,7 @@ module VivlioStarter
           capture_io { CreateCommands.execute_create(command_context, ['three-elements']) }
 
           assert File.exist?(File.join(Common::CONTENTS_DIR, '02-three-elements.md')),
-                 '次の若番 (02) を払い出してファイルを生成するべき'
+                 '本文の最後の章の次の番号 (02) を払い出してファイルを生成するべき'
           assert Dir.exist?(File.join(Common::IMAGES_DIR, '02-three-elements')),
                  '画像ディレクトリも自動作成されるべき'
 
@@ -63,6 +63,47 @@ module VivlioStarter
 
       # 番号を別の章が使っていれば作らずに止め、同じ区分の空き番号で打ち直すコマンドを示す。
       # 作ってしまうと、vs build 97 で 97-sample と 97-foo のどちらを組むか決められない
+      # 番号を省いた章は本の最後に足す。手前の空き番号は使わない（改善案 #126）
+      def test_should_assign_the_number_after_the_last_chapter
+        within_temp_dir do
+          File.write('config/catalog.yml', "CHAPTERS:\n  - 11-one\n  - 13-three\n")
+          capture_io { CreateCommands.execute_create(command_context, %w[next after]) }
+      
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '14-next.md'))
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '15-after.md'))
+        end
+      end
+      
+      def test_should_use_a_free_number_when_main_chapter_numbers_run_out
+        within_temp_dir do
+          File.write('config/catalog.yml', "CHAPTERS:\n  - 89-last\n")
+          capture_io { CreateCommands.execute_create(command_context, %w[next]) }
+      
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '01-next.md'))
+        end
+      end
+      
+      # 分冊の本では、最後の巻の末尾に入る
+      def test_should_append_to_the_last_volume_when_number_is_omitted
+        within_temp_dir do
+          File.write('config/catalog.yml', <<~YAML)
+            VOLUMES:
+              - name: 上巻
+                id: upper
+                CHAPTERS:
+                  - 11-one
+              - name: 下巻
+                id: lower
+                CHAPTERS:
+                  - 21-two
+          YAML
+          capture_io { CreateCommands.execute_create(command_context, %w[next]) }
+      
+          assert File.exist?(File.join(Common::CONTENTS_DIR, '22-next.md'))
+          assert_includes File.read('config/catalog.yml'), "      - 21-two\n      - 22-next\n"
+        end
+      end
+      
       def test_should_refuse_a_number_used_by_another_chapter
         within_temp_dir do
           File.write(File.join(Common::CONTENTS_DIR, '97-sample.md'), "# sample\n")

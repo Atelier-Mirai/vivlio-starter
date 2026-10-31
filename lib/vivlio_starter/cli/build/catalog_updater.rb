@@ -42,7 +42,7 @@ module VivlioStarter
         # 章を catalog.yml に追加
         #
         # 分冊（VOLUMES）の目次では、巻を選んでその巻の区分に足す。volume を省くと、番号が一つ前の
-        # 原稿を載せた巻に足し、見つからなければ最後の巻に足す（multivolume-spec.md §7）
+        # 原稿を載せた巻に足す。巻の境目の番号は前の巻に入り、一つ前が無ければ最初の巻に足す（改善案 #126）
         # @param basename [String] 追加する章の basename（拡張子なし）
         # @param volume [Volumes::Volume, nil] 足す巻（VOLUMES の目次のときだけ使う）
         def add_chapter(basename, volume: nil)
@@ -236,7 +236,7 @@ module VivlioStarter
               [n, volume] if n && n < num
             end
           end
-          lower.max_by(&:first)&.last || volumes.last
+          lower.max_by(&:first)&.last || volumes.first
         end
 
         # 行から basename を抽出（アクティブ/コメント両方対応）

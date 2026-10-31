@@ -185,7 +185,116 @@ module VivlioStarter
           end
         end
 
+        # --- 分冊の本の章の指定（改善案 #126） ---
+
+        def test_should_build_every_chapter_when_targets_span_volumes
+          with_volume_project do
+            entries, selection = build_chapters('11', '21')
+
+            assert_equal %w[11-one 21-two], entries.map(&:basename), 'ほかの巻の章も落とさない'
+            assert_equal :all, selection, '巻をまたぐ指定では巻を選ばない'
+          end
+        end
+
+        def test_should_select_the_volume_when_targets_fit_in_one
+          with_volume_project do
+            entries, selection = build_chapters('21', '22')
+
+            assert_equal %w[21-two 22-more], entries.map(&:basename)
+            assert_equal 'lower', selection.id
+          end
+        end
+
+        # 共通の付録は最初の巻にも載る。最初に書いた章の巻で選ぶと、21 章が落ちる
+        def test_should_select_the_volume_holding_all_targets_with_a_shared_appendix
+          with_volume_project do
+            entries, selection = build_chapters('90', '21')
+
+            assert_equal %w[90-shared 21-two], entries.map(&:basename)
+            assert_equal 'lower', selection.id
+          end
+        end
+
+        # 巻の id は 1 語で書くと巻の指定になる。大文字でもよい
+        def test_should_build_the_volume_named_by_the_argument
+          with_volume_project do
+            entries, selection = build_chapters('LOWER')
+
+            assert_equal 'lower', selection.id
+            assert_includes entries.map(&:basename), '21-two'
+            refute_includes entries.map(&:basename), '11-one', 'ほかの巻の章は組まない'
+          end
+        end
+
+        # 巻と章を並べると章の指定として読むので、巻の id が見つからない章になって止まる
+        def test_should_stop_when_a_volume_is_mixed_with_chapters
+          with_volume_project do
+            pipelines = []
+            with_pipeline_stub(pipelines) do
+              out, err = capture_io { assert_equal 1, BuildCommand.new(%w[upper 21]).call }
+
+              assert_includes out + err, 'upper'
+            end
+            assert_empty pipelines
+          end
+        end
+
+        def test_should_stop_on_an_unknown_volume
+          with_volume_project do
+            pipelines = []
+            with_pipeline_stub(pipelines) do
+              out, err = capture_io { assert_equal 1, BuildCommand.new(%w[nosuch]).call }
+
+              assert_includes out + err, 'nosuch'
+            end
+            assert_empty pipelines
+          end
+        end
+
         private
+
+        def with_volume_project
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p(%w[config contents])
+              File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              File.write('config/catalog.yml', <<~YAML)
+                VOLUMES:
+                  - name: 上巻
+                    id: upper
+                    CHAPTERS:
+                      - 11-one
+                    APPENDICES:
+                      - 90-shared
+                  - name: 下巻
+                    id: lower
+                    CHAPTERS:
+                      - 21-two
+                      - 22-more
+                    APPENDICES:
+                      - 90-shared
+              YAML
+              %w[11-one 21-two 22-more 90-shared].each { File.write("contents/#{it}.md", "# #{it}\n") }
+              # 巻を選ぶと終わりに設定を読み直す。試しの book.yml をほかのテストへ残さない
+              Common.stub(:reload_configuration!, nil) { yield }
+            end
+          end
+        end
+
+        # @return [Array] 組む章の Entry と、組み始めたときの巻の選択
+        def build_chapters(*argv)
+          selections = []
+          pipelines = []
+          pipeline_new = lambda do |_cmd, entries:, mode:|
+            selections << Build::Volumes.selection
+            PipelineStub.new(entries, mode).tap { pipelines << it }
+          end
+          BuildCommands::UnifiedBuildPipeline.stub :new, pipeline_new do
+            command = BuildCommand.new(argv)
+            capture_io { suppress_build_outputs(command) { assert_equal 0, command.call } }
+          end
+          [pipelines.last.entries_param, selections.last]
+        end
 
         def sample_entries(*basenames)
           basenames.map do |bn|
