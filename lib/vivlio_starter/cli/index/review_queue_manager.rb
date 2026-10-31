@@ -4,11 +4,9 @@
 # Class: ReviewQueueManager
 # ----------------------------------------------------------------
 # 責務:
-#   config/index_review_queue.yml と config/index_rejected.yml の管理
+#   config/index_glossary_rejected.yml の管理
 #
 # 主要メソッド:
-#   - save_queue: レビューキューを保存
-#   - load_queue: レビューキューを読み込み
 #   - save_rejected_terms: リジェクト済み候補を保存
 #   - load_rejected_terms: リジェクト済み用語名のリストを取得
 #   - unreject_term!: リジェクト解除
@@ -22,48 +20,10 @@ require_relative '../common'
 module VivlioStarter
   module CLI
     class ReviewQueueManager
-      QUEUE_FILE = 'config/index_review_queue.yml'
       REJECTED_FILE = 'config/index_glossary_rejected.yml'
 
       def initialize
-        @queue_cache = nil
         @rejected_cache = nil
-      end
-
-      # レビューキューを保存
-      # @param candidates [Array<Hash>] 候補のリスト
-      def save_queue(candidates)
-        FileUtils.mkdir_p(File.dirname(QUEUE_FILE))
-
-        data = {
-          'generated_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
-          'pending_count' => candidates.size,
-          'candidates' => candidates
-        }
-        File.write(QUEUE_FILE, data.to_yaml, encoding: 'utf-8')
-
-        @queue_cache = candidates
-      end
-
-      # レビューキューを読み込み
-      # @return [Array<Hash>] 候補のリスト
-      def load_queue
-        return @queue_cache if @queue_cache
-
-        unless File.exist?(QUEUE_FILE)
-          @queue_cache = []
-          return @queue_cache
-        end
-
-        begin
-          data = YAML.load_file(QUEUE_FILE)
-          @queue_cache = data['candidates'] || []
-        rescue StandardError => e
-          Common.log_warn("#{QUEUE_FILE} の読み込みに失敗しました: #{e.message}")
-          @queue_cache = []
-        end
-
-        @queue_cache
       end
 
       # リジェクト済み候補を保存
@@ -219,7 +179,6 @@ module VivlioStarter
 
       # キャッシュをクリア
       def clear_cache!
-        @queue_cache = nil
         @rejected_cache = nil
       end
 

@@ -23,28 +23,6 @@ module VivlioStarter
         FileUtils.rm_rf(@temp_dir)
       end
 
-      # --- phase: queue management tests ---
-
-      def test_save_and_load_queue
-        candidates = [
-          { 'term' => 'Ruby', 'yomi' => 'るびー', 'score' => 100.0 },
-          { 'term' => 'Python', 'yomi' => 'ぱいそん', 'score' => 80.0 }
-        ]
-
-        @manager.save_queue(candidates)
-        @manager.clear_cache!
-        loaded = @manager.load_queue
-
-        assert_equal 2, loaded.size
-        assert_equal 'Ruby', loaded[0]['term']
-      end
-
-      def test_load_queue_returns_empty_when_file_missing
-        queue = @manager.load_queue
-
-        assert_empty queue
-      end
-
       # --- phase: rejected terms tests ---
 
       def test_save_and_load_rejected_terms
