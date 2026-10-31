@@ -504,6 +504,15 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     kindle_lines = css.lines.grep(/vs-kindle/).grep_v(%r{/\*})
     assert(kindle_lines.none? { it.include?('var(') }, 'Kindle 規則に var() を残さない')
     assert(kindle_lines.none? { it.include?('color-mix(') }, 'Kindle 規則に color-mix() を残さない')
+    assert(kindle_lines.none? { it.include?('linear-gradient(') }, 'KFX が描かないグラデーションを残さない')
+  end
+
+  # h4 の印は var() で消えるので、文字とテーマ色を Kindle 用に焼く
+  def test_should_bake_h4_marker_for_kindle
+    css = BSC.render(build_config(theme_color: 'yellow'))
+
+    assert_includes css, 'body.chapter.vs-kindle h4::before, body.appendix.vs-kindle h4::before ' \
+                         '{ content: "♦" !important; color: #f0a000; }'
   end
 
   # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば既定色は消える。

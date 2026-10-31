@@ -525,37 +525,69 @@ body.vs-kindle .side-by-side > * {
    EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2）
    Kindle は CSS Grid を解さず、img-text 系の横画像が全幅化する。
    body.vs-kindle のときだけ grid を解除し、画像に上限＋float で本文を回り込ませる。
+   KFX は :is() を含む規則を丸ごと捨てるので、セレクタはすべて並べて書く。
    ============================================================= */
-body.vs-kindle :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img) {
+body.vs-kindle .img-text,
+body.vs-kindle .text-img,
+body.vs-kindle .img-text2,
+body.vs-kindle .text2-img,
+body.vs-kindle .img-text3,
+body.vs-kindle .text3-img {
   display: block;
+  /* float の画像だけが次のページへ送られると、本文と別れて囲み枠も閉じる */
+  page-break-inside: avoid;
 }
-body.vs-kindle :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img) > :is(img, figure) {
+body.vs-kindle .img-text > img,
+body.vs-kindle .img-text > figure,
+body.vs-kindle .text-img > img,
+body.vs-kindle .text-img > figure,
+body.vs-kindle .img-text2 > img,
+body.vs-kindle .img-text2 > figure,
+body.vs-kindle .text2-img > img,
+body.vs-kindle .text2-img > figure,
+body.vs-kindle .img-text3 > img,
+body.vs-kindle .img-text3 > figure,
+body.vs-kindle .text3-img > img,
+body.vs-kindle .text3-img > figure {
   max-width: 45%;
   max-height: 16em;
   width: auto;
   inline-size: auto;
   block-size: auto;
 }
-body.vs-kindle :is(.img-text, .img-text2, .img-text3) > :is(img, figure) {
+body.vs-kindle .img-text > img,
+body.vs-kindle .img-text > figure,
+body.vs-kindle .img-text2 > img,
+body.vs-kindle .img-text2 > figure,
+body.vs-kindle .img-text3 > img,
+body.vs-kindle .img-text3 > figure {
   float: left;
   margin: 0 1em 0.5em 0;
 }
-body.vs-kindle :is(.text-img, .text2-img, .text3-img) > :is(img, figure) {
+body.vs-kindle .text-img > img,
+body.vs-kindle .text-img > figure,
+body.vs-kindle .text2-img > img,
+body.vs-kindle .text2-img > figure,
+body.vs-kindle .text3-img > img,
+body.vs-kindle .text3-img > figure {
   float: right;
   margin: 0 0 0.5em 1em;
 }
-body.vs-kindle :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img)::after {
-  content: "";
-  display: block;
-  clear: both;
-}
 
 /* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
-body.vs-kindle :is(.sideimage, .sideimage-left, .sideimage-right) {
+body.vs-kindle .sideimage,
+body.vs-kindle .sideimage-left,
+body.vs-kindle .sideimage-right {
   display: block;
+  page-break-inside: avoid;
 }
-body.vs-kindle :is(.sideimage, .sideimage-left, .sideimage-right)::after {
-  content: "";
-  display: block;
-  clear: both;
+body.vs-kindle .sideimage > img,
+body.vs-kindle .sideimage > figure,
+body.vs-kindle .sideimage-left > img,
+body.vs-kindle .sideimage-left > figure {
+  margin: 0 1em 0.5em 0;
+}
+body.vs-kindle .sideimage-right > img,
+body.vs-kindle .sideimage-right > figure {
+  margin: 0 0 0.5em 1em;
 }

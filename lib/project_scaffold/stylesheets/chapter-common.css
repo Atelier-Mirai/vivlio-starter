@@ -466,6 +466,16 @@ figure.align-right {
   margin-inline-end: 0;
 }
 
+/* KFX は margin-inline の auto を 0 に解く。物理プロパティで書き直す。 */
+body.vs-kindle figure.align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+body.vs-kindle figure.align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
 /* 配置指定付き図版の上下余白。layout-utils.css の汎用 .align-* ユーティリティ
    （margin-block: 0.5em・特異度 0,1,0）が要素セレクタ figure（0,0,1）に勝つため、
    図版の 4mm はクラス付き（0,1,1）で明示して保つ。 */
@@ -941,7 +951,6 @@ body.vs-kindle .terminal pre {
    ============================================================= */
 body.vs-kindle .vs-adm-label {
   margin: 0 0 0.4em;
-  font-family: var(--font-header);
   font-weight: bold;
   font-size: 0.9em;
   color: #444;
@@ -949,14 +958,19 @@ body.vs-kindle .vs-adm-label {
 
 /* =============================================================
    Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
-   Kindle(KFX) は ::before を破棄するため、EpubBuilder が先頭注入する実体マーカー
-   <span class="vs-li-marker"> で番号を出す。ネイティブマーカーとの二重表示を防ぐため
-   list-style を消す。:is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
+   番号は EpubBuilder が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
+   ネイティブマーカーとの二重表示を防ぐため list-style を消す。Previewer 4 は ::before の
+   content も本文へ差し込むので、それも止める（`(1) (1) 項目` になる）。
+   :is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
    ============================================================= */
 body.vs-kindle ol.vs-fancy-list,
 body.vs-kindle .outline-list ol {
   list-style: none;
   padding-inline-start: 1em;
+}
+body.vs-kindle ol.vs-fancy-list > li::before,
+body.vs-kindle .outline-list ol > li::before {
+  content: none;
 }
 body.vs-kindle .vs-li-marker {
   font-weight: 700;

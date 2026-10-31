@@ -394,6 +394,7 @@ module VivlioStarter
             # インライン <style> 内の webp url()（Techbook の Type3 対策マーカー）を除去（RSC-007 回避）。
             strip_webp_inline_styles_for_kindle!(chapter_htmls)
             mark_body_for_kindle!(chapter_htmls)
+            restore_h3_markers_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
@@ -1994,6 +1995,23 @@ module VivlioStarter
           html_files
         end
 
+        # Kindle 専用: h3 の印を文字へ戻す。Techbook は印を WebP の背景で描くために
+        # span を空にするが、Kindle には WebP も var() も届かず、印だけが消えて字下げが残る。
+        # ::before に頼らず実体の文字を入れるのは、Techbook でない本は span に印が残っていて
+        # 二重になるため（KFX が :empty を解するかに賭けない）。
+        def restore_h3_markers_for_kindle!(html_files)
+          marker = Common::CONFIG.theme.markers.h3 || '♣'
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            empty = doc.css('span.subsection-marker').select { it.text.empty? }
+            next if empty.empty?
+
+            empty.each { it.content = marker }
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          end
+          html_files
+        end
+
         # 各 EPUB 章 HTML の <body> に vs-epub クラスを付与する（クリーン・Kindle 両フレーバ共通）。
         # body.vs-epub は「EPUB リフロー文脈」の目印で、PDF を壊さず EPUB だけに効かせたい
         # 体裁調整（例: コードブロックの折返し・改ページ許容）の足場にする。劣化用途ではない
@@ -2050,6 +2068,10 @@ module VivlioStarter
                 next unless target
 
                 apply_inline_image_constraint!(target, rule)
+                # float は後ろの本文にしか回り込まない。本文 → 画像の順の原稿では、
+                # 画像が本文の下へ落ちるので先頭へ動かす。
+                first = container.element_children.first
+                first.add_previous_sibling(target) if target.parent == container && first != target
                 changed = true
               end
             end

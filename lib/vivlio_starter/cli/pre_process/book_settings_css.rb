@@ -383,17 +383,31 @@ module VivlioStarter
           ]
         end
 
-        # 見出しマーカー（旧 update_chapter_common_css 相当）。未指定時は ♣ / ♦。
+        # 見出しマーカー（旧 update_chapter_common_css 相当）。
         def marker_declarations(cfg)
-          markers = FrontmatterGenerator.safe_config_hash(cfg.theme.markers)
-          h3 = (markers[:h3] || markers['h3']).to_s
-          h4 = (markers[:h4] || markers['h4']).to_s
-          h3 = '♣' if h3.strip.empty?
-          h4 = '♦' if h4.strip.empty?
+          h3, h4 = heading_markers(cfg)
           [
             %(--h3-marker: "#{escape_marker(h3)}";),
             %(--h4-marker: "#{escape_marker(h4)}";)
           ]
+        end
+
+        # 未指定時は ♣ / ♦。
+        def heading_markers(cfg)
+          markers = FrontmatterGenerator.safe_config_hash(cfg.theme.markers)
+          h3 = (markers[:h3] || markers['h3']).to_s
+          h4 = (markers[:h4] || markers['h4']).to_s
+          [h3.strip.empty? ? '♣' : h3, h4.strip.empty? ? '♦' : h4]
+        end
+
+        # h4 の印は ::before の var() なので、Kindle では消える。Previewer 4 は ::before の
+        # content を本文へ差し込むので、文字そのものを焼く（kindle-css-compatibility-notes.md §2.2）。
+        # 本文と付録に限るのは、用語集の h4 など chapter-common.css の外には印が無いため。
+        # !important は Techbook の <style> が content を '' !important で空にしているのに勝つため。
+        def h4_marker_kindle_rule(cfg, color)
+          _h3, h4 = heading_markers(cfg)
+          selector_group(%w[body.chapter.vs-kindle body.appendix.vs-kindle], 'h4::before') +
+            %( { content: "#{escape_marker(h4)}" !important; color: #{color}; })
         end
 
         # page-settings 系 22 変数（旧 update_page_settings_css 相当）。
@@ -643,7 +657,7 @@ module VivlioStarter
           apx = appendix_accent_hex6(theme_cfg, acc)
 
           # 付録色がテーマ色と同一なら付録専用の上書きは不要。
-          lines = base_kindle_accent_rules(acc, colbg)
+          lines = base_kindle_accent_rules(acc, colbg) << h4_marker_kindle_rule(cfg, acc)
           lines += appendix_kindle_accent_rules(apx) unless apx == acc
           # 前書き/後書き（preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
           lines += preface_kindle_accent_rules(preface_accent_hex6(theme_cfg, acc))
@@ -700,7 +714,7 @@ module VivlioStarter
             "body.colophon.vs-kindle .book-title { border-bottom-color: #{acc}; }",
             "body.vs-kindle .glossary-title { border-bottom-color: #{acc}; }",
             "body.vs-kindle .glossary-group-header { color: #{acc}; border-left-color: #{acc}; " \
-            "background: linear-gradient(90deg, #{colbg} 0%, transparent 100%); }",
+            "background: #{colbg}; }",
             "body.vs-kindle .glossary-h4 { color: #{acc}; }"
           ]
         end
@@ -715,6 +729,7 @@ module VivlioStarter
             "body.appendix.vs-header-simple.vs-kindle h2 { border-color: #{apx}; border-left-color: #{apx}; }",
             "body.appendix.vs-header-simple.vs-kindle h2 .section-number { background: #{apx}; }",
             "body.appendix.vs-kindle .subsection-marker { color: #{apx}; }",
+            "body.appendix.vs-kindle h4::before { color: #{apx}; }",
             adm_label_rule('body.appendix.vs-kindle', apx)
           ]
         end

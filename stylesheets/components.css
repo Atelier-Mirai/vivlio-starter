@@ -605,7 +605,7 @@ body.vs-epub .section-lead {
    Kindle は CSS Grid を解さず、grid 前提の book-card 画像が全幅化するため、
    単列フロー前提で画像に上限を課し、本文を回り込ませる。
    ============================================================= */
-body.vs-kindle .book-card { display: block; }
+body.vs-kindle .book-card { display: block; page-break-inside: avoid; }
 body.vs-kindle .book-info { display: block; }
 body.vs-kindle .book-card img {
   max-width: 38%;
@@ -614,7 +614,6 @@ body.vs-kindle .book-card img {
   float: left;
   margin: 0 1em 0.5em 0;
 }
-body.vs-kindle .book-card::after { content: ""; display: block; clear: both; }
 /* Kindle では .book-info が grid でなく row-gap が効かないので、書誌と説明の間を余白で空ける */
 body.vs-kindle .book-meta { margin-block: 0 0.8em; }
 

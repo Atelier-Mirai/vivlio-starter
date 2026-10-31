@@ -166,6 +166,48 @@ module VivlioStarter
         assert_includes doc.at_css('.sideimage-right figure img')['style'], 'width: 100%'
       end
 
+      # float は後ろの本文にしか回り込まないので、本文 → 画像の順の原稿は画像を先頭へ動かす
+      def test_should_move_image_before_text_so_float_wraps
+        html = '<html><body><div class="sideimage-right"><div class="sideimage-body"><p>本文</p></div>' \
+               '<figure><img src="images/a.jpg" alt=""></figure></div></body></html>'
+        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+
+        assert_equal 'figure', doc.at_css('.sideimage-right').element_children.first.name
+      end
+
+      # KFX は :is() を含む規則を丸ごと捨て、var() の宣言も落とす。layout-utils.css の 7 規則が
+      # これで効いておらず、画像が枠の下へはみ出していた（kindle-css-compatibility-notes.md §2）。
+      def test_should_not_use_is_or_var_in_kindle_rules
+        root = File.expand_path('../../../..', __dir__)
+        offenders = Dir[File.join(root, 'stylesheets/*.css')].flat_map do |path|
+          css = File.read(path, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
+          css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
+            next unless selector.include?('vs-kindle')
+
+            "#{File.basename(path)}: #{selector.strip}" if selector.include?(':is(') || body.include?('var(')
+          end
+        end
+
+        assert_empty offenders
+      end
+
+      # Previewer 4 は ::before の content を本文へ差し込むので、実体マーカーと二重にならないよう止める
+      def test_should_suppress_generated_list_markers_for_kindle
+        css = File.read(File.expand_path('../../../../stylesheets/chapter-common.css', __dir__), encoding: 'utf-8')
+
+        assert_match(/body\.vs-kindle ol\.vs-fancy-list > li::before,\s*body\.vs-kindle \.outline-list ol > li::before \{\s*content: none;/, css)
+      end
+
+      # Techbook が空にした h3 の印を文字へ戻す。印が残っている本（Techbook でない）は触らない
+      def test_should_restore_h3_marker_only_when_empty
+        html = '<html><body><h3><span class="subsection-marker"></span>空</h3>' \
+               '<h3><span class="subsection-marker">★</span>残る</h3></body></html>'
+        doc = process(html) { |files| Builder.restore_h3_markers_for_kindle!(files) }
+
+        marker = Common::CONFIG.theme.markers.h3 || '♣'
+        assert_equal [marker, '★'], doc.css('span.subsection-marker').map(&:text)
+      end
+
       # 数式画像に px の width/height 属性が付与される（Kindle が em を無視しても本文相当に固定）
       def test_should_add_px_attributes_to_math_for_kindle
         html = '<html><body><p>' \
