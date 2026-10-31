@@ -60,7 +60,7 @@ module VivlioStarter
       %i[book author]                                 => Spec[authored: "著者名"],
       %i[book language]                               => Spec[default: "ja"],
       %i[book isbn]                                   => Spec[default: ""],
-      %i[book cover]                                  => Spec[default: "master"],
+      %i[book cover]                                  => Spec[default: "light"],
 
       # ------- project -------
       %i[project name]                                => Spec[authored: "mybook"],

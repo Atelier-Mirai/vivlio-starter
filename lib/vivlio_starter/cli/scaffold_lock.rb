@@ -36,6 +36,13 @@ module VivlioStarter
       # ディレクトリは最上位名で判定する。
       AUTHOR_DATA_DIRS = %w[contents images covers codes data].freeze
 
+      # 著者データ領域の中にある同梱素材。著者が編集する前提のファイルではないので雛形が管理し、
+      # 新しく足した表紙のデザイン（covers/bundled/floral.svg など）も vs upgrade で既存の本へ届ける。
+      # 著者が手を入れていれば、他の雛形ファイルと同じく三者比較で確認を求める。
+      # 扉絵・装飾画像の stylesheets/images/bundled/ とテーマ色の stylesheets/theme.css は
+      # 著者データ領域の外にあるので、ここに書かなくても届く。
+      SCAFFOLD_MANAGED_DIRS = %w[covers/bundled/ covers/templates/].freeze
+
       # 著者データ領域のうち個別ファイル指定分。
       # 辞書系 4 点は index:apply / vs lint --register が書き込む「著者の辞書」
       # であり、雛形サンプルで上書きすると著者データを破壊するため一律保護する。
@@ -55,6 +62,8 @@ module VivlioStarter
       # 著者データ領域（一律 upgrade 対象外）かどうか
       # @param relative [String] プロジェクトルートからの相対パス
       def author_data?(relative)
+        return false if relative.start_with?(*SCAFFOLD_MANAGED_DIRS)
+
         top = relative.split('/').first
         AUTHOR_DATA_DIRS.include?(top) || AUTHOR_DATA_FILES.include?(relative)
       end

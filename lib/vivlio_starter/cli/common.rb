@@ -1143,6 +1143,10 @@ module VivlioStarter
 
         "config/catalog.yml の#{volume.name}の cover"
       end
+      # master の画像が足りないときの次の一手。雛形は判型ごとに covers/templates/ にある
+      def master_cover_guidance
+        "→ covers/templates/ の雛形を下敷きに画像を作って置くか、#{cover_setting_label} を light にしてください"
+      end
       def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
       def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
@@ -1173,8 +1177,7 @@ module VivlioStarter
       end
 
       # カバー設定のバリデーション。
-      # book.cover は既定値 master を持つため「未設定」の状態は存在しない
-      # （従来も cover.rb が `|| 'master'` で補っており、実際の出力は同じだった）。
+      # book.cover は既定値 light を持つため「未設定」の状態は存在しない。
       # 画像が足りない場合は下の存在チェックが具体的に指摘する。
       def validate_cover_settings
         theme = cover_theme
@@ -1182,16 +1185,14 @@ module VivlioStarter
         # 標準テーマの場合は有効
         return true if %w[light dark].include?(theme)
 
-        # masterテーマは特別扱い（既存のmaster.pngファイルを使用）
+        # masterテーマは特別扱い（既存のmaster.pngファイルを使用）。片面だけでも通す。
+        # Re:VIEW Starter の本は裏表紙が無いことが多く（vs import）、ここで止めると
+        # 取り込めた表紙まで本から消える。足りない面は check_master_files が知らせる。
         if theme == 'master'
-          front_path = File.join(covers_dir, "frontcover_#{theme}.png")
-          back_path  = File.join(covers_dir, "backcover_#{theme}.png")
+          return true if %w[front back].any? { File.exist?(File.join(covers_dir, "#{it}cover_#{theme}.png")) }
 
-          unless File.exist?(front_path) && File.exist?(back_path)
-            log_error("マスター画像 '#{theme}' のPNGファイルが見つかりません")
-            return false
-          end
-          return true
+          log_error("マスター画像 '#{theme}' のPNGファイルが見つかりません", detail: master_cover_guidance)
+          return false
         end
 
         # カスタムテーマの場合は命名規則をチェック
@@ -1231,7 +1232,7 @@ module VivlioStarter
                       :appendix_template_path, :postface_template_path,
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
-                      :cover_theme, :cover_setting_label, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
+                      :cover_theme, :cover_setting_label, :master_cover_guidance, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,

@@ -164,7 +164,7 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | 章が足りない | `catalog.yml` に載っていない | 取り込みたい章を `catalog.yml` へ追加してから実行する |
 | 会話に話者の色が付かない | `book.yml` に話者が未登録 | 🟡 が挙げた話者キーを `book.yml` の `characters` に登録する |
 | 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
-| 裏表紙が雛形の見本画像のまま | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を自分の画像に置き換える |
+| 本に裏表紙が付かない | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を置く（雛形は `covers/templates/`） |
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
 | `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
 

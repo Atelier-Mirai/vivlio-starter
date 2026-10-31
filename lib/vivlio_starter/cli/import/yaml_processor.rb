@@ -117,9 +117,8 @@ module VivlioStarter
         # 取り込んだ表紙を book.yml に反映する。
         #
         # 表紙は covers/frontcover_master.png・backcover_master.png として取り込むので、
-        # book.yml 側も master テーマを指している必要がある。master は既定値でもあるが、
-        # 著者が light/dark を選んだプロジェクトへ取り込むと持ち込んだ表紙が
-        # 黙って無視されるため、ここで明示的に書く。
+        # book.yml 側も master テーマを指している必要がある。既定の light のままだと
+        # 持ち込んだ表紙が黙って無視されるため、ここで明示的に書く。
         #
         # @return [Boolean] 更新成功時 true
         def use_master_cover!

@@ -17,6 +17,9 @@
 #     {{bg-from}}, {{bg-to}}
 #   文字:
 #     {{title}}, {{subtitle}}, {{author}}, {{series}}, {{release}}
+#   文字に応じて変わる値:
+#     {{title-scale}}, {{subtitle-scale}} … 欄に収まる縮小率（収まるなら 1）
+#     {{author-mark}} … 著者があれば「[著]」、空なら空文字
 #
 #   同梱テンプレートは light の値を持つ。dark ではパレットを差し替える。
 #   著者の SVG には文字だけを当てる（色は著者が決めているため）。
@@ -69,6 +72,17 @@ module VivlioStarter
           '--vs-icon-color' => '#5b9ef5'
         }.freeze
 
+        # 同梱テンプレートの題名と副題の字の設定（frontcover.svg の font-size・letter-spacing）。
+        TITLE_STYLE = { font_size: 38, letter_spacing: 2 }.freeze
+        SUBTITLE_STYLE = { font_size: 24, letter_spacing: 4 }.freeze
+
+        # 題名と副題の欄の幅（viewBox の単位）。テンプレートの金の罫線の幅で、
+        # 電子書籍で左右が切り落とされても残る。
+        TEXT_FIELD_WIDTH = 495.0
+
+        # 欧文の平均の字幅（em）。少し広めに見積もり、はみ出すより縮む側へ倒す。
+        LATIN_WIDTH_EM = 0.6
+
         # 片面の SVG から、targets に応じた成果物を作る。
         #   pdf         → <side>cover_<theme>_<size>_rgb.pdf（仕上がりサイズ）
         #   print_pdf   → <side>cover_<theme>_<size>_cmyk.pdf（塗り足し・トンボ付き）→ 直下へ複製
@@ -105,9 +119,10 @@ module VivlioStarter
         # 生成物をソースと取り違えるため（generated-assets 移設仕様 §3.5）。
         # rsvg-convert は CSS の var() を読まないので、どちらの SVG も変数を展開してから書く。
         def render_svg(source, side, theme, bundled:)
-          svg = File.read(source, encoding: 'utf-8')
+          # コメントを先に落とす。残すと説明の中の {{title}} に書名が入り、`--` を含む書名で XML が壊れる
+          svg = File.read(source, encoding: 'utf-8').gsub(/<!--.*?-->/m, '')
           svg = apply_palette(svg, theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE) if bundled
-          svg = expand_css_custom_properties(apply_text_replacements(svg))
+          svg = replace_spaces_with_gaps(expand_css_custom_properties(apply_text_replacements(svg)))
 
           output = File.join(Common.cover_cache_dir, bundled ? "#{side}cover_#{theme}.svg" : "#{side}cover_#{theme}_rendered.svg")
           FileUtils.mkdir_p(File.dirname(output))
@@ -131,14 +146,42 @@ module VivlioStarter
         # SVG の <text> には文字しか入れられないので、扉で改行させる <br> などのタグは外し
         # （Common.plain_title）、& や < は文字参照にする（そのまま入ると SVG が壊れる）
         def apply_text_replacements(svg)
+          title = Common.plain_title(Common::CONFIG.dig(:book, :main_title)).to_s
+          subtitle = Common.plain_title(Common::CONFIG.dig(:book, :subtitle)).to_s
+          author = Common::CONFIG.dig(:book, :author).to_s
           placeholders = {
-            '{{title}}' => Common.plain_title(Common::CONFIG.dig(:book, :main_title)),
-            '{{subtitle}}' => Common.plain_title(Common::CONFIG.dig(:book, :subtitle)),
-            '{{author}}' => Common::CONFIG.dig(:book, :author),
+            '{{title}}' => title,
+            '{{title-scale}}' => fit_scale(title, **TITLE_STYLE),
+            '{{subtitle}}' => subtitle,
+            '{{subtitle-scale}}' => fit_scale(subtitle, **SUBTITLE_STYLE),
+            '{{author}}' => author,
+            '{{author-mark}}' => author.strip.empty? ? '' : '[著]',
             '{{series}}' => Common::CONFIG.dig(:book, :series),
             '{{release}}' => Common::CONFIG.dig(:book, :release)
           }
           placeholders.reduce(svg) { |result, (placeholder, value)| result.gsub(placeholder, CGI.escapeHTML(value.to_s)) }
+        end
+
+        # 文字が欄に収まる縮小率を返す。折り返すと下の著者の行とぶつかるので、1 行のまま縮める。
+        # rsvg-convert は textLength を読まないため、字幅を見積もって transform の scale に渡す。
+        def fit_scale(text, font_size:, letter_spacing:)
+          width = text.each_char.sum { ((it.ascii_only? ? LATIN_WIDTH_EM : 1.0) * font_size) + letter_spacing }
+          [TEXT_FIELD_WIDTH / width, 1].min.round(3)
+        end
+
+        # <text> の中の語の間の空白を、tspan の dx の隙間に置き換える。
+        # 空白の字（半角・全角とも）は rsvg-convert の PDF で Type 3 になる。何も印字しない字のために
+        # Type 3 を残さないよう、空白を字として書かずに同じ幅だけ語を離す。
+        def replace_spaces_with_gaps(svg)
+          svg.gsub(%r{<text\b.*?</text>}m) do |text|
+            text.gsub(/>[^<]+</) do |node| # タグの間の文字だけ。属性の空白には触れない
+              node.gsub(/(?<=[^\p{Zs}\s>])(\p{Zs}+)([^\p{Zs}\s<]+)/) do
+                gap, word = ::Regexp.last_match.captures
+                em = gap.each_char.sum { it == "　" ? 1.0 : 0.3 }
+                %(<tspan dx="#{em.round(1)}em">#{word}</tspan>)
+              end
+            end
+          end
         end
 
         # :root で定義した CSS カスタムプロパティを、var(--xxx) の所へ展開する。

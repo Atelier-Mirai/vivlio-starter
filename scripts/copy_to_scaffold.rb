@@ -57,6 +57,11 @@ if Dir.exist?(covers_dir)
                                                       .reject { keep_exts.include?(File.extname(it).downcase) }
   removed.each { FileUtils.rm_f(it) }
   puts "PRUNE covers/ の開発ローカルファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
+
+  # 本書の表紙は配らない。著者の本に他人の表紙が載るだけで、gem も重くなる。
+  guide_covers = Dir.glob(File.join(covers_dir, '*cover_guide.*'))
+  guide_covers.each { FileUtils.rm_f(it) }
+  puts "PRUNE 本書の表紙 #{guide_covers.size} 件を除去"
 end
 
 # ================================================================
@@ -155,14 +160,18 @@ if File.exist?(book_yml)
   #                   雛形は閲覧用 PDF だけ（最初の targets の行）を有効にして配る（改善案 #80）
   #   *_pagebreak  … 本書はページ数を抑えるため節の改ページと改丁をやめているが、
   #                   新しく始める本には組版として整った側を渡す
-  #   index_glossary.exclude_chapters … 本書は見本の 97 章を索引から外している。
+  #   cover        … 本書の guide は配らない。新しく始める本には、書名と著者名が
+#                   そのまま入る light を渡す
+#   index_glossary.exclude_chapters … 本書は見本の 97 章を索引から外している。
   #                   章立ては本ごとに違うので、雛形は何も外さない [] から
   #   page.use     … 本書は大部なので A4（a4_custom）で組んでいるが、同人誌で
   #                   一般的なのは B5。判型は本の性格そのものなので既定は動かさない
   #                   （a4_custom の中身は page_presets.yml ごと配る。大著を書く人の
   #                     叩き台になるよう、行送りを広げた理由もコメントで残してある）
   content.gsub!(/^(\s+version:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"0.1.0"\3')
-  # `use:` は metrics にもあるので、判型プリセットの綴りに限って当てる
+  content.sub!(/^ +cover: guide.*\n/, '')
+content.sub!(/^( +)# cover: light/, '\1cover: light')
+# `use:` は metrics にもあるので、判型プリセットの綴りに限って当てる
   content.gsub!(/^(\s+use:\s*)(?:a4|a5|b5)_\w+(\s*#.*)?$/, '\1b5_standard\2')
   content.gsub!(/^(\s+preface_color:).*$/, '\1 # 前書き/後書きの色（例: teal）。空欄なら color と同じ色')
   content.gsub!(/^(\s+appendix_color:).*$/, '\1 # 付録の色（例: cyan）。空欄なら color と同じ色')

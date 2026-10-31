@@ -328,8 +328,7 @@ module VivlioStarter
 
       # 表紙 1 面を取り込む。
       #
-      # 取り込めなかった面は雛形の見本画像がそのまま本の表紙になってしまうので、
-      # 差し替え先のパスを添えて知らせる。
+      # 取り込めなかった面は本から欠けるので、画像を置く場所を添えて知らせる。
       #
       # @return [Boolean] 取り込めたら true
       def import_cover_side!(config_starter, side)
@@ -339,8 +338,8 @@ module VivlioStarter
         )
         return true if imported
 
-        Common.log_warn("  #{side[:label]}は雛形の見本画像のままです。",
-                        detail: "対処: covers/#{side[:master]} を自分の#{side[:label]}画像に置き換えてください。")
+        Common.log_warn("  #{side[:label]}は取り込みませんでした。",
+                        detail: "対処: 自分の#{side[:label]}画像を covers/#{side[:master]} に置いてください（雛形は covers/templates/）。")
         false
       end
     end

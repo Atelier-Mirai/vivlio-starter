@@ -192,6 +192,46 @@ module VivlioStarter
         end
       end
 
+      # --- 同梱素材: 表紙のテンプレート・雛形・扉絵・テーマ色は更新し、新しいファイルも届ける ---
+      def test_should_deliver_bundled_assets_to_existing_projects
+        within_project do |scaffold|
+          write('.', 'covers/bundled/frontcover.svg', "<svg>旧</svg>\n")
+          write('.', 'stylesheets/theme.css', ":root { --accent-red: #c00; }\n")
+          write('.', 'covers/frontcover_master.png', "著者の表紙\n")
+          write_lock
+
+          write(scaffold, 'covers/bundled/frontcover.svg', "<svg>新</svg>\n")
+          write(scaffold, 'covers/bundled/floral.svg', "<svg>新しい表紙</svg>\n")
+          write(scaffold, 'covers/templates/frontcover_b5.png', "雛形\n")
+          write(scaffold, 'stylesheets/images/bundled/nadeshiko.webp', "新しい扉絵\n")
+          write(scaffold, 'stylesheets/theme.css', ":root { --accent-red: #c00; --accent-wine: #722; }\n")
+          write(scaffold, 'covers/frontcover_master.png', "雛形の見本\n")
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_equal "<svg>新</svg>\n", File.read('covers/bundled/frontcover.svg')
+          assert_equal "<svg>新しい表紙</svg>\n", File.read('covers/bundled/floral.svg')
+          assert_equal "雛形\n", File.read('covers/templates/frontcover_b5.png')
+          assert_equal "新しい扉絵\n", File.read('stylesheets/images/bundled/nadeshiko.webp')
+          assert_includes File.read('stylesheets/theme.css'), '--accent-wine'
+          assert_equal "著者の表紙\n", File.read('covers/frontcover_master.png'), 'covers/ 直下は著者のもの'
+        end
+      end
+
+      # --- 同梱素材に著者が手を入れていれば、確認なしには上書きしない ---
+      def test_should_not_overwrite_edited_bundled_assets_without_asking
+        within_project do |scaffold|
+          write('.', 'covers/bundled/frontcover.svg', "<svg>著者の修正</svg>\n")
+          write_lock(scaffold_overrides: { 'covers/bundled/frontcover.svg' => "<svg>旧</svg>\n" })
+          write(scaffold, 'covers/bundled/frontcover.svg', "<svg>新</svg>\n")
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(%r{競合\s+covers/bundled/frontcover\.svg}, out)
+          assert_equal "<svg>著者の修正</svg>\n", File.read('covers/bundled/frontcover.svg')
+        end
+      end
+
       # --- 著者辞書が無い場合: 雛形サンプルではなく「空の辞書」を追加する ---
       def test_should_add_empty_dictionary_when_author_dictionary_is_missing
         within_project do |scaffold|

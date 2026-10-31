@@ -382,8 +382,8 @@ module VivlioStarter
 
       PROJECT_ROOT = File.expand_path('../../../../..', __dir__)
       FIXTURE_COVERS_DIR = File.join(PROJECT_ROOT, 'covers')
-      FRONT_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'frontcover_master.png')
-      BACK_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'backcover_master.png')
+      FRONT_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'frontcover_guide.png')
+      BACK_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'backcover_guide.png')
     end
 
     # Common::Config カバー設定機能のテスト
@@ -419,6 +419,62 @@ module VivlioStarter
         svg = CoverCommands::SvgCover.apply_text_replacements("<text>{{title}}</text><text>{{subtitle}}</text>")
 
         assert_equal "<text>Tom &amp; Jerry</text><text>グリッドとやさしい基本</text>", svg
+      end
+
+      # 長い題名は 1 行のまま欄に収まるよう縮める。短い題名はそのままの大きさで組む
+      def test_should_scale_down_long_titles_to_fit_the_field
+        svg_cover = CoverCommands::SvgCover
+        style = svg_cover::TITLE_STYLE
+
+        assert_equal 1, svg_cover.fit_scale('新しい本', **style)
+        assert_equal 1, svg_cover.fit_scale('', **style)
+        assert_in_delta 495.0 / (19 * 40), svg_cover.fit_scale('関数型プログラミングの基礎から応用まで', **style), 0.001
+      end
+
+      # 著者が空の本（vs new --yes など）で「[著]」だけが残らないようにする
+      def test_should_show_author_mark_only_when_author_is_present
+        template = '<tspan>{{author-mark}}</tspan><tspan>{{author}}</tspan>'
+        write_book('author' => '')
+        assert_equal '<tspan></tspan><tspan></tspan>', CoverCommands::SvgCover.apply_text_replacements(template)
+
+        write_book('author' => '山田太郎')
+        assert_equal '<tspan>[著]</tspan><tspan>山田太郎</tspan>', CoverCommands::SvgCover.apply_text_replacements(template)
+      end
+
+      # 空白の字は rsvg-convert の PDF で Type 3 になるので、語を tspan の dx で離す
+      def test_should_replace_spaces_between_words_with_gaps
+        svg = CoverCommands::SvgCover.replace_spaces_with_gaps(<<~SVG)
+          <rect x="1" y="2"/>
+          <text x="1" y="2">Vivlio Starter 実践</text>
+          <text x="3"><tspan>山田　太郎</tspan></text>
+        SVG
+
+        assert_includes svg, '<rect x="1" y="2"/>', 'text の外には触れない'
+        assert_includes svg, '<text x="1" y="2">Vivlio<tspan dx="0.3em">Starter</tspan><tspan dx="0.3em">実践</tspan></text>'
+        assert_includes svg, '<tspan>山田<tspan dx="1.0em">太郎</tspan></tspan>', '全角の空白は 1 字分あける'
+      end
+
+      # 説明のコメントに書名が入ると、`--` を含む書名で XML が壊れて表紙を作れない
+      def test_should_not_put_titles_into_svg_comments
+        write_book('main_title' => 'C--とRuby')
+        File.write('source.svg', '<svg><!-- 書名は {{title}} --><text>{{title}}</text></svg>')
+
+        output = CoverCommands::SvgCover.render_svg('source.svg', 'front', 'floral', bundled: false)
+
+        assert_equal '<svg><text>C--とRuby</text></svg>', File.read(output, encoding: 'utf-8')
+      end
+
+      # 雛形の画像は判型の仕上がりの画素数で配る（scripts/make_cover_templates.rb の写しのずれに気づく）
+      def test_should_provide_cover_templates_for_each_page_size
+        templates = File.expand_path('../../../covers/templates', __dir__)
+
+        CoverCommands::SIZES.each do |size, spec|
+          %w[front back].each do |side|
+            name = "#{side}cover_#{size}.png"
+            width, height = File.binread(File.join(templates, name), 24).unpack('@16NN')
+            assert_equal [spec[:width], spec[:height]], [width, height], name
+          end
+        end
       end
 
       # lightテーマ設定が正しく読み込めることを確認
@@ -553,8 +609,8 @@ module VivlioStarter
         end
       end
 
-      # カバー設定バリデーション：設定未指定が無効であることを確認
-      def test_should_fail_validation_when_cover_setting_missing
+      # カバー設定バリデーション：設定未指定なら既定の light で通ることを確認
+      def test_should_use_light_theme_when_cover_setting_missing
         config_content = {
           'output' => {
             'pdf' => { 'combined' => true }
@@ -562,16 +618,43 @@ module VivlioStarter
         }
         setup_config_file(config_content)
         Common.reload_configuration!
-        
-        # book.cover を書かなくても既定の master が使われる（未設定という状態は無い）
-        assert_equal 'master', Common.cover_theme
 
-        # master の画像が無いプロジェクトなので、存在チェックで弾かれる
-        result = Common.validate_cover_settings
+        # book.cover を書かなくても既定の light が使われる（未設定という状態は無い）
+        assert_equal 'light', Common.cover_theme
+        assert Common.validate_cover_settings
+      end
+
+      # 片面しか無い本（裏表紙の無い Re:VIEW Starter の本を取り込んだときなど）でも、ある面は組む
+      def test_should_accept_master_theme_with_one_side
+        setup_basic_config('master')
+        Common.reload_configuration!
+        create_dummy_png('covers/frontcover_master.png')
+
+        assert Common.validate_cover_settings, '片面でもあれば有効であるべきです'
+      end
+
+      # master の画像が無いときは、雛形の場所と light へ戻す手を案内する
+      def test_should_guide_to_templates_when_master_images_are_missing
+        setup_basic_config('master')
+        Common.reload_configuration!
+
+        result = nil
+        out, err = capture_io { result = Common.validate_cover_settings }
+
         refute result, 'master 画像が無い場合は無効であるべきです'
+        assert_match(%r{covers/templates/}, out + err)
+        assert_match(/book\.cover を light に/, out + err)
       end
 
       private
+
+      # book.yml の book: を書き換えて読み直す
+      def write_book(values)
+        config = YAML.load_file('config/book.yml')
+        config['book'] = config.fetch('book', {}).merge(values)
+        File.write('config/book.yml', config.to_yaml)
+        Common.reload_configuration!(silent: true)
+      end
 
       # テスト実行前に必要なディレクトリと設定ファイルを作成
       def setup_test_environment
@@ -707,7 +790,8 @@ module VivlioStarter
           FileUtils.mkdir_p(covers_dir)
           create_dummy_master_files(covers_dir)
 
-          CoverCommands.generate!(targets: ['print_pdf'], page_size: :b5)
+          # Common::CONFIG はルートの book.yml のままなので、テーマだけを固定する
+          Common.stub(:cover_theme, 'master') { CoverCommands.generate!(targets: ['print_pdf'], page_size: :b5) }
 
           # 生成は生成キャッシュ・入稿用の成果品はルート直下へ複製（移設仕様 §2/§3.4）
           assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_b5_cmyk.pdf')),

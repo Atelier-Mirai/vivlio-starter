@@ -76,7 +76,7 @@ module VivlioStarter
           assert_equal ['covers', 'hyoshi.pdf', FRONT], convert_args
         end
 
-        # 裏表紙も同じ経路で取り込む（雛形の見本 backcover_master.png を置き換える）
+        # 裏表紙も同じ経路で取り込む
         def test_import_master_cover_handles_back_cover
           starter_dir = File.join(@tmpdir, 'starter')
           FileUtils.mkdir_p(File.join(starter_dir, 'images'))

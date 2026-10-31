@@ -191,8 +191,9 @@ module VivlioStarter
         front_exists = File.exist?(frontcover)
         back_exists = File.exist?(backcover)
 
-        Common.log_warn("表紙マスターが見つかりません: #{frontcover}") unless front_exists
-        Common.log_warn("裏表紙マスターが見つかりません: #{backcover}") unless back_exists
+        guidance = Common.master_cover_guidance
+        Common.log_warn("表紙マスターが見つかりません: #{frontcover}", detail: guidance) unless front_exists
+        Common.log_warn("裏表紙マスターが見つかりません: #{backcover}", detail: guidance) unless back_exists
 
         front_exists || back_exists
       end

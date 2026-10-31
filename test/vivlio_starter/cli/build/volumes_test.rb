@@ -716,6 +716,7 @@ module VivlioStarter
                            .sub("    id: lower\n", "    id: lower\n    cover: lower\n")
           with_project(catalog:, book_yml: BOOK_YML) do
             original = Common::CONFIG
+            book_cover = Common.cover_theme
             made = []
             record = -> { made << [Volumes.current&.id, Common.cover_theme, Common.generate_cover_output_filename('front')] }
 
@@ -727,7 +728,7 @@ module VivlioStarter
               end
             end
 
-            assert_equal [['upper', 'upper'], ['middle', 'master'], ['lower', 'lower'], ['middle', 'master'], [nil, 'master']],
+            assert_equal [['upper', 'upper'], ['middle', book_cover], ['lower', 'lower'], ['middle', book_cover], [nil, book_cover]],
                          made.map { it.first(2) }, '巻の cover、書かない巻と合本は book.yml の cover'
             assert_match(/_lower_frontcover/, made[2].last)
             refute_match(/_(upper|middle|lower)_/, made.last.last, '合本の表紙の名前に巻の id は入らない')

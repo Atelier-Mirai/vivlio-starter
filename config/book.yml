@@ -40,9 +40,10 @@ book:
   isbn: "" # 任意（独自ISBN取得の場合、EPUB の識別子 urn:isbn に使用。Kindle は ASIN 自動割り当て）
 
   # ------- 表紙・裏表紙設定 -------
-  cover: master  # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
-  # cover: light # 標準添付 light 表紙・裏表紙を指定
+  cover: guide   # この本の表紙（covers/frontcover_guide.png, backcover_guide.png）
+  # cover: light # 表紙・裏表紙のテーマ。light / dark は標準添付、master は covers/ の画像
   # cover: dark  # 標準添付 dark 表紙・裏表紙を指定
+  # cover: master # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定。雛形は covers/templates/
 
 # ======= プロジェクト情報 =======
 project:

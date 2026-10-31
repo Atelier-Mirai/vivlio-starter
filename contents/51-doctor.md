@@ -210,8 +210,10 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 :::{.note}
 **原稿と辞書は構造的に安全です**
 
-`contents/`・`images/`・`covers/`・`codes/`・`data/` と、`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを削除し、新しいキーを追加します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
+`contents/`・`images/`・`covers/`（`bundled/`・`templates/` を除く）・`codes/`・`data/` と、`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを削除し、新しいキーを追加します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
 :::
+
+同梱の素材は著者データ領域の外にあり、新しい雛形に合わせて更新されます。表紙のテンプレート（`covers/bundled/`）、自作の表紙の雛形（`covers/templates/`）、扉絵・装飾画像（`stylesheets/images/bundled/`）、テーマ色（`stylesheets/theme.css`）です。新しく同梱された素材も追加されます。
 
 著者が雛形のファイルを変更したかどうかは、`vs new` が作る `config/scaffold.lock` で判定します。このファイルは手で編集せず、Git にコミットしてください。
 
