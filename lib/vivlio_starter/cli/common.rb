@@ -919,6 +919,21 @@ module VivlioStarter
         Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
       end
 
+      # Vivliostyle CLI を実行し、所要時間を記録する。
+      # `--log=debug` のときだけ出力を通す。組版エンジン側のエラーを追うのはデバッグそのものなので、
+      # ログレベルに預ける。
+      # @param command [String] 実行するコマンド
+      # @param label [String] ログの見出し（pdf / epub）
+      # @return [Boolean, nil] system の結果
+      def run_vivliostyle_build(command, label:)
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        success = current_log_level < 3 ? system(command, out: File::NULL, err: File::NULL) : system(command)
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+        log_info(format('[%<label>s] vivliostyle build 所要時間: %<elapsed>.2fs', label:, elapsed:))
+        record_vivliostyle_build(elapsed, current_step_label)
+        success
+      end
+
       def record_vivliostyle_build(duration, label = nil)
         timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] ||= []
         label_text = label.to_s.empty? ? 'Vivliostyle build' : label.to_s

@@ -125,27 +125,7 @@ module VivlioStarter
 
         # Vivliostyle CLI を実行して PDF を生成する
         def execute_build
-          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
-          @build_success = if quiet_mode?
-                             system(build_command, out: File::NULL, err: File::NULL)
-                           else
-                             system(build_command)
-                           end
-
-          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
-          Common.log_info(format('[pdf] vivliostyle build 所要時間: %.2fs', elapsed))
-          Common.record_vivliostyle_build(elapsed, Common.current_step_label)
-        end
-
-        # quiet モードが有効かどうか返す
-        # （reload_configuration! 後の stale 参照を避けるため CONFIG は都度参照する）
-        def quiet_mode?
-          # `--log=debug` のときだけ vivliostyle の出力を通す。
-          # book.yml の vivliostyle.quiet は 2026-08-08 に廃止した（既定 true で誰も
-          # false にせず、ENV との OR で結局いつも true ＝ 出力を見る手段が無かった）。
-          # 組版エンジン側のエラーを追うのはデバッグそのものなので、ログレベルに預ける。
-          Common.current_log_level < 3
+          @build_success = Common.run_vivliostyle_build(build_command, label: 'pdf')
         end
 
         # 実行するビルドコマンド文字列を組み立てる。
