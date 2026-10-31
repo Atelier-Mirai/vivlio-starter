@@ -14,8 +14,8 @@ module VivlioStarter
       module_function
 
       def execute_convert(command_or_context, tokens_or_entries)
-        ctx = normalized_context(command_or_context)
-        enable_verbose(ctx)
+        ctx = Common.normalized_context(command_or_context)
+        Common.enable_verbose(ctx)
 
         # 中間 .md / .html はワークスペースの html/ に置かれる（P4 §3.4-1）
         base_dir = Common::BUILD_HTML_DIR
@@ -68,28 +68,6 @@ module VivlioStarter
       end
       module_function :report_conversion_failures
 
-      def normalized_context(command_or_ctx)
-        return command_or_ctx if command_or_ctx.is_a?(Hash)
-
-        { options: options_of(command_or_ctx) }
-      end
-      module_function :normalized_context
-
-      def enable_verbose(command_or_ctx)
-        ENV['VERBOSE'] = '1' if options_of(command_or_ctx)[:verbose]
-      end
-      module_function :enable_verbose
-
-      def options_of(command_or_ctx)
-        if command_or_ctx.is_a?(Hash)
-          command_or_ctx[:options] || {}
-        elsif command_or_ctx.respond_to?(:options)
-          command_or_ctx.options || {}
-        else
-          {}
-        end
-      end
-      module_function :options_of
 
       # Entry 配列または basename 配列から Markdown ファイルパス配列を解決する
       # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]

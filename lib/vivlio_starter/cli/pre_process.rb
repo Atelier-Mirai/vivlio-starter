@@ -60,8 +60,8 @@ module VivlioStarter
       # @param command_or_ctx [Hash, Object] コマンドコンテキスト
       # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
       def execute_pre_process(command_or_ctx, entries)
-        ctx = normalized_context(command_or_ctx)
-        enable_verbose(ctx)
+        ctx = Common.normalized_context(command_or_ctx)
+        Common.enable_verbose(ctx)
 
         entries = resolve_entries(entries)
 
@@ -83,29 +83,6 @@ module VivlioStarter
       end
       module_function :execute_cross_references
 
-      def normalized_context(command_or_ctx)
-        return command_or_ctx if command_or_ctx.is_a?(Hash)
-
-        { options: options_of(command_or_ctx) }
-      end
-      module_function :normalized_context
-
-      def enable_verbose(command_or_ctx)
-        opts = options_of(command_or_ctx)
-        ENV['VERBOSE'] = '1' if opts[:verbose]
-      end
-      module_function :enable_verbose
-
-      def options_of(command_or_ctx)
-        if command_or_ctx.is_a?(Hash)
-          command_or_ctx[:options] || {}
-        elsif command_or_ctx.respond_to?(:options)
-          command_or_ctx.options || {}
-        else
-          {}
-        end
-      end
-      module_function :options_of
 
       # Entry 配列を解決する。空の場合は全ファイルを TokenResolver で解決。
       # @param entries [Array<TokenResolver::Entry>]

@@ -908,6 +908,27 @@ module VivlioStarter
         generate_output_filename(target, suffix: suffix)
       end
 
+      # コマンドの実体か、コンテキストの Hash かを問わず、{ options: … } の形にそろえる（前処理・変換）
+      def normalized_context(command_or_ctx)
+        return command_or_ctx if command_or_ctx.is_a?(Hash)
+
+        { options: options_of(command_or_ctx) }
+      end
+
+      def enable_verbose(command_or_ctx)
+        ENV['VERBOSE'] = '1' if options_of(command_or_ctx)[:verbose]
+      end
+
+      def options_of(command_or_ctx)
+        if command_or_ctx.is_a?(Hash)
+          command_or_ctx[:options] || {}
+        elsif command_or_ctx.respond_to?(:options)
+          command_or_ctx.options || {}
+        else
+          {}
+        end
+      end
+
       # ================================================================
       # Build Timing & Step Tracking
       # ================================================================
