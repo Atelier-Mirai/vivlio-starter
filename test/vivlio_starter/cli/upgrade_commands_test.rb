@@ -31,6 +31,7 @@
 # ================================================================
 
 require 'test_helper'
+require 'rbconfig'
 require 'tmpdir'
 require 'fileutils'
 require 'stringio'
@@ -370,6 +371,31 @@ module VivlioStarter
       # ==============================================================
 
       GEM_LATEST_URL = format(DoctorCommands::ToolUpgrader::RUBYGEMS_LATEST_URL, 'vivlio-starter')
+
+      # 起動の入口で止まらないこと（処理を直接呼ぶ下のテストでは確かめられない）
+      def test_should_start_outside_a_project_from_the_command_line
+        repo = File.expand_path('../../..', __dir__)
+        Dir.mktmpdir do |dir|
+          out, status = Open3.capture2e(RbConfig.ruby, '-I', "#{repo}/lib", "#{repo}/bin/vs", 'upgrade', '--help', chdir: dir)
+
+          assert_predicate status, :success?, out
+          assert_includes out, '--skip-self-update'
+          refute_includes out, '必須設定ファイルが見つかりません'
+        end
+      end
+
+      # 省くのは本の外だけ。本の中で book.yml が壊れていたら、入口の案内で止める
+      def test_should_need_the_project_check_only_inside_a_book
+        Dir.mktmpdir do |dir|
+          Dir.chdir(dir) do
+            assert_predicate SamovarCommands::UpgradeCommand.new([]), :projectless?
+
+            write('.', 'config/book.yml', "book: [\n")
+
+            refute_predicate SamovarCommands::UpgradeCommand.new([]), :projectless?
+          end
+        end
+      end
 
       # --- プロジェクト外: 雛形追従だけスキップされ、ツール更新は実行される ---
       def test_should_skip_scaffold_sync_outside_project_but_still_run_tool_upgrade

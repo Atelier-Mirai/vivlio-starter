@@ -22,6 +22,12 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
+        # プロジェクト文脈（config/book.yml）なしで実行できるか。
+        # RootCommand#ensure_project_context! がこの応答を見て ensure_configured! を省く。
+        # 本の外では雛形の追従を飛ばし、本体と外部ツールだけを更新する。本の中で book.yml が
+        # 壊れているときは省かず、入口の案内（vs doctor --fix）で止める
+        def projectless? = !File.exist?(File.join('config', 'book.yml'))
+
         def call
           return print_usage if options[:help]
 
