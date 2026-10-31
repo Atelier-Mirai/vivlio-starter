@@ -25,7 +25,7 @@
 
 **`book.yml` / `catalog.yml` / `page_presets.yml` の 3 つは必須**です。
 欠けているとコマンドが起動しません。壊してしまったときは `vs doctor --fix` で
-雛形から復元できます（元のファイルは `.bak` へ退避されます）。
+雛形から復元できます（壊れたファイルは `book.yml.bak.<日時>` のような名前で残ります）。
 
 ## どこに書けばよいか
 
@@ -47,7 +47,7 @@
 書籍タイトル・著者名・判型・出力形式など、プロジェクト全体の設定を管理します。
 まずここを編集してください。
 
-先頭に【主なセクション】の目次があり、本文のセクションと同じ順に並んでいます。
+先頭にセクションの目次があり、本文のセクションと同じ順に並んでいます。
 見やすいようにコメントを付けていますので、参考にしてください。
 
 ```yaml
@@ -76,8 +76,8 @@
 
 ## 索引・用語集の辞書について
 
-`index_glossary_terms.yml` と `index_glossary_rejected.yml` は著者が選んだ用語が蓄積されていく索引・用語集の為の辞書です。
-`vs index:auto` コマンドを実行すると、`_index_glossary_review.md` が作成されますので、索引や用語集にしたい語句を編集し、`vs index:apply`** を実行してください。システムにより、`index_glossary_terms.yml` と `index_glossary_rejected.yml` が自動生成されます。
+`index_glossary_terms.yml` と `index_glossary_rejected.yml` は著者が選んだ用語が蓄積されていく索引・用語集のための辞書です。
+`vs index:auto` コマンドを実行すると、`_index_glossary_review.md` が作成されますので、索引や用語集にしたい語句を編集し、`vs index:apply` を実行してください。システムにより、`index_glossary_terms.yml` と `index_glossary_rejected.yml` が自動生成されます。
 
 消すときは `vs clean --index-dictionaries` を使ってください
 （確認プロンプトが出ます）。

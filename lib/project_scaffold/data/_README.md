@@ -10,8 +10,8 @@
 
 ```
 data/
-  books.yml           ← 参考書籍リスト
-  technical_books.yml ← 技術書リスト
+  books.yml         ← 参考書籍リスト
+  physics_books.yml ← 物理学の本のリスト
 ```
 
 ## データ用画像の配置

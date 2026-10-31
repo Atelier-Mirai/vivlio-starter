@@ -20,7 +20,7 @@ vs open quickstart        # sources/quickstart.pdf を開く
 
 ## vs pdf:read との連携
 
-`vs pdf:read` で PDF から Markdown を抽出する際の入力ファイルとして活用できます。章トークンで指定した場合は `sources/` を自動で探索するため、ファイル名のみで指定できます。
+`vs pdf:read` で PDF から Markdown を抽出する際の入力ファイルとして活用できます。`/` を含まない名前で指定すると `sources/` の中を探すため、ファイル名のみで指定できます（`.pdf` も省けます）。
 
 ```bash
 vs pdf:read reference        # sources/reference.pdf を自動探索

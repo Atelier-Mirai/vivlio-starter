@@ -12,6 +12,7 @@ covers/
   templates/
     frontcover_b5.png ← 画像を自作するときの雛形（A4・B5・A5 の表と裏・vs upgrade で更新）
   frontcover_master.png ← 著者が用意するマスター画像（任意）
+  backcover_master.png  ← 裏表紙のマスター画像（任意）
 ```
 
 ## 表紙画像の生成
@@ -29,6 +30,8 @@ vs cover    # config/book.yml の設定に従って表紙画像を生成
 1. `covers/<side>cover_<theme>.png` — 著者が用意した PNG
 2. `covers/<side>cover_<theme>.svg` — 著者が用意した SVG
 3. `covers/bundled/<side>cover.svg` — gem 同梱テンプレート（自動でテキスト置換）
+
+`master` は PNG だけを探します。SVG を使うときは、`master` 以外のテーマ名を付けてください。
 
 ## クリーンアップ
 

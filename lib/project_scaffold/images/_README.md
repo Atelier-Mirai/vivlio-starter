@@ -17,21 +17,14 @@ images/
 
 `vs create` で章を作成すると、対応する画像ディレクトリが自動生成されます。
 
+章のほかに、次の 2 つのディレクトリがあります。
+
+- `characters/` — 会話文の話者アバター（置き方は `characters/_README.md` を参照）
+- `gaiji/` — 書体にない字の形を `vs build` が保存する場所（手で置くものではありません）
+
 ## 対応フォーマット
 
-原稿には `.webp` 形式を推奨します。PNG/JPG は `vs resize` で WebP に変換できます。
-
-```bash
-vs resize                    # images/ 全体を標準品質で WebP 変換
-vs resize --high             # 高品質で変換
-vs resize --low              # 軽量品質で変換
-vs resize images/11-intro    # 特定のディレクトリのみ変換
-vs resize --delete-originals # 変換後に元の PNG/JPG を削除（確認あり）
-```
-
-引数は**ディレクトリ**を取ります（章名ではありません）。省略すると `images/` 全体が対象です。
-
-`vs build` 実行時にも自動で WebP 変換が行われます。既存の WebP がある場合はスキップされます。
+画像の形式は PNG・JPG・WebP・SVG のどれでも構いません。`vs build` が PDF・EPUB・Kindle それぞれに適した形式へ変換して使います。変換した画像は作業用のフォルダ（`.cache/`）に作られるので、`images/` に置いた画像は書き換えられません。
 
 ## 原稿での参照方法
 
@@ -41,4 +34,4 @@ vs resize --delete-originals # 変換後に元の PNG/JPG を削除（確認あ�
 ![](image.webp){width=80% align=right}
 ```
 
-画像パスは章ファイルからの相対パスで記述します。
+原稿にはファイル名だけを書きます。ビルド時に、その章のディレクトリ（`images/<章のファイル名>/`）から探します。ほかの章の画像を使うときは、`images/11-intro/logo.webp` のように `images/` から書きます。

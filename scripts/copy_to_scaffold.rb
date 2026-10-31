@@ -89,7 +89,8 @@ EMPTY_DICTIONARIES.each do |basename, content|
   puts "EMPTY config/#{basename}（索引辞書は空で配る）"
 end
 
-FILES = %w[.gitignore package.json].freeze
+# sources/ は著者の PDF を置く場所なので丸ごとは写さず、説明だけを運ぶ
+FILES = %w[.gitignore package.json sources/_README.md].freeze
 
 FILES.each do |file|
   src = File.join(ROOT, file)
