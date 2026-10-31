@@ -106,13 +106,20 @@ def count_markdown(path)
   FileStat.new(path.relative_path_from(ROOT).to_s, total, code, comment)
 end
 
-HEADER = format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
+# 全角文字は端末で 2 桁を占める。
+def display_width(text) = text.each_char.sum { it.ascii_only? ? 1 : 2 }
 
-def format_row(stat) = format('%-60s %6d %6d %6d', stat.path, stat.total, stat.code, stat.comment)
+def header(title) = format('%-*s %6s %6s %6s', PATH_WIDTH, title, 'total', 'code', 'comment')
+
+# format の幅は文字数で数えるため、パスの欄は表示幅から求めた空白で埋める。
+def format_row(stat)
+  padding = ' ' * (PATH_WIDTH - display_width(stat.path))
+  format('%s%s %6d %6d %6d', stat.path, padding, stat.total, stat.code, stat.comment)
+end
 
 def print_section(title, stats)
   puts title
-  puts HEADER
+  puts header('path')
   stats.each { puts format_row(it) }
 end
 
@@ -121,6 +128,9 @@ ruby_stats      = ROOT.glob('lib/vivlio_starter/**/*.rb').sort.map { count_ruby(
 test_stats      = ROOT.glob('test/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
 css_stats       = ROOT.glob('stylesheets/**/*.css').sort.map { count_css(it) }
 markdown_stats  = ROOT.glob('docs/**/*.md').sort.map { count_markdown(it) }
+
+# パスの欄は最も長いパスに合わせる。固定幅だと長いパスの行だけ列がはみ出す。
+PATH_WIDTH = [*ruby_stats, *test_stats, *css_stats, *markdown_stats].map { display_width(it.path) }.max
 
 # --- Phase: Per-file output ---
 print_section('Ruby files (lib/vivlio_starter/**/*.rb)', ruby_stats)
@@ -141,10 +151,10 @@ grand_size      = ruby_stats.size + test_stats.size + css_stats.size + markdown_
 grand_total     = FileStat.aggregate("Grand Total (#{grand_size} files)", [ruby_total, test_total, css_total, markdown_total])
 
 puts
-puts format('%-60s %6s %6s %6s', 'Totals', 'total', 'code', 'comment')
+puts header('Totals')
 puts format_row(ruby_total)
 puts format_row(test_total)
 puts format_row(css_total)
 puts format_row(markdown_total)
-puts '-' * 81
+puts '-' * format_row(grand_total).size
 puts format_row(grand_total)
