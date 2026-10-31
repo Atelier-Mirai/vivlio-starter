@@ -391,8 +391,39 @@ module VivlioStarter
         end
       end
 
+      # PdfPagesExporter・PdfRasterizer の入力 PDF の解決。どちらも options と cli_input を持つ
+      module InputPdf
+        private
+
+        def apply_verbose
+          ENV['VERBOSE'] = '1' if options[:verbose]
+        end
+
+        def resolve_pdf_path
+          explicit = normalize_pdf_extension(cli_input)
+          return explicit if explicit
+
+          Common.generate_output_filename('pdf')
+        end
+
+        def normalize_pdf_extension(path)
+          return nil if path.nil? || path.to_s.strip.empty?
+
+          p = path.to_s.strip
+          p.downcase.end_with?('.pdf') ? p : "#{p}.pdf"
+        end
+
+        def ensure_input_exists!(pdf_path)
+          return if File.exist?(pdf_path)
+
+          raise "入力PDFが見つかりません: #{pdf_path}"
+        end
+      end
+
       # PDF をページごとの JPEG に切り出す
       class PdfPagesExporter
+        include InputPdf
+
         def initialize(options, cli_input = nil, pdf_to_jpeg: ::VivlioStarter::Pdf::PdfToJpeg)
           @options = options || {}
           @cli_input = cli_input
@@ -424,30 +455,6 @@ module VivlioStarter
 
         attr_reader :options, :cli_input, :pdf_to_jpeg
 
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
-
-        def resolve_pdf_path
-          explicit = normalize_pdf_extension(cli_input)
-          return explicit if explicit
-
-          Common.generate_output_filename('pdf')
-        end
-
-        def normalize_pdf_extension(path)
-          return nil if path.nil? || path.to_s.strip.empty?
-
-          p = path.to_s.strip
-          p.downcase.end_with?('.pdf') ? p : "#{p}.pdf"
-        end
-
-        def ensure_input_exists!(pdf_path)
-          return if File.exist?(pdf_path)
-
-          raise "入力PDFが見つかりません: #{pdf_path}"
-        end
-
         def ensure_pdf_pages_tools!
           Common.ensure_external_command!('pdftoppm', purpose: 'PDFページ画像化')
         end
@@ -470,6 +477,8 @@ module VivlioStarter
 
       # PDF 全ページを JPEG 経由でラスタライズして再結合する
       class PdfRasterizer
+        include InputPdf
+
         def initialize(options, cli_input = nil,
                        pdf_to_jpeg: ::VivlioStarter::Pdf::PdfToJpeg,
                        jpeg_to_pdf: ::VivlioStarter::Pdf::JpegToPdf)
@@ -506,30 +515,6 @@ module VivlioStarter
         private
 
         attr_reader :options, :cli_input, :pdf_to_jpeg, :jpeg_to_pdf
-
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
-
-        def resolve_pdf_path
-          explicit = normalize_pdf_extension(cli_input)
-          return explicit if explicit
-
-          Common.generate_output_filename('pdf')
-        end
-
-        def normalize_pdf_extension(path)
-          return nil if path.nil? || path.to_s.strip.empty?
-
-          p = path.to_s.strip
-          p.downcase.end_with?('.pdf') ? p : "#{p}.pdf"
-        end
-
-        def ensure_input_exists!(pdf_path)
-          return if File.exist?(pdf_path)
-
-          raise "入力PDFが見つかりません: #{pdf_path}"
-        end
 
         # PDFラスタライズ用の外部ツール存在チェック
         # ※ JPEGからPDFへの再結合に独自実装 JpegToPdf を使用するため、img2pdfのチェックを削除しました。
