@@ -29,7 +29,7 @@ vs cover    # config/book.yml の設定に従って表紙画像を生成
 
 1. `covers/<side>cover_<theme>.png` — 著者が用意した PNG
 2. `covers/<side>cover_<theme>.svg` — 著者が用意した SVG
-3. `covers/bundled/<side>cover.svg` — gem 同梱テンプレート（自動でテキスト置換）
+3. `covers/bundled/<side>cover.svg` — gem 同梱テンプレート（`light`・`dark` のみ。自動でテキスト置換）
 
 `master` は PNG だけを探します。SVG を使うときは、`master` 以外のテーマ名を付けてください。
 

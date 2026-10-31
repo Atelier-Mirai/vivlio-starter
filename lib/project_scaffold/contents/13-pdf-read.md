@@ -15,13 +15,13 @@
 | 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
 | 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
 
-Standard Mode は `vivlio-starter` 本体に含まれ、`vs doctor --fix` で入る pdftotext（poppler に同梱）があれば動きます。スキャンした PDF のように文字の層がない PDF は、Standard Mode では読めません。
+Standard Mode は `vivlio-starter` 本体に含まれ、ほかのツールなしで動きます。スキャンした PDF のように文字の層がない PDF は、Standard Mode では読めません。
 
-画像の抽出や OCR が必要なら、`vivlio-starter-pdf` gem（1.2.0 以降）とツールを導入します。インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
+画像の抽出や OCR が必要なら、`vivlio-starter-pdf` gem（1.2.0 以降）とツールを導入します。@chapref:ch-install の導入スクリプトで入れた場合は、どちらも入っています。インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
 
 ```zsh
 gem install vivlio-starter-pdf
-brew install tesseract tesseract-lang poppler vips
+vs doctor --fix
 ```
 
 | ツール | 用途 |
@@ -65,6 +65,7 @@ vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
 
 日本語の名前や論文の番号のようなファイル名（`コンピュータネットワークのエッセンス.pdf`・`245.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに止まります。どちらの場合も、名前を添えた打ち直しのコマンドが示されるので、それを使ってください。
 
+:::{.output}
 ```text
 🔴 [pdf:read] ファイル名から章の名前を作れません: sources/コンピュータネットワークのエッセンス.pdf
         使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
@@ -72,6 +73,7 @@ vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
         → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 52-awesome
         （番号を省くと 52 番になります）
 ```
+:::
 
 ### 一部のページだけ読む
 
@@ -148,11 +150,13 @@ $ vs pdf:read 95-sample-ocr 96-sample-ocr --images-from images/95-sample
 
 同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。置き換えるときは `--force` を付けます。前回の画像（`images/52-gitlab/`）は、今回の画像と混ざらないよう、消してから書き出します。
 
+:::{.output}
 ```text
 🔴 [pdf:read] 52-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）
         → 読み直して置き換えるなら: vs pdf:read gitlab.pdf --force
         → 別の章として読むなら: vs pdf:read gitlab.pdf 53-gitlab-2
 ```
+:::
 
 ## 設定とカスタマイズ
 
@@ -221,7 +225,7 @@ rules:
 | ヘッダー / フッターが残る | 繰り返しから見分けられなかった | `book.yml` の `pdf_read.text_area` に除く幅を書く |
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
 | OCR 結果が悪い | 言語設定が不適切 / スキャンの解像度が低い | `languages` を確認（英字が多い本は `english` を足す）。スキャンし直すなら 300dpi 以上で |
-| `Tesseract not found` | Tesseract 未インストール | `brew install tesseract tesseract-lang` |
+| スキャン PDF が OCR で読まれない | Tesseract が入っていない | `vs doctor --fix` で入れる |
 | 日本語の間にスペースが残る | 補正表にない誤読 | `ocr_corrections.yml` にパターンを追加 |
 | 画像にテキストが混入する | イラスト領域検出のパラメータ | `inline_image_text: exclude` を試す |
 

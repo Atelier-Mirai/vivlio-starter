@@ -21,10 +21,12 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 | Xcode Command Line Tools | macOS のビルドツールチェーン（macOS のみ） |
 | `node` / `npm` | JavaScript ランタイム（Vivliostyle CLI の前提） |
 | `vivliostyle` | PDF 生成エンジン |
+| `vfm` | Markdown から HTML への変換 |
 | `textlint` | 文章校正ツール |
 | `qpdf` | PDF 分割・結合・ページ操作 |
 | `pdfinfo` (poppler) | PDF メタデータ取得 |
 | `pdftoppm` (poppler) | PDF ページの画像化（`vs pdf:pages`・OCR） |
+| `pdftotext` (poppler) | PDF のしおりを付ける位置の特定 |
 | `gs` (Ghostscript) | PDF 圧縮 |
 | `imagemagick` | 画像変換・リサイズ |
 | `inkscape` | SVG ラスタライズの予備経路（任意） |
@@ -61,7 +63,7 @@ Kindle Previewer 3 が入っていれば、4 への更新を案内します（@c
 
 書籍プロジェクト内で実行した場合は、外部ツールに加えて `config/` 内の設定ファイルも診断します。
 
-- **必須設定ファイル**（`config/book.yml` / `config/catalog.yml`）が存在し、YAML として正しく読み込めるかを確認します。
+- **必須設定ファイル**（`config/book.yml` / `config/catalog.yml` / `config/page_presets.yml`）が存在し、YAML として正しく読み込めるかを確認します。
 - **任意設定ファイル**（textlint の設定や辞書ディレクトリなど）の有無を確認します。
 
 必要なファイルが揃っていれば、次のように表示されます。
@@ -144,8 +146,8 @@ macOS では、ツールに応じて次の経路で導入します。
 
 | 導入経路 | ツール |
 |------|------|
-| `brew install` | `node`・`qpdf`・`pdfinfo`・`pdftoppm`・`gs`・`imagemagick`・`inkscape`・`librsvg`・`vips`・`tesseract`・`mecab` |
-| `npm install -g` | `vivliostyle`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli`・Guesslang |
+| `brew install` | `node`・`qpdf`・`pdfinfo`・`pdftoppm`・`pdftotext`・`gs`・`imagemagick`・`inkscape`・`librsvg`・`vips`・`tesseract`・`mecab` |
+| `npm install -g` | `vivliostyle`・`vfm`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli`・Guesslang |
 
 npm で導入するツールには Node.js が必要です。まだ入っていなければ、Homebrew で Node.js を導入してから npm の処理へ進みます。
 
@@ -177,7 +179,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 プロジェクトの外で実行すると、雛形の追従を省き、本体と外部ツールだけを更新します。
 
-更新後の診断では、不足しているツールの導入も行います。通常は `vs doctor --fix` を続けて実行する必要はありません。外部ツールがすべて最新で、不足も無いときは、診断を省きます。設定ファイルや証明書まで確かめるときは `vs doctor` を実行します。
+更新後の診断では、不足しているツールの導入も行います。通常は `vs doctor --fix` を続けて実行する必要はありません。外部ツールがすべて最新で、不足もないときは、診断を省きます。設定ファイルや証明書まで確かめるときは `vs doctor` を実行します。
 
 ### 雛形の追従
 
@@ -273,7 +275,7 @@ gem update vivlio-starter
    vivliostyle CLI   10.6.0  → 11.2.0   (npm・node と連動)
    node              22.11.0 → 変更なし  (brew・最新)
    ...
-更新を実行しますか？ [y/N]: y
+❓ 更新を実行しますか？ [y/N]: y
 ⬆️  qpdf を更新中…
 ✅ qpdf: 更新しました
 🩺 更新後の診断を実行します…

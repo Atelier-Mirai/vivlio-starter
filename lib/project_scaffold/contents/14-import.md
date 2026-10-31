@@ -112,11 +112,13 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 
 記法ごとの件数と、最初の 3 箇所についてファイル名・行番号が表示されます。
 
-```
+:::{.output}
+```text
 🔴 07-git.re:189、07-git.re:190、07-git.re:247 ほか 42 箇所: @<balloon>（コード内の吹き出し）は
    Vivlio Starter に対応する記法がありません。原文をそのまま残しました。（計 45 箇所）
         対処: 該当箇所を書き換えてください（拡張記法リファレンスの章を参照）。
 ```
+:::
 
 手作業で置き換える必要があるのは、次の 11 種です。
 
@@ -130,13 +132,15 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 
 最後に、変換した件数と確認が必要な件数がまとめて表示されます。
 
-```
+:::{.output}
+```text
 🔍 変換サマリ（7 章 / 1462 行）
         ブロック命令 138 件を変換
         インライン命令 178 件を変換
         ラベル ID 3 件を一意化のため改名
         🔴 45 件 / 🟡 12 件 — 詳細は上のログを参照してください
 ```
+:::
 
 ## インポート後の確認
 
@@ -162,7 +166,7 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | `catalog.yml が見つかりません` | 取り込み元の指定が 1 階層ずれている | Re:VIEW Starter プロジェクトのルート（`catalog.yml` のある場所）を指定する |
 | `原稿（.re）が見つかりません` | `config.yml` の `contentdir` が既定と違う | `contentdir` の指すディレクトリに `.re` があるか確認する |
 | 章が足りない | `catalog.yml` に載っていない | 取り込みたい章を `catalog.yml` へ追加してから実行する |
-| 会話に話者の色が付かない | `book.yml` に話者が未登録 | 🟡 が挙げた話者キーを `book.yml` の `characters` に登録する |
+| 会話に話者の色が付かない | `config/talk.yml` に話者が未登録 | 🟡 が挙げた話者キーを `config/talk.yml` に登録する |
 | 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
 | 本に裏表紙が付かない | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を置く（雛形は `covers/templates/`） |
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
