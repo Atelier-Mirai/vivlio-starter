@@ -15,13 +15,13 @@
 ```yaml
 book:
   # 同梱のデザインを使う場合
-  cover: light   # 明るいテーマ
+  cover: light   # 明るいテーマ（既定）
   # cover: dark  # 暗いテーマ
 
   # 著者が用意した独自デザインを使う場合
   # cover: floral    # covers/frontcover_floral.png または frontcover_floral.svg を使用
   # cover: mandala   # covers/frontcover_mandala.png または frontcover_mandala.svg を使用
-  # cover: master    # covers/frontcover_master.png を使用（既定）
+  # cover: master    # covers/frontcover_master.png を使用
 ```
 
 ### テーマ別のソースファイル探索順
@@ -94,13 +94,15 @@ book:
   cover: master  # covers/frontcover_master.png, covers/backcover_master.png を使用
 ```
 
-画像は、仕上がりの判型に合わせた大きさ（350 dpi）で用意します。
+画像は、仕上がりの判型に合わせた大きさ（350 dpi）で用意します。作図のソフトで下敷きにできるよう、判型ごとの雛形を `covers/templates/` に用意しています。雛形には、画像の大きさ、裁ち落とされる範囲、電子書籍で切れる範囲、文字を置ける範囲を書き込んであります。
 
-| 判型 | 画像の大きさ |
-| :--- | :--- |
-| A4（210 × 297 mm） | 2,894 × 4,093 px |
-| B5（182 × 257 mm） | 2,508 × 3,541 px |
-| A5（148 × 210 mm） | 2,039 × 2,894 px |
+| 判型 | 画像の大きさ | 雛形 |
+| :--- | :--- | :--- |
+| A4（210 × 297 mm） | 2,894 × 4,093 px | `frontcover_a4.png`・`backcover_a4.png` |
+| B5（182 × 257 mm） | 2,508 × 3,541 px | `frontcover_b5.png`・`backcover_b5.png` |
+| A5（148 × 210 mm） | 2,039 × 2,894 px | `frontcover_a5.png`・`backcover_a5.png` |
+
+雛形の文字と線は、使い方を示すためのものです。消してから `covers/frontcover_master.png` として保存します。
 
 ## カバー画像の生成
 
@@ -235,6 +237,7 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 :::{.output}
 ```text
 🟡 表紙マスターが見つかりません: covers/frontcover_master.png
+        → covers/templates/ の雛形を下敷きに画像を作って置くか、config/book.yml の book.cover を light にしてください
 ```
 :::
 

@@ -38,6 +38,9 @@
         {{author}}   著者名
         {{series}}   シリーズ名
         {{release}}  発行日
+        {{title-scale}}    書名を欄に収める縮小率（収まるなら 1）
+        {{subtitle-scale}} サブタイトルを欄に収める縮小率
+        {{author-mark}}    著者があれば「[著]」、空なら空文字
   -->
   <defs>
     <style>
@@ -134,7 +137,7 @@
   <rect x="50" y="68" width="495" height="1" fill="url(#gold-thin)"/>
 
   <!-- メインタイトル -->
-  <text x="297" y="138"
+  <text transform="translate(297 138) scale({{title-scale}})"
         text-anchor="middle"
         font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
         font-size="38"
@@ -146,7 +149,7 @@
   <rect x="80" y="150" width="435" height="1.5" fill="url(#gold-line)"/>
 
   <!-- サブタイトル -->
-  <text x="297" y="190"
+  <text transform="translate(297 190) scale({{subtitle-scale}})"
         text-anchor="middle"
         font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
         font-size="24"
@@ -166,7 +169,7 @@
            font-size="14"
            fill="var(--vs-text-sub)"
            letter-spacing="2"
-           baseline-shift="4px">[著]</tspan><tspan>{{author}}</tspan>
+           baseline-shift="4px">{{author-mark}}</tspan><tspan>{{author}}</tspan>
   </text>
 
   <!-- 著者とグラフィックゾーンを分ける細ゴールド罫線 -->

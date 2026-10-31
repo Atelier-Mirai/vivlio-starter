@@ -62,8 +62,8 @@ book:
   language: "ja"
   isbn: ''               # 独自 ISBN 取得の場合のみ記入（Kindle は ASIN が自動割り当てされる）
 
-  cover: master          # covers/ に置いた著者用意の画像を使う（既定）
-                         # light / dark … 標準添付の SVG テンプレート
+  cover: light           # 標準添付の SVG テンプレート（既定）。dark も選べる
+                         # master … covers/ に置いた著者用意の画像を使う
 ```
 
 `subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なしです。副題が不要な場合には省略して構いません。
