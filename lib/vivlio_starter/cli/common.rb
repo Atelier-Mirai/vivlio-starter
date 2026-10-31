@@ -1067,8 +1067,9 @@ module VivlioStarter
       # CONFIG が未ロード（プロジェクト外）の場合に呼び出し元で検査するためのヘルパー
       def configured? = !CONFIG.nil?
 
-      def ensure_configured!
-        warn_retired_config_keys
+      # @param retired_notice [Boolean] 廃止キーを案内するか。vs upgrade は計画に載せて直すので案内しない
+      def ensure_configured!(retired_notice: true)
+        warn_retired_config_keys if retired_notice
         warn_missing_book_config
         return if configured?
 

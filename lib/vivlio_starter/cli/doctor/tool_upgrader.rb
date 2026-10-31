@@ -141,6 +141,9 @@ module VivlioStarter
         # 更新計画（全ツール分の行を表示順で保持する）
         Plan = Data.define(:entries) do
           def updates = entries.select { it.action == :upgrade }
+
+          # 更新も導入も要らないか。未導入のツールは再診断（--fix 委譲）が入れるので含めない
+          def settled? = updates.empty? && entries.none? { it.action == :missing }
         end
 
         # 1 ツールの更新結果
@@ -205,15 +208,19 @@ module VivlioStarter
           plan = build_plan(deps)
           return 1 unless plan
 
-          # --- Phase: 計画提示 → 確認 ---
-          present_plan(plan)
+          # --- Phase: 計画提示 → 確認（何も変わらない表は見せない。--dry-run は確かめるために見せる）---
+          present_plan(plan) if !plan.settled? || options[:dry_run]
           if options[:dry_run]
             Common.log_always('--dry-run のためツール更新は実行しません。') if plan.updates.any?
             return 0
           end
-          if plan.updates.empty?
-            Common.log_always('✅ すべて最新です')
-          elsif !confirm_upgrade?(options, deps)
+          # 何も変わっていないので、表で確かめたことを再診断で繰り返さない
+          if plan.settled?
+            Common.log_always('✅ 外部ツールはすべて最新です')
+            announce_new_versions(deps)
+            return 0
+          end
+          if plan.updates.any? && !confirm_upgrade?(options, deps)
             Common.log_always('更新をスキップしました。--yes を付けると確認なしで実行できます。')
             return 0
           end

@@ -62,7 +62,10 @@ module VivlioStarter
           dependencies: {
             '@vivliostyle/cli' => { version: '11.0.0' },
             'textlint' => { version: '14.0.0' },
-            'mathjax-full' => { version: '3.2.2' }
+            'mathjax-full' => { version: '3.2.2' },
+            '@vivliostyle/vfm' => { version: '1.0.0' },
+            '@mermaid-js/mermaid-cli' => { version: '1.0.0' },
+            '@vscode/vscode-languagedetection' => { version: '1.0.0' }
           }
         }.to_json
 
@@ -479,7 +482,67 @@ module VivlioStarter
           refute rediagnosed, 'dry-run では再診断（--fix 委譲）もしない'
         end
 
+        # 何も変わらないときは、20 行の表を出さない
+        def test_should_not_print_the_table_when_nothing_changes
+          deps = stub_deps(capture: capture_map, input: '')
+          out = capture_plan_output(deps)
+
+          refute_includes out, '📋 更新計画'
+          assert_includes out, '✅ 外部ツールはすべて最新です'
+        end
+
+        # 表で最新と確かめた後に、同じことをもう一度診断しない
+        def test_should_skip_the_rediagnosis_when_nothing_changes
+          deps = stub_deps(capture: capture_map, input: '')
+
+          rediagnosed = false
+          code = run_upgrader(deps, yes: false, rediagnosis_probe: -> { rediagnosed = true })
+
+          assert_equal 0, code
+          refute rediagnosed, '更新も導入も無ければ再診断しない'
+        end
+
+        # 未導入のツールは再診断が導入するので、「すべて最新」と言わずに表と再診断を残す
+        def test_should_keep_the_table_and_the_rediagnosis_for_a_missing_tool
+          brew_list = BREW_LIST_ALL.lines.reject { it.split.first == 'qpdf' }.join
+          deps = stub_deps(capture: capture_map(brew_list:), input: '')
+
+          out = capture_plan_output(deps)
+
+          assert_includes out, '未導入'
+          refute_includes out, 'すべて最新', out
+
+          rediagnosed = false
+          run_upgrader(deps, yes: false, rediagnosis_probe: -> { rediagnosed = true })
+
+          assert rediagnosed, '未導入のツールは再診断（--fix 委譲）が入れる'
+        end
+
+        def test_should_print_the_table_when_a_tool_has_an_update
+          brew_outdated = {
+            formulae: [{ name: 'qpdf', installed_versions: ['12.1.0'], current_version: '12.2.1' }], casks: []
+          }.to_json
+          deps = stub_deps(capture: capture_map(brew_outdated:), input: '')
+          out = capture_plan_output(deps)
+
+          assert_includes out, '📋 更新計画'
+        end
+
         private
+
+        def capture_plan_output(deps)
+          said = []
+          with_host_os('darwin') do
+            Common.stub(:log_always, ->(message) { said << message }) do
+              DoctorCommands.stub(:execute_doctor, true) do
+                DoctorCommands.stub(:pdf_plugin_installed?, false) do
+                  capture_io { ToolUpgrader.run!({ yes: false, dry_run: false, verbose: false }, deps:) }
+                end
+              end
+            end
+          end
+          said.join("\n")
+        end
 
         # run! を macOS 前提＋再診断スタブ＋ログ抑制つきで実行する
         def run_upgrader(deps, yes:, dry_run: false, rediagnosis: true, host_os: 'darwin', rediagnosis_probe: nil)

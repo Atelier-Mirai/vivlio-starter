@@ -59,6 +59,15 @@ module VivlioStarter
 
       # --- phase: 廃止キーの案内 ---
 
+      # vs upgrade は廃止キーを計画に載せて直すので、「vs upgrade で消せます」と案内しない
+      def test_ensure_configured_can_leave_the_notice_to_the_upgrade_plan
+        authored({ index: { auto_approve_threshold: 300 } })
+
+        out, err = capture_io { Common.ensure_configured!(retired_notice: false) }
+
+        refute_match(/廃止|読み込まれません/, out + err)
+      end
+
       def test_warns_for_each_retired_key_with_guidance
         authored({ index: { auto_approve_threshold: 300, high_candidates_ratio: 0.25 } })
 

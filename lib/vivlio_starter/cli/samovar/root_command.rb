@@ -142,6 +142,9 @@ module VivlioStarter
           # コマンド自身が引数からプロジェクト不要と判断する場合（build の .md 直接指定）
           return if target.respond_to?(:projectless?) && target.projectless?
 
+          # vs upgrade は廃止キーを計画に載せて直すので、「vs upgrade で消せます」と案内しない
+          return Common.ensure_configured!(retired_notice: false) if target.is_a?(UpgradeCommand)
+
           Common.ensure_configured!
         end
       end
