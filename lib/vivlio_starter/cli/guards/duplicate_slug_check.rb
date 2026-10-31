@@ -18,7 +18,7 @@ module VivlioStarter
 
           [error(
             "スラッグが同じ章があります（#{duplicated.size} 組）",
-            detail: duplicated.flat_map { |slug, basenames| duplication_lines(slug, basenames, taken) } +
+            detail: duplicated.flat_map { |slug, basenames| ChapterNames.duplication_lines(slug, basenames, taken) } +
                     ['スラッグが同じだと、vs build のスラッグの指定や章の参照（@chapref）がどちらの章を指すか決められないため、止めています。']
           )]
         end
@@ -32,21 +32,6 @@ module VivlioStarter
 
         def duplicated_groups(taken)
           taken.select { ChapterNames.slug_of(it) }.group_by { ChapterNames.slug_of(it) }.select { |_, list| list.size > 1 }
-        end
-
-        # 重なった組の一覧と、2 つめ以降を「-2」などを足した名前へ変えるコマンド。
-        # 残すのは決まりの形の名前を先にした 1 つめ。勧めた名前は taken へ足し、2 組以上あっても同じ名前を勧めない
-        def duplication_lines(slug, basenames, taken)
-          ordered = basenames.sort_by { [ChapterNames.valid?(it) ? 0 : 1, it] }
-          lines = ["- #{slug}: #{ordered.map { "contents/#{it}.md" }.join('、')}"]
-          ordered.drop(1).each do |basename|
-            suggested = ChapterNames.suggestion(basename, taken)
-            next unless suggested
-
-            taken << suggested
-            lines << "  → #{ChapterNames.rename_command(basename, suggested)}"
-          end
-          lines
         end
       end
     end

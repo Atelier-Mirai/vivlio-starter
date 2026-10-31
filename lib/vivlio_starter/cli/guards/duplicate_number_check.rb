@@ -27,7 +27,7 @@ module VivlioStarter
           taken = numbered.map(&:last)
           [error(
             "章番号が重複している原稿があります（#{duplicated.size} 組）",
-            detail: duplicated.flat_map { |number, entries| duplication_lines(number, entries.map(&:last), taken) } +
+            detail: duplicated.flat_map { |number, entries| ChapterNames.duplication_lines(number, entries.map(&:last), taken) } +
                     ['番号が重なっていると、その番号でどちらの章を指すか決められないため、止めています。']
           )]
         end
@@ -40,21 +40,6 @@ module VivlioStarter
         private
 
         def duplicated_groups(numbered) = numbered.group_by(&:first).select { |_, entries| entries.size > 1 }
-
-        # 重なった組の一覧と、2 つめ以降の名前を変えるコマンド（番号は同じ区分の空き番号、使えない字は直す）。
-        # 残すのは決まりの形の名前を先にした 1 つめ。勧めた名前は taken へ足し、2 組以上あっても同じ名前を勧めない
-        def duplication_lines(number, basenames, taken)
-          ordered = basenames.sort_by { [ChapterNames.valid?(it) ? 0 : 1, it] }
-          lines = ["- #{number}: #{ordered.map { "contents/#{it}.md" }.join('、')}"]
-          ordered.drop(1).each do |basename|
-            suggested = ChapterNames.suggestion(basename, taken)
-            next unless suggested
-
-            taken << suggested
-            lines << "  → #{ChapterNames.rename_command(basename, suggested)}"
-          end
-          lines
-        end
 
         # 番号を持たないものは対象外。番号は書かれた桁のまま比べる（`02` と `020` は別）
         # @return [Array<Array(String, String)>] [番号, basename] の組

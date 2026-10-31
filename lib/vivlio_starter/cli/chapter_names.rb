@@ -80,6 +80,23 @@ module VivlioStarter
         number && [number, slug].compact.join('-')
       end
 
+      # 番号やスラッグが重なった組の一覧と、2 つめ以降を空いた名前へ変えるコマンド。
+      # 残すのは決まりの形の名前を先にした 1 つめ。勧めた名前は taken へ足し、2 組以上あっても同じ名前を勧めない
+      # @param key [String] 重なっている番号かスラッグ
+      # @return [Array<String>]
+      def duplication_lines(key, basenames, taken)
+        ordered = basenames.sort_by { [valid?(it) ? 0 : 1, it] }
+        lines = ["- #{key}: #{ordered.map { "contents/#{it}.md" }.join('、')}"]
+        ordered.drop(1).each do |basename|
+          suggested = suggestion(basename, taken)
+          next unless suggested
+
+          taken << suggested
+          lines << "  → #{rename_command(basename, suggested)}"
+        end
+        lines
+      end
+
       # 章の名前を old_basename から new_basename へ変えるコマンド。catalog.yml に載っていて章の解決で指せる章は
       # `vs rename`（画像・目次・参照も追随する）、載っていない原稿（vs rename は扱わない）は `mv`。
       # 空白などはエスケープし（shell_word）、引用符を求めない
