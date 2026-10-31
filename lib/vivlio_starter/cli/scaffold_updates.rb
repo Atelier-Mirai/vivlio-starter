@@ -6,7 +6,7 @@
 # 責務:
 #   雛形の CSS と book.yml の新しいキーを、著者へ知らせる（改善案.md #117・#118）。
 #   全章の vs build・vs preflight は件数だけを 💡 で知らせ、vs upgrade が
-#   増えたキーの行を並べる。判定をここに集め、どちらも同じものを見る。
+#   増えたキーを book.yml へ足す。判定をここに集め、どちらも同じものを見る。
 #
 # なぜ book.yml を祖先の雛形と比べないか:
 #   book.yml は著者データなので .cache/vs/scaffold-base/ に保存されず、古い gem の
@@ -18,6 +18,7 @@
 #   崩れが紙面に出るのも CSS で、README.md や Gemfile の変更まで知らせると埋もれる（§3.1）。
 # ================================================================
 
+require_relative 'book_key_inserter'
 require_relative 'common'
 require_relative 'config_keys'
 require_relative 'new'
@@ -52,22 +53,30 @@ module VivlioStarter
         Common.log_debug("[scaffold] 雛形の更新を確かめられませんでした: #{e.message}")
       end
 
-      # vs upgrade の最後に、増えたキーの行を並べる（§1.2）。
-      # @param lock [Hash, nil] 雛形を取り込む前の lock。無ければ判定できないので黙る
-      def report_new_book_keys(lock, scaffold_source:)
+      # 増えたキーを book.yml へ差し込んだ結果を返す。書き込むのは vs upgrade（§10）。
+      # @param lock [Hash, nil] 雛形を取り込む前の lock。無ければ判定できないので何もしない
+      # @return [BookKeyInserter::Result, nil] 増えたキーが無ければ nil
+      def plan_new_book_keys(lock, scaffold_source:)
         return if lock.nil?
 
         keys = new_book_keys(lock, scaffold_source)
         return if keys.empty?
 
-        listing = key_lines(scaffold_book(scaffold_source), keys)
-        indent = Common::DETAIL_INDENT
-        Common.log_always("💡 book.yml に書ける設定が #{keys.size} つ増えました（書かなくても既定値で動きます）")
-        Common.log_always("#{indent}使うときは、次の行を config/book.yml へ写してください")
-        Common.log_always('')
-        listing.each { Common.log_always("#{indent}#{it}") }
+        BookKeyInserter.insert(File.read(ScaffoldLock::BOOK_RELATIVE, encoding: 'utf-8'), scaffold_book(scaffold_source), keys)
       rescue StandardError => e
         Common.log_debug("[scaffold] 増えた設定を確かめられませんでした: #{e.message}")
+        nil
+      end
+
+      # vs upgrade の最後に、足した設定を知らせる。足せなかった設定は行のまま並べる（§10）
+      # @param plan [BookKeyInserter::Result, nil]
+      def report_new_book_keys(plan, scaffold_source:, dry_run: false)
+        return if plan.nil?
+
+        return report_planned_keys(plan, scaffold_source) if dry_run
+
+        report_added_keys(plan.added)
+        report_skipped_keys(plan.skipped, scaffold_source)
       end
 
       # 新しくなっている CSS（プロジェクトからの相対パス・名前順）。
@@ -89,6 +98,35 @@ module VivlioStarter
       end
 
       private
+
+      # --dry-run: 足す行をそのまま見せる
+      def report_planned_keys(plan, scaffold_source)
+        keys = plan.added + plan.skipped
+        Common.log_always("💡 book.yml に書ける設定が #{keys.size} つ増えました（vs upgrade で足します。値は既定値です）")
+        print_listing(scaffold_source, keys)
+      end
+
+      def report_added_keys(keys)
+        return if keys.empty?
+
+        indent = Common::DETAIL_INDENT
+        Common.log_result("book.yml に新しい設定を #{keys.size} つ足しました（値は既定値なので、組み上がりは変わりません）", status: :success)
+        keys.each { Common.log_always("#{indent}#{it}") }
+        Common.log_always("#{indent}説明は vs config:book #{keys.first} のように調べられます")
+      end
+
+      def report_skipped_keys(keys, scaffold_source)
+        return if keys.empty?
+
+        Common.log_always("💡 book.yml へ自動で足せなかった設定が #{keys.size} つあります（書かなくても既定値で動きます）")
+        Common.log_always("#{Common::DETAIL_INDENT}使うときは、次の行を config/book.yml へ写してください")
+        print_listing(scaffold_source, keys)
+      end
+
+      def print_listing(scaffold_source, keys)
+        Common.log_always('')
+        key_lines(scaffold_book(scaffold_source), keys).each { Common.log_always("#{Common::DETAIL_INDENT}#{it}") }
+      end
 
       def scaffold_book(scaffold_source)
         File.read(File.join(scaffold_source, ScaffoldLock::BOOK_RELATIVE), encoding: 'utf-8')

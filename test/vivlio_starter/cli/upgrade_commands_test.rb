@@ -278,32 +278,90 @@ module VivlioStarter
         end
       end
 
-      def test_should_list_new_book_keys_after_the_tool_updates_only_once
+      def test_should_add_new_book_keys_and_report_them_after_the_tool_updates
         within_project do |scaffold|
           write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
           ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
 
-          out, = capture_io { run_upgrade(scaffold, tool_output: '外部ツールの更新の表示') }
+          out, = capture_io { run_upgrade(scaffold, yes: true, tool_output: '外部ツールの更新の表示') }
 
-          assert_includes out, 'book.yml に書ける設定が 1 つ増えました'
-          assert_includes out, 'cover: master # 表紙'
-          assert_operator out.index('外部ツールの更新の表示'), :<, out.index('book.yml に書ける設定'),
+          assert_equal "book:\n  main_title: \"わたしの本\"\n  cover: master # 表紙\n", File.read('config/book.yml')
+          assert_includes out, 'book.yml に新しい設定を 1 つ足しました'
+          assert_includes out, 'book.cover'
+          assert_operator out.index('外部ツールの更新の表示'), :<, out.index('book.yml に新しい設定'),
                           'ツールの更新で流れないよう、いちばん最後に出す'
 
-          again, = capture_io { run_upgrade(scaffold) }
-          refute_includes again, 'book.yml に書ける設定', '書かないと決めたキーを毎回並べない'
+          again, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute_includes again, 'book.yml に新しい設定', '足すのは 1 回だけ'
         end
       end
 
-      def test_should_list_new_book_keys_in_a_dry_run_without_advancing_the_lock
+      # 著者が消したキーは lock に載っているので、戻さない
+      def test_should_not_bring_back_a_key_the_author_removed
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title book.cover])
+
+          capture_io { run_upgrade(scaffold) }
+
+          refute_includes File.read('config/book.yml'), 'cover'
+        end
+      end
+
+      def test_should_keep_the_original_book_yml_in_the_backup
         within_project do |scaffold|
           write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
           ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+          original = File.read('config/book.yml')
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/book.yml')
+          assert_equal [original], backups.map { File.read(it) }
+        end
+      end
+
+      # 廃止キーの整理と差し込みが同じ秒に走っても、退避には整理の前の中身が残る
+      def test_should_keep_the_first_backup_when_two_phases_rewrite_book_yml
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          write('.', 'config/book.yml', "book:\n  main_title: \"本\"\nmetrics:\n  clause_length: 1\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_equal "book:\n  main_title: \"本\"\n  cover: master # 表紙\n", File.read('config/book.yml')
+          assert(Dir.glob('.cache/vs/upgrade-backup/*/config/book.yml').any? { File.read(it).include?('clause_length') })
+        end
+      end
+
+      def test_should_show_new_book_keys_in_a_dry_run_without_writing
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+          original = File.read('config/book.yml')
 
           out, = capture_io { run_upgrade(scaffold, dry_run: true) }
 
           assert_includes out, 'cover: master # 表紙'
+          assert_equal original, File.read('config/book.yml')
           assert_equal %w[book book.main_title], ScaffoldLock.read('.')[:book_keys]
+        end
+      end
+
+      # 差し込めない書き方の本では、書き換えずに行を案内する
+      def test_should_leave_a_book_it_cannot_rewrite_and_print_the_lines
+        within_project do |scaffold|
+          write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+          write('.', 'config/book.yml', "book: { main_title: 本 }\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+
+          out, = capture_io { run_upgrade(scaffold) }
+
+          assert_equal "book: { main_title: 本 }\n", File.read('config/book.yml')
+          assert_includes out, 'book.yml へ自動で足せなかった設定が 1 つあります'
+          assert_includes out, 'cover: master # 表紙'
         end
       end
 
@@ -978,7 +1036,6 @@ module VivlioStarter
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
           refute_includes out, '整理'
-          refute_includes out, '原稿のどこにも出てきません'
           assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*')
         end
       end
@@ -1011,27 +1068,123 @@ module VivlioStarter
         end
       end
 
-      # --- 原稿に出てこない語: 消さずに数え、vs index:auto での見直しを案内する ---
-      def test_should_suggest_reviewing_terms_absent_from_the_manuscript
+      # 索引辞書の見直しは vs index:auto の 5 節の仕事で、vs upgrade は口を出さない
+      def test_should_not_comment_on_terms_absent_from_the_manuscript
         within_project do |scaffold|
-          write('.', 'contents/11-intro.md', "# はじめに\n\n原稿を書きます。`Vivliostyle` はコードの中だけ。\n")
-          write('.', 'config/index_glossary_terms.yml', <<~YAML)
-            terms:
-            - term: 原稿
-              flags: i
-            - term: Vivliostyle
-              flags: ig
-            - term: 使っていない語
-              flags: ''
-          YAML
+          write('.', 'contents/11-intro.md', "# はじめに\n\n原稿を書きます。\n")
+          write('.', 'config/index_glossary_terms.yml', "terms:\n- term: Vivliostyle\n  flags: ig\n")
           write_lock
-          before = File.read('config/index_glossary_terms.yml')
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
-          assert_includes out, '索引辞書の 1 語（載せている 2 語のうち）が、原稿のどこにも出てきません（Vivliostyle）'
-          assert_includes out, '「5. 原稿に出てこない語」を確かめてから vs index:apply すると外れます'
-          assert_equal before, File.read('config/index_glossary_terms.yml'), '案内だけで、辞書は書き換えないべき'
+          refute_includes out, '原稿のどこにも出てきません'
+        end
+      end
+
+      # --- book.yml の整理は計画に載せ、確認の対象にする ---
+
+      def grown_project(scaffold)
+        write(scaffold, 'config/book.yml', "book:\n  main_title: \"{{MAIN_TITLE}}\"\n  cover: master # 表紙\n")
+        write(scaffold, 'stylesheets/theme.css', "/* 新しい */\n")
+        write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\nmetrics:\n  clause_length: 1\n")
+        ScaffoldLock.write('.', version: '0.9.0', files: {}, book_keys: %w[book book.main_title])
+      end
+
+      def test_should_show_the_book_yml_changes_before_asking
+        within_project do |scaffold|
+          grown_project(scaffold)
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          question = out.index('適用しますか？')
+          assert_operator out.index('整理   config/book.yml'), :<, question
+          assert_operator out.index('廃止キーを消します（metrics.clause_length）'), :<, question
+          assert_operator out.index('新しい設定を足します（book.cover）'), :<, question
+          assert_includes out, '追加 1 件・更新 0 件・整理 1 件'
+          refute_includes out, '保持   config/book.yml', '書き換えるファイルを「保持」と書かない'
+        end
+      end
+
+      def test_should_change_nothing_when_the_answer_is_no
+        within_project do |scaffold|
+          grown_project(scaffold)
+          original = File.read('config/book.yml')
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, '中止しました（ファイルは変更していません）'
+          assert_equal original, File.read('config/book.yml')
+          refute_path_exists 'stylesheets/theme.css'
+          assert_equal %w[book book.main_title], ScaffoldLock.read('.')[:book_keys]
+          refute_includes out, '新しい設定を 1 つ足しました'
+        end
+      end
+
+      # 雛形が最新でも、book.yml を書き換えるなら確かめる
+      def test_should_ask_even_when_only_book_yml_changes
+        within_project do |scaffold|
+          write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\nmetrics:\n  clause_length: 1\n")
+          write_lock
+          original = File.read('config/book.yml')
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, '適用しますか？ 追加 0 件・更新 0 件・整理 1 件'
+          assert_equal original, File.read('config/book.yml')
+
+          with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          refute_includes File.read('config/book.yml'), 'clause_length'
+        end
+      end
+
+      def test_should_keep_book_yml_in_the_plan_when_nothing_touches_it
+        within_project do |scaffold|
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, '保持   config/book.yml'
+        end
+      end
+
+      def test_should_apply_without_asking_with_yes
+        within_project do |scaffold|
+          grown_project(scaffold)
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute_includes out, '適用しますか？'
+          assert_equal "book:\n  main_title: \"わたしの本\"\n  cover: master # 表紙\n", File.read('config/book.yml')
+        end
+      end
+
+      def test_should_show_the_plan_and_write_nothing_on_a_dry_run
+        within_project do |scaffold|
+          grown_project(scaffold)
+          original = File.read('config/book.yml')
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, '整理   config/book.yml'
+          assert_includes out, '--dry-run のため適用しません（追加 1 件・更新 0 件・競合 0 件・整理 1 件）'
+          assert_equal original, File.read('config/book.yml')
+        end
+      end
+
+      def test_should_list_the_files_it_tidies
+        within_project do |scaffold|
+          write('.', 'contents/_titlepage.md', "# 扉\n")
+          write('.', 'contents/11-intro.md', "# はじめに\n")
+          write('.', 'config/index_glossary_terms.yml', "terms:\n- term: 原稿\n  main:\n  - 90-gone\n")
+          write_lock
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          question = out.index('適用しますか？')
+          assert_operator out.index('整理   config/index_glossary_terms.yml'), :<, question
+          assert_operator out.index('整理   contents/_titlepage.md'), :<, question
+          refute_path_exists 'contents/_titlepage.md'
         end
       end
 

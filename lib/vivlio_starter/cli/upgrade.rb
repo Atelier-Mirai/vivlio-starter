@@ -58,6 +58,24 @@ module VivlioStarter
       # overlapping … :conflict のうち「祖先が取れたうえで衝突した」＝双方が
       #               本当に同じ場所を変えたもの。適用すれば著者の変更が消えるので、
       #               そう名指しできる（祖先が取れなかった競合では断定できない）
+      # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）
+      SyncResult = Data.define(:code, :new_keys, :aborted) do
+        def initialize(code: 0, new_keys: nil, aborted: false) = super
+      end
+
+      # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
+      TidyPlan = Data.define(:book_text, :retired, :orphans, :pages, :new_keys) do
+        def book_yml? = retired.any? || new_keys&.added&.any?
+        def empty? = paths.empty?
+
+        # 整理で書き換えるファイル
+        def paths
+          [(File.join('config', 'book.yml') if book_yml?),
+           (UnifiedTermsManager::UNIFIED_FILE if orphans.any?),
+           *pages].compact
+        end
+      end
+
       PlanItem = Data.define(:relative, :status, :merged, :overlapping) do
         def initialize(merged: nil, overlapping: false, **) = super
       end
@@ -134,16 +152,12 @@ module VivlioStarter
         self_result = options[:skip_self_update] ? :none : self_update!(options, tool_deps)
 
         # --- Phase: ② 雛形追従＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
-        scaffold_code = 0
-        lock_before = nil
+        sync = SyncResult.new
         if gem_repository?
           Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
         elsif File.exist?(File.join('config', 'book.yml'))
-          lock_before = ScaffoldLock.read
-          scaffold_code = sync_scaffold!(cmd)
-          refresh_gemfile_lock!(options)
-          tidy_author_data!(options)
-          suggest_dictionary_review
+          sync = sync_scaffold!(cmd)
+          refresh_gemfile_lock!(options) unless sync.aborted
         else
           Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
         end
@@ -154,10 +168,10 @@ module VivlioStarter
           deps: tool_deps
         )
 
-        # --- Phase: 増えた設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
-        ScaffoldUpdates.report_new_book_keys(lock_before, scaffold_source:)
-        
-        [self_result == :failed ? 1 : 0, scaffold_code, tools_code].max
+        # --- Phase: 足した設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
+        ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
+
+        [self_result == :failed ? 1 : 0, sync.code, tools_code].max
       end
 
       # gem 自身のリポジトリか。ここにも config/book.yml（本書の原稿の設定）があるので、
@@ -203,26 +217,32 @@ module VivlioStarter
         scaffold_digests = ScaffoldLock.digest_scaffold(scaffold_source)
         lock = ScaffoldLock.read
         warn_missing_lock if lock.nil?
-        plan = build_plan(scaffold_digests, lock)
+        tidy = plan_tidy(lock)
+        plan = with_tidy_rows(build_plan(scaffold_digests, lock), tidy)
 
-        # --- Phase: 計画表示 ---
+        # --- Phase: 計画表示（著者データの整理も、確認の前に見せる） ---
         display_plan(plan)
+        report_tidy(tidy, dry_run: cmd.options[:dry_run])
         actionable = plan.reject { it.status == :keep }
         if actionable.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
           save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
-          return 0
+          return SyncResult.new(new_keys: tidy.new_keys)
         end
-        return finish_dry_run(actionable) if cmd.options[:dry_run]
+        if cmd.options[:dry_run]
+          finish_dry_run(actionable)
+          return SyncResult.new(new_keys: tidy.new_keys)
+        end
 
         # --- Phase: 適用（追加・更新・合流 → 競合の個別確認） ---
         applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests)
-        return 0 if applied.nil? # 全体確認で中止
+        return SyncResult.new(aborted: true) if applied.nil? # 全体確認で中止
 
-        # --- Phase: lock・基準の更新と完了報告 ---
+        # --- Phase: lock・基準の更新 → 著者データの整理 → 完了報告 ---
         save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
+        backup_dir, new_keys = apply_tidy(tidy, lock, backup_dir)
         print_summary(plan, applied, skipped, backup_dir)
-        0
+        SyncResult.new(new_keys:)
       end
 
       private
@@ -257,31 +277,40 @@ module VivlioStarter
         end
       end
 
-      # 古い版から持ち越した著者データを、今の版に合わせて片づける（改善案.md #114）。
+      # 古い版から持ち越した著者データを、今の版に合わせて片づける計画（改善案.md #114）。
       #   - book.yml の廃止キー（読まれないのに、どのコマンドでも警告が出続ける）
+      #   - 雛形で増えた book.yml のキー（scaffold-update-notice-spec.md §10）
       #   - 原稿の無い章を指す索引辞書の main:（ベータ版の雛形が配った本書の辞書の名残など）
+      #   - contents/ に残った、今の版では使わない特別ページ
       #
-      # 雛形追従と違い、著者データ領域に手を入れる。それでも確認は求めない——消すのは
-      # 効いていないキーと、無い原稿を指す参照だけで、失う設定が無いため。せっかく
-      # 上げた著者に手作業を残さないことを優先し、代わりに退避を取って何をしたかを示す。
-      def tidy_author_data!(options)
-        book_yml = File.join('config', 'book.yml')
-        book_text = File.read(book_yml, encoding: 'utf-8')
-        retired = RetiredKeyRemover.authored(book_text, ConfigKeys::RETIRED.keys)
-        terms = UnifiedTermsManager.new
-        orphans = terms.orphan_main_references
-        pages = stale_system_pages
-        return if retired.empty? && orphans.empty? && pages.empty?
+      # 雛形追従と違い、著者データ領域に手を入れる。だから計画の表に載せ、同じ確認に含める。
+      # 確認の後に整理すると、何が変わるのかを知らないまま答えることになり、「いいえ」と
+      # 答えてもファイルが書き換わる。
+      def plan_tidy(lock)
+        book_text = File.read(File.join('config', 'book.yml'), encoding: 'utf-8')
+        TidyPlan.new(book_text:,
+                     retired: RetiredKeyRemover.authored(book_text, ConfigKeys::RETIRED.keys),
+                     orphans: UnifiedTermsManager.new.orphan_main_references,
+                     pages: stale_system_pages,
+                     new_keys: ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:))
+      end
 
-        Common.log_summary('古い版から持ち越した設定を整理しています…')
-        report_tidy(retired, orphans, pages, book_text:, dry_run: options[:dry_run])
-        return if options[:dry_run]
+      # 書き換えるファイルを「保持」と書かないよう、整理の行へ置き換える
+      def with_tidy_rows(plan, tidy)
+        paths = tidy.paths
+        plan.reject { paths.include?(it.relative) } + paths.map { PlanItem.new(relative: it, status: :tidy) }
+      end
+
+      # 確認の後で整理を実行する。失う設定は無いので、退避を取って何をしたかを示す。
+      # @return [Array(String?, BookKeyInserter::Result?)] バックアップ先と、足した設定の結果
+      def apply_tidy(tidy, lock, backup_dir)
+        return [backup_dir, tidy.new_keys] if tidy.empty?
 
         # --- Phase: book.yml の廃止キー（移した先のあるキーは移し、ほかは消す） ---
-        backup_dir = nil
-        if retired.any?
-          moved, removed = retired.partition { moved_key_target(it) }
-          rewritten = moved.reduce(book_text) do |text, path|
+        book_yml = File.join('config', 'book.yml')
+        if tidy.retired.any?
+          moved, removed = tidy.retired.partition { moved_key_target(it) }
+          rewritten = moved.reduce(tidy.book_text) do |text, path|
             text && RetiredKeyRemover.move(text, path, moved_key_target(path))
           end
           rewritten = RetiredKeyRemover.remove(rewritten, removed) if rewritten && removed.any?
@@ -296,19 +325,35 @@ module VivlioStarter
           end
         end
 
+        # --- Phase: 雛形で増えたキー（廃止キーを整理した後の中身へ差し込む） ---
+        new_keys, backup_dir = add_new_book_keys!(lock, backup_dir)
+
         # --- Phase: 索引辞書の main: ---
-        if orphans.any?
+        if tidy.orphans.any?
           backup_dir = backup!(UnifiedTermsManager::UNIFIED_FILE, backup_dir)
-          terms.forget_missing_chapters!
+          UnifiedTermsManager.new.forget_missing_chapters!
         end
 
         # --- Phase: 使われなくなった特別ページ ---
-        pages.each do |page|
+        tidy.pages.each do |page|
           backup_dir = backup!(page, backup_dir)
           FileUtils.rm(page)
         end
 
         Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
+        [backup_dir, new_keys]
+      end
+
+      # 雛形で増えたキーを book.yml へ足す（scaffold-update-notice-spec.md §10）。
+      # @return [Array(BookKeyInserter::Result?, String?)] 知らせに使う結果と、バックアップ先
+      def add_new_book_keys!(lock, backup_dir)
+        plan = ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:)
+        return [plan, backup_dir] if plan.nil? || plan.added.empty?
+
+        book_yml = File.join('config', 'book.yml')
+        backup_dir = backup!(book_yml, backup_dir)
+        File.write(book_yml, plan.text, encoding: 'utf-8')
+        [plan, backup_dir]
       end
 
       # contents/ に残った扉・免責・奥付・部扉の原稿（改善案.md #114）。
@@ -323,26 +368,6 @@ module VivlioStarter
           name = File.basename(path, '.md')
           TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(name) || name.match?(/\A_part\d+\z/)
         end.sort
-      end
-
-      # 原稿に出てこない語が辞書にあれば、見直しの手順を案内する（改善案.md #114）。
-      #
-      # ベータ版の雛形は本書の辞書（171 語）を配っていたので、そこから育てた本では
-      # 辞書の大半が著者の原稿に出てこない。ただ、どの語が雛形から来たかは、版ごとの
-      # 辞書を gem に持たせない限り見分けられず、著者が先回りして登録した語と区別できない。
-      # そこで upgrade は消さずに数えるだけにし、外すかは vs index:auto のレビュー
-      # （5 節「原稿に出てこない語」は [ ] の印で並び、そのまま apply すれば外れる）に委ねる。
-      def suggest_dictionary_review
-        terms = UnifiedTermsManager.new
-        absent = terms.absent_listed_terms
-        return if absent.empty?
-
-        listed = terms.load_terms.count { !it['flags'].to_s.empty? }
-        names = absent.first(3).map { it['term'] }.join('・') + (absent.size > 3 ? ' ほか' : '')
-        Common.log_always("💡 索引辞書の #{absent.size} 語（載せている #{listed} 語のうち）が、原稿のどこにも出てきません（#{names}）")
-        Common.log_always("#{Common::DETAIL_INDENT}古い版の雛形が配った見本の語や、原稿から消した語が残っているのかもしれません")
-        Common.log_always("#{Common::DETAIL_INDENT}vs index:auto を実行し、レビューファイルの「5. 原稿に出てこない語」を確かめてから " \
-                          'vs index:apply すると外れます')
       end
 
       # 値を別のキーへ移した廃止キーなら、移した先のパス（multivolume-spec.md §3.5）
@@ -369,13 +394,22 @@ module VivlioStarter
       end
 
       # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
-      def report_tidy(retired, orphans, pages, book_text:, dry_run:)
-        moved, removed = retired.partition { moved_key_target(it) }
-        written = moved.any? ? (YAML.safe_load(book_text, aliases: true) || {}) : {}
+      def report_tidy(tidy, dry_run:)
+        return if tidy.empty?
+
+        moved, removed = tidy.retired.partition { moved_key_target(it) }
+        written = moved.any? ? (YAML.safe_load(tidy.book_text, aliases: true) || {}) : {}
         moved.each { report_moved_key(it, moved_key_target(it), written) }
         if removed.any?
           Common.log_always("   config/book.yml: 廃止キーを消します（#{removed.map { it.join('.') }.join('・')}）")
         end
+        added = tidy.new_keys&.added.to_a
+        if added.any?
+          others = added.size > 1 ? " ほか #{added.size - 1} 件" : ''
+          Common.log_always("   config/book.yml: 新しい設定を足します（#{added.first}#{others}）")
+        end
+        orphans = tidy.orphans
+        pages = tidy.pages
         if orphans.any?
           chapters = orphans.values.flatten.uniq
           listed = chapters.first(3).join('・') + (chapters.size > 3 ? " ほか #{chapters.size - 3} 章" : '')
@@ -486,6 +520,7 @@ module VivlioStarter
         update: ['更新', '雛形が改良・あなたは未変更 → 自動適用可'],
         merge: ['合流', '雛形もあなたも変更・別の場所 → 自動で両立'],
         conflict: ['競合', '雛形もあなたも同じ場所を変更 → diff 確認'],
+        tidy: ['整理', '下の箇所だけを直す'],
         keep: ['保持', '著者データ領域 → 対象外']
       }.freeze
 
@@ -493,7 +528,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[add add_empty update merge conflict keep]
+        order = %i[add add_empty update merge conflict tidy keep]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           Common.log_always(format('   %s   %-42s（%s）', label, item.relative, note))
@@ -507,8 +542,9 @@ module VivlioStarter
         message = "--dry-run のため適用しません（追加 #{counts.values_at(:add, :add_empty).compact.sum} 件" \
                   "・更新 #{counts[:update] || 0} 件"
         message += "・合流 #{merged} 件" if merged.positive?
-        Common.log_always("#{message}・競合 #{counts[:conflict] || 0} 件）")
-        0
+        message += "・競合 #{counts[:conflict] || 0} 件"
+        message += "・整理 #{counts[:tidy]} 件" if counts[:tidy]
+        Common.log_always("#{message}）")
       end
 
       # 追加・更新の一括適用と、競合の個別確認を行う。
@@ -519,13 +555,14 @@ module VivlioStarter
         updates   = plan.select { it.status == :update }
         merges    = plan.select { it.status == :merge }
         conflicts = plan.select { it.status == :conflict }
+        tidied    = plan.select { it.status == :tidy }
         applied = []
         skipped = []
         backup_dir = nil
 
         # --- Phase: 追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
-        if (adds.any? || updates.any? || merges.any?) && !cmd.options[:yes]
-          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges)}")
+        if (adds.any? || updates.any? || merges.any? || tidied.any?) && !cmd.options[:yes]
+          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied)}")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
@@ -571,9 +608,10 @@ module VivlioStarter
       end
 
       # 全体確認の文言。合流は 0 件のことが多いので、あるときだけ足す
-      def bulk_summary(adds, updates, merges)
+      def bulk_summary(adds, updates, merges, tidied)
         summary = "追加 #{adds.size} 件・更新 #{updates.size} 件"
         summary += "・合流 #{merges.size} 件" if merges.any?
+        summary += "・整理 #{tidied.size} 件" if tidied.any?
         summary
       end
 
@@ -627,7 +665,8 @@ module VivlioStarter
         backup_dir ||= File.join(Common.cache_dir, 'upgrade-backup', Time.now.strftime('%Y%m%d-%H%M%S'))
         destination = File.join(backup_dir, relative)
         FileUtils.mkdir_p(File.dirname(destination))
-        FileUtils.cp(relative, destination)
+        # 同じ秒に 2 度退避すると、書き換えた後の中身で元を潰す。最初の中身を残す
+        FileUtils.cp(relative, destination) unless File.exist?(destination)
         backup_dir
       end
 
@@ -672,7 +711,9 @@ module VivlioStarter
         merge_count  = applied.count { it.status == :merge }
         update_count = applied.count { %i[update conflict].include?(it.status) }
         message = "アップグレード完了: 追加 #{add_count}・更新 #{update_count}"
+        tidy_count   = plan.count { it.status == :tidy }
         message += "・合流 #{merge_count}" if merge_count.positive?
+        message += "・整理 #{tidy_count}" if tidy_count.positive?
         message += "・スキップ #{skipped.size}"
         message += "（バックアップ: #{backup_dir}/）" if backup_dir
         Common.log_result(message, status: :success)

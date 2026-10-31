@@ -250,10 +250,11 @@ module VivlioStarter
           write(scaffold, 'config/book.yml', GROWN_BOOK)
           write('.', 'config/book.yml', BOOK)
           lock = lock_with({}, book_keys: ScaffoldLock.book_keys(BOOK))
+          plan = ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source: scaffold)
 
-          out, = capture_io { ScaffoldUpdates.report_new_book_keys(lock, scaffold_source: scaffold) }
+          out, = capture_io { ScaffoldUpdates.report_new_book_keys(plan, scaffold_source: scaffold, dry_run: true) }
 
-          assert_includes out, '💡 book.yml に書ける設定が 5 つ増えました（書かなくても既定値で動きます）'
+          assert_includes out, '💡 book.yml に書ける設定が 5 つ増えました（vs upgrade で足します。値は既定値です）'
           listed = out.lines.map(&:chomp).drop_while { !it.strip.empty? }.drop(1).map { it.delete_prefix(Common::DETAIL_INDENT) }
           assert_equal <<~YAML.lines(chomp: true), listed
             book:
@@ -279,7 +280,9 @@ module VivlioStarter
           write('.', 'config/book.yml', BOOK)
           lock = lock_with({}, book_keys: ScaffoldLock.book_keys(BOOK))
 
-          out, = capture_io { ScaffoldUpdates.report_new_book_keys(lock, scaffold_source: scaffold) }
+          assert_nil ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source: scaffold)
+
+          out, = capture_io { ScaffoldUpdates.report_new_book_keys(nil, scaffold_source: scaffold) }
 
           assert_empty out
         end
@@ -290,9 +293,12 @@ module VivlioStarter
           write(scaffold, 'config/book.yml', "metrics:\n  section: { min: 1, ideal: 2, max: 3 } # 節の分量\n")
           write('.', 'config/book.yml', "metrics:\n  section: { max: 3 }\n")
           lock = lock_with({}, book_keys: %w[metrics metrics.section metrics.section.max])
+          plan = ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source: scaffold)
 
-          out, = capture_io { ScaffoldUpdates.report_new_book_keys(lock, scaffold_source: scaffold) }
+          out, = capture_io { ScaffoldUpdates.report_new_book_keys(plan, scaffold_source: scaffold) }
 
+          assert_empty plan.added, '1 行にまとめたキーの中には差し込めない'
+          assert_includes out, 'book.yml へ自動で足せなかった設定が 2 つあります'
           assert_equal 1, out.scan('section: { min: 1, ideal: 2, max: 3 } # 節の分量').size, '同じ行を 2 度並べない'
         end
       end
