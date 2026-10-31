@@ -25,7 +25,7 @@ preflight は「飛行前点検」という意味です。章を書き終えた�
 
 | | `vs preflight` | `vs build` |
 |:---|:---|:---|
-| 実行時間 | 数秒 | 数分（本書の全章で約 6 分） |
+| 実行時間 | 数秒 | 数分（本書の全章で約 3 分） |
 | PDF 生成 | しない | する |
 | エラー検出 | その場で報告 | ビルド後に判明 |
 | 用途 | 執筆中の頻繁なチェック | 入稿・配布前の最終ビルド |
@@ -45,7 +45,7 @@ vs preflight intro   # スラッグが intro の章をチェック
 
 ### 実行結果の見方
 
-`🔴` は品質エラー（著者の意図が成果物に反映されない）、`🟡` は警告（確認を促したい）を表します。検出できる問題の種別は以下のとおりです。
+`🔴` は品質エラー（著者の意図が成果物に反映されない）、`🟡` は警告（確認を促したい）を表します。検出できる主な問題の種別は、次のとおりです。
 
 | 種別 | 記号 |
 |:---|:---:|
@@ -53,7 +53,11 @@ vs preflight intro   # スラッグが intro の章をチェック
 | コードインクルードファイル不在 | 🔴 |
 | QueryStream 雛形ファイル不在 | 🔴 |
 | ラベル ID重複 | 🔴 |
+| 未定義のラベル | 🟡 |
 | 孤立ラベル | 🟡 |
+| `stylesheets/` に定義のないクラス名 | 🟡 |
+| 本の書体にない字 | 🟡 |
+| 組めない数式 | 🟡 |
 
 たとえば `vs preflight 11 95` で二つの章を点検すると、次のように出力されます。
 
@@ -232,7 +236,7 @@ vs pdf:rasterize
 `vs clean` はビルド中に作られたファイルを片付けるコマンドです。通常のビルド後は自動で片付けられますが、中間ファイルを調べたあとや、キャッシュを作り直したいときに使えます。
 :::
 
-`vs build` 実行後に中間ファイルを残したい場合は `--no-clean` を使います（開発者向け仕様）
+`vs build` 実行後に中間ファイルを残したい場合は `--no-clean` を使います。
 
 ```bash
 vs build --no-clean   # 中間ファイルを残してビルド
@@ -293,38 +297,39 @@ vs clean              # 後から手動でクリーンアップ
 
 ### カスタマイズ可能な CSS 変数
 
-`theme.css` と `page-settings.css` で定義されている主な CSS カスタムプロパティの一覧です。`custom.css` でこれらの値を上書きできます。
+`theme.css` と `page-settings.css` で定義されている主な CSS カスタムプロパティの一覧です。`custom.css` でこれらの値を上書きできます。コラムの文字の大きさのように変数のないものは、`.column { font-size: 9pt; }` のように規則を書きます。
 
 #### 配色（theme.css）
 
 | 変数名 | 既定値 | 説明 |
 | :--- | :--- | :--- |
-| `--theme-accent` | `var(--accent-blue)` | テーマのアクセントカラー |
+| `--theme-accent` | `var(--accent-green)` | テーマのアクセントカラー |
 | `--color-text` | `#000` | 本文テキスト色 |
 | `--color-link` | `#000` | リンク色 |
 | `--color-strong` | `var(--theme-accent)` | 太字（`**強調**`）の色 |
 | `--color-em-underline` | `var(--theme-accent)` | 強意（`*イタリック*`）の下線色 |
 | `--color-border` | `#ccc` | 画像など汎用枠線色 |
-| `--color-column-bg` | `#eef` | コラム背景色 |
-| `--color-column-border` | `#8df` | コラム枠線色 |
+| `--color-column-bg` | テーマ色を淡くした色 | コラム背景色 |
+| `--color-column-border` | `var(--theme-accent)` | コラム枠線色 |
 | `--color-figure-border` | `#ccc` | 図の枠線色 |
 | `--color-danger` | `#f00` | 警告色 |
 
 #### 版面・フォント（page-settings.css）
 
+既定値は `b5_standard` の例です。実際の値は `page.use` と `typography` で決まります。
+
 | 変数名 | 既定値（例） | 説明 |
 | :--- | :--- | :--- |
 | `--base-font-size` | `10.5pt` | 基準文字サイズ |
-| `--base-line-height` | `19.425pt` | 行送り |
+| `--base-line-height` | `17.85pt` | 行送り |
 | `--letter-spacing` | `0em` | 字間 |
 | `--page-margin-top` | `25mm` | 天（上余白） |
 | `--page-margin-bottom` | `25mm` | 地（下余白） |
 | `--page-margin-inner` | `25mm` | ノド（綴じ側余白） |
-| `--page-margin-outer` | `23mm` | 小口（外側余白） |
+| `--page-margin-outer` | `20mm` | 小口（外側余白） |
 | `--font-main-text` | `"Noto Serif JP"` | 本文フォント |
 | `--font-header` | `"Noto Sans JP"` | 見出しフォント |
-| `--font-code` | `"hackgen35"` | コードフォント |
-| `--column-font-size` | `8pt` | コラムの文字サイズ |
+| `--font-code` | `"HackGen35 Console NF"` | コードフォント |
 
 :::{.tip}
 `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。

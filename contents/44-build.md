@@ -16,7 +16,7 @@
 vs build
 ```
 
-引数なしで実行すると、`config/catalog.yml` に定義された全章を対象に**フルビルド**を行います。出力される形式は `config/book.yml` の `output.targets` で決まります。
+引数なしで実行すると、`config/catalog.yml` に定義された全章を対象に**フルビルド**を行います。出力される形式は `config/book.yml` の `output.targets` で決まります。分冊の本で巻を選んで組む方法は、@pageref:volumes で説明しています。
 
 ### 出力形式の選択
 
@@ -286,11 +286,7 @@ Kindle Previewer は macOS 版と Windows 版だけが配布されており、Li
 :::{.tip}
 **Apple Silicon の Mac をお使いの場合**
 
-Kindle Previewer 4 は、見かけのうえでは Apple Silicon に対応していますが、変換を実際に行う部分は Intel 版のままです。そのため Rosetta 2 が入っていないと、`.kpf` への変換だけが次のエラーで失敗します。
-
-```text
-bad CPU type in executable
-```
+Kindle Previewer 4 は、見かけのうえでは Apple Silicon に対応していますが、変換を実際に行う部分は Intel 版のままです。そのため Rosetta 2 が入っていないと、`.kpf` への変換だけが `bad CPU type in executable` というエラーで失敗します。
 
 新しい Mac には Rosetta が最初から入っていないことがあります。`targets` に `kindle` がある本では、`vs doctor --fix` が Kindle Previewer と一緒に入れます。自分で入れる場合は、次のコマンドを実行します。
 
@@ -545,7 +541,7 @@ Vivliostyle などのツールがない・動かないときは、`vs doctor --f
 
 **解決方法**:
 - **そのまま待つ**。組版は正常に進んでいる
-- 初回のビルドでは画像の変換（WebP 化と、PDF 向け派生の生成）が走る。2 回目以降は変換済みのものをそのまま使うため、この待ち時間は生じない
+- 初回のビルドでは画像の変換（PDF 向け派生の生成）が走る。2 回目以降は変換済みのものをそのまま使うため、この待ち時間は生じない
 - それでも異常に長いと感じたら `vs doctor --fix` で依存ツール（Vivliostyle、qpdf など）の状態を確認する
 
 索引と用語集のページ番号を確定させるため、PDF は 2 回組まれます（`build overall pdf` と `backlink dedup`）。本書では合わせてビルド時間の 7 割以上を占めます。

@@ -163,7 +163,7 @@ page:
 
 **用途**: 商業印刷、印刷所入稿
 
-- **サイズ**: B5 または A5（`page.use` に応じて自動選択）
+- **サイズ**: `page.use` の判型に塗り足しを加えた大きさ
 - **塗り足し**: 3 mm（商業印刷標準）
 - **解像度**: 350 dpi
 - **カラーモード**: CMYK（Japan Color 2001 Coated による ICC ベース変換を自動適用）
@@ -248,6 +248,7 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 🔴 カスタム画像 'floral' のPNGファイルもSVGファイルも見つかりません
         covers/frontcover_floral.png または .svg
         covers/backcover_floral.png または .svg
+        → book.yml の book.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください
 ```
 :::
 

@@ -58,7 +58,7 @@ Ruby 3.4 以上がすでにあり、gem だけを入れたい場合は、次の�
 gem install vivlio-starter vivlio-starter-pdf
 ```
 
-vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあります。本体だけでも、PDF のしおり以外の処理はすべて動きます。
+vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあります。本体だけでも、PDF のしおりと `vs pdf:read` の画像抽出・OCR 以外の処理はすべて動きます。
 
 ## 自動インストールの内訳
 
@@ -70,9 +70,10 @@ vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあり�
 | Homebrew | 公式インストーラ | macOS 用パッケージマネージャ |
 | Node.js / npm | `brew install node` | Vivliostyle CLI の前提（Node 22.12 以上） |
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
+| VFM | `npm install -g @vivliostyle/vfm` | Markdown から HTML への変換 |
 | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
-| poppler（pdfinfo / pdftoppm） | `brew install poppler` | PDF メタデータ取得・ページ画像化 |
+| poppler（pdfinfo / pdftoppm / pdftotext） | `brew install poppler` | PDF メタデータ取得・ページ画像化・しおりの位置の特定 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
 | Inkscape | `brew install --cask inkscape` | SVG ラスタライズの予備経路（任意） |
@@ -201,7 +202,7 @@ ruby -v
 4) Vivliostyle CLI と Vivlio Starter
 
 ```bash
-npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli @vscode/vscode-languagedetection
+npm install -g @vivliostyle/cli @vivliostyle/vfm mathjax-full @mermaid-js/mermaid-cli @vscode/vscode-languagedetection
 gem install vivlio-starter
 ```
 
@@ -232,7 +233,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 iwr -useb get.scoop.sh | iex
 scoop bucket add main
 scoop install git ruby nodejs-lts qpdf ghostscript imagemagick poppler
-npm install -g @vivliostyle/cli
+npm install -g @vivliostyle/cli @vivliostyle/vfm
 gem install vivlio-starter
 vivliostyle --version
 vs --version
