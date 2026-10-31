@@ -381,9 +381,10 @@ module VivlioStarter
         end
 
         # SVGをdata URIに変換
+        # フォームの符号化は空白を `+` にするが、data URI では `+` は空白に戻らない
+        # （`<svg+xmlns=…` という読めない SVG になる）ので %20 に直す。文字の `+` は %2B になっている
         def svg_to_data_uri(svg_content)
-          # シンプルにURL encoding
-          encoded = URI.encode_www_form_component(svg_content)
+          encoded = URI.encode_www_form_component(svg_content).gsub('+', '%20')
           "data:image/svg+xml;charset=utf-8,#{encoded}"
         end
       end
