@@ -14,6 +14,10 @@
 | `vs import` | Re:VIEW Starter プロジェクトを取り込み | Re:VIEW Starter からの移行 |
 | `vs pdf:read` | PDF を解析して Markdown へ変換・抽出 | PDF からの原稿の取り出し |
 | `vs doctor` | 環境診断と不足ツールの自動セットアップ | 環境の診断と更新 |
+| `vs config` | 設定ファイルの書き方を調べるコマンドの一覧を表示 | book.yml・catalog.yml リファレンス |
+| `vs config:book` | `book.yml` の設定の説明と今の値を表示 | book.yml・catalog.yml リファレンス |
+| `vs config:catalog` | `catalog.yml` の書き方と、この本の章立てを表示 | book.yml・catalog.yml リファレンス |
+| `vs config:talk` | `talk.yml` の書き方と、この本の話者を表示 | 拡張記法リファレンス |
 | `vs clean` | 生成物やキャッシュを削除 | 補助コマンドとカスタマイズ |
 | `vs create` | 章ファイルと画像ディレクトリを生成 | 章の管理 |
 | `vs delete` | 指定した章の Markdown と画像を削除 | 章の管理 |
@@ -91,6 +95,14 @@
 | `--yes` / `-y` | 確認プロンプトをスキップする（`--fix` 指定時のみ有効） |
 :::
 
+### `vs config:book` / `vs config:catalog` / `vs config:talk` — 設定の書き方を調べる
+
+`vs config:book [区分 / キー / 探す言葉]`（省略すると区分の一覧。キーを指定すると、説明と今の値を表示する）
+
+`vs config:catalog`（`catalog.yml` の書き方と、この本の章立てを表示する）
+
+`vs config:talk [display: のキー / 探す言葉]`（省略すると `talk.yml` の書き方と、この本の話者を表示する）
+
 ### `vs clean` — 生成物・キャッシュの削除
 
 `vs clean [オプション]`
@@ -114,7 +126,7 @@
 
 ### `vs delete` — 章の削除
 
-`vs delete <対象>`（章番号 / 範囲 / ファイル名）
+`vs delete <対象>`（章番号 / 範囲 / ファイル名）。端末から実行します。
 
 :::{.long-table}
 | オプション | 説明 |

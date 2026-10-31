@@ -301,7 +301,7 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 
 対話形式のページは、`:::{.talk}` ブロックの中へ**「キー: 発話」**を並べて書きます。原稿では話者を短いキーで示し、表示名・色・アバターなどの見た目は設定ファイルで管理します。
 
-まず話者を `config/talk.yml` に定義します。本書の雛形には、遙香（`haruka`）と未來（`mirai`）の 2 人が入っています。
+まず話者を `config/talk.yml` に定義します。本書の雛形には、遙香（`haruka`）と未來（`mirai`）の 2 人が入っています。書き方とこの本の話者は `vs config:talk` で確かめられます。
 
 ```yaml
 haruka:

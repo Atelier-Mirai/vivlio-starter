@@ -16,6 +16,33 @@
 | 必要に応じて調整する | `typography` `output` `verify` `legal` | 既定値で動くが、カスタマイズしたい場合に |
 | 機能別の詳細設定 | `index_glossary` `index` `glossary` `metrics` `lint` `spellcheck` `pdf_read` | 各機能を使う場合のみ設定 |
 
+### 設定の書き方を調べる（`vs config:book`）
+
+キーの書き方は `vs config:book` で引けます。読むだけのコマンドで、`book.yml` は書き換えません。プロジェクトの外でも使えます。
+
+```bash
+vs config:book                      # 区分の一覧
+vs config:book index                # 区分のキーと説明
+vs config:book index.target_terms   # キーの説明と今の値
+vs config:book 目次                 # 言葉で探す
+```
+
+キーを指定すると、`vs new` が作る `book.yml` と同じ説明に、今の値を添えて表示します。書いていないキーは既定値を示します。
+
+```text
+index.target_terms
+
+  # ======= 索引設定 =======
+  index:
+    target_terms: light # 索引語数の目安
+
+今の値: 書いていません（既定値: light）
+```
+
+廃止されたキーを指定すると、代わりの書き方を案内します。
+
+ほかの設定ファイルも同じように調べられます。`vs config:catalog` は `catalog.yml` の書き方とこの本の章立てを、`vs config:talk` は `talk.yml` の書き方とこの本の話者を表示します。`vs config` は、これらのコマンドの一覧を表示します。
+
 ## 必ず設定する項目
 
 ### book — 書籍情報 @book-section
@@ -378,7 +405,7 @@ pdf_read:
 ## config/catalog.yml — 章の構成 @catalog-yml
 
 :::{.section-lead}
-`config/catalog.yml` には、本に載せる原稿を、前書き・本文・付録・後書きに分けて、載せる順に並べます。
+`config/catalog.yml` には、本に載せる原稿を、前書き・本文・付録・後書きに分けて、載せる順に並べます。書き方とこの本の章立ては `vs config:catalog` で確かめられます。
 :::
 
 ### 一冊の本の書き方
