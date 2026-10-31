@@ -159,6 +159,10 @@ vs --help
     import           Re:VIEW Starter プロジェクトを取り込みます
     pdf:read         PDF を Markdown へ変換します
     doctor           環境診断と不足ツールの自動セットアップを行います
+    config           設定ファイルの書き方を調べるコマンドの一覧を表示します
+    config:book      book.yml の設定の説明と今の値を表示します
+    config:catalog   catalog.yml の書き方と、この本の章立てを表示します
+    config:talk      talk.yml の書き方と、この本の話者を表示します
     clean            生成物やキャッシュを削除します
 
   執筆・編集支援:
@@ -176,12 +180,11 @@ vs --help
     index:plan       索引語数の目安と現況を表示します（辞書は変更しません）
     index:auto       索引・用語集の候補を抽出し、確認用ファイルを作成します
     index:apply      確認済みの候補を索引辞書（index_glossary_terms.yml）に登録します
-    index:export     用語集・棄却語を index_library.yml へ書き出します
-    index:import     index_library.yml から用語集・棄却語を取り込みます
+    index:export     用語集の説明文・棄却した語・読みを index_library.yml へ書き出します
+    index:import     index_library.yml から用語集の説明文・棄却した語・読みを取り込みます
 
   画像・カバー:
-    cover            表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB）
-    resize           images/ の画像を WebP へ変換・最適化します（--high/--low で品質変更）
+    cover            表紙・裏表紙の画像を生成します（book.yml の判型と output.targets に従う）
 
   ビルド・出力・プレビュー:
     preflight        ビルド前の原稿エラーチェックを高速実行します
