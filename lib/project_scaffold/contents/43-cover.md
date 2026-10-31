@@ -120,7 +120,7 @@ vs cover
 
 ### 表紙だけを作り直す
 
-表紙の判型は `page.use`、作る形式は `output.targets` で決まります。別の判型や形式で作りたいときは、`book.yml` を書き換えてから実行します。分冊の本では、`--volume` に巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover --volume lower` です。`--volume all` なら全巻の表紙を作ります。巻の `cover` に書いた画像を使い、`light`・`dark` には巻の書名が入ります（@pageref:volumes）。
+表紙の判型は `page.use`、作る形式は `output.targets` で決まります。別の判型や形式で作りたいときは、`book.yml` を書き換えてから実行します。分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を作ります。巻の `cover` に書いた画像を使い、`light`・`dark` には巻の書名が入ります（@pageref:volumes）。
 
 表紙のデザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときは、本文を組み直さずに `vs cover` だけを実行すれば足ります。`vs build` も表紙を作り直すので、本を組むときに `vs cover` を先に実行しておく必要はありません。
 

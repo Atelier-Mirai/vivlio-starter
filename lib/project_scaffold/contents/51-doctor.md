@@ -211,6 +211,36 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 著者が雛形のファイルを変更したかどうかは、`vs new` が作る `config/scaffold.lock` で判定します。このファイルは手で編集せず、Git にコミットしてください。
 
+### 雛形の更新の知らせ
+
+`gem update` だけで本体を更新すると、スタイルシートの改良はプロジェクトへ届きません。そこで、全章の `vs build` と `vs preflight` は、雛形のスタイルシートや `book.yml` に書ける設定が新しくなっていれば、最後に知らせます。
+
+:::{.output}
+```text
+💡 雛形が新しくなっています（CSS: colophon.css ほか 3 件・book.yml の設定: 2 件）
+        vs upgrade で確かめられます
+```
+:::
+
+`vs build 11` のように章を指定したときは知らせません。`vs upgrade` を実行すると、次に雛形が変わるまで消えます。競合を断ったスタイルシートも、次に雛形が変わるまで知らせません。
+
+`vs upgrade` は `book.yml` を書き換えないため、増えた設定は最後に行のまま並べます。書かなくても既定値で動くので、使いたい設定だけを `config/book.yml` へ写してください。
+
+:::{.output}
+```text
+💡 book.yml に書ける設定が 2 つ増えました（書かなくても既定値で動きます）
+        使うときは、次の行を config/book.yml へ写してください
+
+        theme:
+          lead_size: 1.2 # 章リード文の文字の大きさ（本文に対する倍率・1.0〜2.0）
+                         # simple の章・付録にも効く。image の章扉は frontispiece の lead_size で変えられる
+        index_glossary:
+          exclude_chapters: [] # 索引・用語集の対象から外す章（例: 記法の見本の章）
+```
+:::
+
+この一覧が出るのは、新しい設定につき 1 回だけです。書かないと決めた設定を、毎回並べないためです。
+
 ### Gemfile.lock の追随
 
 雛形を取り込んだあと、`Gemfile.lock` が指す Vivlio Starter の版を、使っている版に合わせます（`bundle update vivlio-starter` に相当します）。失敗したときは 🟡 で手動の対処方法を案内します。
