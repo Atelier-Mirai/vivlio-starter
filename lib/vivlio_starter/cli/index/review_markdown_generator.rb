@@ -761,13 +761,15 @@ module VivlioStarter
       end
 
       # ラベルを決定（NEW! または Today）
-      def determine_label(item)
-        approved_at = item['approved_at']
-        is_new = item['is_new']
+      def determine_label(item) = recency_label(item, item['approved_at'])
 
-        return 'NEW!' if is_new
+      def determine_rejected_label(item) = recency_label(item, item['rejected_at'])
 
-        return nil unless approved_at
+      # 語の頭のラベル。今回はじめて挙がった語は NEW!、今日登録（棄却）した語は Today、それ以外は nil
+      def recency_label(item, stamped_at)
+        return 'NEW!' if item['is_new']
+
+        return nil unless stamped_at
 
         # タイムゾーンを取得
         timezone = @config['timezone'] || 'Asia/Tokyo'
@@ -776,18 +778,18 @@ module VivlioStarter
           now = tz.now
           today_start = Time.new(now.year, now.month, now.day, 0, 0, 0, now.utc_offset)
 
-          approved_time = if approved_at.is_a?(String)
-                            Time.parse(approved_at)
-                          else
-                            approved_at
-                          end
+          stamped_time = if stamped_at.is_a?(String)
+                           Time.parse(stamped_at)
+                         else
+                           stamped_at
+                         end
 
-          return 'Today' if approved_time >= today_start
+          return 'Today' if stamped_time >= today_start
         rescue StandardError
           # TZInfo が使えない場合はローカルタイムで判定
           today_start = Time.now.to_date.to_time
-          approved_time = approved_at.is_a?(String) ? Time.parse(approved_at) : approved_at
-          return 'Today' if approved_time >= today_start
+          stamped_time = stamped_at.is_a?(String) ? Time.parse(stamped_at) : stamped_at
+          return 'Today' if stamped_time >= today_start
         end
 
         nil
@@ -822,37 +824,6 @@ module VivlioStarter
       end
 
       # Rejectedセクション用のラベル決定（rejected_atを使用）
-      def determine_rejected_label(item)
-        rejected_at = item['rejected_at']
-        is_new = item['is_new']
-
-        return 'NEW!' if is_new
-
-        return nil unless rejected_at
-
-        # タイムゾーンを取得
-        timezone = @config['timezone'] || 'Asia/Tokyo'
-        begin
-          tz = TZInfo::Timezone.get(timezone)
-          now = tz.now
-          today_start = Time.new(now.year, now.month, now.day, 0, 0, 0, now.utc_offset)
-
-          rejected_time = if rejected_at.is_a?(String)
-                            Time.parse(rejected_at)
-                          else
-                            rejected_at
-                          end
-
-          return 'Today' if rejected_time >= today_start
-        rescue StandardError
-          # TZInfo が使えない場合はローカルタイムで判定
-          today_start = Time.now.to_date.to_time
-          rejected_time = rejected_at.is_a?(String) ? Time.parse(rejected_at) : rejected_at
-          return 'Today' if rejected_time >= today_start
-        end
-
-        nil
-      end
 
       # 文脈を抽出（設定に基づいて）
       def extract_context(context_text)
