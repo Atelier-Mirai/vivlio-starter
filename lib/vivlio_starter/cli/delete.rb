@@ -9,7 +9,7 @@
 #
 # 機能:
 #   - 章番号・範囲・ファイル名による削除対象の指定
-#   - 削除の前の確認（省けない。スクリプトからは答えを標準入力から渡す）
+#   - 削除の前の確認（省けない。端末からだけ受け付ける）
 #   - config/catalog.yml からの章エントリ自動削除
 #
 # 削除対象:
@@ -63,10 +63,11 @@ module VivlioStarter
         # 削除処理を実行する
         #
         # @return [DeleteSummary] 削除した対象の内訳（表示は呼び出し側の責務）
-        # @raise [SystemExit] 対象が見つからない場合 exit(1)
+        # @raise [SystemExit] 対象が見つからない場合・端末でない場合 exit(1)
         def call
           options.apply_verbose!
           ensure_targets!
+          ensure_terminal!
 
           targets.sum(DeleteSummary.none) { |basename| deletion.remove(basename) }
         end
@@ -81,6 +82,15 @@ module VivlioStarter
           return unless targets.empty?
 
           Common.log_warn("指定に一致する章ファイルが見つかりませんでした: #{resolver.tokens_for_message}")
+          exit 1
+        end
+
+        # 消した原稿は戻せないので、答えは端末の前の人からだけ受ける。パイプを許すと、
+        # 章の指定を忘れた `yes | vs delete` が全章を消してしまう
+        def ensure_terminal!
+          return if $stdin.tty?
+
+          Common.log_error('章の削除の確認に答える必要があります。端末から vs delete を実行してください')
           exit 1
         end
 

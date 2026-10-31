@@ -913,7 +913,7 @@
 
 ### Removed
 
-- **確認を省く `--force` を廃止した**（`vs delete`・`vs rename`・`vs renumber`・`vs import`）。確認が要るのは原稿を消したり動かしたりする操作で、これを省く手段があると、章の指定を忘れただけで本が丸ごと消える（`vs delete --force` は確認なしで全章を消していた）。`vs rename` の `-f`・`-y`、`vs delete` の `-f` も外した。`vs delete`・`vs rename`・`vs renumber` をスクリプトから動かすときは `yes | vs delete 11-intro` のように答えを標準入力から渡す。`vs import` は `contents/`・`images/`・`codes/` を丸ごと消すので端末から実行し、端末でないときは理由を告げて止める（今までは何も言わずに止まっていた）。`--force` が残るのは、確認を省くのではない `vs pdf:read`（既存の章の置き換えを許す）と `vs resize`（画像を作り直す）だけ。14・24・91 章を書き直した。
+- **確認を省く `--force` を廃止した**（`vs delete`・`vs rename`・`vs renumber`・`vs import`）。確認が要るのは原稿を消したり動かしたりする操作で、これを省く手段があると、章の指定を忘れただけで本が丸ごと消える（`vs delete --force` は確認なしで全章を消していた）。`vs rename` の `-f`・`-y`、`vs delete` の `-f` も外した。`vs rename`・`vs renumber` をスクリプトから動かすときは `yes | vs rename 11 12` のように答えを標準入力から渡す。原稿を消す `vs delete` と `vs import` は端末からだけ受け付け、端末でないときは理由を告げて止める（`vs import` は今まで何も言わずに止まっていた）。`--force` が残るのは、確認を省くのではない `vs pdf:read`（既存の章の置き換えを許す）と `vs resize`（画像を作り直す）だけ。14・24・91 章を書き直した。
 - **内部コマンド `vs create:titlepage`・`create:legalpage`・`create:colophon` の `--force`・`-f` を外した**。常に作り直すので、付けても何も変わらなかった。
 
 - **本文にそのまま書いた URL（裸 URL）の 🟡 を廃止した**（改善案 #123・`LinkImageValidator`）。勧める理由が無く、出典の一覧のように URL を見せる正当な書き方まで警告していた。裸の URL も、全角の記号が続くものは前処理が `<URL>` で囲み直し、ほかは VFM がリンクにするので、紙面もリンク先も正しい。`book.yml` に `verify.bare_urls` が残っていると、廃止キーとして案内する。

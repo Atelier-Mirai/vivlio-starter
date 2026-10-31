@@ -10,6 +10,7 @@
 #   - 確認に「はい」と答えた章 Markdown と画像ディレクトリの削除
 #   - 確認に「いいえ」と答えた章は、目次・辞書も含めて何も変えない
 #   - 原稿の無い目次の項目も、確認してから外す
+#   - 端末でないときは何も消さずに止まる
 #   - 対象が見つからない場合の終了コード 1
 #
 # テスト環境:
@@ -100,7 +101,7 @@ module VivlioStarter
         end
       end
 
-      # 入力が閉じている（空の答え）ときも「いいえ」と同じ
+      # 答えずに入力を閉じた（Ctrl-D）ときも「いいえ」と同じ
       def test_delete_keeps_the_catalog_when_stdin_is_closed
         within_temp_dir do
           setup_chapter_fixture('11-sample')
@@ -184,6 +185,27 @@ module VivlioStarter
         end
       end
 
+      # 消した原稿は戻せないので、答えは端末からだけ受ける。章の指定を忘れた `yes | vs delete` も通さない
+      def test_delete_stops_without_a_terminal
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          catalog = File.read('config/catalog.yml')
+
+          [['11-sample'], []].each do |tokens|
+            error = nil
+            out, err = with_stdin("y\n" * 4, terminal: false) do
+              capture_io { error = assert_raises(SystemExit) { DeleteCommands::DeleteCommandExecutor.new({}, tokens).call } }
+            end
+
+            assert_equal 1, error.status
+            assert_includes out + err, '端末から vs delete を実行してください'
+            assert_path_exists File.join(Common::CONTENTS_DIR, '11-sample.md')
+            assert_path_exists File.join(Common::IMAGES_DIR, '11-sample')
+            assert_equal catalog, File.read('config/catalog.yml')
+          end
+        end
+      end
+
       # 対象が見つからない場合に終了コード 1 で終了することを確認
       def test_delete_exits_when_targets_missing
         within_temp_dir do
@@ -207,10 +229,11 @@ module VivlioStarter
       # catalog.yml の CHAPTERS の項目
       def catalog_items = Array(YAML.load_file('config/catalog.yml')['CHAPTERS']).map(&:to_s)
 
-      # 確認プロンプトへの答えを流し込む
-      def with_stdin(input)
+      # 確認プロンプトへの答えを流し込む。terminal: false はパイプからの入力
+      def with_stdin(input, terminal: true)
         original = $stdin
         $stdin = StringIO.new(input)
+        $stdin.define_singleton_method(:tty?) { terminal }
         yield
       ensure
         $stdin = original
