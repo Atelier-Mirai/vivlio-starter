@@ -823,8 +823,6 @@ module VivlioStarter
         end
       end
 
-      # Rejectedセクション用のラベル決定（rejected_atを使用）
-
       # 文脈を抽出（設定に基づいて）
       def extract_context(context_text)
         return '' if context_text.nil? || context_text.empty?

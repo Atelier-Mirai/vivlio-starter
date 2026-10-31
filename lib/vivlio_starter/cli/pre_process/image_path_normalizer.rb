@@ -9,7 +9,7 @@
 # 処理内容:
 #   - 相対パス → images/ 配下のパスに正規化
 #   - 存在しない画像 → SVG プレースホルダーの data URI に置換
-#   - WebP 優先: .png/.jpg があっても .webp を優先参照
+#   - 書かれた拡張子を優先し、無いときだけ拡張子違いを探す（resolve_existing_image）
 #
 # プレースホルダー:
 #   - 「Vivlio Starter」ロゴと「画像準備中」メッセージを表示

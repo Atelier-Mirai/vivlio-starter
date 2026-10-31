@@ -935,6 +935,11 @@
   - 画像の寸法の読み方（`magick identify`・5 か所）を `Common.image_size` に。
   - techbook の、HTML の地の文だけを書き換える走査と Twemoji のファイル名の作り方を `EmojiReplacer` に（`Processor` に同じ中身があった）。
   - 索引の見積もり・分布・主要参照の推定が章の Markdown を探す処理（3 か所）を `IndexCommands::ChapterSource.path` に。
+  - コードの行を求める処理（5 か所）を `Masking.code_lines` に。
+  - Vivliostyle の実行（`epub.rb`・`pdf.rb`）を `Common.run_vivliostyle_build` に。
+  - `vs pdf:pages`・`vs pdf:rasterize` の入力 PDF の解決を `InputPdf` に、重なった章の案内を `ChapterNames.duplication_lines` に。
+  - `vs build`・`vs preflight` の共通の処理を `VsCommand` に、索引レビューの語の頭のラベルを `recency_label` に。
+  - 色名の一覧を `ThemeColor::PALETTE` から導くようにした。使われていなかったレビューキュー（`save_queue`・`load_queue`）を消した。
 
 ### Removed
 
