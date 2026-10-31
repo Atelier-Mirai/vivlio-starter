@@ -150,7 +150,6 @@
   - **作業は属性 2 つ**。`EpubBuilder#decorate_footnotes_for_epub!` が既に `aside.page-footnote-print[data-footnote-number]` を走査しているので、そこで `aside['epub:type'] = 'footnote'` を、対応する `a#fnrefN` に `epub:type="noteref"` を付ける。
   - **確認は実機で**。KFX のポップアップは epubcheck では検証できず、Kindle Previewer で開くしかない（`kindle-css-compatibility-notes.md` の実機確認の流儀に従う）。ポップアップ化すると `aside` は本文に出なくなるため、**CSS 側の注記ブロック体裁（`body.vs-epub aside.page-footnote`）を残すか外すか**も同時に判断する。
 
-- **Kindle 実機での確認**（`image-format-per-target-spec.md` の残り）: 2026-08-17 に PDF・EPUB とも画像を大きく作り替えたので、KFX の表示を Kindle Previewer で確かめたい。素材そのものは 1 バイトも変わっていないため理屈上は影響しないが、Kindle 向けの画素数が版面基準の縮小で下がった（画面幅 1024px × 紙面で占めていた割合）。特に**版面の半分に置いた図が 493px 程度まで落ちる**ので、拡大表示したときの粗さを目視で見ておく。確認の流儀は `kindle-css-compatibility-notes.md` に従う。
 - [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → `kindle-fixed-layout-ideas.md`
 
 ---
@@ -158,15 +157,6 @@
 ## 品質 / テスト
 
 - [Low] **CI の自動起動を戻す**: `.github/workflows/test.yml`（Ruby 3.4 と 4.0 で `rake test`）はあるが、GitHub アカウントの課金の問題で一度も走らず、2026-08-21 に自動起動を止めた（`workflow_dispatch` だけ）。課金が解決したら、`on:` を push / pull_request へ戻す。それまでの回帰検出は、ローカルの `rake test:release` が担う。
-- [Medium] **Kindle Previewer 実機確認の積み残し**: 実装は完了しているが実機目視だけ未実施のものが 8 件ある。**まとめて 1 回の確認で消化できる**。
-  - 入れ子リスト記法（`nested-list-notation-spec` §10-12）: ul のレベル別マーカー「● ○ ・」の実体注入
-  - コード行番号（`epub-code-line-numbers-spec` §4）: 1 論理行＝1 行の対応とぶら下げインデント
-  - `@` ディレクティブ Tier 1（`at-directive-tier1-spec` §3-4）: `@pageref` がページ番号なしのタイトルリンクへ劣化するか・`@pagebreak:recto` が単純改ページになるか・QR コードの表示
-  - キャプション・見出しの改ページ制御（2026-08-10 追加）: `.table-caption` / `.code-caption` と本文見出し（h2〜h6）に `break-after: avoid` ＋ legacy の `page-break-after: avoid` を入れた。**EPUB パッケージまで届いていることは確認済み**（同梱 `table.css` と `chapter-common.css` に宣言が残り、`<p class="table-caption">` ＋ `<table>` の並びも保たれ、epubcheck のエラー数も修正前と同じ 83 件）。未確認なのは**リーダーが実際に守るか**——ページを割るのは読み手側のエンジンなので、キャプションと表・コードが分かれて表示されないかを見る。PDF では A/B で分断 8/14 → 0/14 と実証済み。
-  - 数式（`plain-math-notation-spec` §3-2・2026-08-21 追加）: インライン数式が**本文テキスト**として組まれ、読者の文字サイズ拡大に追従するか。ディスプレイ数式が PNG のまま崩れずに出るか。日本語を含む数式（`ハッシュ値 mod サーバー台数`）の書体が本文と揃うか。生成物の側は検査済み（KPF の XHTML と PNG を実測）なので、見るのは端末での見え方だけ。
-  - タスクリストのチェックボックス（`markdown-notation-collision-spec` §4・2026-08-23 追加）: PDF / EPUB は罫線で枠を描き、済みは鉤つきの塗りつぶし。KFX は `appearance` を解さないため `EpubBuilder` が `□` / `■` の**文字**へ差し替える。見るのは落差が許容できるか——枠の大きさが本文の文字と揃うか、行頭が本文とずれないか。同じリストに印の無い項目を混ぜたときの見え方も確認する（`list-style: none` が行頭記号を奪う）
-  - 和欧間の空き（2026-09-14 追加）: 原稿から和文とリンク・欧文のあいだの半角スペースを削り、空きは組版側（`text-spacing: auto`）に任せる形へ揃えた。**PDF では測定済み**——スペース無しでも 1/8 em（1.313pt）の空きが入り、リンクも素のテキストと 0.001pt の差もなく同じ挙動だった（スペースを書くと 0.28em ＝ 2.2 倍に広がる）。未確認なのは **KFX が `text-spacing` を解するか**で、無視されると和文と欧文が直接隣り合う。見るのは第 0 章（`Vivliostyle` へのリンク）と第 93 章（`iTerm2` / `Warp`）。詰まって見えるなら、原稿へ戻すのではなく EPUB 向け CSS で `word-spacing` 等の代替を当てる（原稿は 1 つ、ターゲットごとの差は CSS で吸収するという本書の方針に従う）
-  - 索引の主要参照（`index-main-reference-spec` §5.3）: `.main-ref` の見た目が KFX で効くか。`font-weight: bold` に `font-family`（ゴシック）・`font-size: 1.06em`・`letter-spacing`・負の `margin-right` を重ねた（2026-08-05）。いずれもリテラル値で `var()` を含まないため理屈上は通るはずだが未確認で、とくに**フォント名は端末側で無視されうる**——ゴシックにならない場合、目印は太字だけになる。あわせて、EPUB / Kindle の索引で**ページ番号のカンマ区切りが従来どおり出ている**ことも見る（PDF 側でだけ `dd.resolved` へ切り替えたため、CSS のフォールバックが効いていないと番号が区切りなしで並ぶ）
 
 ### 堅牢性テスト（追加候補）
 
