@@ -1971,18 +1971,7 @@ module VivlioStarter
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
-        def mark_body_for_kindle!(html_files)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
-            body = doc.at_css('body')
-            next unless body
-
-            add_class(body, 'vs-kindle')
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-          end
-          html_files
-        end
+        def mark_body_for_kindle!(html_files) = mark_body!(html_files, 'vs-kindle')
 
         # Kindle 専用: 章 HTML のインライン <style> 内の webp url() 宣言を除去する（RSC-007 回避）。
         # Techbook が PDF の Type3 対策で head に注入する :root{ --h3-marker: url(...webp) } 等は、
@@ -2012,14 +2001,17 @@ module VivlioStarter
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
-        def mark_body_for_epub!(html_files)
+        def mark_body_for_epub!(html_files) = mark_body!(html_files, 'vs-epub')
+
+        # 各 HTML の body にクラスを足す。
+        def mark_body!(html_files, css_class)
           html_files.each do |path|
             html = File.read(path, encoding: 'utf-8')
             doc = PostProcessCommands::HtmlParser.parse_html_document(html)
             body = doc.at_css('body')
             next unless body
 
-            add_class(body, 'vs-epub')
+            add_class(body, css_class)
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
           end
           html_files
