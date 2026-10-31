@@ -254,8 +254,7 @@ module VivlioStarter
         removed.each do |path, guidance|
           log_warn("config/book.yml の #{path.join('.')} は廃止されました", detail: guidance)
         end
-        log_warn('上記のキーは読み込まれません。vs upgrade で book.yml から消せます（手で削除しても構いません）',
-                 detail: '指定できるキーは vs doctor か各コマンドの --help で確認できます')
+        log_warn('上記のキーは読み込まれません。vs upgrade で book.yml から消せます（手で削除しても構いません）')
       end
 
       # 値を別のキーへ移した廃止キーの案内（multivolume-spec.md §3.5）。消すのではなく移すので、

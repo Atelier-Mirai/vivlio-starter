@@ -69,6 +69,7 @@ module VivlioStarter
         assert_match(/index\.high_candidates_ratio.*廃止/, combined)
         assert_match(/target_terms/, combined, '代わりに何をするかまで示す')
         assert_match(/読み込まれません/, combined, '値が無視されることを明言する')
+        refute_match(/vs doctor|--help/, combined, 'どちらも book.yml のキーを案内しないので、案内先にしない')
       end
 
       # 移した先のある廃止キーは「消せます」ではなく、移す先と書いてあった値で書き方を示す
@@ -128,6 +129,7 @@ module VivlioStarter
       def test_every_retired_key_carries_actionable_guidance
         Common::RETIRED_CONFIG_KEYS.each do |path, guidance|
           refute_empty guidance.to_s.strip, "#{path.join('.')} に案内文がない"
+          refute_includes guidance, '同上', "#{path.join('.')} は 1 件だけ表示されても読めるように書く"
         end
       end
     end
