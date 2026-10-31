@@ -47,7 +47,6 @@ module VivlioStarter
     #   RenameCommandExecutor.new(options).call  # 全章連番付け直し
     class RenameCommandExecutor
       # @param options [Hash] オプション設定
-      #   - :force [Boolean] 確認をスキップ
       #   - :verbose [Boolean] 詳細ログを出力
       #   - :step [Integer] 章番号の刻み幅（デフォルト: 1）
       def initialize(options = {})
@@ -107,7 +106,7 @@ module VivlioStarter
         display_regular_chapters(files[:regular], effective_step, start_num, label_width)
         display_appendix_files(files[:appendix], label_width)
 
-        confirm_or_exit('連番付け直し') unless options[:force]
+        confirm_or_exit('連番付け直し')
 
         rename_map = build_rename_map(files[:regular], files[:appendix], effective_step, start_num)
 
@@ -278,8 +277,9 @@ module VivlioStarter
       def apply_renumber(rename_map)
         # ファイル移動を先に全部済ませてから追随させる。21→20, 22→21 のように
         # 玉突きで動くとき、追随を混ぜると中間状態で取り違える。
-        rename_map.each { |_old, info| FileUtils.mv(info[:old_file], info[:new_file]) }
-        ChapterRename.follow_all!(rename_map.transform_values { it[:new_basename] })
+        renames = ChapterRename.in_vacating_order(rename_map.transform_values { it[:new_basename] })
+        renames.each_key { FileUtils.mv(rename_map[it][:old_file], rename_map[it][:new_file]) }
+        ChapterRename.follow_all!(renames)
       end
 
       # 連番付け直し後の生成物クリーニングを行う
@@ -362,7 +362,7 @@ module VivlioStarter
                           "#{chapter_label(new_number, new_slug)}")
         announce_chapter_reference_rewrite(build_basename(old_number, old_slug), build_basename(new_number, new_slug))
 
-        confirm_or_exit('章名・番号変更') unless options[:force]
+        confirm_or_exit('章名・番号変更')
 
         execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
       end

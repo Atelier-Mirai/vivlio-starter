@@ -4,6 +4,7 @@ require_relative '../../test_helper'
 require 'vivlio_starter/cli/import'
 require 'tmpdir'
 require 'fileutils'
+require 'stringio'
 
 module VivlioStarter
   module CLI
@@ -15,6 +16,47 @@ module VivlioStarter
 
       def chapter(basename, markdown, labels)
         ImportCommands::Chapter.new(basename:, markdown:, labels:, lines: markdown.lines.size)
+      end
+
+      # ================================================================
+      # 取り込みの前の確認（既存の contents/ などを消すので省けない）
+      # ================================================================
+      def with_review_project(input)
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(["#{dir}/review/contents", "#{dir}/book/contents"])
+          File.write("#{dir}/review/catalog.yml", "CHAPS:\n  - a.re\n")
+          File.write("#{dir}/review/contents/a.re", "= 題\n")
+          File.write("#{dir}/book/contents/11-mine.md", "# 著者の原稿\n")
+          original = $stdin
+          $stdin = input
+          Dir.chdir("#{dir}/book") { yield "#{dir}/review" }
+        ensure
+          $stdin = original
+        end
+      end
+
+      def test_import_stops_when_it_cannot_ask
+        with_review_project(StringIO.new("y\n")) do |review|
+          status = nil
+          out, err = capture_io { status = ImportCommands.execute_import(review) }
+
+          assert_equal 1, status
+          assert_includes out + err, '端末から vs import を実行してください'
+          assert_path_exists 'contents/11-mine.md'
+        end
+      end
+
+      def test_import_keeps_the_manuscript_when_the_answer_is_no
+        terminal = StringIO.new("n\n")
+        terminal.define_singleton_method(:tty?) { true }
+
+        with_review_project(terminal) do |review|
+          status = nil
+          capture_io { status = ImportCommands.execute_import(review) }
+
+          assert_equal 1, status
+          assert_path_exists 'contents/11-mine.md'
+        end
       end
 
       # ================================================================

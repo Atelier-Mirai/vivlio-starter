@@ -62,12 +62,11 @@ module VivlioStarter
       ].freeze
 
       # メイン実行メソッド
-      def execute_import(starter_dir, options = {})
-        @options = options
+      def execute_import(starter_dir)
         @starter_dir = File.expand_path(starter_dir)
 
         validate_starter_directory!
-        return 1 unless confirm_cleanup_or_force?
+        return 1 unless confirm_cleanup?
 
         cleanup_existing_directories!
         reset_index_dictionaries!
@@ -103,10 +102,8 @@ module VivlioStarter
         raise "原稿（.re）が見つかりません: #{re_dir}"
       end
 
-      # 確認プロンプトまたは --force
-      def confirm_cleanup_or_force?
-        return true if @options[:force]
-
+      # 消してよいかを著者に確かめる。原稿を丸ごと消すので、確認は省けない
+      def confirm_cleanup?
         dirs_to_delete = %w[contents images codes].select do |dir|
           Dir.exist?(dir)
         end
@@ -117,7 +114,10 @@ module VivlioStarter
         dirs_to_delete.each { |d| Common.log_warn("  - #{d}/") }
 
         # 非対話（パイプ/CI）では質問せず安全側に倒す
-        return false unless $stdin.tty?
+        unless $stdin.tty?
+          Common.log_error('取り込みの確認に答える必要があります。端末から vs import を実行してください')
+          return false
+        end
 
         Common.confirm?('続行しますか？')
       end

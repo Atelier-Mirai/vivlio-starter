@@ -10,6 +10,7 @@
 #   - 単一章リネーム: Markdown/画像ディレクトリの一括変更
 #   - 全章連番付け直し: 章番号の再割り当て
 #   - catalog.yml の自動更新
+#   - 確認に「いいえ」と答えたら何も変えないこと
 #
 # テスト環境:
 #   - 一時ディレクトリで副作用を隔離
@@ -19,6 +20,7 @@
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'stringio'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/rename'
 require 'vivlio_starter/cli/clean'
@@ -31,7 +33,7 @@ module VivlioStarter
       # 章名変更で Markdown と画像ディレクトリが揃ってリネームされることを確認
       def test_rename_updates_markdown_css_and_images
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('11-old', css: true, images: true, html: true)
 
           capture_io { executor.call('11-old', '12-new') }
@@ -47,7 +49,7 @@ module VivlioStarter
 
       def test_rename_accepts_slug_only_target
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('11-old', images: true)
 
           capture_io { executor.call('11-old', 'new-slug') }
@@ -63,7 +65,7 @@ module VivlioStarter
       # 例: `vs renumber 25 26` で 25-querystream.md → 26-querystream.md
       def test_rename_preserves_slug_when_new_arg_is_number_only
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('31-beta', images: true, html: true)
 
           capture_io { executor.call('31', '32') }
@@ -79,7 +81,7 @@ module VivlioStarter
 
       def test_rename_handles_numeric_only_chapter
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('15', images: true, html: true)
 
           capture_io { executor.call('15', '16') }
@@ -96,7 +98,7 @@ module VivlioStarter
       # 20 番の章があっても 31-beta を 20-gamma に変えられた
       def test_rename_refuses_a_number_used_by_another_chapter
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('31-beta')
           setup_single_chapter_fixture('20')
 
@@ -112,7 +114,7 @@ module VivlioStarter
       # 変更先の名前をほかの章が使っていれば、番号が違っても止める
       def test_rename_refuses_a_name_used_by_another_chapter
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('31-beta')
           setup_single_chapter_fixture('11-alpha')
 
@@ -127,7 +129,7 @@ module VivlioStarter
       # 変更先の名前が決まりの外（点を含む）なら止め、直した名前のコマンドを示す
       def test_rename_refuses_a_name_outside_the_rule
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('31-beta')
 
           out, = capture_io { assert_raises(SystemExit) { executor.call('31-beta', '32-beta.v2') } }
@@ -140,7 +142,7 @@ module VivlioStarter
       # 大文字と `_` は整えて変える
       def test_rename_normalizes_capitals_and_underscores
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('31-beta')
 
           capture_io { executor.call('31-beta', '32-Beta_Two') }
@@ -152,7 +154,7 @@ module VivlioStarter
       # 既にある重なりを解く rename は止めない（番号 11 が重なった 11-old の名前だけを変える）
       def test_rename_allows_resolving_an_existing_duplicate
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('11-old')
           setup_single_chapter_fixture('11-alpha')
 
@@ -165,7 +167,7 @@ module VivlioStarter
       # 引数なしで実行した際に章番号が再割り当てされることを確認
       def test_rename_without_arguments_performs_renumber
         within_temp_dir do
-          executor = build_rename_executor(force: true)
+          executor = build_rename_executor
           setup_single_chapter_fixture('11-alpha', css: true, images: true)
           setup_single_chapter_fixture('31-beta', css: true, images: true)
           setup_single_chapter_fixture('15', images: true)
@@ -193,11 +195,98 @@ module VivlioStarter
         end
       end
 
+      # 番号だけの原稿を上へずらすと、移す先がほかの章の移す元になる。どの章の本文も画像も失わない
+      def test_renumber_with_step_keeps_every_number_only_chapter
+        within_temp_dir do
+          File.write('config/catalog.yml', "PREFACE:\nCHAPTERS:\n  - 11\n  - 12\n  - 13\nAPPENDICES:\nPOSTFACE:\n")
+          %w[11 12 13].each do |number|
+            setup_single_chapter_fixture(number, images: true)
+            File.write("images/#{number}/from-#{number}.txt", number)
+          end
+
+          out = err = nil
+          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+            out, err = capture_io do
+              assert_raises(SystemExit) { build_rename_executor(step: 2).call }
+            end
+          end
+
+          manuscripts = Dir.glob('*.md', base: Common::CONTENTS_DIR).sort.to_h do |name|
+            [name, File.read(File.join(Common::CONTENTS_DIR, name))]
+          end
+          assert_equal({ '11.md' => "# 11\n", '13.md' => "# 12\n", '15.md' => "# 13\n" }, manuscripts)
+          assert_equal %w[11/from-11.txt 13/from-12.txt 15/from-13.txt], Dir.glob('*/*', base: 'images').sort
+          assert_equal %w[11 13 15], File.read('config/catalog.yml').scan(/- (\d+)/).flatten
+          refute_includes out + err, '手動で統合', '空く順に移すので、画像の衝突は起きない'
+        end
+      end
+
+      # 下へ詰めるときの玉突き（13→12・15→13）でも取り違えない
+      def test_renumber_downward_keeps_every_number_only_manuscript
+        within_temp_dir do
+          File.write('config/catalog.yml', "PREFACE:\nCHAPTERS:\n  - 11\n  - 13\n  - 15\nAPPENDICES:\nPOSTFACE:\n")
+          %w[11 13 15].each { setup_single_chapter_fixture(it) }
+
+          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+            capture_io { assert_raises(SystemExit) { build_rename_executor.call } }
+          end
+
+          assert_equal "# 13\n", File.read(File.join(Common::CONTENTS_DIR, '12.md'))
+          assert_equal "# 15\n", File.read(File.join(Common::CONTENTS_DIR, '13.md'))
+          refute_path_exists File.join(Common::CONTENTS_DIR, '15.md')
+        end
+      end
+
+      # 確認に「いいえ」と答えたら、原稿・画像・目次のどれも動かさない
+      def test_rename_changes_nothing_when_the_answer_is_no
+        within_temp_dir do
+          setup_single_chapter_fixture('11-old', images: true)
+          catalog = File.read('config/catalog.yml')
+
+          error = assert_raises(SystemExit) do
+            with_stdin("n\n") { capture_io { build_rename_executor.call('11-old', '12-new') } }
+          end
+
+          assert_equal 0, error.status
+          assert_path_exists File.join(Common::CONTENTS_DIR, '11-old.md')
+          refute_path_exists File.join(Common::CONTENTS_DIR, '12-new.md')
+          assert_path_exists 'images/11-old'
+          assert_equal catalog, File.read('config/catalog.yml')
+        end
+      end
+
+      def test_renumber_changes_nothing_when_the_answer_is_no
+        within_temp_dir do
+          setup_single_chapter_fixture('11-alpha', images: true)
+          setup_single_chapter_fixture('31-beta', images: true)
+          catalog = File.read('config/catalog.yml')
+
+          error = assert_raises(SystemExit) do
+            with_stdin("n\n") { capture_io { build_rename_executor.call } }
+          end
+
+          assert_equal 0, error.status
+          assert_path_exists File.join(Common::CONTENTS_DIR, '31-beta.md')
+          refute_path_exists File.join(Common::CONTENTS_DIR, '12-beta.md')
+          assert_path_exists 'images/31-beta'
+          assert_equal catalog, File.read('config/catalog.yml')
+        end
+      end
+
       private
 
       def build_rename_executor(options = {})
-        defaults = { force: false, dry_run: false, verbose: false, chapter_step: nil, step: nil }
+        defaults = { dry_run: false, verbose: false, chapter_step: nil, step: nil }
         VivlioStarter::CLI::RenameCommandExecutor.new(defaults.merge(options))
+      end
+
+      # 確認プロンプトへの答えを流し込む
+      def with_stdin(input)
+        original = $stdin
+        $stdin = StringIO.new(input)
+        yield
+      ensure
+        $stdin = original
       end
 
       # 単一章の関連リソースをまとめて準備
@@ -208,7 +297,7 @@ module VivlioStarter
         File.write("#{slug}.html", '<html></html>') if html
       end
 
-      # 一時ディレクトリで副作用を隔離
+      # 一時ディレクトリで副作用を隔離する。確認には「はい」と答えて進める
       def within_temp_dir
         Dir.mktmpdir do |dir|
           Dir.chdir(dir) do
@@ -228,7 +317,7 @@ module VivlioStarter
               APPENDICES:
               POSTFACE:
             YAML
-            yield dir
+            with_stdin("y\n" * 2) { yield dir }
           end
         end
       end

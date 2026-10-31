@@ -47,16 +47,10 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 ```zsh
 vs new mybook
 cd mybook
-vs import ../review_project            # 通常
-vs import --force ../review_project    # 確認を省略したい場合
+vs import ../review_project
 ```
 
-`vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。
-
-| オプション | 説明 |
-| --- | --- |
-| `--force` | 既存ディレクトリの削除確認をスキップ |
-| `VS_DEBUG=1` | 例外発生時にフルスタックトレースを表示 |
+`vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。既存の `contents/`・`images/`・`codes/` を削除してよいかの確認に答えるので、端末から実行します。
 
 ## 処理の流れ
 

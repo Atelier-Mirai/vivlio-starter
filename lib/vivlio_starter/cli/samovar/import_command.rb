@@ -31,7 +31,6 @@ module VivlioStarter
         many :arguments, 'Re:VIEW Starter プロジェクトのディレクトリ', default: []
 
         options do
-          option '--force', '確認プロンプトをスキップして実行', default: false
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -43,7 +42,7 @@ module VivlioStarter
 
           ensure_starter_dir!(starter_dir)
 
-          ImportCommands.execute_import(starter_dir, force: options[:force])
+          ImportCommands.execute_import(starter_dir)
         rescue ArgumentError => e
           common.log_error(e.message)
           1

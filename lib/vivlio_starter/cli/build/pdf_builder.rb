@@ -502,9 +502,9 @@ module VivlioStarter
         # 設計方針: mtime 比較・キャッシュ判定は行わず常に再生成する。
         # 詳細は book_yml_regeneration_spec.md を参照。
         def generate_front_and_back_matter_html!
-          CreateCommands.execute_titlepage(force: true)
-          CreateCommands.execute_legalpage(force: true)
-          CreateCommands.execute_colophon(force: true)
+          CreateCommands.execute_titlepage({})
+          CreateCommands.execute_legalpage({})
+          CreateCommands.execute_colophon({})
 
           SPECIAL_PAGE_BASENAMES.each do |basename|
             Common.log_info("[HTML] 再生成します: #{basename}.html")

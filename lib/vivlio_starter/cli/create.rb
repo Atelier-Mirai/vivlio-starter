@@ -120,7 +120,6 @@ module VivlioStarter
       #
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
-      #   - :force [Boolean] 既存ファイルを強制上書き
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_titlepage.md
@@ -157,7 +156,6 @@ module VivlioStarter
       #
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
-      #   - :force [Boolean] 既存ファイルを強制上書き
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_colophon.md
@@ -210,7 +208,6 @@ module VivlioStarter
       #
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
-      #   - :force [Boolean] 既存ファイルを強制上書き
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_legalpage.md

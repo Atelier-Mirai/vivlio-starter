@@ -228,7 +228,7 @@ module VivlioStarter
       end
 
       # 既存ファイルがあっても常に上書き再生成されることを確認
-      # 旧仕様（force なしでスキップ）は book.yml 変更が反映されない不具合を招いたため廃止。
+      # 既存ファイルを残す旧仕様は book.yml 変更が反映されない不具合を招いたため廃止。
       # 詳細: book_yml_regeneration_spec.md
       def test_titlepage_always_regenerated_even_when_exists
         within_temp_dir do
@@ -240,28 +240,15 @@ module VivlioStarter
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           refute_equal original, content,
-                       'force の有無に関わらず book.yml の内容から常に再生成される'
+                       '既存ファイルがあっても book.yml の内容から常に再生成される'
           assert_match(/book-title/, content, 'book.yml から再生成された内容を含む')
         end
       end
 
-      # force: true で既存ファイルが上書きされることを確認
-      def test_titlepage_regenerated_with_force
-        within_temp_dir do
-          FileUtils.mkdir_p(Common::CACHE_DIR)
-          File.write(File.join(Common::CACHE_DIR, '_titlepage.md'), '# 古い内容')
-
-          capture_io { CreateCommands.execute_titlepage({ force: true }) }
-
-          content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
-          assert_match(/book-title/, content, 'force: true で book.yml の内容に再生成される')
-        end
-      end
-
-      # book.yml のタイトル変更が force: true で反映されることを確認
+      # book.yml のタイトル変更が反映されることを確認
       def test_titlepage_reflects_book_yml_title
         within_temp_dir do
-          capture_io { CreateCommands.execute_titlepage({ force: true }) }
+          capture_io { CreateCommands.execute_titlepage({}) }
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           assert_match(/Sample/, content, 'book.yml の title が反映される')
@@ -270,7 +257,7 @@ module VivlioStarter
           update_book_title('New Title')
           Common.reload_configuration!
 
-          capture_io { CreateCommands.execute_titlepage({ force: true }) }
+          capture_io { CreateCommands.execute_titlepage({}) }
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           assert_match(/New Title/, content, 'book.yml 更新後に再生成すると新タイトルが反映される')

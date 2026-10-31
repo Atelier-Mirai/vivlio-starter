@@ -81,10 +81,6 @@ module VivlioStarter
       class CreateTitlepageCommand < Samovar::Command
         self.description = 'タイトルページを生成します（内部コマンド）'
 
-        options do
-          option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-        end
-
         def call
           CreateCommands.execute_titlepage(build_options)
           0
@@ -98,7 +94,7 @@ module VivlioStarter
         private
 
         def build_options
-          { verbose: parent_verbose?, force: options[:force] }
+          { verbose: parent_verbose? }
         end
 
         def parent_verbose?
@@ -109,10 +105,6 @@ module VivlioStarter
       # create:colophon コマンド（内部コマンド）
       class CreateColophonCommand < Samovar::Command
         self.description = '奥付を生成します（内部コマンド）'
-
-        options do
-          option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-        end
 
         def call
           CreateCommands.execute_colophon(build_options)
@@ -127,7 +119,7 @@ module VivlioStarter
         private
 
         def build_options
-          { verbose: parent_verbose?, force: options[:force] }
+          { verbose: parent_verbose? }
         end
 
         def parent_verbose?
@@ -138,10 +130,6 @@ module VivlioStarter
       # create:legalpage コマンド（内部コマンド）
       class CreateLegalpageCommand < Samovar::Command
         self.description = 'リーガルページを生成します（内部コマンド）'
-
-        options do
-          option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-        end
 
         def call
           CreateCommands.execute_legalpage(build_options)
@@ -156,7 +144,7 @@ module VivlioStarter
         private
 
         def build_options
-          { verbose: parent_verbose?, force: options[:force] }
+          { verbose: parent_verbose? }
         end
 
         def parent_verbose?

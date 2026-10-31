@@ -171,6 +171,14 @@ module VivlioStarter
         end
 
         # 値を取らないフラグへの `=` 付き指定は誤用なので通さない
+        # 確認は省けない。--force が残るのは、確認を省くのではない pdf:read と resize だけ
+        def test_should_reject_force_on_commands_that_always_confirm
+          [DeleteCommand, RenameCommand, RenumberCommand, ImportCommand].each do |command|
+            assert_raises(Samovar::InvalidInputError, command.name) { command.new(['11', '--force']) }
+          end
+          assert_raises(Samovar::InvalidInputError) { RenameCommand.new(['11', '12', '-y']) }
+        end
+
         def test_should_reject_an_equals_value_on_a_flag_that_takes_none
           assert_raises(Samovar::InvalidInputError) { BuildCommand.new(['--no-clean=1']) }
         end
@@ -209,8 +217,8 @@ module VivlioStarter
 
         # 位置引数どうしの相対順序は保つ（vs rename 11 12 の 11 と 12 は順序に意味がある）
         def test_should_preserve_the_relative_order_of_positional_arguments
-          assert_equal ['11', '12'], RenameCommand.new(['11', '12', '--force']).arguments
-          assert_equal ['11', '12'], RenameCommand.new(['--force', '11', '12']).arguments
+          assert_equal ['11', '12'], RenameCommand.new(['11', '12', '--step', '2']).arguments
+          assert_equal ['11', '12'], RenameCommand.new(['--step', '2', '11', '12']).arguments
         end
 
         # オプションが位置引数を挟んで分かれていても両方効く

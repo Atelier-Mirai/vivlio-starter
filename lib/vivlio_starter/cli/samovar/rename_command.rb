@@ -13,7 +13,6 @@
 #   - 全章連番付け直し: vs rename（引数なし）
 #
 # 主要オプション:
-#   - --force: 確認なしで実行
 #   - --step/-s: 連番の刻み幅（デフォルト: 1）
 #
 # 依存:
@@ -34,7 +33,6 @@ module VivlioStarter
         many :arguments, 'OLD と NEW を指定。省略すると一括連番モード', default: []
 
         options do
-          option '--force/-f/-y', '確認なしで変更を実行', default: false, key: :force
           option '--step/-s <step>', '章番号の刻み幅を指定（既定: 1）', type: Integer, key: :step
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -75,7 +73,6 @@ module VivlioStarter
 
         def executor_options
           {
-            force: options[:force],
             step: options[:step],
             verbose: verbose_from_parent?
           }

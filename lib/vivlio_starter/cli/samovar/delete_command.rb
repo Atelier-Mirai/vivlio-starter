@@ -12,9 +12,6 @@
 #   - 範囲: "11-13" → 11〜13 番の章すべて
 #   - ファイル名: "11-install" → 11-install.md
 #
-# 主要オプション:
-#   - --force: 確認なしで削除
-#
 # 依存:
 #   - DeleteCommands::DeleteCommandExecutor: 実際の削除処理
 # ================================================================
@@ -33,7 +30,6 @@ module VivlioStarter
         many :targets, '削除対象（章番号/レンジ/ファイル名）', default: []
 
         options do
-          option '--force/-f', '確認なしで削除を実行', default: false, key: :force
           option '--verbose/-v', '冗長ログを表示', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -72,6 +68,7 @@ module VivlioStarter
           parts = []
           parts << "文書 #{summary.documents} 件" if summary.documents.positive?
           parts << "画像ディレクトリ #{summary.image_dirs} 件" if summary.image_dirs.positive?
+          parts << "目次の項目 #{summary.catalog_entries} 件" if summary.catalog_entries.positive?
           common.log_result("削除しました（#{parts.join('・')}）", status: :success)
         end
 

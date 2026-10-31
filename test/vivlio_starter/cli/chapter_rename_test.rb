@@ -53,6 +53,20 @@ module VivlioStarter
 
       # main: は著者の判断＝一次データなので、実在しない章を指していても捨てられない。
       # contexts のように「捨てて拾い直す」ことができないため書き換える。
+      # 番号だけの章の改番で、main: が 12 → 13 → 15 と連鎖して別の章を指さない
+      def test_main_references_do_not_chain_on_renumber
+        write_dictionary(terms: [term('十二', main: ['12']), term('十三', main: ['13'])])
+
+        capture_io { ChapterRename.follow_all!({ '12' => '13', '13' => '15' }) }
+
+        assert_equal({ '十二' => ['13'], '十三' => ['15'] }, dictionary['terms'].to_h { [it['term'], it['main']] })
+      end
+
+      def test_renames_move_after_their_target_has_been_vacated
+        assert_equal [%w[13 15], %w[12 13]], ChapterRename.in_vacating_order({ '12' => '13', '13' => '15' }).to_a
+        assert_equal [%w[13 12], %w[15 13]], ChapterRename.in_vacating_order({ '15' => '13', '13' => '12' }).to_a
+      end
+
       def test_main_reference_follows_the_rename
         write_dictionary(terms: [term('Markdown', main: [OLD, '22-extensions'])])
 

@@ -42,7 +42,7 @@ module VivlioStarter
       # （handler.call({ 旧 => 新, … })）。章番号で書かれた値を追う追随先のためで、
       # 1 章ずつ置き換えると `--step 2` の 12→13・13→15 で `12` が 13 を経て 15 まで
       # 動いてしまう。catalog.yml も番号だけの項目（`- 12`）を書けるので一度に受け取る。
-      # basename で書かれた値（索引辞書）は一意なので 1 章ずつでよい。
+      # 1 章ずつの追随先（画像・索引辞書）は、follow_all! が移す先の空く順に呼ぶ。
       Follower = Data.define(:label, :handler, :batch) do
         def initialize(label:, handler:, batch: false) = super
       end
@@ -185,6 +185,17 @@ module VivlioStarter
         follow_all!({ old_basename => new_basename }, followers:)
       end
 
+      # 玉突きの改名を、移す先が空いてから移す順に並べる（12→13・13→15 は 13→15 が先）。
+      # 番号だけの原稿は移す先の名前が次の章の移す元と同じになるので、この順でないと原稿は
+      # 上書きされ、画像と索引辞書は章を取り違える。連番の付け直しは章の並びを変えないので、
+      # 番号の増える章を後ろから、減る章を前から動かせば足りる。
+      # @param renames [Hash{String => String}] 旧 basename => 新 basename
+      # @return [Hash{String => String}]
+      def in_vacating_order(renames)
+        rising, falling = renames.partition { |old, new| new > old }
+        (rising.sort.reverse + falling.sort).to_h
+      end
+
       # 章名の変更をまとめて全追随先へ伝える（vs renumber）。
       #
       # **1 つが失敗しても止めない。** 原稿ファイルの移動は追随より先に済んでいるので、
@@ -198,7 +209,7 @@ module VivlioStarter
           if follower.batch
             guard(follower, renames) { follower.handler.call(renames) }
           else
-            renames.each { |old, new| guard(follower, old => new) { follower.handler.call(old, new) } }
+            in_vacating_order(renames).each { |old, new| guard(follower, old => new) { follower.handler.call(old, new) } }
           end
         end
       end

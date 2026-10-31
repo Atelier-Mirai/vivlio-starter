@@ -9,7 +9,7 @@
 #
 # 機能:
 #   - 章番号・範囲・ファイル名による削除対象の指定
-#   - --force による確認プロンプトのスキップ
+#   - 削除の前の確認（省けない。スクリプトからは答えを標準入力から渡す）
 #   - config/catalog.yml からの章エントリ自動削除
 #
 # 削除対象:
@@ -33,11 +33,13 @@ module VivlioStarter
     # 章削除コマンドの実装モジュール
     module DeleteCommands
       # 削除実績。表示は呼び出し側（DeleteCommand）の責務とし、ここでは件数を返すだけにする
-      DeleteSummary = Data.define(:documents, :image_dirs) do
-        def self.none = new(documents: 0, image_dirs: 0)
+      # catalog_entries は原稿の無い章の項目だけを数える（原稿のある章の項目は原稿と一緒に外れる）
+      DeleteSummary = Data.define(:documents, :image_dirs, :catalog_entries) do
+        def self.none = new(documents: 0, image_dirs: 0, catalog_entries: 0)
         def +(other) = DeleteSummary.new(documents: documents + other.documents,
-                                         image_dirs: image_dirs + other.image_dirs)
-        def none? = documents.zero? && image_dirs.zero?
+                                         image_dirs: image_dirs + other.image_dirs,
+                                         catalog_entries: catalog_entries + other.catalog_entries)
+        def none? = documents.zero? && image_dirs.zero? && catalog_entries.zero?
       end
 
       # delete コマンドの制御フローを担う実行クラス
@@ -46,7 +48,7 @@ module VivlioStarter
       # テスト容易性と保守性を確保している。
       class DeleteCommandExecutor
         # @param options_source [Hash, Object] オプション情報
-        #   - Hash: { force: true, verbose: false }
+        #   - Hash: { verbose: false }
         #   - Object: #options メソッドで Hash を返すオブジェクト
         # @param tokens [Array<String>] 削除対象の指定
         #   - 章番号: "11" → 11-*.md にマッチ
@@ -55,7 +57,7 @@ module VivlioStarter
         def initialize(options_source, tokens)
           @options = DeleteOptions.new(options_source)
           @resolver = TargetResolver.new(tokens)
-          @deletion = ChapterDeletion.new(@options)
+          @deletion = ChapterDeletion.new
         end
 
         # 削除処理を実行する
@@ -94,7 +96,7 @@ module VivlioStarter
       # 統一的なインターフェースで扱えるようにする
       class DeleteOptions
         # @param source [Hash, Object] オプションソース
-        #   - Hash: { force: true, verbose: false }
+        #   - Hash: { verbose: false }
         #   - Object: #options で Hash を返すオブジェクト
         def initialize(source)
           @option_values = extract_option_values(source)
@@ -103,11 +105,6 @@ module VivlioStarter
         # verbose オプションが有効な場合、環境変数を設定してログを詳細化する
         def apply_verbose!
           ENV['VERBOSE'] = '1' if verbose?
-        end
-
-        # @return [Boolean] force モードが有効か
-        def force?
-          !!option_values[:force]
         end
 
         # @return [Boolean] verbose モードが有効か
@@ -177,11 +174,6 @@ module VivlioStarter
       #   - config/catalog.yml 内の該当エントリ
       #   - 索引辞書の main: と scanned_chapters のうち、その章を指すもの
       class ChapterDeletion
-        # @param options [DeleteOptions] 削除オプション（force 判定などに使用）
-        def initialize(options)
-          @options = options
-        end
-
         # 章ファイルと関連リソースを削除する
         #
         # @param basename [String] 章ファイル名（例: "11-install.md"）
@@ -190,25 +182,39 @@ module VivlioStarter
         # 副作用:
         #   - contents/XX-slug.md を削除
         #   - images/XX-slug/ ディレクトリを削除
-        #   - config/catalog.yml から該当エントリを削除
+        #   - config/catalog.yml から該当エントリを削除（原稿を消したときと、原稿が無い章で許可されたとき）
         #   - 索引辞書からその章を指す主要参照を外す（原稿を消したときだけ）
         def remove(basename)
+          base = basename.sub(/\.md\z/, '')
+          no_document = !File.exist?(File.join(Common::CONTENTS_DIR, basename))
           documents = delete_markdown_file(basename) ? 1 : 0
           image_dirs = delete_image_directory(basename) ? 1 : 0
+          catalog_entries = no_document && delete_catalog_entry(base) ? 1 : 0
 
-          # catalog.yml からも削除することで build 時に含まれなくなる
-          base = basename.sub(/\.md\z/, '')
-          Build::CatalogUpdater.remove_chapter(base)
-          # 辞書の main: が消えた章を指したまま残ると、索引の主要参照が黙って消える
-          # （改善案.md #108）。vs rename の追随と対になる
-          UnifiedTermsManager.new.forget_chapter!(base) if documents.positive?
+          # 目次と辞書は原稿に従う。原稿を残すと答えた章まで目次から外すと、その章は本から黙って消える
+          if documents.positive?
+            Build::CatalogUpdater.remove_chapter(base)
+            # 辞書の main: が消えた章を指したまま残ると、索引の主要参照が黙って消える
+            # （改善案.md #108）。vs rename の追随と対になる
+            UnifiedTermsManager.new.forget_chapter!(base)
+          end
 
-          DeleteSummary.new(documents: documents, image_dirs: image_dirs)
+          DeleteSummary.new(documents:, image_dirs:, catalog_entries:)
         end
 
         private
 
-        attr_reader :options
+        # 原稿の無い章の目次の項目を削除する（確認プロンプト付き）
+        #
+        # これから書く章を目次に先に載せておくこともあるので、原稿が無くても確認なしには外さない
+        # @param base [String] 章の basename（拡張子なし）
+        # @return [Boolean] 実際に削除したか
+        def delete_catalog_entry(base)
+          return false unless confirm_deletion?("目次の項目: #{Build::CatalogUpdater::CATALOG_FILE} の #{base}")
+
+          Build::CatalogUpdater.remove_chapter(base)
+          true
+        end
 
         # Markdown ファイルを削除する（確認プロンプト付き）
         #
@@ -241,11 +247,7 @@ module VivlioStarter
         #
         # @param label [String] 削除対象の説明（表示用）
         # @return [Boolean] 削除を許可する場合 true
-        #
-        # --force オプションが有効な場合は確認をスキップして true を返す
         def confirm_deletion?(label)
-          return true if options.force?
-
           Common.confirm?("本当に #{label} を削除しますか？")
         end
       end

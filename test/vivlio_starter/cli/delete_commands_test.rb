@@ -7,7 +7,9 @@
 #   DeleteCommands モジュール（lib/vivlio_starter/cli/delete.rb）
 #
 # 検証内容:
-#   - --force 指定での章 Markdown と画像ディレクトリの削除
+#   - 確認に「はい」と答えた章 Markdown と画像ディレクトリの削除
+#   - 確認に「いいえ」と答えた章は、目次・辞書も含めて何も変えない
+#   - 原稿の無い目次の項目も、確認してから外す
 #   - 対象が見つからない場合の終了コード 1
 #
 # テスト環境:
@@ -18,6 +20,8 @@
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'stringio'
+require 'yaml'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/delete'
 
@@ -25,13 +29,12 @@ module VivlioStarter
   module CLI
     # DeleteCommands のユニットテスト
     class DeleteCommandsTest < Minitest::Test
-      # --force 指定で章 Markdown と画像ディレクトリが削除されることを確認
-      def test_delete_removes_markdown_and_images_with_force
+      # 確認に「はい」と答えると章 Markdown と画像ディレクトリが削除されることを確認
+      def test_delete_removes_markdown_and_images_when_confirmed
         within_temp_dir do
           setup_chapter_fixture('11-sample')
-          options = { force: true }
 
-          capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['11-sample']).call }
+          with_stdin("y\ny\n") { run_delete(['11-sample']) }
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '11-sample.md')), '章 Markdown が削除されるはずです'
           refute Dir.exist?(File.join(Common::IMAGES_DIR, '11-sample')), '画像ディレクトリが削除されるはずです'
@@ -41,9 +44,8 @@ module VivlioStarter
       def test_delete_accepts_slug_only_target
         within_temp_dir do
           setup_chapter_fixture('11-sample')
-          options = { force: true }
 
-          capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['sample']).call }
+          with_stdin("y\ny\n") { run_delete(['sample']) }
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '11-sample.md'))
           refute Dir.exist?(File.join(Common::IMAGES_DIR, '11-sample'))
@@ -53,9 +55,8 @@ module VivlioStarter
       def test_delete_handles_numeric_only_chapter
         within_temp_dir do
           setup_chapter_fixture('15')
-          options = { force: true }
 
-          capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['15']).call }
+          with_stdin("y\ny\n") { run_delete(['15']) }
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '15.md'))
           refute Dir.exist?(File.join(Common::IMAGES_DIR, '15'))
@@ -73,7 +74,7 @@ module VivlioStarter
             ]
           }.to_yaml)
 
-          capture_io { DeleteCommands::DeleteCommandExecutor.new({ force: true }, ['11-sample']).call }
+          with_stdin("y\ny\n") { run_delete(['11-sample']) }
 
           terms = YAML.load_file('config/index_glossary_terms.yml')['terms'].to_h { [it['term'], it] }
           refute terms['テスト'].key?('main'), '空になった語は「未決定」に戻す'
@@ -81,19 +82,139 @@ module VivlioStarter
         end
       end
 
+      # 確認に「いいえ」と答えた章は、目次にも辞書にも手を付けない（本から黙って消えないように）
+      def test_delete_keeps_everything_when_the_answer_is_no
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          dictionary = { 'terms' => [{ 'term' => 'テスト', 'yomi' => 'てすと', 'flags' => 'i', 'main' => ['11-sample'] }] }.to_yaml
+          File.write('config/index_glossary_terms.yml', dictionary)
+          catalog = File.read('config/catalog.yml')
+
+          summary = with_stdin("n\nn\n") { run_delete(['11-sample']) }
+
+          assert_path_exists File.join(Common::CONTENTS_DIR, '11-sample.md')
+          assert_path_exists File.join(Common::IMAGES_DIR, '11-sample')
+          assert_equal catalog, File.read('config/catalog.yml')
+          assert_equal dictionary, File.read('config/index_glossary_terms.yml')
+          assert_predicate summary, :none?
+        end
+      end
+
+      # 入力が閉じている（空の答え）ときも「いいえ」と同じ
+      def test_delete_keeps_the_catalog_when_stdin_is_closed
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          catalog = File.read('config/catalog.yml')
+
+          summary = with_stdin('') { run_delete(['11-sample']) }
+
+          assert_equal catalog, File.read('config/catalog.yml')
+          assert_predicate summary, :none?
+        end
+      end
+
+      # 引数なしは全章に確認する。全部「いいえ」なら目次は 1 行も減らない
+      def test_delete_without_targets_keeps_the_catalog_when_every_answer_is_no
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          setup_chapter_fixture('15')
+          catalog = File.read('config/catalog.yml')
+
+          summary = with_stdin("n\n" * 4) { run_delete([]) }
+
+          assert_equal catalog, File.read('config/catalog.yml')
+          assert_predicate summary, :none?
+        end
+      end
+
+      # 原稿を消すと答えたら、画像を残しても目次からは外す（原稿の無い章が目次に残らないように）
+      def test_delete_removes_the_catalog_entry_with_the_document
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+
+          summary = with_stdin("y\nn\n") { run_delete(['11-sample']) }
+
+          refute_path_exists File.join(Common::CONTENTS_DIR, '11-sample.md')
+          assert_path_exists File.join(Common::IMAGES_DIR, '11-sample')
+          assert_equal %w[15], catalog_items
+          assert_equal [1, 0, 0], [summary.documents, summary.image_dirs, summary.catalog_entries]
+        end
+      end
+
+      # 画像だけ消すと答えた章は原稿が残るので、目次からは外さない
+      def test_delete_keeps_the_catalog_entry_when_only_images_are_deleted
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+
+          summary = with_stdin("n\ny\n") { run_delete(['11-sample']) }
+
+          assert_path_exists File.join(Common::CONTENTS_DIR, '11-sample.md')
+          refute_path_exists File.join(Common::IMAGES_DIR, '11-sample')
+          assert_equal %w[11-sample 15], catalog_items
+          assert_equal [0, 1, 0], [summary.documents, summary.image_dirs, summary.catalog_entries]
+        end
+      end
+
+      # 原稿の無い章は目次の項目だけが消す対象。これも確認してから外す
+      def test_delete_asks_before_removing_an_entry_without_a_document
+        within_temp_dir do
+          out, summary = with_stdin("n\n") { run_delete_with_output(['11-sample']) }
+
+          assert_includes out, '目次の項目: config/catalog.yml の 11-sample'
+          assert_equal %w[11-sample 15], catalog_items
+          assert_predicate summary, :none?
+
+          summary = with_stdin("y\n") { run_delete(['11-sample']) }
+
+          assert_equal %w[15], catalog_items
+          assert_equal 1, summary.catalog_entries
+          refute_predicate summary, :none?
+        end
+      end
+
+      def test_delete_removes_entries_with_and_without_a_document
+        within_temp_dir do
+          setup_chapter_fixture('11-sample')
+          File.write('config/catalog.yml', "CHAPTERS:\n  - 11-sample\n  - 16-planned\n")
+
+          summary = with_stdin("y\n" * 3) { run_delete(%w[11-sample 16-planned]) }
+
+          assert_empty catalog_items
+          assert_equal [1, 1, 1], [summary.documents, summary.image_dirs, summary.catalog_entries]
+        end
+      end
+
       # 対象が見つからない場合に終了コード 1 で終了することを確認
       def test_delete_exits_when_targets_missing
         within_temp_dir do
-          options = { force: true }
-
           error = assert_raises(SystemExit) do
-            capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['11-missing']).call }
+            capture_io { DeleteCommands::DeleteCommandExecutor.new({}, ['11-missing']).call }
           end
           assert_equal 1, error.status
         end
       end
 
       private
+
+      def run_delete(tokens) = run_delete_with_output(tokens).last
+
+      def run_delete_with_output(tokens)
+        summary = nil
+        out, = capture_io { summary = DeleteCommands::DeleteCommandExecutor.new({}, tokens).call }
+        [out, summary]
+      end
+
+      # catalog.yml の CHAPTERS の項目
+      def catalog_items = Array(YAML.load_file('config/catalog.yml')['CHAPTERS']).map(&:to_s)
+
+      # 確認プロンプトへの答えを流し込む
+      def with_stdin(input)
+        original = $stdin
+        $stdin = StringIO.new(input)
+        yield
+      ensure
+        $stdin = original
+      end
 
       # 章の Markdown と画像ディレクトリを用意
       def setup_chapter_fixture(slug)
