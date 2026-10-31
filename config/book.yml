@@ -26,6 +26,7 @@
 book:
   # ------- 書籍名 -------
   main_title: "はじめての技術書づくり"
+  # 副題
   subtitle: "Vivlio Starter 実践ガイド"
   subtitle_style: wave # 副題の装飾（wave | bar | none）から選択
 
@@ -80,7 +81,7 @@ theme:
 
   # ------- 節見出しの背景画像 -------
   ornament:
-    image: sakura
+    image: sakura # 節の飾りの絵（suisen / ume / nanohana / sakura）
     heading_chars: 14 # 節題を 1 行に何文字入れるか（全角換算・少なくすると字が大きくなる）
 
   # ------- 見出し記号 -------
@@ -97,7 +98,7 @@ page:
   # use: a5_compact   # 狭め
   # use: a5_custom    # 著者独自
 
-  use: a4_custom
+  use: a4_custom # 判型（上と下に並べたプリセットから選ぶ）
   # use: b5_compact
   # use: b5_airy
   # use: b5_custom
@@ -381,7 +382,7 @@ metrics:
     too_long: "やや長い" # プリセットの max 超過
     # 文章の質について
     monotonous: "表現が単調"
-    too_complex: "やや難解"
+    too_complex: "やや難解" # 語彙や文が難しい章に添える文言
 
 # ======= 文章校正（vs lint）設定 =======
 lint:

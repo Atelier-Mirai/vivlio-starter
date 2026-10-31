@@ -48,6 +48,10 @@ module VivlioStarter
               'clean' => CleanCommand,
               'delete' => DeleteCommand,
               'doctor' => DoctorCommand,
+              'config' => ConfigCommand,
+              'config:book' => ConfigBookCommand,
+              'config:catalog' => ConfigCatalogCommand,
+              'config:talk' => ConfigTalkCommand,
               'import' => ImportCommand,
               'create' => CreateCommand,
               'rename' => RenameCommand,
@@ -128,7 +132,10 @@ module VivlioStarter
         end
 
         # プロジェクト外でも実行可能なコマンド
-        PROJECTLESS_COMMANDS = [NewCommand, DoctorCommand, HelpCommand].freeze
+        PROJECTLESS_COMMANDS = [
+          NewCommand, DoctorCommand, HelpCommand,
+          ConfigCommand, ConfigBookCommand, ConfigCatalogCommand, ConfigTalkCommand
+        ].freeze
 
         def ensure_project_context!(target)
           return if PROJECTLESS_COMMANDS.any? { |klass| target.is_a?(klass) }

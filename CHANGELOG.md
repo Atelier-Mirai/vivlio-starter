@@ -8,6 +8,11 @@
 
 ### Added
 
+- **`vs config` 系のコマンドを追加し、設定ファイルの書き方を引けるようにした**（`config-command-spec.md`）。`vs config` は下の 3 つの案内を出す（`vs index` と同じ形）。読むだけで、プロジェクトの外でも動く。41・22・91 章に書き足した。
+  - `vs config:book` は `book.yml` を引く。省略で区分の一覧、`vs config:book index` で区分のキーと説明、`vs config:book index.target_terms` でキーの説明と今の値（書いていなければ既定値）、`vs config:book 目次` で言葉から探す。説明は雛形のコメントをそのまま見せるので、`vs new` が作るファイルとずれない。廃止されたキーは代わりの書き方を案内し、綴りの近いキーがあれば打ち直すコマンドを示す。
+  - `vs config:catalog` は `catalog.yml` の書き方と、この本の章立てを見せる。雛形の値は本書の章立てなので見せない。
+  - `vs config:talk` は `talk.yml` の書き方と記入例、この本の話者を見せる。`vs config:talk display.style` のように表示設定のキーも引ける。
+
 - **雛形の CSS と `book.yml` の新しい設定を、著者へ知らせるようにした**（`scaffold-update-notice-spec.md`・改善案 #117・#118）。`gem update` だけで済ませると、CSS の改良も新しい設定も著者に届かなかった。
   - 全章（巻を含む）の `vs build`・`vs preflight` の最後に、`💡 雛形が新しくなっています（CSS: glossary.css ほか 3 件・book.yml の設定: 2 件）` と知らせる。`vs build all` は全巻の後に 1 回だけ。章の指定では知らせない。CSS の判定は `vs upgrade` と同じ三者比較で、見るのは CSS の 27 件だけ（雛形全体は約 4 秒かかるが、CSS は 2.5 ms）。
   - `vs upgrade` のいちばん最後に、増えたキーを雛形の行のまま、親のキーをつけて並べる。そのまま `book.yml` へ写せる。`book.yml` は今までどおり書き換えない。前の雛形に無かったキーだけを並べるので、著者が消したキーは並ばない。

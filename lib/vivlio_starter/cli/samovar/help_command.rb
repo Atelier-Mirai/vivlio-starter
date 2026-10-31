@@ -25,7 +25,7 @@ module VivlioStarter
         self.description = 'Vivlio Starter の主要コマンド一覧を表示します'
 
         COMMAND_CATEGORIES = {
-          'プロジェクト管理' => %w[new upgrade import pdf:read doctor clean],
+          'プロジェクト管理' => %w[new upgrade import pdf:read doctor config config:book config:catalog config:talk clean],
           '執筆・編集支援' => %w[create delete rename renumber],
           '文章校正・統計' => %w[lint metrics],
           '索引・用語集' => %w[index index:plan index:auto index:apply index:export index:import],

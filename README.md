@@ -207,6 +207,8 @@ vs build --help
 vs create --help
 ```
 
+`config/book.yml` の設定の書き方は `vs config:book` で調べられます。
+
 ### ログ出力レベル
 
 ```bash
