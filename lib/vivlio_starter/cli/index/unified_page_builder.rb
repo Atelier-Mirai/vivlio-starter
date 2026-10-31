@@ -571,10 +571,16 @@ module VivlioStarter
           definition = term['definition'] || ''
           slug = generate_slug(term_text)
           backlinks = build_glossary_backlinks(term)
+          # 読みが語と同じ（CSS・Markdown など）なら、同じ字を上に重ねても読み方は伝わらない。
+          heading = if yomi.casecmp?(term_text)
+                      escape_html(term_text)
+                    else
+                      "<ruby>#{escape_html(term_text)}<rp>(</rp><rt>#{escape_html(yomi)}</rt><rp>)</rp></ruby>"
+                    end
 
           <<~HTML.chomp
             <dt id="gls-#{slug}" class="glossary-term">
-              <ruby>#{escape_html(term_text)}<rp>(</rp><rt>#{escape_html(yomi)}</rt><rp>)</rp></ruby>
+              #{heading}
             </dt>
             <dd class="glossary-definition">
               #{render_definition(definition)}

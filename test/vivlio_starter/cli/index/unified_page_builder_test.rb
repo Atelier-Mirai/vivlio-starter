@@ -433,6 +433,18 @@ module VivlioStarter
           assert_includes html, 'CSS'
         end
 
+        # 読みが語と同じなら、同じ字をルビに重ねない。読みが違う語のルビは残す
+        def test_build_glossary_should_omit_ruby_when_yomi_equals_term
+          terms = [{ 'term' => 'CSS', 'yomi' => 'css', 'definition' => '説明', 'flags' => 'g' },
+                   { 'term' => '組版', 'yomi' => 'くみはん', 'definition' => '説明', 'flags' => 'g' }]
+
+          @builder.build_glossary!(terms)
+
+          html = File.read(GLOSSARY_OUTPUT_FILE)
+          refute_includes html, '<rt>css</rt>'
+          assert_includes html, '<rt>くみはん</rt>'
+        end
+
         # R2: バックリンクは中間 YAML（_index_matches.yml）の glossary_backlinks から描画する
         def test_build_glossary_includes_backlinks_from_matches_file
           create_index_cache(
