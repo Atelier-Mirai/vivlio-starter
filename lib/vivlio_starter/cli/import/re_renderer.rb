@@ -382,8 +382,8 @@ module VivlioStarter
           return if speakers.empty?
 
           @report.degraded('//talk', file: @file, line: node.line,
-                                     message: "会話の話者（#{speakers.join('、')}）は book.yml への登録が要ります。",
-                                     detail: '対処: book.yml の characters に話者キーと表示名・色を足してください（拡張記法リファレンス「会話」）。')
+                                     message: "会話の話者（#{speakers.join('、')}）は config/talk.yml への登録が要ります。",
+                                     detail: '対処: config/talk.yml に話者キーと表示名・色を足してください（拡張記法リファレンス「会話文」）。')
         end
 
         def desc_group(node, single: false)
