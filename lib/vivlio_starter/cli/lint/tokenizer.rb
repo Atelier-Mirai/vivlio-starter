@@ -40,7 +40,7 @@ module VivlioStarter
           # 従来の /^```/ 単純トグルと異なり、可変長フェンス（```/````/~~~）と
           # 入れ子・```include: 除外に追従するため、入れ子フェンスで本文を誤って
           # コード扱いしなくなる。check_code_blocks 時はコードも検査対象に含める。
-          code_lines = check_code_blocks ? Set.new : code_fence_lines(content)
+          code_lines = check_code_blocks ? Set.new : Masking.code_lines(content)
 
           content.each_line do |line|
             line_no += 1
@@ -66,14 +66,6 @@ module VivlioStarter
           end
 
           tokens
-        end
-
-        # コード（フェンス区切り行・内容行）とみなす行番号の集合を Masking で判定する。
-        def code_fence_lines(content)
-          prose = Set.new
-          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
-          total = content.each_line.count
-          (1..total).reject { prose.include?(it) }.to_set
         end
 
         # 抑止コメントに基づいて除外すべき行番号のセットを構築する

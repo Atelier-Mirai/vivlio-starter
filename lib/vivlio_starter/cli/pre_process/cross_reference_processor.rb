@@ -86,16 +86,6 @@ module VivlioStarter
 
         # === Public API ===
 
-        # コード（フェンス区切り行・内容行）とみなす行番号（1 始まり）の集合を Masking で判定する。
-        # 各内部クラスのフェンス追跡（自前の状態機械）を Masking（唯一の実装）へ一元化するための述語。
-        # 可変長フェンス・入れ子・~~~・```include: 除外に一貫して追従する。
-        def code_line_numbers(content)
-          prose = Set.new
-          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
-          total = content.each_line.count
-          (1..total).reject { prose.include?(it) }.to_set
-        end
-
         def extract_caption_label(line)
           match = line.match(CAPTION_PATTERN)
           return nil unless match
@@ -237,7 +227,7 @@ module VivlioStarter
           def collect(content)
             lines = content.lines
             # コードブロックの除外は Masking（唯一の実装）へ委ねる。
-            code_lines = CrossReferenceProcessor.code_line_numbers(content)
+            code_lines = Masking.code_lines(content)
             lines.each_with_index { |line, idx| process_line(line, idx, lines, code_lines) }
             { labels: @labels, errors: @errors }
           end
@@ -427,7 +417,7 @@ module VivlioStarter
             output = []
             idx = 0
             # コードブロックの除外は Masking（唯一の実装）へ委ねる。
-            code_lines = CrossReferenceProcessor.code_line_numbers(@lines.join)
+            code_lines = Masking.code_lines(@lines.join)
             while idx < @lines.size
               idx = if code_lines.include?(idx + 1)
                       passthrough(output, idx)
@@ -813,7 +803,7 @@ module VivlioStarter
 
           def replace
             # コードブロックの除外は Masking（唯一の実装）へ委ねる。
-            code_lines = CrossReferenceProcessor.code_line_numbers(@content)
+            code_lines = Masking.code_lines(@content)
             result = @content.lines.map.with_index(1) do |line, num|
               in_code = code_lines.include?(num)
               @paged_in_paragraph.clear if in_code || line.match?(PARAGRAPH_START)

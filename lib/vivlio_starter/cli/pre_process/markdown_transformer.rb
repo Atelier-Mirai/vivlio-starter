@@ -706,7 +706,7 @@ module VivlioStarter
 
         def mark_definition_continuations(content)
           lines = content.lines
-          code_lines = code_line_numbers(content)
+          code_lines = Masking.code_lines(content)
           in_definition = false
 
           lines.each_with_index.map do |line, index|
@@ -778,7 +778,7 @@ module VivlioStarter
         # 行頭 \ でエスケープされた fancy マーカー行は \ を除去して地の文にする。
         def convert_fancy_lists(content, source_filename: nil)
           lines = content.lines
-          code_lines = code_line_numbers(content)
+          code_lines = Masking.code_lines(content)
           out = []
           i = 0
           while i < lines.size
@@ -1103,7 +1103,7 @@ module VivlioStarter
         # 足しても空きは増えない。コードフェンス内は対象外。
         def convert_standalone_spacing(content)
           lines = content.lines
-          code_lines = code_line_numbers(content)
+          code_lines = Masking.code_lines(content)
           out = []
           lines.each_with_index do |line, i|
             if code_lines.include?(i + 1)
@@ -1138,7 +1138,7 @@ module VivlioStarter
         # コードフェンス内の ::: は対象外。既に空行がある場合は二重に入れない。
         def normalize_container_fence_spacing(content)
           lines = content.lines
-          code_lines = code_line_numbers(content)
+          code_lines = Masking.code_lines(content)
           out = []
           lines.each_with_index do |line, i|
             if code_lines.include?(i + 1)
@@ -1348,17 +1348,8 @@ module VivlioStarter
         # （実際の include 記法であるため）点も Masking が保証する。
         # 消費側（process_code_include）は ```include:...``` 行の行番号でのみ参照するため、
         # フェンス区切り行が集合へ含まれても判定結果は変わらない。
-        def lines_inside_code_blocks(content) = code_line_numbers(content)
+        def lines_inside_code_blocks(content) = Masking.code_lines(content)
         private_class_method :lines_inside_code_blocks
-
-        # コード（フェンス区切り行・内容行）とみなす行番号（1 始まり）の集合を Masking で判定する。
-        def code_line_numbers(content)
-          prose = Set.new
-          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
-          total = content.each_line.count
-          (1..total).reject { prose.include?(it) }.to_set
-        end
-        private_class_method :code_line_numbers
       end
     end
   end

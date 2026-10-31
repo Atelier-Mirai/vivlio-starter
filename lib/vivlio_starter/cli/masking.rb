@@ -82,6 +82,16 @@ module VivlioStarter
         end
       end
 
+      # コード（フェンス区切り行・内容行）とみなす行番号（1 始まり）の集合を返す。
+      # 各所のフェンス追跡（自前の状態機械）をここへ一元化するための述語。
+      # 可変長フェンス・入れ子・~~~・```include: 除外に一貫して追従する。
+      def code_lines(text)
+        prose = Set.new
+        each_prose_line(text) { |_line, lineno| prose << lineno }
+        total = text.each_line.count
+        (1..total).reject { prose.include?(it) }.to_set
+      end
+      
       # --- (b) コードを除去したテキストを返す（行数維持） -------------------
 
       # フェンス・インラインコードを取り除いたテキストを返す。

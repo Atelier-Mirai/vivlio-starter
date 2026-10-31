@@ -39,7 +39,7 @@ module VivlioStarter
 
           # コード（フェンス区切り行・内容行）とみなす行番号を Masking で判定する。
           # 行番号を保ったまま、可変長フェンス・入れ子・~~~ に一貫して追従する。
-          code_lines = code_fence_lines(content)
+          code_lines = Masking.code_lines(content)
 
           content.each_line.with_index(1) do |raw, lineno|
             next if code_lines.include?(lineno)
@@ -52,14 +52,6 @@ module VivlioStarter
         end
 
         private
-
-        # コード行番号の集合を Masking（唯一の実装）で判定する。
-        def code_fence_lines(content)
-          prose = Set.new
-          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
-          total = content.each_line.count
-          (1..total).reject { prose.include?(it) }.to_set
-        end
 
         # 段落境界（空行）や構造行で、未完の文バッファを破棄する。
         def reset_on_boundary(raw)
