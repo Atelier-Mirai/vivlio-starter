@@ -37,7 +37,7 @@ module VivlioStarter
     module PreProcessCommands
       # フロントマター生成・CSS 更新を担当するモジュール
       module FrontmatterGenerator
-        ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
+        ALLOWED_COLORS = ThemeColor::PALETTE.keys.freeze
 
         # 章リードの倍率として受ける範囲（chapter-lead-size-spec.md §3）。本文より小さいリードは
         # 本文より軽く見え、2 倍を超えると章題・節題と張り合う。

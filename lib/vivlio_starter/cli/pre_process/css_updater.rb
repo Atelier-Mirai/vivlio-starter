@@ -29,7 +29,7 @@ module VivlioStarter
     module PreProcessCommands
       # CSS 値計算・config.js 同期モジュール
       module CssUpdater
-        ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
+        ALLOWED_COLORS = ThemeColor::PALETTE.keys.freeze
 
         module_function
 

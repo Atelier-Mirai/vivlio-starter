@@ -23,6 +23,9 @@ module VivlioStarter
       module_function
 
       # --- 定数定義 ---
+      # 定義リストの字下げした継続行の印（WORD JOINER）。前処理が置いて後処理が読むので、値を 1 つにする
+      DEFINITION_CONTINUATION_MARK = "\u2060"
+
       REQUIRED_YAML_FILES = %w[
         config/book.yml config/catalog.yml config/page_presets.yml
       ].freeze

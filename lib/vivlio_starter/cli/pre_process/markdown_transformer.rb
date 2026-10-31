@@ -702,7 +702,7 @@ module VivlioStarter
         # 印は WORD JOINER（U+2060・幅ゼロ・改行禁止）。後処理が取りこぼしても
         # 紙面には何も出ない側に倒してある。HTML 化はしないので、行の中の記法
         # （ルビ・索引・強調）はこのあと VFM と索引スキャナが通常どおり処理する。
-        CONTINUATION_MARK = "\u2060"
+        CONTINUATION_MARK = Common::DEFINITION_CONTINUATION_MARK
 
         def mark_definition_continuations(content)
           lines = content.lines

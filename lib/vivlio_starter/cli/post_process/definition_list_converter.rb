@@ -45,7 +45,7 @@ module VivlioStarter
 
         # 字下げした継続行の印（前処理が置く WORD JOINER。U+2060・幅ゼロ）。
         # VFM は行頭の空白を落とすので、字下げの有無はこの印でしか分からない
-        CONTINUATION_MARK = "\u2060"
+        CONTINUATION_MARK = Common::DEFINITION_CONTINUATION_MARK
         CONTINUATION_HEAD = /\A#{CONTINUATION_MARK}/
 
         # 1 エントリ。term が nil のときは用語なしの定義（前のエントリの続き）
