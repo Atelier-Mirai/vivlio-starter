@@ -17,12 +17,12 @@
 #
 # 雛形追従の仕組み（三者比較）:
 #   config/scaffold.lock（展開時の雛形ハッシュ）・現在の雛形・プロジェクト現物の
-#   3 点から各ファイルを 追加/更新/競合/保持/最新 に分類する。
+#   3 点から各ファイルを 追加/更新/競合/最新 に分類する。
 #   - 追加: 雛形の新規ファイル → コピー
 #   - 更新: 雛形が改良・著者は未変更 → 自動適用可（--yes で無確認）
 #   - 合流: 雛形も著者も変更したが**別の場所** → 3-way マージで両立（尋ねない）
 #   - 競合: 雛形も著者も**同じ場所**を変更 → diff 提示・個別確認（y/n/d）
-#   - 保持: 著者データ領域（ScaffoldLock::AUTHOR_DATA_*）→ 絶対に触れない
+#   - 著者データ領域（ScaffoldLock::AUTHOR_DATA_*）は分類しない。雛形で上書きせず、計画にも載せない
 #
 #   合流の共通祖先は ScaffoldBase が調達する（upgrade-three-way-merge-spec.md）。
 #   祖先が得られないファイルは従来どおり競合として著者に尋ねる。
@@ -52,7 +52,7 @@ module VivlioStarter
     module UpgradeCommands
       extend self
 
-      # 計画表の 1 行。status: :add / :add_empty / :update / :merge / :conflict / :keep
+      # 計画表の 1 行。status: :add / :add_empty / :update / :merge / :conflict / :tidy
       #
       # merged      … :merge のときだけ入る、3-way マージ後の中身
       # overlapping … :conflict のうち「祖先が取れたうえで衝突した」＝双方が
@@ -221,16 +221,14 @@ module VivlioStarter
         plan = with_tidy_rows(build_plan(scaffold_digests, lock), tidy)
 
         # --- Phase: 計画表示（著者データの整理も、確認の前に見せる） ---
-        display_plan(plan)
-        report_tidy(tidy, dry_run: cmd.options[:dry_run])
-        actionable = plan.reject { it.status == :keep }
-        if actionable.empty?
+        display_plan(plan, tidy_details(tidy))
+        if plan.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
           save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
           return SyncResult.new(new_keys: tidy.new_keys)
         end
         if cmd.options[:dry_run]
-          finish_dry_run(actionable)
+          finish_dry_run(plan)
           return SyncResult.new(new_keys: tidy.new_keys)
         end
 
@@ -295,11 +293,8 @@ module VivlioStarter
                      new_keys: ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:))
       end
 
-      # 書き換えるファイルを「保持」と書かないよう、整理の行へ置き換える
-      def with_tidy_rows(plan, tidy)
-        paths = tidy.paths
-        plan.reject { paths.include?(it.relative) } + paths.map { PlanItem.new(relative: it, status: :tidy) }
-      end
+      # 整理で書き換えるファイルを計画の行にする
+      def with_tidy_rows(plan, tidy) = plan + tidy.paths.map { PlanItem.new(relative: it, status: :tidy) }
 
       # 確認の後で整理を実行する。失う設定は無いので、退避を取って何をしたかを示す。
       # @return [Array(String?, BookKeyInserter::Result?)] バックアップ先と、足した設定の結果
@@ -379,48 +374,39 @@ module VivlioStarter
 
       # 移す廃止キーの知らせ。移した先がすでに書かれていれば、そちらを残すので、値が違えば両方を示す
       # @param written [Hash] 書き換える前の book.yml
-      def report_moved_key(from, to, written)
+      def moved_key_details(from, to, written)
         old_value = written.dig(*from)
-        unless written.dig(*to[0...-1])&.key?(to.last)
-          Common.log_always("   config/book.yml: #{from.join('.')} を #{to.join('.')} へ移します（#{old_value}）")
-          return
-        end
+        return ["#{from.join('.')} を #{to.join('.')} へ移します（#{old_value}）"] unless written.dig(*to[0...-1])&.key?(to.last)
 
-        Common.log_always("   config/book.yml: #{to.join('.')} がすでにあるので、#{from.join('.')} の行を消します")
         kept = written.dig(*to)
-        return if kept == old_value
-
-        Common.log_always("      #{to.join('.')}: #{kept} を残し、#{from.join('.')}: #{old_value} を消します")
+        lines = ["#{to.join('.')} がすでにあるので、#{from.join('.')} の行を削除します"]
+        lines << "#{to.join('.')}: #{kept} を残し、#{from.join('.')}: #{old_value} を削除します" unless kept == old_value
+        lines
       end
 
-      # 計画の表と同じく、ログの水準に関わらず見せる（著者データに手を入れるため）
-      def report_tidy(tidy, dry_run:)
-        return if tidy.empty?
+      # 整理の行の下に並べる詳細（ファイルごと）。著者データに手を入れるので、確認の前に見せる
+      # @return [Hash{String => Array<String>}]
+      def tidy_details(tidy)
+        details = { File.join('config', 'book.yml') => book_yml_details(tidy) }
+        if tidy.orphans.any?
+          chapters = tidy.orphans.values.flatten.uniq
+          listed = chapters.first(3).join('・') + (chapters.size > 3 ? " ほか #{chapters.size - 3} 章" : '')
+          details[UnifiedTermsManager::UNIFIED_FILE] = ["原稿の無い章（#{listed}）を指す主要参照を外します（#{tidy.orphans.size} 語）",
+                                                        '外した語は、次の vs index:auto が主要参照の候補を出します']
+        end
+        tidy.pages.each { details[it] = ['今の版では使わないので削除します（扉・免責・奥付は book.yml から作ります）'] }
+        details
+      end
 
+      def book_yml_details(tidy)
         moved, removed = tidy.retired.partition { moved_key_target(it) }
         written = moved.any? ? (YAML.safe_load(tidy.book_text, aliases: true) || {}) : {}
-        moved.each { report_moved_key(it, moved_key_target(it), written) }
-        if removed.any?
-          Common.log_always("   config/book.yml: 廃止キーを消します（#{removed.map { it.join('.') }.join('・')}）")
-        end
+        lines = moved.flat_map { moved_key_details(it, moved_key_target(it), written) }
+        lines << "廃止キーを削除します（#{removed.map { it.join('.') }.join('・')}）" if removed.any?
+
         added = tidy.new_keys&.added.to_a
-        if added.any?
-          others = added.size > 1 ? " ほか #{added.size - 1} 件" : ''
-          Common.log_always("   config/book.yml: 新しい設定を足します（#{added.first}#{others}）")
-        end
-        orphans = tidy.orphans
-        pages = tidy.pages
-        if orphans.any?
-          chapters = orphans.values.flatten.uniq
-          listed = chapters.first(3).join('・') + (chapters.size > 3 ? " ほか #{chapters.size - 3} 章" : '')
-          Common.log_always("   #{UnifiedTermsManager::UNIFIED_FILE}: 原稿の無い章（#{listed}）を指す主要参照を外します（#{orphans.size} 語）")
-          Common.log_always('      外した語は、次の vs index:auto が主要参照の候補を出します')
-        end
-        if pages.any?
-          others = pages.size > 1 ? " ほか #{pages.size - 1} 件" : ''
-          Common.log_always("   #{pages.first}#{others}: 今の版では使わないので消します（扉・免責・奥付は book.yml から作ります）")
-        end
-        Common.log_always('--dry-run のため整理しません') if dry_run
+        lines << "新しい設定キーを追加します（#{added.first}#{" ほか #{added.size - 1} 件" if added.size > 1}）" if added.any?
+        lines
       end
 
       # @return [Gem::Version, nil] lock が読めない・自分の行が無い・版が壊れていれば nil
@@ -474,7 +460,7 @@ module VivlioStarter
         scaffold_digests.filter_map do |relative, scaffold_digest|
           status =
             if ScaffoldLock.author_data?(relative)
-              classify_author_data(relative, scaffold_digest, lock_files, lock)
+              classify_author_data(relative)
             else
               ScaffoldLock.classify(relative, scaffold_digest, lock_files)
             end
@@ -500,38 +486,36 @@ module VivlioStarter
         PlanItem.new(relative:, status: :conflict, overlapping: true)
       end
 
-      # 著者データ領域の分類
-      # @return [Symbol, nil] :add_empty / :keep / nil（表示不要）
-      def classify_author_data(relative, scaffold_digest, lock_files, lock)
-        unless File.exist?(relative)
-          # 著者辞書が無い場合のみ「空の辞書」を追加（雛形サンプルは配らない）
-          return EMPTY_DICTIONARY_TEMPLATES.key?(relative) ? :add_empty : nil
-        end
-
-        # 雛形側が変わったときだけ「保持（対象外）」を 1 度だけ知らせる。
-        # lock なしの旧プロジェクトでは現物との直接比較で代用する。
-        reference = lock ? lock_files[relative] : ScaffoldLock.file_digest(relative)
-        reference == scaffold_digest ? nil : :keep
+      # 著者データ領域の分類。雛形で上書きしないので、計画に載せるのは足りない辞書だけ。
+      # 雛形に同じ名前のファイル（contents/99-postface.md）があっても、中身は関係が無い
+      # @return [Symbol, nil] :add_empty / nil（表示不要）
+      def classify_author_data(relative)
+        :add_empty if !File.exist?(relative) && EMPTY_DICTIONARY_TEMPLATES.key?(relative)
       end
 
       STATUS_LABELS = {
         add: ['追加', '雛形の新規ファイル'],
         add_empty: ['追加', '著者辞書が無いため空の辞書を用意'],
-        update: ['更新', '雛形が改良・あなたは未変更 → 自動適用可'],
-        merge: ['合流', '雛形もあなたも変更・別の場所 → 自動で両立'],
-        conflict: ['競合', '雛形もあなたも同じ場所を変更 → diff 確認'],
-        tidy: ['整理', '下の箇所だけを直す'],
-        keep: ['保持', '著者データ領域 → 対象外']
+        update: ['更新', '雛形が改良・著者は未変更 → 自動適用可'],
+        merge: ['合流', '雛形も著者も変更・別の場所 → 自動で両立'],
+        conflict: ['競合', '雛形も著者も同じ場所を変更 → diff 確認'],
+        tidy: ['整理', nil]
       }.freeze
 
-      def display_plan(plan)
+      # 整理の詳細を、行の真下に並べるときの字下げ
+      PLAN_DETAIL_INDENT = ' ' * 12
+
+      # @param details [Hash{String => Array<String>}] 行の下に並べる詳細
+      def display_plan(plan, details)
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[add add_empty update merge conflict tidy keep]
+        order = %i[add add_empty update merge conflict tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
-          Common.log_always(format('   %s   %-42s（%s）', label, item.relative, note))
+          row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
+          Common.log_always(row)
+          details.fetch(item.relative, []).each { Common.log_always("#{PLAN_DETAIL_INDENT}#{it}") }
         end
       end
 
@@ -621,9 +605,9 @@ module VivlioStarter
         Common.log_always('')
         Common.log_always("   競合 #{relative}:")
         # 3-way を通しても合流できなかった＝双方が同じ場所を変えている。
-        # このときだけ「あなたの変更が失われる」と断定できる（祖先が取れなかった
+        # このときだけ「著者の変更が失われる」と断定できる（祖先が取れなかった
         # 競合では、そもそも双方が何を変えたのか分かっていない）
-        Common.log_warn('雛形とあなたが同じ場所を変えています。適用するとあなたの変更は失われます。') if item.overlapping
+        Common.log_warn('雛形と著者が同じ場所を変えています。適用すると著者の変更は失われます。') if item.overlapping
         diff = unified_diff(File.join(scaffold_source, relative), relative)
         print_diff(diff, limit: DIFF_PREVIEW_LINES)
 
@@ -675,7 +659,7 @@ module VivlioStarter
       # - スキップ（競合で n）: 旧ハッシュのまま → 次回また競合として確認できる。
       #   断ったときの雛形のハッシュは declined に残す。残さないと、ビルドのたびに
       #   同じ 💡 が出続ける（scaffold-update-notice-spec.md §3.2）
-      # - 雛形から消えたファイルのエントリは除去（「保持」扱いで比較対象外のため）
+      # - 雛形から消えたファイルのエントリは除去（比較対象外のため）
       def record_lock!(scaffold_digests, lock, applied:, skipped: [])
         old_files = lock&.dig(:files) || {}
         applied_set = applied.map(&:relative)
@@ -718,8 +702,6 @@ module VivlioStarter
         message += "（バックアップ: #{backup_dir}/）" if backup_dir
         Common.log_result(message, status: :success)
 
-        keep_count = plan.count { it.status == :keep }
-        Common.log_always("   保持 #{keep_count} 件（著者データ領域は変更していません）") if keep_count.positive?
         Common.log_always('   git 管理下です。git diff で差分確認、git checkout で巻き戻しできます。') if Dir.exist?('.git')
       end
 
@@ -800,7 +782,7 @@ module VivlioStarter
       # 行頭を「凡例」で始めるのは色付けの都合でもある。`   - …` で始めると
       # paint_diff_line が削除行と見なして赤く塗ってしまう
       DIFF_LEGEND = [
-        '   凡例  - いまのあなたのファイル  /  + 新しい雛形（適用すると + の側になります）'
+        '   凡例  - 著者の今のファイル  /  + 新しい雛形（適用すると + の側になります）'
       ].freeze
 
       # 表示上の 1 ハンク。start_lineno は旧ファイル（＝著者の現物）基準の 1 起点

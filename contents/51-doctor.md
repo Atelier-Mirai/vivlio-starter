@@ -190,7 +190,6 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 | 合流 | 雛形と手元で**別の箇所**を変更 | 両方の変更を自動で取り込みます（確認なし） |
 | 競合 | 雛形と手元で**同じ箇所**を変更 | diff を示し、1 件ずつ確認します（y/n/d） |
 | 整理 | `book.yml` の廃止キーと新しい設定など | 示した箇所だけを直します（`--yes` で確認なし） |
-| 保持 | 著者データ領域 | 変更しません |
 
 :::{.output}
 ```text
@@ -201,9 +200,8 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
    合流   stylesheets/preface.css
    競合   stylesheets/custom.css
    整理   config/book.yml
-   保持   config/catalog.yml
-   config/book.yml: 廃止キーを消します（index.max_sub_references）
-   config/book.yml: 新しい設定を足します（theme.lead_size ほか 8 件）
+            廃止キーを削除します（index.max_sub_references）
+            新しい設定キーを追加します（theme.lead_size ほか 8 件）
 ```
 :::
 
@@ -212,7 +210,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 :::{.note}
 **原稿と辞書は構造的に安全です**
 
-`contents/`・`images/`・`covers/`・`codes/`・`data/` と、`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを整理し、新しいキーを足します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
+`contents/`・`images/`・`covers/`・`codes/`・`data/` と、`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを削除し、新しいキーを追加します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
 :::
 
 著者が雛形のファイルを変更したかどうかは、`vs new` が作る `config/scaffold.lock` で判定します。このファイルは手で編集せず、Git にコミットしてください。
@@ -230,20 +228,20 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 `vs build 11` のように章を指定したときは知らせません。`vs upgrade` を実行すると、次に雛形が変わるまで消えます。競合を断ったスタイルシートも、次に雛形が変わるまで知らせません。
 
-増えた設定は、`vs upgrade` が `book.yml` へコメントごと足します。更新計画に「整理」の行として示し、確認で「いいえ」と答えれば足しません。値は既定値なので、組み上がりは変わりません。雛形の並びのとおりに差し込み、ほかの行には触れません。変更前のファイルは `.cache/vs/upgrade-backup/` に残ります。
+増えた設定は、`vs upgrade` が `book.yml` へコメントごと追加します。更新計画に「整理」の行として示し、確認で「いいえ」と答えれば追加しません。値は既定値なので、組み上がりは変わりません。雛形の並びのとおりに差し込み、ほかの行には触れません。変更前のファイルは `.cache/vs/upgrade-backup/` に残ります。
 
 :::{.output}
 ```text
-✅ book.yml に新しい設定を 2 つ足しました（値は既定値なので、組み上がりは変わりません）
+✅ book.yml に新しい設定を 2 つ追加しました（値は既定値なので、組み上がりは変わりません）
         theme.lead_size
         index_glossary.exclude_chapters
-        説明は vs config:book theme.lead_size のように調べられます
+        設定の詳細は vs config:book theme.lead_size として確認できます
 ```
 :::
 
-足すのは、新しい設定につき 1 回だけです。足された設定を消しても、次の `vs upgrade` で戻ることはありません。`--dry-run` では、足す行を見せるだけです。
+追加するのは、新しい設定につき 1 回だけです。追加された設定を消しても、次の `vs upgrade` で戻ることはありません。`--dry-run` では、追加する行を見せるだけです。
 
-`theme: { color: red }` のように 1 行にまとめて書いた区分には足せないので、足す行を並べます。使いたい設定だけを `config/book.yml` へ写してください。
+`theme: { color: red }` のように 1 行にまとめて書いた区分には追加できないので、追加する行を並べます。使いたい設定だけを `config/book.yml` へ写してください。
 
 ### Gemfile.lock の追随
 

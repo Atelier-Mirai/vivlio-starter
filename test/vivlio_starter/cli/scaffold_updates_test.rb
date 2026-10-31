@@ -254,7 +254,7 @@ module VivlioStarter
 
           out, = capture_io { ScaffoldUpdates.report_new_book_keys(plan, scaffold_source: scaffold, dry_run: true) }
 
-          assert_includes out, '💡 book.yml に書ける設定が 5 つ増えました（vs upgrade で足します。値は既定値です）'
+          assert_includes out, '💡 book.yml に書ける設定が 5 つ増えました（vs upgrade で追加します。値は既定値です）'
           listed = out.lines.map(&:chomp).drop_while { !it.strip.empty? }.drop(1).map { it.delete_prefix(Common::DETAIL_INDENT) }
           assert_equal <<~YAML.lines(chomp: true), listed
             book:
@@ -298,7 +298,7 @@ module VivlioStarter
           out, = capture_io { ScaffoldUpdates.report_new_book_keys(plan, scaffold_source: scaffold) }
 
           assert_empty plan.added, '1 行にまとめたキーの中には差し込めない'
-          assert_includes out, 'book.yml へ自動で足せなかった設定が 2 つあります'
+          assert_includes out, 'book.yml へ自動で追加できなかった設定が 2 つあります'
           assert_equal 1, out.scan('section: { min: 1, ideal: 2, max: 3 } # 節の分量').size, '同じ行を 2 度並べない'
         end
       end

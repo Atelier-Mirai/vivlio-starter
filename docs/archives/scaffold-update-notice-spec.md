@@ -176,10 +176,10 @@ files:
 ### 10.3 表示
 
 ```text
-✅ book.yml に新しい設定を 2 つ足しました（値は既定値なので、組み上がりは変わりません）
+✅ book.yml に新しい設定を 2 つ追加しました（値は既定値なので、組み上がりは変わりません）
         theme.lead_size
         index_glossary.exclude_chapters
-        説明は vs config:book theme.lead_size のように調べられます
+        設定の詳細は vs config:book theme.lead_size として確認できます
 ```
 
 ### 10.4 残る点

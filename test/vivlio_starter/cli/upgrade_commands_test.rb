@@ -8,7 +8,7 @@
 #   ScaffoldLock（lib/vivlio_starter/cli/scaffold_lock.rb）
 #
 # 検証内容（project-upgrade-command-spec.md §3）:
-#   - §1.2 の分類（追加/更新/競合/最新/保持）× lock あり/なし
+#   - §1.2 の分類（追加/更新/競合/最新）× lock あり/なし
 #   - 著者データ領域（contents/・著者辞書）が計画に載らず触られない
 #   - 著者辞書が無い場合は「空の辞書」を追加（雛形サンプルは配らない）
 #   - 上書き前のバックアップ（スキップ分は退避されない）
@@ -49,7 +49,7 @@ module VivlioStarter
       NEW_CSS = "body { color: navy; }\n"
       CUSTOM_CSS = "body { color: hotpink; }\n"
 
-      # --- §1.2 分類（lock あり）: 追加/更新/競合/最新/保持が正しく提示される ---
+      # --- §1.2 分類（lock あり）: 追加/更新/競合/最新が正しく提示される ---
       def test_should_classify_files_with_lock_using_three_way_comparison
         within_project do |scaffold|
           # 追加: 雛形にだけある新規ファイル
@@ -63,7 +63,7 @@ module VivlioStarter
           # 最新: 雛形が変わっていない
           write(scaffold, 'stylesheets/same.css', OLD_CSS)
           write('.', 'stylesheets/same.css', OLD_CSS)
-          # 保持: 著者データ領域（雛形側が変わっても対象外）
+          # 著者データ領域: 雛形側が変わっても、計画に載せない
           write(scaffold, 'contents/10-sample.md', "# 新しいサンプル\n")
           write('.', 'contents/10-sample.md', "# 著者の原稿\n")
           write_lock(scaffold_overrides: {
@@ -77,7 +77,7 @@ module VivlioStarter
           assert_match(/追加\s+stylesheets\/new\.css/, out)
           assert_match(/更新\s+stylesheets\/improved\.css/, out)
           assert_match(/競合\s+stylesheets\/custom\.css/, out)
-          assert_match(/保持\s+contents\/10-sample\.md/, out)
+          refute_includes out, 'contents/10-sample.md'
           refute_match(/stylesheets\/same\.css/, out, '最新のファイルは計画に載らないべき')
         end
       end
@@ -150,7 +150,7 @@ module VivlioStarter
 
           out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
 
-          assert_includes out, 'いまのあなたのファイル'
+          assert_includes out, '著者の今のファイル'
           assert_includes out, '新しい雛形'
           assert_includes out, '適用すると + の側になります'
         end
@@ -287,7 +287,7 @@ module VivlioStarter
           out, = capture_io { run_upgrade(scaffold, yes: true, tool_output: '外部ツールの更新の表示') }
 
           assert_equal "book:\n  main_title: \"わたしの本\"\n  cover: master # 表紙\n", File.read('config/book.yml')
-          assert_includes out, 'book.yml に新しい設定を 1 つ足しました'
+          assert_includes out, 'book.yml に新しい設定を 1 つ追加しました'
           assert_includes out, 'book.cover'
           assert_operator out.index('外部ツールの更新の表示'), :<, out.index('book.yml に新しい設定'),
                           'ツールの更新で流れないよう、いちばん最後に出す'
@@ -361,7 +361,7 @@ module VivlioStarter
           out, = capture_io { run_upgrade(scaffold) }
 
           assert_equal "book: { main_title: 本 }\n", File.read('config/book.yml')
-          assert_includes out, 'book.yml へ自動で足せなかった設定が 1 つあります'
+          assert_includes out, 'book.yml へ自動で追加できなかった設定が 1 つあります'
           assert_includes out, 'cover: master # 表紙'
         end
       end
@@ -980,7 +980,7 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
-          assert_includes out, '廃止キーを消します（verify.images）'
+          assert_includes out, '廃止キーを削除します（verify.images）'
           assert_includes out, '主要参照を外します（2 語）'
           assert_equal <<~YAML, File.read('config/book.yml'), '廃止キーの行だけが消え、コメントとほかのキーは残るべき'
             book:
@@ -1014,7 +1014,7 @@ module VivlioStarter
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
           assert_includes out, 'output.cover を book.cover へ移します（light）'
-          assert_includes out, '廃止キーを消します（verify.images）'
+          assert_includes out, '廃止キーを削除します（verify.images）'
           assert_equal <<~YAML, File.read('config/book.yml')
             book:
               main_title: "わたしの本"
@@ -1032,8 +1032,8 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
-          assert_includes out, 'book.cover がすでにあるので、output.cover の行を消します'
-          assert_includes out, 'book.cover: dark を残し、output.cover: master を消します'
+          assert_includes out, 'book.cover がすでにあるので、output.cover の行を削除します'
+          assert_includes out, 'book.cover: dark を残し、output.cover: master を削除します'
           assert_equal "book:\n  main_title: \"わたしの本\"\n  cover: dark\n", File.read('config/book.yml')
         end
       end
@@ -1046,8 +1046,8 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, dry_run: true) }
 
-          assert_includes out, '廃止キーを消します（verify.bare_urls）'
-          assert_includes out, '--dry-run のため整理しません'
+          assert_includes out, '廃止キーを削除します（verify.bare_urls）'
+          assert_includes out, '--dry-run のため適用しません'
           after = Dir.glob('**/*', File::FNM_DOTMATCH).sort.to_h { [it, File.file?(it) ? File.read(it) : nil] }
           assert_equal before, after, '--dry-run は整理でも書き込まないべき'
         end
@@ -1076,7 +1076,7 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
-          assert_includes out, 'contents/_colophon.md ほか 3 件: 今の版では使わないので消します'
+          assert_includes out, "整理   contents/_colophon.md\n            今の版では使わないので削除します"
           assert_equal %w[11-intro.md _README.md], Dir.children('contents').sort
           backups = Dir.glob('.cache/vs/upgrade-backup/*/contents/*').map { File.basename(it) }.sort
           assert_equal %w[_colophon.md _legalpage.md _part1.md _titlepage.md], backups
@@ -1089,7 +1089,7 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, dry_run: true) }
 
-          assert_includes out, 'contents/_titlepage.md: 今の版では使わないので消します'
+          assert_includes out, "整理   contents/_titlepage.md\n            今の版では使わないので削除します"
           assert File.exist?('contents/_titlepage.md'), '--dry-run では消さないべき'
         end
       end
@@ -1123,11 +1123,15 @@ module VivlioStarter
           out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
 
           question = out.index('適用しますか？')
+          assert_includes out, <<~ROW.gsub(/^(?=\S)/, '   ').gsub('   ＋', ' ' * 12)
+            整理   config/book.yml
+            ＋廃止キーを削除します（metrics.clause_length）
+            ＋新しい設定キーを追加します（book.cover）
+          ROW
           assert_operator out.index('整理   config/book.yml'), :<, question
-          assert_operator out.index('廃止キーを消します（metrics.clause_length）'), :<, question
-          assert_operator out.index('新しい設定を足します（book.cover）'), :<, question
+          assert_operator out.index('新しい設定キーを追加します（book.cover）'), :<, question
           assert_includes out, '追加 1 件・更新 0 件・整理 1 件'
-          refute_includes out, '保持   config/book.yml', '書き換えるファイルを「保持」と書かない'
+          refute_includes out, '保持', '何もしないファイルは計画に載せない'
         end
       end
 
@@ -1142,7 +1146,7 @@ module VivlioStarter
           assert_equal original, File.read('config/book.yml')
           refute_path_exists 'stylesheets/theme.css'
           assert_equal %w[book book.main_title], ScaffoldLock.read('.')[:book_keys]
-          refute_includes out, '新しい設定を 1 つ足しました'
+          refute_includes out, '新しい設定を 1 つ追加しました'
         end
       end
 
@@ -1164,13 +1168,22 @@ module VivlioStarter
         end
       end
 
-      def test_should_keep_book_yml_in_the_plan_when_nothing_touches_it
+      # 同じ名前のファイルが雛形にあっても、著者のファイルは計画に載せない
+      def test_should_not_list_author_data_in_the_plan
         within_project do |scaffold|
+          write(scaffold, 'contents/99-postface.md', "# 雛形の後書き\n")
+          write(scaffold, 'config/catalog.yml', "CHAPTERS:\n  - 11-new\n")
+          write('.', 'contents/99-postface.md', "# 著者の後書き\n")
+          write('.', 'config/catalog.yml', "CHAPTERS:\n  - 11-mine\n")
           write_lock
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
-          assert_includes out, '保持   config/book.yml'
+          refute_includes out, '保持'
+          refute_includes out, '99-postface'
+          refute_includes out, 'catalog.yml'
+          assert_equal "# 著者の後書き\n", File.read('contents/99-postface.md')
+          assert_includes out, 'プロジェクトは雛形の最新状態です'
         end
       end
 

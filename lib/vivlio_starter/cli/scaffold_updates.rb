@@ -68,7 +68,7 @@ module VivlioStarter
         nil
       end
 
-      # vs upgrade の最後に、足した設定を知らせる。足せなかった設定は行のまま並べる（§10）
+      # vs upgrade の最後に、追加した設定を知らせる。追加できなかった設定は行のまま並べる（§10）
       # @param plan [BookKeyInserter::Result, nil]
       def report_new_book_keys(plan, scaffold_source:, dry_run: false)
         return if plan.nil?
@@ -102,7 +102,7 @@ module VivlioStarter
       # --dry-run: 足す行をそのまま見せる
       def report_planned_keys(plan, scaffold_source)
         keys = plan.added + plan.skipped
-        Common.log_always("💡 book.yml に書ける設定が #{keys.size} つ増えました（vs upgrade で足します。値は既定値です）")
+        Common.log_always("💡 book.yml に書ける設定が #{keys.size} つ増えました（vs upgrade で追加します。値は既定値です）")
         print_listing(scaffold_source, keys)
       end
 
@@ -110,15 +110,15 @@ module VivlioStarter
         return if keys.empty?
 
         indent = Common::DETAIL_INDENT
-        Common.log_result("book.yml に新しい設定を #{keys.size} つ足しました（値は既定値なので、組み上がりは変わりません）", status: :success)
+        Common.log_result("book.yml に新しい設定を #{keys.size} つ追加しました（値は既定値なので、組み上がりは変わりません）", status: :success)
         keys.each { Common.log_always("#{indent}#{it}") }
-        Common.log_always("#{indent}説明は vs config:book #{keys.first} のように調べられます")
+        Common.log_always("#{indent}設定の詳細は vs config:book #{keys.first} として確認できます")
       end
 
       def report_skipped_keys(keys, scaffold_source)
         return if keys.empty?
 
-        Common.log_always("💡 book.yml へ自動で足せなかった設定が #{keys.size} つあります（書かなくても既定値で動きます）")
+        Common.log_always("💡 book.yml へ自動で追加できなかった設定が #{keys.size} つあります（書かなくても既定値で動きます）")
         Common.log_always("#{Common::DETAIL_INDENT}使うときは、次の行を config/book.yml へ写してください")
         print_listing(scaffold_source, keys)
       end
