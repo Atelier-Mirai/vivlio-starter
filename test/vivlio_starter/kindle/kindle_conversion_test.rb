@@ -85,9 +85,10 @@ class KindleConversionTest < Minitest::Test
     latest && File.expand_path(latest)
   end
 
-  # Kindle Previewer 3 CLI で EPUB を変換する（KPF/Mobi を outdir に生成し、ログを出す）
+  # Kindle Previewer の CLI で EPUB を変換する（KPF/Mobi を outdir に生成し、ログを出す）。
+  # 引数は Previewer 4 の形（3 の -convert は受け付けない）。
   def run_kindle_previewer!(epub, outdir)
-    system("kindlepreviewer", epub, "-convert", "-output", outdir, "-locale", "en",
+    system("kindlepreviewer", epub, "--convert", "--output", outdir, "--locale", "en",
            out: File::NULL, err: File::NULL)
   end
 
