@@ -21,6 +21,7 @@ require 'digest'
 require 'fileutils'
 require 'open3'
 require 'tmpdir'
+require_relative '../doctor'
 require_relative '../entries'
 require_relative '../code_line_blocks'
 require_relative '../units'
@@ -3361,7 +3362,7 @@ module VivlioStarter
         # Kindle KPF 変換（§1-7）
         # ================================================================
 
-        # Kindle Previewer CLI（kindlepreviewer）コマンド名。3 系・4 系のどちらでもよい。
+        # Kindle Previewer 4 の CLI（kindlepreviewer）コマンド名。
         KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
 
         # 変換を試みる回数。Kindle Previewer 4 が変換の入口で落ちたときだけ、1 回やり直す
@@ -3403,27 +3404,19 @@ module VivlioStarter
           Common.external_command_available?(command)
         end
 
-        # オプションの接頭辞を、導入されている Kindle Previewer の版から決める。
+        # kindlepreviewer が Kindle Previewer 3 か。KPF の変換には 4 を使うので、3 では変換しない。
         #
-        # **4.0.0 で綴りが変わった。** 3 は `-convert -output -locale`、4 は
-        # `--convert --output --locale` である（option 名と locale の綴りは同じ）。
-        # 版を決め打ちにすると、どちらかの利用者で KPF 変換が黙って失敗する——
-        # 変換だけ落ちて中間 EPUB が残るため、成果物を見るまで気づきにくい。
-        #
-        # `-help` はどちらの版も受け付けるので、その出力に `--convert` があるかで見分ける。
-        # 版そのものを解析しないのは、4.1 以降で表記が変わっても綴りを直接見るほうが
-        # 壊れにくいためである。判定は 1 ビルドにつき 1 回だけ行う。
+        # 3 のオプションは `-convert`、4 は `--convert` なので、`-help` の綴りで見分ける。
+        # 版の番号を解析しないのは、4.1 以降で表記が変わっても綴りを直接見るほうが
+        # 壊れにくいためである。ラッパーの向き先が無いときは綴りが出ないので false を返し、
+        # 変換の失敗として報告する。
         #
         # @param command [String] kindlepreviewer コマンド名
-        # @return [String] '-' または '--'
-        def kpf_option_prefix(command = KINDLEPREVIEWER_COMMAND)
-          @kpf_option_prefix ||= {}
-          @kpf_option_prefix[command] ||= begin
-            help = `#{command} -help 2>&1`
-            help.include?('--convert') ? '--' : '-'
-          rescue StandardError
-            '-'
-          end
+        # @return [Boolean]
+        def kindle_previewer_3?(command = KINDLEPREVIEWER_COMMAND)
+          `#{command} -help 2>&1`.match?(/(?<!-)-convert/)
+        rescue StandardError
+          false
         end
 
         # Kindle 用中間 EPUB を kindlepreviewer で KPF へ変換し、kpf_path へ回収する（§1-7）。
@@ -3442,6 +3435,12 @@ module VivlioStarter
             # 入れ方は、ビルドの終わりに Build::KindlePreviewerNotice が 1 度だけ 💡 で知らせる
             # （改善案.md #87）。ここで 🟡 を出すと、同じことを 2 度言うことになる
             Common.log_info("[KPF] #{command} が見つからないため、KPF への変換を飛ばしました（中間 EPUB: #{epub_path}）")
+            return false
+          end
+
+          if kindle_previewer_3?(command)
+            DoctorCommands.report_kindle_previewer_outdated
+            Common.log_info("[KPF] Kindle Previewer 3 では変換しないため、KPF への変換を飛ばしました（中間 EPUB: #{epub_path}）")
             return false
           end
 
@@ -3467,9 +3466,8 @@ module VivlioStarter
         # 変換を 1 回だけ走らせ、KPF ができたら kpf_path へ移す。
         # @return [Boolean] KPF を生成できたか
         def run_kpf_conversion(epub_path, kpf_path, outdir, locale:, command:)
-          prefix = kpf_option_prefix(command)
-          ok = system(command, File.expand_path(epub_path), "#{prefix}convert", "#{prefix}output", outdir,
-                      "#{prefix}locale", locale, out: File::NULL, err: File::NULL)
+          ok = system(command, File.expand_path(epub_path), '--convert', '--output', outdir,
+                      '--locale', locale, out: File::NULL, err: File::NULL)
           summarize_kpf_logs(outdir)
 
           kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }

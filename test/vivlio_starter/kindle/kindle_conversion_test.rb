@@ -9,15 +9,15 @@
 #   vs build が生成する EPUB を Kindle Previewer で変換すると、画像が WebP の
 #   ままだと Kindle が非対応で「無効な画像」（W14015/W14012）になり変換不能だった
 #   （epub-kindle-webp-incompatibility-report.md）。WebP→JPEG/PNG
-#   トランスコード（epub-kindle-webp-transcode-spec.md §5-1）後、Kindle Previewer 3
+#   トランスコード（epub-kindle-webp-transcode-spec.md §5-1）後、Kindle Previewer 4
 #   の CLI で実変換し、画像系警告がゼロであることを実機検証する。
 #
 # 【検証内容】
-#   - epub をビルド → kindlepreviewer -convert で実変換
+#   - epub をビルド → kindlepreviewer --convert で実変換
 #   - conversionLog CSV に画像系コード W14015 / W14012 / W14010 が 1 件も無い
 #
 # 【実行方法】
-#   rake test:kindle    （要 Kindle Previewer 3 = kindlepreviewer / ImageMagick。
+#   rake test:kindle    （要 Kindle Previewer 4 = kindlepreviewer / ImageMagick。
 #                          実ビルド＋実変換を伴うため遅い。通常 test からは除外）
 #   ※ リポジトリルートで実行すること。Linux CI や CLI 未導入環境では skip する。
 # =============================================================================
@@ -53,7 +53,7 @@ class KindleConversionTest < Minitest::Test
     Dir.mktmpdir("vs-kindle-out") do |outdir|
       run_kindle_previewer!(kindle_epub, outdir)
 
-      # Kindle Previewer 3 は Summary_Log.csv と Logs/<book>_log.csv を出力する。
+      # Kindle Previewer は Summary_Log.csv と Logs/<book>_log.csv を出力する。
       # 版差でファイル名が変わっても拾えるよう、出力配下の全 CSV を走査対象にする。
       csvs = Dir.glob(File.join(outdir, "**", "*.csv"))
       refute_empty csvs, "Kindle Previewer のログ CSV が見つかりません（変換が失敗した可能性）"

@@ -193,7 +193,7 @@ namespace :test do
 end
 
 Rake::Task["test:kindle"].clear_comments
-Rake::Task["test:kindle"].comment = "Kindle 変換検証（kindlepreviewer で実変換し画像系警告ゼロを確認・要 Kindle Previewer 3）"
+Rake::Task["test:kindle"].comment = "Kindle 変換検証（kindlepreviewer で実変換し画像系警告ゼロを確認・要 Kindle Previewer 4）"
 
 # ------------------------------------------------------------------
 # RC 品質保証テスト群（docs/specs/test-suite-expansion-spec.md §3）

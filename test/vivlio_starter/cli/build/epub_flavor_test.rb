@@ -256,6 +256,26 @@ module VivlioStarter
         end
       end
 
+      # Kindle Previewer 3 のコマンドでは変換せず、4 への更新を案内して中間 EPUB を残す
+      def test_should_not_convert_to_kpf_with_kindle_previewer_three
+        Dir.mktmpdir('vs-kpf-previewer-3') do |dir|
+          epub, kpf = kpf_paths(dir)
+          command = File.join(dir, 'fake-kindlepreviewer')
+          File.write(command, <<~SH)
+            #!/bin/sh
+            [ "$1" = "-help" ] && { echo "-convert -output -locale"; exit 0; }
+            touch "#{dir}/converted"
+          SH
+          File.chmod(0o755, command)
+
+          warnings = capture_log(:log_warn) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+
+          refute_path_exists File.join(dir, 'converted'), '3 では変換を走らせない'
+          assert_equal 1, warnings.count { it[:message].include?('Kindle Previewer 4 が必要です') }
+          assert_path_exists epub, '中間 EPUB は残す'
+        end
+      end
+
       # kindlepreviewer_available? は存在しないコマンドに false を返す（DI 用の存在チェック）
       def test_kindlepreviewer_available_is_false_for_missing_command
         refute Builder.kindlepreviewer_available?('vs-no-such-previewer-xyz')

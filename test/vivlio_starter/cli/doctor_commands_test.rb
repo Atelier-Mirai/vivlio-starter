@@ -425,22 +425,16 @@ module VivlioStarter
         end
       end
 
-      # Kindle Previewer 4 は専用の CLI 実行ファイル（KindlePreviewer4CLI）を持ち、
-      # 3 とはアプリ名も実行ファイル名も違う。**新しい版を先に見る**——3 のパスを
-      # 決め打ちにしていたため、4 へ上げた機械でラッパーが存在しないパスを指し、
-      # KPF 変換だけが No such file or directory で落ちていた（実測）。
-      def test_kindle_previewer_app_bins_prefer_the_newer_version
-        bins = DoctorCommands::KINDLE_PREVIEWER_APP_BINS
-
-        assert_includes bins.first, 'Kindle Previewer 4'
-        assert_includes bins.first, 'KindlePreviewer4CLI'
-        assert(bins.any? { it.include?('Kindle Previewer 3') }, '3 系も引き続き使えること')
+      # KPF の変換に使うのは Kindle Previewer 4 の CLI だけ。3 のアプリは更新の案内にだけ使う
+      def test_should_use_only_version_four_for_kpf_conversion
+        assert_includes DoctorCommands::KINDLE_PREVIEWER_APP_BIN, 'KindlePreviewer4CLI'
+        refute_includes DoctorCommands::KINDLE_PREVIEWER_APP_BIN, 'Previewer 3'
       end
 
       # kindlepreviewer ラッパーを bin_dir に実行可能な sh シムとして作成する
       def test_create_kindlepreviewer_wrapper_writes_executable_shim
         Dir.mktmpdir do |bin_dir|
-          app_bin = DoctorCommands::KINDLE_PREVIEWER_APP_BINS.first
+          app_bin = DoctorCommands::KINDLE_PREVIEWER_APP_BIN
           wrapper = nil
           stub_logging do
             wrapper = DoctorCommands.create_kindlepreviewer_wrapper!(app_bin, bin_dir)
@@ -538,17 +532,33 @@ module VivlioStarter
         assert_includes captured[1], DoctorCommands::KINDLE_PREVIEWER_DOWNLOAD_URL
       end
 
-      # Previewer 3 だけが入っているときは「古い」と判定する。
-      # app_bin は新しい版を先に見るので、3 のパスが返る＝4 が無い、と読める。
-      def test_kindle_previewer_is_outdated_only_when_version_three_is_the_newest
-        {
-          '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3' => true,
-          '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI' => false,
-          nil => false
-        }.each do |bin, expected|
-          DoctorCommands.stub :kindle_previewer_app_bin, bin do
-            assert_equal expected, DoctorCommands.kindle_previewer_outdated?, "app_bin: #{bin.inspect}"
+      # 4 が無く、3 のアプリがあるときだけ「古い」と判定する
+      def test_kindle_previewer_is_outdated_only_when_version_three_remains_without_four
+        Dir.mktmpdir do |dir|
+          app_3 = File.join(dir, 'Kindle Previewer 3.app')
+          FileUtils.mkdir_p(app_3)
+
+          DoctorCommands.stub :kindle_previewer_app_bin, nil do
+            assert DoctorCommands.kindle_previewer_outdated?(app_3)
+            refute DoctorCommands.kindle_previewer_outdated?(File.join(dir, 'none.app'))
           end
+          DoctorCommands.stub :kindle_previewer_app_bin, DoctorCommands::KINDLE_PREVIEWER_APP_BIN do
+            refute DoctorCommands.kindle_previewer_outdated?(app_3)
+          end
+        end
+      end
+
+      # 3 を呼ぶラッパーが残っていれば、--fix で 4 へ向け直す対象にする
+      def test_should_detect_wrapper_still_pointing_to_version_three
+        Dir.mktmpdir do |dir|
+          refute DoctorCommands.kindlepreviewer_wrapper_outdated?(dir), 'ラッパーが無ければ対象外'
+
+          wrapper = File.join(dir, 'kindlepreviewer')
+          File.write(wrapper, %(#!/bin/sh\n"/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3" "$@"\n))
+          assert DoctorCommands.kindlepreviewer_wrapper_outdated?(dir)
+
+          File.write(wrapper, %(#!/bin/sh\n"#{DoctorCommands::KINDLE_PREVIEWER_APP_BIN}" "$@"\n))
+          refute DoctorCommands.kindlepreviewer_wrapper_outdated?(dir)
         end
       end
 
@@ -566,7 +576,7 @@ module VivlioStarter
       end
 
       # 診断の表示に版を出す（配布元の最新版より古いことに気づけるように）。
-      # 版が読めなければ、従来どおり 3 / 4 の別だけを出す
+      # 版が読めなければ、「4」とだけ出す
       def test_should_show_kindle_previewer_version_in_label
         bin = '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI'
         DoctorCommands.stub :kindle_previewer_app_bin, bin do

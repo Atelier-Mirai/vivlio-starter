@@ -142,6 +142,12 @@
 
 ## EPUB / Kindle
 
+- [Medium] **Kindle Previewer 3 の検出と更新の案内を削除する（2027 年 1 月のバージョンアップ）**: 2026-12-25 に公開予定の Ruby 4.1.0 への対応と同じバージョンアップで行う。Amazon が必須としているのは 4 で、KPF の変換は 4 だけで行っている。削除後の 3 は、インストールされていないものとして扱う（Kindle を選んだ本なら `vs doctor --fix` が 4 をインストールする）。
+  - `lib/vivlio_starter/cli/doctor.rb`: `KINDLE_PREVIEWER_3_APP`・`kindle_previewer_outdated?`・`report_kindle_previewer_outdated`・`kindlepreviewer_wrapper_outdated?` と、それらの呼び出し
+  - `lib/vivlio_starter/cli/build/epub_builder.rb`: `kindle_previewer_3?` と `convert_epub_to_kpf!` の中の判定（`DoctorCommands` を使わなくなるので、`require_relative '../doctor'` も外す）
+  - `test/vivlio_starter/cli/doctor_commands_test.rb`・`test/vivlio_starter/cli/build/epub_flavor_test.rb`: 上の処理のテスト
+  - `contents/44-build.md`・`contents/51-doctor.md`: Kindle Previewer 3 についての記述
+
 - [Low] **ポップアップ脚注（`epub:type="noteref"` / `"footnote"`）**: 参照番号をタップすると脚注が小窓で開く方式。Kindle(KFX)・Apple Books が対応しており、非対応リーダーは現状どおり本文に流し込まれるだけなので**加えるだけで壊れない**（追加であって置き換えではない）。2026-08-02 に脚注を「左罫つきの注記ブロック」として本文と切り分けたので**当面は不要**——参照の直後に読める形になっている。読者から「本文が脚注で分断される」という声が出たときに着手する。
   - **前提はすでに揃っている**（2026-08-02 に生成物で実測）。着手時に構造を作り直す必要はない。
     - `<html>` に `xmlns:epub="http://www.idpf.org/2007/ops"` が宣言済み（名前空間の追加作業は不要）

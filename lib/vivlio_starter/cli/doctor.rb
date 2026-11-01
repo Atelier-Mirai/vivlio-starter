@@ -31,7 +31,7 @@
 #   - guesslang (@vscode/vscode-languagedetection): vs lint のコードブロックの言語推定（npm パッケージ）
 #   - mathjax (mathjax-full): 数式の SVG 化（npm パッケージ）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
-#   - kindlepreviewer (Kindle Previewer 3 / 4): Kindle(KPF) 変換（任意・targets: kindle 用）
+#   - kindlepreviewer (Kindle Previewer 4): Kindle(KPF) 変換（任意・targets: kindle 用）
 #   - Google Fonts 用 SSL 証明書 (macOS): Web フォント取得
 #
 # 自動インストール:
@@ -91,18 +91,12 @@ module VivlioStarter
       # epub_builder を require せず独立に持つ。kindle を使わない利用者には不足を
       # ハードエラーにせず 🟡 注記に回す。
       KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
-      # macOS の Kindle Previewer アプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
-      #
-      # **4.0.0 でアプリ名も実行ファイル名も変わった。** 3 はアプリ本体を直接呼んでいたが、
-      # 4 は `KindlePreviewer4CLI` という専用の実行ファイルを同梱する。3 のパスを決め打ちに
-      # していたため、4 へ上げた機械ではラッパーが存在しないパスを指し、
-      # `No such file or directory` で KPF 変換だけが落ちていた（実測）。
-      #
-      # 新しい版を先に見る。両方あれば新しいほうを採る。
-      KINDLE_PREVIEWER_APP_BINS = [
-        '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI',
-        '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
-      ].freeze
+      # macOS の Kindle Previewer 4 のアプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
+      # KPF の変換には、Amazon が必須としている 4 だけを使う。
+      KINDLE_PREVIEWER_APP_BIN = '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI'
+
+      # Kindle Previewer 3 のアプリ。変換には使わず、4 への更新を案内するために存在を確かめる。
+      KINDLE_PREVIEWER_3_APP = '/Applications/Kindle Previewer 3.app'
 
       # Kindle Previewer の配布ページ（Amazon KDP）。
       #
@@ -274,7 +268,7 @@ module VivlioStarter
         inkscape_ok = command_runnable?('inkscape')
         report_ok('✅ inkscape: OK', options) if inkscape_ok
 
-        # kindlepreviewer（Kindle Previewer 3 / 4）は targets: kindle 専用の任意ツール。
+        # kindlepreviewer（Kindle Previewer 4）は targets: kindle 専用の任意ツール。
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
         # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
         kindle_previewer_present = kindlepreviewer_functional?
@@ -283,9 +277,8 @@ module VivlioStarter
         install_rosetta = options[:fix] && kindle_wanted && $stdin.tty? && !rosetta_ready?(is_macos)
         if kindle_previewer_present
           report_ok("✅ kindlepreviewer (#{kindle_previewer_label}): OK", options)
-          # 「在るが古い」「在るが動かない」は ✅ の後に注記する。不足ではないので
+          # 「在るが動かない」は ✅ の後に注記する。不足ではないので
           # missing には積まず、ビルドも止めない。
-          report_kindle_previewer_outdated if kindle_previewer_outdated?
           report_rosetta_missing unless rosetta_ready?(is_macos) || install_rosetta
         end
 
@@ -319,6 +312,8 @@ module VivlioStarter
             missing << KINDLEPREVIEWER_COMMAND
           elsif options[:fix] && is_macos && kindle_wanted && $stdin.tty?
             missing << KINDLE_PREVIEWER_APP
+          elsif kindle_previewer_outdated?
+            report_kindle_previewer_outdated
           else
             report_kindle_previewer_optional(is_macos, app_installed:, kindle_wanted:)
           end
@@ -889,8 +884,8 @@ module VivlioStarter
       # アプリが入っていてコマンドだけが無い macOS では、--fix でラッパーを作れることを示す。
       def report_kindle_previewer_optional(is_macos, app_installed: false, kindle_wanted: false)
         if is_macos && app_installed
-          Common.log_warn('kindlepreviewer コマンドがありません（Kindle Previewer は入っています）',
-                          detail: 'vs doctor --fix で作れます')
+          Common.log_warn('kindlepreviewer コマンドの作成または更新が必要です（Kindle Previewer はインストール済みです）',
+                          detail: 'vs doctor --fix で実行できます')
         elsif kindle_wanted && is_macos
           Common.log_warn('Kindle Previewer が入っていません（output.targets に kindle があります）',
                           detail: 'vs doctor --fix で入れられます（管理者のパスワードを尋ねられます）')
@@ -935,9 +930,9 @@ module VivlioStarter
         false
       end
 
-      # Kindle Previewer 3 のままなら 4 への更新を促す。
+      # Kindle Previewer 3 だけがあるとき、4 への更新を促す。3 では KPF に変換しない。
       #
-      # Amazon が推奨するのも、読者が入手できるのも 4 である。加えて **4 は SVG の
+      # Amazon が必須としているのも、読者が入手できるのも 4 である。加えて **4 は SVG の
       # 扱いが変わっており、3 で KPF になっていた本が 4 では Enhanced Typesetting を
       # 失う**（`kindle-css-compatibility-notes.md` §5.5）。手元と読者で版が違うと、
       # 確かめたはずのものが確かめられていないことになる。
@@ -946,10 +941,10 @@ module VivlioStarter
       # 併せて案内する。
       def report_kindle_previewer_outdated
         Common.log_warn(
-          'Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）',
-          detail: "→ Amazon KDP の配布ページから入れてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
+          'Kindle Previewer 3 がインストールされています。Kindle Previewer 4 が必要です',
+          detail: "→ Amazon KDP の配布ページからインストールしてください: #{KINDLE_PREVIEWER_DOWNLOAD_URL}\n" \
                   "  更新後に vs doctor --fix を実行してください" \
-                  "（kindlepreviewer ラッパーの向き先が 3 の実行ファイルのままになります）。"
+                  "（kindlepreviewer コマンドを 4 へ向け直します）。"
         )
       end
 
@@ -1018,7 +1013,7 @@ module VivlioStarter
       def link_kindlepreviewer_macos!
         app_bin = kindle_previewer_app_bin
         unless app_bin
-          Common.log_warn("Kindle Previewer の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BINS.join(' / ')}")
+          Common.log_warn("Kindle Previewer の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BIN}")
           return false
         end
 
@@ -1137,7 +1132,16 @@ module VivlioStarter
       def kindlepreviewer_functional?
         return false unless command_exists?(KINDLEPREVIEWER_COMMAND)
 
-        !kindle_previewer_app_bin.nil?
+        !kindle_previewer_app_bin.nil? && !kindlepreviewer_wrapper_outdated?
+      end
+
+      # kindlepreviewer ラッパーが Kindle Previewer 3 を呼ぶままか。4 へ更新した Mac では、
+      # ラッパーの向き先だけが 3 のまま残るので、--fix で作り直す対象にする。
+      def kindlepreviewer_wrapper_outdated?(search_path = ENV.fetch('PATH', ''))
+        wrapper = search_path.split(File::PATH_SEPARATOR)
+                             .map { File.join(it, KINDLEPREVIEWER_COMMAND) }
+                             .find { File.file?(it) }
+        !wrapper.nil? && File.binread(wrapper, 1024).include?('Previewer 3'.b)
       end
 
       # 導入済みの Kindle Previewer を人が読む名前で返す（診断表示用）。
@@ -1147,10 +1151,7 @@ module VivlioStarter
         bin = kindle_previewer_app_bin
         return 'Kindle Previewer' unless bin
 
-        version = kindle_previewer_version(bin)
-        return "Kindle Previewer #{version}" if version
-
-        bin.include?('Previewer 4') ? 'Kindle Previewer 4' : 'Kindle Previewer 3'
+        "Kindle Previewer #{kindle_previewer_version(bin) || 4}"
       end
 
       # アプリの Info.plist から版（`4.0.3` など）を読む。読めなければ nil。
@@ -1163,10 +1164,8 @@ module VivlioStarter
         nil
       end
 
-      # 導入済みの Kindle Previewer の実行ファイルを返す（新しい版を優先）。無ければ nil。
-      def kindle_previewer_app_bin
-        KINDLE_PREVIEWER_APP_BINS.find { File.exist?(it) }
-      end
+      # 導入済みの Kindle Previewer 4 の実行ファイルを返す。無ければ nil。
+      def kindle_previewer_app_bin = File.exist?(KINDLE_PREVIEWER_APP_BIN) ? KINDLE_PREVIEWER_APP_BIN : nil
 
       # 導入済みの Node.js の版。`node --version` の `v26.9.0` から取り出す。取れなければ nil。
       def node_version
@@ -1239,10 +1238,9 @@ module VivlioStarter
         )
       end
 
-      # Kindle Previewer 3 のままか（4 が入っていない）。
-      # app_bin は新しい版を先に見るので、3 のパスが返るのは 4 が無いときだけである。
-      def kindle_previewer_outdated?
-        kindle_previewer_app_bin.to_s.include?('Previewer 3')
+      # Kindle Previewer 3 だけがあるか（4 がインストールされていない）。
+      def kindle_previewer_outdated?(app_3 = KINDLE_PREVIEWER_3_APP)
+        kindle_previewer_app_bin.nil? && File.exist?(app_3)
       end
 
       # Apple Silicon で Rosetta 2 が使えるか。Intel Mac と非 macOS では常に true

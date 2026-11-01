@@ -261,9 +261,9 @@ stop_for_old_ruby() {
   exit 1
 }
 
-# Kindle Previewer のアプリ（3 と 4 で名前が違う。doctor の KINDLE_PREVIEWER_APP_BINS と同じ）
+# Kindle Previewer 4 のアプリ（doctor の KINDLE_PREVIEWER_APP_BIN と同じ。3 は使わない）
 kindle_previewer_installed() {
-  [[ -d "/Applications/Kindle Previewer 4.app" || -d "/Applications/Kindle Previewer 3.app" ]]
+  [[ -d "/Applications/Kindle Previewer 4.app" ]]
 }
 
 # Kindle Previewer の変換部分は Intel 版なので、Apple シリコンの Mac には Rosetta 2 が要る
