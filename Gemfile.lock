@@ -11,6 +11,7 @@ PATH
       query-stream (~> 1.5)
       rqrcode (~> 3.2)
       samovar (~> 2.1)
+      ttfunk (~> 1.8)
 
 GEM
   remote: https://rubygems.org/
