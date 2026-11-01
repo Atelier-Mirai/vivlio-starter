@@ -59,6 +59,52 @@ module VivlioStarter
         end
       end
 
+      # contents/ は取り込み元にもあるので、どちらを削除するのかを確認の前に示す
+      def test_import_shows_which_contents_is_deleted_before_asking
+        terminal = StringIO.new("n\n")
+        terminal.define_singleton_method(:tty?) { true }
+
+        with_review_project(terminal) do |review|
+          out, err = capture_io { ImportCommands.execute_import(review) }
+
+          assert_includes out + err, "移行先（#{Dir.pwd}）の次のディレクトリを削除して作り直します"
+          assert_includes out + err, "取り込み元（#{review}）は読み取るだけで、変更しません"
+        end
+      end
+
+      # 取り込み元の中で実行すると、作り直す contents/ が取り込み元の原稿そのものになる
+      def test_import_refuses_to_run_inside_the_source_project
+        terminal = StringIO.new("y\n")
+        terminal.define_singleton_method(:tty?) { true }
+
+        with_review_project(terminal) do |review|
+          Dir.chdir(review) do
+            status = nil
+            out, err = capture_io { status = ImportCommands.execute_import('.') }
+
+            assert_equal 1, status
+            assert_includes out + err, '移行先と重なっています'
+            assert_path_exists 'contents/a.re'
+          end
+        end
+      end
+
+      # 取り込み元が移行先の contents/ の下にあっても、作り直すと一緒に失われる
+      def test_import_refuses_a_source_under_the_directories_it_recreates
+        terminal = StringIO.new("y\n")
+        terminal.define_singleton_method(:tty?) { true }
+
+        with_review_project(terminal) do |review|
+          FileUtils.mv(review, 'contents/review')
+          status = nil
+          out, err = capture_io { status = ImportCommands.execute_import('contents/review') }
+
+          assert_equal 1, status
+          assert_includes out + err, '移行先と重なっています'
+          assert_path_exists 'contents/review/contents/a.re'
+        end
+      end
+
       # ================================================================
       # コードブロックの言語名の推定（code-language-detection-spec.md §8.10）
       # ================================================================

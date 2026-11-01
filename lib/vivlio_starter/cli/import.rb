@@ -50,6 +50,9 @@ module VivlioStarter
         File.join('config', 'index_glossary_rejected.yml')
       ].freeze
 
+      # 取り込みで作り直す、移行先のディレクトリ
+      CLEANUP_DIRS = %w[contents images codes].freeze
+
       # 判型が読めないときの版面幅（mm）。B5 標準相当
       DEFAULT_TEXT_WIDTH_MM = 137.0
 
@@ -66,6 +69,7 @@ module VivlioStarter
         @starter_dir = File.expand_path(starter_dir)
 
         validate_starter_directory!
+        ensure_source_survives_cleanup!
         return 1 unless confirm_cleanup?
 
         cleanup_existing_directories!
@@ -102,16 +106,28 @@ module VivlioStarter
         raise "原稿（.re）が見つかりません: #{re_dir}"
       end
 
-      # 消してよいかを著者に確かめる。原稿を丸ごと消すので、確認は省けない
+      # 取り込み元が移行先と同じ場所や、作り直すディレクトリの下にあると、取り込み元の原稿まで
+      # 削除してしまう（取り込み元の中で `vs import .` を実行した場合など）。確認の前に止める
+      def ensure_source_survives_cleanup!
+        here = File.realpath(Dir.pwd)
+        source = File.realpath(@starter_dir)
+        return unless source == here || CLEANUP_DIRS.any? { "#{source}/".start_with?("#{here}/#{it}/") }
+
+        raise "取り込み元（#{source}）が移行先と重なっています。vs new で別のプロジェクトを作り、その中で vs import #{source} を実行してください"
+      end
+
+      # 消してよいかを著者に確かめる。原稿を丸ごと消すので、確認は省けない。
+      # contents/ は取り込み元にもあるので、どちらを削除するのかをパスで示す
       def confirm_cleanup?
-        dirs_to_delete = %w[contents images codes].select do |dir|
+        dirs_to_delete = CLEANUP_DIRS.select do |dir|
           Dir.exist?(dir)
         end
 
         return true if dirs_to_delete.empty?
 
-        Common.log_warn('以下のディレクトリを削除してインポートを行います:')
+        Common.log_warn("移行先（#{Dir.pwd}）の次のディレクトリを削除して作り直します:")
         dirs_to_delete.each { |d| Common.log_warn("  - #{d}/") }
+        Common.log_warn("取り込み元（#{@starter_dir}）は読み取るだけで、変更しません")
 
         # 非対話（パイプ/CI）では質問せず安全側に倒す
         unless $stdin.tty?
@@ -128,7 +144,7 @@ module VivlioStarter
       # 前提にしており、contents/ を持たないプロジェクトへ取り込むと
       # `No such file or directory @ rb_file_s_rename` で落ちていた。
       def cleanup_existing_directories!
-        %w[contents images codes].each do |dir|
+        CLEANUP_DIRS.each do |dir|
           FileUtils.rm_rf(dir)
           FileUtils.mkdir_p(dir)
         end
