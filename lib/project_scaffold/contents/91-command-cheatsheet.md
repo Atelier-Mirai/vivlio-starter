@@ -192,7 +192,7 @@
 
 ### `vs preflight` — ビルド前チェック
 
-`vs preflight [対象章]`（省略時は全章。エラー 1 件以上で終了コード 1）
+`vs preflight [対象章]`（省略時は全章）
 
 :::{.long-table}
 | オプション | 説明 |

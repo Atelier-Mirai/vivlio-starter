@@ -6,7 +6,7 @@
 
 ## 導入スクリプト
 
-macOS では、次の 1 行で Vivlio Starter と、執筆に使うツールをまとめて入れられます。
+macOS では、次の 1 行で Vivlio Starter と、執筆に使うツールをまとめてインストールできます。
 
 ```bash
 zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
@@ -22,8 +22,8 @@ Finder から: アプリケーション → ユーティリティ → Terminal.a
 
 スクリプトは次の順に進みます。尋ねることは最初にまとめてあるので、確認が済めば、終わるまで席を外して構いません。
 
-1. 確認（Homebrew を入れてよいか・シェルの設定ファイルに書いてよいか・プレビューの操作の許可・Kindle Previewer を入れるか・管理者のパスワード）
-2. Homebrew の導入（Xcode Command Line Tools も一緒に入る）
+1. 確認（Homebrew の導入・シェルの設定ファイルへの書き込み・プレビューの操作の許可・Kindle Previewer の導入・管理者のパスワード）
+2. Homebrew の導入（Xcode Command Line Tools も一緒にインストールされる）
 3. Kindle Previewer と Rosetta 2 の導入（Kindle 向けにも作ると答えたときだけ）
 4. Ruby の準備（次の表）
 5. シェルの設定ファイルへの書き込み
@@ -36,15 +36,15 @@ Ruby は、今使っている Ruby に合わせて用意します。
 | 今の Ruby | 扱い |
 | :--- | :--- |
 | 3.4 以上 | そのまま使う |
-| ない・macOS 付属の 2.6・rbenv の古い版 | rbenv で最新の安定版を入れ、既定に切り替える |
-| Homebrew の古い Ruby | 確かめてから `brew upgrade ruby` で上げる |
-| mise・rvm・asdf の古い Ruby | その道具での上げ方を示して止まる |
+| ない・macOS 付属の 2.6・rbenv の古い版 | rbenv で最新の安定版をインストールし、既定に切り替える |
+| Homebrew の古い Ruby | 確かめてから `brew upgrade ruby` で更新する |
+| mise・rvm・asdf の古い Ruby | そのツールでの更新方法を示して処理を中止する |
 
-シェルの設定ファイルには、新しいターミナルで Homebrew と Ruby を使うための行を書きます。Homebrew の設定は `~/.zprofile` に書きます。rbenv の設定は、`~/.zshrc` にすでに rbenv の記述があればそちらに、無ければ `~/.zprofile` に書きます。Homebrew の Ruby を使う場合は、gem が入れるコマンドの置き場所を PATH に足す行も書きます。同じ設定がすでにあれば、足しません。
+シェルの設定ファイルには、新しいターミナルで Homebrew と Ruby を使うための行を書きます。Homebrew の設定は `~/.zprofile` に書きます。rbenv の設定は、`~/.zshrc` にすでに rbenv の記述があればそちらに、無ければ `~/.zprofile` に書きます。Homebrew の Ruby を使う場合は、gem がインストールするコマンドの置き場所を PATH に追加する行も書きます。同じ設定がすでにあれば、追加しません。
 
 オプションは、末尾に `install` と続けて渡します。たとえば確認を省くときは、`… install.zsh)" install -y` とします。
 
-| オプション | 働き |
+| オプション | 説明 |
 | :--- | :--- |
 | `-y` | 確認をスキップして自動導入 |
 | `-v 4.0.9` | 指定した版の Ruby を rbenv で導入 |
@@ -52,7 +52,7 @@ Ruby は、今使っている Ruby に合わせて用意します。
 
 スクリプトの中身は、gem に同梱の `bin/install.zsh` と同じです。実行する前に GitHub で読むこともできます。
 
-Ruby 3.4 以上がすでにあり、gem だけを入れたい場合は、次のようにします。執筆に使うツールは、最初の `vs new` が入れます。
+Ruby 3.4 以上がすでにあり、gem だけをインストールしたい場合は、次のようにします。執筆に使うツールは、最初の `vs new` がインストールします。
 
 ```bash
 gem install vivlio-starter vivlio-starter-pdf
@@ -90,7 +90,7 @@ vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあり�
 
 Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
 
-Kindle Previewer は、`config/book.yml` の `targets` に `kindle` がある本で `vs doctor --fix` を実行すると入ります。導入スクリプトで Kindle 向けにも作ると答えた場合は、そこで入ります。Kindle を選んでいない本では入れません。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれるので、Apple Silicon の Mac には **Rosetta 2** も一緒に入れます。どちらも管理者のパスワードを尋ねます。入れたあとは、アプリの更新機能で新しい版に上がります。
+Kindle Previewer は、`config/book.yml` の `targets` に `kindle` がある本で `vs doctor --fix` を実行するとインストールされます。導入スクリプトで Kindle 向けにも作ると答えた場合は、その時点でインストールされます。Kindle を選んでいない本ではインストールしません。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれるので、Apple Silicon の Mac には **Rosetta 2** も一緒にインストールします。どちらも管理者のパスワードを尋ねます。インストール後は、アプリの更新機能で新しい版へ更新されます。
 
 <!-- no-lint -->
 **`vs doctor --fix` による自動インストールは、macOS と Homebrew の組み合わせに対応しています。** Linux と Windows は現時点で動作検証を行えておらず、公式のサポート対象外です。手動で環境を整えたい場合は、以降の手順をお使いの環境に読み替えてください。必要なツールが揃えば動作する見込みはありますが、手順や結果は環境によって異なります。
@@ -218,26 +218,7 @@ vs build
 
 ### Windows
 
-Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は上の「Linux / WSL」を参照してください。Windows ネイティブで試す場合は、次の導入例を手がかりにできます。
-
-**Chocolatey の場合**（管理者 PowerShell）
-
-```powershell
-choco install -y git ruby nodejs-lts qpdf ghostscript imagemagick poppler
-```
-
-**Scoop の場合**
-
-```powershell
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-iwr -useb get.scoop.sh | iex
-scoop bucket add main
-scoop install git ruby nodejs-lts qpdf ghostscript imagemagick poppler
-npm install -g @vivliostyle/cli @vivliostyle/vfm
-gem install vivlio-starter
-vivliostyle --version
-vs --version
-```
+Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は上の「Linux / WSL」を参照してください。
 
 ## トラブルシューティング
 
@@ -246,15 +227,11 @@ vs --version
 :::{.long-table}
 | 症状 | 原因 | 解決策 |
 | :--- | :--- | :--- |
-| `vs` を打つと `ERROR Error: No input is set.` と出る | Vivliostyle CLI が入れる同じ名前の `vs` が動いている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を外します。Vivliostyle は `vivliostyle` で使えます） |
-| 導入スクリプトのあと、新しいターミナルで `vs` が見つからない | シェルの設定ファイルへの書き込みを断った | スクリプトが最後に示した行を設定ファイルに足し、新しいターミナルを開く |
-| `brew` が見つからない | Homebrew 未インストール | `vs doctor --fix` または[brew.sh](https://brew.sh)を参照 |
-| `npm` が見つからない | Node.js 未インストール | `vs doctor --fix` で Node.js をインストール後、再実行 |
-| Xcode CLT のインストールが完了しない | GUI 承認が必要 | インストーラ完了後に `vs doctor --fix` を再実行 |
+| `vs` を実行すると `ERROR Error: No input is set.` と出る | Vivliostyle CLI がインストールする同じ名前の `vs` が実行されている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を削除します。Vivliostyle は `vivliostyle` で使えます） |
+| 導入スクリプトのあと、新しいターミナルで `vs` が見つからない | シェルの設定ファイルへの書き込みを断った | スクリプトが最後に示した行を設定ファイルに追加し、新しいターミナルを開く |
 | Homebrew の PATH が通らない（Apple Silicon） | `/opt/homebrew/bin` が PATH に未追加 | `echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile && source ~/.zprofile` |
 | Ruby のバージョンが合わない | `.ruby-version` と不一致 | `rbenv install $(cat .ruby-version) && rbenv global $(cat .ruby-version)` |
 | `bundler` が見つからない | bundler 未インストール | `gem install bundler` |
 | Node.js の依存関係エラー | `node_modules` の不整合 | `rm -rf node_modules package-lock.json && npm install` |
 | ImageMagick の WebP 変換が失敗 | WebP 非対応ビルド | `brew reinstall imagemagick` |
-| Google Fonts の SSL エラーが解消しない | 証明書パスが未反映 | シェルを再起動して `SSL_CERT_FILE` が有効になっているか確認 |
 :::

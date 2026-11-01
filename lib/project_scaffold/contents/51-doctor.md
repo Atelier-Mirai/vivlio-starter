@@ -1,7 +1,7 @@
 # 環境の診断と更新
 
 :::{.chapter-lead}
-Vivlio Starter で本を作るには、組版や画像処理などを担う外部ツールが必要です。新しい環境を用意したときや、ビルドが急に通らなくなったときは、`vs doctor` で不足しているツールを調べられます。必要なら `--fix` で導入もできます。現在お使いの環境を新しいバージョンへ更新するには `vs upgrade` を使います。この章では、それぞれの役割と使いどころを見ていきます。
+Vivlio Starter で本を作るには、組版や画像処理などに使う外部ツールが必要です。新しい環境を用意したときや、ビルドが急に通らなくなったときは、`vs doctor` で不足しているツールを調べられます。必要なら `--fix` で導入もできます。現在お使いの環境を新しいバージョンへ更新するには `vs upgrade` を使います。この章では、それぞれの役割と使いどころを見ていきます。
 :::
 
 ## vs doctor とは
@@ -44,11 +44,11 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 
 ### あるのに動かない場合を見つける
 
-ツールが入っていても、版が古いと正しく動かないことがあります。`vs doctor` は、見つかったツールの版も確かめます。
+ツールがインストールされていても、版が古いと正しく動かないことがあります。`vs doctor` は、見つかったツールの版も確かめます。
 
-Kindle Previewer 3 が入っていれば、4 への更新を案内します（@chapref:ch-build）。Apple Silicon の Mac で Rosetta 2 が入っていなければ、導入のコマンドを案内します。`config/book.yml` の `targets` に `kindle` がある本では、`--fix` が Rosetta 2 を入れます（管理者のパスワードを尋ねます）。
+Kindle Previewer 3 がインストールされていれば、4 への更新を案内します（@chapref:ch-build）。Apple Silicon の Mac で Rosetta 2 がインストールされていなければ、導入のコマンドを案内します。`config/book.yml` の `targets` に `kindle` がある本では、`--fix` が Rosetta 2 をインストールします（管理者のパスワードを尋ねます）。
 
-**Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると更新を案内します。
+**Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js がインストールされていると更新を案内します。
 
 :::{.output}
 ```text
@@ -114,11 +114,11 @@ vs doctor
 vs doctor --fix
 ```
 
-診断で不足が見つかったツールをインストールします。macOS では主に Homebrew を使います。Homebrew 自体や Xcode Command Line Tools が入っていない場合は、その導入前に確認を求められます。
+診断で不足が見つかったツールをインストールします。macOS では主に Homebrew を使います。Homebrew 自体や Xcode Command Line Tools がインストールされていない場合は、その導入前に確認を求められます。
 
 Node.js も対象です。vivliostyle や textlint など、npm で導入するツールは Node.js の準備が済んでからインストールされます。
 
-Vivliostyle CLI は、`vivliostyle` の別名として `vs` というコマンドも入れます。Vivlio Starter の `vs` と同じ名前なので、`--fix` はこの別名を外します（`vs upgrade` も同じです）。Vivliostyle は `vivliostyle` の名前でそのまま使えます。
+Vivliostyle CLI は、`vivliostyle` の別名として `vs` というコマンドもインストールします。Vivlio Starter の `vs` と同じ名前なので、`--fix` はこの別名を削除します（`vs upgrade` も同じです）。Vivliostyle は `vivliostyle` の名前でそのまま使えます。
 
 :::{.output}
 ```text
@@ -149,14 +149,14 @@ macOS では、ツールに応じて次の経路で導入します。
 | `brew install` | `node`・`qpdf`・`pdfinfo`・`pdftoppm`・`pdftotext`・`gs`・`imagemagick`・`inkscape`・`librsvg`・`vips`・`tesseract`・`mecab` |
 | `npm install -g` | `vivliostyle`・`vfm`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli`・Guesslang |
 
-npm で導入するツールには Node.js が必要です。まだ入っていなければ、Homebrew で Node.js を導入してから npm の処理へ進みます。
+npm で導入するツールには Node.js が必要です。まだインストールされていなければ、Homebrew で Node.js を導入してから npm の処理へ進みます。
 
 次の四つは、確認や追加の処理が必要です。
 
-- **Xcode Command Line Tools**（`xcode-select --install`）と **Homebrew**（公式インストーラ）— 入っていない場合は、導入前に確認を求められます
+- **Xcode Command Line Tools**（`xcode-select --install`）と **Homebrew**（公式インストーラ）— インストールされていない場合は、導入前に確認を求められます
 - **textlint** — 本体と一緒に日本語技術書向けのルールセットを導入し、設定ファイルを `config/` に配置します
 - **`waifu2x-ncnn-vulkan`** — Homebrew では配布されていないため、GitHub Releases からダウンロードします
-- **Kindle Previewer** — `config/book.yml` の `targets` に `kindle` がある本でだけ、`brew install --cask kindle-previewer` でアプリを入れ、コマンドから呼び出すためのラッパーを作ります。Apple Silicon の Mac には Rosetta 2 も入れます。どちらも管理者のパスワードを尋ねます。アプリがすでに入っていれば、ラッパーだけを作ります
+- **Kindle Previewer** — `config/book.yml` の `targets` に `kindle` がある本でだけ、`brew install --cask kindle-previewer` でアプリをインストールし、コマンドから呼び出すためのラッパーを作ります。Apple Silicon の Mac には Rosetta 2 もインストールします。どちらも管理者のパスワードを尋ねます。アプリがすでにインストールされていれば、ラッパーだけを作ります
 
 インストール手順や対応する版は変わることがあります。ここにない方法で導入するときや、案内どおりに進まないときは、各ツールの公式ドキュメントで現在の手順を確認してください。
 
@@ -168,7 +168,7 @@ npm で導入するツールには Node.js が必要です。まだ入ってい�
 
 1. **`vivlio-starter` 本体の更新** — 新版があれば、確認後に `gem update vivlio-starter` を実行します。その後の処理は**新しい版で自動的に続行**するため、雛形の取り込みをやり直す必要はありません
 2. **プロジェクトの雛形追従** — 新しい版のスタイルシートやテンプレートを既存プロジェクトへ取り込み、最後に `Gemfile.lock` が指す版も合わせます
-3. **外部ツールの一括更新** — Homebrew（formula / cask）、npm、gem で導入したツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer はアプリの更新機能で上がるので、計画では対象外と表示します
+3. **外部ツールの一括更新** — Homebrew（formula / cask）、npm、gem で導入したツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer はアプリの更新機能で更新されるので、計画では対象外と表示します
 
 ```bash
 vs upgrade                    # 計画を提示 → 確認しながら適用
@@ -219,9 +219,9 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 著者が雛形のファイルを変更したかどうかは、`vs new` が作る `config/scaffold.lock` で判定します。このファイルは手で編集せず、Git にコミットしてください。
 
-### 雛形の更新の知らせ
+### 雛形の更新の通知
 
-`gem update` だけで本体を更新すると、スタイルシートの改良はプロジェクトへ届きません。そこで、全章の `vs build` と `vs preflight` は、雛形のスタイルシートや `book.yml` に書ける設定が新しくなっていれば、最後に知らせます。
+`gem update` だけで本体を更新すると、スタイルシートの改良はプロジェクトへ届きません。そこで、全章の `vs build` と `vs preflight` は、雛形のスタイルシートや `book.yml` に書ける設定が新しくなっていれば、最後に 💡 で案内します。
 
 :::{.output}
 ```text
@@ -230,7 +230,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 ```
 :::
 
-`vs build 11` のように章を指定したときは知らせません。`vs upgrade` を実行すると、次に雛形が変わるまで消えます。競合を断ったスタイルシートも、次に雛形が変わるまで知らせません。
+`vs build 11` のように章を指定したときは案内しません。`vs upgrade` を実行すると、次に雛形が変わるまで表示されなくなります。競合を断ったスタイルシートも、次に雛形が変わるまで案内しません。
 
 増えた設定は、`vs upgrade` が `book.yml` へコメントごと追加します。更新計画に「整理」の行として示し、確認で「いいえ」と答えれば追加しません。値は既定値なので、組み上がりは変わりません。雛形の並びのとおりに差し込み、ほかの行には触れません。変更前のファイルは `.cache/vs/upgrade-backup/` に残ります。
 
@@ -243,9 +243,9 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 ```
 :::
 
-追加するのは、新しい設定につき 1 回だけです。追加された設定を消しても、次の `vs upgrade` で戻ることはありません。`--dry-run` では、追加する行を見せるだけです。
+追加するのは、新しい設定につき 1 回だけです。追加された設定を削除しても、次の `vs upgrade` で戻ることはありません。`--dry-run` では、追加する行を表示するだけです。
 
-`theme: { color: red }` のように 1 行にまとめて書いた区分には追加できないので、追加する行を並べます。使いたい設定だけを `config/book.yml` へ写してください。
+`theme: { color: red }` のように 1 行にまとめて書いた区分には追加できないので、追加する行を並べます。使いたい設定だけを `config/book.yml` へコピーしてください。
 
 ### Gemfile.lock の追随
 
@@ -306,7 +306,7 @@ gem update vivlio-starter
 
 ビルドが失敗したときは、まず `vs doctor` で不足や設定の問題を確かめてください。原因が分からないまま `vs upgrade` を実行すると、複数のツールの版が変わり、かえって問題を切り分けにくくなることがあります。
 
-新しい Mac をセットアップするときは、@chapref:ch-install の導入スクリプトを使います。Homebrew・Ruby・Vivlio Starter と、`vs doctor --fix` が入れるツールをまとめて入れます。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
+新しい Mac をセットアップするときは、@chapref:ch-install の導入スクリプトを使います。Homebrew・Ruby・Vivlio Starter と、`vs doctor --fix` の対象のツールをまとめてインストールします。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
 
 ## トラブルシューティング
 

@@ -4,7 +4,7 @@
 一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の SVG や PNG を用意する場合も、準備から生成・確認までの流れは共通です。
 :::
 
-表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙だけは、プロジェクト直下に `vivlio_starter_frontcover_v1.0.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
+表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙だけは、プロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
 
 ## カバーテーマの選択
 
@@ -39,9 +39,9 @@ book:
 2. なければ `covers/frontcover_dark.svg` を使用
 3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
 
-`floral` のような独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートには切り替えず、ビルドが 🔴 で知らせます。テーマ名やファイル名の書き誤りに気づけるようにするためです。
+`floral` のような独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートには切り替えず、ビルドが 🔴 で報告します。テーマ名やファイル名の書き誤りに気づけるようにするためです。
 
-PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異なります。PNG は、塗り足しまで描いた `_bleed` 付きの画像や `cover_bleed` の設定（後述）が使えます。SVG は、仕上がりの大きさで描いた絵に、トンボを付けて書き出します。
+PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異なります。PNG は、塗り足しまで描いた `_bleed` 付きの画像や `cover_bleed` の設定（後述）が使えます。SVG は、仕上がりの大きさで描いた画像に、トンボを付けて書き出します。
 
 ### light / dark テーマ
 
@@ -102,7 +102,7 @@ book:
 | B5（182 × 257 mm） | 2,508 × 3,541 px | `frontcover_b5.png`・`backcover_b5.png` |
 | A5（148 × 210 mm） | 2,039 × 2,894 px | `frontcover_a5.png`・`backcover_a5.png` |
 
-雛形の文字と線は、使い方を示すためのものです。消してから `covers/frontcover_master.png` として保存します。
+雛形の文字と線は、使い方を示すためのものです。削除してから `covers/frontcover_master.png` として保存します。
 
 ## カバー画像の生成
 
@@ -188,11 +188,11 @@ PDF/X-1a は、商業印刷向けの PDF 規格です。色空間やフォント
 - **縦横比**: 1:1.6
 - **色**: sRGB
 - **品質**: JPEG 95%
-- **置き場所**: プロジェクト直下（例: `janken_frontcover_v0.1.0.jpg`）
+- **置き場所**: プロジェクト直下（例: `mybook_frontcover_v0.1.0.jpg`）
 
-EPUB と Kindle は同じ 1 枚を使います。EPUB には、この表紙が埋め込まれます。Kindle 用の `.kpf` には表紙を入れません。KDP では、本と表紙を別々に上げる決まりだからです。KDP の登録画面で、プロジェクト直下の JPEG を表紙として上げてください（@chapref:ch-build）。
+EPUB と Kindle は同じ 1 枚を使います。EPUB には、この表紙が埋め込まれます。Kindle 用の `.kpf` には表紙を含めません。KDP では、本と表紙を別々にアップロードする決まりだからです。KDP の登録画面で、プロジェクト直下の JPEG を表紙としてアップロードしてください（@chapref:ch-build）。
 
-元の画像に Display P3 などの色の情報が付いていても、sRGB に直して書き出します。sRGB の色の情報は OS にあるものを使います。見つからない環境では、元の色の情報のまま書き出します。KDP の指定（RGB）は、そのままでも満たしています。
+元の画像に Display P3 などの色の情報が付いていても、sRGB に変換して書き出します。sRGB の色の情報は OS にあるものを使います。見つからない環境では、元の色の情報のまま書き出します。KDP の指定（RGB）は、そのままでも満たしています。
 
 :::{.note}
 **電子書籍用の表紙は左右が切り落とされます**
@@ -227,7 +227,7 @@ vs clean --cover --cache --purge
 ## トラブルシューティング
 
 :::{.section-lead}
-ImageMagick や Ghostscript などのツールがない・動かないときは、`vs doctor --fix` で導入してください。ここでは、ツールを入れても直らない症状を扱います。
+ImageMagick や Ghostscript などのツールがない・動かないときは、`vs doctor --fix` で導入してください。ここでは、ツールをインストールしても解決しない症状を扱います。
 :::
 
 ### マスターファイルが見つからない
@@ -305,8 +305,8 @@ vs build
 # 1. 入稿用の表紙を作り直す（output.targets に print_pdf を入れておく）
 vs cover
 # 2. プロジェクト直下の入稿用表紙を開いて確かめる
-open vivlio_starter_frontcover_v1.0.0.pdf
-open vivlio_starter_backcover_v1.0.0.pdf
+open mybook_frontcover_v0.1.0.pdf
+open mybook_backcover_v0.1.0.pdf
 # 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
 # 4. 問題なければ印刷所に入稿
 ```

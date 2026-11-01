@@ -14,7 +14,7 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 - node / npm
 - ImageMagick / qpdf / pdfinfo / Ghostscript / MeCab
 - `waifu2x-ncnn-vulkan`（任意）
-- Guesslang（任意。言語名のないコードの言語推定用。`vs doctor --fix` で入ります）
+- Guesslang（任意。言語名のないコードの言語推定用。`vs doctor --fix` でインストールされます）
 
 :::{.memo}
 **Re:VIEW Starter の実行環境は要りません**
@@ -107,7 +107,7 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | 記号 | 意味 | 原文の扱い |
 | :---: | --- | --- |
 | 🔴 | Vivlio Starter に対応する記法がない。**手で直す必要があります** | そのまま残ります |
-| 🟡 | 変換はしたが、指定や装飾が落ちた | 変換後の形になります |
+| 🟡 | 変換はしたが、指定や装飾が失われた | 変換後の形になります |
 | 🔵 | 見た目が変わりうるが、作業は要りません | 変換後の形になります |
 
 記法ごとの件数と、最初の 3 箇所についてファイル名・行番号が表示されます。
@@ -126,7 +126,7 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | --- | --- |
 | `//embed` `//raw` `@<embed>` `@<raw>` | 出力形式ごとの生データ（LaTeX / HTML）。移行先では意味を持ちません |
 | `//graph` | 外部ツールでの作図。Vivlio Starter では `mermaid` フェンスか生成済みの画像を使います |
-| `//hr` | 水平線。Vivlio Starter の `---` は**改ページ**なので当てられません |
+| `//hr` | 水平線。Vivlio Starter の `---` は**改ページ**なので置き換えられません |
 | `@<balloon>` | コード内の吹き出し |
 | `@<big>` `@<large>` `@<xlarge>` `@<xxlarge>` | 文字を大きくする指定 |
 
