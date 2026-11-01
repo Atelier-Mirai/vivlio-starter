@@ -8,7 +8,7 @@ PATH
       nokogiri (~> 1.16)
       pdf-reader (~> 2.12)
       prawn (~> 2.5)
-      query-stream (~> 1.4)
+      query-stream (~> 1.5)
       rqrcode (~> 3.2)
       samovar (~> 2.1)
 
@@ -66,7 +66,7 @@ GEM
       pdf-core (~> 0.10.0)
       ttfunk (~> 1.8)
     prism (1.9.0)
-    query-stream (1.4.1)
+    query-stream (1.5.0)
       samovar (~> 2.1)
     racc (1.8.1)
     rainbow (3.1.1)
@@ -108,7 +108,7 @@ PLATFORMS
 DEPENDENCIES
   minitest (>= 5.22)
   minitest-mock (~> 5.27)
-  query-stream (~> 1.4)
+  query-stream (~> 1.5)
   rake (~> 13.2)
   rubocop (>= 1.65)
   strscan (~> 3.1)
@@ -147,7 +147,7 @@ CHECKSUMS
   pdf-reader (2.16.0) sha256=bf1b5564c085264d8279bde3cf1467778b75841494d20c0fe7da3dad475f3732
   prawn (2.5.0) sha256=f4e20e3b4f30bf5b9ae37dad15eb421831594553aa930b2391b0fa0a99c43cb6
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
-  query-stream (1.4.1)
+  query-stream (1.5.0) sha256=c2418c7836fef15b6e73266f1348470d2cc6eced0c45ecc33628532326726299
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
   rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701

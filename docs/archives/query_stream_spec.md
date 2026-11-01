@@ -151,18 +151,22 @@ end
 | 演算子 | 意味 |
 |---|---|
 | `AND` / `and` / `&&` | AND条件 |
-| `OR` / `or` / `\|\|` | OR条件 |
+| `OR` / `or` | OR条件 |
+
+`||` は記法の区切りの `|` と衝突するので使わない。
 
 ```
 = books | tags=ruby && tags=beginner
+= books | tags=ruby AND beginner
+= books | tags=ruby OR year>=2020
 = weather_reports | location=東京 AND condition=晴, 曇
 = elements | category=nonmetal AND phase_at_stp=gas
 ```
 
 パース規則:
-1. `AND` / `and` / `&&` で分割して複数の条件節に分ける
+1. `OR` / `or` で分割し、それぞれを `AND` / `and` / `&&` で分割して条件節に分ける（AND は OR より強く結び付く）
 2. 各条件節内のカンマ区切りは同一フィールドへの OR として扱う
-3. AND の優先順位は OR（カンマ）より高い
+3. 項目名の無い条件節は、直前の条件節の項目を引き継ぐ。`tags=ruby AND beginner` は `tags=ruby AND tags=beginner` と同じ
 
 #### 比較演算子・範囲指定
 

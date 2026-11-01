@@ -250,13 +250,12 @@ module VivlioStarter
           assert_equal 5, result[:limit]
         end
 
-        # AND 連結時に2件目以降のフィールド省略を許容する
+        # AND の 2 件目以降は項目名を省ける。省いた値も別の条件になる
         def test_should_allow_fieldless_and_clause
           result = Parser.parse('= books | tags = ruby && beginner')
-          assert_equal 1, result[:filters].size
-          filter = result[:filters].first
-          assert_equal :eq, filter[:op]
-          assert_equal [:ruby, :beginner].map(&:to_s), filter[:value]
+          assert_equal 2, result[:filters].size
+          assert_equal({ field: :tags, op: :eq, value: ['ruby'] }, result[:filters][0])
+          assert_equal({ field: :tags, op: :eq, value: ['beginner'] }, result[:filters][1])
         end
       end
 
