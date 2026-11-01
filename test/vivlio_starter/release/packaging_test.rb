@@ -84,7 +84,7 @@ class PackagingTest < Minitest::Test
     tracked = IO.popen(%w[git ls-files -z bin lib], chdir: REPO_ROOT, &:read).split("\x0")
     scaffold_files = tracked.select { it.start_with?("lib/project_scaffold/") }
     missing = scaffold_files - contents
-    untracked = contents - tracked - %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
+    untracked = contents - tracked - %w[README.md LICENSE THIRD-PARTY-LICENSES.md CONTENT-LICENSE.md]
 
     assert_empty missing, "scaffold のファイルが gem に含まれていません:\n  #{missing.first(20).join("\n  ")}"
     assert_empty untracked, "git で管理していないファイルが gem に含まれています:\n  #{untracked.first(20).join("\n  ")}"
@@ -92,6 +92,7 @@ class PackagingTest < Minitest::Test
     assert_includes contents, "bin/vivlio-starter"
     assert_includes contents, "README.md"
     assert_includes contents, "THIRD-PARTY-LICENSES.md"
+    assert_includes contents, "CONTENT-LICENSE.md"
   end
 
   # PK-04: 開発用ファイルが混入していない（430MB 事故の再発防止）

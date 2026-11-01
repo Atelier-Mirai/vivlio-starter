@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
   # stylesheets/twemoji/vs-techbook/ が雛形に入っていた。配りたいファイルは git で管理する。
   # scaffold 内の .gitignore / .textlintrc.yml のようなドットファイルも、管理していればそのまま入る。
   spec.files = `git ls-files -z bin lib`.split("\x0")
-  spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
+  spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md CONTENT-LICENSE.md]
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]
   spec.require_paths = ['lib']

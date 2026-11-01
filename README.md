@@ -370,7 +370,8 @@ npm install -g @vivliostyle/cli @vivliostyle/vfm
 | 対象 | ライセンス | 詳細 |
 |---|---|---|
 | ソースコード | MIT | [LICENSE](./LICENSE) |
-| 書籍本文（`contents/` 配下） | CC BY-NC-SA 4.0 | [CONTENT-LICENSE.md](./CONTENT-LICENSE.md) |
+| 書籍本文（`contents/`・`images/` 配下） | CC BY-NC-SA 4.0 | [CONTENT-LICENSE.md](./CONTENT-LICENSE.md) |
+| 同梱の扉絵・装飾画像・表紙 | Vivlio Starter で作る本の中では販売する本にも使用可。画像だけの再配布・販売は不可 | [CONTENT-LICENSE.md](./CONTENT-LICENSE.md) |
 | サードパーティ | 各ライセンス | [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md) |
 
 ### vivlio-starter-pdf について

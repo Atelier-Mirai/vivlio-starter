@@ -1,7 +1,13 @@
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
 
-本書籍の本文・画像・図版・イラスト等のコンテンツ（通常 `content/` 配下、および生成物のうち本文由来の部分）は、
+本書籍の本文・画像・図版・イラスト等のコンテンツ（`contents/`・`images/` 配下、および生成物のうち本文由来の部分）は、
 「表示—非営利—継承 4.0 国際」の条件で提供します。
+
+【同梱の素材】
+`stylesheets/images/bundled/`・`covers/bundled/`・`covers/templates/` の画像（扉絵・装飾画像・表紙）は、このライセンスの対象外です。
+次の条件で利用できます。
+- Vivlio Starter で作る本の中では、販売する本を含めて自由に使えます。加工もでき、クレジットの表示は不要です。
+- 画像だけを取り出して再配布・販売することはできません。
 
 【表示例 / Attribution Notice】
 - この作品は「クリエイティブ・コモンズ 表示 - 非営利 - 継承 4.0 国際」（CC BY-NC-SA 4.0）で提供されています。
