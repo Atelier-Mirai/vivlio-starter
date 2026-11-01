@@ -1,12 +1,12 @@
 # 開発者向けガイド
 
 :::{.chapter-lead}
-本章は Vivlio Starter をフォークして改造・拡張したい開発者に向けた案内です。著者として執筆するだけであれば読む必要はありません。各コマンドの使い方はそれぞれの章にあります。ここでは「どこに何があるか」と「手を入れるならどこを触るか」に絞って述べます。
+このガイドは Vivlio Starter をフォークして改造・拡張したい開発者に向けた案内です。著者として執筆するだけであれば読む必要はありません。各コマンドの使い方はそれぞれの章にあります。ここでは「どこに何があるか」と「手を入れるならどこを触るか」に絞って述べます。
 :::
 
 ## 全体像
 
-Vivlio Starter は、Markdown の原稿から閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle 用 KPF までを作る**電子書籍執筆システム**です。**組版エンジンとして Vivliostyle を採用**し、その前後——原稿の前処理、文章校正、索引・用語集、画像の最適化、表紙の生成、PDF の後処理——を自前で持ちます。六つの領域に分かれた 26 のコマンドが、執筆から入稿までの工程を覆います。
+Vivlio Starter は、Markdown の原稿から閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle 用 KPF までを作る**電子書籍執筆システム**です。**組版エンジンとして Vivliostyle を採用**し、その前後の処理（原稿の前処理、文章校正、索引・用語集、画像の最適化、表紙の生成、PDF の後処理）を自前で持ちます。30 の公開コマンドが、執筆から入稿までの工程を担当します。
 
 実装は Ruby gem 一つにまとまっており、CLI フレームワークには Samovar を採用しています。
 
@@ -24,7 +24,7 @@ lib/vivlio_starter/cli.rb                # ライブラリからフル CLI を�
 
 ### 二層構造
 
-各コマンドは**Samovar エントリ**（`cli/samovar/` 配下）と**ドメイン実装**（`cli/` 配下）の二層に分かれています。前者が引数とオプションの受け取り・ヘルプ表示を担い、後者が実際の処理を持ちます。
+各コマンドは**Samovar エントリ**（`cli/samovar/` 配下）と**ドメイン実装**（`cli/` 配下）の二層に分かれています。前者が引数とオプションの受け取り・ヘルプ表示を担当し、後者が実際の処理を持ちます。
 
 ```
 lib/vivlio_starter/
@@ -34,10 +34,13 @@ lib/vivlio_starter/
     loader.rb               # require の順序
     common.rb               # CONFIG・ログ・パス定数
     config_keys.rb          # book.yml のキーと既定値の宣言（1 表）
+    config_guide.rb         # vs config 系の本体
+    scaffold_updates.rb     # 雛形の更新の判定
     token_resolver.rb       # 章番号・スラッグの解決
     masking.rb              # コード領域解釈の唯一の実装
     samovar/                # Samovar CLI コマンド定義
       root_command.rb       # コマンドルーティング
+      vs_command.rb         # 公開コマンドの基底（引数の正規化）
       build_command.rb
       ...
     build/                  # ビルドパイプライン
@@ -50,10 +53,13 @@ lib/vivlio_starter/
     metrics/                # メトリクス分析
     lint/                   # 校正補助
     pdf/                    # PDF 読み取り・プロバイダ
+    cover/                  # 表紙の SVG 経路
+    doctor/                 # 外部ツールの更新・設定の復旧
+    import/                 # Re:VIEW Starter からの変換
     guards/                 # 実行前提条件の検査
 ```
 
-この分離のおかげで、CLI の見た目を変えずに処理を差し替えたり、処理を変えずにオプションを足したりできます。
+この分離のおかげで、CLI の見た目を変えずに処理を差し替えたり、処理を変えずにオプションを追加したりできます。
 
 ### コマンドとファイルの対応
 
@@ -67,6 +73,7 @@ lib/vivlio_starter/
 | `index` ・ `index:plan` ・ `index:auto` ・ `index:apply` ・ `index:export` ・ `index:import` | `index_command.rb` ＋ `cli/index/` 配下 |
 | `pdf:read` ・ `pdf:compress` ・ `pdf:pages` ・ `pdf:rasterize` | `pdf_command.rb` ＋ `cli/pdf.rb`・`cli/pdf/` 配下 |
 | `open` | `open_command.rb` ＋ `cli/pdf.rb` の `PdfOpener` |
+| `config` ・ `config:book` ・ `config:catalog` ・ `config:talk` | `config_command.rb` ＋ `cli/config_guide.rb` |
 | `preflight` | `preflight_command.rb` ＋ `cli/build/pipeline.rb` |
 | `build` | `build_command.rb` ＋ `cli/build/` 配下 |
 
@@ -119,6 +126,15 @@ lib/vivlio_starter/
 
 単章ビルドが閲覧用 PDF だけを作るのは意図的です。入稿用 PDF・EPUB・Kindle は全章がそろってはじめて意味を持つ成果物なので、単章では中途半端な出力を避けています。
 
+`vs preflight` は、シェルスクリプトや Makefile から呼び出せるよう、終了コードを返します。
+
+| 終了コード | 意味 |
+|:---|:---|
+| `0` | 問題なし（警告のみの場合も含む） |
+| `1` | エラーが 1 件以上検出された |
+
+組む順は `catalog.yml` に書いた順で、原稿の種類（前書き・本文の章・付録・後書き）も `catalog.yml` の区分で決まります。
+
 分冊の本では、どのモードでも、パイプラインに入る前に組む範囲（巻・合本・全巻）を一つ選びます（後述の「分冊」）。モードは範囲の選び方を変えません。
 
 :::{.note}
@@ -144,7 +160,7 @@ full モードのステップは四つの**相**に属します。
 
 ### ステップ表
 
-full モードのステップは、条件つきの 1 枚の表として宣言されています（`full_mode_step_table`）。**ステップ番号は持ちません。**実行条件によって並びが変わると番号は意味を失い、ドキュメントとログの表記がずれていくためです。代わりに**ラベル**が、ログ・計時・本章の共通語彙になっています。
+full モードのステップは、条件つきの 1 枚の表として宣言されています（`full_mode_step_table`）。**ステップ番号は持ちません。**実行条件によって並びが変わると番号は意味を失い、ドキュメントとログの表記がずれていくためです。代わりに**ラベル**が、ログ・計時・このガイドの共通語彙になっています。
 
 | 相 | ラベル | 実行条件 |
 |---|-------|---------|
@@ -169,17 +185,19 @@ full モードのステップは、条件つきの 1 枚の表として宣言さ
 | pdf | `merge all pdfs` | `pdf` ターゲット |
 | pdf | `apply outline to output pdf` | `pdf` ターゲット |
 | pdf | `shorten destination names` | `pdf` ターゲット |
+| pdf | `check chapter leads` | `pdf` ターゲット |
 | pdf | `compress, rename and final clean` | `pdf` 単独のとき |
 | pdf | `compress and rename` | 他ターゲット併存のとき |
 | pdf | `print pdf` | `print_pdf` ターゲット |
+| pdf | `check type 3 fonts` | PDF 系ターゲットのとき |
 | epub | `generate epub` | `epub` / `kindle` ターゲット |
 | join | `final clean` | 掃除を延期したとき |
 
 各行はもう一つ、**単位**を持ちます。`:chapter` は章ごとに意味を持つ処理、`:whole_book` は全章そろってはじめて成立する処理です。
 
-**単章ビルドはこの表から導出されます。** `register_single_mode_steps` が同じ表を走査し、`:chapter` の行だけを引いて単章の手順を組み立てます。モードごとの一覧は持たないので、全章に足したステップが単章へ届かない、という食い違いは起きません。単章で意図して走らせないステップは `SINGLE_MODE_SKIP` に理由を添えて挙げます（いまは `techbook post-process` だけです）。詳しくは `build-mode-parity-spec.md`。
+**単章ビルドはこの表から導出されます。** `register_single_mode_steps` が同じ表を走査し、`:chapter` の行だけを引いて単章の手順を組み立てます。モードごとの一覧は持たないので、全章に追加したステップが単章へ届かない、という食い違いは起きません。単章で意図して走らせないステップは `SINGLE_MODE_SKIP` に理由を添えて挙げます（いまは `techbook post-process` だけです）。詳しくは `build-mode-parity-spec.md`。
 
-ステップを足すときは、この表に 1 行足して**相と単位を選びます**。分岐を書き足す必要はありません。単位の既定は `:whole_book` です——足し忘れたステップが単章へ流れ込まない側に倒してあります。
+ステップを追加するときは、この表に 1 行追加して**相と単位を選びます**。分岐を追加する必要はありません。単位の既定は `:whole_book` なので、指定し忘れたステップは単章では実行されません。
 
 `vs build --log=debug` を実行すると、各ステップの開始・終了と所要時間が同じラベルで出力されます。
 
@@ -191,13 +209,13 @@ full モードのステップは、条件つきの 1 枚の表として宣言さ
 
 ### 本文ガード
 
-本文 PDF を生成するステップには**本文ガード**が入っています。入稿用の本文はトンボ・塗り足し付きのもっとも重いレンダリングで、Chrome の一過性の失敗により本文が数ページに縮退することがありました。そこで生成後にページ数を検証し、本文相応に満たなければ再ビルドし、規定回数で回復しなければビルドを明示的に中断します。黙って本文の欠けた PDF を出荷しないための仕組みです。
+本文 PDF を生成するステップには**本文ガード**が入っています。入稿用の本文はトンボ・塗り足し付きのもっとも重いレンダリングで、Chrome の一過性の失敗により本文が数ページに縮退することがありました。そこで生成後にページ数を検証し、本文相応に満たなければ再ビルドし、規定回数で回復しなければビルドを明示的に中断します。本文の欠けた PDF を警告なしに出力しないための仕組みです。
 
 ### 前処理・変換・後処理
 
 `:shared` 相の中身は、大きく三段に分かれます。
 
-**前処理**（`cli/pre_process/`）は `MarkdownPreprocessor#run` が担い、フロントマター生成・データ展開・画像パス正規化・コードインクルード・コンテナ変換・数式や図の生成・リンクの脚注化などを順に適用します。原稿ファイルは一切変更せず、加工結果をワークスペースへ書き出します。
+**前処理**（`cli/pre_process/`）は `MarkdownPreprocessor#run` が担当し、フロントマター生成・データ展開・画像パス正規化・コードインクルード・コンテナ変換・数式や図の生成・リンクの脚注化などを順に適用します。原稿ファイルは一切変更せず、加工結果をワークスペースへ書き出します。
 
 **変換**（`cli/convert.rb`）は VFM（Vivliostyle Flavored Markdown）を呼び出して Markdown を HTML にします。
 
@@ -216,7 +234,7 @@ full モードのステップは、条件つきの 1 枚の表として宣言さ
 `epub`（楽天 Kobo・Apple Books 向けのクリーン EPUB）と `kindle`（Amazon 向け）は、同じ `EpubBuilder` を**フレーバ**で切り替えて作ります。中心は `generate_epub_entries!(dir, entries, flavor:)` です。
 
 - **共通**: EPUB マーカー `vs-epub` の付与、索引・用語集の後処理、脚注 id の整理、テーブルの `align` 正規化、絵文字の復元、扉絵・節絵の注入
-- **共通（ローカライズ後）**: 著者の SVG 図版を差し替え（クリーンは書体を抱かせたベクタのまま、Kindle はすべて PNG / JPEG へ焼く）
+- **共通（ローカライズ後）**: 著者の SVG 図版を差し替え（クリーンは書体を埋め込んだベクタのまま、Kindle はすべて PNG / JPEG へ焼く）
 - **Kindle 限定**: WebP から JPEG/PNG への変換、`vs-kindle` マーカーの付与、画像サイズの制約、数式のテキスト化とラスター化、コードブロックの調整、囲みボックスへの実ラベル注入、異体字の 1 字書体（KFX は異体字セレクタを読まないので、`禰󠄀` のような字は親字に異体の字形を割り当てた書体を埋め込んで出す）
 
 `vs-epub` は「リフロー文脈である」ことを示す両フレーバ共通の印、`vs-kindle` は「Kindle 向けに劣化させた」ことを示す印です。**Kindle の `<body>` は両方を持ちます。**クリーン EPUB だけに当てたい CSS は `body.vs-epub:not(.vs-kindle)` と書く必要があります。
@@ -225,34 +243,32 @@ full モードのステップは、条件つきの 1 枚の表として宣言さ
 
 ### KPF 変換
 
-`kindle` ターゲットでは、中間 EPUB を作ったあと `convert_epub_to_kpf!` が `kindlepreviewer`（Kindle Previewer 同梱の CLI）を呼んで `.kpf` を生成します。未インストールなら中間 EPUB を残して変換だけスキップし、警告に留めます。Kindle を使わない利用者のビルドを止めないためです。変換ログのエラー・警告コードは集計して要約表示します。
+`kindle` ターゲットでは、中間 EPUB を作ったあと `convert_epub_to_kpf!` が `kindlepreviewer`（Kindle Previewer 4 同梱の CLI）を呼んで `.kpf` を生成します。未インストールなら中間 EPUB を残して変換だけスキップし、警告に留めます。Kindle を使わない利用者のビルドを止めないためです。変換ログのエラー・警告コードは集計して要約表示します。
 
 Kindle Previewer 4（4.0.3）は、macOS でときどき変換の入口で落ちます（変換の本体を起動する `fork` の直後に子プロセスが止まります）。このときは本の変換ログ（`Logs/*_log.csv`）が残らないので、それを目印に 1 回だけやり直し、2 回とも落ちたらクラッシュレポートの場所を添えて再ビルドを案内します。
 
-呼び出しのオプションは版で綴りが違います。3 は `-convert`、4 は `--convert` です。実行ファイルの名前と置き場所も変わっているので、`kpf_option_prefix` が `-help` の出力を一度だけ読んで綴りを決め、`vs doctor` が新しい版を先に探します。版を決め打ちにすると、どちらかの利用者の手元で KPF 変換だけが黙って失敗します。
+変換に使うのは、Amazon が必須としている Kindle Previewer 4 だけです。`kindlepreviewer` が 3 を指しているときは、`kindle_previewer_3?` が `-help` の綴り（3 は `-convert`、4 は `--convert`）で見分けて変換を省略し、`vs doctor` と同じ警告で 4 への更新を案内します。3 の検出は、2027 年 1 月のバージョンアップで削除します（`PLANNED.md`）。
 
 ### Kindle に SVG を残さない
 
 **Kindle Previewer 4 は、同梱された SVG があると Enhanced Typesetting を無効にします。** 本文がその SVG を参照しているかどうかは関係がなく、`content.opf` の manifest に載っているだけで判定が変わります。無効と判定された本は `.kpf` ではなく `.mobi` になるので、KDP へ入稿するものが作れません。
 
-この判定は 4 で入りました。同じ EPUB を通すと、3 は `.kpf` を、4 は `.mobi` を作ります。
-
 対処は 2 段です。
 
-1. **参照されている SVG は焼きます。** `stage_author_svg_for_epub!` が、書体を抱かせた派生を作れない図——ロゴや QR のように文字を持たないもの——も、Kindle に限ってラスタ化します
+1. **参照されている SVG は焼きます。** `stage_author_svg_for_epub!` が、書体を埋め込んだ派生を作れない図（ロゴや QR のように文字を持たないもの）も、Kindle に限ってラスタ化します
 2. **参照の切れた SVG は外します。** `sweep_unreferenced_assets!` が、ローカライズで運ばれたのに誰も見ていない画像をパッケージから落とします。SVG もその中に入ります
 
 2 が要るのは数式のためです。ディスプレイ数式は PNG へ、インライン数式はテキストへ移ったあと、元の SVG だけがパッケージに残ります。
 
 この回収はクリーン EPUB にも掛けます。ローカライズは `images/` と `stylesheets/` を参照を見ずに丸ごと運ぶので、原稿で使っていない雛形の画像（扉絵の花やサンプル章の写真）まで入るためです。照合はファイル名で行い、表紙（`covers/`）は対象から外します。
 
-**呼ぶ位置が効きます。** 回収は参照の有無で判断するので、HTML の書き換えがすべて終わった後——ローカライズよりも、図版の差し替えよりも後——でなければなりません。早すぎると、まだ使われている SVG を落とします。
+**呼ぶ位置が重要です。** 回収は参照の有無で判断するので、HTML の書き換えがすべて終わった後（ローカライズと図版の差し替えの後）でなければなりません。早すぎると、まだ使われている SVG を落とします。
 
 :::{.notice}
-**空のディレクトリを残すと、変換そのものが失敗します。** SVG を外した跡にディレクトリだけが残ると、Kindle Previewer 4 は 1 秒で `Book Conversion failed` を返し、ログも残しません。epubcheck は `PKG-014` の**警告**で通してしまうので、検証を足しても気づけません。`prune_empty_dirs!` が、変化がなくなるまで畳みます。
+**空のディレクトリを残すと、変換そのものが失敗します。** SVG を外した跡にディレクトリだけが残ると、Kindle Previewer 4 は 1 秒で `Book Conversion failed` を返し、ログも残しません。epubcheck は `PKG-014` の**警告**で通してしまうので、検証を追加しても検出できません。`prune_empty_dirs!` が、変化がなくなるまで畳みます。
 :::
 
-画質は落ちません。Previewer 3 が作っていた KPF も、中身のリソースはすべて JPEG でした。詳しい実測は `kindle-css-compatibility-notes.md` §5.5 にあります。
+KPF の中身のリソースはすべて JPEG なので、焼いても画質は落ちません。詳しい実測は `kindle-css-compatibility-notes.md` §5.5 にあります。
 
 ### KFX の CSS 制約
 
@@ -276,13 +292,15 @@ Kindle の表示エンジン（KFX）は、EPUB で広く使える CSS の一部
 
 | 選択 | 起動 | 目次（`CatalogLoader.load_catalog` が返すもの） |
 | :--- | :--- | :--- |
-| 巻（`Volume`） | `vs build --volume lower`・章を指定した `vs build 21` | その巻の目次 |
-| `:combined` | 巻を選ばない `vs build`（合本） | 最初の巻の前書き・全巻の本文と付録・最後の巻の後書き |
+| 巻（`Volume`） | `vs build lower`・章を指定した `vs build 21` | その巻の目次 |
+| `:combined` | 巻を選ばない `vs build`（合本） | 本全体の前書き（なければ最初の巻の前書き）・全巻の本文と付録・本全体の後書き（なければ最後の巻の後書き） |
 | `:all` | 既定。巻を選ばない `vs preflight`・`vs lint`・`vs metrics` | どれかの巻に載った原稿すべて |
 
-`load_catalog` は、どの選択でも巻のない本と同じ形の Hash（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）を返します（`Volumes.view`）。部の中扉、最初の本文の章を探す処理、索引の対象など、目次を読むほかの処理は巻を知らずに済みます。**目次を読む処理を足すときは `load_catalog` を通してください。** `load_raw_catalog` を直接読むと `VOLUMES:` の入れ子が見え、巻を選んでも全巻を読んでしまいます。一時的に別の範囲で数えたいとき（全巻の原稿で用語集の警告を出す、など）は `Volumes.with_selection(:all) { … }` で包みます。
+`load_catalog` は、どの選択でも巻のない本と同じ形の Hash（`PREFACE`・`CHAPTERS`・`APPENDICES`・`POSTFACE`）を返します（`Volumes.view`）。部の中扉、最初の本文の章を探す処理、索引の対象など、目次を読むほかの処理は巻を知らずに済みます。**目次を読む処理を追加するときは `load_catalog` を通してください。** `load_raw_catalog` を直接読むと `VOLUMES:` の入れ子が見え、巻を選んでも全巻を読んでしまいます。一時的に別の範囲で数えたいとき（全巻の原稿で用語集の警告を出す、など）は `Volumes.with_selection(:all) { … }` で包みます。
 
-**`--volume all` は、巻ごとに別のプロセスで組みます。** `CONFIG` も章の並びの記録もプロセスの中に残るので、同じプロセスで巻を切り替えると前の巻の値が混ざるためです。`BuildCommand#run_all_volumes` が巻の順に `vs build --volume <id>` を起動し、失敗した巻で止めます。`vs cover --volume all` だけは同じプロセスで巻ごとに選び直します。表紙が読むのは `CONFIG` だけなので、作り終えたら元の `CONFIG` を入れ直せば足ります。
+巻の指定は引数 1 語です。`Volumes.token_in` が、章の指定と読み分けます。
+
+**`vs build all` は、巻ごとに別のプロセスで組みます。** `CONFIG` も章の並びの記録もプロセスの中に残るので、同じプロセスで巻を切り替えると前の巻の値が混ざるためです。`BuildCommand#run_all_volumes` が巻の順に `vs build <id>` を起動し、失敗した巻で処理を中止します。`vs cover all` だけは同じプロセスで巻ごとに選び直します。表紙が読むのは `CONFIG` だけなので、作り終えたら元の `CONFIG` を入れ直せば足ります。
 
 巻を選ぶと、ほかに三つのことが起こります。
 
@@ -298,15 +316,17 @@ Kindle の表示エンジン（KFX）は、EPUB で広く使える CSS の一部
 | 付録の記号 | 全巻を巻の順に見て、はじめて出た付録に次の記号。再び載る巻でも同じ記号。`appendix_start` を書いた巻はその巻の付録だけを振り直す | `appendix_letter` |
 | ノンブル | 巻ごとに 1 から | （巻のない本と同じ） |
 
-章扉の「第 N 章」は、全章ビルドで巻を選んだときだけ `BuildCommand` が `HeadingProcessor.chapter_number_offset` に足す数を渡します。単章ビルドの章扉は、巻を選んでも「第1章」から数えます（`chapter-reference-spec.md` の決まり）。目次の番号は CSS のカウンタで数えているので、HTML の章扉に書いた番号は届きません。`TocGenerator` が目次の最上位の `<ul>` と付録の `<li>` に `counter-reset` を与えて合わせます。
+章扉の「第 N 章」は、全章ビルドで巻を選んだときだけ `BuildCommand` が `HeadingProcessor.chapter_number_offset` に加える数を渡します。単章ビルドの章扉は、巻を選んでも「第1章」から数えます（`chapter-reference-spec.md` の決まり）。目次の番号は CSS のカウンタで数えているので、HTML の章扉に書いた番号は届きません。`TocGenerator` が目次の最上位の `<ul>` と付録の `<li>` に `counter-reset` を与えて合わせます。
 
 **本文の章や付録は、二つ以上の巻に載せられます。** 番号は載った巻ごとに、巻の中の位置で振ります。合本と `:all` の目次には、最初に載った所に一度だけ残します（`merged_sections`）。原稿の名前で見るので、部の中に書いた章も部ごとに別物とはみなしません。巻をまたいで並びを見る検査（「前の章」）は、共通の章が巻ごとに現れる `reading_order` を使います。
+
+**本全体の前書き・後書き**は、`VOLUMES:` と同じ高さに書いた `PREFACE`・`POSTFACE` です（`Volumes.book_matter`）。巻の目次では、最初の巻の前書きと最後の巻の後書きに重ねます。合本には本全体のものだけを載せます。
 
 **巻をまたぐ参照**は、ラベルを全巻の原稿から集めて作ります（`CrossReferenceProcessor`）。組む範囲に入らない原稿（`PreProcessCommands.other_volume_files`）のラベルは、その巻を選んだ状態（`with_selection`）で数えるので、番号はその巻の振り方になります。別の巻への参照は `<span class="cross-ref-other-volume">` にし、リンクにしません。`@pageref` もページ番号を付けず、章で示します。ほかの巻はその場で組まないので、ページ番号が分からないためです。
 
 **全巻目次**は `Build::WholeTocGenerator` が作ります。扉や中扉と同じシステムページ（`_whole_toc`）で、その巻の目次の前に置きます。ほかの巻の HTML はないので、節は原稿の Markdown の `## ` の行から取ります。題名は `@chapref` と同じ `plain_chapter_title`、節の番号は章扉と同じ材料（`heading_number_context_for`）で作ります。今の巻には `vs-current-volume` を付けて濃く組みます。Kindle は `var()` を読まないので、色はリテラルで書きます。ページ番号とリンクは載せません。
 
-巻の書き方の誤り（`id` の重なり、知らないキー、ISBN の共有など）は `Guards::VolumeDefinitionCheck` が知らせ、`vs build` と `vs preflight` で同じものを出します。`vs create`・`vs delete`・`vs rename` は `CatalogUpdater` を通して、すべての巻の行を書き換えます。設計の全体と、まだ作っていないもの（ほかの巻のページ番号が要る索引・全巻目次のページ番号・全巻を通したノンブル・背表紙）は `multivolume-spec.md` と `PLANNED.md` にあります。
+巻の書き方の誤り（`id` の重なり、知らないキー、ISBN の共有など）は `Guards::VolumeDefinitionCheck` が報告し、`vs build` と `vs preflight` で同じものを出します。`vs create`・`vs delete`・`vs rename` は `CatalogUpdater` を通して、すべての巻の行を書き換えます。設計の全体と、まだ作っていないもの（ほかの巻のページ番号が要る索引・全巻目次のページ番号・全巻を通したノンブル・背表紙）は `multivolume-spec.md` と `PLANNED.md` にあります。
 
 ### 索引・用語集
 
@@ -322,23 +342,23 @@ Vivliostyle の `target-counter` はレンダリング時にページ番号を�
 | `g` | 用語集のみ | `<span>` ＋ `<a class="glossary-link">†</a>` |
 | `ig` | 両方 | `<span>` ＋ `<a class="glossary-link">†</a>` |
 
-索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。同じページを指す重複は `backlink dedup` が排除します。組み上がった PDF の named destinations を読んで「アンカー ID からページ番号」を得るので、章が複数ページにまたがっても正確です。
+索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。副次参照は、語を見出しに掲げた節に絞り、最大 8 件を載せます（`UnifiedPageBuilder::MAX_SUB_REFERENCES`）。見出しに語を掲げた節が 12 より多い語は、主要参照の章の外の `###` の節を省きます（`MAIN_CHAPTER_ONLY_OVER`）。同じページを指す重複は `backlink dedup` が排除します。組み上がった PDF の named destinations を読んで「アンカー ID からページ番号」を得るので、章が複数ページにまたがっても正確です。
 
-重複を除くと索引が縮んでページが動くので、除いた HTML で本文をもう一度組みます。本書ではこの 2 回目が約 55 秒かかります。これを省くために、**前回のページ対応で先回り**します（`BacklinkDedupOrchestrator`）。
+重複を除くと索引が縮んでページが動くので、除いた HTML で本文をもう一度組みます。ガイドブックではこの 2 回目が約 55 秒かかります。これを省くために、**前回のページ対応で先回り**します（`BacklinkDedupOrchestrator`）。
 
 1. `backlink dedup` は、取ったページ対応を `dedup-pages-<巻>.json` に残します
 2. 次のビルドでは、`build overall pdf` が HTML を `pdf/` へ移した直後（`speculate!`）に、前回の対応で索引・用語集の重複を先に除いてから 1 回目を組みます
 3. `backlink dedup` は、先回り前の HTML に今回の対応と前回の対応をそれぞれ当て、結果の文字列が同じなら 2 回目を組みません。違えば今回の対応で組み直すので、出来上がりは先回りしないときと変わりません
 
-ページ対応そのものではなく当てた結果を比べるのは、判定に効かないずれ（章は改ページで始まるので、ずれは直した章の中で吸収されやすい）を外れに数えないためです。縮小版の画像へ差し替えたとき（`shrink oversized images`）と、本文の † を除いたときは、比べずに組み直します。
+ページ対応そのものではなく当てた結果を比べるのは、判定に影響しないずれ（章は改ページで始まるので、ずれは直した章の中で吸収されやすい）を外れに数えないためです。縮小版の画像へ差し替えたとき（`shrink oversized images`）と、本文の † を除いたときは、比べずに組み直します。
 
 :::{.notice}
-**先回りで消したリンクは、消さずに残してください。** 消したリンクの飛び先は PDF の `/Dests` から消えるので、今回の対応が取れず、何も直さなくても外れ続けます。消したリンクは、大きさ 0 のリンクとして索引・用語集の末尾（`div.vs-dedup-witness`。`<dd>` の外）に残します。範囲表記（12–15）で間を詰めたリンクも同じです。
+**先回りで除いたリンクは、HTML から削除しないでください。** 除いたリンクの飛び先は PDF の `/Dests` から失われるので、今回の対応が取れず、何も直さなくても一致しなくなります。除いたリンクは、大きさ 0 のリンクとして索引・用語集の末尾（`div.vs-dedup-witness`。`<dd>` の外）に残します。範囲表記（12–15）で間を詰めたリンクも同じです。
 :::
 
-索引語のアンカーは語ごとの通し番号（`idx-<語のダイジェスト>-N`）なので、本文で索引語を書き足す・消すと、それより後ろの同じ語の番号がずれて外れます。`--log` の外れた理由は、ページのずれと参照の増減とを分けて出します。経緯と実測は `dedup-rerender-skip-spec.md` にあります。
+索引語のアンカーは語ごとの通し番号（`idx-<語のダイジェスト>-N`）なので、本文で索引語を追加・削除すると、それより後ろの同じ語の番号がずれて外れます。`--log` の外れた理由は、ページのずれと参照の増減とを分けて出します。経緯と実測は `dedup-rerender-skip-spec.md` にあります。
 
-著者向けの記法と運用は、本書の「索引・用語集機能」の章にあります。
+著者向けの記法と運用は、ガイドブックの「索引・用語集機能」の章にあります。
 
 :::{.note}
 索引語は本文に埋め込まれる透明なアンカーです。初出を包む `<dfn>` はブラウザ既定で斜体になるため、打ち消しを `stylesheets/base.css` に置いています。索引語が現れるのは本文・見出し・目次のすべてなので、全ページが読む CSS でなければ届きません。
@@ -367,7 +387,7 @@ MathTextRenderer      Kindle 向けに TeX を HTML のテキストへ組み直�
 
 **原稿に LaTeX は書かせません。** TeX はビルド中だけの中間表現で、著者が読み書きするのは常に素の表記です。`a^(p-1)` の `a` を `b` に直す、という普通の編集がそのまま通ります。判定を通したくないときは ```` ```math ```` フェンスで宣言できます。
 
-**判定は「コードのしるしがあればコード」から始めます。** 数式のしるしを先に見ると `array[i] * 2` を拾ってしまうためで、拒否を優先したうえで数式のしるしを探します。日本語を含む綴りは、`^` や `√` のような強いしるしがあるときだけ数式にします。
+**判定は「コードのしるしがあればコード」から始めます。** 数式のしるしを先に見ると `array[i] * 2` を数式と判定するためで、拒否を優先したうえで数式のしるしを探します。日本語を含む綴りは、`^` や `√` のような強いしるしがあるときだけ数式にします。
 
 :::{.notice}
 **MathJax は素の表記をエラーにしないまま壊します。** ``x²+y²`` は上付きが落ちて ``x+y`` に、``H₂O`` は ``HO`` に、``a・b`` は中黒が消えて ``ab`` になります。ビルドは成功し警告も出ないため、著者は刷り上がりを見るまで気づけません。変換器はこの無言の欠落を塞ぐためのもので、親切機能ではありません。
@@ -389,6 +409,8 @@ Kindle は画像を本文の文字サイズへ追従させる手段を持たな�
 
 1. `covers/<side>cover_<theme>.png` があれば **PNG の経路**（`cover.rb`）
 2. 無ければ著者の `covers/<side>cover_<theme>.svg`、それも無ければ同梱の `covers/bundled/<side>cover.svg` を **SVG の経路**（`cover/svg_cover.rb` の `SvgCover`）。同梱テンプレートにはパレットと書誌を、著者の SVG には書誌だけを当てます
+
+`book.cover` の既定は `light` です。自作の表紙の下敷きにする画像は `covers/templates/` にあり、`scripts/make_cover_templates.rb` で作ります。`vs upgrade` は `covers/bundled/` と `covers/templates/` を更新します。
 
 | ターゲット | 生成物 | 直下への複製 |
 | :--- | :--- | :--- |
@@ -416,53 +438,85 @@ PDF が WebP を格納できないのは、ISO 32000 に該当するフィルタ
 **割合を残すのは EPUB / Kindle のためです。** リフローではページが確定せず「組んでから測る」ができませんが、版面に対する相対幅は組版系によりません。`width=30%` の指定も 2 列に並べた表も PDF 側の測定にすでに現れているので、その割合を読者の画面幅へ掛ければ必要画素数が出ます。
 :::
 
-実測では PDF が 97.2 MB → 27.3 MB、EPUB が 30.5 MB → 18.1 MB になりました。効いたのは縮小より**形式の変換と透過のフラット化**です（透過を抱えたままでは可逆圧縮が効きません）。詳細は `image-format-per-target-spec.md`。
+実測では PDF が 97.2 MB → 27.3 MB、EPUB が 30.5 MB → 18.1 MB になりました。効果が大きかったのは縮小より**形式の変換と透過のフラット化**です（透過があると可逆圧縮の効果が出ません）。詳細は `image-format-per-target-spec.md`。
 
 ### SVG 図版の派生
 
-ラスタ画像とは別の経路があります。**著者が `images/` に置いた SVG は、書体を抱かせた複製へ差し替えて渡します。** 実装は `Build::DerivedSvg`（`cli/build/derived_svg.rb`）です。派生は `.cache/vs/derived/svg/` に置きます。
+ラスタ画像とは別の経路があります。**著者が `images/` に置いた SVG は、書体を埋め込んだ複製へ差し替えて渡します。** 実装は `Build::DerivedSvg`（`cli/build/derived_svg.rb`）です。派生は `.cache/vs/derived/svg/` に置きます。
 
 `<img>` から参照される SVG は独立した文書です。本文 HTML の `@font-face` と CSS 変数は届かず、相対パスの外部フォントも読めません。`font-family` に何を書いても解決されないので、OS 既定のフォントへ落ちます。PDF ではそれが Type 3 フォントとして埋め込まれ、入稿できなくなります。
 
-`DerivedSvg` は図に出る字だけを抜き出したサブセットを作り、`data:` URI の `@font-face` として SVG 自身へ持たせます。8 文字で 3.3 KB 程度なので、図は実質太りません。図が実体のある書体を名指ししていればそのまま、汎用名しか無ければ書籍の書体をスタックの先頭へ足します（`sans-serif` は見出し、`serif` は本文、`monospace` はコード書体）。**Regular と Bold を別々に埋めます**——1 面だけだと図が太字を要求したときに疑似太字が合成され、それがまた Type 3 になるためです。
+`DerivedSvg` は図に出る字だけを抜き出したサブセットを作り、`data:` URI の `@font-face` として SVG 自身へ持たせます。8 文字で 3.3 KB 程度なので、図は実質太りません。図が実体のある書体を名指ししていればそのまま、汎用名しか無ければ書籍の書体をスタックの先頭へ追加します（`sans-serif` は見出し、`serif` は本文、`monospace` はコード書体）。**Regular と Bold を別々に埋め込みます。** 1 面だけだと図が太字を要求したときに疑似太字が合成され、それがまた Type 3 になるためです。
 
 | ターゲット | 渡すもの | 書体 |
 | :--- | :--- | :--- |
 | PDF | 派生 SVG（ベクタ） | 書籍の書体 |
 | EPUB | 同じ派生 SVG | 書籍の書体 |
-| Kindle | PNG / JPEG | 組んだ機械の OS 書体 |
+| Kindle | PNG / JPEG | 組んだ PC の OS 書体 |
 
-**EPUB にも同じ派生を配ります。** ラスタライズで逃げる手は使えません。`rsvg-convert` は `data:` URI の `@font-face` を読みません。macOS では `fontconfig` に登録した書体も見えません。焼けば**そのとき使った機械の既定フォント**が図に焼き付きます。別の機械で組めば別の書体になり、成果物が再現しません。ベクタのまま運べば決定論で、しかも軽く、高精細な画面でも鮮明です。
+**EPUB にも同じ派生を配ります。** ラスタライズで逃げる手は使えません。`rsvg-convert` は `data:` URI の `@font-face` を読みません。macOS では `fontconfig` に登録した書体も見えません。焼けば**そのとき使った PC の既定フォント**が図に焼き付きます。別の PC で組めば別の書体になり、成果物が再現しません。ベクタのまま運べば決定論で、しかも軽く、高精細な画面でも鮮明です。
 
 Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_svg_for_epub!` が焼きます。透過があれば PNG、無ければ JPEG です。ここで書体が OS 依存になるのは避けられません（直すには Chromium で焼く必要があります）。
 
-文字を持たない図（ロゴのアウトライン、QR コードなど）と、すでに書体を抱えている生成 SVG（`showcase`・`mermaid`・数式）は対象外で、素材のまま運ばれます。経緯と実測は `type3-font-embedding-notes.md` §9。
+文字を持たない図（ロゴのアウトライン、QR コードなど）と、すでに書体を埋め込んだ生成 SVG（`showcase`・`mermaid`・数式）は対象外で、素材のまま運ばれます。実測は `type3-font-embedding-notes.md` §9。
+
+### 本の書体にない字
+
+Chromium は字を書体の並び（`font-family`）の順に探し、どれにもなければ OS の書体で描きます。その書体は PDF に Type 3 として埋め込まれ、入稿で指摘されます。紙面には字が表示されるので、見ただけでは検出できません。そこで、字の置き場所ごとに代わりの組み方を用意し、組む前と組んだ後の 2 回検査します。
+
+| 字の置き場所 | 組み方 | 実装 |
+| :--- | :--- | :--- |
+| 本文・見出し・コード | 本の書体 → HackGen → DejaVu Sans Mono → DejaVu Sans の順に探す | `page-settings.css` の書体の並び |
+| 図の SVG | 同じ順に補う。絵文字だけの字は Twemoji の図形に置き換える | `DerivedSvg`・`FigureEmoji` |
+| 図の縁取りした字 | 縁を字の形の図形に置き換える | `StrokedText` |
+| 本の書体にない漢字 | その字を持つ書体から字の形を取り、図形にする | `Gaiji`・`GlyphOutline` |
+| 地の文の数学用英数字（`ℝ`・`𝔽`） | `$…$` で包み、MathJax で組む | `MathLetterWrapper` |
+
+`Gaiji` が字の形を取るのは、OFL の書体と、macOS 付属の書体のうち埋め込みを許すものです。OFL の書体から取った形は `images/gaiji/` に保存するので、その書体のない PC でも同じ形で組めます。
+
+検査は次の 2 段です。
+
+- **組む前**: `GlyphCoverageCheck` が、原稿と図の字を書体の並びと照合し、行を添えて警告します。`vs preflight` と単章ビルドでも実行します
+- **組んだ後**: 全章ビルドの `check type 3 fonts` で、`Type3FontCheck` が仕上がった PDF を検査し、ページと字を報告します。`GlyphCoverageCheck` が報告した字は重ねて報告しません
+
+### 章扉のリード
+
+`image` の章扉に収まらないリードは、次のページへ送られます。`ChapterLeadCheck` がこれを検出し、章ごとに縮める字数と、すべての章が収まる `lead_size`・`lead_chars` の組を警告で示します。検出の方法はコマンドで異なります。
+
+| コマンド | 方法 |
+| :--- | :--- |
+| `vs build` | 組んだ PDF を読む（`check!`。ステップは `check chapter leads`） |
+| `vs preflight` | 組まずに見積もる（`estimate!`。実装は `FrontispieceEstimate`） |
+
+見積もりでは、`LeadLayout` が Chromium と同じ順で 1 字ずつ並べて行を折ります。字の送りとカーニングは `FontMetrics` が書体ファイルから読みます。Chromium は和文にも書体のカーニングを適用するので、省くと行数が合わなくなります。
+
+EPUB と Kindle の章扉は、横長の扉絵に章番号と章題だけを入れ、リードは画像の下に本文として組みます。読者が選んだ文字の大きさで読めるようにするためです。詳細は `chapter-lead-size-spec.md` にあります。
 
 ### 日本語校正
 
-`vs lint` は、textlint の検査・Ruby 側の独自ルール・英語のスペルチェックを、ひとまとめに走らせるコマンドです。実装は `cli/lint/` にあり、textlint では扱えない判定を Ruby 側が受け持ちます。
+`vs lint` は、textlint の検査・Ruby 側の独自ルール・英語のスペルチェックを、ひとまとめに走らせるコマンドです。実装は `cli/lint/` にあり、textlint では扱えない判定を Ruby 側が担当します。
 
-独自ルールは `ProseChecker` に 17 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るもの——いずれも textlint の枠組みでは書けないものです。
+独自ルールは `ProseChecker` に 18 個あります。形態素の境界を見るもの、Markdown の記法を見るもの、原稿全体の状態を見るものがあり、いずれも textlint の枠組みでは書けません。
 
 | 種類 | ルール |
 | :--- | :--- |
 | 日本語の読み違い | `mazegaki` ・ `ambiguous-comparison` ・ `missing-period` ・ `ja-no-weak-phrase` |
 | 長さ | `sentence-length` ・ `long-parenthetical` |
 | 表記 | `kanji-lookalike` ・ `kansuji-counter-suffix` ・ `slash-between-japanese` ・ `space-around-brackets` ・ `index-term-spacing` ・ `affix-spacing` ・ `hiragana-spacing` |
-| 記法の取り違え | `indented-code-block` ・ `setext-heading` ・ `multiple-chapter-headings` |
+| 記法の取り違え | `indented-code-block` ・ `setext-heading` ・ `multiple-chapter-headings` ・ `accidental-emphasis` |
 | 抑止の閉じ忘れ | `unclosed-suppression` |
 
 `--fix` で直せるのは `mazegaki`・`kanji-lookalike`・`index-term-spacing`・`affix-spacing`・`hiragana-spacing` の五つだけです。「この字はこう書く」が一つに決まるものしか入れていません。残りは直し方が文脈で変わるので、著者に委ねます。ルール名は著者が `book.yml` の `lint.disabled_rules` に書く名前でもあるので、上流のルールと同じ名前空間に置いています。
 
-**自前のルールが上流と重なったら、上流を切ります。** どれを切るかは `SUPERSEDED_TEXTLINT_RULES` の 1 表が持ちます。
+**自前のルールが上流と重なったら、上流を無効にします。** どれを無効にするかは `SUPERSEDED_TEXTLINT_RULES` の 1 表が持ちます。
 
-| プリセット | 切るルール |
+| プリセット | 無効にするルール |
 |---|---|
 | `preset-japanese` | `no-kanji-lookalikes` ・ `sentence-length` |
 | `preset-ja-technical-writing` | `ja-no-mixed-period` ・ `sentence-length` ・ `ja-no-weak-phrase` |
 | `preset-ja-spacing` | `ja-no-space-around-slash` ・ `ja-no-space-around-parentheses` |
 
-切らないと、同じ箇所に 2 件の指摘が並びます。置き換えた理由はルールごとに違います。たとえば `ja-no-weak-phrase` は、MeCab が `するかもしれません` を `か` ＋ `も` に切ってしまうため上流では拾えず、独自ルールで受け持っています。**ルールを足すときは、この表も見てください。**
+無効にしないと、同じ箇所に 2 件の指摘が並びます。置き換えた理由はルールごとに違います。たとえば `ja-no-weak-phrase` は、MeCab が `するかもしれません` を `か` ＋ `も` に分割するため上流では検出できず、独自ルールで検出しています。**ルールを追加するときは、この表も見てください。**
 
 **交ぜ書きの辞書は 2 段構成です。**
 
@@ -474,7 +528,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 分けてあるのは、綴りだけでは外せない誤検出があるためです。`う回`（迂回）は「使う回数」「という回答」に紛れ、前後のどの文字を除いても区別できません。MeCab に読ませると「使う｜回数」と語が切れるので、そこではじめて外せます。
 
 :::{.notice}
-**同じ原稿でも環境によって指摘数が変わります。** MeCab のない環境では第 2 層が丸ごと黙ります。ただし**減るのは指摘だけで、誤った指摘が出ることはありません**——判定できないものを黙って通す側に倒してあります。回帰テストを書くときは、この非対称を前提にしてください。
+**同じ原稿でも環境によって指摘数が変わります。** MeCab のない環境では第 2 層の検査を行いません。ただし**減るのは指摘だけで、誤った指摘は増えません**。判定できないものは指摘しない設計です。回帰テストを書くときは、この非対称を前提にしてください。
 :::
 
 判定の入力は**読者が見る文字列**でなければなりません。`結**合し**直した` のように語の途中へ強調記法が入ると、素の行を見る実装では前後を制約するガードが `*` を見てすり抜け、逆に `あいさつ**文**` のような語は分断されて取りこぼします。`Masking.strip_emphasis` で記法を外した文字列で判定し、位置を元の行へ戻します。
@@ -487,7 +541,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 | `BUILTIN_ALLOWLIST`（`cli/lint.rb`） | 上流のルールの取りこぼしを、ツール側で打ち消すとき |
 | `config/textlint_allowlist.yml` | 著者が「この本ではこう書く」と決めるとき |
 
-`BUILTIN_ALLOWLIST` は、実行時に組み立てる `.textlintrc.yml` の `filters.allowlist.allow` へ注ぎます。フィルタを通るので **`--fix` にも効きます**——textlint は、フィルタで消えた指摘には修正を当てません。上流の不備を著者の `textlint_allowlist.yml` へ書かせると、新しい本を作るたびに同じ 1 行を書き写すことになります。ツール側の打ち消しは、ツール側に置いてください。
+`BUILTIN_ALLOWLIST` は、実行時に組み立てる `.textlintrc.yml` の `filters.allowlist.allow` へ注ぎます。フィルタを通るので **`--fix` にも適用されます**。textlint は、フィルタで除いた指摘を修正しません。上流の不備を著者の `textlint_allowlist.yml` へ書かせると、新しい本を作るたびに同じ 1 行を書き写すことになります。ツール側の打ち消しは、ツール側に置いてください。
 
 **記法の綴りは `NotationGuard` だけが持ちます。** `cli/lint/notation_guard.rb` は、lint が見る記法を一箇所へ集めた場所で、二つを預かります。
 
@@ -556,9 +610,9 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 `QueryStreamParser` が `= books | tags=ruby | :full` をパースし、`DataResolver` がデータファイルを探し（`book` と書いても複数形に補完します）、`FilterEngine` が絞り込みと並べ替えを行い、`TemplateCompiler` がテンプレートへ流し込みます。
 
-テンプレートは `templates/_<単数形>.<スタイル>.md` の規約で解決されるため、`_book.mystyle.md` を置くだけで `= books | :mystyle` が有効になります。`data/elements.yml` と `templates/_element.md` を置けば、設定を変えずに `= elements` が使えます。新しいデータ種別を足すのに、コードを書く必要はありません。
+テンプレートは `templates/_<単数形>.<スタイル>.md` の規約で解決されるため、`_book.mystyle.md` を置くだけで `= books | :mystyle` が有効になります。`data/elements.yml` と `templates/_element.md` を置けば、設定を変えずに `= elements` が使えます。新しいデータ種別を追加するのに、コードを書く必要はありません。
 
-記法の詳しい説明は、本書の「データ展開機能」の章にあります。
+記法の詳しい説明は、ガイドブックの「データ展開機能」の章にあります。
 
 ### CrossReference
 
@@ -582,7 +636,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 | `@qr:URL` | 前処理（章ごと・画像生成を伴う） | `QrTransformer` |
 | `@vspace` `@hspace` `@pagebreak` `@version` `@title` `@today` | 後処理（HTML への文字列置換） | `ReplacementRules` |
 
-後処理の置換は PDF・EPUB・Kindle が共有する HTML に一度だけ効きます。**出力ごとの差は Ruby ではなく CSS のカスケードで吸収します。** `target-counter()` や `break-before: recto` を解さないリーダーは、その宣言だけを捨ててフォールバックを採るためです。
+後処理の置換は PDF・EPUB・Kindle が共有する HTML に一度だけ適用されます。**出力ごとの差は Ruby ではなく CSS のカスケードで吸収します。** `target-counter()` や `break-before: recto` を解さないリーダーは、その宣言だけを捨ててフォールバックを採るためです。
 
 `@version` / `@title` / `@today` は値が `book.yml` とビルド時刻に依存するため、凍結定数ではなく適用のたびに組み立てられます。定数にすると設定を読み直したあとも古い値を差し込んでしまいます。
 
@@ -595,24 +649,46 @@ PDF の低水準の操作のうち、ページ数の取得、白紙ページの�
 | Standard | MIT（Prawn・pdf-reader） | ページ数・白紙ページ（しおりは付けず警告する） |
 | Enhanced | AGPL-3.0（HexaPDF） | 上の二つ＋しおり |
 
-AGPL のライブラリを本体から切り離すための構造です。Standard（`StandardProvider`）は本体に、Enhanced（`EnhancedProvider`）は別 gem の `vivlio-starter-pdf` にあり、この gem を入れてあれば自動で Enhanced が選ばれます。`VIVLIO_PDF_PLUGIN=disable` を与えると、常に Standard になります。`vs pdf:read` の画像抽出・OCR も同じ切り分けです。
+AGPL のライブラリを本体から切り離すための構造です。Standard（`StandardProvider`）は本体に、Enhanced（`EnhancedProvider`）は別 gem の `vivlio-starter-pdf` にあり、この gem がインストールされていれば自動で Enhanced が選ばれます。`VIVLIO_PDF_PLUGIN=disable` を与えると、常に Standard になります。`vs pdf:read` の画像抽出・OCR も同じ切り分けです。
+
+しおりの項目は `OutlineExtractor` が HTML の見出しから作り、ページと位置は組み上がった PDF の飛び先（`/Dests`）から読み取ります。本文の文字で検索すると、柱や目次にある同じ文字を指すためです。
 
 隠しノンブルはプロバイダを通りません。`NombreStamper` が Prawn で描き、qpdf の overlay で重ねます。どちらのモードでも同じ処理です。**プロバイダへ回す処理は増やさないでください。** 回した処理は、プラグインの有無で振る舞いが変わります。
 
 :::{.notice}
-プラグインを入れた開発機ではビルドが Enhanced 経路を通るので、Standard だけを直しても実ビルドの挙動は変わりません。両方を直し、プラグイン側は `gem build` とバージョン更新を経て入れ直してください。
+プラグインをインストールした開発機ではビルドが Enhanced 経路を通るので、Standard だけを直しても実ビルドの挙動は変わりません。両方を直し、プラグイン側は `gem build` とバージョン更新を経てインストールし直してください。
 :::
 
+### vs upgrade と雛形の更新
+
+`vs upgrade`（`cli/upgrade.rb`）は、本体の gem、プロジェクトの雛形、外部ツールの順に更新します。本体を更新したときは、新しい版で続きを実行します。
+
+雛形の差分は、次の 2 つの記録と新しい雛形を比べて分類します（追加・更新・合流・競合）。
+
+| 記録 | 内容 |
+| :--- | :--- |
+| `config/scaffold.lock` | 展開した雛形のハッシュと、`book.yml` のキーの一覧（`ScaffoldLock`） |
+| `.cache/vs/scaffold-base/` | 展開した雛形の複製。合流の基準になる（`ScaffoldBase`） |
+
+`book.yml` は著者データなので、雛形で上書きしません。新しいキーは `BookKeyInserter` が追加し、廃止キーは `RetiredKeyRemover` が削除または移動します。どちらも行単位で書き換えます。YAML を読んで書き出し直すと、コメントと並びが失われるためです。
+
+`ScaffoldUpdates` は「雛形の CSS と `book.yml` のキーが新しくなったか」の判定を持ちます。全章の `vs build`・`vs preflight` はこの判定で件数を表示し、`vs upgrade` は同じ判定でキーを追加します。
+
+### vs config
+
+`vs config:book`・`vs config:catalog`・`vs config:talk` の本体は `cli/config_guide.rb` です。どのファイルも書き換えません。
+
+説明は別に持たず、雛形の設定ファイルのコメントを読んで表示します。`book.yml` の雛形のコメントを直すと、`vs config:book` の説明も変わります。「今の値」は `CONFIG` ではなく著者の `book.yml` から読みます。`CONFIG` は既定値をマージした後の値で、著者が書いたかどうかを判別できないためです。
 ## 拡張の手引き
 
-### 著者向けの記法を足す
+### 著者向けの記法を追加する
 
 `:::{.class}` の囲み、```` ```mermaid ```` のようなフェンス、インライン記法、生成資産（SVG・画像）を新設するときは `notation-implementation-guide.md` に手順があります。最初に読むべきは §2 の**再実装禁止リスト**です。
 
 | 基盤 | 責務 |
 |---|---|
 | `Masking` | コード領域解釈の唯一の実装。フェンスとインラインコードの解釈は必ずここを通す |
-| `IndexMarkup` | 索引マークアップ `[用語]` の綴りの唯一の定義。`[…]` と綴る記法を足したら除外を 1 項目足す |
+| `IndexMarkup` | 索引マークアップ `[用語]` の綴りの唯一の定義。`[…]` と綴る記法を追加したら除外を 1 項目追加する |
 | `MarkdownUtils` | `extract_code_spans` と `restore_code_spans`。コードを退避して処理し復元する標準手順 |
 | `GeneratedAssetCache` | 生成資産の永続キャッシュ |
 | `MarkdownTransformer` | `convert_container_blocks` が `:::{.class}` をタグへ変換 |
@@ -620,14 +696,18 @@ AGPL のライブラリを本体から切り離すための構造です。Standa
 | `Common.book_language` | 本の言語の唯一の解決規則。`<html lang>`・`dc:language`・kindlepreviewer の `-locale` が共用 |
 | `Common.external_command_available?` | 外部コマンドの有無の確かめ方。`which` を起動せず PATH を見る。Windows の PATHEXT もここで扱う |
 | `Common.image_size` | 画像の寸法（`magick identify`）の読み方。読めなければ `nil` |
+| `Common.run_vivliostyle_build` | Vivliostyle の実行 |
+| `Masking.code_lines` | 原稿のうちコードの行を求める |
+| `ChapterNames.duplication_lines` | 番号やスラッグが重なった章の案内 |
+| `EpubBuilder.mark_body!` | EPUB の `<body>` へのクラスの付与 |
 
-これらと同じ責務のコードを書き始めたら、それは基盤側に API を足すサインです。
+これらと同じ責務のコードが必要になったら、基盤側に API を追加してください。
 
-囲みボックスを新設するときは Kindle 劣化の三点セットを併せて行います。`EpubBuilder::ADMONITION_LABELS` へラベルを足し、`chapter-common.css` に `body.vs-kindle` 配下の規則を**リテラル色**で書き、レイアウトテストにラベルの検査を足します。KFX は `::before` と `var()` を無視するため、この三つがそろってはじめて Kindle でも囲みとして読めます。
+囲みボックスを新設するときは Kindle 劣化の三点セットを併せて行います。`EpubBuilder::ADMONITION_LABELS` へラベルを追加し、`chapter-common.css` に `body.vs-kindle` 配下の規則を**リテラル色**で書き、レイアウトテストにラベルの検査を追加します。KFX は `::before` と `var()` を無視するため、この三つがそろってはじめて Kindle でも囲みとして読めます。
 
-### ビルドステップを足す
+### ビルドステップを追加する
 
-`full_mode_step_table` に `[ラベル, ハンドラ, 実行条件, 相, 単位]` を 1 行足します。単位は前述のとおり `:chapter` か `:whole_book` で、相の選び方が設計判断の中心です。
+`full_mode_step_table` に `[ラベル, ハンドラ, 実行条件, 相, 単位]` を 1 行追加します。単位は前述のとおり `:chapter` か `:whole_book` で、相の選び方が設計判断の中心です。
 
 - 両方の出力が読む中間物を作るなら `:shared`
 - PDF だけが要るなら `:pdf`、EPUB・Kindle だけなら `:epub`
@@ -635,13 +715,13 @@ AGPL のライブラリを本体から切り離すための構造です。Standa
 
 `:shared` に置いたステップは並列化の恩恵を受けませんが、`:pdf` と `:epub` に同じ処理を二度書くよりは安全です。逆に、両枝が同じファイルへ書くステップを枝側に置くと競合します（表紙資産を `:shared` に置いているのはこのためです）。
 
-### 設定キーを足す・やめる
+### 設定キーを追加・廃止する
 
-`book.yml` のキーと既定値は `cli/config_keys.rb` の 1 表が正典です。ただし手を動かす前に `config-key-criteria-guidelines.md` の五つの判断軸を読んでください。「そのキーは設定であるべきか」を問うもので、足す手順より先に立ちます。足す手順は `config-extension-guidelines.md`、やめる手順は `config-retirement-guidelines.md` にあります。
+`book.yml` のキーと既定値は `cli/config_keys.rb` の 1 表が正典です。雛形の `book.yml` に書くコメントは、`vs config:book` の説明にもなります。ただし手を動かす前に `config-key-criteria-guidelines.md` の五つの判断軸を読んでください。「そのキーは設定であるべきか」を問うもので、追加の手順より先に読んでください。追加の手順は `config-extension-guidelines.md`、廃止の手順は `config-retirement-guidelines.md` にあります。
 
-`book:` の下に足したキーは、分冊の本では巻ごとに上書きできるようになります（`Volumes::BOOK_KEYS` が `ConfigKeys.book_keys` から作られるため）。巻ごとに変えては困る値なら、`book:` の外に置いてください。
+`book:` の下に追加したキーは、分冊の本では巻ごとに上書きできるようになります（`Volumes::BOOK_KEYS` が `ConfigKeys.book_keys` から作られるため）。巻ごとに変えては困る値なら、`book:` の外に置いてください。
 
-章の basename を保持する設定やデータを足すときは `ChapterRename::FOLLOWERS` への登録が要ります。登録を忘れると `vs rename` が黙って参照を壊します。
+章の basename を保持する設定やデータを追加するときは `ChapterRename::FOLLOWERS` への登録が要ります。登録を忘れると `vs rename` がエラーも警告も出さずに参照を壊します。
 
 ### スキャフォールドを同期する
 
@@ -652,7 +732,9 @@ AGPL のライブラリを本体から切り離すための構造です。Standa
 ruby scripts/copy_to_scaffold.rb
 ```
 
-`lib/project_scaffold/` を直接編集すると、次の同期で黙って消えます。逆に、ルートを直して同期を忘れると、著者の手元にだけ古いものが配られます。CSS を触ったら同期する、と覚えてください。
+`lib/project_scaffold/` を直接編集しても、次の同期で失われます。逆に、ルートを直して同期を忘れると、古い内容が著者へ配布されます。
+
+`copy_to_scaffold.rb` は、`book.yml` の一部の値を雛形用に書き換えます。`exclude_chapters` のようにコメントを目印にする行もあるので、`book.yml` のコメントを直すときは、スクリプトの正規表現も確認してください。
 
 ### 知見メモを引く
 
@@ -660,11 +742,11 @@ ruby scripts/copy_to_scaffold.rb
 
 | 索引の区分 | 内容 |
 |---|---|
-| 恒常ガイドライン | 記法を足す・設定キーを足す/やめる・章名を保持するデータを足すときの規範 |
+| 恒常ガイドライン | 記法・設定キーの追加や廃止、章名を保持するデータの追加についての規範 |
 | 知見メモ | CSS の落とし穴、Kindle の制約、ビルドの枝をまたぐ処理、Type 3 フォント、端末出力、組版の改行 |
 | 検討メモ | まだ決めていないことの記録。着手するときの出発点 |
 
-**索引の各項目は「いつ引くか」で書かれています。**探しものの名前ではなく、症状から引いてください。新しく `-notes.md` や `-guidelines.md` を書いたら、ここへ 1 行足すのが運用です。
+**索引の各項目は「いつ引くか」で書かれています。**探しものの名前ではなく、症状から引いてください。新しく `-notes.md` や `-guidelines.md` を書いたら、ここへ 1 行追加します。
 
 実装済みの仕様書は `docs/archives/` へ移ります。「実装されているか」の答えは `docs/specs/STATUS.md` が持っており、置き場所から判断するものではありません。
 
@@ -688,20 +770,20 @@ bundle exec rake test
 | `test:type3` | Type 3 フォントの混入検証 |
 | `test:kindle` | Kindle 変換の検証 |
 | `test:notation` | 記法網羅（CommonMark / GFM の記法が実ビルドで失われないか） |
-| `test:manual` | マニュアル実ビルドの回帰検査。本書自身の原稿も検査します |
+| `test:manual` | マニュアル実ビルドの回帰検査。ガイドブック自身の原稿も検査します |
 | `test:package` | パッケージング E2E（gem build から隔離インストールまで） |
 | `test:canary` | 依存カナリア（Vivliostyle CLI 最新版での破壊検知） |
 | `test:sweep` | テストの作業ディレクトリ（`$TMPDIR/vs-*`）の残骸を掃除 |
 | `test:release` | リリース前の総点検 |
 
-`test:release` が回すのは `sweep` → `test` → `standard` → `layout` → `targets` → `notation` → `manual` → `package` の順で、**全部入りではありません**。`canary` は上流の更新で落ちるものなので、リリースの可否とは切り離してあります。`type3`・`kindle`・`versions` は成果物を実機や外部ツールで見る性格のもので、必要なときに個別に走らせます。
+`test:release` が回すのは `sweep` → `test` → `standard` → `layout` → `targets` → `notation` → `manual` → `package` の順で、**すべてのタスクではありません**。`canary` は上流の更新で落ちるものなので、リリースの可否とは切り離してあります。`type3`・`kindle`・`versions` は成果物を実機や外部ツールで見る性格のもので、必要なときに個別に走らせます。
 
-`test:manual` はマニュアル（本書）を実ビルドするので、**原稿の文章品質もここで見ます**。`vs lint` の指摘が 1 件でも残っていれば、リリース前に赤くなります。
+`test:manual` はマニュアル（ガイドブック）を実ビルドするので、**原稿の文章品質もここで検査します**。`vs lint` の指摘が 1 件でも残っていれば、失敗します。
 
 外部ツールに依存するテストはモックしており、ツール未導入の環境でも実行できます。
 
 :::{.notice}
-`vivlio-starter-pdf` を入れた開発機では `rake test` は Enhanced 経路しか通りません。MIT 経路の回帰を捉えるには `rake test:standard` を併せて実行してください。本体のテストが AGPL の HexaPDF に依存しないよう、PDF は Prawn で作り pdf-reader で検査します。
+`vivlio-starter-pdf` をインストールした開発機では `rake test` は Enhanced 経路しか通りません。MIT 経路の回帰を捉えるには `rake test:standard` を併せて実行してください。本体のテストが AGPL の HexaPDF に依存しないよう、PDF は Prawn で作り pdf-reader で検査します。
 :::
 
 ### 堅牢性テスト
@@ -712,7 +794,7 @@ bundle exec rake test
 
 ## 堅牢性・セキュリティ設計
 
-執筆プラットフォームとして、想定外の入力に対して「静かに壊れる」のではなく**明示的に通知して安全に停止する**ことを原則としています。
+執筆プラットフォームとして、想定外の入力に対してエラーなしに壊れるのではなく**明示的に通知して安全に停止する**ことを原則としています。
 
 ### 防衛線の階層
 
@@ -734,7 +816,7 @@ bundle exec rake test
 
 危険なスキームの検出は、どの設定でも無効化されません。外部 URL の確認のように切り替えられる検証もありますが、**セキュリティ保護は選択肢から外す**ことで、うっかり無効化による事故を防いでいます。
 
-### 堅牢化を足すときの指針
+### 堅牢化を追加するときの指針
 
 1. **上流で例外を変換する**。生のスタックトレースではなく、原因と次の一手を含む日本語のメッセージにする
 2. **原因特定に必要な情報を含める**。ファイルパス・行番号・該当値・推奨アクション
@@ -747,7 +829,7 @@ bundle exec rake test
 | 項目 | 対応範囲 |
 |------|---------|
 | Ruby | 3.4 以上（3.4.10 / 4.0.9 で検証） |
-| Node.js | 26 系 |
+| Node.js | 22.12 以上（26 系で検証） |
 | OS | macOS（`--fix` による自動導入は Homebrew 前提） |
 
 Vivliostyle 関連のパッケージは `package.json` で管理しています。
@@ -763,5 +845,5 @@ Vivliostyle 関連のパッケージは `package.json` で管理しています�
 外部ツール（Ghostscript・ImageMagick・Inkscape・qpdf・MeCab ほか）の要否と導入は `vs doctor` が診断します。入稿用 PDF の導出には qpdf 11 以上が必要です。
 
 :::{.note}
-本章で触れた設計の意図や実装の経緯は `docs/specs/` の仕様書と知見メモに記録されています。公開リポジトリの[docs/specs](https://github.com/Atelier-Mirai/vivlio-starter/tree/master/docs/specs)から読めます。フォークして開発するときは、変更前に該当する文書を確認し、実装後は `CHANGELOG.md` を更新してください。
+このガイドで触れた設計の意図や実装の経緯は `docs/specs/` の仕様書と知見メモに記録されています。公開リポジトリの[docs/specs](https://github.com/Atelier-Mirai/vivlio-starter/tree/master/docs/specs)から読めます。フォークして開発するときは、変更前に該当する文書を確認し、実装後は `CHANGELOG.md` を更新してください。
 :::
