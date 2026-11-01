@@ -38,29 +38,29 @@ gem を入れたまま Standard Mode で読みたいときは、環境変数 `VI
 ### PDF を指定する
 
 ```zsh
-vs pdf:read gitlab.pdf
+vs pdf:read handbook.pdf
 ```
 
 資料の PDF は `sources/` に置きます。`sources/` の中の PDF は、ファイル名だけで指定できます（`.pdf` も省けます）。ほかの場所の PDF は、`/` を含むパスで指定します。
 
 | 打つコマンド | 読む PDF |
 |---|---|
-| `vs pdf:read gitlab` | `sources/gitlab.pdf` |
-| `vs pdf:read ~/Downloads/gitlab.pdf` | `~/Downloads/gitlab.pdf` |
-| `vs pdf:read ./gitlab.pdf` | プロジェクト直下の `gitlab.pdf` |
+| `vs pdf:read handbook` | `sources/handbook.pdf` |
+| `vs pdf:read ~/Downloads/handbook.pdf` | `~/Downloads/handbook.pdf` |
+| `vs pdf:read ./handbook.pdf` | プロジェクト直下の `handbook.pdf` |
 
 ファイル名に空白・半角の `&`・括弧があると、シェルが名前を分けてしまい、そのままでは読めません。英字で始まる半角の英小文字・数字・ハイフン・アンダースコアだけの名前に変えてから読んでください（`2026-06-10 at 10-08-42 AI活用講座.pdf` → `ai-course.pdf`）。
 
 ### 章の名前を付ける
 
-PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`51-doctor` の次の `52-gitlab.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `52-hajimete-no-rust.md`）。ダウンロードや複製で付く `(1)`・`のコピー`・`copy` は外します。
+PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`51-doctor` の次の `52-handbook.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `52-hajimete-no-rust.md`）。ダウンロードや複製で付く `(1)`・`のコピー`・`copy` は外します。
 
 二つ目の引数で、章の名前を決めることもできます。番号を付ければその番号の章に、番号だけなら名前はファイル名から作ります。付録にしたいときは、付録の番号（90〜98）を付けてください。
 
 ```zsh
-vs pdf:read gitlab.pdf git       # contents/52-git.md
-vs pdf:read gitlab.pdf 21-git    # contents/21-git.md
-vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
+vs pdf:read handbook.pdf guide       # contents/52-guide.md
+vs pdf:read handbook.pdf 21-guide    # contents/21-guide.md
+vs pdf:read handbook.pdf 90          # contents/90-handbook.md
 ```
 
 日本語の名前や論文の番号のようなファイル名（`コンピュータネットワークのエッセンス.pdf`・`245.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに止まります。どちらの場合も、名前を添えた打ち直しのコマンドが示されるので、それを使ってください。
@@ -78,9 +78,9 @@ vs pdf:read gitlab.pdf 90        # contents/90-gitlab.md
 ### 一部のページだけ読む
 
 ```zsh
-vs pdf:read gitlab.pdf 21-git-basics --pages 12-30
-vs pdf:read gitlab.pdf 22-git-branch --pages 31-48,52
-vs pdf:read gitlab.pdf 23-git-appendix --pages 238-
+vs pdf:read handbook.pdf 21-basics --pages 12-30
+vs pdf:read handbook.pdf 22-advanced --pages 31-48,52
+vs pdf:read handbook.pdf 23-appendix --pages 238-
 ```
 
 `--pages` で、読むページを指定できます。書き方は `vs pdf:pages` と同じで、範囲の端は省けます（`-11` は 1〜11 ページ、`238-` は 238 ページから最後まで）。ページ番号は PDF の 1 枚目から数えた番号なので、表紙や前付けのある本では、紙面に印刷されたノンブルとずれます。ページを指定するときは、章の名前を必ず添えます（ファイル名から作ると、どの範囲も同じ名前になるためです）。
@@ -148,13 +148,13 @@ $ vs pdf:read 95-sample-ocr 96-sample-ocr --images-from images/95-sample
 
 ### 同じ章を読み直す
 
-同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。置き換えるときは `--force` を付けます。前回の画像（`images/52-gitlab/`）は、今回の画像と混ざらないよう、消してから書き出します。
+同じ章を読み直そうとすると、既存の Markdown を上書きせずに止まります。前回の変換結果に加筆していても、その原稿は残ります。置き換えるときは `--force` を付けます。前回の画像（`images/52-handbook/`）は、今回の画像と混ざらないよう、消してから書き出します。
 
 :::{.output}
 ```text
-🔴 [pdf:read] 52-gitlab は既にあります（前回 sources/gitlab.pdf から読みました）
-        → 読み直して置き換えるなら: vs pdf:read gitlab.pdf --force
-        → 別の章として読むなら: vs pdf:read gitlab.pdf 53-gitlab-2
+🔴 [pdf:read] 52-handbook は既にあります（前回 sources/handbook.pdf から読みました）
+        → 読み直して置き換えるなら: vs pdf:read handbook.pdf --force
+        → 別の章として読むなら: vs pdf:read handbook.pdf 53-handbook-2
 ```
 :::
 
@@ -220,7 +220,7 @@ rules:
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
-| `PDF が見つかりません` | `/` を含まない指定は `sources/` の中だけを探す | PDF を `sources/` に置く。ほかの場所なら `./gitlab.pdf` のように `/` を含むパスで指定する |
+| `PDF が見つかりません` | `/` を含まない指定は `sources/` の中だけを探す | PDF を `sources/` に置く。ほかの場所なら `./handbook.pdf` のように `/` を含むパスで指定する |
 | `PDF から文字を一つも取り出せませんでした` | スキャン PDF を Standard Mode で読んだ | `vivlio-starter-pdf` を入れて Enhanced Mode（OCR）で読む。原稿と `catalog.yml` には何も書かれていない |
 | ヘッダー / フッターが残る | 繰り返しから見分けられなかった | `book.yml` の `pdf_read.text_area` に除く幅を書く |
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
