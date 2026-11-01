@@ -743,7 +743,7 @@ module VivlioStarter
                    スキャンした PDF のように文字の層が無いと、Standard Mode では読めません。
                    OCR で読む Enhanced Mode を使うには、次を入れてから実行し直してください。
                      gem install vivlio-starter-pdf
-                     brew install tesseract tesseract-lang poppler vips
+                     vs doctor --fix
                  HINT
                in :enhanced
                  <<~HINT
