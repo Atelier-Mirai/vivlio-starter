@@ -2097,7 +2097,6 @@ module VivlioStarter
         # clearfix・実体の clear・overflow・inline-block・vw の min-height はどれも効かず、
         # 表のセルなら枠は画像の高さまで伸びる（Previewer の画面で確かめた。2026-11-01）。
         # 枠の外は回り込みのほうが紙面を使い切れるので float のままにする。
-        # 表はページをまたげるので止める。止めないと、画像がページの残りの高さまで縮められる。
         #
         # @param container [Nokogiri::XML::Element] 横並びのコンテナ
         # @param image [Nokogiri::XML::Element] コンテナ直下の画像（img または figure）
@@ -2105,6 +2104,9 @@ module VivlioStarter
         def lay_out_in_table!(container, image, rule)
           apply_inline_image_constraint!(image, rule.merge(width: 100, float: 'none'))
           add_inline_style(image, 'max-height: none; margin: 0;')
+          # KFX は表の中の画像をページの残りの高さまで縮める。page-break-inside は表にも枠にも
+          # 効かず、min-width を付けると縮めずに表ごと次のページへ送る（Previewer で確かめた）。
+          add_inline_style(image.at_css('img') || image, 'min-width: 100%;')
 
           doc = container.document
           left = rule[:float] == 'left'
@@ -2116,7 +2118,7 @@ module VivlioStarter
 
           row = doc.create_element('tr')
           (left ? [image_cell, body_cell] : [body_cell, image_cell]).each { row.add_child(it) }
-          table = doc.create_element('table', style: 'width: 100%; border: none; margin: 0; page-break-inside: avoid;')
+          table = doc.create_element('table', style: 'width: 100%; border: none; margin: 0;')
           table.add_child(row)
           container.add_child(table)
         end

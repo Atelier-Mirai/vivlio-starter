@@ -37,7 +37,7 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | `color-mix()` | ❌ | 宣言ごと消える | `ThemeColor.mix_with_white` で事前計算 |
 | `display: grid` / `display: flex` | ❌ | `block` に潰れる | `display: block` 等の素直なフローに縮退 |
 | `::before` / `::after` の `content` | **✅ 4 で変わった** | **実体の `<span>` として本文へ注入される。`display:block`・`background-color`・`padding`・`color`・`font-weight` も効く** | 回避策は現状維持（§2.2） |
-| `::after` の clearfix（`content: ""`） | ❌ | 枠は float まで伸びない。実体の `clear: both` の要素・`overflow`・`flow-root`・枠や子の `inline-block`・`flex`・`display: table`・`vw` の `min-height` でも同じ | 枠の中は実体の表で組む（`lay_out_in_table!`）。表は `page-break-inside: avoid` で止める。止めないと画像がページの残りの高さまで縮む |
+| `::after` の clearfix（`content: ""`） | ❌ | 枠は float まで伸びない。実体の `clear: both` の要素・`overflow`・`flow-root`・枠や子の `inline-block`・`flex`・`display: table`・`vw` の `min-height` でも同じ | 枠の中は実体の表で組む（`lay_out_in_table!`）。表の中の画像はページの残りの高さまで縮むので、画像に `min-width: 100%` を付ける。`page-break-inside: avoid` は表・行・セル・枠のどこに付けても効かない |
 | `margin-inline: auto` | ❌ | 0 に解かれ、図が左へ寄る | `margin-left` / `margin-right` の `auto` で書く |
 | `::before` の `position: absolute` | ❌ | 位置指定は効かない | 通常フローで組む |
 | `linear-gradient()` | ❌ | 宣言は前処理を通るが、描画されない | 単色 `background` / `border` で代替 |

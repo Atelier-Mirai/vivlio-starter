@@ -187,6 +187,7 @@ module VivlioStarter
         assert_includes cells[0]['style'], 'width: 40%'
         assert_equal '説明', cells[1].text.strip
         assert_includes doc.at_css('img')['style'], 'float: none'
+        assert_includes doc.at_css('img')['style'], 'min-width: 100%', 'KFX がページの残りの高さまで縮めないよう止める'
         assert_equal ['table'], doc.at_css('.book-card').element_children.map(&:name), '本文も表の中へ移す'
       end
 
@@ -199,7 +200,7 @@ module VivlioStarter
         cells = doc.css('.sideimage-right > table td')
         assert_equal '本文', cells[0].text.strip
         assert_equal 'figure', cells[1].element_children.first.name
-        assert_includes doc.at_css('figure img')['style'], 'width: 100%'
+        assert_includes doc.at_css('figure img')['style'], 'min-width: 100%'
       end
 
       # 枠の外は float のまま本文を回り込ませる
