@@ -6,16 +6,6 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 
 ## 事前準備と実行
 
-### 必要ツール
-
-まず必要なツールを確認します。macOS では `vs doctor` で不足を調べ、`vs doctor --fix` で導入できます。
-
-- Ruby 3.4 以上 / Bundler
-- node / npm
-- ImageMagick / qpdf / pdfinfo / Ghostscript / MeCab
-- `waifu2x-ncnn-vulkan`（任意）
-- Guesslang（任意。言語名のないコードの言語推定用。`vs doctor --fix` でインストールされます）
-
 :::{.memo}
 **Re:VIEW Starter の実行環境は要りません**
 
@@ -50,7 +40,9 @@ cd mybook
 vs import ../review_project
 ```
 
-`vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。既存の `contents/`・`images/`・`codes/` を削除してよいかの確認に答えるので、端末から実行します。
+`vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。取り込み元のファイルは読み取るだけで、変更しません。
+
+移行先の `contents/`・`images/`・`codes/` は作り直すので、削除してよいかの確認が表示されます。`vs new` で作った直後なら、削除されるのは雛形の見本だけです。確認に答えるため、端末から実行します。
 
 ## 処理の流れ
 
@@ -59,10 +51,10 @@ vs import ../review_project
 1. **クリーンアップ** — 移行先の `contents/`・`images/`・`codes/` を削除して作り直します。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も、入れ替わる原稿に合わせて空に戻します。
 2. **原稿の変換** — `catalog.yml` に並ぶ `.re` を順に読み、Vivlio Starter の Markdown へ書き出します。
 3. **ラベル ID の一意化** — Re:VIEW Starter では章内で重複しなければよかったラベルを、本全体で一意になるよう確認します。章をまたいで重なる ID だけ、章名を付けて改名し（`tbl1` → `11-intro-tbl1`）、参照箇所も合わせて直します。
-4. **画像処理** — 取り込み元の `images/` をコピーして WebP 化し、元画像（png/jpg/gif）は削除します。
+4. **画像処理** — 取り込み元の `images/` を移行先へコピーして、WebP に変換します。
 5. **codes/ へのコピー** — `source/` 配下をそのまま `codes/` へコピーします。
 6. **YAML 変換** — `catalog.yml` では `PREDEF`→`PREFACE` などのキーを変え、章名から `.re` を外します。部、コメント、コメントアウトした章は残します。`config.yml` の `book.main_title` などは `book.yml` に反映し、`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけます。
-7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピーし、その 1 ページめを `frontcover_master.png`・`backcover_master.png` へ変換します。あわせて `book.yml` の `book.cover` を `master` に揃えます。
+7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピーし、その 1 ページ目を `frontcover_master.png`・`backcover_master.png` へ変換します。あわせて `book.yml` の `book.cover` を `master` に揃えます。
 
 ### 主な記法の行き先
 
@@ -156,7 +148,7 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 確認後に `vs build` を実行し、章の並びや画像、表紙を PDF で見てください。索引・用語集を使う場合は、原稿に合わせて `vs index:auto` で辞書を作り直します。ここまで確かめれば、新しい環境での執筆を続けられます。
 
 :::{.notice}
-取り込み後の画像は WebP になります。元の PNG・JPEG・GIF が必要なら、実行前に取り込み元をバックアップしてください。
+移行先の画像は WebP になります。元の PNG・JPEG・GIF は取り込み元に残ります。
 :::
 
 ## トラブルシューティング
