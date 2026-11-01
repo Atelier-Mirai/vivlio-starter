@@ -179,7 +179,7 @@ content.sub!(/^( +)# cover: light/, '\1cover: light')
   content.gsub!(/^(\s+)targets:/, '\1# targets:')
   content.sub!(/^(\s+)# targets:/, '\1targets:')
   # metrics にも同じ名前のキーがあるので、索引の行は行末のコメントで見分ける
-  content.sub!(/^(\s+exclude_chapters:\s*)\[[^\]]*\](\s*# 索引・用語集の対象から外す章)/, '\1[]\2')
+  content.sub!(/^(\s+exclude_chapters:\s*)\[[^\]]*\](\s*# 索引・用語集の対象から除外する章)/, '\1[]\2')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
   content.gsub!(/^(\s+toc_depth:\s*)\S+(\s*#.*)?$/, '\13\2')

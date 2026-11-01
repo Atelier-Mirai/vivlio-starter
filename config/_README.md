@@ -34,7 +34,7 @@
 | したいこと | 書く場所 |
 |---|---|
 | 本の作り方を決める（判型・書体・出力形式・索引など） | `book.yml` |
-| 章を足す・順序を変える | `catalog.yml` |
+| 章を追加する・順序を変える | `catalog.yml` |
 | 文体を選ぶ（一文の長さ、和欧間スペース、末尾長音など） | `book.yml` の `lint:` |
 | 校正ルールそのものを変える（漢字の連続数など） | `.textlintrc.yml` |
 | **この語は直さなくてよい**と決める | `textlint_allowlist.yml` |
@@ -69,7 +69,7 @@
 ## page_presets.yml について
 
 `a5_compact` `b5_standard` のような判型プリセットの中身です。
-`book.yml` の `page.use` で選びます。独自のプリセットを足すこともできます。
+`book.yml` の `page.use` で選びます。独自のプリセットを追加することもできます。
 
 ## talk.yml について
 
@@ -82,5 +82,5 @@
 `index_glossary_terms.yml` と `index_glossary_rejected.yml` は著者が選んだ用語が蓄積されていく索引・用語集のための辞書です。
 `vs index:auto` コマンドを実行すると、`_index_glossary_review.md` が作成されますので、索引や用語集にしたい語句を編集し、`vs index:apply` を実行してください。システムにより、`index_glossary_terms.yml` と `index_glossary_rejected.yml` が自動生成されます。
 
-消すときは `vs clean --index-dictionaries` を使ってください
+削除するときは `vs clean --index-dictionaries` を使ってください
 （確認プロンプトが出ます）。

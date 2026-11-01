@@ -484,10 +484,10 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
       assert_includes css, "#{var}:", "生成 CSS に #{var} が含まれること"
     end
     if Common::CONFIG.theme.style == 'image'
-      assert_includes css, '--frontispiece-edge-inset:', 'image では扉絵の引っ込み量を宣言する'
+      assert_includes css, '--frontispiece-edge-inset:', 'image では扉絵の余白を宣言する'
     else
       assert_includes css, '--frontispiece-image: none;', 'simple では画像を none 宣言する'
-      refute_includes css, '--frontispiece-edge-inset:', 'simple では扉絵の引っ込み量を宣言しない'
+      refute_includes css, '--frontispiece-edge-inset:', 'simple では扉絵の余白を宣言しない'
     end
     assert_match(/@page \{ size: \d+mm \d+mm; \}/, css)
   end

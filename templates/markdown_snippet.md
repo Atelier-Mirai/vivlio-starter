@@ -422,7 +422,7 @@ haruka:
   name: 遙香            # 表示名（省略時はキーをそのまま表示）
   color: red           # テーマ色名 / HEX
   avatar: haruka.webp  # images/characters/ のファイル名。auto なら頭の字の簡易アバター
-  initial: 遙          # 簡易アバターに入れる字（1〜2 文字。省略時は表示名の頭の字）
+  initial: 遙          # 簡易アバターに入れる字（1〜2 文字。省略時は表示名の先頭の字）
   avatar_size: 15mm    # アバターの直径（省略時は display: の値）
   side: left           # left / right
 
@@ -539,7 +539,7 @@ QR コード（既定は 18mm 角。大きさを変えるなら直後に `{width
   tags: [ruby, programming]
 ```
 
-`templates/_book.md` の例（`=` とキー名の間には半角空白が要ります。値の無い項目は、その部分だけが消えます）:
+`templates/_book.md` の例（`=` とキー名の間には半角空白が必要です。値の無い項目は、その部分だけが省略されます）:
 
 ```markdown
 :::{.book-card}

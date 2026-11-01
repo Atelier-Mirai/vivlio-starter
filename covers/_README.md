@@ -23,7 +23,7 @@ vs cover    # config/book.yml の設定に従って表紙画像を生成
 
 `config/book.yml` の `book.cover` でテーマ名を指定します（未指定なら `light`）。`light` / `dark` は gem 同梱テンプレートを使用しますが、`master`、`special`、`awesome` など任意のスラッグ(ファイル名)を指定することもできます。著者独自の表紙画像を用いる場合には `covers/frontcover_<theme>.png` や `covers/frontcover_<theme>.svg` を用意してください。
 
-`templates/` の雛形は、画像を自作するときの下敷きです。判型に合うものを開いて描き、文字と線を消してから `covers/frontcover_master.png` として保存し、`book.cover` を `master` にします。
+`templates/` の雛形は、画像を自作するときの下敷きです。判型に合うものを開いて描き、文字と線を削除してから `covers/frontcover_master.png` として保存し、`book.cover` を `master` にします。
 
 ## ソースの優先順位
 

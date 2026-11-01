@@ -77,7 +77,7 @@
      book-settings.css が必ず設定するため、ここでは既定値を持たない */
 
   /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
-  /* 扉絵をページの端から内側へ引っ込める量（上下基準・左右は画像の縦横比で自動追従） */
+  /* 扉絵の上下と紙の端の間の余白（左右は画像の縦横比で自動的に決まる） */
   --frontispiece-edge-inset: 10mm;
   --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-edge-inset));
   /* --frontispiece-image も同様に book-settings.css が必ず設定する */

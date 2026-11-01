@@ -18,7 +18,7 @@ filters:
       - Image
 
   # <!-- vs-lint-disable --> と <!-- vs-lint-enable --> で囲んだ範囲を校正の対象から外す
-  # （この設定を消すと、囲みが効かなくなります）
+  # （この設定を削除すると、囲みが無効になります）
   comments: true
 
   # 指摘したくない語句の一覧（VFM 記法・書名・資格名称など）
@@ -36,10 +36,10 @@ rules:
       preferInHeader: ""
       preferInList: ""
 
-    # 一文に同じ助詞が 2 回以上。並列（A も B も）や役割の違う助詞まで指摘するため切っています
+    # 一文に同じ助詞が 2 回以上。並列（A も B も）や役割の違う助詞まで指摘するため無効にしています
     no-doubled-joshi: false
 
-    # 同じ語の連続。記号の重なり（★★☆☆☆・……）まで指摘するため切っています
+    # 同じ語の連続。記号の重なり（★★☆☆☆・……）まで指摘するため無効にしています
     ja-no-successive-word: false
 
     # 「することができる」の冗長さ。「することも」「することは」は意味を運ぶので許容します
@@ -57,7 +57,7 @@ rules:
     max-ten:
       max: 3
 
-    # 一文に打てる半角カンマ「,」の上限（和文の読点は上の max-ten が見ます）
+    # 一文に打てる半角カンマ「,」の上限（和文の読点は上の max-ten が検査します）
     max-comma:
       max: 3
 
@@ -73,10 +73,10 @@ rules:
       allowHalfWidthQuestion: true     # 半角の ?
 
     # 一文の長さ（sentence-length）・文末の句点（ja-no-mixed-period）・弱い表現
-    # （ja-no-weak-phrase）は vs lint の独自ルールが受け持つため、ここに書いても効きません。
+    # （ja-no-weak-phrase）は vs lint の独自ルールが検査するため、ここに書いても反映されません。
     # 一文の長さの上限は book.yml の lint.sentence_length_max です
 
-  # 表記揺れの辞書。使う辞書はここに並べ、要らない辞書は行ごと消してください
+  # 表記揺れの辞書。使う辞書はここに並べ、不要な辞書は行ごと削除してください
   # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）で、
   # 一部の項目は「JavaScript Primer」（https://jsprimer.net）の校正辞書に由来します
   prh:
@@ -88,10 +88,10 @@ rules:
       - ./textlint_dictionaries/prh_cho_on.yml         # 外来語のカタカナ表記
       - ./textlint_dictionaries/prh_corporation.yml    # 固有名詞
       - ./textlint_dictionaries/prh_web_technology.yml # 技術用語
-      - ./textlint_rewrite.yml                         # この本の表記（自由に書き足せます）
+      - ./textlint_rewrite.yml                         # この本の表記（自由に追記できます）
 
   # preset-japanese は読み込みません。11 ルールが上のプリセットと重複し、同じ名前で
-  # 二重に動くためです（康煕部首の検出は vs lint の独自ルール kanji-lookalike が受け持ちます）
+  # 二重に動くためです（康煕部首の検出は vs lint の独自ルール kanji-lookalike が行います）
 
   # 和文と欧文の間のスペース
   preset-ja-spacing: true

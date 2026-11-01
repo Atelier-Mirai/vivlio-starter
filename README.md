@@ -56,7 +56,7 @@ Vivlio Starter を使った書籍制作は、5つのステップで完結しま�
 
 **主対象は macOS + Homebrew です。** 開発と検証はこの環境で行っており、`vs doctor --fix` による外部ツールの自動導入も Homebrew を前提としています。
 
-Linux / Windows では**未検証**です。本体は Ruby と Node で書かれているので、[追加ツール](#追加ツールのインストールpdf-操作)を各環境のパッケージ管理（apt / dnf / winget など）で手動導入すれば動作する見込みですが、確認は取れていません。非 macOS で `vs doctor --fix` を実行すると、**自動導入は行わず、必要なツールの一覧を示して止まります**。手動導入の道しるべとしてお使いください。
+Linux / Windows では**未検証**です。本体は Ruby と Node で書かれているので、[追加ツール](#追加ツールのインストールpdf-操作)を各環境のパッケージ管理（apt / dnf / winget など）で手動導入すれば動作する見込みですが、確認は取れていません。非 macOS で `vs doctor --fix` を実行すると、**自動導入は行わず、必要なツールの一覧を示して終了します**。手動導入の道しるべとしてお使いください。
 
 ### インストール
 
@@ -67,11 +67,11 @@ zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-star
 ```
 
 - 尋ねること（Homebrew の導入・シェルの設定ファイルへの書き込み・プレビューの操作の許可・Kindle Previewer の導入・管理者のパスワード）は最初にまとめてあり、あとは 15 分ほどで終わります
-- Ruby 3.4 以上があればそのまま使い、無いか古ければ rbenv で最新の安定版を入れます（mise・rvm・asdf の古い Ruby は、その道具での上げ方を示して止まります）
-- Vivlio Starter・vivlio-starter-pdf・`vs doctor --fix` が入れるツールを入れ、最後に同じウィンドウのまま `vs` を使えるようにします
-- 確認を省くときは、末尾に ` install -y` を足します
+- Ruby 3.4 以上があればそのまま使い、無いか古ければ rbenv で最新の安定版をインストールします（mise・rvm・asdf の古い Ruby は、そのツールでの更新方法を示して終了します）
+- Vivlio Starter・vivlio-starter-pdf・`vs doctor --fix` の対象のツールをインストールし、最後に同じウィンドウのまま `vs` を使えるようにします
+- 確認を省くときは、末尾に ` install -y` を追加します
 
-Ruby 3.4 以上があり、gem だけを入れる場合は次のとおりです。執筆に使うツールは、最初の `vs new` が入れます。
+Ruby 3.4 以上があり、gem だけをインストールする場合は次のとおりです。執筆に使うツールは、最初の `vs new` がインストールします。
 
 ```bash
 gem install vivlio-starter vivlio-starter-pdf
@@ -81,7 +81,7 @@ gem install vivlio-starter vivlio-starter-pdf
 
 > **1.0.0 より前の版で作ったプロジェクトで、`vs` が `Bundler::GemNotFound` で起動しない場合**は、先に `gem update vivlio-starter` を一度だけ実行してください。当時の `vs` はプロジェクトの `Gemfile.lock` に従って起動していたため、そこに書かれた版が手元に無いと起動できません。1.0.0 以降の `vs` は lock を見ずに起動するので、以後は起こりません。
 
-> **`vs` を打つと `ERROR Error: No input is set.` と出る場合**は、`vivlio-starter doctor --fix` を一度実行してください。Vivliostyle CLI が `vivliostyle` の別名として入れる同じ名前の `vs` が動いています。`vs doctor --fix` と `vs upgrade` はこの別名を外します（Vivliostyle は `vivliostyle` で使えます）。
+> **`vs` を実行すると `ERROR Error: No input is set.` と出る場合**は、`vivlio-starter doctor --fix` を一度実行してください。Vivliostyle CLI が `vivliostyle` の別名としてインストールする同じ名前の `vs` が実行されています。`vs doctor --fix` と `vs upgrade` はこの別名を削除します（Vivliostyle は `vivliostyle` で使えます）。
 
 ### プロジェクト作成からビルドまで
 
@@ -344,7 +344,7 @@ Markdown → HTML の変換は VFM（Vivliostyle Flavored Markdown）が、HTML 
 npm install -g @vivliostyle/cli @vivliostyle/vfm
 ```
 
-> ⚠️ **VFM のパッケージ名は `@vivliostyle/vfm` です。** npm の `vfm` は同名の**まったく別のパッケージ**（Vue 用のフォームバリデーション）なので、入れても `vs build` は動きません。
+> ⚠️ **VFM のパッケージ名は `@vivliostyle/vfm` です。** npm の `vfm` は同名の**まったく別のパッケージ**（Vue 用のフォームバリデーション）なので、インストールしても `vs build` は動きません。
 
 `package.json` の devDependencies にも同じ 2 つを記載していますが、そちらはプロジェクトで使うバージョンを記録するためのもので、`--save-dev` によるローカル導入では `vivliostyle` / `vfm` コマンドは PATH に現れません。
 
