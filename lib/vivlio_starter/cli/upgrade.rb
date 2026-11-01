@@ -636,11 +636,18 @@ module VivlioStarter
       # 更新後の新しい gem の vs で同じ upgrade を続きから実行する（exec で置き換わる）。
       # --skip-self-update を付けて再帰を防ぐ。Bundler 配下だと exec 先が Gemfile に
       # 拘束されて新しい版を見られないため、素の環境で実行する。
-      # $PROGRAM_NAME（RubyGems の binstub）は実行時に最新版へディスパッチする。
       def relaunch!(options)
-        args = [$PROGRAM_NAME, 'upgrade', '--skip-self-update']
+        args = [relaunch_command, 'upgrade', '--skip-self-update']
         args << '--yes' if options[:yes]
         defined?(Bundler) ? Bundler.with_unbundled_env { Kernel.exec(*args) } : Kernel.exec(*args)
+      end
+
+      # 再実行に使う vs。RubyGems の binstub は実行時に最新版を選ぶ。
+      # $PROGRAM_NAME は使わない。bin/vs が __FILE__ で自分を起動し直すので、
+      # いま動いている版の bin/vs を指し、更新前の版がもう一度動くため。
+      def relaunch_command
+        binstub = File.join(Gem.bindir, 'vs')
+        File.executable?(binstub) ? binstub : $PROGRAM_NAME
       end
 
       # 上書き対象の現物を .cache/vs/upgrade-backup/<timestamp>/ へツリー構造のまま退避する

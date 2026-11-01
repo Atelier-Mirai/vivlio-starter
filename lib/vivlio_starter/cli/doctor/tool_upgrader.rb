@@ -105,6 +105,8 @@ module VivlioStarter
           Tool.new(label: 'inkscape', kind: :cask, package: 'inkscape', checks: %w[inkscape]),
           # Enhanced Mode プラグイン（gem 名は provider.rb / doctor.rb と同値。導入済みの場合のみ更新対象）
           Tool.new(label: 'vivlio-starter-pdf', kind: :gem, package: 'vivlio-starter-pdf', checks: []),
+          # 本体の依存なので常に入っている。本体の下限を上げなくても修正が届くよう、更新対象にする
+          Tool.new(label: 'query-stream', kind: :gem, package: 'query-stream', checks: []),
           # Kindle Previewer は Amazon の配布ページから入れ、アプリの更新機能で上げる。
           # Homebrew の cask は配布より遅れる（doctor.rb の KINDLE_PREVIEWER_DOWNLOAD_URL）
           Tool.new(label: 'kindle-previewer', kind: :manual, package: nil, checks: []),
@@ -350,20 +352,24 @@ module VivlioStarter
           end
         end
 
-        # Enhanced Mode プラグイン（導入済みの場合のみ更新対象・spec §1.2）。
+        # gem の更新計画。
+        # Enhanced Mode プラグインは導入済みの場合のみ更新対象にする（spec §1.2）。
         # 現在版のパース失敗・最新版の取得失敗でも更新対象に含める——gem update は
-        # 冪等で「更新して害はない」ため（spec §2.2）
+        # 冪等で「更新して害はない」ため（spec §2.2）。
+        # query-stream は常に計画に載るので、最新版が分からないときは更新に数えない
         def gem_entry(tool, deps)
-          return nil unless DoctorCommands.pdf_plugin_installed?
+          plugin = tool.package == 'vivlio-starter-pdf'
+          return nil if plugin && !DoctorCommands.pdf_plugin_installed?
 
           current = installed_gem_version(tool.package)
           latest = latest_gem_version(deps, tool.package)
           up_to_date = current && latest &&
                        Gem::Version.correct?(current) &&
                        Gem::Version.new(latest) <= Gem::Version.new(current)
+          keep = up_to_date || (latest.nil? && !plugin)
           PlanEntry.new(label: tool.label, kind: :gem, package: tool.package,
                         current: current || '不明', latest:,
-                        action: up_to_date ? :current : :upgrade, note: nil)
+                        action: keep ? :current : :upgrade, note: nil)
         end
 
         def manual_entry(tool)

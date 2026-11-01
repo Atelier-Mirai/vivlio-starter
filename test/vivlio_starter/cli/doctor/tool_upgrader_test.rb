@@ -196,6 +196,44 @@ module VivlioStarter
           assert_nil plan.entries.find { it.label == 'vivlio-starter-pdf' }
         end
 
+        # query-stream は本体の依存なので、プラグインが無くても計画に載り、新版があれば更新対象になる
+        def test_should_plan_query_stream_upgrade_when_newer_release_exists
+          url = format(ToolUpgrader::RUBYGEMS_LATEST_URL, 'query-stream')
+          deps = stub_deps(capture: capture_map, fetch: { url => '{"version":"1.5.1"}' })
+
+          plan = DoctorCommands.stub(:pdf_plugin_installed?, false) do
+            ToolUpgrader.stub(:installed_gem_version, '1.5.0') { ToolUpgrader.build_plan(deps) }
+          end
+
+          entry = plan.entries.find { it.label == 'query-stream' }
+          assert_pattern { entry => { kind: :gem, action: :upgrade, current: '1.5.0', latest: '1.5.1' } }
+          assert_includes plan.updates, entry
+        end
+
+        # query-stream が最新なら更新対象にならない
+        def test_should_keep_query_stream_when_already_latest
+          url = format(ToolUpgrader::RUBYGEMS_LATEST_URL, 'query-stream')
+          deps = stub_deps(capture: capture_map, fetch: { url => '{"version":"1.5.0"}' })
+
+          plan = DoctorCommands.stub(:pdf_plugin_installed?, false) do
+            ToolUpgrader.stub(:installed_gem_version, '1.5.0') { ToolUpgrader.build_plan(deps) }
+          end
+
+          assert_equal :current, plan.entries.find { it.label == 'query-stream' }.action
+        end
+
+        # 最新版が分からないとき、query-stream は更新対象に数えない（常に載るので、毎回更新と出さない）
+        def test_should_keep_query_stream_when_latest_is_unknown
+          deps = stub_deps(capture: capture_map)
+
+          plan = DoctorCommands.stub(:pdf_plugin_installed?, false) do
+            ToolUpgrader.stub(:installed_gem_version, '1.5.0') { ToolUpgrader.build_plan(deps) }
+          end
+
+          assert_equal :current, plan.entries.find { it.label == 'query-stream' }.action
+          assert_empty plan.updates
+        end
+
         # ------------------------------------------------------------
         # 2. 連動規則（node → vivliostyle CLI）
         # ------------------------------------------------------------

@@ -628,6 +628,28 @@ module VivlioStarter
         refute_nil relaunched_with, '更新成功後は新しい版で再実行されるべき'
       end
 
+      # --- 自己更新: 再実行は RubyGems の vs から起動する。これが実行時に最新版を選ぶ ---
+      def test_relaunch_command_should_use_rubygems_binstub
+        Dir.mktmpdir do |dir|
+          binstub = File.join(dir, 'vs')
+          File.write(binstub, "#!/bin/sh\n")
+          File.chmod(0o755, binstub)
+
+          Gem.stub(:bindir, dir) do
+            assert_equal binstub, UpgradeCommands.send(:relaunch_command)
+          end
+        end
+      end
+
+      # --- 自己更新: RubyGems の vs が見つからなければ、いま動いている vs を起動する ---
+      def test_relaunch_command_should_fall_back_to_program_name
+        Dir.mktmpdir do |dir|
+          Gem.stub(:bindir, dir) do
+            assert_equal $PROGRAM_NAME, UpgradeCommands.send(:relaunch_command)
+          end
+        end
+      end
+
       # ================================================================
       # 競合レビューの見せ方（upgrade-conflict-review-spec.md）
       # ================================================================
