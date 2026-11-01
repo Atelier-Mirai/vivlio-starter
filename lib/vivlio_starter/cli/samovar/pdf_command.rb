@@ -195,7 +195,6 @@ module VivlioStarter
         # PDF の指定（arguments）として消費してしまう（契約テスト CL-01 で検出）
         options do
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
-          option '--images-from <dir>', '抜き出した図を、このフォルダの元の画像に差し替える', key: :images_from
           option '--force', '同じ章が既にあれば、読み直して置き換える', key: :force
           option '--pages <spec>', '読むページ（例: 12-30、31-48,52、238-）', key: :pages
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -238,8 +237,7 @@ module VivlioStarter
         end
 
         def build_options
-          { verbose: parent_verbose?, images_from: options[:images_from], force: options[:force] || false,
-            pages: options[:pages] }
+          { verbose: parent_verbose?, force: options[:force] || false, pages: options[:pages] }
         end
 
         def parent_verbose?
@@ -251,7 +249,7 @@ module VivlioStarter
             vs pdf:read - PDF を Markdown へ変換します
 
             Usage:
-              vs pdf:read PDF [CHAPTER] [--pages SPEC] [--force] [--images-from DIR] [--log[=LEVEL]]
+              vs pdf:read PDF [CHAPTER] [--pages SPEC] [--force] [--log[=LEVEL]]
 
             引数:
               PDF      読む PDF。/ を含まなければ sources/ の中を探す（gitlab・gitlab.pdf → sources/gitlab.pdf）
@@ -259,11 +257,10 @@ module VivlioStarter
               CHAPTER  章の名前（21-git・git）。省くとファイル名から作り、番号は本文の末尾の次にする
 
             オプション:
-              --pages SPEC       読むページ（12-30・31-48,52・-11・238-）。PDF の 1 枚目から数え、紙面のノンブルとはずれることがある
-                                 ページを指定するときは CHAPTER を省けない
-              --force            同じ章が既にあれば、読み直して置き換える（前回の画像は消す）
-              --images-from DIR  抜き出した図を、DIR の元の画像（見た目の一致するもの）に差し替える（Enhanced Mode）
-              --log[=LEVEL]      ページ数などの経過を表示（既定 info。debug で詳細）
+              --pages SPEC   読むページ（12-30・31-48,52・-11・238-）。PDF の 1 枚目から数え、紙面のノンブルとはずれることがある
+                             ページを指定するときは CHAPTER を省けない
+              --force        同じ章が既にあれば、読み直して置き換える（前回の画像は消す）
+              --log[=LEVEL]  ページ数などの経過を表示（既定 info。debug で詳細）
           USAGE
         end
       end

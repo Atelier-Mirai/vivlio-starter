@@ -10,7 +10,6 @@ require_relative 'mecab_newline_cleaner'
 require_relative 'structure_reader'
 require_relative 'ocr_page'
 require_relative 'ocr_postprocess'
-require_relative 'image_matcher'
 require_relative 'pdf_to_jpeg'
 
 require_relative '../common'
@@ -61,7 +60,7 @@ module VivlioStarter
 
       # @param input [String] 読む PDF。`/` を含まなければ sources/ の中のファイル名（`.pdf` は省ける）
       # @param options [Hash] CLI から渡されるオプション。:chapter_name（二つ目の引数）、:stray_arguments（三つ目から後）、
-      #   :force、:pages（読むページ。「31-48,52」）、:images_from
+      #   :force、:pages（読むページ。「31-48,52」）
       def initialize(input, options = {})
         @input = input.to_s.strip
         @options = options || {}
@@ -78,7 +77,6 @@ module VivlioStarter
         entry, pdf_path = resolve_entry_and_pdf
         mode = resolved_mode
         log_enhanced_install_hint if mode == :standard
-        check_images_from!(mode)
 
         digest = Digest::SHA256.file(pdf_path).hexdigest
         warn_same_pdf_already_read(entry, digest)
@@ -251,8 +249,7 @@ module VivlioStarter
       # sources/ を省いて打った人には省いた形で、パスで打った人には同じパスで返す
       def retyped(pdf: input, chapter: chapter_argument, force: options[:force])
         ['vs pdf:read', CLI::ChapterNames.shell_word(pdf), chapter, ('--force' if force),
-         (options[:pages] && "--pages #{options[:pages]}"),
-         (options[:images_from] && "--images-from #{CLI::ChapterNames.shell_word(options[:images_from].to_s)}")].compact.join(' ')
+         (options[:pages] && "--pages #{options[:pages]}")].compact.join(' ')
       end
 
       # 打った PDF の指定の、ファイル名だけを差し替えたもの（「~/Downloads/講座.pdf」→「~/Downloads/awesome.pdf」）
@@ -511,19 +508,16 @@ module VivlioStarter
         []
       end
 
-      # プラグインが抜き出した画像を、図と位置で結ぶための一覧にする（page は 0 から数える）。
-      # --images-from を渡したときは、元の画像に差し替える（substitute_original_images）
+      # プラグインが抜き出した画像を、図と位置で結ぶための一覧にする（page は 0 から数える）
       def image_placements(result)
-        pairs = enhanced_images(result).filter_map do |asset|
+        enhanced_images(result).filter_map do |asset|
           left, bottom, right, top = %w[left bottom right top].map { (asset[it.to_sym] || asset[it]).to_f }
           path = asset[:reference_path] || asset['reference_path']
           page = (asset[:page] || asset['page']).to_i - 1
           next if path.to_s.empty? || page.negative?
 
-          [VivlioStarter::PDF::StructureMarkdown::ImagePlacement.new(page:, left:, bottom:, right:, top:, path:),
-           asset[:output_path] || asset['output_path']]
+          VivlioStarter::PDF::StructureMarkdown::ImagePlacement.new(page:, left:, bottom:, right:, top:, path:)
         end
-        images_from ? substitute_original_images(pairs) : pairs.map(&:first)
       end
 
       # --- Phase: 線で描いた図（pdf-read-structure-spec.md §4.11） ---
@@ -566,53 +560,6 @@ module VivlioStarter
                                              pdf_path, output_path.delete_suffix('.png'))
         CLI::Common.log_warn("[pdf:read] #{page.number} ページの線の図を描き出せませんでした: #{error.strip}") unless status.success?
         status.success?
-      end
-
-      # --- Phase: 元の画像への差し替え（pdf-read-ocr-improvement-notes.md §4.18） ---
-
-      def images_from
-        dir = options[:images_from].to_s.strip
-        dir.empty? ? nil : File.expand_path(dir, Dir.pwd)
-      end
-
-      # 元の画像のフォルダが無ければ止める。Standard Mode は画像を抜き出さないので、渡しても使わない
-      def check_images_from!(mode)
-        return unless images_from
-        raise InvalidInputError, "--images-from のフォルダが見つかりません: #{options[:images_from]}" unless File.directory?(images_from)
-        return unless mode == :standard
-
-        CLI::Common.log_warn('[pdf:read] Standard Mode では画像を抜き出さないので、--images-from は使いません')
-      end
-
-      # 抜き出した図を元の画像と見た目で突き合わせ（ImageMatcher）、一致したものは元の画像を同じ名前で
-      # 章の画像のフォルダへ写し、参照をその名前にして、抜き出した画像は消す。一致しなかった図は抜き出した
-      # ままにする。どの図とも結び付かなかった元の画像は、原稿へ書き足せるよう名前を挙げて知らせる
-      # @param pairs [Array(ImagePlacement, String)] 図の位置と、抜き出した画像のファイル
-      def substitute_original_images(pairs)
-        matcher = VivlioStarter::PDF::ImageMatcher.new(images_from)
-        used = []
-        placements = pairs.map do |placement, extracted|
-          name, original = matcher.match(extracted.to_s) if extracted && File.file?(extracted)
-          next placement unless name
-
-          FileUtils.cp(original, File.join(File.dirname(extracted), name))
-          FileUtils.rm_f(extracted) unless File.basename(extracted) == name
-          used << name
-          placement.with(path: name)
-        end
-        report_original_images(pairs.size, used, matcher.names - used)
-        placements
-      end
-
-      def report_original_images(total, used, unused)
-        CLI::Common.log_info("[pdf:read] 抜き出した図 #{total} 枚のうち #{used.size} 枚を、元の画像に差し替えました")
-        return if unused.empty?
-
-        CLI::Common.log_warn(<<~MESSAGE.chomp)
-          [pdf:read] 元の画像のうち、紙面の図と結び付かなかったものが #{unused.size} 枚あります: #{unused.join('、')}
-            図を見つけられなかったか、切り出しが図の一部を欠いています。原本と見比べ、該当する位置に書き足してください
-            例: ![](#{unused.first})
-        MESSAGE
       end
 
       # OCR したページを含む PDF も、紙面の推定（経路 B）で構造を戻す（pdf-read-structure-spec.md §6）。
