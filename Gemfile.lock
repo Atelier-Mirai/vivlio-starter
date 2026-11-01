@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (1.0.0.pre.rc.3)
+    vivlio-starter (1.0.0)
       kramdown (~> 2.4)
       mini_magick (>= 4.12)
       natto (~> 1.2)
@@ -163,7 +163,7 @@ CHECKSUMS
   ttfunk (1.8.0) sha256=a7cbc7e489cc46e979dde04d34b5b9e4f5c8f1ee5fc6b1a7be39b829919d20ca
   unicode-display_width (3.3.0) sha256=4b7aa66a4b11db50f6f7e98411215cd0dd10eaecb665d36eec5bcacb3fa0b613
   unicode-emoji (4.3.0) sha256=11c02fa73290378c066bb0562cd4c87d8e1b706fbbe0059ca12746a4244de8ce
-  vivlio-starter (1.0.0.pre.rc.3)
+  vivlio-starter (1.0.0)
 
 BUNDLED WITH
   4.0.11

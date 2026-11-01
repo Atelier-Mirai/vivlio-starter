@@ -6,6 +6,8 @@
 
 ## unreleased
 
+## [1.0.0] - 2026-11-01
+
 ### Added
 
 - **`vs new` の表紙の既定を `light` にし、自作の表紙の雛形を `covers/templates/` に用意した**。今までは `master` が既定で、新しい本のビルドに本書の表紙が使われていた。`light` なら書名と著者名の入った表紙がすぐにできる。`book.cover` の既定値も `light` になった（`book.yml` に `cover:` を書いていない本は、表紙が変わる）。`covers/` は `vs upgrade` が触らないので、`cover:` を書いている既存の本は変わらない。
