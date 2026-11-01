@@ -2,24 +2,24 @@
 
 source 'https://rubygems.org'
 
-# Dependencies are defined in the gemspec to keep a single source of truth.
+# 依存は vivlio-starter.gemspec に書く。
 gemspec
 
-# query-stream は公開済みバージョンを使用。
-# 下限が 1.4 なのは、UnknownKeyError の属性（key_path / available_keys / template_path）を
-# data_render.rb の「もしかして」案内が使うため。1.3.x では属性が無く NoMethodError になる。
+# gemspec と同じ指定なので、版を変えるときは両方を直す。
+# 1.4 以上が要るのは、data_render.rb の「もしかして」の案内が UnknownKeyError の
+# key_path / available_keys を読むため。1.3 以下にはこの属性が無く、NoMethodError になる。
 gem 'query-stream', '~> 1.4'
 
-# strscan を単一バージョンへ固定する（テスト flaky の恒久対策）。
-# Ruby 4.0 環境では strscan が default gem（3.1.6 = stdlib 実体）と通常 gem（3.1.8 等）で
-# 同居し、実行途中に別バージョンが activate されると C 拡張が二重初期化されて
-# StringScanner のクラス同一性が壊れ、Kramdown が
-# "wrong argument type StringScanner (expected StringScanner)" で散発的に落ちる。
-# Bundler の起動時に 1 バージョンだけを確定 activate させ、全 require を同一ファイルへ解決する。
+# テストが散発的に落ちるのを防ぐため、strscan の版を 1 つに固める。
+# strscan は Ruby の標準添付（default gem）と通常の gem で複数の版が同居する。テストの途中で
+# 別の版を読み込むと C 拡張が二重に初期化され、Kramdown が
+# "wrong argument type StringScanner (expected StringScanner)" で落ちる。
+# Bundler が起動時に版を決めれば、どの require も同じファイルを読む。
+# 導入した gem の実行では起きないので、gemspec には書かない。
 gem 'strscan', '~> 3.1'
 
-# vivlio-starter-pdf（AGPL の Enhanced プラグイン）は rubygems.org で公開済み（>= 1.1.1）。
-# MIT 本体の bundle へ AGPL を取り込まないため Gemfile には含めず、`gem install vivlio-starter-pdf`
-# 済みなら provider.rb が自動検出して Enhanced モードに切り替える。
-# プラグイン本体をローカル開発する場合のみ、次行を有効化する:
+# vivlio-starter-pdf（AGPL の Enhanced プラグイン）は、MIT の本体の bundle へ AGPL を
+# 持ち込まないよう、ここには書かない。`gem install vivlio-starter-pdf` してあれば、
+# provider.rb が見つけて Enhanced モードに切り替える。
+# プラグインの作業ツリーを直接使って開発するときだけ、次の行を有効にする。
 # gem 'vivlio-starter-pdf', path: '../vivlio-starter-pdf'
