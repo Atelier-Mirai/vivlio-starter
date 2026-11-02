@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'open3'
 require 'pathname'
 
 # 集計の基準はプロジェクトルート（scripts/ の一つ上）。
@@ -123,6 +124,25 @@ def print_section(title, stats)
   stats.each { puts format_row(it) }
 end
 
+# git の出力を返す。git が無い・タグが無いなどで失敗したら nil
+def git(*args)
+  out, status = Open3.capture2('git', *args, chdir: ROOT.to_s, err: File::NULL)
+  status.success? ? out.strip : nil
+end
+
+# 直近のリリース（v で始まるタグ）から HEAD までの変化を 1 文で返す。
+# Ruby のリリースのお知らせの締め（「3889 ファイルが変更され、…」）にならう
+def changes_since_release
+  tag = git('describe', '--tags', '--abbrev=0', '--match', 'v*')
+  return nil unless tag
+
+  commits = git('rev-list', '--count', "#{tag}..HEAD").to_i
+  stat = git('diff', '--shortstat', tag, 'HEAD').to_s
+  files, added, deleted = [/(\d+) files? changed/, /(\d+) insertions?/, /(\d+) deletions?/].map { stat[it, 1].to_i }
+  "#{tag} から、#{commits} 回のコミットが行われ、#{files} ファイルが変更され、" \
+    "#{added} 行が追加され、#{deleted} 行が削除されました！"
+end
+
 # --- Phase: Collect ---
 ruby_stats      = ROOT.glob('lib/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
 test_stats      = ROOT.glob('test/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
@@ -158,3 +178,10 @@ puts format_row(css_total)
 puts format_row(markdown_total)
 puts '-' * format_row(grand_total).size
 puts format_row(grand_total)
+
+# --- Phase: Since last release ---
+summary = changes_since_release
+if summary
+  puts
+  puts summary
+end
