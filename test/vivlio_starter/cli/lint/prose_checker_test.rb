@@ -444,6 +444,14 @@ class TestProseChecker < Minitest::Test
     assert_match(/第 1 レベルの見出しになります/, findings.last.label)
   end
 
+  # `===` は空行を挟んでも改ページにならない。改ページの書き方として `---` を示す
+  def test_should_suggest_dashes_for_a_pagebreak_after_equals_underline
+    finding = check("見出しにしたい\n===\n").first
+
+    assert_match(/前後に空行を置いて --- と書く/, finding.label)
+    refute_match(/改ページではなく/, finding.label)
+  end
+
   # 前を空行で挟んだ `---` は正しい改ページ。叩いてはいけない。
   def test_should_not_report_a_proper_pagebreak
     assert_empty check("段落です。\n\n---\n\n次の段落。\n")

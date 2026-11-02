@@ -1076,7 +1076,7 @@ module VivlioStarter
             next if list_continuation?(lines, lineno)
 
             Finding.new(line: lineno, rule: INDENTED_CODE_RULE,
-                        label: '4 スペースの字下げはコードブロックになりません' \
+                        label: '4 スペースの字下げのコードブロックには対応していません' \
                                '（コードならバッククォート 3 つのフェンスで囲んでください）')
           end
         end
@@ -1105,10 +1105,15 @@ module VivlioStarter
             next unless (matched = line.match(SETEXT_UNDERLINE))
             next if lines[lineno - 2].to_s.strip.empty? # 前が空行なら改ページ（正しい書き方）
 
-            level = matched[1].start_with?('=') ? '第 1 レベル' : '第 2 レベル'
-            Finding.new(line: lineno, rule: SETEXT_RULE,
-                        label: "直前の行に続いているため、改ページではなく#{level}の見出しになります" \
-                               '（改ページにするなら前に空行を入れる／見出しにするなら ## を使う）')
+            # `===` は空行を挟んでも改ページにならない（文字のまま出る）。改ページの書き方は `---` を示す
+            label = if matched[1].start_with?('=')
+                      '直前の行に続いているため、第 1 レベルの見出しになります' \
+                        '（改ページにするなら前後に空行を置いて --- と書く／見出しにするなら ## を使う）'
+                    else
+                      '直前の行に続いているため、改ページではなく第 2 レベルの見出しになります' \
+                        '（改ページにするなら前に空行を入れる／見出しにするなら ## を使う）'
+                    end
+            Finding.new(line: lineno, rule: SETEXT_RULE, label:)
           end
         end
 
