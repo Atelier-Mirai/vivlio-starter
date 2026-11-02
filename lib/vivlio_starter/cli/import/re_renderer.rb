@@ -79,6 +79,10 @@ module VivlioStarter
         # この章で定義されたラベル ID。全章そろってから一意化するのに使う
         attr_reader :labels
 
+        # キャプションが空で落としたラベル（`{ id:, line: }`）。参照は別の章にもありうるので、
+        # 報告するかは全章そろってから決める（ImportCommands#report_referenced_dropped_labels）
+        attr_reader :dropped_labels
+
         def initialize(report:, file:, words: {}, text_width_mm: nil)
           @report = report
           @file = file
@@ -87,6 +91,7 @@ module VivlioStarter
           @chunks = []
           @footnotes = []
           @labels = []
+          @dropped_labels = []
           @open_column = false
           @next_line_number = nil
         end
@@ -257,17 +262,27 @@ module VivlioStarter
 
         # `//list[ラベル][キャプション][オプション]`
         #
-        # 第 3 引数は実測の 9 割が `file=パス,開始行` か裸の数値（開始行）で、
-        # 残りが `lineno=` などのキー付き。file= の値はカンマを含むので先に抜く
+        # 第 3 引数は実測の 9 割が `file=パス,行番号の開始` か裸の数値（行番号の開始）で、
+        # 残りが `lineno=` などのキー付き。file= の値はカンマを含むので先に抜く。
+        #
+        # Re:VIEW Starter の数値は「何行目から取り込むか」ではなく「行番号を何番から振るか」。
+        # Vivlio で移せるのは、ファイル名を添えた地のコードの `#L開始` だけで、ファイル全体を
+        # 取り込んだまま番号だけをずらす書き方も、飛び番（`lineno=80-83&97-`）も無い
         def code_block(node)
           label, caption, options = code_block_args(node)
           opts = parse_options(options)
+          start = (opts['start'] || @next_line_number).to_i
+          @next_line_number = nil
           @report.count(:block)
 
-          return include_fence(node, opts, label, caption) if opts['file']
+          if opts['file']
+            warn_line_numbering(node) if start > 1 || skipped_line_numbers?(opts)
+            return include_fence(opts, label, caption)
+          end
 
           language = detect_language(caption, opts['lang'], node.body)
-          [caption_for(label, caption), fence(node.body, info_string(language, label, caption, opts))]
+          warn_line_numbering(node) if (start > 1 && !filename_fence?(label, caption)) || skipped_line_numbers?(opts)
+          [caption_for(label, caption), fence(node, info_string(language, label, caption, start))]
             .compact.join("\n\n")
         end
 
@@ -285,37 +300,40 @@ module VivlioStarter
 
         # 外部ファイルは Vivlio の `include:` へ落とす。source/ は codes/ へ
         # コピーされるので、コードの置き場所が 1 つに保たれる（同 §0.4）
-        def include_fence(node, opts, label, caption)
+        def include_fence(opts, label, caption)
           path = opts['file'].sub(%r{\A(?:\./)?source/}, '')
-          warn_start_line(node, opts)
 
           [caption_for(label, caption), "```include:#{path}\n```"].compact.join("\n\n")
         end
 
-        def warn_start_line(node, opts)
-          start = opts['start'].to_i
-          return if start <= 1
-
-          @report.degraded("//#{node.name}", file: @file, line: node.line,
-                                             message: "外部ファイルの開始行 #{start} は移せないため、ファイル全体を取り込みます。",
-                                             detail: '対処: 範囲を絞るなら ```include:パス:開始-終了 と書いてください（拡張記法リファレンス）。')
+        # 行番号の振り方を移せなかったことを知らせる。記法ごとに畳まれるので、
+        # 個々の番号は書かず、どの指定でも同じ文言にする。飛び番は Vivlio で書き表せず、
+        # 開始番号も抜粋にしないと移せないので、対処は添えない
+        def warn_line_numbering(node)
+          @report.degraded('lineno', file: @file, line: node.line,
+                                     message: '行番号の振り方の指定（開始番号・飛び番）は移せないため、1 から続けて振ります。')
         end
 
-        # フェンスの情報文字列。キャプションがファイル名に見えるときだけ
-        # `lang:ファイル名` に入れる（ラベルがあるならキャプション行が出るので重複させない）
-        def info_string(language, label, caption, opts)
-          return language unless label.to_s.strip.empty? && filename_like?(caption)
+        # `lineno=80-83&97-` のような飛び番。数だけの `lineno=10` は parse_options が開始番号に読み替える
+        def skipped_line_numbers?(opts) = opts['lineno'].to_s.match?(/\d/)
 
-          start = (opts['start'] || @next_line_number).to_i
-          @next_line_number = nil
+        # キャプションがファイル名に見え、ラベルが無いときだけ `lang:ファイル名` に入れる
+        # （ラベルがあるならキャプション行が出るので重複させない）
+        def filename_fence?(label, caption) = label.to_s.strip.empty? && filename_like?(caption)
+
+        # フェンスの情報文字列。ファイル名を入れるときは、行番号の開始も `#L` で添える
+        def info_string(language, label, caption, start)
+          return language unless filename_fence?(label, caption)
+
           marker = start > 1 ? "#L#{start}" : ''
           "#{language}:#{caption.strip}#{marker}"
         end
 
         # 逐語ブロックの中でも `@<userinput>` `@<balloon>` は使われる（実測あり）。
-        # ただし Markdown の装飾記号はコードの中で効かないので、中身だけを残す
-        def fence(body, info)
-          verbatim = body.map { ReInline.strip(it, @context) }
+        # ただし Markdown の装飾記号はコードの中で効かないので、中身だけを残す。
+        # 指摘の場所がその行を指すよう、行ごとに行番号を渡す
+        def fence(node, info)
+          verbatim = node.body.zip(node.body_lines).map { |text, line| ReInline.strip(text, @context.at(line)) }
           "```#{info}\n#{verbatim.join("\n")}\n```"
         end
 
@@ -326,7 +344,7 @@ module VivlioStarter
           language = klass == 'terminal' ? 'zsh' : 'text'
           @report.count(:block)
 
-          body = fence(node.body, language)
+          body = fence(node, language)
           [caption_for(label, caption), ":::{.#{klass}}\n#{body}\n:::"].compact.join("\n\n")
         end
 
@@ -377,13 +395,28 @@ module VivlioStarter
           "#{speaker}: #{inline(body.to_s.gsub("\n", ''))}"
         end
 
+        # 報告は種類ごとに 1 件へ畳まれ、文言は最初の 1 件のものが出る。話者名を文言に入れるので、
+        # 話者ごとに別の種類にして、その話者が出てくる箇所を並べる
         def warn_speakers(node, items)
-          speakers = items.compact.filter_map { it[/\A([^:]+):/, 1] }.uniq
-          return if speakers.empty?
+          items.compact.filter_map { it[/\A([^:]+):/, 1] }.uniq.each do |speaker|
+            @report.degraded("talk:#{speaker}", file: @file, line: node.line,
+                                                message: "会話の話者 #{speaker} は config/talk.yml への登録が要ります。",
+                                                detail: speaker_registration_detail(speaker))
+          end
+        end
 
-          @report.degraded('//talk', file: @file, line: node.line,
-                                     message: "会話の話者（#{speakers.join('、')}）は config/talk.yml への登録が要ります。",
-                                     detail: '対処: config/talk.yml に話者キーと表示名・色を足してください（拡張記法リファレンス「会話文」）。')
+        # Vivlio の話者キーは半角英数字（MarkdownTransformer::TALK_SPEAKER_PATTERN と同じ）
+        TALK_SPEAKER_KEY = /\A[A-Za-z0-9][A-Za-z0-9_-]*\z/
+
+        # Starter は名前（`//talk[][クラリス]`）でも話者を書けるが、Vivlio のキーにはできない。
+        # その場合は、キーを付け替えてから登録する手順を示す
+        def speaker_registration_detail(speaker)
+          if TALK_SPEAKER_KEY.match?(speaker)
+            "対処: config/talk.yml に #{speaker}: を足し、表示名（name:）と色（color:）を書いてください。"
+          else
+            "対処: 話者キーは半角英数字です。原稿の「#{speaker}:」を半角英数字のキーに置き換え、" \
+              "config/talk.yml に登録してください（表示名は name: #{speaker}）。"
+          end
         end
 
         def desc_group(node, single: false)
@@ -633,8 +666,8 @@ module VivlioStarter
 
         def unsupported(node)
           @report.unsupported("//#{node.name}", file: @file, line: node.line,
-                                                message: "//#{node.name}（#{UNSUPPORTED_BLOCKS[node.name]}）は Vivlio Starter に対応する記法がありません。原文を残しました。",
-                                                detail: '対処: 該当箇所を書き換えてください（拡張記法リファレンスの章）。')
+                                                message: "//#{node.name}（#{UNSUPPORTED_BLOCKS[node.name]}）は Vivlio Starter に対応する記法がありません。" \
+                                                         '原文を残しましたので、該当箇所を書き換えてください。')
           original(node)
         end
 
@@ -674,9 +707,7 @@ module VivlioStarter
         end
 
         def drop_label(id)
-          @report.degraded('label', file: @file, line: @context.line,
-                                    message: "キャプションが空のためラベル #{id} を落としました（図表番号も付きません）。",
-                                    detail: "対処: 番号や参照が要るなら `** タイトル @#{id} **` のキャプション行を足してください。")
+          @dropped_labels << { id:, line: @context.line }
           nil
         end
 
@@ -684,7 +715,7 @@ module VivlioStarter
 
         def filename_like?(caption) = FILENAME.match?(caption.to_s.strip)
 
-        # `file=パス,開始行` は値にカンマを含むので先に抜き、残りを , で割る
+        # `file=パス,行番号の開始` は値にカンマを含むので先に抜き、残りを , で割る
         FILE_OPTION = /file=\s*([^,\s]+)(?:\s*,\s*(\d+))?/
 
         def parse_options(raw)
@@ -708,12 +739,15 @@ module VivlioStarter
 
           key, value = token.split('=', 2)
           if value.nil?
-            # 裸の数値は開始行、裸の語は言語名（`//list[id][caption][ruby]`）
+            # 裸の数値は行番号の開始、裸の語は言語名（`//list[id][caption][ruby]`）
             if key.match?(/\A\d+\z/)
               options['start'] = key
             elsif key.match?(/\A[a-z][\w+#.-]*\z/i)
               options['lang'] = key
             end
+          elsif key.strip == 'lineno' && value.strip.match?(/\A\d+-?\z/)
+            # Re:VIEW Starter は `lineno=10` を裸の `10` と同じに読む（`10-` も 10 から最後まで）
+            options['start'] = value.strip.delete('-')
           else
             options[key.strip] = value.strip
           end

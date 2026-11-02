@@ -25,7 +25,9 @@ module VivlioStarter
         # --- ノード（すべて行番号を持つ。file:line 付きの通知に要る）---
         Heading = Data.define(:level, :id, :tag, :text, :line)
         Paragraph = Data.define(:lines, :line)
-        Block = Data.define(:name, :args, :body, :children, :line)
+        # body_lines は body の各行の行番号。中身からはコメント行が落ちるので、
+        # 開始行からの数えでは逐語の中の指摘の場所がずれる
+        Block = Data.define(:name, :args, :body, :body_lines, :children, :line)
         Command = Data.define(:name, :args, :line)
         UList = Data.define(:items, :line)
         OList = Data.define(:items, :line)
@@ -232,11 +234,11 @@ module VivlioStarter
           end
 
           if RAW_BLOCKS.include?(name)
-            body, next_index = take_raw_body(lines, index + 1, name)
-            nodes << Block.new(name:, args:, body:, children: [], line: index + 1)
+            body, body_lines, next_index = take_raw_body(lines, index + 1, name)
+            nodes << Block.new(name:, args:, body:, body_lines:, children: [], line: index + 1)
           else
             children, next_index = parse_nodes(lines, index + 1, inside_block: true)
-            nodes << Block.new(name:, args:, body: [], children:, line: index + 1)
+            nodes << Block.new(name:, args:, body: [], body_lines: [], children:, line: index + 1)
           end
 
           next_index
@@ -244,19 +246,25 @@ module VivlioStarter
 
         # 逐語ブロックの中身。`//}` まで、行をそのまま集める
         # （`//embed` を除きコメント行だけは落とす。Starter の read_block と同じ）
+        #
+        # @return [Array(Array<String>, Array<Integer>, Integer)] 中身の行・その行番号・次に読む位置
         def take_raw_body(lines, index, name)
           buffer = []
+          numbers = []
           keep_comments = name == 'embed'
 
           while index < lines.size
             line = lines[index].chomp
-            return [buffer, index + 1] if BLOCK_END.match?(line)
+            return [buffer, numbers, index + 1] if BLOCK_END.match?(line)
 
-            buffer << line unless !keep_comments && COMMENT.match?(line)
+            unless !keep_comments && COMMENT.match?(line)
+              buffer << line
+              numbers << index + 1
+            end
             index += 1
           end
 
-          [buffer, index]
+          [buffer, numbers, index]
         end
 
         # `//name[引数][引数]{` の引数を切り出す。`\]` はエスケープ

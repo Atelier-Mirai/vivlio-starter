@@ -250,12 +250,20 @@ module VivlioStarter
             next if value.nil?
 
             replaced = replace_yaml_value_in_lines!(lines, path, value)
-            Common.log_warn("  #{book_yml_path} 内で #{path.join('.')} を更新できませんでした") unless replaced
+            warn_missing_book_key(path, value) unless replaced
             updated ||= replaced
           end
 
           File.write(book_yml_path, lines.join, encoding: 'utf-8') if updated
           updated
+        end
+
+        # 値を書き込む行が book.yml に無い（著者が行を削除した・コメントにした）ことを知らせる。
+        # 書き足す行をそのまま示す
+        def warn_missing_book_key(path, value)
+          Common.log_warn("  config/book.yml に #{path.join('.')} の行が無いため、取り込み元の値を書き込めませんでした。",
+                          detail: "対処: config/book.yml の #{path[0..-2].join('.')}: の下に " \
+                                  "#{path.last}: #{format_yaml_scalar(value)} と書いてください。")
         end
 
         # YAML 行内の値を置換する

@@ -63,7 +63,6 @@ module VivlioStarter
 
         # 対応概念が無い（🔴）。原文をそのまま残す
         UNSUPPORTED = {
-          'balloon' => 'コード内の吹き出し',
           'embed' => '出力形式ごとの生データ', 'raw' => '出力形式ごとの生データ',
           'big' => '文字を大きくする指定', 'large' => '文字を大きくする指定',
           'xlarge' => '文字を大きくする指定', 'xxlarge' => '文字を大きくする指定'
@@ -185,9 +184,22 @@ module VivlioStarter
           return keep_original(command, context) if UNSUPPORTED.key?(name)
 
           context.report.count(:inline)
+          return render_balloon(arg, context, plain:) if name == 'balloon'
           return transform(arg, context, plain: true) if plain
 
           render_known(name, arg, context)
+        end
+
+        # `@<balloon>{説明}` はコードや端末の行に添える注釈で、Starter は「←説明」を灰色で組む。
+        # 灰色は移せないので、Starter がテキストや Markdown へ書き出すときと同じ「← 説明」にする。
+        # 使われるのはほぼ逐語ブロックの中なので、plain でも矢印は付ける
+        def render_balloon(arg, context, plain:)
+          context.report.degraded(
+            '@<balloon>',
+            file: context.file, line: context.line,
+            message: '@<balloon>（コードの行に添える注釈）は「← 説明」にしました。灰色の文字にはなりません。'
+          )
+          "← #{transform(arg, context, plain:)}"
         end
 
         # 🔴 対応概念が無い記法。原文を残して著者に判断してもらう
@@ -196,8 +208,8 @@ module VivlioStarter
           context.report.unsupported(
             "@<#{name}>",
             file: context.file, line: context.line,
-            message: "@<#{name}>（#{UNSUPPORTED[name]}）は Vivlio Starter に対応する記法がありません。原文をそのまま残しました。",
-            detail: '対処: 該当箇所を書き換えてください（拡張記法リファレンスの章を参照）。'
+            message: "@<#{name}>（#{UNSUPPORTED[name]}）は Vivlio Starter に対応する記法がありません。" \
+                     '原文を残しましたので、該当箇所を書き換えてください。'
           )
           command[:raw]
         end

@@ -157,6 +157,20 @@ module VivlioStarter
           end
         end
 
+        # 著者が行を削除した・コメントにした項目は書き込めない。書き足す行をそのまま示す
+        def test_should_show_line_to_add_when_book_key_is_missing
+          work_dir = File.join(@tmpdir, 'work')
+          FileUtils.mkdir_p(File.join(work_dir, 'config'))
+          File.write(File.join(work_dir, 'config', 'book.yml'), "book:\n  main_title: \"本\"\n  # author: \"\"\n")
+
+          Dir.chdir(work_dir) do
+            output = capture_io { YamlProcessor.update_book_yaml_with_values([[%w[book author], '著者名']]) }.join
+
+            assert_includes output, 'config/book.yml に book.author の行が無いため'
+            assert_includes output, 'config/book.yml の book: の下に author: "著者名" と書いてください'
+          end
+        end
+
         # ================================================================
         # build_config_updates テスト
         # ================================================================

@@ -108,8 +108,18 @@ module VivlioStarter
         # ================================================================
         # 対応概念が無い記法は原文を残す——黙って消さない
         def test_should_keep_original_for_unsupported_command
-          assert_equal '@<balloon>{吹き出し}', convert('@<balloon>{吹き出し}')
+          assert_equal '@<big>{大きく}', convert('@<big>{大きく}')
           assert_equal :unsupported, @report.findings.first.level
+        end
+
+        # コードの行に添える注釈は、Starter がテキストへ書き出すときと同じ「← 説明」にする。
+        # 逐語ブロックの中（plain）でも矢印は付け、灰色が移せないことを知らせる
+        def test_should_convert_balloon_to_arrow_note
+          assert_equal '$ git version   ← この行を入力します',
+                       convert('$ git version   @<balloon>{この行を入力します}')
+          assert_equal '← 表示 **x**', convert('@<balloon>{表示 @<b>{x}}')
+          assert_equal '← 表示 x', ReInline.strip('@<balloon>{表示 @<b>{x}}', @context)
+          assert_pattern { @report.findings.first => { level: :degraded, kind: '@<balloon>' } }
         end
 
         def test_should_report_unknown_command_as_typo

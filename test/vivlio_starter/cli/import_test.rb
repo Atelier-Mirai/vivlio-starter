@@ -14,8 +14,8 @@ module VivlioStarter
         @report = Import::ReReport.new
       end
 
-      def chapter(basename, markdown, labels)
-        ImportCommands::Chapter.new(basename:, markdown:, labels:, lines: markdown.lines.size)
+      def chapter(basename, markdown, labels, dropped_labels: [])
+        ImportCommands::Chapter.new(basename:, markdown:, labels:, dropped_labels:, lines: markdown.lines.size)
       end
 
       # ================================================================
@@ -160,6 +160,40 @@ module VivlioStarter
         assert_includes result[0].markdown, '@01-intro-tbl1'
         assert_includes result[1].markdown, '@02-basic-tbl1'
         assert_equal 2, @report.counted(:relabel)
+      end
+
+      # 報告は記法ごとに畳まれ、文言は最初の 1 件のものが出る。ラベルごとに分けて、
+      # 文言のラベル名がまとめた全箇所に当てはまるようにする（場所は章のファイル名だけ）
+      def test_should_report_each_renamed_label_separately
+        chapters = [
+          chapter('01-intro', "** 表 @tbl1 **\n\n** 図 @fig1 **\n", %w[tbl1 fig1]),
+          chapter('02-basic', "** 表 @tbl1 **\n\n** 図 @fig1 **\n", %w[tbl1 fig1])
+        ]
+
+        ImportCommands.unify_labels(chapters, @report)
+        output, = capture_io { @report.emit! }
+
+        assert_includes output, '01-intro.re、02-basic.re: 章をまたいで重複したラベル tbl1 を'
+        assert_includes output, '01-intro.re、02-basic.re: 章をまたいで重複したラベル fig1 を'
+      end
+
+      # ================================================================
+      # キャプションが空で落としたラベル
+      # ================================================================
+      # 参照の無いラベルは落としても紙面が変わらないので知らせない。参照があれば、
+      # 別の章からの参照でも知らせる
+      def test_should_report_only_dropped_labels_that_are_referenced
+        chapters = [
+          chapter('01-intro', "![](a.webp)\n\n![](b.webp)\n", [],
+                  dropped_labels: [{ id: 'fig-a', line: 3 }, { id: 'fig-b', line: 5 }]),
+          chapter('02-basic', "@fig-a のとおり。\n", [])
+        ]
+
+        ImportCommands.report_referenced_dropped_labels(chapters, @report)
+
+        assert_pattern do
+          @report.findings => [{ level: :degraded, kind: 'dropped-label:fig-a', file: '01-intro.re', line: 3 }]
+        end
       end
 
       # 重複しなかった ID は、著者が覚えている名前のまま残す

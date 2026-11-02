@@ -18,6 +18,7 @@
 #     通常の GFM テーブルには一切触れない（VFM に委ねる）。
 # ================================================================
 
+require 'cgi/escape'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../units'
@@ -37,6 +38,11 @@ module VivlioStarter
 
         # セル内エスケープ `\|` を退避する一時マーカー（分割規則から除外するため）。
         PIPE_PLACEHOLDER = "\u{E000}"
+
+        # セルを描くあいだインラインコードを退避する目印（`\u{E001}番号\u{E001}`）。
+        # Markdown として意味を持たない私用領域の文字なので、どの変換にも触れられない
+        CODE_SPAN_MARK_CHAR = "\u{E001}"
+        CODE_SPAN_MARK = /#{CODE_SPAN_MARK_CHAR}(\d+)#{CODE_SPAN_MARK_CHAR}/
 
         # --- 版面自動フィット（§6.2）の凍結定数 ---
         # セル左右パディングの中庸値（mm）。table.css の padding clamp（0.6〜1.4mm）＋罫線幅の中間。
@@ -284,16 +290,37 @@ module VivlioStarter
           text = cell.content
           return '' if text.empty?
 
-          html = MarkdownUtils.render_markdown_to_html(text).strip
+          masked, codes = mask_code_spans(text)
+          html = MarkdownUtils.render_markdown_to_html(masked).strip
           unwrapped =
             if html.start_with?('<p>') && html.end_with?('</p>') && html.scan('<p>').size == 1
               html[3...-4]
             else
               html
             end
-          unwrapped.gsub(PIPE_PLACEHOLDER, '|') # 退避したエスケープパイプを素の `|` へ復元
+          unwrapped
+            .gsub(CODE_SPAN_MARK) { codes[Regexp.last_match(1).to_i] }
+            .gsub(PIPE_PLACEHOLDER, '|') # 退避したエスケープパイプを素の `|` へ復元
         end
         private_class_method :render_cell
+
+        # インラインコードを目印に置き換え、描いた <code> を返す。Kramdown は「`」の直前が
+        # 行頭か空白で直後も空白だとコードの始まりと見なさず、`` ` * 項目` `` のバッククォートが
+        # 紙面に出る。囲みの外の表を組む VFM と結果をそろえるため、コードは自前で描き、中身は
+        # CommonMark と同じく両端がともに空白のときだけ 1 つずつ削る。目印にしておくのは、
+        # Kramdown の前に画像やルビを HTML へ直す処理（MarkdownUtils）にもコードの中を触らせないため
+        def mask_code_spans(text)
+          codes = []
+          masked = text.gsub(Masking::INLINE_CODE_SPAN) do |span|
+            ticks = span[/\A`+/].length
+            body = span[ticks...-ticks]
+            body = body[1...-1] if body.start_with?(' ') && body.end_with?(' ') && !body.strip.empty?
+            codes << "<code>#{CGI.escapeHTML(body)}</code>"
+            "#{CODE_SPAN_MARK_CHAR}#{codes.size - 1}#{CODE_SPAN_MARK_CHAR}"
+          end
+          [masked, codes]
+        end
+        private_class_method :mask_code_spans
 
         # =============================================================
         # 内部: コンテナ内変換

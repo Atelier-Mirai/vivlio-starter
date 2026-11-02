@@ -141,6 +141,39 @@ module VivlioStarter
           refute_includes result, '&lt;code&gt;'
         end
 
+        # 囲み（long-table など）の中のセルは Kramdown で描く。先頭が空白のインラインコードも、
+        # 囲みの外の表を組む VFM と同じくコードにする（Kramdown のままだとバッククォートが出る）
+        def test_should_render_code_span_starting_with_space
+          md = <<~MD
+            | Re:VIEW | Vivlio |
+            | --- | --- |
+            | ` * 項目` | `- 項目` |
+            | ` - 1. 項目` / ` - (A) 項目` | `a < b` |
+            | `` `x` `` | `{漢字\\|よみ}` |
+          MD
+          result = TableConverter.pipe_table_to_html(md)
+
+          assert_includes result, '<td><code> * 項目</code></td>'
+          assert_includes result, '<td><code> - 1. 項目</code> / <code> - (A) 項目</code></td>'
+          assert_includes result, '<code>a &lt; b</code>'
+          assert_includes result, '<code>`x`</code>'
+          assert_includes result, '<code>{漢字|よみ}</code>'
+          refute_includes result, '<td>`'
+        end
+
+        # 記法を説明するコードの中の画像は、画像にしない（コードの外はする）
+        def test_should_keep_image_notation_inside_code
+          md = <<~MD
+            | 記法 | 例 |
+            | --- | --- |
+            | `![](id.webp){width=40%}` | ![](a.webp){width=10%} |
+          MD
+          result = TableConverter.pipe_table_to_html(md)
+
+          assert_includes result, '<code>![](id.webp){width=40%}</code>'
+          assert_includes result, '<img src="a.webp"'
+        end
+
         def test_should_preserve_raw_html_in_cells
           md = <<~MD
             | Fig             | Note |

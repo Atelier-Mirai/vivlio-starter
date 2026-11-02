@@ -82,7 +82,8 @@ module VivlioStarter
         def emit_group(level)
           @findings.select { it.level == level }.group_by(&:kind).each_value do |group|
             head = group.first
-            places = group.first(SHOWN_LOCATIONS).map { "#{it.file}:#{it.line}" }.join('、')
+            # 行番号の無い気づき（章全体に関わるもの）はファイル名だけを示す
+            places = group.first(SHOWN_LOCATIONS).map { it.line ? "#{it.file}:#{it.line}" : it.file }.join('、')
             more = group.size > SHOWN_LOCATIONS ? "ほか #{group.size - SHOWN_LOCATIONS} 箇所" : nil
             message = "#{[places, more].compact.join('、')}: #{head.message}"
             message = "#{message}（計 #{group.size} 箇所）" if group.size > 1

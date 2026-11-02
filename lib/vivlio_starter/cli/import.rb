@@ -165,8 +165,8 @@ module VivlioStarter
         Common.log_info('  索引・用語集の辞書を空にしました（vs index:auto で取り込んだ原稿から作り直せます）')
       end
 
-      # 章ひとつぶんの変換結果
-      Chapter = Data.define(:basename, :markdown, :labels, :lines)
+      # 章ひとつぶんの変換結果。dropped_labels はキャプションが空で落としたラベル（`{ id:, line: }`）
+      Chapter = Data.define(:basename, :markdown, :labels, :dropped_labels, :lines)
 
       # .re → .md の直変換。
       #
@@ -181,6 +181,7 @@ module VivlioStarter
         raise 'catalog.yml から原稿の一覧を読み取れませんでした' if basenames.empty?
 
         chapters = unify_labels(basenames.filter_map { render_chapter(it, report) }, report)
+        report_referenced_dropped_labels(chapters, report)
         chapters = infer_code_languages(chapters, report)
         write_chapters!(chapters)
 
@@ -212,7 +213,7 @@ module VivlioStarter
         renderer = Import::ReRenderer.new(report:, file: "#{basename}.re", words: starter_words,
                                           text_width_mm: text_area_width_mm)
         Chapter.new(basename:, markdown: renderer.render(nodes), labels: renderer.labels.uniq,
-                    lines: File.foreach(path).count)
+                    dropped_labels: renderer.dropped_labels, lines: File.foreach(path).count)
       end
 
       # Vivlio のラベルは本全体で一意（Re:VIEW は章内で一意ならよい）。
@@ -233,14 +234,38 @@ module VivlioStarter
 
         markdown = targets.inject(chapter.markdown) do |text, label|
           report.count(:relabel)
+          report_relabel(report, chapter, label)
           text.gsub(/@#{Regexp.escape(label)}(?![\w-])/, "@#{chapter.basename}-#{label}")
         end
 
-        report.degraded('label', file: "#{chapter.basename}.re", line: 0,
-                                 message: "章をまたいで重複したラベル #{targets.join('、')} を " \
-                                          "#{chapter.basename}-… へ改名しました。",
-                                 detail: 'Vivlio Starter のラベルは本全体で一意である必要があります（クロスリファレンスの章）。')
         chapter.with(markdown:)
+      end
+
+      # 報告は記法ごとに 1 件へ畳まれ、文言は最初の 1 件のものが出る。ラベル名を文言に入れるので、
+      # ラベルごとに別の種類にして、そのラベルを改名した章を並べる
+      def report_relabel(report, chapter, label)
+        report.degraded("relabel:#{label}", file: "#{chapter.basename}.re", line: nil,
+                                            message: "章をまたいで重複したラベル #{label} を、章名を付けて改名しました" \
+                                                     "（#{chapter.basename}-#{label} など）。参照も合わせて直しました。")
+      end
+
+      # キャプションが空で落としたラベルのうち、本文から参照されているものだけを知らせる。
+      # 参照の無いラベルは落としても紙面が変わらない。参照は別の章にもありうるので、
+      # 全章を変換し終えてから本全体で探す
+      def report_referenced_dropped_labels(chapters, report)
+        texts = chapters.map(&:markdown)
+
+        chapters.each do |chapter|
+          chapter.dropped_labels.each do |dropped|
+            id = dropped[:id]
+            reference = /@(?:pageref:)?#{Regexp.escape(id)}(?![\w-])/
+            next unless texts.any? { reference.match?(it) }
+
+            report.degraded("dropped-label:#{id}", file: "#{chapter.basename}.re", line: dropped[:line],
+                                                   message: "ラベル #{id} はキャプションが空のため落としました。本文の @#{id} は参照先がありません。",
+                                                   detail: "対処: 図表に `** タイトル @#{id} **` のキャプション行を足してください。")
+          end
+        end
       end
 
       # 言語名のないコードブロックの言語を推定して書き込む（code-language-detection-spec.md §8.10）。

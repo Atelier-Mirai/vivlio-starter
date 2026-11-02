@@ -123,6 +123,40 @@ module VivlioStarter
           result = convert("//list[][hello.c][file=source/star1/hello.c,1]{\nint main(){}\n//}\n")
 
           assert_equal "```include:star1/hello.c\n```", result
+          assert_empty @report.findings
+        end
+
+        # `file=…,10` の 10 は「行番号を 10 から振る」。ファイル全体を取り込み、番号は移せないと知らせる
+        def test_should_report_line_number_start_of_included_file
+          result = convert("//list[][hello.c][file=source/star1/hello.c,10]{\n//}\n")
+
+          assert_equal "```include:star1/hello.c\n```", result
+          assert_pattern { @report.findings => [{ level: :degraded, kind: 'lineno', line: 1 }] }
+        end
+
+        # ファイル名を添えた地のコードは `#L` で移せる。`lineno=10` と `10-` も裸の `10` と同じ
+        def test_should_carry_line_number_start_to_filename_fence
+          %w[10 lineno=10 lineno=10-].each do |option|
+            assert_includes convert("//list[][hello.c][#{option}]{\nint main(){}\n//}\n"), '```c:hello.c#L10'
+          end
+          assert_empty @report.findings
+        end
+
+        # ラベル付きは情報文字列にファイル名を入れないので移せない。//firstlinenum も次のコードへ持ち越さない
+        def test_should_report_line_number_start_that_cannot_be_carried
+          result = convert("//firstlinenum[10]\n//list[id][hello.c]{\nint main(){}\n//}\n\n//list[][a.c]{\nx\n//}\n")
+
+          assert_includes result, "```c\nint main(){}"
+          assert_includes result, "```c:a.c\nx"
+          assert_pattern { @report.findings => [{ kind: 'lineno', line: 2 }] }
+        end
+
+        # 飛び番（& は番号を振らない行）は Vivlio に無い
+        def test_should_report_skipped_line_numbers
+          result = convert("//list[][hello.c][lineno=80-83&97-100&105-]{\nint main(){}\n//}\n")
+
+          assert_includes result, "```c:hello.c\n"
+          assert_pattern { @report.findings => [{ kind: 'lineno' }] }
         end
 
         def test_should_wrap_terminal_and_output
@@ -199,6 +233,19 @@ module VivlioStarter
           assert_includes result, ":::{.talk}\nクラリス: こんにちは。\navatar-g: どうも。\n:::"
         end
 
+        # 報告は種類ごとに畳まれるので、話者ごとに分けて、文言の話者名をまとめた箇所すべてに当てはめる。
+        # 名前（日本語）の話者はキーにできないので、付け替える手順を示す
+        def test_should_report_each_speaker_separately
+          convert("//talk[avatar-b][][やあ]\n\n//talk[avatar-g][][どうも]\n\n//talk[avatar-b][][またね]\n\n" \
+                  "//talk[][クラリス][こんにちは]\n")
+          output, = capture_io { @report.emit! }
+
+          assert_includes output, 'chap.re:1、chap.re:5: 会話の話者 avatar-b は'
+          assert_includes output, 'chap.re:3: 会話の話者 avatar-g は'
+          assert_includes output, 'config/talk.yml に avatar-b: を足し'
+          assert_includes output, '原稿の「クラリス:」を半角英数字のキーに置き換え'
+        end
+
         # ================================================================
         # 落とす・残す（同 §3.4・§3.5）
         # ================================================================
@@ -225,6 +272,26 @@ module VivlioStarter
           renderer.render(ReParser.parse(path, report: @report))
 
           assert_equal %w[fig1 sec-a], renderer.labels.sort
+        end
+
+        # キャプションが空のラベルは落とすが、ここでは知らせない。本文から参照されているかは
+        # 全章をそろえてから調べる（ImportCommands#report_referenced_dropped_labels）
+        def test_should_record_dropped_label_without_reporting
+          path = File.join(@tmpdir, 'chap.re')
+          File.write(path, "本文。\n\n//image[fig1][]\n", encoding: 'utf-8')
+          renderer = ReRenderer.new(report: @report, file: 'chap.re', text_width_mm: B5_TEXT_MM)
+          result = renderer.render(ReParser.parse(path, report: @report))
+
+          refute_includes result, '@fig1'
+          assert_equal [{ id: 'fig1', line: 3 }], renderer.dropped_labels
+          assert_empty @report.findings
+        end
+
+        # 逐語ブロックの中の指摘は、ブロックの開始行ではなくその行を指す（コメント行を飛ばしても）
+        def test_should_report_line_inside_verbatim_block
+          convert("//terminal{\n$ ls  @<balloon>{入力}\n\#@# メモ\nfoo  @<balloon>{表示}\n//}\n")
+
+          assert_equal [2, 4], @report.findings.map(&:line)
         end
       end
     end
