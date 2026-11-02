@@ -4,30 +4,16 @@
 `vs pdf:read` は PDF から文字や画像を取り出して Vivlio Starter の Markdown に変換するコマンドです。既刊の書籍や配布資料をもとに書き直す場合に役立ちます。元にする PDF がなければ、この章は飛ばしてかまいません。
 :::
 
-## 概要と事前準備
+## 二つのモード
 
-`vs pdf:read` には、テキストを取り出す **Standard Mode** と、画像抽出・OCR も行う **Enhanced Mode** があります。
+`vs pdf:read` は、拡張機能 `vivlio-starter-pdf` があれば **Enhanced Mode** で動き、文字に加えて画像を取り出し、スキャンした PDF の文字を OCR で読み取ります。拡張機能がなければ、文字だけを取り出す **Standard Mode** で動きます。@chapref:ch-install の導入スクリプトでインストールした場合は、拡張機能も OCR のツールもインストール済みです。本章は Enhanced Mode を前提に説明します。
 
-| 項目 | Standard Mode | Enhanced Mode |
-| --- | --- | --- |
-| ライセンス | MIT | AGPL-3.0 |
-| 変換対象 | テキストのみ | テキスト + 画像 + OCR |
-| 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
-| 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
-
-Standard Mode は `vivlio-starter` 本体に含まれています。画像の抽出や、スキャナで読み取った PDF を OCR する為には、`vivlio-starter-pdf` gem（1.2.0 以降）と各種ツールを導入します。@chapref:ch-install の導入スクリプトでインストールした場合は、どちらもインストール済みです。インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
+導入スクリプトを使わなかった場合は、次のコマンドでインストールできます。
 
 ```zsh
 gem install vivlio-starter-pdf
 vs doctor --fix
 ```
-
-| ツール | 用途 |
-| --- | --- |
-| `vivlio-starter-pdf` | HexaPDF ベースの高度な PDF 解析 |
-| `tesseract` + `tesseract-lang` | OCR エンジン（日本語対応） |
-| `poppler`（pdftoppm） | PDF→画像変換（OCR 前処理） |
-| `vips` | 高速画像処理（イラスト領域検出） |
 
 ## 使い方
 
@@ -66,7 +52,7 @@ vs pdf:read handbook.pdf 21-guide    # contents/21-guide.md
 vs pdf:read handbook.pdf 90          # contents/90-handbook.md
 ```
 
-日本語や名前や数字のファイル名（`初めてのRuby練習帳.pdf`・`123.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに処理を中止します。どちらの場合も、章の名前を添えたコマンドが表示されるので、それを実行してください。
+日本語や数字だけのファイル名（`初めてのRuby練習帳.pdf`・`123.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに処理を中止します。どちらの場合も、章の名前を添えたコマンドが表示されるので、それを実行してください。
 
 :::{.output}
 ```text
@@ -90,20 +76,23 @@ vs pdf:read handbook.pdf 23-appendix --pages 238-
 
 ### 実行例と出力されるファイル
 
-```shell-session
-$ vs pdf:read three-elements --log
-🔧 [pdf:read] PDF からテキストを抽出します (52-three-elements, mode=enhanced)
-🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/52-three-elements.md
+```zsh
+vs pdf:read three-elements
 ```
 
-`--log` を付けると、どちらのモードで読んだかとページ数が表示されます。Standard Mode では Markdown だけ、Enhanced Mode では画像も作られます。
+:::{.output}
+```text
+✅ Markdown に変換しました: contents/52-three-elements.md
+```
+:::
+
+原稿と一緒に、PDF の中の画像が章の画像ディレクトリへ取り出されます。
 
 :::{.diagram}
 ```text
 contents/
   └── 52-three-elements.md
-images/                         # Enhanced Mode のみ
+images/
   └── 52-three-elements/
       ├── page-003-image-01.webp
       └── ...
@@ -114,7 +103,7 @@ images/                         # Enhanced Mode のみ
 
 ### 見出し・表・コードを復元する
 
-文字の層のある PDF からは、文字だけでなく原稿の構造も復元されます。どちらのモードでも同じです。
+文字の層のある PDF からは、文字だけでなく原稿の構造も復元されます。
 
 | 原本 | 復元される Markdown |
 | --- | --- |
@@ -125,7 +114,7 @@ images/                         # Enhanced Mode のみ
 | 脚注 | `[^1]` と `[^1]: …` |
 | 数式 | `$…$`・`$$…$$`（代替テキストに TeX が入ったタグ付き PDF のほか、否定の線・平方根・筆算） |
 | ルビ・強調・行内コード | ルビの記法・`**…**`・`` `…` `` |
-| 画像 | Enhanced Mode は `![代替テキスト](page-003-image-01.webp)`、Standard Mode は `<!-- 画像: 代替テキスト -->` |
+| 画像 | `![代替テキスト](page-003-image-01.webp)` |
 
 `vs build` で作った PDF のように見出しや段落を「タグ」として持つ PDF は、タグから読みます。タグのない PDF やスキャンした PDF は、文字の大きさ・位置・書体から推定します。推定して組んだ表には、確かめるよう促すコメントが付きます。柱とノンブルは、ページをまたいで同じ位置に繰り返し出る行として判別し、取り込みません。
 
@@ -177,7 +166,7 @@ pdf_read:
 - **`text_area`**：柱とノンブルは繰り返しから判別するので、既定では書きません。判別に失敗して柱やノンブルが本文に混ざるときだけ、除外する幅を mm 単位で書きます。書いた辺だけが有効です。
 - **`page_separator`**：`true` にすると、元の PDF のページ境界に `---`（改ページ）が入ります。スキャンした PDF を OCR で読むときだけ有効です（文字の層のある PDF は、ページをまたぐ段落を構造からつなぎます）。
 
-### OCR 設定（Enhanced Mode のみ）
+### OCR 設定
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
@@ -213,9 +202,9 @@ rules:
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
 | `PDF が見つかりません` | `/` を含まない指定は `sources/` の中だけを探す | PDF を `sources/` に置く。ほかの場所なら `./handbook.pdf` のように `/` を含むパスで指定する |
-| `PDF から文字を一つも取り出せませんでした` | スキャン PDF を Standard Mode で読んだ | `vivlio-starter-pdf` をインストールして Enhanced Mode（OCR）で読む。原稿と `catalog.yml` には何も書かれていない |
+| `PDF から文字を一つも取り出せませんでした` | 拡張機能がなく、スキャンした PDF を Standard Mode で読んだ | `vivlio-starter-pdf` をインストールして Enhanced Mode（OCR）で読む。原稿と `catalog.yml` には何も書かれていない |
 | ヘッダー / フッターが残る | 繰り返しから判別できなかった | `book.yml` の `pdf_read.text_area` に除外する幅を書く |
-| 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
+| 画像が抽出されない | 拡張機能がなく、Standard Mode で読んだ | `vivlio-starter-pdf` をインストールする |
 | OCR 結果が悪い | 言語設定が不適切 / スキャンの解像度が低い | `languages` を確認（英字が多い本は `english` を追加する）。スキャンし直すなら 300dpi 以上で |
 | スキャン PDF が OCR で読まれない | Tesseract がインストールされていない | `vs doctor --fix` でインストールする |
 | 日本語の間にスペースが残る | 補正表にない誤読 | `ocr_corrections.yml` にパターンを追加 |
