@@ -165,13 +165,13 @@ figure[class*=" language-"] > figcaption + pre {
 }
 
 .token.comment {
-  color: #888;
+  color: #757575; /* #888（3.5:1）を白地とのコントラスト比 4.5:1 以上へ */
 }
 
 /* コード内コメント強調（[!] マーカー付き） */
 .codered.token.comment {
   font-weight: bold;
-  color: #f00;
+  color: #eb0000; /* #f00（4.0:1）を 4.5:1 以上へ */
 }
 
 /* =============================================================
