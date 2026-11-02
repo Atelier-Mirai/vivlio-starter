@@ -156,7 +156,10 @@ module VivlioStarter
         page = page_index.fetch(dict[:Pg], page) if dict[:Pg]
 
         case dict[:Type]
-        in :MCR then [page && marked_contents.dig(page, @objects.object(dict[:MCID]))].compact
+        in :MCR
+          # /Stm があれば、MCID はその Form XObject の中の番号（MarkedContentReceiver#marked_contents）
+          mcid = @objects.object(dict[:MCID])
+          [page && marked_contents.dig(page, dict[:Stm] ? [dict[:Stm], mcid] : mcid)].compact
         in :OBJR then []
         else
           [Element.new(type: standard_type(dict[:S]), children: children_of(dict[:K], page, seen),

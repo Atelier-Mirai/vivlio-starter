@@ -112,6 +112,8 @@ module VivlioStarter
         @glyphs_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @images_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @marks = []
+        @streams = []
+        @xobject_scopes = [xobject_references(page.attributes[:Resources])]
         @unmarked_glyphs = []
         @page_glyphs = []
         @page_images = []
@@ -165,7 +167,11 @@ module VivlioStarter
       # 本文として数える文字の数（Artifact の中の文字を除く）
       def body_glyph_count = @page_glyphs.size
 
-      # @return [Hash{Integer => MarkedContent}]
+      # Form XObject の中の MCID は、その XObject の中だけで数える番号なので、XObject の参照と組にして
+      # [参照, MCID] をキーにする。構造ツリーは MCR の /Stm でどの XObject かを指す（PDF 32000-1 §14.7.4.3）。
+      # ページの中の MCID と同じ番号の箱に入れると、Chrome が XObject で描く上付きのリンク（用語集の †）が
+      # ページ先頭の MCID 0 の文字とまとめて読まれ、「通常は† † † † †」になった
+      # @return [Hash{Integer, Array(PDF::Reader::Reference, Integer) => MarkedContent}]
       def marked_contents
         (@glyphs_by_mcid.keys | @images_by_mcid.keys).to_h do |mcid|
           [mcid, MarkedContent.new(glyphs: @glyphs_by_mcid[mcid], images: @images_by_mcid[mcid])]
@@ -179,7 +185,7 @@ module VivlioStarter
         properties = @page.properties[properties] if properties.is_a?(Symbol)
         properties = @page.objects.deref_hash(properties) if properties.is_a?(::PDF::Reader::Reference)
         mcid = properties[:MCID] if properties.is_a?(Hash)
-        @marks << [tag, mcid]
+        @marks << [tag, mcid && (@streams.empty? ? mcid : [@streams.last, mcid])]
       end
 
       def begin_marked_content(tag)
@@ -202,13 +208,32 @@ module VivlioStarter
         record_new_glyphs { super }
       end
 
-      # 画像は MCID の中で描かれる。描いた位置を変換行列から求めて、Figure と画像を結ぶ手がかりにする
+      # 画像は MCID の中で描かれる。描いた位置を変換行列から求めて、Figure と画像を結ぶ手がかりにする。
+      # Form XObject の中を辿るあいだは、その参照を積んでおき、中で開く MCID をその XObject のものとして数える
       def invoke_xobject(label)
         record_image(label)
-        super
+        reference = @xobject_scopes.reverse_each.find { it.key?(label) }&.fetch(label)
+        stream = @page.objects.object(reference)
+        return super unless reference.is_a?(::PDF::Reader::Reference) && stream.is_a?(::PDF::Reader::Stream) && stream.hash[:Subtype] == :Form
+
+        @streams << reference
+        @xobject_scopes << xobject_references(stream.hash[:Resources])
+        begin
+          super
+        ensure
+          @streams.pop
+          @xobject_scopes.pop
+        end
       end
 
       private
+
+      # 資源の XObject の名前と参照の対応。pdf-reader が辿る XObject は参照を外した実体なので、
+      # 構造ツリーの /Stm と突き合わせるために、参照のままの対応を自分で持つ
+      def xobject_references(resources)
+        objects = @page.objects
+        objects.object(objects.object(resources)&.[](:XObject)) || {}
+      end
 
       def current_mcid = @marks.reverse_each.find { it[1] }&.last
 

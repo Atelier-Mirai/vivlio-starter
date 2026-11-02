@@ -6,6 +6,10 @@
 
 ## unreleased
 
+### Fixed
+
+- **`vs pdf:read` が、`vs build` で作った PDF の用語集の「†」の位置に、ページ先頭の語と別の「†」を混ぜていた**（「SVG通常は† † † † †のどれでも」）。Chrome は上付きのリンクを Form XObject の中に描き、その中の MCID は XObject ごとに 0 から数える。構造ツリーは MCR の `/Stm` でどの XObject かを指すが、読み取りはページの MCID と同じ番号として扱っていたので、ページの MCID 0（先頭の語）と、そのページの † すべてを一つの箱に入れていた。XObject の中の MCID を、XObject の参照と組にして数えるようにした。
+
 ## [1.0.0] - 2026-11-01
 
 ### Added

@@ -46,6 +46,18 @@ module VivlioStarter
 
         def marked_content_reference(mcid) = { Type: :MCR, MCID: mcid, Pg: @pdf.state.page.dictionary }
 
+        # Form XObject の中に、その XObject の中だけで数える MCID 0 で文字を描き、/Stm で指す MCR を返す。
+        # 書体はページで先に使ったものを借りる（XObject に資源が無ければページの資源を引く）
+        def form_text(string, x, y)
+          font = @pdf.state.page.fonts.keys.first
+          form = @pdf.ref!({ Type: :XObject, Subtype: :Form, BBox: [0, 0, 595, 842] })
+          form.stream << "/Span <</MCID 0>> BDC BT /#{font} 12 Tf #{x} #{y} Td (#{string}) Tj ET EMC"
+          label = :"Fx#{@pdf.state.page.xobjects.size + 1}"
+          @pdf.state.page.xobjects[label] = form
+          @pdf.add_content("/#{label} Do")
+          { Type: :MCR, MCID: 0, Stm: form, Pg: @pdf.state.page.dictionary }
+        end
+
         def new_page = @pdf.start_new_page
 
         def finish(kids, role_map: nil)
@@ -138,6 +150,22 @@ module VivlioStarter
           assert_nil(reader.root)
           assert_in_delta(0.0, reader.coverage)
         end
+      end
+
+      # Chrome は上付きのリンク（用語集の †）を Form XObject の中に描き、構造ツリーは MCR の /Stm で指す。
+      # XObject の中の MCID 0 をページの MCID 0 と取り違えると、ページ先頭の語と XObject の字をすべて読んでしまう
+      def test_should_read_form_xobject_marked_content_by_its_own_mcid
+        markdown = read_tagged_pdf do |pdf|
+          first = pdf.text('Usually', 72, 720)
+          marks = [pdf.form_text('*', 115, 720), pdf.form_text('*', 200, 700)]
+          rest = pdf.text('more text', 125, 720)
+          second = pdf.text('Second', 72, 700)
+          [pdf.element(:P, first, pdf.element(:Link, marks[0]), rest),
+           pdf.element(:P, second, pdf.element(:Link, marks[1]))]
+        end
+
+        assert_equal(1, markdown.scan('Usually').size, markdown)
+        assert_equal(2, markdown.count('*'), markdown)
       end
 
       # 構造ツリーの外に描かれた行番号（aria-hidden）を拾い直し、開始番号を #L で書き戻す
