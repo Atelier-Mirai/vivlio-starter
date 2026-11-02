@@ -11,10 +11,11 @@
 #   記法ごとに畳んで「どの記法が何件・最初の 3 箇所はどこか」を示すほうが、
 #   著者は直す順番を決められる。
 #
-# 3 段階（re-direct-import-spec.md §4.1）:
+# 2 段階:
 #   🔴 unsupported … Vivlio に対応概念が無い。著者が手で直す必要がある
 #   🟡 degraded    … 変換はしたが情報が落ちた
-#   🔵 note        … 見た目が変わりうるが著者の作業は不要
+#   著者の作業が要らない変化は報告しない（vs import は既定のログの水準でしか動かず、
+#   info の報告は表示されない）
 # ================================================================
 
 require_relative '../common'
@@ -47,11 +48,6 @@ module VivlioStarter
           add(:degraded, kind, file, line, message, detail)
         end
 
-        # 🔵 見た目は変わりうるが、著者の作業は要らない
-        def note(kind, file:, line:, message:, detail: nil)
-          add(:note, kind, file, line, message, detail)
-        end
-
         # 変換できた記法を数える（サマリの母数になる）
         def count(category, by = 1) = @counts[category] += by
 
@@ -63,7 +59,6 @@ module VivlioStarter
         def emit!
           emit_group(:unsupported) { Common.log_error(it.first, detail: it.last) }
           emit_group(:degraded) { Common.log_warn(it.first, detail: it.last) }
-          emit_group(:note) { Common.log_info(it.first) }
         end
 
         # 「静かに終わった＝全部うまくいった」と誤解させないための総括。

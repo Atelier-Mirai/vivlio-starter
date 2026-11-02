@@ -259,9 +259,10 @@ module VivlioStarter
           assert_equal :degraded, @report.findings.first.level
         end
 
-        def test_should_report_silently_dropped_command
-          assert_empty convert("//noindent\n")
-          assert_equal :note, @report.findings.first.level
+        # 紙面に出ない指示・CSS が受け持つ指定は、著者の作業が要らないので黙って落とす
+        def test_should_drop_silent_command_without_report
+          assert_empty convert("//noindent\n\n//tsize[|latex||l|c|]\n")
+          assert_empty @report.findings
         end
 
         # 章をまたがない限りラベルはそのまま。収集だけしておく

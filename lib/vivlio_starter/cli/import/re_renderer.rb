@@ -41,15 +41,10 @@ module VivlioStarter
         # 引用
         QUOTES = %w[quote blockquote doorquote].freeze
 
-        # 落とすだけ。紙面に出ない指示なので著者の作業は要らない（🔵）
-        SILENT_COMMANDS = {
-          'noindent' => '字下げの抑制（Vivlio Starter では CSS が持ちます）',
-          'paragraphend' => '段の終わりの空き',
-          'subparagraphend' => '小段の終わりの空き',
-          'parasep' => '段落の区切り',
-          'tsize' => '表の列幅指定（Vivlio Starter では列幅は自動です）',
-          'comment' => 'コメント'
-        }.freeze
+        # 黙って落とす。紙面に出ない指示か、Vivlio Starter では CSS が受け持つ指定なので、
+        # 著者の作業は要らない（字下げの抑制・段や小段の終わりの空き・段落の区切り・
+        # 表の列幅・コメント）
+        SILENT_COMMANDS = %w[noindent paragraphend subparagraphend parasep tsize comment].freeze
 
         # 落とすが、紙面が変わるので知らせる（🟡）
         DROPPED_COMMANDS = {
@@ -251,7 +246,7 @@ module VivlioStarter
           when 'talk', 't' then push(talk_group(node, single: true))
           when 'desc' then push(desc_group(node, single: true))
           when 'olnum' then nil
-          when *SILENT_COMMANDS.keys then silent(node)
+          when *SILENT_COMMANDS then nil
           when *DROPPED_COMMANDS.keys then dropped(node)
           when *UNSUPPORTED_BLOCKS.keys then push(unsupported(node))
           else push(unknown(node))
@@ -641,12 +636,6 @@ module VivlioStarter
         def vspace(node)
           @report.count(:block)
           "@vspace:#{node.args.last.to_s.strip}"
-        end
-
-        def silent(node)
-          @report.note("//#{node.name}", file: @file, line: node.line,
-                                         message: "//#{node.name}（#{SILENT_COMMANDS[node.name]}）は落としました。")
-          nil
         end
 
         def dropped(node)

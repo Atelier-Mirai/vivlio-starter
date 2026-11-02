@@ -31,7 +31,8 @@ module VivlioStarter
         # `@<name>` の頭。名前に使えるのは英数字と _
         COMMAND_HEAD = /\A@<([A-Za-z0-9_]+)>/
 
-        # 前後を同じ記号で挟むだけの命令
+        # 前後を同じ記号で挟むだけの命令。`@<b>`（太字だけ。`@<B>` と違ってゴシックにならない）も
+        # 強調（`**…**`）へ寄せる。Markdown に「色の付かない太字」は無い
         WRAPPERS = {
           'code' => '`', 'tt' => '`', 'file' => '`', 'samp' => '`', 'var' => '`',
           'ttb' => '`', 'tti' => '`',
@@ -230,23 +231,11 @@ module VivlioStarter
         # `@<code>{…}` のような囲み。中では Markdown の装飾記号が効かないので
         # 引数は plain で解く（`@<code>{f(@<b>{x})}` は `` `f(x)` `` になる）
         def wrap(name, arg, context)
-          note_bold_as_strong(context) if name == 'b'
           mark = WRAPPERS.fetch(name)
           body = transform(arg, context, plain: mark == '`')
           return "`` #{body} ``" if mark == '`' && body.include?('`')
 
           "#{mark}#{body}#{mark}"
-        end
-
-        # Re:VIEW の `@<b>` は「太字にするだけ」で、`@<B>`（＝`@<strong>`）と違って
-        # ゴシック体にならない。Vivlio の強調（`**…**`）は太字に色も付くので、
-        # そのぶん見た目が変わる。Markdown に「色の付かない太字」は無いため
-        # `**…**` へ寄せ、変わることだけ伝える（著者の作業は要らない）
-        def note_bold_as_strong(context)
-          context.report.note('@<b>',
-                              file: context.file, line: context.line,
-                              message: '@<b>（太字だけの指定）は強調（**…**）にしました。' \
-                                       'Vivlio Starter の強調は太字に色も付きます。')
         end
 
         def degrade(name, arg, context)

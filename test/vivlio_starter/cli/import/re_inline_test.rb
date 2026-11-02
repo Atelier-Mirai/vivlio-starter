@@ -66,18 +66,9 @@ module VivlioStarter
           assert_equal '$x^2$', convert('@<m>{x^2}')
         end
 
-        # `@<b>` は Re:VIEW では「太字だけ（ゴシックにならない）」。Vivlio の強調は
-        # 色も付くので、寄せたことを 🔵 で伝える（著者の作業は要らない）
-        def test_should_note_that_bold_becomes_strong
+        # `@<b>`（太字だけ）も `@<B>`（＝`@<strong>`）も強調にする。著者の作業は要らないので報告しない
+        def test_should_convert_bold_and_strong_to_strong_without_report
           assert_equal '**太字**', convert('@<b>{太字}')
-
-          finding = @report.findings.first
-          assert_equal :note, finding.level
-          assert_equal '@<b>', finding.kind
-        end
-
-        # `@<B>`（＝`@<strong>`）はもともと強調なので、何も言わない
-        def test_should_convert_strong_without_note
           assert_equal '**強調**', convert('@<B>{強調}')
           assert_empty @report.findings
         end
