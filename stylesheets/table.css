@@ -166,8 +166,8 @@ thead:not(:has(th:not(:empty))) {
   min-inline-size: auto;
 }
 
+/* 横の揃えは通常の表と同じ（見出しは中央・本文は左）。中央に置きたい列は :---: で指定する */
 .long-table td {
-  text-align: center;
   vertical-align: middle;
 }
 

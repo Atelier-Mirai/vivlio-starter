@@ -4,19 +4,13 @@
 Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` を使います。原稿（`.re`）を直接読み取るため、以前の執筆環境を動かす必要はありません。この章では、取り込み元の確認から変換後の点検まで、移行の順に沿って説明します。Re:VIEW Starter で書いた原稿がなければ、この章は飛ばしてかまいません。
 :::
 
-## 事前準備と実行
+## プロジェクトを取り込む
 
-:::{.memo}
-**Re:VIEW Starter の実行環境は要りません**
+`vs import` は、Re:VIEW Starter のプロジェクトから原稿・画像・コード・書籍情報を読み取り、Vivlio Starter のプロジェクトへ変換します。まず取り込み元に必要なファイルがあるかを確かめ、次に移行先のプロジェクトで `vs import` を実行します。
 
-`vs import` が読み取るのは `.re` ファイルです。Re:VIEW の gem や Re:VIEW Starter の変換スクリプトは使いません。以前の執筆環境が残っていなくても、原稿ファイルがあれば取り込めます。
+### 取り込み元を確かめる
 
-対応しているのは **Re:VIEW Starter 記法**です。たとえば行頭の `-` は、Starter では番号付きリストに、Re:VIEW では段落になるなど、両者の記法には違いがあります。Re:VIEW 記法の原稿も取り込める見込みはありますが、検証はしていません。
-:::
-
-### 取り込み元の確認
-
-取り込み元のルートに、次のファイルやディレクトリがあるか確かめます。
+取り込み元（`review_project`）のルートに、次のファイルやディレクトリがあるか確かめます。
 
 | ファイル | 要否 | 用途 |
 | --- | :---: | --- |
@@ -30,9 +24,25 @@ Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` 
 
 **取り込むのは `catalog.yml` に載っている章だけです。** `contents/` に `.re` があっても、catalog に載っていなければ対象になりません。書きかけの章や外した章が残っている場合も、意図せず本に加わることはありません。
 
-### 実行コマンド
+:::{.memo}
+**Re:VIEW で書いた原稿について**
 
-移行先として新しいプロジェクトを作り、そこへ取り込みます。
+`vs import` が対応しているのは **Re:VIEW Starter 記法**です。たとえば行頭の ` - ` は、Starter では番号付きリストに、Re:VIEW では段落になるなど、両者の記法には違いがあります。Re:VIEW 記法の原稿も取り込める見込みはありますが、検証はしていません。
+:::
+
+### `vs import` を実行する
+
+移行先として、取り込み元の `review_project` と同じ階層に新しいプロジェクト `mybook` を作り、そこへ取り込みます。
+
+:::{.diagram}
+```text
+books/
+  review_project/   ← 取り込み元（Re:VIEW Starter）
+  mybook/           ← 移行先（vs new で作る）
+```
+:::
+
+`mybook` の中から見ると、取り込み元は `../review_project` です。
 
 ```zsh
 vs new mybook
@@ -42,22 +52,31 @@ vs import ../review_project
 
 `vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。取り込み元のファイルは読み取るだけで、変更しません。
 
-移行先の `contents/`・`images/`・`codes/` は作り直すので、削除してよいかの確認が表示されます。`vs new` で作った直後なら、削除されるのは雛形の見本だけです。確認に答えるため、端末から実行します。
+移行先の `contents/`・`images/`・`codes/` は作り直すので、削除してよいかの確認が表示されます。索引・用語集の辞書（`config/index_glossary_terms.yml` など）も空に戻します。`vs new` で作った直後なら、削除されるのは雛形の見本だけです。
 
-## 処理の流れ
+## 変換の内容
 
-取り込みでは、次の処理が順に行われます。最初に移行先の原稿や画像が作り直されるため、すでに編集したファイルがある場合は実行前に確認してください。
+取り込むと、ファイルの置き場所と原稿の記法が Vivlio Starter の形に変わります。ここでは、それぞれの行き先と、段落の改行の扱いを説明します。
 
-1. **クリーンアップ** — 移行先の `contents/`・`images/`・`codes/` を削除して作り直します。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も、入れ替わる原稿に合わせて空に戻します。
-2. **原稿の変換** — `catalog.yml` に並ぶ `.re` を順に読み、Vivlio Starter の Markdown へ書き出します。
-3. **ラベル ID の一意化** — Re:VIEW Starter では章内で重複しなければよかったラベルを、本全体で一意になるよう確認します。章をまたいで重なる ID だけ、章名を付けて改名し（`tbl1` → `11-intro-tbl1`）、参照箇所も合わせて直します。
-4. **画像処理** — 取り込み元の `images/` を移行先へコピーして、WebP に変換します。
-5. **codes/ へのコピー** — `source/` 配下をそのまま `codes/` へコピーします。
-6. **YAML 変換** — `catalog.yml` では `PREDEF`→`PREFACE` などのキーを変え、章名から `.re` を外します。部、コメント、コメントアウトした章は残します。`config.yml` の `book.main_title` などは `book.yml` に反映し、`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけます。
-7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピーし、その 1 ページ目を `frontcover_master.png`・`backcover_master.png` へ変換します。あわせて `book.yml` の `book.cover` を `master` に揃えます。
+### ファイルの行き先
+
+取り込み元のファイルは、移行先の次の場所へ変換されます。
+
+:::{.long-table}
+| 取り込み元 | 移行先 |
+| --- | --- |
+| `contents/*.re` | `contents/*.md` |
+| `catalog.yml` | `config/catalog.yml`（部やコメントアウトした章も残ります） |
+| `images/` | `images/`（WebP に変換します） |
+| `source/` | `codes/` |
+| `config.yml` | `config/book.yml` の書名・著者・発行者など |
+| `config-starter.yml` | `config/book.yml` の判型（`B5` なら `b5_standard`） |
+| 表紙の PDF | `covers/` の表紙の画像（PDF の 1 ページ目） |
+:::
 
 ### 主な記法の行き先
 
+:::{.long-table}
 | Re:VIEW Starter | Vivlio Starter|
 | --- | --- |
 | `= 見出し` / `=={id} 見出し` | `# 見出し` / `## 見出し @id` |
@@ -76,14 +95,12 @@ vs import ../review_project
 | `//footnote[id][本文]` / `@<fn>{id}` | `[^id]: 本文` / `[^id]` |
 | `//clearpage` / `//vspace[latex][7mm]` / `//blankline` | `@pagebreak` / `@vspace:7mm` / 段落末の `{.aki}` |
 | `@<code>` / `@<B>` / `@<href>` / `@<ruby>` | `` `…` `` / `**…**` / `[…](…)` / `{漢字\|よみ}` |
-
-コードフェンスの言語名は、まず原稿に書かれた言語名（`//list[id][キャプション][ruby]`・`//emlist[キャプション][ruby]`）から、次に `file=` のパスやキャプションの拡張子から決めます。どちらもないコードは、全章を取り込んだあとで `vs lint` と同じ仕組みで言語を推定し（@ch-lint の章の @pageref:lint-code-language）、確かなものだけに言語名を付けます。確かめきれないものは言語名を付けずに残すので、取り込んだあとに `vs lint` を実行すると「〜らしい」と提案されます。
-
-:::{.note}
-**コードは `codes/` に置いたまま参照します**
-
-Re:VIEW Starter の `//list[][hello.c][file=source/star1/hello.c,1]` は、ビルドのたびにコードの内容を紙面へ展開します。取り込み後は ```` ```include:star1/hello.c ```` となり、`codes/` のファイルを参照します。**コードを直した結果を紙面にも反映できる**ので、同じ内容を原稿に書き写す必要はありません。
+| `@<balloon>{説明}`（コードの行の注釈） | `← 説明` |
 :::
+
+ラベル ID はそのまま引き継ぎます。ただし Vivlio Starter のラベルは本全体で一意なので、章をまたいで同じ ID があれば、章名を付けて改名します（`tbl1` → `11-intro-tbl1`）。参照している箇所も合わせて直します。
+
+コードフェンスの言語名は、原稿の指定（`//list[id][キャプション][ruby]`）か、ファイルの拡張子から付けます。どちらもないコードは内容から推定し、確かなものだけに付けます。付かなかったコードは、取り込んだあとに `vs lint` が言語名を提案します（@ch-lint の章の @pageref:lint-code-language）。
 
 ### 段落の改行
 
@@ -106,31 +123,30 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 
 :::{.output}
 ```text
-🔴 07-git.re:189、07-git.re:190、07-git.re:247 ほか 42 箇所: @<balloon>（コード内の吹き出し）は
-   Vivlio Starter に対応する記法がありません。原文をそのまま残しました。（計 45 箇所）
-        対処: 該当箇所を書き換えてください（拡張記法リファレンスの章を参照）。
+🔴 21-first-html.re:646: @<large>（文字を大きくする指定）は Vivlio Starter に対応する記法がありません。原文を残しましたので、該当箇所を書き換えてください。
+🟡 21-first-html.re:233、21-first-html.re:242、21-first-html.re:549、ほか 3 箇所: 行番号の振り方の指定（開始番号・飛び番）は移せないため、1 から続けて振ります。（計 6 箇所）
 ```
 :::
 
-手作業で置き換える必要があるのは、次の 11 種です。
+手作業で置き換える必要があるのは、次の 10 種です。
 
 | 記法 | 理由 |
 | --- | --- |
 | `//embed` `//raw` `@<embed>` `@<raw>` | 出力形式ごとの生データ（LaTeX / HTML）。移行先では意味を持ちません |
 | `//graph` | 外部ツールでの作図。Vivlio Starter では `mermaid` フェンスか生成済みの画像を使います |
 | `//hr` | 水平線。Vivlio Starter の `---` は**改ページ**なので置き換えられません |
-| `@<balloon>` | コード内の吹き出し |
 | `@<big>` `@<large>` `@<xlarge>` `@<xxlarge>` | 文字を大きくする指定 |
 
 最後に、変換した件数と確認が必要な件数がまとめて表示されます。
 
 :::{.output}
 ```text
-🔍 変換サマリ（7 章 / 1462 行）
-        ブロック命令 138 件を変換
-        インライン命令 178 件を変換
-        ラベル ID 3 件を一意化のため改名
-        🔴 45 件 / 🟡 12 件 — 詳細は上のログを参照してください
+🔍 変換サマリ（14 章 / 6461 行）
+        ブロック命令 579 件を変換
+        インライン命令 1194 件を変換
+        コードブロック 20 個に、推定した言語名を付与
+        コードブロック 2 個は言語名を確かめきれず（vs lint で「〜らしい」と提案します）
+        🔴 1 件 / 🟡 10 件 — 詳細は上のログを参照してください
 ```
 :::
 
@@ -155,15 +171,15 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
-| `catalog.yml が見つかりません` | 取り込み元の指定が 1 階層ずれている | Re:VIEW Starter プロジェクトのルート（`catalog.yml` のある場所）を指定する |
-| `原稿（.re）が見つかりません` | `config.yml` の `contentdir` が既定と違う | `contentdir` の指すディレクトリに `.re` があるか確認する |
-| 章が足りない | `catalog.yml` に載っていない | 取り込みたい章を `catalog.yml` へ追加してから実行する |
-| 会話に話者の色が付かない | `config/talk.yml` に話者が未登録 | 🟡 が挙げた話者キーを `config/talk.yml` に登録する |
-| 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
+| `catalog.yml が見つかりません` | 指定したディレクトリに `catalog.yml` がない | `catalog.yml` のあるディレクトリを指定する |
+| `原稿（.re）が見つかりません` | 原稿のディレクトリに `.re` が一つもない | 原稿のディレクトリ（既定は `contents/`。`config.yml` の `contentdir` で変えているときはそのディレクトリ）を確かめる |
+| 章が足りない | 取り込み元の `catalog.yml` に載っていない | `catalog.yml` に章を追加して、取り込み直す |
+| 会話の話者名が `avatar-b` のように表示され、アバターも付かない | `config/talk.yml` に話者が登録されていない | 🟡 が挙げた話者を `config/talk.yml` に登録する |
+| 表紙が取り込まれない | `frontcover_pdffile` に PDF 以外（PNG など）を指定している | 自分の表紙の画像を `covers/frontcover_master.png` に置く |
 | 本に裏表紙が付かない | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を置く（雛形は `covers/templates/`） |
-| 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
-| `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
+| 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を指定する |
+| `config/book.yml` に書名などが入らない | `config/book.yml` からその項目の行を削除したか、コメントにした | 🟡 が示す行を `config/book.yml` に書き足す |
 
-:::{.tip}
-原因が分からない場合は `VS_DEBUG=1 vs import ...` で詳細なログを確認できます。再実行すると移行先のファイルが作り直されるため、先に残したい変更を退避してください。
+:::{.notice}
+取り込み直すと、移行先の `contents/`・`images/`・`codes/` は作り直されます。取り込んだ後に手を入れた原稿や画像は、先に別の場所へ保存してください。
 :::
