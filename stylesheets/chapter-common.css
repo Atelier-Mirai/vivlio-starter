@@ -217,9 +217,14 @@ p {
   text-indent: 0;
 }
 
+/* 引用は斜体にしない。和文には斜体の字形が無く、傾けると読みにくい（em も下線で表す） */
 blockquote p {
   text-indent: 0;
-  font-style: italic;
+}
+
+/* 引用の中の段落は字下げしないので、間を半行あけて段落の区切りを見せる */
+blockquote p + p {
+  margin-block-start: 0.5lh;
 }
 
 blockquote {
@@ -320,6 +325,12 @@ li.task-list-item > input[type="checkbox"] {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 0.62em 0.62em;
+}
+
+/* 番号付きのタスクリスト（`1. [ ] …`）は番号を残す。上の負のマージンで枠を
+   マーカーの位置へ引き出すと、枠が番号に重なる。 */
+ol > li.task-list-item > input[type="checkbox"] {
+  margin-inline: 0 0.35em;
 }
 
 /* 鉤の SVG は**パーセント符号化する**。生の `<` は URL として不正で epubcheck が

@@ -186,13 +186,16 @@ blockquote {
   padding-inline: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
   border-inline-start: 3px solid var(--color-preface-accent);
   background: var(--color-surface);
-  font-style: italic;
 }
 
 blockquote p {
   text-indent: 0;
   margin: 0;
   color: var(--color-text);
+}
+
+blockquote p + p {
+  margin-block-start: 0.5lh;
 }
 /* 表のセルは本文の両端揃え（body の justify）を継がない。章と同じく行頭へ寄せる。
    継ぐと、狭い列で折り返した「第2分冊」が「第　2　分」と字間を空けて組まれる */
