@@ -112,6 +112,7 @@ module VivlioStarter
         @glyphs_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @images_by_mcid = Hash.new { |hash, key| hash[key] = [] }
         @marks = []
+        @drawn = Set.new
         @streams = []
         @xobject_scopes = [xobject_references(page.attributes[:Resources])]
         @unmarked_glyphs = []
@@ -252,6 +253,10 @@ module VivlioStarter
           Glyph.new(text: glyph_text(run.text, font), x: run.x, y: run.y, width: run.width, size: run.font_size * scale, page: @page_number, font:,
                     rotated:)
         end
+        # 同じ字を同じ位置に重ねて描いたものは 1 字に数える。Chrome は文字の影（text-shadow）を付けた字を、
+        # 透明（ca 0）で一度描いてから描き直すので、章扉の章題が「新規新規プロジェクトのプロジェクトの」と
+        # 二重に読まれた。透明な字そのものは捨てない（スキャンした PDF の文字の層は見えない字で描かれる）
+        added.select! { @drawn.add?([it.text, it.x.round(1), it.y.round(1)]) }
         return if added.empty?
 
         mcid = current_mcid

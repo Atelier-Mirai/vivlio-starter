@@ -20,12 +20,12 @@ module VivlioStarter
           @next_mcid = Hash.new(0)
         end
 
-        # 文字を MCID つきのマーク付き内容で描き、その MCID を返す
-        def text(string, x, y, size: 12, font: 'Helvetica')
+        # 文字を MCID つきのマーク付き内容で描き、その MCID を返す。times を増やすと同じ位置に重ねて描く
+        def text(string, x, y, size: 12, font: 'Helvetica', times: 1)
           mcid = @next_mcid[@pdf.page_number]
           @next_mcid[@pdf.page_number] += 1
           @pdf.add_content("/Span <</MCID #{mcid}>> BDC")
-          draw(string, x, y, size:, font:)
+          times.times { draw(string, x, y, size:, font:) }
           @pdf.add_content('EMC')
           mcid
         end
@@ -166,6 +166,16 @@ module VivlioStarter
 
         assert_equal(1, markdown.scan('Usually').size, markdown)
         assert_equal(2, markdown.count('*'), markdown)
+      end
+
+      # Chrome は文字の影（text-shadow）を付けた字を、透明で一度描いてから同じ位置に描き直す。
+      # 重ねて描いた字を 2 字と数えると、章扉の章題が「新規新規」と二重に読まれる
+      def test_should_read_text_drawn_twice_at_same_position_once
+        markdown = read_tagged_pdf do |pdf|
+          [pdf.element(:H1, pdf.text('Chapter Title', 72, 760, size: 24, times: 2))]
+        end
+
+        assert_equal("# Chapter Title\n", markdown)
       end
 
       # 構造ツリーの外に描かれた行番号（aria-hidden）を拾い直し、開始番号を #L で書き戻す
