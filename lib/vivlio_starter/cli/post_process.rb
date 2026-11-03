@@ -313,6 +313,10 @@ module VivlioStarter
       #
       # 相互参照 ID 付きのキャプションは wrap_cross_ref_code_blocks! が同じ
       # クラスを付けるので、ここで付いていれば重複させずに素通しします。
+      #
+      # `.side-by-side` の直下では、キャプションとコードを 1 つの <div> に包みます。
+      # 左右に並べる囲みは直下の要素を 1 つずつ列にするので、包まないとキャプションと
+      # コードが別の列になる（ID 付きは wrap_cross_ref_code_blocks! の <div> で 1 列）。
       # ================================================================
       def mark_code_captions!(html_file)
         content = File.read(html_file, encoding: 'utf-8')
@@ -321,12 +325,15 @@ module VivlioStarter
 
         doc.css('p').each do |paragraph|
           next unless strong_only_paragraph?(paragraph)
-          next unless code_block?(paragraph.next_element)
+
+          code = paragraph.next_element
+          next unless code_block?(code)
 
           classes = paragraph['class'].to_s.split(/\s+/).reject(&:empty?)
           next if classes.include?('code-caption')
 
           paragraph['class'] = (classes + ['code-caption']).join(' ')
+          wrap_side_by_side_column(paragraph, code)
           changed = true
         end
 
@@ -336,6 +343,16 @@ module VivlioStarter
         Common.log_success("#{html_file}: code captions marked")
       end
       module_function :mark_code_captions!
+
+      # `.side-by-side` の直下にあるキャプションとコードを、1 列になるよう <div> で包む
+      def wrap_side_by_side_column(caption, code)
+        return unless caption.parent&.[]('class').to_s.split.include?('side-by-side')
+
+        column = caption.add_previous_sibling(Nokogiri::XML::Node.new('div', caption.document))
+        column.add_child(caption)
+        column.add_child(code)
+      end
+      module_function :wrap_side_by_side_column
 
       # ================================================================
       # 小見出しとして書かれた段落

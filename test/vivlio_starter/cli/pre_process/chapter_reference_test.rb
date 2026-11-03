@@ -169,7 +169,7 @@ module VivlioStarter
       def test_should_keep_spaces_for_figures_and_unresolved_references
         content = replace("これは @fig-flow を見る。未定義 @ch-zzz です。\n")[:content]
 
-        assert_includes content, 'これは <a href="21-images.html#fig-flow" class="cross-ref-link">図 11-2</a> を見る'
+        assert_includes content, 'これは <a href="21-images.html#fig-flow" class="cross-ref-link cross-ref-number">図 11-2</a> を見る'
         assert_includes content, '未定義 @ch-zzz です'
       end
 

@@ -918,7 +918,7 @@ module VivlioStarter
             end
 
             text = kind == 'chapref' ? chapref_text(label) : link_text(label)
-            %(<a href="#{build_href(label)}" class="#{paged_classes(label)}">#{text}</a>)
+            %(<a href="#{build_href(label)}" class="#{with_number_class(paged_classes(label), label)}">#{text}</a>)
           end
 
           # 別の巻のラベルへの参照。巻の名前を添え、リンクにしない（PDF・EPUB とも、別の巻へは飛べない）。
@@ -1022,7 +1022,13 @@ module VivlioStarter
             return other_volume_text(volume, link_text(label)) if volume
 
             href = build_href(label)
-            %(<a href="#{href}" class="cross-ref-link">#{link_text(label)}</a>)
+            %(<a href="#{href}" class="#{with_number_class('cross-ref-link', label)}">#{link_text(label)}</a>)
+          end
+
+          # 図表番号の参照（「図 1-1」）には cross-ref-number を足す。CSS で行の途中で分けないようにし、
+          # 「図 1-」と「1」が別の行に分かれるのを防ぐ。見出し・章の参照は題が長いので対象にしない
+          def with_number_class(classes, label)
+            %i[sec chap].include?(label.type) ? classes : "#{classes} cross-ref-number"
           end
 
           # 参照リンクの文言。見出しラベル（:sec）と章ラベル（:chap）は「タイトル」をかぎ括弧で括り、

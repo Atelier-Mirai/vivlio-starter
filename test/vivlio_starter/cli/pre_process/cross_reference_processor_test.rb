@@ -147,7 +147,7 @@ class CrossReferencePagerefTest < Minitest::Test
   def test_should_use_full_number_text_for_caption_label_pageref
     result = XR.replace_references("@pageref:fig-flow を参照。\n", labels_map, '31-usage.md')
 
-    assert_includes result[:content], 'class="cross-ref-link pageref">図 11-2</a>'
+    assert_includes result[:content], 'class="cross-ref-link pageref cross-ref-number">図 11-2</a>'
   end
 
   # generic @id 参照（ページ番号なし）も見出しラベルならタイトルリンクになる

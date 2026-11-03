@@ -56,6 +56,21 @@ module VivlioStarter
           refute_includes out, 'code-caption code-caption'
         end
 
+        # 左右に並べる囲みの直下では、キャプションとコードを 1 列になるよう包む
+        def test_should_wrap_caption_and_code_into_one_column_in_side_by_side
+          out = mark('<div class="side-by-side"><pre><code>src</code></pre>' \
+                     '<p><strong>CSS の例</strong></p><pre><code>h1 {}</code></pre></div>')
+        
+          assert_includes out, '<div><p class="code-caption"><strong>CSS の例</strong></p><pre><code>h1 {}</code></pre></div>'
+        end
+        
+        # 囲みの外では包まない（紙面の改ページの判定を変えない）
+        def test_should_not_wrap_caption_outside_side_by_side
+          out = mark('<p><strong>設定例</strong></p><pre><code>x = 1</code></pre>')
+        
+          refute_includes out, '<div><p class="code-caption">'
+        end
+
         # =============================================================
         # 巻き込まない（旧 CSS ルール p:has(+ pre) の再発防止）
         # =============================================================
