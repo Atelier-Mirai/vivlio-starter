@@ -234,8 +234,7 @@ h1 { color: red; }
 
 :::{.output}
 ```text
-🟡  12-io.md: 参照の問題を 1 件検出
-🟡     - contents/12-io.md:9 - 未定義のラベルID: @id-rule（もしかして: @id-rules）
+🟡 25-cross-reference.md:9 - 未定義のラベルID: @id-rule（もしかして: @id-rules）
 ```
 :::
 

@@ -353,7 +353,8 @@ module VivlioStarter
           logging_errors = []
           if File.exist?(contents_path)
             source_content = File.read(contents_path, encoding: 'utf-8')
-            logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, contents_path,
+            # メッセージの頭は「25-intro.md:9」。ほかの警告と同じくファイル名だけを書く
+            logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, filename,
                                                                           chapter_order:, other_volumes: other_volume_names)
             logging_errors = logging_result[:errors]
           end
@@ -366,16 +367,14 @@ module VivlioStarter
           # 3) エラー集計とログは contents/ 側の行番号に基づく
           all_errors.concat(logging_errors)
 
-          next unless logging_errors.any?
-
-          Common.log_warn(" #{filename}: 参照の問題を #{logging_errors.size} 件検出")
+          # ほかの警告と同じく 1 件を 1 行で出す（「25-intro.md:9 - 未定義のラベルID: …」）
           logging_errors.each do |msg|
-            Common.log_warn("    - #{msg}")
-            # 章別サマリーへブリッジする（同 spec §2.2）。行番号は contents/ 側の
-            # メッセージに埋まっているため、ここでは章単位の件数として積む
+            Common.log_warn(msg)
+            # 章別サマリーへブリッジする（同 spec §2.2）
+            line, text = msg.match(/\A[^:]+:(\d+) - (.*)\z/m)&.captures
             IssueRegistry.record(
-              chapter: filename, severity: :warn,
-              category: :cross_reference, message: "参照の問題: #{msg}"
+              chapter: filename, line: line&.to_i, severity: :warn,
+              category: :cross_reference, message: "参照の問題: #{text || msg}"
             )
           end
         end
