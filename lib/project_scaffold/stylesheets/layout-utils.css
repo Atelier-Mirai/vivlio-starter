@@ -11,17 +11,22 @@
 */
 /* grid ではなく折り返す flex で組む。Vivliostyle は grid の囲みを、前のページに
    収まる高さでも次のページへ送ることがあり、23 章では写真グリッドの前に
-   ページの 7 割の空きができた（flex なら収まる）。各画像は 12em を下限に
-   行を等分し、入りきらなければ次の行へ回る（grid の auto-fit と同じ見え方） */
+   ページの 7 割の空きができた（flex なら収まる）。
+   各画像の幅は「全部を 1 行に並べたときの幅」（--pictures-columns は後処理が画像の数を
+   入れる）で、12em を下限とする。入りきらなければ次の行へ回るが、伸ばさない。
+   伸ばすと、次の行に 1 枚だけ回った画像が本文の幅いっぱいに広がって版面より高くなり、
+   紙面から消えた（4 枚並べると 4 枚目が載らなかった）。行の余りは左右に振り分ける */
 .pictures {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
   align-items: stretch;
 }
 
 .pictures > figure {
-  flex: 1 1 12em;
+  flex: 0 1 calc((100% - (var(--pictures-columns, 3) - 1) * 0.75rem) / var(--pictures-columns, 3));
+  min-inline-size: 12em;
 }
 
 .pictures img {
@@ -34,6 +39,13 @@
 .pictures figure {
   margin: 0;
   padding: 0;
+}
+
+/* chapter-common.css の figure:not(.align-center):not(.align-right) が付ける
+   margin-inline-end: auto を打ち消す（あちらのほうが特異度が高く、上の margin: 0 は負ける）。
+   auto の余白が行の余りを吸うと、画像の間が gap より広く空き、中央にもそろわない */
+.pictures > figure:not(.align-center):not(.align-right) {
+  margin-inline: 0;
 }
 
 .pictures figure img {
@@ -195,19 +207,6 @@
 .text-2dan {
   /* 周囲との視覚的な余白（上下 0.5 行高） */
   margin-block: 0.5lh;
-}
-
-/* グリッド間の余白 */
-.gap-s {
-  gap: 0.5rem;
-}
-
-.gap-m {
-  gap: 1rem;
-}
-
-.gap-l {
-  gap: 1.5rem;
 }
 
 /* ブロックの位置揃えユーティリティ */
@@ -481,13 +480,18 @@ figure.align-center {
    次のページへ送られることがある）。min-inline-size: 0 がないと、折り返さない長い行が
    列を押し広げて左右が等分にならない。
    左右に並んだ箱はページの途中で分けられず、収まらなければ丸ごと次のページへ送られる。
-   そのとき前置きの段落と見出しだけがページの下に残らないよう、直前と同じページに組む */
+   そのとき前置きの段落と見出しだけがページの下に残らないよう、直前の段落と同じページに組む。
+   段落以外（書き方の見本のコードなど）とは結び付けない。結び付けると見本ごと送られ、
+   見本だけなら入る空きがページの下に残る */
 .side-by-side {
   display: flex;
-  break-before: avoid;
   gap: 1rem;
   align-items: flex-start;
   margin-block: 0.5lh;
+}
+
+p + .side-by-side {
+  break-before: avoid;
 }
 
 .side-by-side > * {
@@ -590,4 +594,19 @@ body.vs-kindle .sideimage-left > figure {
 body.vs-kindle .sideimage-right > img,
 body.vs-kindle .sideimage-right > figure {
   margin: 0 0 0.5em 1em;
+}
+
+/* 横並びの間隔（.img-text 系・.sideimage-*・.image-group・.pictures に併記する）。
+   ファイルの最後に置く。各コンテナの gap と同じ特異度なので、後ろに書いたほうが効く。
+   以前は .image-group と .sideimage-* より前にあり、この二つでは効かなかった */
+.gap-s {
+  gap: 0.5rem;
+}
+
+.gap-m {
+  gap: 1rem;
+}
+
+.gap-l {
+  gap: 1.5rem;
 }

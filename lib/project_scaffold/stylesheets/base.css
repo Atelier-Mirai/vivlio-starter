@@ -29,6 +29,25 @@ h6 {
     word-break: keep-all; /* 単語を分割しない */
 }
 
+/* 段落の最終行が 1〜2 字だけにならないようにする（対応ブラウザのみ） */
+p,
+li,
+dt,
+dd,
+th,
+td,
+figcaption,
+blockquote {
+    text-wrap: pretty;
+}
+
+/* 行の中に画像（インライン数式など）がある要素では pretty を使わない。Vivliostyle で
+   組むと最終行まで両端揃えになり、「ま　す　。」と行いっぱいに広がる。
+   クラスは後処理の PostProcess.mark_inline_image_blocks! が付ける */
+.vs-inline-image {
+    text-wrap: wrap;
+}
+
 /* 索引語の初出を包む <dfn>（IndexMatchScanner が付与する透明なアンカー）。
    ブラウザ既定の font-style: italic をここで打ち消す。和文には斜体の字形が
    無いので合成斜体になり、章見出しの「ワークフロー」だけが傾く・Type 3

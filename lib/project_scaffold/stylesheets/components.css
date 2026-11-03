@@ -68,6 +68,7 @@
   width: 100%;
   height: auto;
   object-fit: cover;
+  border: solid 0.5mm var(--color-border);
   border-radius: 8px;
 }
 

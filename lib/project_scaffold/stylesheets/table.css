@@ -111,6 +111,25 @@ figure.cross-ref-figure > figcaption {
   page-break-after: avoid;
 }
 
+/* 表がページをまたぐとき、ページの端に本体の 1 行だけを残さない（prism.css のコードと同じ）。
+   見出しの行と本体の 1 行目の後、最後から 2 行目の後では改ページしないので、両側に 2 行以上残る */
+thead tr,
+tbody tr:first-child:not(:last-child),
+tbody tr:nth-last-child(2) {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* 本体が 6 行以下の短い表は、ページをまたがせず丸ごと同じページに組む（prism.css の
+   短いコードと同じ）。表全体に break-inside: avoid を掛けると版面より高い表まで押し出すので、
+   短い表の行の間だけ改ページを避ける。見出しの行と本体の 1 行目の間も同じ */
+tbody tr:first-child:nth-last-child(-n+6):not(:last-child),
+tbody tr:first-child:nth-last-child(-n+6) ~ tr:not(:last-child),
+thead:has(+ tbody > tr:first-child:nth-last-child(-n+6)) tr {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
 td,
 th {
   /* 線幅とパディングを用紙スケールで調整 */
@@ -166,8 +185,8 @@ thead:not(:has(th:not(:empty))) {
   min-inline-size: auto;
 }
 
+/* 横の揃えは通常の表と同じ（見出しは中央・本文は左）。中央に置きたい列は :---: で指定する */
 .long-table td {
-  text-align: center;
   vertical-align: middle;
 }
 

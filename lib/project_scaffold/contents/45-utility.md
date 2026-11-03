@@ -63,8 +63,8 @@ vs preflight intro   # スラッグが intro の章をチェック
 
 :::{.output}
 ```text
-🔴 95-sample.md:571 - 雛形ファイル '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
-        雛形の場所: templates/_physics_book.full.md
+🔴 95-sample.md:571 - テンプレート '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
+        テンプレートの場所: templates/_physics_book.full.md
         ヒント: templates/_physics_book.md は存在します。スタイル名を確認してください。
 🔴 11-workflow.md:56 - 画像 'workflow.svg' が見つかりません（代替画像を使用します）
         画像の場所: images/11-workflow/workflow.svg
@@ -72,6 +72,7 @@ vs preflight intro   # スラッグが intro の章をチェック
         コードの場所: codes/mass_energy.rb
 🔴 95-sample.md:160 - ラベルID '仕事関数の目安 @photoelectric-table' は重複しています
         重複箇所: 95-sample.md: 160, 166
+        → どちらかの ID を、対象を区別できる別の名前に変えてください。
 🟡 95-sample.md:203 - 孤立ラベル '拡散係数の測定値 @diffusion-table' は未参照です
 🔍 リンク・画像検証の結果:
         画像: 1 件の課題（存在しない画像: 1）
@@ -249,7 +250,7 @@ vs clean              # 後から手動でクリーンアップ
 ビルド結果が更新されないなど、キャッシュが原因と思われるときは `vs clean --cache` を試せます。次のビルドでは必要なデータが作り直されます。
 :::
 
-## カスタム CSS — スタイルを調整する
+## カスタム CSS — スタイルを調整する @custom-css
 
 :::{.section-lead}
 書籍全体の色や書体は `config/book.yml` で選べます。リンクの色やコードブロックの枠など、一部分の見た目を調整したいときは `stylesheets/custom.css` を編集します。

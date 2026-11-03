@@ -65,15 +65,16 @@ pre[class*="language-"] {
 	white-space: normal;
 }
 
+/* 色は白地とのコントラスト比 4.5:1 以上にする（Prism の既定には届かない色がある） */
 .token.comment,
 .token.prolog,
 .token.doctype,
 .token.cdata {
-	color: slategray;
+	color: #677684; /* slategray（4.1:1）を 4.5:1 以上へ */
 }
 
 .token.punctuation {
-	color: #999;
+	color: #747474; /* 既定 #999（2.8:1）を 4.5:1 以上へ */
 }
 
 .token.namespace {
@@ -96,7 +97,7 @@ pre[class*="language-"] {
 .token.char,
 .token.builtin,
 .token.inserted {
-	color: #690;
+	color: #568100; /* 既定 #690（3.4:1）を 4.5:1 以上へ */
 }
 
 .token.operator,
@@ -117,13 +118,13 @@ pre[class*="language-"] {
 
 .token.function,
 .token.class-name {
-	color: #DD4A68;
+	color: #cb4460; /* 既定 #DD4A68（4.0:1）を 4.5:1 以上へ */
 }
 
 .token.regex,
 .token.important,
 .token.variable {
-	color: #e90;
+	color: #b35900; /* 既定 #e90（2.3:1）を 4.5:1 以上へ */
 }
 
 .token.important {
@@ -174,9 +175,19 @@ pre[class*="language-"].line-numbers > code > .vs-code-line {
 
 /* ページをまたぐとき、ページの端に 1 行だけ残さない。行ごとに別のブロックなので、
    段落の orphans / widows は効かない。最初の行の後と、最後から 2 行目の後では
-   改ページしないので、分けるときは両側に 2 行以上残り、3 行以下のコードは分けない */
-pre[class*="language-"].line-numbers > code > .vs-code-line:first-child,
+   改ページしないので、分けるときは両側に 2 行以上残り、3 行以下のコードは分けない。
+   1 行だけのコードは最初の行が最後の行でもあり、その break-after は pre の後ろへ及ぶ。
+   すると pre が次の段落と離れられず、段落ごと次のページへ送られるので、:not(:last-child) で外す */
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child:not(:last-child),
 pre[class*="language-"].line-numbers > code > .vs-code-line:nth-last-child(2) {
+	break-after: avoid;
+}
+
+/* 6 行以下の短いコードは、ページをまたがせず丸ごと同じページに組む。数行の例が
+   ページの端で分かれると、読者は前後のページを行き来して読むことになる。
+   「最初の行が最後から 6 行以内」で短いコードを選び、最後の行を除く全行で改ページを避ける */
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child:nth-last-child(-n+6):not(:last-child),
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child:nth-last-child(-n+6) ~ .vs-code-line:not(:last-child) {
 	break-after: avoid;
 }
 

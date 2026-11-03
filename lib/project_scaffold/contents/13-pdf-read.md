@@ -4,34 +4,16 @@
 `vs pdf:read` は PDF から文字や画像を取り出して Vivlio Starter の Markdown に変換するコマンドです。既刊の書籍や配布資料をもとに書き直す場合に役立ちます。元にする PDF がなければ、この章は飛ばしてかまいません。
 :::
 
-## 概要と事前準備
+## 二つのモード
 
-`vs pdf:read` には、テキストを取り出す **Standard Mode** と、画像抽出・OCR も行う **Enhanced Mode** があります。
+`vs pdf:read` は、拡張機能 `vivlio-starter-pdf` があれば **Enhanced Mode** で動き、文字に加えて画像を取り出し、スキャンした PDF の文字を OCR で読み取ります。拡張機能がなければ、文字だけを取り出す **Standard Mode** で動きます。@chapref:ch-install の導入スクリプトでインストールした場合は、拡張機能も OCR のツールもインストール済みです。本章は Enhanced Mode を前提に説明します。
 
-| 項目 | Standard Mode | Enhanced Mode |
-| --- | --- | --- |
-| ライセンス | MIT | AGPL-3.0 |
-| 変換対象 | テキストのみ | テキスト + 画像 + OCR |
-| 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
-| 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
-
-Standard Mode は `vivlio-starter` 本体に含まれ、ほかのツールなしで動きます。スキャンした PDF のように文字の層がない PDF は、Standard Mode では読めません。
-
-画像の抽出や OCR が必要なら、`vivlio-starter-pdf` gem（1.2.0 以降）とツールを導入します。@chapref:ch-install の導入スクリプトでインストールした場合は、どちらもインストール済みです。インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
+導入スクリプトを使わなかった場合は、次のコマンドでインストールできます。
 
 ```zsh
 gem install vivlio-starter-pdf
 vs doctor --fix
 ```
-
-| ツール | 用途 |
-| --- | --- |
-| `vivlio-starter-pdf` | HexaPDF ベースの高度な PDF 解析 |
-| `tesseract` + `tesseract-lang` | OCR エンジン（日本語対応） |
-| `poppler`（pdftoppm） | PDF→画像変換（OCR 前処理） |
-| `vips` | 高速画像処理（イラスト領域検出） |
-
-gem をインストールしたまま Standard Mode で読みたいときは、環境変数 `VIVLIO_PDF_PLUGIN=disable` を付けて実行します。
 
 ## 使い方
 
@@ -41,7 +23,7 @@ gem をインストールしたまま Standard Mode で読みたいときは、�
 vs pdf:read handbook.pdf
 ```
 
-資料の PDF は `sources/` に置きます。`sources/` の中の PDF は、ファイル名だけで指定できます（`.pdf` も省けます）。ほかの場所の PDF は、`/` を含むパスで指定します。
+資料の PDF は `sources/` に置きます。`sources/` の中の PDF は、ファイル名だけで指定できます（拡張子の `.pdf` も省略できます）。ほかの場所の PDF は、`/` を含むパスで指定します。
 
 | 入力するコマンド | 読む PDF |
 |---|---|
@@ -49,11 +31,18 @@ vs pdf:read handbook.pdf
 | `vs pdf:read ~/Downloads/handbook.pdf` | `~/Downloads/handbook.pdf` |
 | `vs pdf:read ./handbook.pdf` | プロジェクト直下の `handbook.pdf` |
 
-ファイル名に空白・半角の `&`・括弧があると、シェルが名前を分けてしまい、そのままでは読めません。英字で始まる半角の英小文字・数字・ハイフン・アンダースコアだけの名前に変えてから読んでください（`2026-06-10 at 10-08-42 AI活用講座.pdf` → `ai-course.pdf`）。
+もし、ファイル名に全角文字や空白・半角の `&`・括弧があると読めません。英字で始まる半角の英小文字・数字・ハイフン・アンダースコアだけの名前に変更してから読み取りを行ってください（`2026-06-10 at 10-08-42 AI活用講座.pdf` → `ai-course.pdf`）。
 
 ### 章の名前を付ける
 
-PDF を読むと、`contents/` に章の Markdown ができます。章の名前は PDF のファイル名から作り、番号は本文の最後の章の次にします。この本なら、`51-doctor` の次の `52-handbook.md` です。大文字とアンダースコアは、小文字とハイフンに整えます（`Hajimete_no_Rust.pdf` → `52-hajimete-no-rust.md`）。ダウンロードや複製で付く `(1)`・`のコピー`・`copy` は外します。
+`vs pdf:read` は、読み取った内容を新しい章として `contents/` に保存します。章のファイル名の番号と名前は、次のように自動で決まります。
+
+- **番号**: 本文の最後の章の次の番号
+- **名前**: PDF のファイル名から作る
+
+たとえば、本文の最後の章が `51-doctor.md` のプロジェクトで `vs pdf:read handbook.pdf` を実行すると、`contents/52-handbook.md` が作られます。
+
+ファイル名は、章の名前に使える形へ整えます。大文字は小文字に、アンダースコアはハイフンに変えます（`Hajimete_no_Ruby_Renshucho.pdf` → `52-hajimete-no-ruby-renshucho.md`）。ダウンロードや複製で付いた `(1)`・`のコピー`・`copy` は取り除きます。
 
 二つ目の引数で、章の名前を決めることもできます。番号を付ければその番号の章に、番号だけなら名前はファイル名から作ります。付録にしたいときは、付録の番号（90〜98）を付けてください。
 
@@ -63,14 +52,14 @@ vs pdf:read handbook.pdf 21-guide    # contents/21-guide.md
 vs pdf:read handbook.pdf 90          # contents/90-handbook.md
 ```
 
-日本語の名前や論文の番号のようなファイル名（`コンピュータネットワークのエッセンス.pdf`・`245.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに処理を中止します。どちらの場合も、章の名前を添えたコマンドが表示されるので、それを実行してください。
+日本語や数字だけのファイル名（`初めてのRuby練習帳.pdf`・`123.pdf`）からは、章の名前を作りません。番号かスラッグがほかの章と重なるときも、章を作らずに処理を中止します。どちらの場合も、章の名前を添えたコマンドが表示されるので、それを実行してください。
 
 :::{.output}
 ```text
-🔴 [pdf:read] ファイル名から章の名前を作れません: sources/コンピュータネットワークのエッセンス.pdf
+🔴 [pdf:read] ファイル名から章の名前を作れません: sources/初めてのRuby練習帳.pdf
         使える名前: 英字で始まる半角の英小文字・数字・ハイフン（-）・アンダースコア（_）（例: awesome、my-reference_2047）
         → ファイル名を変える: awesome.pdf にしてから vs pdf:read awesome.pdf
-        → 章の名前を添える:   vs pdf:read コンピュータネットワークのエッセンス.pdf 52-awesome
+        → 章の名前を添える:   vs pdf:read 初めてのRuby練習帳.pdf 52-awesome
         （番号を省くと 52 番になります）
 ```
 :::
@@ -83,24 +72,27 @@ vs pdf:read handbook.pdf 22-advanced --pages 31-48,52
 vs pdf:read handbook.pdf 23-appendix --pages 238-
 ```
 
-`--pages` で、読むページを指定できます。書き方は `vs pdf:pages` と同じで、範囲の端は省けます（`-11` は 1〜11 ページ、`238-` は 238 ページから最後まで）。ページ番号は PDF の 1 枚目から数えた番号なので、表紙や前付けのある本では、紙面に印刷されたノンブルとずれます。ページを指定するときは、章の名前を必ず添えます（ファイル名から作ると、どの範囲も同じ名前になるためです）。
+`--pages` で、読むページを指定できます。範囲の端は省けます（`-11` は 1〜11 ページ、`238-` は 238 ページから最後まで）。ページ番号は PDF の 1 枚目から数えた番号なので、表紙や前付けのある本では、紙面に印刷されたノンブルとずれます。ページを指定するときは、章の名前を必ず添えます。
 
 ### 実行例と出力されるファイル
 
-```shell-session
-$ vs pdf:read three-elements --log
-🔧 [pdf:read] PDF からテキストを抽出します (52-three-elements, mode=enhanced)
-🔵 [pdf:read] ページ数: 7
-✅ Markdown に変換しました: contents/52-three-elements.md
+```zsh
+vs pdf:read three-elements
 ```
 
-`--log` を付けると、どちらのモードで読んだかとページ数が表示されます。Standard Mode では Markdown だけ、Enhanced Mode では画像も作られます。
+:::{.output}
+```text
+✅ Markdown に変換しました: contents/52-three-elements.md
+```
+:::
+
+原稿と一緒に、PDF の中の画像が章の画像ディレクトリへ取り出されます。
 
 :::{.diagram}
 ```text
 contents/
   └── 52-three-elements.md
-images/                         # Enhanced Mode のみ
+images/
   └── 52-three-elements/
       ├── page-003-image-01.webp
       └── ...
@@ -111,7 +103,7 @@ images/                         # Enhanced Mode のみ
 
 ### 見出し・表・コードを復元する
 
-文字の層のある PDF からは、文字だけでなく原稿の構造も復元されます。どちらのモードでも同じです。
+文字の層のある PDF からは、文字だけでなく原稿の構造も復元されます。
 
 | 原本 | 復元される Markdown |
 | --- | --- |
@@ -122,29 +114,18 @@ images/                         # Enhanced Mode のみ
 | 脚注 | `[^1]` と `[^1]: …` |
 | 数式 | `$…$`・`$$…$$`（代替テキストに TeX が入ったタグ付き PDF のほか、否定の線・平方根・筆算） |
 | ルビ・強調・行内コード | ルビの記法・`**…**`・`` `…` `` |
-| 画像 | Enhanced Mode は `![代替テキスト](page-003-image-01.webp)`、Standard Mode は `<!-- 画像: 代替テキスト -->` |
+| 画像 | `![代替テキスト](page-003-image-01.webp)` |
 
 `vs build` で作った PDF のように見出しや段落を「タグ」として持つ PDF は、タグから読みます。タグのない PDF やスキャンした PDF は、文字の大きさ・位置・書体から推定します。推定して組んだ表には、確かめるよう促すコメントが付きます。柱とノンブルは、ページをまたいで同じ位置に繰り返し出る行として判別し、取り込みません。
 
 ### 原本と見比べて仕上げる
 
-`vs pdf:read` は、資料を原稿の叩き台にするための道具です。次の箇所は復元されないか、推定が原本と異なることがあるので、原本と見比べて仕上げてください。
+`vs pdf:read` は、資料を原稿の叩き台にするための道具です。次の箇所は原本と異なることがあるので、見比べて仕上げてください。
 
-- **囲み**：`:::{.memo}` などの囲みは復元されず、紙面のラベル（`MEMO`・`COLUMN`）が 1 行の段落として残ります。
 - **線で描いた図のラベル**：図の範囲に入らなかったラベルが、本文に残ることがあります。
 - **2 段組みの読む順**：片方の段に図があるページでは、左右の段の段落の順が前後することがあります。
 - **脚注**：表の番号付きの行やグラフの目盛りの数字を、脚注と取り違えることがあります。
 - **スキャンに文字を重ねた PDF**：文字の層をそのまま読むので、その層の誤り（「ACM」が `A(2M`）も原稿に入ります。文字の正確さが必要な資料は、OCR 専用のソフトで文字の層を作り直してから渡すと、見出しや段組みの推定も確かになります。
-
-### 元の画像に差し替える
-
-自分の本を印刷してスキャンした場合のように、図の元の画像が手元にあるなら、`--images-from` でそのフォルダを渡します（Enhanced Mode のみ）。
-
-```shell-session
-$ vs pdf:read 95-sample-ocr 96-sample-ocr --images-from images/95-sample
-```
-
-取り出した図を元の画像と見た目で突き合わせ、一致したものは元の画像に差し替えます。参照も `![](prototype_meter.webp)` のように元のファイル名になります。一致しなかった図は取り出したまま残し、どの図とも結び付かなかった元の画像は 🟡 の警告に名前が表示されます。原本と見比べて追記してください。
 
 ### 同じ章を読み直す
 
@@ -185,7 +166,7 @@ pdf_read:
 - **`text_area`**：柱とノンブルは繰り返しから判別するので、既定では書きません。判別に失敗して柱やノンブルが本文に混ざるときだけ、除外する幅を mm 単位で書きます。書いた辺だけが有効です。
 - **`page_separator`**：`true` にすると、元の PDF のページ境界に `---`（改ページ）が入ります。スキャンした PDF を OCR で読むときだけ有効です（文字の層のある PDF は、ページをまたぐ段落を構造からつなぎます）。
 
-### OCR 設定（Enhanced Mode のみ）
+### OCR 設定
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
@@ -221,9 +202,9 @@ rules:
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
 | `PDF が見つかりません` | `/` を含まない指定は `sources/` の中だけを探す | PDF を `sources/` に置く。ほかの場所なら `./handbook.pdf` のように `/` を含むパスで指定する |
-| `PDF から文字を一つも取り出せませんでした` | スキャン PDF を Standard Mode で読んだ | `vivlio-starter-pdf` をインストールして Enhanced Mode（OCR）で読む。原稿と `catalog.yml` には何も書かれていない |
+| `PDF から文字を一つも取り出せませんでした` | 拡張機能がなく、スキャンした PDF を Standard Mode で読んだ | `vivlio-starter-pdf` をインストールして Enhanced Mode（OCR）で読む。原稿と `catalog.yml` には何も書かれていない |
 | ヘッダー / フッターが残る | 繰り返しから判別できなかった | `book.yml` の `pdf_read.text_area` に除外する幅を書く |
-| 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
+| 画像が抽出されない | 拡張機能がなく、Standard Mode で読んだ | `vivlio-starter-pdf` をインストールする |
 | OCR 結果が悪い | 言語設定が不適切 / スキャンの解像度が低い | `languages` を確認（英字が多い本は `english` を追加する）。スキャンし直すなら 300dpi 以上で |
 | スキャン PDF が OCR で読まれない | Tesseract がインストールされていない | `vs doctor --fix` でインストールする |
 | 日本語の間にスペースが残る | 補正表にない誤読 | `ocr_corrections.yml` にパターンを追加 |

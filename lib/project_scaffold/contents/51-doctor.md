@@ -308,7 +308,7 @@ gem update vivlio-starter
 
 新しい Mac をセットアップするときは、@chapref:ch-install の導入スクリプトを使います。Homebrew・Ruby・Vivlio Starter と、`vs doctor --fix` の対象のツールをまとめてインストールします。`vs upgrade` の外部ツール更新は、Homebrew がない環境では行われません。
 
-## トラブルシューティング
+## トラブルシューティング @doctor-troubleshooting
 
 | 症状 | 原因 | 解決策 |
 |------|------|--------|
