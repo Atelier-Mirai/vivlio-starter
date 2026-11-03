@@ -33,6 +33,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | ファイル名付きのコードだけが、版面に収まらないと丸ごと次ページへ送られる | ファイル名付きのコードは **`<figure>` に包まれ、図版用の `figure { break-inside: avoid }`** が掛かる | code.css（コードの figure は `break-inside: auto`） | §2.13 |
 | 二段組（`.text-2dan`）の箇条書きが左の段にだけ入り、右の段が空く | **`.text-2dan > * { break-inside: avoid }` がリスト全体に掛かり**、リストが段をまたげない | layout-utils.css（リストは auto・`li` を avoid） | §2.14 |
 | 囲み（`.output` など）が、入る空きがあるのに次の見出しや段落ごと次ページへ送られる | **囲みの最後の子の `break-after: avoid` が囲みの外へ伝わる**（表示例の中の見本の見出し） | chapter-common.css（`.output` の中の見出しは `auto`） | §2.15 |
+| flex の中の画像が中央にそろわず、間が `gap` より広く空く | **全体の `figure` の規則の `margin-inline-end: auto`** が行の余りを吸う（コンテナ側の `margin: 0` より特異度が高い） | layout-utils.css（`.pictures` の figure の余白を打ち消す） | §2.16 |
 
 ---
 
@@ -145,6 +146,12 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **原因**: 表示例の最後に見本の見出し（`#### 右寄せの見出し {.text-right}`）があり、本の見出しの `h2〜h6 { break-after: avoid }` が掛かっていた。最後の子の `break-after` は親の終わりへ伝わる（CSS Fragmentation）ので、囲みの後ろでも改ページできなくなり、囲み・次の見出し・段落が一かたまりになった。右側を見出しの無いコードに替えると送られなかった。
 - **修正**: chapter-common.css で `.output :is(h2, h3, h4, h5, h6) { break-after: auto }`。表示例の中の見出しは見本なので、本の見出しの改ページ規則は要らない。1 行だけのコードの `break-after` が `pre` の外へ伝わった件（prism.css の `:not(:last-child)`）と同じ構図で、**囲みが送られたら、空きの量より先に、囲みの最後の子に付いた `break-*` を疑う**。
 - **関連**: `.side-by-side { break-before: avoid }` は前置きの段落と例を離さないためのものだが、直前が書き方の見本のコード（10 行）だと見本ごと送られ、13 行の空きが残った。`p + .side-by-side` に限った。
+
+### 2.16 flex の中の `figure` は、全体の規則の `margin-inline-end: auto` で行の余りを吸う
+
+- **症状**: 写真グリッド（`.pictures`）の画像を伸ばさない組み方にしたところ、`justify-content: center` も `gap` も効かず、画像の間が指定より広く空き、行が左に寄った。
+- **原因**: chapter-common.css の `figure:not(.align-center):not(.align-right) { margin-inline-end: auto }`（図版を左寄せにする規則）が、コンテナ側の `.pictures figure { margin: 0 }` より特異度が高く、勝っていた。flex アイテムの auto の余白は、`justify-content` より先に行の余りを全部受け取る。伸ばす組み方（`flex-grow: 1`）では余りが無いので表に出なかった。Vivliostyle 固有ではなく、Chrome でも同じ（`chrome-headless-shell --dump-dom` で各 figure の寸法を測って特定した）。
+- **修正**: layout-utils.css で `.pictures > figure:not(.align-center):not(.align-right) { margin-inline: 0 }`。**flex や grid の中に `figure` を置いて余白が合わないときは、全体の `figure` の規則が付ける auto の余白を疑う。**
 
 ---
 

@@ -113,6 +113,12 @@ module VivlioStarter
           end
 
           begin
+            set_pictures_columns!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: pictures 処理中にエラー: #{e.message}")
+          end
+
+          begin
             wrap_img_text_blocks!(html_file)
           rescue StandardError => e
             Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
@@ -781,6 +787,36 @@ module VivlioStarter
         Common.log_success("#{html_file}: image-group コンテナの列比率を設定しました")
       end
       module_function :process_image_groups!
+
+      # ================================================================
+      # pictures コンテナの列数設定
+      # ----------------------------------------------------------------
+      # 写真グリッドの各画像は「全部を 1 行に並べたときの幅」で組む（layout-utils.css）。
+      # その幅は画像の数で決まるので、数を CSS 変数 --pictures-columns としてコンテナの
+      # style 属性に入れる。画像の幅を伸ばして行を埋める組み方は、次の行に 1 枚だけ回った
+      # 画像が版面より高くなって紙面から消えたため使わない。
+      # ================================================================
+      def set_pictures_columns!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.css('div.pictures').each do |container|
+          count = container.element_children.count { %w[figure img].include?(it.name) }
+          next if count.zero?
+
+          cleaned_style = container['style'].to_s.gsub(/--pictures-columns:[^;]+;?/, '').strip
+          var_style = "--pictures-columns: #{count}"
+          container['style'] = cleaned_style.empty? ? var_style : "#{cleaned_style.chomp(';')}; #{var_style}"
+          changed = true
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_success("#{html_file}: pictures コンテナの列数を設定しました")
+      end
+      module_function :set_pictures_columns!
 
       # ================================================================
       # img-text / text-img 系コンテナの正規化
