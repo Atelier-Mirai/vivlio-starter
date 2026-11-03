@@ -2,6 +2,7 @@
 
 require_relative 'common'
 require_relative 'build/catalog_loader'
+require_relative 'token_resolver'
 
 module VivlioStarter
   module CLI

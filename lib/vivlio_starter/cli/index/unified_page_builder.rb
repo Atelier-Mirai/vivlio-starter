@@ -22,6 +22,7 @@ require 'fileutils'
 require 'cgi'
 require_relative '../common'
 require_relative '../pre_process/book_settings_css'
+require_relative '../token_resolver'
 
 module VivlioStarter
   module CLI

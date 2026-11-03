@@ -26,7 +26,9 @@ require 'tmpdir'
 require 'fileutils'
 require 'yaml'
 require 'vivlio_starter/cli/common'
-require 'vivlio_starter/cli/build/catalog_loader'
+# CatalogLoader は番号の区分を TokenResolver から引く。token_resolver.rb が catalog_loader.rb を
+# 読むので、循環させないよう token_resolver から読む
+require 'vivlio_starter/cli/token_resolver'
 
 module VivlioStarter
   module CLI

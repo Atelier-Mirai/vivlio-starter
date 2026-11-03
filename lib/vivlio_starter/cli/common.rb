@@ -7,6 +7,7 @@ require 'yaml'
 require_relative 'config_keys'
 require_relative 'units'
 require_relative 'spinner'
+require_relative 'build/volumes'
 
 # Common::CONFIG — book.yml の再帰的 Data ラッパー
 # 正規記法（The One Way）は config-access-unification-spec.md §2 を参照。

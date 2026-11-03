@@ -18,6 +18,7 @@
 require 'cgi'
 require_relative '../common'
 require_relative '../masking'
+require_relative '../token_resolver'
 require_relative '../post_process/heading_processor'
 require_relative 'issue_registry'
 require_relative 'markdown_utils'
