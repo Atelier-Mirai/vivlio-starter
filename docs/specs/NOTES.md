@@ -41,7 +41,7 @@
 ## 2. 知見メモ（恒久参照・実測で確定した事実）
 
 `vivliostyle-css-pitfalls-notes.md`
-: **「CSS は正しいはずなのに効かない」とき、最初にここ。** Vivliostyle エンジンと EPUB 両フレーバ共通基盤の癖（`background-position` の calc+var 破棄、`keep-all` による CJK 折返し禁止、`vs-epub`/`vs-kindle` 同居、PDF 用 CSS の特異度漏れ、SVG の intrinsic size、`<pre>` を折り返しにしても中の `<code>` が折り返さない（§2.10）など）。
+: **「CSS は正しいはずなのに効かない」とき、最初にここ。** Vivliostyle エンジンと EPUB 両フレーバ共通基盤の癖（`background-position` の calc+var 破棄、`keep-all` による CJK 折返し禁止、`vs-epub`/`vs-kindle` 同居、PDF 用 CSS の特異度漏れ、SVG の intrinsic size、`<pre>` を折り返しにしても中の `<code>` が折り返さない（§2.10）、囲みの最後の子の `break-after` が囲みの外へ伝わる（§2.15）など）。
 
 `kindle-css-compatibility-notes.md`
 : **Kindle(KFX) だけ表示が崩れるとき。** `:is()` がルールごと破棄、`var()`/`calc()`/`grid` 非対応、WebP・SVG は Enhanced Typesetting ごと落とす（`::before` は Previewer 4 で効くようになった）——対応状況の一覧表と、本プロジェクトで採った回避策。Kindle 固有の癖はこちらが正典。版が上がったら `scripts/kfx_probe.rb` で測り直す。
