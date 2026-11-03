@@ -63,8 +63,8 @@ vs preflight intro   # スラッグが intro の章をチェック
 
 :::{.output}
 ```text
-🔴 95-sample.md:571 - 雛形ファイル '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
-        雛形の場所: templates/_physics_book.full.md
+🔴 95-sample.md:571 - テンプレート '_physics_book.full.md' が見つかりません（記法: = physics_books | :full）
+        テンプレートの場所: templates/_physics_book.full.md
         ヒント: templates/_physics_book.md は存在します。スタイル名を確認してください。
 🔴 11-workflow.md:56 - 画像 'workflow.svg' が見つかりません（代替画像を使用します）
         画像の場所: images/11-workflow/workflow.svg
