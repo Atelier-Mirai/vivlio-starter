@@ -76,6 +76,19 @@ module VivlioStarter
         end
       end
 
+      # 1 行の ```include: は取り込みの指令でフェンスではない。1 つだけ書いた章も整合扱い
+      def test_should_not_count_single_line_include_directive
+        with_temp_project do
+          File.write('contents/22-code.md', <<~MD)
+            # コード
+
+            ```include:sample.rb```
+          MD
+
+          assert_empty Guards::CodeFenceCheck.new.validate
+        end
+      end
+
       # detail に出現箇所（フェンス行番号）と修正案を含む
       def test_detail_includes_fence_line_numbers_and_suggestion
         with_temp_project do

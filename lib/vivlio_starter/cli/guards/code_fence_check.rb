@@ -33,10 +33,15 @@ module VivlioStarter
 
         # 1 ファイルのフェンス区切り行を数え、奇数なら警告を返す（偶数なら nil）。
         # フェンス判定は Masking（唯一の実装）の FENCE を参照する（先頭空白は lstrip で許容）。
+        # ```include: は 1 行で完結する取り込みの指令なので、Masking と同じく数えない。
+        # 数えると、include を 1 つ書いただけの章が「閉じ忘れ」の 🔴 で止まる
         def check_file(path)
           fence_lines = []
           File.foreach(path).with_index(1) do |line, lineno|
-            fence_lines << lineno if line.lstrip.match?(Masking::FENCE)
+            stripped = line.lstrip
+            next if stripped.start_with?('```include:')
+
+            fence_lines << lineno if stripped.match?(Masking::FENCE)
           end
           return nil if fence_lines.size.even?
 
