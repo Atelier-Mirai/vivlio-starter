@@ -118,6 +118,36 @@ module VivlioStarter
 
           refute_includes out, "strong-heading"
         end
+
+        # =============================================================
+        # 画像を含む段落（text-wrap: pretty を外す印）
+        # =============================================================
+
+        def mark_images(html)
+          Tempfile.create(['vs_image_test_', '.html']) do |f|
+            f.write("<html><body>#{html}</body></html>")
+            f.flush
+            PostProcessCommands.mark_inline_image_blocks!(f.path)
+            return File.read(f.path, encoding: 'utf-8')
+          end
+        end
+
+        # 行の中の画像（インライン数式）を含む段落・リスト項目に印を付ける。既存のクラスは保つ
+        def test_should_mark_blocks_containing_inline_images
+          out = mark_images('<p class="aki">式 <img class="vs-math-inline" src="a.svg"> です。</p>' \
+                            '<ul><li>項目 <img src="b.svg"></li></ul>')
+
+          assert_includes out, '<p class="aki vs-inline-image">'
+          assert_includes out, '<li class="vs-inline-image">'
+        end
+
+        # 図の画像は段落の行の中にないので印を付けない。画像のない段落も対象外
+        def test_should_not_mark_blocks_without_inline_images
+          out = mark_images('<li><figure><img src="c.webp"><figcaption>図</figcaption></figure></li>' \
+                            '<p>画像のない段落です。</p>')
+
+          refute_includes out, 'vs-inline-image'
+        end
       end
     end
   end

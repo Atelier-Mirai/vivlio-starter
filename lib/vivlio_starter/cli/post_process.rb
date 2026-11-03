@@ -164,6 +164,8 @@ module VivlioStarter
           unescape_pipes_in_table_code!(html_file)
           mark_code_captions!(html_file)
           mark_strong_headings!(html_file)
+          mark_inline_image_blocks!(html_file)
+          add_line_break_opportunities!(html_file)
           wrap_cross_ref_code_blocks!(html_file)
 
           begin
@@ -363,6 +365,141 @@ module VivlioStarter
         Common.log_success("#{html_file}: strong headings marked")
       end
       module_function :mark_strong_headings!
+
+      # ================================================================
+      # 画像を含む段落の折り返し
+      # ----------------------------------------------------------------
+      # base.css は段落などに text-wrap: pretty を指定し、最終行が 1〜2 字だけに
+      # ならないようにしています。ところが行の中に <img>（インライン数式の画像など）
+      # があると、Vivliostyle で組んだときに最終行まで両端揃えになり、「ま　す　。」の
+      # ように行いっぱいへ字間が広がります。
+      #
+      # そのような要素に vs-inline-image クラスを付け、CSS で text-wrap を既定へ
+      # 戻します。印を付けるのは、画像から見て一番近い、pretty を指定した要素です。
+      # 間に figure や div があれば画像は別の塊なので付けません。
+      # ================================================================
+      TEXT_WRAP_PRETTY_TAGS = %w[p li dt dd th td figcaption blockquote].freeze
+      INLINE_IMAGE_CLASS = 'vs-inline-image'
+
+      def mark_inline_image_blocks!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        return unless content.include?('<img')
+
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.css('img').each do |img|
+          container = img.ancestors.find { TEXT_WRAP_PRETTY_TAGS.include?(it.name) || %w[figure div].include?(it.name) }
+          next unless container && TEXT_WRAP_PRETTY_TAGS.include?(container.name)
+
+          classes = container['class'].to_s.split(/\s+/).reject(&:empty?)
+          next if classes.include?(INLINE_IMAGE_CLASS)
+
+          container['class'] = (classes + [INLINE_IMAGE_CLASS]).join(' ')
+          changed = true
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_info("#{html_file}: 画像を含む段落の折り返しを既定に戻しました")
+      end
+      module_function :mark_inline_image_blocks!
+
+      # ================================================================
+      # インラインコードと URL の改行位置
+      # ----------------------------------------------------------------
+      # 改行の規則（UAX #14）では、`/` の後や `.` の前で行を分けられません。
+      # `stylesheets/custom.css` や URL が行末に入りきらないと丸ごと次の行へ送られ、
+      # 残った行が両端揃えで字間を大きく広げて組まれます（URL はハイフンの位置で
+      # しか分かれず、`vivlio-` で行が切れます）。
+      #
+      # そこで <wbr>（改行してよい位置。文字ではないのでコピーした文字列は変わらない）を
+      # 入れます。
+      #   - インラインコードと地の文の URL: `/` の後。ただし `https://` の直後と、
+      #     `//` の途中では分けない
+      #   - `.` で始まるインラインコード（`.memo`）: コードの先頭
+      # コードブロック（pre）と数式の中は触りません。
+      # ================================================================
+      LINE_BREAK_SKIP_ANCESTORS = %w[pre script style svg math title].freeze
+      URL_IN_TEXT = %r{https?://[^\s<>"'（）「」、。]+}
+
+      def add_line_break_opportunities!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        return unless content.include?('<code') || content.include?('://')
+
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.xpath('//body//text()').each do |text|
+          ancestors = text.ancestors.map(&:name)
+          next if ancestors.intersect?(LINE_BREAK_SKIP_ANCESTORS)
+
+          positions = if ancestors.include?('code')
+                        code_break_positions(text)
+                      else
+                        url_break_positions(text.content)
+                      end
+          next if positions.empty?
+
+          insert_wbr!(text, positions)
+          changed = true
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_info("#{html_file}: インラインコードと URL に改行してよい位置を入れました")
+      end
+      module_function :add_line_break_opportunities!
+
+      # インラインコードの文字列で <wbr> を入れる位置（その文字の前に入れる添字）。
+      # `.` で始まるコードは先頭にも入れる（`.` の前で改行できない規則を外す）
+      def code_break_positions(text)
+        string = text.content
+        positions = slash_break_positions(string, 0...string.length)
+        code = text.ancestors('code').first
+        positions.unshift(0) if string.start_with?('.') && code.children.first == text
+        positions
+      end
+      module_function :code_break_positions
+
+      # 地の文に現れる URL の中だけ、`/` の後に入れる
+      def url_break_positions(string)
+        string.to_enum(:scan, URL_IN_TEXT).flat_map do
+          match = Regexp.last_match
+          slash_break_positions(string, match.begin(0)...match.end(0))
+        end
+      end
+      module_function :url_break_positions
+
+      # range の中の `/` の後の位置。次の字が無い・次も `/`・`://` の直後のものは除く
+      def slash_break_positions(string, range)
+        range.filter_map do |index|
+          next unless string[index] == '/'
+
+          following = string[index + 1]
+          next if following.nil? || following == '/' || index + 1 >= range.end
+          next if index >= 2 && string[index - 1] == '/' && string[index - 2] == ':'
+
+          index + 1
+        end
+      end
+      module_function :slash_break_positions
+
+      # テキストノードを positions の位置で分け、その前に <wbr> を挟む。
+      # 最後の切れ目より後ろは元のテキストノードに残す
+      def insert_wbr!(text, positions)
+        string = text.content
+        previous = 0
+        positions.uniq.sort.each do |cut|
+          text.add_previous_sibling(Nokogiri::XML::Text.new(string[previous...cut], text.document)) if cut > previous
+          text.add_previous_sibling(Nokogiri::XML::Node.new('wbr', text.document))
+          previous = cut
+        end
+        text.content = string[previous..]
+      end
+      module_function :insert_wbr!
 
       # 段落の中身が <strong> ひとつだけか。空白のみのテキストノードは無視する。
       # 「これは<strong>重要</strong>な設定です」のような地の文つきの段落は false。
