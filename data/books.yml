@@ -5,6 +5,7 @@
   publisher: SBクリエイティブ
   year: 2019
   desc: Rubyを楽しく学べる入門書。
+  tags: [ruby, beginner]
   cover: joyful_ruby.webp
 
 - title: はじめてのC
@@ -14,4 +15,5 @@
   publisher: 技術評論社
   year: 2008
   desc: C言語の定番入門書。
+  tags: [c, beginner]
   cover: first_c.webp

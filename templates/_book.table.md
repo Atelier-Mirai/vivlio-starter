@@ -1,3 +1,3 @@
-| = title | **著者**: = author |
-| = desc | ![](cover){width=20% align=right} |
-
+| 書名 | 著者 | 出版社 | 発行年 |
+| --- | --- | --- | --- |
+| = title | = author.name | = publisher | = year |

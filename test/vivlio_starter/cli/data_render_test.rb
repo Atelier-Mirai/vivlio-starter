@@ -746,6 +746,52 @@ module VivlioStarter
           assert_includes detail, 'title, author'
         end
 
+        # 抽出条件の項目を打ち間違えたら、近い項目を名指しし、使える項目を示す
+        def test_should_suggest_a_near_field_when_query_field_is_unknown
+          error = QueryStream::InvalidQueryError.new(
+            reason: :unknown_field, condition: 'tag', available_keys: %i[title tags year],
+            query: '= books | tag=ruby', location: 'chapter.md:7'
+          )
+
+          assert_equal 'データにない項目です: tag', DataRender.invalid_query_summary(error)
+          detail = DataRender.invalid_query_detail(error)
+          assert_includes detail, 'tag ではなく tags'
+          assert_includes detail, 'title, tags, year'
+        end
+
+        # 中に値を持つキー（= author）は、中のキーまで書いた形を名指しする
+        def test_should_suggest_the_inner_key_when_a_hash_is_displayed
+          error = QueryStream::NestedValueError.new(
+            key_path: 'author', available_keys: %i[name bio],
+            template_path: 'templates/_book.md', location: 'chapter.md:7'
+          )
+
+          detail = DataRender.nested_value_detail(error)
+
+          assert_includes detail, '直す場所: templates/_book.md'
+          assert_includes detail, '=author.name のように'
+          assert_includes detail, '中のキー: name, bio'
+        end
+
+        # 中に値を持つ項目の並びは、書き直す先のキーが無いので、データ側の直し方を示す
+        def test_should_suggest_a_list_of_strings_when_an_array_of_hashes_is_displayed
+          error = QueryStream::NestedValueError.new(key_path: 'authors', list: true)
+
+          assert_includes DataRender.nested_value_detail(error), '文字列の並び（authors: [高橋征義, 前田修吾]）'
+        end
+
+        # 読めない抽出条件は、書き方の例を示す。条件を無視して全件を出さず、記法の行を残す
+        def test_should_report_unparseable_condition_and_keep_the_line
+          error = QueryStream::InvalidQueryError.new(condition: '年=2019', query: '= books | 年=2019')
+
+          assert_equal '抽出条件を読めません: 年=2019', DataRender.invalid_query_summary(error)
+          assert_includes DataRender.invalid_query_detail(error), '「項目名=値」'
+
+          result = render("= books | 年=2019\n")
+          assert_includes result, '= books | 年=2019'
+          refute_includes result, '楽しいRuby'
+        end
+
         # 一件検索で0件の場合は空文字列になる
         def test_should_return_empty_for_zero_results_single_lookup
           content = "= book | 存在しない本\n"

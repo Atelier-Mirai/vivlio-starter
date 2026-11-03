@@ -53,10 +53,10 @@ module VivlioStarter
             case error
             in QueryStream::TemplateNotFoundError => e
               # location は "filename:line" 形式
-              detail_lines = ["雛形の場所: #{e.template_path}"]
+              detail_lines = ["テンプレートの場所: #{e.template_path}"]
               detail_lines << "ヒント: #{e.hint}" if e.hint
               Common.log_error(
-                "#{e.location} - 雛形ファイル '#{File.basename(e.template_path)}' が見つかりません（記法: #{e.query}）",
+                "#{e.location} - テンプレート '#{File.basename(e.template_path)}' が見つかりません（記法: #{e.query}）",
                 detail: detail_lines.join("\n")
               )
             in QueryStream::DataNotFoundError => e
@@ -66,8 +66,18 @@ module VivlioStarter
               )
             in QueryStream::UnknownKeyError => e
               Common.log_error(
-                "#{e.location} - 雛形に無いキーが書かれています: =#{e.key_path}",
+                "#{e.location} - テンプレートにないキーが書かれています: =#{e.key_path}",
                 detail: unknown_key_detail(e)
+              )
+            in QueryStream::NestedValueError => e
+              Common.log_error(
+                "#{e.location} - そのままでは表示できないキーです: =#{e.key_path}",
+                detail: nested_value_detail(e)
+              )
+            in QueryStream::InvalidQueryError => e
+              Common.log_error(
+                "#{e.location} - #{invalid_query_summary(e)}（記法: #{e.query}）",
+                detail: invalid_query_detail(e)
               )
             else
               Common.log_error("QueryStream 展開エラー: #{error.message}")
@@ -136,7 +146,54 @@ module VivlioStarter
           # 記法の位置（見出し行の location）ではなく雛形を直すので、開くべきファイルを名指しする
           detail << "直す場所: #{error.template_path}" if error.template_path
           detail << "→ もしかして: =#{root} ではなく =#{near} ではありませんか？" if near
-          detail << "この雛形で使えるキー: #{keys.join(', ')}"
+          detail << "このテンプレートで使えるキー: #{keys.join(', ')}"
+          detail.join("\n")
+        end
+
+        # テンプレートで、中に値を持つキー（ハッシュ）を表示しようとしたときの直し方。
+        # `= author` は `= author.name` の書き間違いがほとんどなので、書き直す形を名指しする。
+        # 中に値を持つ項目の並び（authors: [{name: …}, …]）は、書き直す先のキーが無いので、データ側の直し方を示す。
+        # @param error [QueryStream::NestedValueError]
+        # @return [String]
+        def nested_value_detail(error)
+          detail = []
+          detail << "直す場所: #{error.template_path}" if error.template_path
+          if error.list
+            detail << "→ 値の並びを表示するときは、データを文字列の並び（#{error.key_path}: [高橋征義, 前田修吾]）にしてください。"
+          elsif (keys = error.available_keys.map(&:to_s)).any?
+            detail << "→ =#{error.key_path}.#{keys.first} のように、中のキーまで書いてください。"
+            detail << "中のキー: #{keys.join(', ')}"
+          end
+          detail.join("\n")
+        end
+
+        # 使えない抽出条件・並べ替えの 1 行目。読めない条件か、データにない項目かで言い分ける。
+        # @param error [QueryStream::InvalidQueryError]
+        # @return [String]
+        def invalid_query_summary(error)
+          case error.reason
+          in :unknown_field then "データにない項目です: #{error.condition}"
+          else "抽出条件を読めません: #{error.condition}"
+          end
+        end
+
+        # 使えない抽出条件・並べ替えの直し方。直すのは記法の行なので、雛形の場所は出さない。
+        # 無い項目は打ち間違いが多いので、雛形のキーと同じく「もしかして」と使える項目を添える。
+        # @param error [QueryStream::InvalidQueryError]
+        # @return [String]
+        def invalid_query_detail(error)
+          unless error.reason == :unknown_field
+            return '→ 抽出条件は「項目名=値」（例: tags=ruby、year>=2020）、並べ替えは「-項目名」で書きます。' \
+                   '項目名は半角英数字と _ で書き、ネストした値は author.name のようにドットでつなぎます。'
+          end
+
+          keys = error.available_keys.map(&:to_s)
+          root = error.condition.to_s.split('.').first
+          near = DidYouMean::SpellChecker.new(dictionary: keys).correct(root).first
+
+          detail = []
+          detail << "→ もしかして: #{root} ではなく #{near} ではありませんか？" if near
+          detail << "このデータで使える項目: #{keys.join(', ')}"
           detail.join("\n")
         end
       end

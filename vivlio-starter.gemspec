@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # 実行時の依存
-  spec.add_dependency 'query-stream', '~> 1.5'
+  spec.add_dependency 'query-stream', '~> 1.6'
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '>= 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'

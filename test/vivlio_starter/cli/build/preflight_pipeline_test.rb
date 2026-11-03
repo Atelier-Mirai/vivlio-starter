@@ -146,7 +146,7 @@ module VivlioStarter
         include Generators
 
         ITERATIONS = 100
-        # 新形式: 🔴 {location} - 雛形ファイル '{name}' が見つかりません（記法: ...）
+        # 新形式: 🔴 {location} - テンプレート '{name}' が見つかりません（記法: ...）
         FORMAT_PATTERN = /🔴 .+:\d+ - .+が見つかりません/
 
         def test_querystream_error_message_matches_expected_format
@@ -158,7 +158,7 @@ module VivlioStarter
             tmpl_name   = "_#{gen_string}.md"
 
             # DataRender が出力するエラーメッセージを模倣
-            message = "🔴 #{filename}:#{line_number} - 雛形ファイル '#{tmpl_name}' が見つかりません（記法: = books | :full）"
+            message = "🔴 #{filename}:#{line_number} - テンプレート '#{tmpl_name}' が見つかりません（記法: = books | :full）"
 
             assert_match FORMAT_PATTERN, message,
                          "Iteration #{i}: QueryStream エラーフォーマットが一致しません: #{message}"

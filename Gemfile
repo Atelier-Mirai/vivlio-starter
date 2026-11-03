@@ -8,7 +8,7 @@ gemspec
 # gemspec と同じ指定なので、版を変えるときは両方を直す。
 # 1.5 以上が要るのは、雛形 templates/_book.md の書誌の行が、値の無い項目の部分だけを
 # 消す動きを前提にしているため。1.4 以下では発行年の無い本の書誌が行ごと消える。
-gem 'query-stream', '~> 1.5'
+gem 'query-stream', '~> 1.6'
 
 # テストが散発的に落ちるのを防ぐため、strscan の版を 1 つに固める。
 # strscan は Ruby の標準添付（default gem）と通常の gem で複数の版が同居する。テストの途中で
