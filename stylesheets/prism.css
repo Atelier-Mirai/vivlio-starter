@@ -183,6 +183,14 @@ pre[class*="language-"].line-numbers > code > .vs-code-line:nth-last-child(2) {
 	break-after: avoid;
 }
 
+/* 6 行以下の短いコードは、ページをまたがせず丸ごと同じページに組む。数行の例が
+   ページの端で分かれると、読者は前後のページを行き来して読むことになる。
+   「最初の行が最後から 6 行以内」で短いコードを選び、最後の行を除く全行で改ページを避ける */
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child:nth-last-child(-n+6):not(:last-child),
+pre[class*="language-"].line-numbers > code > .vs-code-line:first-child:nth-last-child(-n+6) ~ .vs-code-line:not(:last-child) {
+	break-after: avoid;
+}
+
 /* 番号欄の総幅は padding-left と厳密に一致させる（2.4em）。ずれると折返し行の頭が
    1 行目の本文開始位置と揃わない。
    **base.css が全要素に box-sizing: border-box を掛けている**ので、width は

@@ -818,6 +818,14 @@ p.references {
   text-indent: 0;
 }
 
+/* 表示例の中の見出しは見本なので、本の見出しの「直後で改ページしない」を外す。
+   囲みの最後の見出しの break-after: avoid は囲みの外へ伝わり、囲みが次の見出しや段落と
+   一かたまりになって、入る空きがあっても次のページへ送られる */
+.output :is(h2, h3, h4, h5, h6) {
+  break-after: auto;
+  page-break-after: auto;
+}
+
 /* .output の中身は Markdown のまま。桁揃えが要る逐語出力はコードフェンスで囲む運用なので、
    その <pre> が .output の枠と二重枠にならないよう地色・枠線を落とす。
    特異度 (0,2,1) で code.css の pre[class*="language-"] (0,1,1) に読み込み順によらず勝つ。 */

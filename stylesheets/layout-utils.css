@@ -481,13 +481,18 @@ figure.align-center {
    次のページへ送られることがある）。min-inline-size: 0 がないと、折り返さない長い行が
    列を押し広げて左右が等分にならない。
    左右に並んだ箱はページの途中で分けられず、収まらなければ丸ごと次のページへ送られる。
-   そのとき前置きの段落と見出しだけがページの下に残らないよう、直前と同じページに組む */
+   そのとき前置きの段落と見出しだけがページの下に残らないよう、直前の段落と同じページに組む。
+   段落以外（書き方の見本のコードなど）とは結び付けない。結び付けると見本ごと送られ、
+   見本だけなら入る空きがページの下に残る */
 .side-by-side {
   display: flex;
-  break-before: avoid;
   gap: 1rem;
   align-items: flex-start;
   margin-block: 0.5lh;
+}
+
+p + .side-by-side {
+  break-before: avoid;
 }
 
 .side-by-side > * {
