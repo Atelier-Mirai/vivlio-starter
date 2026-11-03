@@ -76,6 +76,42 @@ class CrossReferenceHeadingLabelTest < Minitest::Test
     assert result[:labels].first.auto
   end
 
+  # 日本語や記号を含む ID はラベルにならないので、警告用に行と ID を返す
+  def test_should_report_label_ids_with_unusable_characters
+    content = <<~MD
+      ## 導入 @はじめに
+
+      ** 写真 @図の例 **
+      ![図](a.webp)
+
+      ** 表 @table.1 **
+      | a | b |
+    MD
+
+    result = XR.collect_labels(content, '21-images.md', '11')
+
+    assert_empty result[:labels]
+    assert_equal [{ line: 1, id: 'はじめに' }, { line: 3, id: '図の例' }, { line: 6, id: 'table.1' }],
+                 result[:invalid_ids]
+  end
+
+  # `@` の前が空白でないもの（コード・メールアドレス）や、正しい ID は対象にしない
+  def test_should_not_report_code_or_mail_address_as_label_id
+    content = <<~MD
+      ### ページ番号を添える `@pageref:`
+
+      **連絡先 user@example.com**
+
+      ** 写真 @photo-1 **
+      ![図](a.webp)
+    MD
+
+    result = XR.collect_labels(content, '21-images.md', '11')
+
+    assert_empty result[:invalid_ids]
+    assert_equal ['photo-1'], result[:labels].map(&:id)
+  end
+
   # --- 変換 ---
 
   def test_should_strip_heading_label_and_inject_anchor_span
@@ -209,6 +245,23 @@ class CrossReferenceFigureSeparationTest < Minitest::Test
 
     assert_includes out, "</figure>\n\n本文。\n"
     refute_includes out, "</figure>\n\n\n"
+  end
+
+  # ラベルのないキャプションの次の行のコード・表は、VFM ではキャプションの段落の続きになる
+  def test_should_separate_unlabeled_caption_from_following_code_and_table
+    content = "**CSSの例**\n```css\nh1 { color: red; }\n```\n\n**表の例**\n| a | b |\n| - | - |\n"
+    out = XR.transform_captioned_blocks(content, '97-sample.md', {})
+
+    assert_includes out, "**CSSの例**\n\n```css\n"
+    assert_includes out, "**表の例**\n\n| a | b |\n"
+  end
+
+  # 空行がすでにあるとき・続くのが本文のときは何も補わない
+  def test_should_leave_unlabeled_caption_followed_by_blank_line_or_text
+    content = "**CSSの例**\n\n```css\nh1 {}\n```\n\n**強調だけの行**\n本文。\n"
+    out = XR.transform_captioned_blocks(content, '97-sample.md', {})
+
+    assert_equal content, out
   end
 end
 

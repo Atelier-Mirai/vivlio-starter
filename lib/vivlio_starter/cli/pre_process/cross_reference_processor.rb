@@ -38,6 +38,14 @@ module VivlioStarter
         # 見出し行末の ` @id`（見出しラベル）。紙面には出さずアンカーだけを残す。
         HEADING_LABEL_PATTERN = /^(\#{1,6})\s+(.+?)\s+@([-\w]+)\s*$/
 
+        # キャプション・見出しの末尾に書いた ` @…` のうち、ラベル ID に使えない文字を含むもの
+        # （`** 写真 @図の例 **`・`## 導入 @はじめに`）。CAPTION_PATTERN・HEADING_LABEL_PATTERN に
+        # 当たらないので、ラベルにならず `@図の例` が紙面に文字のまま出る。ここで拾って警告する。
+        # `@` の直前は空白に限る（メールアドレスや `` `@pageref:` `` のようなコードは対象外）。
+        LABEL_LIKE_CAPTION = /^\*\*\s*.+?\s@(\S+?)\s*\*\*\s*$/
+        LABEL_LIKE_HEADING = /^\#{1,6}\s+.+?\s@(\S+)\s*$/
+        VALID_LABEL_ID = /\A[-\w]+\z/
+
         # 章題（第 1 レベルの見出し）。暗黙の章ラベルの飛び先と表示文字列になる。
         CHAPTER_HEADING_PATTERN = /^#[ \t]+(.+?)\s*$/
 
@@ -222,15 +230,18 @@ module VivlioStarter
             @chapter_label_id = CrossReferenceProcessor.chapter_label_id_for(source_file)
             @labels = []
             @errors = []
+            @invalid_ids = []
             @counters = Hash.new(0)
           end
 
+          # @return [Hash] { labels:, errors:, invalid_ids: [{ line:, id: }] }
+          #   invalid_ids は使えない文字を含むラベル ID。警告は対象章だけに出すので、呼び出し側が出す
           def collect(content)
             lines = content.lines
             # コードブロックの除外は Masking（唯一の実装）へ委ねる。
             code_lines = Masking.code_lines(content)
             lines.each_with_index { |line, idx| process_line(line, idx, lines, code_lines) }
-            { labels: @labels, errors: @errors }
+            { labels: @labels, errors: @errors, invalid_ids: @invalid_ids }
           end
 
           private
@@ -246,9 +257,10 @@ module VivlioStarter
             end
 
             info = CrossReferenceProcessor.extract_caption_label(line)
-            return unless info
+            return add_label(info, idx, lines) if info
 
-            add_label(info, idx, lines)
+            invalid_id = line[LABEL_LIKE_CAPTION, 1] || line[LABEL_LIKE_HEADING, 1]
+            @invalid_ids << { line: idx + 1, id: invalid_id } if invalid_id && !invalid_id.match?(VALID_LABEL_ID)
           end
 
           # 最初の章題に暗黙の章ラベル（type :chap）を 1 つだけ付ける。number には
@@ -458,7 +470,20 @@ module VivlioStarter
             return result if result
 
             output << @lines[idx]
+            output << "\n" if caption_touching_block?(idx)
             idx + 1
+          end
+
+          # ラベルのないキャプション（`**タイトル**`）の次の行に、空行を挟まずコードや表を書いた形。
+          # VFM ではコードの柵も表もキャプションの段落の続きとして読まれ、コードは 1 行のインライン
+          # コードに、表は `|` の並んだ文字になる。空行を 1 つ補ってキャプションと切り離す
+          # （ラベル付きのキャプションは transform_block が HTML にするので、この形にならない）。
+          def caption_touching_block?(idx)
+            return false unless @lines[idx].match?(/^\s*\*\*.+\*\*\s*$/)
+
+            next_line = @lines[idx + 1].to_s.strip
+            !next_line.empty? && !next_line.start_with?(':::{') &&
+              %i[list table].include?(CrossReferenceProcessor.detect_block_type(@lines, idx))
           end
 
           # 見出し行末の ` @id` を除去し、アンカー span を見出しの「内側」へ移す。

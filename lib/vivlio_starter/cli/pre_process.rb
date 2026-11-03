@@ -256,6 +256,7 @@ module VivlioStarter
         # ------------------------------------------------
         all_labels = []
         all_errors = []
+        invalid_ids = []
 
         # catalog.yml 登録済みの全章を対象とする（未登録草稿は除外）。
         # 分冊の本では、組んでいない巻の原稿からも集める。別の巻の章を指す参照を未定義にせず、
@@ -280,6 +281,7 @@ module VivlioStarter
           end
           all_labels.concat(result[:labels])
           all_errors.concat(result[:errors])
+          invalid_ids.concat(result[:invalid_ids].map { it.merge(file: filename) })
         end
         other_volume_names = other_volumes.transform_values(&:name)
 
@@ -294,6 +296,7 @@ module VivlioStarter
         # ただし知らせるのは処理対象の章に関わるものだけにする。vs build 12 / vs preflight 12 で
         # 範囲外の 95 章の指摘まで出ると、著者は 12 章のどこが悪いのか探し回ることになる。
         target_files = md_files.to_set { File.basename(it) }
+        warn_invalid_label_ids(invalid_ids.select { target_files.include?(it[:file]) })
 
         if duplicates_by_id.any?
           duplicates_by_id.each do |_id, labels|
@@ -307,7 +310,8 @@ module VivlioStarter
             end
             Common.log_error(
               "#{first.source_file}:#{first.line} - ラベルID '#{first.title} @#{first.id}' は重複しています",
-              detail: "重複箇所: #{detail_lines.join("\n          ")}"
+              detail: "重複箇所: #{detail_lines.join("\n          ")}\n" \
+                      "→ どちらかの ID を、対象を区別できる別の名前に変えてください。"
             )
             # 章別サマリーへブリッジする（preflight-chapter-summary-spec.md §2.2）
             IssueRegistry.record(
@@ -416,6 +420,24 @@ module VivlioStarter
         true
       end
       module_function :process_cross_references_for_files
+
+      # キャプション・見出しの末尾の ` @…` に、ラベル ID に使えない文字（日本語・記号）があるもの。
+      # ラベルにならず、`@…` が紙面に文字のまま出る
+      # @param invalid_ids [Array<Hash>] { file:, line:, id: }
+      def warn_invalid_label_ids(invalid_ids)
+        invalid_ids.each do |entry|
+          Common.log_warn(
+            "#{entry[:file]}:#{entry[:line]} - ラベルID '@#{entry[:id]}' に使えない文字があります",
+            detail: "ラベルID は半角の英字・数字・ハイフン（-）・アンダースコア（_）で書いてください" \
+                    "（例: @図の例 → @figure-example）。"
+          )
+          IssueRegistry.record(
+            chapter: entry[:file], line: entry[:line], severity: :warn,
+            category: :cross_reference, message: "ラベルID '@#{entry[:id]}' に使えない文字があります"
+          )
+        end
+      end
+      module_function :warn_invalid_label_ids
 
       # 分冊の本で、いま組む範囲（巻・合本）に入らない原稿と、それを載せた巻（ファイル名 => Volume）。
       # 二つ以上の巻に載る付録は、組む巻にも載っていれば組む巻の原稿として扱う
