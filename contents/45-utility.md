@@ -72,6 +72,7 @@ vs preflight intro   # スラッグが intro の章をチェック
         コードの場所: codes/mass_energy.rb
 🔴 95-sample.md:160 - ラベルID '仕事関数の目安 @photoelectric-table' は重複しています
         重複箇所: 95-sample.md: 160, 166
+        → どちらかの ID を、対象を区別できる別の名前に変えてください。
 🟡 95-sample.md:203 - 孤立ラベル '拡散係数の測定値 @diffusion-table' は未参照です
 🔍 リンク・画像検証の結果:
         画像: 1 件の課題（存在しない画像: 1）
