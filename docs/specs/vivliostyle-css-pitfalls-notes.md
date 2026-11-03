@@ -153,6 +153,13 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **原因**: chapter-common.css の `figure:not(.align-center):not(.align-right) { margin-inline-end: auto }`（図版を左寄せにする規則）が、コンテナ側の `.pictures figure { margin: 0 }` より特異度が高く、勝っていた。flex アイテムの auto の余白は、`justify-content` より先に行の余りを全部受け取る。伸ばす組み方（`flex-grow: 1`）では余りが無いので表に出なかった。Vivliostyle 固有ではなく、Chrome でも同じ（`chrome-headless-shell --dump-dom` で各 figure の寸法を測って特定した）。
 - **修正**: layout-utils.css で `.pictures > figure:not(.align-center):not(.align-right) { margin-inline: 0 }`。**flex や grid の中に `figure` を置いて余白が合わないときは、全体の `figure` の規則が付ける auto の余白を疑う。**
 
+### 2.17 「、「」のように約物が続く段落では `text-wrap: pretty` が効かない
+
+- **症状**: base.css の `text-wrap: pretty` で段落の最終行が「す。」の 2 字だけにならないようにしたが、25 章の 1 段落で「す。」が残った（2026-11-04）。
+- **切り分け**: 同じ文字列の段落を `text-wrap: wrap` と `pretty` で並べ、前に置く字数を 1 字ずつ変えて「wrap では『す。』が残る長さ」を作り、pretty が直すかを数えた。和文だけ・インラインコード・太字・リンク・半角英字・`@`・ハイフンを入れても pretty は効いた（「ます。」以上にする）。**「、「」を含む段落だけ 3 例中 3 例とも効かず**、同じ段落に `text-spacing: none` を付けると 6 例中 6 例とも効いた。「。「」の段落では効いた。
+- **原因**: Vivliostyle の text-spacing（`text-spacing: auto` の約物の詰め・trim-adjacent）。約物を `<viv-ts-open class="viv-ts-trim">` などの要素で包んで間を詰める処理と、Chromium の pretty の行分割が両立していない。内部の経路までは追っていない。
+- **対処**: 未対応。text-spacing を切るのは和文の組版を崩すので採らない。目立つ段落は文を書き換えて避ける（25 章は節を書き直して解消）。**pretty が効かない段落を見つけたら、まず「、「」「、（」など約物の連続を探す。**
+
 ---
 
 ## 3. 今回確立した実装パターン
