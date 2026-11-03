@@ -127,6 +127,13 @@ module VivlioStarter
           assert_includes out, '<span class="vs-hspace" style="margin-left:-0.5em"></span>'
         end
 
+        # 前後の半角空白は紙面に残さない。残すと指定した量に約半字の空きが足される
+        def test_should_drop_spaces_around_hspace
+          out = apply('<p>文字 @hspace:1 の間。</p>')
+
+          assert_includes out, '文字<span class="vs-hspace" style="margin-left:1em"></span>の間。'
+        end
+
         def test_should_not_expand_hspace_inside_pre
           out = apply("<pre><code class=\"language-markdown\">@hspace:2</code></pre>\n")
 
