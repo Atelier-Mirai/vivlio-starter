@@ -114,7 +114,7 @@ module VivlioStarter
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '97-foo.md'))
           assert_includes out, '97 番は 97-sample が使っています'
-          assert_includes out, 'vs create 90-foo'
+          assert_includes out, 'vs create 98-foo'
         end
       end
 

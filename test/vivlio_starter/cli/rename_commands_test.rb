@@ -107,7 +107,7 @@ module VivlioStarter
           assert File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
           refute File.exist?(File.join(Common::CONTENTS_DIR, '20-gamma.md'))
           assert_includes out, '20 番は 20 が使っています'
-          assert_includes out, '→ vs rename 31-beta 01-gamma'
+          assert_includes out, '→ vs rename 31-beta 21-gamma'
         end
       end
 

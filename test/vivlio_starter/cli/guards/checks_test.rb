@@ -386,7 +386,7 @@ module VivlioStarter
 
           detail = Guards::DuplicateNumberCheck.new.validate.first.detail
 
-          assert_includes detail, '  → vs rename 97-sample-ocr 90-sample-ocr'
+          assert_includes detail, '  → vs rename 97-sample-ocr 98-sample-ocr'
           refute detail.any? { it.include?('vs rename 97-sample ') }, '1 つめは振り直さない'
         end
       end
@@ -402,7 +402,7 @@ module VivlioStarter
           detail = Guards::DuplicateNumberCheck.new.validate.first.detail
 
           assert_includes detail, '- 97: contents/97-sample.md、contents/97-sample のコピー.md'
-          assert_includes detail, '  → mv contents/97-sample\ のコピー.md contents/90-sample-2.md'
+          assert_includes detail, '  → mv contents/97-sample\ のコピー.md contents/98-sample-2.md'
         end
       end
 

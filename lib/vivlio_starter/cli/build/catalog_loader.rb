@@ -427,14 +427,16 @@ module VivlioStarter
           match ? match[1].to_i : nil
         end
 
-        # number と同じ区分（まえがき・本文・付録・あとがき）で、used に無い一番小さい番号（「98」）。
-        # 番号の重なりを知らせるとき、振り直す先を添えるのに使う。空きが無ければ nil
+        # number と同じ区分（まえがき・本文・付録・あとがき）で、used に無い番号（「98」）。
+        # number から後ろを先に探し、区分の終わりまで無ければ区分の初めから探す。
+        # 番号の重なりを知らせるとき、振り直す先を添えるのに使う。15 番が重なった章には、
+        # 区分の初めの 01 より、著者が選んだ位置に近い 16 を勧める。空きが無ければ nil
         # @param number [Integer]
         # @param used [Array<Integer>] 使われている番号
         # @return [String, nil]
         def free_number_in_section(number, used)
           range = TokenResolver::Resolver::KIND_RANGES.fetch(TokenResolver::Resolver.kind_for_number(number))
-          free = range.find { !used.include?(it) }
+          free = [*number..range.max, *range.min...number].find { !used.include?(it) }
           free && format('%02d', free)
         end
 

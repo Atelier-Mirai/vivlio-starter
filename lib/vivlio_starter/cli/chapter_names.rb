@@ -65,7 +65,7 @@ module VivlioStarter
       end
 
       # basename を、決まりの形に直し、今ある章と重ならないようにした例。
-      # 使えない字はハイフンにし（「97-sample のコピー」→「97-sample」）、重なる番号は同じ区分の空き番号に、
+      # 使えない字はハイフンにし（「97-sample のコピー」→「97-sample」）、重なる番号は同じ区分でその後ろの空き番号に、
       # 重なるスラッグは「-2」などを足したものにする。直しようがなければ nil
       # @return [String, nil]
       def suggestion(basename, taken, except: nil)

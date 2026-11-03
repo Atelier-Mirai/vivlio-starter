@@ -54,7 +54,9 @@ module VivlioStarter
       end
 
       def test_should_suggest_a_free_number_and_a_free_name
-        assert_equal '90-foo', ChapterNames.suggestion('97-foo', TAKEN), '同じ区分（付録）の空き番号'
+        assert_equal '98-foo', ChapterNames.suggestion('97-foo', TAKEN), '同じ区分（付録）で、重なった番号の後ろの空き番号'
+        assert_equal '90-foo', ChapterNames.suggestion('97-foo', [*TAKEN, '98-x']), '後ろに空きが無ければ区分の初めから'
+        assert_equal '12-foo', ChapterNames.suggestion('11-foo', TAKEN), '本文の初めの 01 より、選んだ位置に近い番号'
         assert_equal '01-sample-2', ChapterNames.suggestion('01-sample', TAKEN)
         assert_equal '01-sample-3', ChapterNames.suggestion('01-sample', [*TAKEN, '02-sample-2'])
         assert_equal '97-sample-2', ChapterNames.suggestion('97-sample', %w[97-sample 01-sample])
@@ -83,9 +85,9 @@ module VivlioStarter
 
       # 勧める名前は使えない字をハイフンにする。日本語しか無ければ chapter
       def test_should_repair_names_in_suggestions
-        assert_equal '90-sample-v2', ChapterNames.suggestion('97-sample.v2', TAKEN)
-        assert_equal '90-sample-2', ChapterNames.suggestion('97-sample のコピー', TAKEN)
-        assert_equal '90-chapter', ChapterNames.suggestion('97-サンプル', TAKEN)
+        assert_equal '98-sample-v2', ChapterNames.suggestion('97-sample.v2', TAKEN)
+        assert_equal '98-sample-2', ChapterNames.suggestion('97-sample のコピー', TAKEN)
+        assert_equal '98-chapter', ChapterNames.suggestion('97-サンプル', TAKEN)
       end
 
       # 空白・括弧などはエスケープし、日本語はそのまま残す（引用符を求めない）

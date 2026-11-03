@@ -236,7 +236,7 @@ module VivlioStarter
         format('%02d', candidate)
       end
 
-      # number と同じ区分で空いている番号。本文は末尾の次（§4.2）、ほかの区分は空いている一番小さい番号
+      # number と同じ区分で空いている番号。本文は末尾の次（§4.2）、ほかの区分は number の後ろの空き番号
       def free_number_for(number, taken)
         return next_body_number(taken) if BODY_NUMBERS.cover?(number.to_i)
 

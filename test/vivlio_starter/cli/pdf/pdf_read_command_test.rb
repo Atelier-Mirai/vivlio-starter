@@ -337,8 +337,8 @@ module VivlioStarter
           error = assert_raises(PdfReadCommand::InvalidInputError) { resolve('97-sample-ocr') }
 
           assert_equal("97 番は 97-sample が使っています\n" \
-                       "→ 空いている付録の番号: 90\n" \
-                       '→ vs pdf:read 97-sample-ocr 90-sample-ocr', error.message)
+                       "→ 空いている付録の番号: 98\n" \
+                       '→ vs pdf:read 97-sample-ocr 98-sample-ocr', error.message)
         end
       end
 
