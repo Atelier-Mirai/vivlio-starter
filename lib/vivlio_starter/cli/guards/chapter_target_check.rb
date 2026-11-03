@@ -116,7 +116,16 @@ module VivlioStarter
         # 綴りが近いものを先に見て、無ければ番号だけで拾う。番号は著者が
         # 「第 41 章」を指したことの強い証拠で、綴りが遠くても（`41-nonexistent`）
         # 意図は読める。逆順にすると `43-cover` を差し置いて `41-book-yml` が出る。
+        #
+        # スラッグだけの指定（`intor`）は、スラッグどうしで比べる。章名全体（`11-intro`）と比べると、
+        # 番号の分だけ遠くなって候補が出ない
         def suggestion_for(token)
+          unless token.match?(/\A\d/)
+            slugs = catalog_entries.select(&:slug).to_h { [it.slug, it.basename] }
+            near_slug = DidYouMean::SpellChecker.new(dictionary: slugs.keys).correct(token).first
+            return slugs[near_slug] if near_slug
+          end
+
           near = DidYouMean::SpellChecker.new(dictionary: catalog_basenames).correct(token).first
           return near if near
 

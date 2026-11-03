@@ -271,6 +271,7 @@ module VivlioStarter
       end
 
       # main: の章名を差し替える。単一指定は単一のまま戻す（著者が書いた形を保つ）。
+      # 節を指す `11-intro#節の見出し` も、章の部分だけを差し替える
       def rename_main_references(old_basename, new_basename)
         terms = load_terms
         changed = 0
@@ -279,7 +280,10 @@ module VivlioStarter
           next unless term['main']
 
           before = Array(term['main'])
-          after = before.map { it == old_basename ? new_basename : it }
+          after = before.map do
+            ref = IndexCommands::MainReference.parse(it)
+            ref.chapter == old_basename ? ref.with(chapter: new_basename).to_s : it
+          end
           next if after == before
 
           term['main'] = term['main'].is_a?(Array) ? after : after.first

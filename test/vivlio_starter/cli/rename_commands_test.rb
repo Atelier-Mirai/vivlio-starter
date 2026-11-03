@@ -237,6 +237,32 @@ module VivlioStarter
         end
       end
 
+      # 付録の記号は新しい番号から振る。玉突き（93→91）で、移す前の 91 の付録の記号を取らない。
+      # 記号でない appendix-glossary の g は書き換えない
+      def test_renumber_gives_appendices_the_letters_of_their_new_numbers
+        within_temp_dir do
+          File.write('config/catalog.yml', <<~YAML)
+            PREFACE:
+            CHAPTERS:
+            APPENDICES:
+              - 91-appendix-b
+              - 93-appendix-d
+              - 95-appendix-glossary
+            POSTFACE:
+          YAML
+          %w[91-appendix-b 93-appendix-d 95-appendix-glossary].each { setup_single_chapter_fixture(it) }
+
+          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+            capture_io { assert_raises(SystemExit) { build_rename_executor.call } }
+          end
+
+          assert_equal %w[90-appendix-a.md 91-appendix-b.md 92-appendix-glossary.md],
+                       Dir.glob('9*.md', base: Common::CONTENTS_DIR).sort
+          assert_equal %w[90-appendix-a 91-appendix-b 92-appendix-glossary],
+                       File.read('config/catalog.yml').scan(/- (\S+)/).flatten
+        end
+      end
+
       # 確認に「いいえ」と答えたら、原稿・画像・目次のどれも動かさない
       def test_rename_changes_nothing_when_the_answer_is_no
         within_temp_dir do

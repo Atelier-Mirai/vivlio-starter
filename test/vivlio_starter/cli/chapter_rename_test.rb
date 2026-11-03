@@ -75,6 +75,15 @@ module VivlioStarter
         assert_equal [NEW, '22-extensions'], dictionary['terms'].first['main']
       end
 
+      # 節を指す main: も、章の部分だけを差し替えて節の見出しを残す
+      def test_main_reference_to_a_section_follows_the_rename
+        write_dictionary(terms: [term('Markdown', main: ["#{OLD}#Markdown とは"])])
+
+        rename_with_file_move
+
+        assert_equal ["#{NEW}#Markdown とは"], dictionary['terms'].first['main']
+      end
+
       # 著者が書いた形を保つ（単一指定を配列にしない）
       def test_single_main_stays_single
         write_dictionary(terms: [term('Markdown', main: OLD)])

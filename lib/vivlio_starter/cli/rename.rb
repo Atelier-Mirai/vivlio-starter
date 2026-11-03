@@ -457,16 +457,17 @@ module VivlioStarter
         end
       end
 
-      # 付録番号が変化する際に appendix-a 等のスラッグを付け替える
+      # スラッグのうち付録の記号の部分（`appendix-a`・`appendix-b-setup`）。`appendix-glossary` の g は記号ではない
+      APPENDIX_LETTER_SLUG = /(?<![a-z0-9])appendix-[a-z](?![a-z0-9])/
+
+      # 付録番号が変化する際に appendix-a 等のスラッグを付け替える。
+      # 記号は番号から決める（90〜98 を a〜i）。目次の付録の並びから引くと、vs renumber の玉突き
+      # （93→91）では新しい番号を移す前の別の付録（元の 91）がまだ使っていて、その記号を取ってしまう
       def adjust_slug_for_appendix(new_number, old_slug)
         return nil if old_slug.nil? || old_slug.empty?
+        return old_slug unless new_number.to_i.between?(90, 98)
 
-        if new_number.to_i.between?(90, 98) && old_slug =~ /appendix-[a-z]/
-          new_letter = Common.appendix_number_to_letter(new_number)
-          old_slug.sub(/appendix-[a-z]/, "appendix-#{new_letter}")
-        else
-          old_slug
-        end
+        old_slug.sub(APPENDIX_LETTER_SLUG, "appendix-#{('a'..'i').to_a[new_number.to_i - 90]}")
       end
 
       # リネーム対象と変更先の Markdown 存在状態を検証する

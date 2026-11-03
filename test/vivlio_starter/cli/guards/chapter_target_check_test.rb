@@ -191,6 +191,15 @@ end
         end
       end
 
+      # スラッグだけの打ち間違いは、スラッグどうしで比べて章名を返す
+      def test_should_suggest_the_chapter_for_a_misspelled_slug
+        with_project do
+          detail = validate(%w[instal]).first.detail
+
+          assert_includes detail, '  instal → 11-install'
+        end
+      end
+
       # 綴りが遠くても番号が合っていれば、著者はその章を指したかったとみてよい
       def test_should_fall_back_to_the_chapter_with_the_same_number
         with_project do
