@@ -32,7 +32,9 @@ module VivlioStarter
         module_function
 
         DATA_PATH = File.expand_path('data/kyoiku_joyo_kanji.tsv', __dir__)
-        HAN = /\p{Han}/
+        # ルビを振る対象の漢字。\p{Han} は踊り字（々・〻）と漢数字のゼロ（〇）も含むが、
+        # これらは読みを持つ字ではないので数えない（数えると「々」が一般漢字の候補に挙がる）。
+        HAN = /(?![々〻〇])\p{Han}/
         # 同梱データで L1（中学で習う常用漢字）を表す値。これ以外の値は配当学年（1〜6）。
         CHUGAKU = '中学'
         # 教育漢字（L0）の配当学年。

@@ -71,6 +71,11 @@ body:not(.appendix) p:has(> strong:only-child):has(+ table) {
   display: table;
   margin-inline: auto;
   margin-block-end: 0.25lh;
+
+  /* ラベル付きの .table-caption（下の規則）と同じく、キャプションだけをページ末に残さない。
+     表の 1 行目が入らない位置では、キャプションも表と一緒に次のページへ送る */
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
 /* クロスリファレンス付き表のキャプション */

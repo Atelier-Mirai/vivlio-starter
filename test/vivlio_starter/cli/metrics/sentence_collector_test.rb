@@ -61,6 +61,28 @@ module VivlioStarter
           assert_equal '肖像はCommonsから。', sentence.text
         end
 
+        # 抜粋（display）はインラインコードを残す。文字数・文末の判定（text・length）は
+        # これまでどおりコードを除く。コードの中の ! では文を切らない
+        def test_should_keep_inline_code_only_in_display
+          content = "`--fix!` は `book.yml` を書き換えます。次の文。\n"
+
+          first, second = SentenceCollector.new.collect(content, 1)
+
+          assert_equal '`--fix!` は `book.yml` を書き換えます。', first.display
+          assert_equal 'は を書き換えます。', first.text
+          assert_equal first.text.length, first.length
+          assert_equal '次の文。', second.display
+        end
+
+        # 文が確定しないまま段落が終わったときは、その段落のコードを次の文へ持ち越さない
+        def test_should_not_carry_inline_code_across_paragraphs
+          content = "句点のない `a` の行\n\n本文は `b` です。\n"
+
+          sentence = SentenceCollector.new.collect(content, 1).first
+
+          assert_equal '本文は `b` です。', sentence.display
+        end
+
         def test_skips_structural_lines
           content = "| 見出し | 列 |\n本文の文です。\n"
 

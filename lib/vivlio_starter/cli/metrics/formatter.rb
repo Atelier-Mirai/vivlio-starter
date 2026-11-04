@@ -32,11 +32,11 @@ module VivlioStarter
         AMBIGUOUS_WIDTH_CHARS = %w[… → ← ↑ ↓ ⋯ ±].freeze
         CHAR_COUNT_WIDTH = 6
 
-        # 「表現が単調」と評価する MATTR の上限（この値以下が単調帯）。
+        # 「表現が単調」と評価する MATTR の境目（この値未満が単調帯）。
         # 詳細分析の表示（#mattr_evaluation）と章別リストの品質警告
         # （WarningChecker#quality_warnings）が同じ値を参照することで、
         # 「詳細では単調と出るのに警告は出ない」という乖離を構造的に防ぐ。
-        MATTR_MONOTONOUS_MAX = 0.5
+        MATTR_MONOTONOUS_BELOW = 0.5
 
         def initialize(config_loader)
           @config = config_loader
@@ -48,6 +48,12 @@ module VivlioStarter
         def format_chapter_count_summary(count, total_chars)
           avg = count.positive? ? (total_chars.to_f / count).round : 0
           "📚 合計 #{count} 章 ／ 平均 #{number_with_comma(avg)} 文字"
+        end
+
+        # 解析の最後を締める 1 行の文言（「27 章を解析しました（本文 145,597 文字）」）。
+        # ほかの行と同じく桁区切りを付けるため、数の書式はここで持つ。
+        def format_result_message(count, prose_chars)
+          "#{count} 章を解析しました（本文 #{number_with_comma(prose_chars)} 文字）"
         end
 
         # 分冊の巻ごとの合計（「📚 上巻: 12 章 ／ 計 98,000 文字」）
@@ -71,9 +77,9 @@ module VivlioStarter
         def format_sentence_structure(basic)
           <<~OUTPUT.chomp
             📊 文章統計 — 文構造
-            - 文の数: #{basic.sentences} 文（平均 #{basic.avg_sentence_len.round(1)} 文字/文）
-            - 節の数: #{basic.clauses} 節（平均 #{basic.avg_clause_len.round(1)} 文字/節）
-            - 読点数: #{basic.commas} 個
+            - 文の数: #{number_with_comma(basic.sentences)} 文（平均 #{basic.avg_sentence_len.round(1)} 文字/文）
+            - 節の数: #{number_with_comma(basic.clauses)} 節（平均 #{basic.avg_clause_len.round(1)} 文字/節）
+            - 読点数: #{number_with_comma(basic.commas)} 個
           OUTPUT
         end
 
@@ -112,7 +118,7 @@ module VivlioStarter
           lines = ["📝 見直したい長い文（ワースト#{sentences.size}）", '']
           sentences.each_with_index do |s, index|
             location = "第#{s.chapter_num.to_s.rjust(num_w)}章 L#{s.line.to_s.rjust(line_w)}（#{s.length.to_s.rjust(len_w)}字）"
-            lines << "#{index + 1}. #{location}: #{snippet(s.text)}"
+            lines << "#{index + 1}. #{location}: #{snippet(s.display)}"
           end
           lines.join("\n")
         end
@@ -413,13 +419,15 @@ module VivlioStarter
 
         # 語彙多様度（MATTR）の評価。窓付き移動平均のため、生 TTR より高め・
         # 安定した値域になる。バンドは実用書原稿の実測分布で較正した目安。
+        # 帯は下端を含む半開区間（0.5 以上 0.6 未満が標準的）で、詳細分析に添える
+        # 「評価基準」の文言と同じ切り方にする。境目の値で評価と文言が食い違わないように。
         # 単調帯の境界だけは品質警告と共有するため定数を参照する
-        # （範囲パターン `in ..CONST` は書けないため case/when を使う）。
+        # （範囲パターン `in ...CONST` は書けないため case/when を使う）。
         def mattr_evaluation(mattr)
           case mattr
-          when ..MATTR_MONOTONOUS_MAX then @labels[:monotonous]
-          when ..0.6 then '標準的'
-          when ..0.7 then '豊富'
+          when ...MATTR_MONOTONOUS_BELOW then @labels[:monotonous]
+          when ...0.6 then '標準的'
+          when ...0.7 then '豊富'
           else '非常に豊富'
           end
         end
@@ -505,7 +513,7 @@ module VivlioStarter
         # MATTR が「表現が単調」帯（詳細分析の表示と同一バンド）。
         # 総語数が窓幅に満たない章は MATTR 自体が不安定なため判定しない。
         def monotonous?(vocab)
-          vocab.total_tokens >= mattr_window && vocab.mattr <= Formatter::MATTR_MONOTONOUS_MAX
+          vocab.total_tokens >= mattr_window && vocab.mattr < Formatter::MATTR_MONOTONOUS_BELOW
         end
 
         # 建石式 RS が最難バンド（Professional）。RS の母数である文数

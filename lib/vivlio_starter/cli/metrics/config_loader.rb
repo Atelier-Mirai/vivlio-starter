@@ -79,8 +79,7 @@ module VivlioStarter
 
         DEFAULT_VOCABULARY = {
           kanji_ratio: { min: 20, ideal: [25, 35], max: 45 },
-          word_length: { min: 1.5, ideal: [2.0, 2.5], max: 3.0 },
-          ttr: { min: 0.3, ideal: [0.5, 0.7], max: 1.0 }
+          word_length: { min: 1.5, ideal: [2.0, 2.5], max: 3.0 }
         }.freeze
 
         # 建石式 RS は値が大きいほど読みやすい。easy/standard は各バンドの下限。
@@ -162,7 +161,7 @@ module VivlioStarter
 
         # 語彙難度のしきい値を取得する
         def vocabulary_thresholds
-          merge_with_defaults(metrics_config, DEFAULT_VOCABULARY, %i[kanji_ratio word_length ttr])
+          merge_with_defaults(metrics_config, DEFAULT_VOCABULARY, %i[kanji_ratio word_length])
         end
 
         # 読解難度のしきい値を取得する

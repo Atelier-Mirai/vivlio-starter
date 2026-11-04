@@ -41,7 +41,7 @@ module VivlioStarter
 
         # キャッシュの構造バージョン。読解難度の特徴量導入や MATTR 追加など
         # 互換性を破る変更時にインクリメントし、旧バージョンのキャッシュを無効化する。
-        CACHE_SCHEMA_VERSION = 6
+        CACHE_SCHEMA_VERSION = 7
 
         # 「見直したい長い文」として挙げる下限文字数と最大件数。
         LONG_SENTENCE_MIN = 80
@@ -112,7 +112,7 @@ module VivlioStarter
           output_advice(all_analyses) if options[:all]
 
           # 長い解析結果の最後を 1 行で締める（何章を対象にしたかが読み取れる）
-          Common.log_result("#{all_analyses.size} 章を解析しました（本文 #{final_vocab.total_char_count} 文字）",
+          Common.log_result(formatter.format_result_message(all_analyses.size, final_vocab.total_char_count),
                             status: :success)
           0
         end
@@ -482,7 +482,7 @@ module VivlioStarter
 
         def extract_placeholder_title(content, file)
           match = content.match(ChapterParser::H1_PATTERN)
-          match ? match[1].strip : File.basename(file, '.md')
+          match ? ChapterParser.display_title(match[1]) : File.basename(file, '.md')
         end
 
         def extract_placeholder_chapter_num(file)
@@ -756,6 +756,7 @@ module VivlioStarter
           readability = aggregate_readability(analyses)
 
           basic_stats_to_structured_hash(basic).merge(
+            'prose_chars' => vocab.total_char_count,
             'vocabulary' => vocabulary_to_structured_hash(vocab),
             'readability' => { 'score' => readability.score.round(2), 'label' => readability.label }
           )
@@ -806,7 +807,7 @@ module VivlioStarter
             'chapter_num' => sentence.chapter_num,
             'line' => sentence.line,
             'length' => sentence.length,
-            'text' => sentence.text
+            'text' => sentence.display
           }
         end
 
@@ -838,12 +839,15 @@ module VivlioStarter
 
         # 章別統計。warnings は分量警告と品質警告を合わせた一覧で、
         # 該当なし・除外章でも消費側が扱いやすいよう常に配列を返す。
+        # chars はコードと記法を含む原稿全体の文字数なので、分量の判定に使う本文の文字数
+        # （章別リストの棒グラフの値）を prose_chars として別に載せる。
         def analysis_to_stat_hash(analysis)
           basic = analysis.basic
           chapter = analysis.chapter
 
           basic_stats_to_structured_hash(basic).merge(
             'path' => chapter.path,
+            'prose_chars' => chapter.chars,
             'warnings' => [chapter.warning, *warning_checker.quality_warnings(analysis)].compact
           )
         end

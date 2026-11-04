@@ -22,19 +22,27 @@ require_relative '../masking'
 module VivlioStarter
   module CLI
     module Metrics
-      # 位置つきの 1 文。length は改行を除いた文字数。
-      LocatedSentence = Data.define(:chapter_num, :line, :text, :length)
+      # 位置つきの 1 文。text と length はインラインコードを除いた本文（文字数・文末・漢字の判定に使う）、
+      # display はインラインコードを残した文（抜粋として著者に見せる）。コードを除いたまま見せると
+      # 「には の と同じ色名」のように語が抜けて、どの文か分からなくなる。
+      LocatedSentence = Data.define(:chapter_num, :line, :text, :length, :display) do
+        def initialize(chapter_num:, line:, text:, length:, display: text) = super
+      end
 
       # 章本文から位置つきで文を収集する。
       class SentenceCollector
         # 文ではない構造行（見出し/表/HTMLコメント/コンテナ/画像/引用）。
         STRUCTURAL = /\A\s*(?:#|\||<!--|:::|!\[|>)/
         SENTENCE_END = /[。！？!?]+/
+        # 文のバッファでインラインコードがあった位置の目印（私用領域の字なので原稿には現れない）。
+        # コードの中身は文末の判定に混ぜず（`--fix!` の ! で文が切れないように）、文が確定したら戻す。
+        CODE_MARK = "\u{E000}"
 
         # @return [Array<LocatedSentence>]
         def collect(content, chapter_num)
           @results = []
           @buffer = +''
+          @codes = []
           @start_line = nil
 
           # コード（フェンス区切り行・内容行）とみなす行番号を Masking で判定する。
@@ -58,17 +66,20 @@ module VivlioStarter
           return false unless raw.strip.empty? || raw.match?(STRUCTURAL)
 
           @buffer = +''
+          @codes = []
           @start_line = nil
           true
         end
 
         # 1 行を取り込み、文末が現れた分だけ確定して結果へ積む。
         def accumulate(raw, lineno, chapter_num)
-          text = clean_line(raw)
-          return if text.strip.empty?
+          codes = []
+          text = clean_line(raw, codes)
+          return if text.delete(CODE_MARK).strip.empty?
 
           @start_line ||= lineno
           @buffer << text << "\n"
+          @codes.concat(codes)
 
           while (match = @buffer.match(SENTENCE_END))
             @results << build_sentence(chapter_num, @start_line, @buffer[0...match.end(0)])
@@ -77,15 +88,21 @@ module VivlioStarter
           end
         end
 
+        # バッファの目印は文の順に並ぶので、この文の目印の数だけコードを先頭から取り出して戻す。
         def build_sentence(chapter_num, line, raw_sentence)
-          # インラインコード等の除去で生じた空白の連続を 1 つに畳んで読みやすくする。
-          text = raw_sentence.delete("\r\n").gsub(/\s+/, ' ').strip
-          LocatedSentence.new(chapter_num:, line:, text:, length: text.length)
+          codes = @codes.shift(raw_sentence.count(CODE_MARK))
+          text = squeeze(raw_sentence.gsub(CODE_MARK, ' '))
+          display = squeeze(raw_sentence.gsub(CODE_MARK) { "`#{codes.shift}`" })
+          LocatedSentence.new(chapter_num:, line:, text:, length: text.length, display:)
         end
 
+        # 改行を除き、記法の除去で生じた空白の連続を 1 つに畳む。
+        def squeeze(sentence) = sentence.delete("\r\n").gsub(/\s+/, ' ').strip
+
         # 行内 Markdown を除いて、文章としての長さに近づける。
-        def clean_line(line)
-          line.gsub(/`[^`\n]*`/, ' ')              # インラインコード
+        # インラインコードは目印に置き換え、中身は codes へ順に積む（抜粋で戻すため）。
+        def clean_line(line, codes)
+          line.gsub(/`([^`\n]*)`/) { codes << ::Regexp.last_match(1); CODE_MARK }
               .gsub(/!\[[^\]]*\]\(#{Masking::LINK_DESTINATION}\)/, ' ')   # 画像
               .gsub(/\[([^\]]+)\]\(#{Masking::LINK_DESTINATION}\)/, '\1') # リンク → テキスト
               .gsub(/\A\s*[-*+]\s+/, '')           # 箇条書きの行頭記号

@@ -14,6 +14,7 @@
 
 require_relative '../masking'
 require_relative 'analyzer'
+require_relative '../common'
 
 module VivlioStarter
   module CLI
@@ -23,6 +24,14 @@ module VivlioStarter
         H1_PATTERN = /^#\s+(.+)$/
         H2_PATTERN = /^##\s+(.+)$/
         CHAPTER_NUM_PATTERN = /^(\d+)-/
+
+        # 見出しの末尾に手で書くラベル（`## 推敲用の参考資料 @metrics-advice`）
+        HEADING_LABEL = /\s+@[-\w]+\s*\z/
+
+        # 見出しの文字列を、一覧に出す題にする。ラベルは紙面に出ないので外し、
+        # 章扉で改行させる `<br>` などのタグは書名と同じ扱い（Common.plain_title）で詰める。
+        # そのまま出すと「第95章 挑戦することの<br>贈り…」のように原稿の記法が並ぶ。
+        def self.display_title(heading) = Common.plain_title(heading.sub(HEADING_LABEL, ''))
 
         def initialize(warning_checker)
           @warning_checker = warning_checker
@@ -71,7 +80,7 @@ module VivlioStarter
         # H1 見出しからタイトルを抽出する
         def extract_title(content)
           match = content.match(H1_PATTERN)
-          match ? match[1].strip : nil
+          match ? self.class.display_title(match[1]) : nil
         end
 
         # H2 見出しから節を解析する。
@@ -88,7 +97,7 @@ module VivlioStarter
           content.each_line.with_index(1) do |line, lineno|
             if heading_lines.include?(lineno)
               flush_section(sections, current_title, current_content, chapter_num) if current_title
-              current_title = line[H2_PATTERN, 1].strip
+              current_title = self.class.display_title(line[H2_PATTERN, 1])
               current_content = []
             elsif current_title
               current_content << line

@@ -56,6 +56,14 @@ module VivlioStarter
           assert_equal({ 1 => 80, 2 => 160, 3 => 200, 4 => 202, 5 => 193, 6 => 191 }, by_grade.sort.to_h)
         end
 
+        # 踊り字（々・〻）と〇は読みを持つ字ではないので、ルビ候補として数えない
+        def test_should_not_count_iteration_marks_as_kanji
+          report = KanjiLevels.build_report([sentence('人々と時〻、〇の碍')])
+
+          assert_equal [['碍', 1]], report.lists[:ippan]
+          assert_equal [['教育', 67], ['一般(L2)', 33]], report.ratios
+        end
+
         def test_build_report_aggregates_levels_lists_and_locations
           sentences = [
             sentence('一の碍', chapter: 1, line: 10),

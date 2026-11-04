@@ -91,6 +91,22 @@ module VivlioStarter
           assert_includes output, '119 個'
         end
 
+        # 文構造の数と最後の 1 行にも、ほかの行と同じく桁区切りを付ける
+        def test_should_group_thousands_in_sentence_structure_and_result_message
+          basic = BasicStats.new(
+            chars: 300_000, chars_no_newline: 290_000, code_chars: 80_000, notation_chars: 12_000,
+            lines: 9_000, sentences: 3_221, avg_sentence_len: 48.9,
+            clauses: 3_371, avg_clause_len: 46.7, commas: 3_345
+          )
+
+          structure = @formatter.format_sentence_structure(basic)
+
+          assert_includes structure, '3,221 文'
+          assert_includes structure, '3,371 節'
+          assert_includes structure, '3,345 個'
+          assert_equal '27 章を解析しました（本文 145,597 文字）', @formatter.format_result_message(27, 145_597)
+        end
+
         def test_format_detailed_analysis_includes_vocabulary
           vocab = build_vocab(
             kanji_ratio: 28.5,
@@ -512,11 +528,20 @@ module VivlioStarter
           assert_equal ['表現が単調'], @checker.quality_warnings(analysis)
         end
 
-        # 詳細分析のバンドは 0.5 以下が単調帯。境界値も発火する
-        def test_quality_warnings_flags_monotonous_at_band_boundary
-          analysis = build_analysis(mattr: 0.5, total_tokens: 500)
+        # 詳細分析のバンドは 0.5 未満が単調帯（評価基準の文言「0.5 未満=単調」と同じ）。
+        # 境目の 0.5 は標準的で、発火しない
+        def test_should_flag_monotonous_only_below_band_boundary
+          assert_equal ['表現が単調'], @checker.quality_warnings(build_analysis(mattr: 0.49, total_tokens: 500))
+          assert_empty @checker.quality_warnings(build_analysis(mattr: 0.5, total_tokens: 500))
+        end
 
-          assert_equal ['表現が単調'], @checker.quality_warnings(analysis)
+        # 帯は下端を含む半開区間。詳細分析に添える「評価基準」の文言と、境目の値で食い違わない
+        def test_should_evaluate_mattr_band_edges_as_the_printed_criteria
+          formatter = Formatter.new(@config)
+
+          assert_equal '標準的', formatter.send(:mattr_evaluation, 0.5)
+          assert_equal '豊富', formatter.send(:mattr_evaluation, 0.6)
+          assert_equal '非常に豊富', formatter.send(:mattr_evaluation, 0.7)
         end
 
         def test_quality_warnings_ignores_rich_vocabulary

@@ -94,6 +94,15 @@ module VivlioStarter
           assert_equal [], result['warnings']
         end
 
+        # chars はコード込みの原稿全体なので、分量の判定に使う本文の文字数を prose_chars で別に載せる
+        def test_should_include_prose_chars_in_stat_hash
+          analysis = build_analysis(readability_features: build_features, chapter_chars: 4_746)
+
+          result = @runner.send(:analysis_to_stat_hash, analysis)
+
+          assert_equal 4_746, result['prose_chars']
+        end
+
         # 構造化出力の warnings は分量警告と品質警告を合わせた一覧になる
         def test_analysis_to_stat_hash_lists_volume_and_quality_warnings
           analysis = build_analysis(readability_features: build_features(sentence_count: 30),
