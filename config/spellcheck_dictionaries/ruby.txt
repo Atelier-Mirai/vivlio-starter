@@ -234,6 +234,7 @@ chown
 chr
 chroot
 chruby
+rvm
 chunk
 clamp
 class

@@ -195,6 +195,7 @@ Miyamoto
 Yamauchi
 Kutaragi
 Wada
+kauplan
 
 # AI / ML Researchers
 Hinton

@@ -9,6 +9,7 @@
 # 名前・同梱の gem
 vivlio-starter
 vivlio-starter-pdf
+Vivlio
 querystream
 query-stream
 
@@ -16,6 +17,20 @@ query-stream
 renumber
 preflight
 rasterize
+
+# 同梱の扉絵・装飾の画像名（stylesheets/images/bundled/）
+ajisai
+asagao
+himawari
+kiku
+kikyo
+kosumosu
+nanohana
+sakura
+suisen
+suzuran
+tsubaki
+ume
 
 # 記法・クラス名
 book-card
