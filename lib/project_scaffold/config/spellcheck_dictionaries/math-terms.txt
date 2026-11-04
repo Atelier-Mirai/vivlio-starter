@@ -125,6 +125,7 @@ t-test
 chi-squared
 ANOVA
 TTR
+MATTR
 Type-Token
 Moving-Average
 TF-IDF

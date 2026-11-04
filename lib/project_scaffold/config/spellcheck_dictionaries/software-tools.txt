@@ -270,6 +270,7 @@ appcenter
 ariakit
 asammdf
 asdf
+mise
 autodocstring
 autogen
 automake
