@@ -20,9 +20,8 @@ module VivlioStarter
 
         # @param content [String] Markdownファイル全体の内容
         # @param check_code_blocks [Boolean] コードブロック内もチェックするか
-        # @param path [String, nil] 警告メッセージに含めるファイルパス（省略可）
         # @return [Array<[String, Integer]>] [word, line_no] のペア配列
-        def tokenize(content, check_code_blocks: false, path: nil)
+        def tokenize(content, check_code_blocks: false)
           # VFM 記法（showcase の座標行・クラス属性など）を先に中和する。textlint 側と
           # 同じ NotationGuard を通すことで、記法の判定が lint 全体で一本化される。
           # 行数は保存されるため、以降の行番号は原稿のものと一致したままになる。
@@ -33,8 +32,8 @@ module VivlioStarter
           line_no          = 0
 
           # 抑止コメントによる除外行番号セットを構築
-          excluded_lines, unclosed_disable_at = build_excluded_lines(content)
-          warn_unclosed_disable(path, unclosed_disable_at) if unclosed_disable_at
+          # 閉じ忘れは日本語校正の [unclosed-suppression] が報告する（ここでも出すと二重になる）
+          excluded_lines = build_excluded_lines(content)
 
           # コードフェンス行の集合を Masking（唯一の実装）で判定する。
           # 従来の /^```/ 単純トグルと異なり、可変長フェンス（```/````/~~~）と
@@ -77,11 +76,10 @@ module VivlioStarter
         # 記法かどうかの判定は Masking へ委ね、ProseChecker と同じ扱いに揃える。
         #
         # @param content [String] Markdownファイル全体の内容
-        # @return [Array(Set<Integer>, Integer?)] 除外行番号セットと、
-        #   未クローズ disable ブロックの開始行番号（クローズ済みなら nil）
+        # @return [Set<Integer>] 除外する行番号（閉じていない範囲はファイル末尾まで）
         def build_excluded_lines(content)
           excluded_lines = Set.new
-          disable_opened_at = nil
+          disabled = false
           prose = Set.new
           Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
           line_no = 0
@@ -92,14 +90,14 @@ module VivlioStarter
 
             # no-lint-start コメント行自体を除外
             if line.match?(VS_LINT_DISABLE)
-              disable_opened_at ||= line_no
+              disabled = true
               excluded_lines.add(line_no)
               next
             end
 
             # no-lint-end コメント行自体を除外
             if line.match?(VS_LINT_ENABLE)
-              disable_opened_at = nil
+              disabled = false
               excluded_lines.add(line_no)
               next
             end
@@ -112,27 +110,10 @@ module VivlioStarter
             end
 
             # disable ブロック内の行を除外
-            excluded_lines.add(line_no) if disable_opened_at
+            excluded_lines.add(line_no) if disabled
           end
 
-          [excluded_lines, disable_opened_at]
-        end
-
-        # no-lint-start が閉じられないままファイル末尾に達した場合に警告を出す。
-        # 著者が誤って enable を書き忘れたケースを検知するためのガード。
-        #
-        # **`Kernel#warn` を使ってはならない。** `bin/vs` は起動時に `RUBYOPT=-W0` を
-        # 付けて自身を再実行しており、`-W0` は `Kernel#warn` の出力を丸ごと捨てる。
-        # そのため `vs lint` 経由ではこの警告が一度も著者へ届いていなかった
-        # （2026-08-18 に判明。ライブラリを直接叩くテストでは出るので気づきにくい）。
-        # `Common.log_warn` を通すことで 🟡 の体裁とログレベル制御が他の警告と揃う
-        # （`cli-warning-delivery-spec.md` §5.1）。
-        # @param path [String, nil] ファイルパス（警告メッセージ用）
-        # @param opened_at [Integer] disable が開始された行番号
-        def warn_unclosed_disable(path, opened_at)
-          location = path ? "#{path}:#{opened_at}" : "line #{opened_at}"
-          Common.log_warn("[vs-lint] #{location} の <!-- no-lint-start --> が " \
-                          '<!-- no-lint-end --> で閉じられていません。ファイル末尾まで lint が無効化されます。')
+          excluded_lines
         end
 
         # 欧文の単語。アクセント記号の付いた文字（Latin-1 補助と拡張 A・B。× と ÷ は除く）も

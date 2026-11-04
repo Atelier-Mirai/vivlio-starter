@@ -441,8 +441,8 @@ module VivlioStarter
           return if Common.external_command_available?(textlint_command)
 
           raise LintError, <<~MSG.strip
-            textlint コマンドが見つかりません。npm などで textlint をインストールしてください。
-            例: npm install -g textlint textlint-rule-preset-ja-technical-writing
+            textlint が見つかりません。
+            → vs doctor --fix を実行すると、textlint と校正の規則をインストールします。
           MSG
         end
 
@@ -451,7 +451,7 @@ module VivlioStarter
           return if File.file?(path)
 
           display_path = Common.relative_path_from_root(path) || path
-          raise LintError, "textlint 設定ファイルが見つかりません: #{display_path}"
+          raise LintError, "textlint 設定ファイルが見つかりません: #{display_path}\n→ vs doctor --fix を実行すると、雛形から戻せます。"
         end
 
         # textlint 用サポート YAML (allowlist/prh) の存在・パースを検証する
@@ -460,7 +460,9 @@ module VivlioStarter
             path = Common.resolve_path_from_root(rel)
             display = Common.relative_path_from_root(path) || path
 
-            raise LintError, "textlint サポート用設定ファイルが見つかりません: #{display}" unless path && File.file?(path)
+            unless path && File.file?(path)
+              raise LintError, "textlint サポート用設定ファイルが見つかりません: #{display}\n→ vs doctor --fix を実行すると、雛形から戻せます。"
+            end
 
             begin
               yaml_text = File.read(path, encoding: 'UTF-8')
@@ -475,7 +477,9 @@ module VivlioStarter
           all_errors = find_spelling_errors(files, Lint::DictManager.new)
           Lint::SpellChecker.print_errors(all_errors)
 
-          spell_count = all_errors.values.sum(&:length)
+          # 表と同じく、同じ行の同じ語は 1 か所と数える（SpellChecker.aggregate）。
+          # 数え方が違うと、表は「1件」なのにサマリーは「2箇所」になる
+          spell_count = all_errors.values.sum { |errors| errors.uniq { [it[:word], it[:line]] }.size }
           { exit: spell_count.positive? ? 1 : 0, spell_count: spell_count }
         rescue StandardError => e
           Common.log_warn("[spellcheck] スペルチェック中にエラーが発生しました: #{e.message}")

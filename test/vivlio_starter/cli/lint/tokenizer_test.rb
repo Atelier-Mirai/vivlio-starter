@@ -127,29 +127,11 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'before'
   end
 
-  # <!-- no-lint-start --> が閉じられていない場合に警告が出ることを確認する。
-  # 出力先は stdout——他の 🟡 と同じく Common.log_warn を通すため
-  # （`cli-warning-delivery-spec.md` §5.1）。
-  def test_vs_lint_disable_unclosed_emits_warning
+  # 閉じ忘れの警告は出さない。日本語校正の [unclosed-suppression] が報告する（二重に出さない）
+  def test_unclosed_range_is_left_to_the_prose_check
     content = "before\n<!-- no-lint-start -->\nbadword\n"
-    out, _err = capture_io { T.tokenize(content, path: 'sample.md') }
-    assert_match(/vs-lint/, out)
-    assert_match(/sample\.md:2/, out)
-    assert_match(/閉じられていません/, out)
-  end
-
-  # 閉じられた disable-enable では警告が出ないことを確認する
-  def test_vs_lint_disable_closed_does_not_warn
-    content = "<!-- no-lint-start -->\nword\n<!-- no-lint-end -->\n"
-    out, err = capture_io { T.tokenize(content, path: 'sample.md') }
-    refute_match(/vs-lint/, out + err)
-  end
-
-  # path 省略時でも警告が出ることを確認する（ただし行番号のみ表示）
-  def test_vs_lint_disable_unclosed_warns_without_path
-    content = "<!-- no-lint-start -->\nword\n"
-    out, _err = capture_io { T.tokenize(content) }
-    assert_match(/line 1/, out)
+    out, err = capture_io { T.tokenize(content) }
+    assert_empty out + err
   end
 
   # vs-lint コメント行自体がスキップされることを確認する
@@ -172,10 +154,9 @@ class TestTokenizer < Minitest::Test
       これは speling ミスです。
     MD
 
-    out, err = capture_io { @words = T.tokenize(content, path: 'sample.md').map { _1[0] } }
+    words = T.tokenize(content).map { _1[0] }
 
-    assert_includes @words, 'speling', 'フェンスの外の本文は検査対象のまま'
-    refute_match(/vs-lint/, err + out, '例示を未クローズと誤解して警告しない')
+    assert_includes words, 'speling', 'フェンスの外の本文は検査対象のまま'
   end
 
   # 地の文のコメントは従来どおり効く（フェンス除外で殺していないこと）

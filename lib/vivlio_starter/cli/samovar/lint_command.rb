@@ -25,7 +25,7 @@ module VivlioStarter
     module SamovarCommands
       # lint コマンドの Samovar 実装
       class LintCommand < VsCommand
-        self.description = 'contents/ 以下の Markdown を textlint で検査します'
+        self.description = '原稿の日本語・英単語の綴り・コードブロックの言語名を検査します'
 
         options do
           option '--fix', '自動修正可能なエラーを修正', default: false, key: :fix
@@ -64,12 +64,12 @@ module VivlioStarter
 
         def print_help
           puts <<~HELP
-            vs lint - contents/ 以下の Markdown を textlint で検査します
+            vs lint - 原稿の日本語・英単語の綴り・コードブロックの言語名を検査します
 
             Usage: vs lint [OPTIONS] [FILES...]
 
             引数:
-              FILES   対象ファイル（省略時は全 Markdown）
+              FILES   対象の章（省略時は catalog.yml の全章）
                       章番号のみ: vs lint 91 93
                       範囲指定:   vs lint 11-21
                       分冊の巻:   vs lint upper
@@ -80,7 +80,7 @@ module VivlioStarter
                                  （スペルチェック専用。textlint は実行しません）
 
             例:
-              vs lint                 # 全 Markdown を検査
+              vs lint                 # catalog.yml の全章を検査
               vs lint 11-install      # 11-install.md のみ検査
               vs lint 91 93           # 91-*.md と 93-*.md を検査
               vs lint 11-21           # 11-*.md から 21-*.md の範囲を検査

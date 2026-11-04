@@ -176,6 +176,55 @@ module VivlioStarter
         refute_match(/コードブロックの言語名: /, stdout, '推定していないものは指摘に数えない')
       end
 
+      # スペルチェックの件数は、表もサマリーも「同じ行の同じ語は 1 か所」で数える
+      def test_spellcheck_summary_counts_a_word_once_per_line
+        File.write('contents/11-install.md', "bandle と bandle を使います。\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            stdout, = capture_io { LintCommands.execute_lint(['11-install']) }
+          end
+        end
+
+        assert_match(/  1件  bandle/, stdout)
+        assert_match(/- スペルチェック: 1箇所/, stdout)
+      end
+
+      # no-lint-start の閉じ忘れは日本語校正の行として 1 度だけ報告する
+      def test_unclosed_suppression_is_reported_once
+        File.write('contents/11-install.md', "<!-- no-lint-start -->\n本文です。\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            stdout, = capture_io { LintCommands.execute_lint(['11-install']) }
+          end
+        end
+
+        assert_equal 1, stdout.scan('閉じられていません').size, stdout
+        assert_match(/\[unclosed-suppression\]/, stdout)
+      end
+
+      # textlint が無いときは、規則ごと入る vs doctor --fix を案内する
+      def test_missing_textlint_points_to_doctor_fix
+        File.write('contents/11-install.md', "本文です。\n")
+        original = ENV.fetch(LintCommands::TEXTLINT_ENV_VAR, nil)
+        ENV[LintCommands::TEXTLINT_ENV_VAR] = 'vs-test-no-such-textlint'
+        status = nil
+        stdout, stderr = capture_io { status = LintCommands.execute_lint(['11-install']) }
+
+        assert_equal 1, status
+        assert_match(/textlint が見つかりません/, stdout + stderr)
+        assert_match(/vs doctor --fix/, stdout + stderr)
+      ensure
+        ENV[LintCommands::TEXTLINT_ENV_VAR] = original
+      end
+
       # 検査の実装が textlint と独自ルールに分かれているのは都合であって、著者から見れば
       # 同じ「日本語校正」。1 ファイル 1 ブロックにまとめ、件数順に混ぜて並べる
       # （分けて出すと同じ原稿の見出しが 2 度現れ、どちらを先に直すのか読み取れない）

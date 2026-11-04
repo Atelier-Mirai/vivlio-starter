@@ -17,8 +17,8 @@ filters:
       - Link
       - Image
 
-  # <!-- vs-lint-disable --> と <!-- vs-lint-enable --> で囲んだ範囲を校正の対象から外す
-  # （この設定を削除すると、囲みが無効になります）
+  # <!-- no-lint-start --> と <!-- no-lint-end --> で囲んだ範囲を校正の対象から外す
+  # （vs lint が textlint の書き方へ変えて渡します。この設定を削除すると、囲みが無効になります）
   comments: true
 
   # 指摘したくない語句の一覧（VFM 記法・書名・資格名称など）
