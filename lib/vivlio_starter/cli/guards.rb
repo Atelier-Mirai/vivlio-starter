@@ -43,6 +43,7 @@ require_relative 'guards/stray_page_break_check'
 require_relative 'guards/container_scanner'
 require_relative 'guards/container_fence_check'
 require_relative 'guards/container_class_check'
+require_relative 'guards/text_table_check'
 require_relative 'guards/pdf_artifact_check'
 require_relative 'guards/config_validity_check'
 
@@ -92,7 +93,8 @@ module VivlioStarter
 
       # 原稿の中身を点検する検査の並び。build と preflight が同じものを使う
       # （原稿を点検する指摘は両方で同じものを出す・terminal-output-notes.md §1）。
-      # 閉じ忘れ（コードフェンス・コンテナ）は 🔴 で止め、改ページの取り残しと未知のクラスは 🟡。
+      # 閉じ忘れ（コードフェンス・コンテナ）は 🔴 で止め、改ページの取り残し・未知のクラス・
+      # 並べられない :::{.text-table} は 🟡。
       # 検査を足すときは、ここへ 1 つ足せば両方のコマンドに効く。
       # @param paths [Array<String>, nil] 調べる原稿。nil なら contents/ の全原稿
       # @return [Array<BaseCheck>]
@@ -101,7 +103,8 @@ module VivlioStarter
           CodeFenceCheck.new(paths:),
           StrayPageBreakCheck.new(paths:),
           ContainerFenceCheck.new(paths:),
-          ContainerClassCheck.new(paths:)
+          ContainerClassCheck.new(paths:),
+          TextTableCheck.new(paths:)
         ]
       end
 

@@ -8,7 +8,7 @@
 #   （lib/vivlio_starter/cli/guards.rb・guards/manuscript_scope.rb）
 #
 # 検証内容:
-#   - build と preflight が使う原稿の中身の検査が、4 つそろっている
+#   - build と preflight が使う原稿の中身の検査が、そろっている
 #   - 調べる原稿を渡すと、その原稿だけを調べる（章を指定したビルドで、ほかの章の閉じ忘れで止めない）
 #   - 渡さなければ contents/ の全原稿を調べる
 # ================================================================
@@ -22,11 +22,11 @@ require 'vivlio_starter/cli/guards'
 module VivlioStarter
   module CLI
     class ManuscriptChecksTest < Minitest::Test
-      def test_should_list_the_four_manuscript_checks
+      def test_should_list_the_manuscript_checks
         classes = Guards.manuscript_checks.map(&:class)
 
         assert_equal [Guards::CodeFenceCheck, Guards::StrayPageBreakCheck,
-                      Guards::ContainerFenceCheck, Guards::ContainerClassCheck], classes
+                      Guards::ContainerFenceCheck, Guards::ContainerClassCheck, Guards::TextTableCheck], classes
       end
 
       # 45 章の閉じ忘れは、12 章だけを調べるときには出さない。全原稿を調べるときは出す

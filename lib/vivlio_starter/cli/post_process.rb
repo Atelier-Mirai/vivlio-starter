@@ -124,6 +124,13 @@ module VivlioStarter
             Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
           end
 
+          # `:::{.text-table}` の div ができた（組み込み置換ルールの）後に行う
+          begin
+            wrap_text_table_blocks!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: text-table ラップ中にエラー: #{e.message}")
+          end
+
           # sideimage / image-group が img の width を読んで消したあとに行う
           begin
             apply_inline_image_widths!(html_file)
@@ -893,6 +900,66 @@ module VivlioStarter
         Common.log_success("#{html_file}: img-text コンテナを正規化しました")
       end
       module_function :wrap_img_text_blocks!
+
+      # ================================================================
+      # text-table コンテナの正規化（text-table-spec.md §2.1）
+      # ----------------------------------------------------------------
+      # `:::{.text-table}` は本文を左、表を右に並べる。VFM は中身をそのまま並べるので、
+      #   <div class="text-table"><p>本文</p><p>本文</p><p><strong>キャプション</strong></p><table>…</table></div>
+      # のままでは、flex の列が子の数だけできる（本文が 2 段落なら 3 列）。表の側（キャプションと
+      # 表、またはラベル付きの div.cross-ref-table）と、それ以外（本文）をそれぞれ包み、
+      #   <div class="text-table">
+      #     <div class="text-table-body">本文…</div>
+      #     <div class="text-table-table">キャプション・表</div>
+      #   </div>
+      # の 2 列にする。本文を先、表を後に並べ直すので、原稿で表を先に書いても、EPUB・Kindle で
+      # 縦に積んだときに本文から読める（display: block では CSS の order が効かない）。
+      # 表が無ければ包まない（本文だけが全幅で組まれる）。表が二つ以上あれば最初の表だけを右へ置き、
+      # 残りは本文の側に入る。どちらも preflight と build が 🟡 で知らせる（TextTableCheck）。
+      # ================================================================
+      def wrap_text_table_blocks!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        doc = HtmlParser.parse_html_document(content)
+        wrapped = doc.css('div.text-table').count { wrap_text_table(it) }
+        return if wrapped.zero?
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_success("#{html_file}: text-table コンテナを正規化しました")
+      end
+      module_function :wrap_text_table_blocks!
+
+      # 1 つの text-table を 2 列に包む。包んだら true
+      def wrap_text_table(container)
+        return false if container.at_css('> div.text-table-table')
+
+        table_side = text_table_side(container)
+        return false if table_side.empty?
+
+        body_nodes = container.children.reject { table_side.include?(it) || (it.text? && it.text.strip.empty?) }
+        body = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = 'text-table-body' }
+        table = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = 'text-table-table' }
+        container.children.each(&:unlink)
+        body_nodes.each { body.add_child(it) }
+        table_side.each { table.add_child(it) }
+        container.add_child(body)
+        container.add_child(table)
+        true
+      end
+      module_function :wrap_text_table
+
+      # 右の列へ置くノード。最初の表（ラベル付きなら div.cross-ref-table ごと）と、
+      # 表の直前にある太字だけの段落（キャプション）
+      def text_table_side(container)
+        first = container.element_children.find do |node|
+          node.name == 'table' || node['class'].to_s.split.include?('cross-ref-table')
+        end
+        return [] unless first
+        return [first] unless first.name == 'table'
+
+        caption = first.previous_element
+        caption&.name == 'p' && strong_only_paragraph?(caption) ? [caption, first] : [first]
+      end
+      module_function :text_table_side
 
       # ================================================================
       # 文中の画像の幅を効かせる（改善案.md #53）
