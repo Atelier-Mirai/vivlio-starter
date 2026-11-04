@@ -521,7 +521,7 @@ ___
 | 長いテキスト           |   短い   |    123 |
 :::
 
-さらに Vivlio Starter では、複数行ヘッダー・セルの横結合・行の多い表の圧縮表示（`.long-table`）・横長の表の 90 度回転（`.rotate-table`）にも対応しています。次章 @ch-extensions の @pageref:table-layout で解説します。
+さらに Vivlio Starter では、複数行ヘッダー・セルの横結合・行の多い表の圧縮表示（`.long-table`）・横長の表の 90 度回転（`.rotate-table`）・短い表を本文の右に並べる配置（`.text-table`）にも対応しています。次章 @ch-extensions の @pageref:table-layout で解説します。
 
 ### リンク
 
