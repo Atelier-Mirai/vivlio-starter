@@ -148,6 +148,8 @@ Cerf
 Kahn
 Postel
 Andreessen
+Gruber
+Swartz
 
 # Business Figures
 Jobs
@@ -783,8 +785,15 @@ Shima
 Sasaki
 Nakauchi
 
+# Linguistics / Readability
+Flesch
+Kincaid
+Covington
+McFall
+
 # Given names — 上に並べた人物の名
 Aage
+Aaron
 Abraham
 Ada
 Adele

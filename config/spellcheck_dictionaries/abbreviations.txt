@@ -95,6 +95,10 @@ BIOS
 UEFI
 GRUB
 RAID
+OCR
+CI
+UX
+AGPL
 
 # Media / Formats
 FAX

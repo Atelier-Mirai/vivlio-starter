@@ -30,6 +30,8 @@ FaceTime
 iMessage
 Siri
 Spotlight
+Finder
+CLT
 
 # Google Hardware
 Pixel
@@ -87,6 +89,7 @@ Internet Explorer
 Skype
 LinkedIn
 Minecraft
+WSL
 
 # Meta / Facebook
 Facebook
@@ -134,6 +137,7 @@ Edge
 Opera
 Brave
 Vivaldi
+Chromium
 
 # Communication / Collaboration
 Slack
@@ -319,6 +323,16 @@ Vitest
 RSpec
 Pytest
 JUnit
+MathJax
+mathjax-full
+HexaPDF
+Prawn
+CombinePDF
+pdf-reader
+ruby-vips
+Samovar
+Psych
+natto
 
 # Networking / Protocols
 Ethernet
@@ -399,6 +413,15 @@ TOML
 CSV
 RSS
 Atom
+CommonMark
+GFM
+Flavored
+ATX
+NCName
+OPF
+ISBN
+KPF
+KFX
 
 # Hardware Standards
 USB
@@ -590,6 +613,10 @@ Apache
 Caddy
 HAProxy
 Traefik
+brew
+cask
+ruby-build
+iTerm
 
 # Editors / Text
 Markdown
@@ -601,6 +628,9 @@ MkDocs
 Docusaurus
 GitBook
 VuePress
+textlint
+prh
+SCOWL
 
 # Package Managers / Registries
 npmjs
@@ -657,6 +687,7 @@ Contentful
 Strapi
 Sanity
 Netlify CMS
+Fireball
 
 # Design Tools
 Figma
@@ -691,6 +722,10 @@ DejaVu
 Cascadia
 Consolas
 Inconsolata
+Zen
+Kaku
+Maru
+NF
 
 # File Formats / Standards
 ZIP
@@ -707,6 +742,8 @@ MSI
 AppImage
 Flatpak
 Snap
+yml
+bak
 
 # Anthropic / AI Models
 Claude
@@ -741,6 +778,9 @@ Hugging Face
 LangChain
 OpenAI
 Anthropic
+Guesslang
+Tesseract
+MeCab
 
 # Code Editors（AI）
 Windsurf
@@ -1030,6 +1070,34 @@ iBooks Author
 Calibre
 Sigil
 Pandoc
+VFM
+epubcheck
+RSC
+kindlepreviewer
+Kobo
+KDP
+Coated
+
+# PDF / Image Tools
+poppler
+pdftotext
+pdftoppm
+pdfinfo
+qpdf
+Ghostscript
+Inkscape
+librsvg
+rsvg-convert
+vips
+libvips
+
+# Diagram Tools（Mermaid の図の種別を含む）
+mermaid-cli
+mmdc
+sequenceDiagram
+classDiagram
+stateDiagram
+erDiagram
 
 # Math / Science Software
 Mathematica

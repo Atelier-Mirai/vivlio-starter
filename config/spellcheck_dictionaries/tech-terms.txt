@@ -254,3 +254,6 @@ YAGNI
 GRASP
 CoC
 SoC
+
+# Naming Conventions
+kebab-case

@@ -219,6 +219,8 @@ cornsilk
 count
 counter
 counters
+target-counter
+at-rule
 courier
 cover
 create
