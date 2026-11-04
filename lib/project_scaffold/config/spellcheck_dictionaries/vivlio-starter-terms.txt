@@ -30,7 +30,6 @@ verso
 
 # 記法（フロントマターの vfm: に書く VFM のオプション）
 hardLineBreaks
-Sectionization
 
 # 設定キー・ファイル名（book.yml・catalog.yml・config/ の語）
 parenthetical
