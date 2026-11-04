@@ -141,9 +141,7 @@
 | オプション | 説明 |
 |:---|:---|
 | `--fix` | 自動修正可能なエラーを修正する |
-| `--textlint-only` | 日本語校正（textlint）のみ実行する |
-| `--spellcheck-only` | スペルチェックのみ実行する |
-| `--register` | スペルチェックの未知語を `config/spellcheck_allowlist.yml` へ一括登録する（textlint は実行しない） |
+| `--register` | スペルチェックの未知語を `config/spellcheck_user_dictionary.yml` へ一括登録する（textlint は実行しない） |
 :::
 
 ### `vs metrics` — 文章メトリクス

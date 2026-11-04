@@ -29,8 +29,6 @@ module VivlioStarter
 
         options do
           option '--fix', '自動修正可能なエラーを修正', default: false, key: :fix
-          option '--textlint-only', '日本語校正（textlint）のみ実行', default: false, key: :textlint_only
-          option '--spellcheck-only', 'スペルチェックのみ実行', default: false, key: :spellcheck_only
           option '--register', 'スペルチェックの未知語をユーザー辞書へ一括登録', default: false, key: :register
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -78,9 +76,7 @@ module VivlioStarter
 
             オプション:
               --fix              自動修正可能なエラーを修正します
-              --textlint-only    日本語校正（textlint）のみ実行します
-              --spellcheck-only  スペルチェックのみ実行します
-              --register         スペルチェックの未知語を config/spellcheck_allowlist.yml へ一括登録します
+              --register         スペルチェックの未知語を config/spellcheck_user_dictionary.yml へ一括登録します
                                  （スペルチェック専用。textlint は実行しません）
 
             例:
@@ -89,8 +85,7 @@ module VivlioStarter
               vs lint 91 93           # 91-*.md と 93-*.md を検査
               vs lint 11-21           # 11-*.md から 21-*.md の範囲を検査
               vs lint --fix           # 自動修正を適用
-              vs lint --spellcheck-only   # スペルチェックのみ
-              vs lint --register          # 未知語を辞書へ登録（スペルチェック専用）
+              vs lint --register      # 未知語を辞書へ登録（スペルチェック専用）
           HELP
           0
         end
@@ -98,8 +93,6 @@ module VivlioStarter
         def build_options
           {
             fix: options[:fix],
-            textlint_only: options[:textlint_only],
-            spellcheck_only: options[:spellcheck_only],
             register: options[:register]
           }
         end

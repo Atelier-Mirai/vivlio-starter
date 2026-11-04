@@ -18,7 +18,7 @@
 | `textlint_rewrite.yml` | **この本の**表記を決める言い換え辞書（prh） | 著者が書く |
 | `textlint_dictionaries/` | 同梱の言い換え辞書（7 ファイル） | 触らない |
 | `ocr_corrections.yml` | `vs pdf:read` が読み取った直後に直す誤認識の表 | 紙面を読み取るときだけ書く（任意） |
-| `spellcheck_allowlist.yml` | 綴り誤りと指摘しない語 | `vs lint --register` が書く |
+| `spellcheck_user_dictionary.yml` | スペルチェックのユーザー辞書（正しい綴りとする語） | `vs lint --register` が書く |
 | `spellcheck_dictionaries/` | 同梱の英単語辞書（53 ファイル） | 触らない |
 | `index_glossary_terms.yml` | 索引・用語集の登録語 | `vs index` が書く |
 | `index_glossary_rejected.yml` | 索引・用語集から外した語 | `vs index` が書く |
@@ -38,7 +38,7 @@
 | 文体を選ぶ（一文の長さ、和欧間スペース、末尾長音など） | `book.yml` の `lint:` |
 | 校正ルールそのものを変える（漢字の連続数など） | `.textlintrc.yml` |
 | **この語は直さなくてよい**と決める | `textlint_allowlist.yml` |
-| **この語は綴り誤りではない**と決める | `spellcheck_allowlist.yml` |
+| **この語は綴り誤りではない**と決める | `spellcheck_user_dictionary.yml` |
 | 独自の言い換えを決める（「ユーザ」→「ユーザー」など） | `textlint_rewrite.yml` |
 | **OCR の読み違い**を直す（「入工知能」→「人工知能」など） | `ocr_corrections.yml` |
 

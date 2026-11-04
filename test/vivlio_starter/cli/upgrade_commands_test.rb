@@ -236,7 +236,7 @@ module VivlioStarter
       def test_should_add_empty_dictionary_when_author_dictionary_is_missing
         within_project do |scaffold|
           write(scaffold, 'config/index_glossary_terms.yml', "terms:\n- term: 開発リポジトリの用語\n")
-          write(scaffold, 'config/spellcheck_allowlist.yml', %(- "vivliostyle"\n- "kindle"\n))
+          write(scaffold, 'config/spellcheck_user_dictionary.yml', %(- "vivliostyle"\n- "kindle"\n))
           write_lock
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
@@ -244,8 +244,102 @@ module VivlioStarter
           assert_match(/追加\s+config\/index_glossary_terms\.yml.*空の辞書/, out)
           terms = YAML.safe_load_file('config/index_glossary_terms.yml')
           assert_equal [], terms['terms'], '空の辞書が用意されるべき（雛形サンプルは配らない）'
-          refute_includes File.read('config/spellcheck_allowlist.yml'), 'vivliostyle',
-                          'スペルチェックの除外リストも空で用意されるべき'
+          refute_includes File.read('config/spellcheck_user_dictionary.yml'), 'vivliostyle',
+                          'スペルチェックのユーザー辞書も空で用意されるべき'
+        end
+      end
+
+      # --- 旧名のユーザー辞書（spellcheck_allowlist.yml）は、登録した語ごと新しい名前へ移す ---
+      # 雛形の空の辞書を新しい名前で足すだけだと、著者が登録した語が読まれなくなる。
+      # 名前を変えたことは、--log を付けなくても最後に報告する。
+      def test_should_move_old_spellcheck_allowlist_to_user_dictionary
+        within_project do |scaffold|
+          write(scaffold, 'config/spellcheck_user_dictionary.yml', %(- "vivliostyle"\n))
+          write('.', 'config/spellcheck_allowlist.yml', %(- "htmx"\n))
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute File.exist?('config/spellcheck_allowlist.yml'), '旧名のファイルは残さない'
+          assert_equal %(- "htmx"\n), File.read('config/spellcheck_user_dictionary.yml'),
+                       '著者が登録した語を引き継ぎ、雛形の語で上書きしない'
+          assert_match(/✅ 設定ファイルの名前を変えました（中身はそのままです）/, out)
+          assert_match(%r{config/spellcheck_allowlist\.yml → config/spellcheck_user_dictionary\.yml}, out)
+        end
+      end
+
+      # 改名も著者のファイルを変えるので、計画の表に載せ、確認で「いいえ」なら名前を変えない
+      def test_should_not_rename_when_the_author_declines
+        within_project do |scaffold|
+          write(scaffold, 'config/spellcheck_user_dictionary.yml', %(- "vivliostyle"\n))
+          write('.', 'config/spellcheck_allowlist.yml', %(- "htmx"\n))
+          write_lock
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(%r{改名   config/spellcheck_allowlist\.yml\n\s+→ config/spellcheck_user_dictionary\.yml（中身はそのままです）}, out)
+          assert_match(/適用しますか？ 追加 0 件・更新 0 件・改名 1 件/, out)
+          assert File.exist?('config/spellcheck_allowlist.yml'), '断ったら名前を変えない'
+          refute File.exist?('config/spellcheck_user_dictionary.yml'), '空の辞書も足さない'
+          refute_match(/名前を変えました/, out)
+        end
+      end
+
+      # 改名したファイルを指す設定も、確認の後で書き換える（書き換える前の中身は退避する）
+      def test_should_rewrite_references_to_renamed_file_after_confirmation
+        within_project do |scaffold|
+          write('.', 'config/textlint_prh.yml', "rules: []\n")
+          write('.', 'config/.textlintrc.yml', "rules:\n  prh:\n    rulePaths:\n      - ./textlint_prh.yml\n")
+          write_lock
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(%r{config/\.textlintrc\.yml\n\s+中で指している \./textlint_prh\.yml を \./textlint_rewrite\.yml に書き換えます}, out)
+          assert File.exist?('config/textlint_rewrite.yml')
+          assert_includes File.read('config/.textlintrc.yml'), './textlint_rewrite.yml'
+          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/.textlintrc.yml', File::FNM_DOTMATCH)
+          assert_equal 1, backups.size, '書き換える前の .textlintrc.yml を退避する'
+          assert_includes File.read(backups.first), './textlint_prh.yml'
+        end
+      end
+
+      def test_should_show_planned_renames_on_dry_run_without_moving
+        within_project do |scaffold|
+          write(scaffold, 'config/spellcheck_user_dictionary.yml', %(- "vivliostyle"\n))
+          write('.', 'config/spellcheck_allowlist.yml', %(- "htmx"\n))
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert File.exist?('config/spellcheck_allowlist.yml'), '--dry-run では名前を変えない'
+          assert_match(%r{改名   config/spellcheck_allowlist\.yml}, out)
+          assert_match(/・改名 1 件）/, out)
+          refute_match(/追加\s+config\/spellcheck_user_dictionary\.yml/, out, '改名で用意される辞書を、空の辞書として足す計画にしない')
+        end
+      end
+
+      # --- README.md は著者のファイル: 雛形の README が改まっても、追加も上書きもしない ---
+      def test_should_leave_author_readme_untouched
+        within_project do |scaffold|
+          write('.', 'README.md', "# わたしの本\n執筆の計画\n")
+          write_lock(scaffold_overrides: { 'README.md' => "# 旧い雛形\n" })
+          write(scaffold, 'README.md', "# 新しい雛形\n")
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute_match(/README\.md/, out, '計画に載せない')
+          assert_equal "# わたしの本\n執筆の計画\n", File.read('README.md')
+        end
+      end
+
+      def test_should_not_add_readme_the_author_does_not_have
+        within_project do |scaffold|
+          write(scaffold, 'README.md', "# 雛形\n")
+          write_lock
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          refute File.exist?('README.md'), '著者が置いていない README を足さない'
         end
       end
 

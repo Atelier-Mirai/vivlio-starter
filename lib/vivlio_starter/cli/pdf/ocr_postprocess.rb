@@ -167,7 +167,7 @@ module VivlioStarter
 
       module_function
 
-      # `vs lint` の辞書（プロジェクトの config/spellcheck_dictionaries・用語集・除外リスト）と単語表
+      # `vs lint` の辞書（プロジェクトの config/spellcheck_dictionaries・用語集・ユーザー辞書）と単語表
       # @return [Set<String>] 小文字の語
       def vocabulary
         words = CLI::Lint::DictManager.new.build_word_map(nil).keys.to_set

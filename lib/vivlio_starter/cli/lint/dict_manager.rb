@@ -25,17 +25,17 @@ module VivlioStarter
 
         GLOSSARY_PATH = 'config/index_glossary_terms.yml'
 
-        # スペルチェックの除外リスト（このプロジェクト固有の許可語）のパス。
+        # スペルチェックのユーザー辞書（このプロジェクトで正しい綴りとする語）のパス。
         # プロジェクト直下の config/ に置く（隠しフォルダでなく見つけやすい。別の本でも
         # 使いたければこのファイルをコピーすればよい）。`vs lint --register` の追記先。
         #
-        # 名前は textlint 側の `textlint_allowlist.yml` と対にしてある——接頭辞が
-        # どのツールか、後半が何をするファイルかを表す（`textlint_rewrite.yml` が
-        # 「直す」、`*_allowlist.yml` が「指摘しない」）。
+        # 中の語は内蔵の辞書と同じ word_map に読み込む。指摘を後から外す一覧ではなく
+        # 辞書なので、`textlint_allowlist.yml` と対の名前にはせず、内蔵の辞書の
+        # `spellcheck_dictionaries/` と対にしてある。
         #
         # 定数でなくメソッドにして呼び出し時の CWD を読む（テストで chdir しても追従する）。
         def user_dict_path
-          File.join('config', 'spellcheck_allowlist.yml')
+          File.join('config', 'spellcheck_user_dictionary.yml')
         end
 
         # 実際に使う辞書ディレクトリ（プロジェクト優先・gem 同梱フォールバック）
@@ -53,10 +53,10 @@ module VivlioStarter
             load_into_word_map(path, words) if path
           end
           load_glossary_terms(words)
-          # 除外リストは YAML なので read_user_words（YAML パーサ）で読む。
+          # ユーザー辞書は YAML なので read_user_words（YAML パーサ）で読む。
           # 辞書ファイルと同じ行単位の読み方をすると `- "High-Score"` が `-High-Score`
-          # として登録され、ハイフンを含む語の除外が効かなくなる。
-          read_user_words.each { register_word(words, it) }
+          # として読み込まれ、ハイフンを含む語が正しい綴りとして扱われなくなる。
+          read_user_words.each { add_to_word_map(words, it) }
           words
         end
 
@@ -79,7 +79,7 @@ module VivlioStarter
 
         private
 
-        # 除外リストに登録済みの語。`textlint_allowlist.yml` と同じ YAML の並び。
+        # ユーザー辞書に登録済みの語。`textlint_allowlist.yml` と同じ YAML の並び。
         # 壊れた YAML でスペルチェック全体を止めない——空として扱い、次の
         # --register で書き直せば直る。
         def read_user_words
@@ -91,7 +91,7 @@ module VivlioStarter
           []
         end
 
-        # ヘッダ＋辞書順の語で除外リストを書き直す
+        # ヘッダ＋辞書順の語でユーザー辞書を書き直す
         def write_user_words(words)
           FileUtils.mkdir_p(File.dirname(user_dict_path))
           File.write(user_dict_path, user_dict_header + words.map { %(- "#{it}"\n) }.join)
@@ -100,9 +100,9 @@ module VivlioStarter
         def user_dict_header
           <<~HEADER
             # =============================================================
-            #  📝 スペルチェック除外リスト - Vivlio Starter
+            #  📝 スペルチェックのユーザー辞書 - Vivlio Starter
             # -------------------------------------------------------------
-            #  • スペルチェックで「綴り誤り」と指摘したくない語を並べます
+            #  • 内蔵の辞書にない語を、正しい綴りとして登録します
             #  • 1 行 1 語。辞書順・重複なしで自動的に整えられます
             #  • `vs lint --register` を実行すると、未知だった語がここへ追加されます
             #  • 別の本でも使いたい場合は、このファイルをコピーしてください
@@ -137,21 +137,22 @@ module VivlioStarter
           fetch_and_cache(name)
         end
 
-        # 辞書ファイルを1行ずつ読み込み、正規化した上で words に登録する
+        # 辞書ファイルを1行ずつ読み込み、正規化した上で word_map に加える
         # @param path [String] 辞書ファイルのパス
         # @param words [Hash] 登録先の word_map（破壊的操作）
         def load_into_word_map(path, words)
           File.foreach(path, encoding: 'UTF-8') do |line|
             word = normalize(line)
-            register_word(words, word) if word
+            add_to_word_map(words, word) if word
           end
         rescue Errno::ENOENT, Errno::EACCES => e
           Common.log_warn("[spellcheck] 辞書ファイルを読み込めませんでした: #{path} (#{e.message})")
         end
 
-        # word_map に 1 語を登録する。ハイフンを含む語は詰めた形でも引けるようにする
+        # word_map（メモリ上の語の表）に 1 語を加える。ファイルへ書く register_user_words とは別。
+        # ハイフンを含む語は詰めた形でも引けるようにする
         # （`High-Score` を書いておけば本文の `HighScore` も既知語として扱える）。
-        def register_word(words, word)
+        def add_to_word_map(words, word)
           words[word.downcase] = word
           return unless word.include?('-')
 

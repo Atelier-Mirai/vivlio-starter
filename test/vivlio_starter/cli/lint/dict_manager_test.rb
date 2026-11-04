@@ -164,7 +164,7 @@ class TestDictManager < Minitest::Test
     end
   end
 
-  # --- ユーザー辞書（config/spellcheck_allowlist.yml・--register） ---
+  # --- ユーザー辞書（config/spellcheck_user_dictionary.yml・--register） ---
 
   # CWD を一時プロジェクトへ移して実プロジェクトの config/ を汚さない
   def in_temp_project
@@ -176,7 +176,7 @@ class TestDictManager < Minitest::Test
     in_temp_project do
       added = @dm.register_user_words(%w[Mbed STM32 Mbed])
       assert_equal %w[Mbed STM32], added, '新語のみ・重複除去して追加される'
-      assert_equal 'config/spellcheck_allowlist.yml', @dm.user_dict_path
+      assert_equal 'config/spellcheck_user_dictionary.yml', @dm.user_dict_path
       assert File.exist?(@dm.user_dict_path), 'ユーザー辞書ファイルが作成される'
       assert_empty @dm.register_user_words(%w[mbed]), '登録済み（大文字小文字無視）は再追加しない'
     end
@@ -202,8 +202,8 @@ class TestDictManager < Minitest::Test
     end
   end
 
-  # 除外リストのハイフン複合語が両形式で登録されることを確認する。
-  # 回帰: 除外リストは YAML なのに辞書ファイルと同じ行単位で読んでいたため、
+  # ユーザー辞書のハイフン複合語が両形式で登録されることを確認する。
+  # 回帰: ユーザー辞書は YAML なのに辞書ファイルと同じ行単位で読んでいたため、
   # `- "vivlio-starter"` が `-vivlio-starter` として登録され、書いた語そのものが
   # 引けなかった（ハイフンを詰めた形だけが偶然引けていた）。
   def test_build_word_map_allowlist_hyphen_both_forms

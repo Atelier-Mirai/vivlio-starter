@@ -55,22 +55,23 @@ module VivlioStarter
                "Markdown 未検出の警告が出力されること: #{logged_warnings.inspect}"
       end
 
-      # 独自ルール（交ぜ書き・対比）は「日本語校正」の一部なので、textlint を切ると
-      # 一緒に止まり、スペルチェックだけを求めたときには出てこない。
+      # 独自ルール（交ぜ書き・対比）は「日本語校正」の一部なので、スペルチェックだけを
+      # 走らせる --register では、textlint と一緒に止まる。
       # 仕様: lint-japanese-prose-rules-spec.md §5
       def test_prose_rules_follow_the_japanese_lint_scope
         File.write('contents/11-install.md', "だ円の面積を求めます。\n")
 
-        stdout, = capture_io { LintCommands.execute_lint(['11-install'], { spellcheck_only: true }) }
-        refute_match(/mazegaki/, stdout, '--spellcheck-only では日本語校正を走らせない')
+        stdout, = capture_io { LintCommands.execute_lint(['11-install'], { register: true }) }
+        refute_match(/mazegaki/, stdout, '--register では日本語校正を走らせない')
+        refute_match(/文章の品質チェックが完了しました/, stdout, '検査していない日本語校正の結果まで報告しない')
 
         fake_status = Struct.new(:success?).new(true)
         def fake_status.exitstatus = 0
 
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
-            stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
-            assert_match(/\[mazegaki\] だ円 => 楕円/, stdout, '--textlint-only では走る')
+            stdout, = capture_io { LintCommands.execute_lint(['11-install']) }
+            assert_match(/\[mazegaki\] だ円 => 楕円/, stdout, '通常の実行では走る')
           end
         end
       end
@@ -175,23 +176,6 @@ module VivlioStarter
         refute_match(/コードブロックの言語名: /, stdout, '推定していないものは指摘に数えない')
       end
 
-      def test_code_language_check_is_skipped_with_textlint_only
-        File.write('contents/11-install.md', "```\nputs 1\nputs 2\n```\n")
-        fake_status = Struct.new(:success?).new(true)
-        def fake_status.exitstatus = 0
-
-        stdout = nil
-        with_stubbed_textlint_available do
-          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
-            Lint::CodeLanguageGuesser.stub(:new, FakeCodeGuesser.new) do
-              stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
-            end
-          end
-        end
-
-        refute_match(/コードブロックの言語名/, stdout)
-      end
-
       # 検査の実装が textlint と独自ルールに分かれているのは都合であって、著者から見れば
       # 同じ「日本語校正」。1 ファイル 1 ブロックにまとめ、件数順に混ぜて並べる
       # （分けて出すと同じ原稿の見出しが 2 度現れ、どちらを先に直すのか読み取れない）
@@ -207,7 +191,7 @@ module VivlioStarter
         stdout = nil
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*_args) { [json, '', fake_status] }) do
-            stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
+            stdout, = capture_io { LintCommands.execute_lint(['11-install']) }
           end
         end
 

@@ -46,13 +46,16 @@ module VivlioStarter
       # 著者データ領域のうち個別ファイル指定分。
       # 辞書系 4 点は index:apply / vs lint --register が書き込む「著者の辞書」
       # であり、雛形サンプルで上書きすると著者データを破壊するため一律保護する。
+      # README.md は著者が本の紹介や執筆の計画を書くファイルで、雛形の README は
+      # vs new の時点の手引きにすぎない。雛形が改まっても、著者の README へは届けない。
       AUTHOR_DATA_FILES = [
+        'README.md',
         File.join('config', 'book.yml'),
         File.join('config', 'catalog.yml'),
         File.join('config', 'talk.yml'),
         File.join('config', 'index_glossary_terms.yml'),
         File.join('config', 'index_glossary_rejected.yml'),
-        File.join('config', 'spellcheck_allowlist.yml'),
+        File.join('config', 'spellcheck_user_dictionary.yml'),
         File.join('config', 'textlint_allowlist.yml')
       ].freeze
 

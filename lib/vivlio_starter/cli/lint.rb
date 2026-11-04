@@ -71,41 +71,28 @@ module VivlioStarter
           @trimmed_dictionaries = []
         end
 
-        # --spellcheck-only / --textlint-only / --register による実行範囲。
-        # --register はスペルチェック専用の操作なので、暗黙に spellcheck 単独で動く
-        # （`--spellcheck-only` を併記する必要はない）。
-        def spellcheck_only? = options[:register] || options[:spellcheck_only]
-        def textlint_only?   = !options[:register] && options[:textlint_only]
-
+        # 日本語校正だけ・スペルチェックだけを選ぶオプションは置かない。原稿を直すときは
+        # どちらの指摘も見るうえ、textlint が無い環境は `vs doctor --fix` で直せる。
+        # --register は検査ではなく登録の操作なので、別の流れ（register_unknown_words）に分ける。
         def call
-          ensure_textlint_available! unless spellcheck_only?
-          ensure_config_present! unless spellcheck_only?
-          ensure_support_yaml_files! unless spellcheck_only?
+          return register_unknown_words if options[:register]
 
-          files = resolve_targets
-          if files.empty?
-            Common.log_warn('検査対象となる Markdown ファイルが見つかりません。')
-            return 0
-          end
+          ensure_textlint_available!
+          ensure_config_present!
+          ensure_support_yaml_files!
 
-          warn_retired_suppression_markers(files)
+          files = target_files
+          return 0 if files.empty?
 
-          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_files: [] }
-          prose_info = { exit: 0, prose_count: 0, fixed_files: [] }
-          spell_info = { exit: 0, spell_count: 0 }
-          code_info  = { exit: 0, code_count: 0, fixed_files: [] }
-
-          unless spellcheck_only?
-            # 交ぜ書きの置換を先に済ませてから textlint を走らせる。逆順にすると
-            # textlint が見る原稿と、置換後に残る原稿が食い違う。
-            prose_fixed = options[:fix] ? apply_prose_fixes!(files) : []
-            lint_info   = run_textlint(files)
-            prose_info  = run_prose_check(files).merge(fixed_files: prose_fixed)
-            # 表示は 2 つの検査が揃ってから。混ぜて並べるので、片方だけでは順序が決まらない
-            print_prose_report(files, lint_info, prose_info)
-          end
-          spell_info = run_spellcheck(files) unless textlint_only?
-          code_info  = run_code_language_check(files) unless spellcheck_only? || textlint_only?
+          # 交ぜ書きの置換を先に済ませてから textlint を走らせる。逆順にすると
+          # textlint が見る原稿と、置換後に残る原稿が食い違う。
+          prose_fixed = options[:fix] ? apply_prose_fixes!(files) : []
+          lint_info   = run_textlint(files)
+          prose_info  = run_prose_check(files).merge(fixed_files: prose_fixed)
+          # 表示は 2 つの検査が揃ってから。混ぜて並べるので、片方だけでは順序が決まらない
+          print_prose_report(files, lint_info, prose_info)
+          spell_info = run_spellcheck(files)
+          code_info  = run_code_language_check(files)
 
           print_combined_summary(lint_info, prose_info, spell_info, code_info)
           [lint_info[:exit], prose_info[:exit], spell_info[:exit], code_info[:exit]].max
@@ -485,19 +472,8 @@ module VivlioStarter
         end
 
         def run_spellcheck(files)
-          config       = Common::CONFIG.spellcheck
-          dict         = Lint::DictManager.new
-          word_map     = dict.build_word_map(config)
-          check_code   = Common.truthy?(config&.check_code_blocks)
-
-          all_errors = {}
-          files.each do |path|
-            errors = Lint::SpellChecker.check(path, word_map, check_code_blocks: check_code)
-            all_errors[path] = errors unless errors.empty?
-          end
-
+          all_errors = find_spelling_errors(files, Lint::DictManager.new)
           Lint::SpellChecker.print_errors(all_errors)
-          return register_unknown_words(dict, all_errors) if options[:register]
 
           spell_count = all_errors.values.sum(&:length)
           { exit: spell_count.positive? ? 1 : 0, spell_count: spell_count }
@@ -506,8 +482,30 @@ module VivlioStarter
           { exit: 0, spell_count: 0 }
         end
 
-        # 検出した未知語をユーザー辞書へ一括登録する（--register）
-        def register_unknown_words(dict, all_errors)
+        # @return [Hash{String => Array<Hash>}] 原稿のパス → 綴りの誤りの一覧（誤りの無い原稿は含まない）
+        def find_spelling_errors(files, dict)
+          config     = Common::CONFIG.spellcheck
+          word_map   = dict.build_word_map(config)
+          check_code = Common.truthy?(config&.check_code_blocks)
+
+          files.each_with_object({}) do |path, all_errors|
+            errors = Lint::SpellChecker.check(path, word_map, check_code_blocks: check_code)
+            all_errors[path] = errors unless errors.empty?
+          end
+        end
+
+        # --register: スペルチェックで指摘された語を表示し、ユーザー辞書へまとめて登録する。
+        # 登録の操作なので、日本語校正と言語名の検査は走らせず、完了サマリーも出さない
+        # （出すと、検査していない日本語校正まで「課題は見つかりませんでした」と表示する）。
+        # textlint を使わないので、textlint の有無も確かめない。
+        def register_unknown_words
+          files = target_files
+          return 0 if files.empty?
+
+          dict = Lint::DictManager.new
+          all_errors = find_spelling_errors(files, dict)
+          Lint::SpellChecker.print_errors(all_errors)
+
           words = all_errors.values.flatten.filter_map { it[:word] }.uniq
           added = dict.register_user_words(words)
           if added.empty?
@@ -517,13 +515,19 @@ module VivlioStarter
             Common.log_always "   ファイル: #{dict.user_dict_path}"
             Common.log_always "   登録語: #{added.join(', ')}"
           end
-          # 登録が目的のため、未知語が在っても成功（次回 vs lint で消える）
-          { exit: 0, spell_count: 0 }
+          # 登録が目的のため、未知語があっても成功（次の vs lint では指摘されない）
+          0
         end
 
-        def resolve_targets
-          resolver = TargetResolver.new(targets)
-          resolver.resolve
+        # 検査する原稿。1.0 の前の抑止コメントが残っていれば、ここで一度だけ警告する。
+        def target_files
+          files = TargetResolver.new(targets).resolve
+          if files.empty?
+            Common.log_warn('検査対象となる Markdown ファイルが見つかりません。')
+          else
+            warn_retired_suppression_markers(files)
+          end
+          files
         end
 
         # 集約表示のため出力は常に json で取得する。

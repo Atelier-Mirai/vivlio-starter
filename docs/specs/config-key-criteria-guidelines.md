@@ -74,7 +74,7 @@
 
 **実例: `spellcheck.extra_words` / `spellcheck.ignore_words` / `lint.disabled_terms`（削除）**
 
-いずれも `config/spellcheck_allowlist.yml` `config/textlint_allowlist.yml` と同じ役目だった。
+いずれも `config/spellcheck_user_dictionary.yml` `config/textlint_allowlist.yml` と同じ役目だった。
 入口が 2 つあると、著者はどちらに書くべきか毎回迷う。
 
 **入口の重複は本物のほうを壊す。** `extra_words` を削除して除外リストが唯一の経路になった際、
@@ -178,7 +178,7 @@
 | キー | 該当した軸 | 移行先 |
 | :--- | :--- | :--- |
 | `metrics.mattr_window` | 手法パラメータ | 定数（`Analyzer::DEFAULT_MATTR_WINDOW`） |
-| `spellcheck.extra_words` | 重複した入口 | `spellcheck_allowlist.yml` |
+| `spellcheck.extra_words` | 重複した入口 | `spellcheck_user_dictionary.yml` |
 | `spellcheck.ignore_words` | 重複した入口 | 同上 |
 | `lint.disabled_terms` | 重複した入口 | `textlint_allowlist.yml` |
 | `lint.config` | 重複した入口 | `.textlintrc.yml` を直接編集 |

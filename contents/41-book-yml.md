@@ -368,13 +368,13 @@ spellcheck:
 
 上の値がいずれも既定です。技術書では和欧間のスペースを入れる書き方が普通なので、`allow_space_*` は最初から許容してあります。`arabic-kanji-numbers`（`一つ → 1つ`）を無効にしてあるのは、逆の指摘をする `kansuji-counter-suffix`（`1つ → 一つ`）と競合するためです。既定では、数を漢数字で書く側に合わせています。
 
-ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、個別の語を指摘させたくないときは専用の除外ファイルに書きます。
+ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、個別の語を指摘させたくないときは専用のファイルに書きます。
 
 | したいこと | 書く場所 |
 | :--- | :--- |
 | ルールの追加・削除、閾値の変更 | `config/.textlintrc.yml` |
 | この語句は指摘しないでほしい（日本語校正） | `config/textlint_allowlist.yml` |
-| この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
+| この語は綴り誤りではない（スペルチェック） | `config/spellcheck_user_dictionary.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
 詳細は @chapref:ch-lint を参照してください。

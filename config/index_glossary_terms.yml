@@ -1262,13 +1262,13 @@ terms:
   main:
   - 31-lint
   updated_at: '2026-10-04 00:05:46'
-- term: 除外リスト
-  yomi: じょがいりすと
+- term: ユーザー辞書
+  yomi: ゆーざーじしょ
   flags: i
   definition: ''
   source: auto_extracted
   approved_at: '2026-10-01 01:26:09'
-  pattern: "/除外リスト/"
+  pattern: "/ユーザー辞書/"
   main:
   - 31-lint
   updated_at: '2026-10-04 00:05:46'

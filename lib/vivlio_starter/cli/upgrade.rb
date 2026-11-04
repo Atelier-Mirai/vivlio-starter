@@ -59,8 +59,14 @@ module VivlioStarter
       #               本当に同じ場所を変えたもの。適用すれば著者の変更が消えるので、
       #               そう名指しできる（祖先が取れなかった競合では断定できない）
       # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）
-      SyncResult = Data.define(:code, :new_keys, :aborted) do
-        def initialize(code: 0, new_keys: nil, aborted: false) = super
+      # 改名した設定ファイル（旧名 → 新名）と、中の参照を書き換えた設定ファイル
+      Renames = Data.define(:moved, :rewritten) do
+        def initialize(moved: {}, rewritten: {}) = super
+        def empty? = moved.empty? && rewritten.empty?
+      end
+
+      SyncResult = Data.define(:code, :new_keys, :aborted, :renames) do
+        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new) = super
       end
 
       # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
@@ -92,8 +98,8 @@ module VivlioStarter
           # 索引候補の却下リスト（vs index:apply が管理します）
           rejected_terms: []
         YAML
-        File.join('config', 'spellcheck_allowlist.yml') => <<~YAML,
-          # スペルチェックで「綴り誤り」と指摘したくない語を並べます
+        File.join('config', 'spellcheck_user_dictionary.yml') => <<~YAML,
+          # スペルチェックのユーザー辞書。内蔵の辞書にない語を、正しい綴りとして登録します
           # 1 行 1 語。`vs lint --register` を実行すると、未知だった語がここへ追加されます
           []
         YAML
@@ -113,9 +119,14 @@ module VivlioStarter
       # （2026-04-26）の利用者の手元にもある。`user_words.txt` はベータの
       # 2 か月後（2026-06-30）の実装なので既存プロジェクトには無いが、
       # 開発中の本のために同じ経路で拾っておく。
+      #
+      # `spellcheck_allowlist.yml` は 1.0.0 の前に `spellcheck_user_dictionary.yml` へ改めた。
+      # 中の語は内蔵の辞書と同じ表に読み込まれる「辞書」であって、指摘を後から外す一覧
+      # （`textlint_allowlist.yml`）とは働きが違うため。`user_words.txt` も新しい名前へ直接移す。
       RENAMED_CONFIG_FILES = {
         File.join('config', 'textlint_prh.yml') => File.join('config', 'textlint_rewrite.yml'),
-        File.join('config', 'user_words.txt') => File.join('config', 'spellcheck_allowlist.yml')
+        File.join('config', 'user_words.txt') => File.join('config', 'spellcheck_user_dictionary.yml'),
+        File.join('config', 'spellcheck_allowlist.yml') => File.join('config', 'spellcheck_user_dictionary.yml')
       }.freeze
 
       # 改名に伴って中身の参照も書き換えるファイル（著者が編集する設定）
@@ -168,7 +179,8 @@ module VivlioStarter
           deps: tool_deps
         )
 
-        # --- Phase: 足した設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
+        # --- Phase: 改名と足した設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
+        report_renames(sync.renames)
         ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
 
         [self_result == :failed ? 1 : 0, sync.code, tools_code].max
@@ -209,19 +221,19 @@ module VivlioStarter
 
       # --- Phase: 分類（三者比較）以降の雛形追従フェーズ ---
       def sync_scaffold!(cmd)
-        # --- Phase: 改名の追随（雛形と比べる前に済ませる） ---
-        follow_renames!(dry_run: cmd.options[:dry_run])
-
         # --- Phase: 分類（三者比較） ---
         Common.log_summary("雛形との差分を確認しています…（gem #{VivlioStarter::VERSION} の雛形）")
         scaffold_digests = ScaffoldLock.digest_scaffold(scaffold_source)
         lock = ScaffoldLock.read
         warn_missing_lock if lock.nil?
         tidy = plan_tidy(lock)
-        plan = with_tidy_rows(build_plan(scaffold_digests, lock), tidy)
+        renames = plan_renames
+        # 改名の先のファイルは、改名で用意されるので雛形からは足さない（足すと空の辞書で塞がる）
+        plan = build_plan(scaffold_digests, lock).reject { renames.moved.value?(it.relative) }
+        plan = with_rename_rows(with_tidy_rows(plan, tidy), renames)
 
-        # --- Phase: 計画表示（著者データの整理も、確認の前に見せる） ---
-        display_plan(plan, tidy_details(tidy))
+        # --- Phase: 計画表示（改名と著者データの整理も、確認の前に見せる） ---
+        display_plan(plan, tidy_details(tidy).merge(rename_details(renames)))
         if plan.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
           save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
@@ -232,15 +244,15 @@ module VivlioStarter
           return SyncResult.new(new_keys: tidy.new_keys)
         end
 
-        # --- Phase: 適用（追加・更新・合流 → 競合の個別確認） ---
-        applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests)
+        # --- Phase: 適用（改名 → 追加・更新・合流 → 競合の個別確認） ---
+        applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests, renames)
         return SyncResult.new(aborted: true) if applied.nil? # 全体確認で中止
 
         # --- Phase: lock・基準の更新 → 著者データの整理 → 完了報告 ---
         save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
         backup_dir, new_keys = apply_tidy(tidy, lock, backup_dir)
         print_summary(plan, applied, skipped, backup_dir)
-        SyncResult.new(new_keys:)
+        SyncResult.new(new_keys:, renames:)
       end
 
       private
@@ -417,32 +429,52 @@ module VivlioStarter
         nil
       end
 
-      # 旧名の設定ファイルを新名へ移し、参照している設定の中身も書き換える。
+      # 旧名の設定ファイルを新名へ移す計画と、参照している設定の書き換えの計画。
       # 新名が既にあるなら触らない（著者が手で移した後の再実行を壊さない）。
-      def follow_renames!(dry_run:)
-        moved = RENAMED_CONFIG_FILES.select do |old, new|
-          File.exist?(old) && !File.exist?(new)
-        end
-        rewrites = RENAMED_REFERENCES.select do |path, pairs|
+      # 著者のファイルの名前を変えるので、計画の表に載せて同じ確認に含め、確認の後で行う。
+      def plan_renames
+        moved = RENAMED_CONFIG_FILES.select { |old, new| File.exist?(old) && !File.exist?(new) }
+        rewritten = RENAMED_REFERENCES.select do |path, pairs|
           File.exist?(path) && pairs.any? { |from, _| File.read(path, encoding: 'utf-8').include?(from) }
         end
-        return if moved.empty? && rewrites.empty?
+        Renames.new(moved:, rewritten:)
+      end
 
-        moved.each { |old, new| report_rename(old, new, dry_run) }
-        rewrites.each_key { Common.log_action("設定の参照を更新します: #{it}") }
-        return if dry_run
+      def with_rename_rows(plan, renames)
+        rows = (renames.moved.keys + renames.rewritten.keys).map { PlanItem.new(relative: it, status: :rename) }
+        plan + rows
+      end
 
-        moved.each { |old, new| FileUtils.mv(old, new) }
-        rewrites.each do |path, pairs|
+      def rename_details(renames)
+        details = renames.moved.to_h { |old, new| [old, ["→ #{new}（中身はそのままです）"]] }
+        renames.rewritten.each do |path, pairs|
+          details[path] = pairs.map { |from, to| "中で指している #{from} を #{to} に書き換えます" }
+        end
+        details
+      end
+
+      # 確認の後、雛形を適用する前に名前を変える（雛形の比較は新しい名前で行っている）。
+      # 書き換える設定は退避してから直す。名前を変えるだけのファイルは中身が変わらないので退避しない。
+      def apply_renames!(renames, backup_dir)
+        renames.moved.each { |old, new| FileUtils.mv(old, new) }
+        renames.rewritten.each do |path, pairs|
+          backup_dir = backup!(path, backup_dir)
           body = File.read(path, encoding: 'utf-8')
           pairs.each { |from, to| body = body.gsub(from, to) }
           File.write(path, body, encoding: 'utf-8')
         end
+        backup_dir
       end
 
-      def report_rename(old, new, dry_run)
-        prefix = dry_run ? '[dry-run] ' : ''
-        Common.log_action("#{prefix}設定ファイルを改名します: #{old} → #{new}")
+      # 名前を変えたことは、ログの段階を問わず最後にもう一度示す。計画の表はツールの更新の
+      # 出力で流れてしまい、著者が自分のファイルが消えたと思って古い名前で作り直さないように。
+      def report_renames(renames)
+        return if renames.empty?
+
+        indent = Common::DETAIL_INDENT
+        Common.log_result('設定ファイルの名前を変えました（中身はそのままです）', status: :success)
+        renames.moved.each { |old, new| Common.log_always("#{indent}#{old} → #{new}") }
+        renames.rewritten.each_key { Common.log_always("#{indent}#{it}: 中で指している名前も書き換えました") }
       end
 
       def warn_missing_lock
@@ -499,7 +531,8 @@ module VivlioStarter
         update: ['更新', '雛形が改良・著者は未変更 → 自動適用可'],
         merge: ['合流', '雛形も著者も変更・別の場所 → 自動で両立'],
         conflict: ['競合', '雛形も著者も同じ場所を変更 → diff 確認'],
-        tidy: ['整理', nil]
+        tidy: ['整理', nil],
+        rename: ['改名', nil]
       }.freeze
 
       # 整理の詳細を、行の真下に並べるときの字下げ
@@ -510,7 +543,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[add add_empty update merge conflict tidy]
+        order = %i[rename add add_empty update merge conflict tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
@@ -528,29 +561,33 @@ module VivlioStarter
         message += "・合流 #{merged} 件" if merged.positive?
         message += "・競合 #{counts[:conflict] || 0} 件"
         message += "・整理 #{counts[:tidy]} 件" if counts[:tidy]
+        message += "・改名 #{counts[:rename]} 件" if counts[:rename]
         Common.log_always("#{message}）")
       end
 
       # 追加・更新の一括適用と、競合の個別確認を行う。
       # @return [Array(Array<PlanItem>, Array<PlanItem>, String?), Array(nil, nil, nil)]
       #   applied / skipped / バックアップ先（全体確認で中止した場合は applied が nil）
-      def apply_plan(cmd, plan, scaffold_digests)
+      def apply_plan(cmd, plan, scaffold_digests, renames)
         adds      = plan.select { %i[add add_empty].include?(it.status) }
         updates   = plan.select { it.status == :update }
         merges    = plan.select { it.status == :merge }
         conflicts = plan.select { it.status == :conflict }
         tidied    = plan.select { it.status == :tidy }
+        renamed   = plan.select { it.status == :rename }
         applied = []
         skipped = []
         backup_dir = nil
 
-        # --- Phase: 追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
-        if (adds.any? || updates.any? || merges.any? || tidied.any?) && !cmd.options[:yes]
-          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied)}")
+        # --- Phase: 改名＋追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
+        if (adds.any? || updates.any? || merges.any? || tidied.any? || renamed.any?) && !cmd.options[:yes]
+          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied, renamed)}")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
         end
+
+        backup_dir = apply_renames!(renames, backup_dir)
 
         adds.each do |item|
           FileUtils.mkdir_p(File.dirname(item.relative))
@@ -592,10 +629,11 @@ module VivlioStarter
       end
 
       # 全体確認の文言。合流は 0 件のことが多いので、あるときだけ足す
-      def bulk_summary(adds, updates, merges, tidied)
+      def bulk_summary(adds, updates, merges, tidied, renamed)
         summary = "追加 #{adds.size} 件・更新 #{updates.size} 件"
         summary += "・合流 #{merges.size} 件" if merges.any?
         summary += "・整理 #{tidied.size} 件" if tidied.any?
+        summary += "・改名 #{renamed.size} 件" if renamed.any?
         summary
       end
 
@@ -705,6 +743,8 @@ module VivlioStarter
         tidy_count   = plan.count { it.status == :tidy }
         message += "・合流 #{merge_count}" if merge_count.positive?
         message += "・整理 #{tidy_count}" if tidy_count.positive?
+        rename_count = plan.count { it.status == :rename }
+        message += "・改名 #{rename_count}" if rename_count.positive?
         message += "・スキップ #{skipped.size}"
         message += "（バックアップ: #{backup_dir}/）" if backup_dir
         Common.log_result(message, status: :success)

@@ -223,9 +223,9 @@ class TestSpellChecker < Minitest::Test
     assert_equal 1, rows.last[:count]
   end
 
-  # --- 除外リストによる抑制（end-to-end / #2） ---
+  # --- ユーザー辞書による抑制（end-to-end / #2） ---
 
-  # config/spellcheck_allowlist.yml に登録した語がスペルチェックで検出されないことを確認する
+  # config/spellcheck_user_dictionary.yml に登録した語がスペルチェックで検出されないことを確認する
   def test_allowlist_suppresses_spellcheck_end_to_end
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
@@ -235,7 +235,7 @@ class TestSpellChecker < Minitest::Test
 
         File.write('test.md', "Mbed High-Score\n")
 
-        assert_empty SC.check('test.md', word_map), '除外リストの語は検出されない'
+        assert_empty SC.check('test.md', word_map), 'ユーザー辞書の語は検出されない'
       end
     end
   end

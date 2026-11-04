@@ -427,7 +427,7 @@ lint:
 
 # ======= スペルチェック（vs lint）設定値 =======
 spellcheck:
-  # 綴り誤りと指摘したくない語は config/spellcheck_allowlist.yml に書く
+  # 綴り誤りと指摘したくない語は config/spellcheck_user_dictionary.yml に書く
   # `vs lint --register` が未知語をそこへ自動追記し、辞書順に整列する
 
   extra_dictionaries: # オンデマンドダウンロード辞書
