@@ -48,6 +48,7 @@ module VivlioStarter
           # 行単位の抑止は集約より前に当てる（集約後は行番号が畳まれて選り分けられない）
           hushed = suppressed_lines[File.expand_path(file['filePath'].to_s)] || []
           messages = Array(file['messages']).reject { |m| hushed.include?(m['line']) }
+          messages = drop_duplicate_fixes(messages)
           next if messages.empty?
 
           total += messages.size
@@ -58,6 +59,23 @@ module VivlioStarter
       rescue JSON::ParserError
         nil
       end
+
+      # 同じ箇所を同じ文字列へ直す指摘は、規則が違っても 1 件にする。
+      #
+      # 規則どうしは辞書が重なる。`Javascript` は prh（技術用語の辞書）と spellcheck-tech-word の
+      # 両方が `JavaScript` へ直すよう指摘し、同じ行に同じ直し方が 2 度並んでいた。著者が直す
+      # 作業は 1 つなので、件数も 1 と数える。先に現れたほうを残す（同じ位置の指摘は
+      # .textlintrc.yml の規則の順に並ぶので、本書の設定では prh の「（技術用語）」の添え書きが残る。実測）。
+      #
+      # 修正の情報（fix）のない指摘は落とさない。同じ箇所でも、言っていることが同じとは限らない。
+      # 行と桁も鍵に入れる——fix に range が無い出力でも、別の行の同じ直し方を取り違えない。
+      def self.drop_duplicate_fixes(messages)
+        messages.uniq do |m|
+          fix = m['fix']
+          fix ? [:fix, m['line'], m['column'], fix['range'], fix['text']] : m.object_id
+        end
+      end
+      private_class_method :drop_duplicate_fixes
 
       # ルールの表示文を固定の見出しへ置き換える表。
       #

@@ -38,12 +38,12 @@ class TestProseChecker < Minitest::Test
   MazegakiDictionary = VivlioStarter::CLI::Lint::MazegakiDictionary
 
   # 原稿を一時ファイルへ書いて検査する（check はパスを受け取るため）
-  def check(body, disabled_rules: [], parenthetical_max: nil, sentence_max: nil, index_terms: [])
+  def check(body, disabled_rules: [], parenthetical_max: nil, sentence_max: nil, index_terms: [], ten_max: nil)
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'chapter.md')
       File.write(path, body)
       PC.check(path, disabled_rules: disabled_rules, parenthetical_max: parenthetical_max,
-                     sentence_max: sentence_max, index_terms: index_terms)
+                     sentence_max: sentence_max, index_terms: index_terms, ten_max: ten_max)
     end
   end
 
@@ -403,6 +403,62 @@ class TestProseChecker < Minitest::Test
       labels = PC.check(path, allowlist: PC.allowlist_from(list)).map(&:label)
 
       assert_equal ['かぎ括弧 => 鉤括弧'], labels
+    end
+  end
+
+  # allowlist の 1 行から、本文を検査する。語句を指摘する規則は allowlist で許可できる
+  def check_allowing(body, entries, index_terms: [])
+    Dir.mktmpdir do |dir|
+      list = File.join(dir, 'allow.yml')
+      File.write(list, entries.to_yaml)
+      path = File.join(dir, 'chapter.md')
+      File.write(path, body)
+      PC.check(path, allowlist: PC.allowlist_from(list), index_terms: index_terms)
+    end
+  end
+
+  # 指摘より長い語句でも、指摘の範囲を覆えば許可する（textlint の allowlist と同じ判定）
+  def test_should_allow_a_longer_phrase_that_covers_the_finding
+    assert_empty check_allowing("だ円形の窓です。\n", ['だ円形'])
+    assert_equal ['だ円 => 楕円'], check_allowing("だ円形とだ円の窓です。\n", ['だ円形']).map(&:label),
+                 '覆っていない別の箇所は指摘する'
+  end
+
+  # 語句を指摘する規則は、どれも同じ判定で許可できる
+  def test_should_allow_phrases_for_every_phrase_rule
+    cases = {
+      PC::SLASH_RULE => ["前書き/後書きを付けます。\n", '前書き/後書き'],
+      PC::KANSUJI_COUNTER_RULE => ["手順は 2 つです。\n", '2 つ'],
+      PC::WEAK_PHRASE_RULE => ["雨になるかもしれません。\n", 'かもしれません'],
+      PC::KANJI_LOOKALIKE_RULE => ["⽇本の本です。\n", '⽇本'],
+      PC::AFFIX_SPACING_RULE => ["EPUB用の設定です。\n", 'EPUB用'],
+      PC::HIRAGANA_SPACING_RULE => ["IDの一覧です。\n", 'IDの']
+    }
+    cases.each do |rule, (body, entry)|
+      refute_empty check_allowing(body, []).select { it.rule == rule }, "#{rule}: allowlist が空なら指摘する"
+      assert_empty check_allowing(body, [entry]).select { it.rule == rule }, "#{rule}: #{entry} で許可できる"
+    end
+    assert_empty check_allowing("Type3 フォントを使います。\n", ['Type3 フォント'], index_terms: ['Type 3 フォント'])
+  end
+
+  # 文や記法を見る規則は、文の中の語句を許可しても消えない（その語句を含む文の組み立ての指摘なので）
+  def test_should_not_allow_sentence_rules_by_a_phrase
+    findings = check_allowing("この節で説明する\n", ['説明する'])
+    assert_equal [PC::MISSING_PERIOD_RULE], findings.map(&:rule)
+  end
+
+  # 許可した語句は --fix でも書き換えない（表示と --fix を食い違わせない）
+  def test_should_not_fix_allowed_phrases
+    Dir.mktmpdir do |dir|
+      list = File.join(dir, 'allow.yml')
+      File.write(list, ['EPUB用', '⽇本', 'Type3 フォント', 'IDの', 'だ円形'].to_yaml)
+      allowlist = PC.allowlist_from(list)
+
+      assert_equal "EPUB用とPDF 用です。\n", PC.fix_affix_spacing("EPUB用とPDF用です。\n", allowlist)
+      assert_equal "IDの値と ID が\n", PC.fix_hiragana_spacing("IDの値とIDが\n", allowlist)
+      assert_equal "⽇本と日の出\n", PC.fix_kanji_lookalike("⽇本と⽇の出\n", allowlist)
+      assert_equal "Type3 フォントと\n", PC.fix_index_term_spacing("Type3 フォントと\n", ['Type 3 フォント'], allowlist)
+      assert_equal "だ円形と楕円\n", PC.fix_mazegaki("だ円形とだ円\n", allowlist)
     end
   end
 
@@ -992,6 +1048,65 @@ class TestProseChecker < Minitest::Test
   end
 
   # PC-09: ルール単位で切れる
+  # --- 一文の読点の数（max-ten の置き換え）---
+
+  def ten_labels(body, **)
+    check(body, **).select { it.rule == PC::TEN_RULE }.map(&:label)
+  end
+
+  # 丸かっこの外と中を別に数える。本筋に 2 つ・補足に 2 つは、どちらも上限 3 に収まる
+  def test_should_count_tens_outside_and_inside_parentheses_separately
+    body = "コミットし、章を指定して実行したら、すぐに確かめます（説明する文で、例を示すときは、囲みます）。\n"
+    assert_empty ten_labels(body)
+    assert_equal ['一文の読点が 4 個あります（上限 3 個。文を分けるか、読点を減らしてください）'],
+                 ten_labels("コミットし、実行し、確かめ、直し、閉じます。\n")
+  end
+
+  # 補足の中だけで上限を超えても指摘する（補足の読点を数えない規則にはしない）
+  def test_should_report_tens_inside_a_parenthetical
+    labels = ten_labels("赤を使います（青を使い、黄を使い、緑を使い、白を使い、黒も使います）。\n")
+    assert_equal 1, labels.size
+    assert_match(/\A丸かっこの中の読点が 4 個あります/, labels.first)
+  end
+
+  # インラインコードの中の読点は数えない
+  def test_should_not_count_tens_in_inline_code
+    assert_empty ten_labels("`a、b、c、d、e` の値を、順に、読みます。\n")
+  end
+
+  # 名詞に挟まれた読点は数えない（上流の strict: false と同じ）。判定に MeCab を使う
+  def test_should_not_count_tens_between_nouns
+    skip 'MeCab が無い環境では名詞の判定をしない' unless VivlioStarter::CLI::Lint::MazegakiScanner.available?
+
+    assert_empty ten_labels("赤、青、黄、緑、白の五色を使います。\n")
+  end
+
+  # 上流と同じく、見出し・表・引用・画像の代替テキスト・複数行の HTML コメントは数えない
+  def test_should_count_tens_only_where_upstream_does
+    tens = 'コミットし、実行し、確かめ、直し、閉じます'
+    assert_empty ten_labels("## #{tens}\n")
+    assert_empty ten_labels("| #{tens} | 値 |\n| --- | --- |\n")
+    assert_empty ten_labels("> #{tens}。\n")
+    assert_empty ten_labels("![図。#{tens}。](a.webp)\n"), '代替テキストに句点があっても画像ごと数えない'
+    assert_empty ten_labels("<!--\nメモ：#{tens}\n-->\n")
+    assert_equal 1, ten_labels("- #{tens}。\n").size, '箇条書きの項目は数える'
+  end
+
+  # 指摘の行は、上限を超えた読点の行（上流と同じ）。文の頭の行ではない
+  def test_should_report_the_line_of_the_exceeding_ten
+    findings = check("文の頭です\nコミットし、実行し、\n確かめ、直し、閉じます。\n").select { it.rule == PC::TEN_RULE }
+    assert_equal [3], findings.map(&:line)
+  end
+
+  # 上限は .textlintrc.yml の max-ten.max から渡される。:off なら数えない
+  def test_should_follow_the_ten_limit
+    body = "コミットし、実行し、閉じます。\n"
+    assert_empty ten_labels(body)
+    assert_equal 1, ten_labels(body, ten_max: 1).size
+    assert_empty ten_labels("コミットし、実行し、確かめ、直し、閉じます。\n", ten_max: :off)
+    assert_empty ten_labels("コミットし、実行し、確かめ、直し、閉じます。\n", disabled_rules: ['max-ten'])
+  end
+
   def test_should_respect_disabled_rules_for_sentence_length
     assert_empty length_lines("#{'あ' * 200}。\n", disabled_rules: ['sentence-length'])
   end

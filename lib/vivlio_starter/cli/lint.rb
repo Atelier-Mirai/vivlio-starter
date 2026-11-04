@@ -146,16 +146,18 @@ module VivlioStarter
         def run_textlint_aggregated(files, path_map = {}, suppressed_lines = {})
           command = build_command(files, format: 'json')
           stdout, stderr, status = Open3.capture3(*command)
-          $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
           # ルールの無効化と末尾長音の抑止は、実行時 textlintrc（generate_runtime_config）が
           # 担う。ここで落とすのは次行抑止の行だけ——修正パスも同じ行を退避している
           result = TextlintFormatter.aggregate_json(stdout, suppressed_lines: suppressed_lines)
           if result.nil?
-            # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
-            $stdout.print(stdout) unless stdout.nil? || stdout.empty?
-            return { exit: textlint_exit(status), lint_count: 0, fixable_count: 0, rows_by_file: {} }
+            # JSON を読めない＝textlint 自体が止まった（辞書の specs の食い違いなど）。
+            # 日本語校正は行われていないので、件数 0 を「課題なし」と取り違えないよう failed を立てる
+            report_textlint_failure(stdout, stderr)
+            return { exit: [textlint_exit(status), 1].max, lint_count: 0, fixable_count: 0, rows_by_file: {},
+                     failed: true }
           end
+          $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
           # 一時ファイルのパスを元ファイル名へ戻す
           result[:files].each { |f| f[:path] = path_map[File.expand_path(f[:path])] || f[:path] }
@@ -217,10 +219,10 @@ module VivlioStarter
             original = File.read(path, encoding: 'UTF-8')
             fixed    = original
             fixed    = Lint::ProseChecker.fix_mazegaki(fixed, prose_allowlist) if fix_mazegaki
-            fixed    = Lint::ProseChecker.fix_kanji_lookalike(fixed) if fix_kanji_lookalike
-            fixed    = Lint::ProseChecker.fix_index_term_spacing(fixed, index_terms_for(path)) if fix_index_spacing
-            fixed    = Lint::ProseChecker.fix_affix_spacing(fixed) if fix_affix_spacing
-            fixed    = Lint::ProseChecker.fix_hiragana_spacing(fixed) if fix_hiragana_spacing
+            fixed    = Lint::ProseChecker.fix_kanji_lookalike(fixed, prose_allowlist) if fix_kanji_lookalike
+            fixed    = Lint::ProseChecker.fix_index_term_spacing(fixed, index_terms_for(path), prose_allowlist) if fix_index_spacing
+            fixed    = Lint::ProseChecker.fix_affix_spacing(fixed, prose_allowlist) if fix_affix_spacing
+            fixed    = Lint::ProseChecker.fix_hiragana_spacing(fixed, prose_allowlist) if fix_hiragana_spacing
             next if fixed == original
 
             atomic_write(path, fixed)
@@ -232,7 +234,8 @@ module VivlioStarter
           Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist,
                                          parenthetical_max: parenthetical_length_max,
                                          sentence_max: sentence_length_max,
-                                         index_terms: index_terms_for(path))
+                                         index_terms: index_terms_for(path),
+                                         ten_max: ten_max)
         end
 
         # その原稿で照らし合わせる索引・用語集の辞書の語（index-term-spacing・改善案 #102）。
@@ -308,6 +311,47 @@ module VivlioStarter
         end
 
         def textlint_exit(status) = status.success? ? 0 : (status.exitstatus || 1)
+
+        # prh が辞書を読むときに specs を試して食い違ったときの textlint の出力
+        #   Error while loading rule 'prh': ユーザー spec failed. "ユーザーが使う",
+        #   expected "ユーザーが使う", but got "ユーザーーが使う", /(?:ユーザ)/gmu
+        PRH_SPEC_FAILURE = /'prh': (?<expected>.+?) spec failed\. "(?<from>.*?)", expected "(?<to>.*?)", but got "(?<got>.*?)"/
+
+        # textlint が止まったことを 🔴 で知らせる。生の出力は英語のスタックトレースで、どの辞書の
+        # どの項目を直せばよいかが読み取れない。prh の specs の食い違いは読み解いて、項目の場所と
+        # 直す所を示す。それ以外の失敗は、手がかりとして出力の先頭だけを添える。
+        def report_textlint_failure(stdout, stderr)
+          output = [stdout, stderr].compact.join
+          m = PRH_SPEC_FAILURE.match(output)
+          unless m
+            Common.log_error('textlint が止まったため、日本語校正を行えませんでした',
+                             detail: output.lines.reject { it.match?(/\A\s+at /) }.first(5).join)
+            return
+          end
+
+          where = spec_location(m[:from])
+          detail = ["「#{m[:expected]}」の項目の例: #{m[:from]}",
+                    "to に書いた結果: #{m[:to]}",
+                    "規則を当てた結果: #{m[:got]}",
+                    '→ patterns の正規表現か、specs の to を直してください']
+          Common.log_error("表記の辞書の specs が、規則を当てた結果と合いません#{"（#{where}）" if where}",
+                           detail: detail.join("\n"))
+        end
+
+        # specs の食い違った例（from）が書いてある辞書の場所。著者の辞書を先に探す
+        # @return [String, nil] 例: "config/textlint_rewrite.yml:7"
+        def spec_location(from)
+          pattern = /\A\s*-?\s*from:\s*["']?#{Regexp.escape(from)}["']?\s*\z/
+          bundled = Dir.glob(File.join(Common::CONFIG_DIR, BUNDLED_DICTIONARY_DIR, '*.yml'))
+          [TEXTLINT_REWRITE_RELATIVE, *bundled.sort].each do |relative|
+            path = Common.resolve_path_from_root(relative)
+            next unless path && File.file?(path)
+
+            found = File.foreach(path, encoding: 'UTF-8').with_index(1).find { |line, _| pattern.match?(line.chomp) }
+            return "#{Common.relative_path_from_root(path) || relative}:#{found.last}" if found
+          end
+          nil
+        end
 
         # 言語名のないコードブロックの言語を推定して知らせる（code-language-detection-spec.md）。
         # --fix なら推定した言語名を原稿の開始行へ書き込む。
@@ -419,9 +463,13 @@ module VivlioStarter
             else
               Common.log_always '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
             end
-          else
+          elsif !lint_info[:failed]
             Common.log_result('文章チェックで課題は見つかりませんでした。', status: :success)
           end
+          return unless lint_info[:failed]
+
+          # 日本語校正が止まったときは、件数が 0 でも「課題なし」とは言えない
+          Common.log_error('日本語校正は実行できませんでした。上の 🔴 を直してから、もう一度 vs lint を実行してください。')
         end
 
         def normalize_options(raw)
@@ -578,7 +626,7 @@ module VivlioStarter
         SUPERSEDED_TEXTLINT_RULES = {
           'preset-ja-spacing' => %w[ja-no-space-around-slash ja-no-space-around-parentheses],
           'preset-japanese' => %w[no-kanji-lookalikes sentence-length],
-          'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length ja-no-weak-phrase]
+          'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length ja-no-weak-phrase max-ten]
         }.freeze
 
         # 上流ルールの取りこぼしを打ち消す、vs lint 自身の除外リスト。
@@ -708,6 +756,26 @@ module VivlioStarter
           return :off if count.zero?
 
           count.positive? ? count : nil
+        end
+
+        # 一文の読点の上限。上流の max-ten は切って独自の規則で数えるが（SUPERSEDED_TEXTLINT_RULES）、
+        # 上限を書く場所は今までどおり .textlintrc.yml の preset-ja-technical-writing.max-ten.max に置く。
+        # プリセットか規則を false にしてあれば数えない。
+        # @return [Integer, :off, nil] nil は既定（3）。読めない設定も既定で数える
+        def ten_max
+          return @ten_max if defined?(@ten_max)
+
+          @ten_max = begin
+            preset = (YAML.safe_load_file(config_path) || {}).dig('rules', 'preset-ja-technical-writing')
+            # プリセットに max-ten の項目が無ければ、上流の既定どおり有効
+            setting = preset.is_a?(Hash) ? preset.fetch('max-ten', true) : preset
+            max = setting.is_a?(Hash) ? setting['max'] : nil
+            if [false, nil].include?(setting) then :off
+            elsif max.is_a?(Integer) && max.positive? then max
+            end
+          rescue StandardError
+            nil
+          end
         end
 
         # book.yml lint.parenthetical_length_max。読み方は sentence_length_max と同じで、
@@ -995,7 +1063,8 @@ module VivlioStarter
           stdout, stderr, = Open3.capture3(*command)
           # --fix の終了コードと出力は判定に使わない。残存指摘の判定は解析パスが行う。
           Common.log_debug(stdout) unless stdout.nil? || stdout.empty?
-          $stderr.print(stderr) unless stderr.nil? || stderr.empty?
+          # specs の食い違いは解析パスが読み解いて 🔴 で示すので、ここでは生の出力を重ねない
+          $stderr.print(stderr) unless stderr.nil? || stderr.empty? || PRH_SPEC_FAILURE.match?(stderr)
 
           write_back_fixes(files, converted, baselines, masked_spans)
         ensure

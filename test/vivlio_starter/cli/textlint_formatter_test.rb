@@ -78,6 +78,38 @@ module VivlioStarter
       # textlint 側の comments フィルタが -next-line を実装していないため、
       # 出力段で落とすしかない。**集約の前に当たること**が要点で、集約後は
       # 行番号が 1 行へ畳まれて選り分けられなくなる
+      # 同じ箇所を同じ文字列へ直す指摘は、規則が違っても 1 件にする（Javascript を prh と
+      # spellcheck-tech-word が両方指摘していた）。件数・自動修正できる数とも 1 と数える
+      def test_aggregate_json_drops_the_same_fix_from_another_rule
+        json = JSON.generate([{ 'filePath' => '/p/contents/a.md', 'messages' => [
+                               { 'ruleId' => 'prh', 'message' => "Javascript => JavaScript\n（技術用語）",
+                                 'line' => 3, 'column' => 1, 'fix' => { 'range' => [10, 20], 'text' => 'JavaScript' } },
+                               { 'ruleId' => 'spellcheck-tech-word', 'message' => 'Javascript => JavaScript',
+                                 'line' => 3, 'column' => 1, 'fix' => { 'range' => [10, 20], 'text' => 'JavaScript' } }
+                             ] }])
+        result = TextlintFormatter.aggregate_json(json, base_dir: '/p')
+
+        assert_equal 1, result[:total]
+        assert_equal 1, result[:fixable]
+        assert_equal ['[prh] Javascript => JavaScript'], result[:files].first[:rows].map { it[:label] }, '先に現れた指摘を残す'
+      end
+
+      # 直し方が違う・場所が違う・修正の情報が無い指摘は、同じ行でも落とさない
+      def test_aggregate_json_keeps_findings_that_differ
+        json = JSON.generate([{ 'filePath' => '/p/contents/a.md', 'messages' => [
+                               { 'ruleId' => 'prh', 'message' => 'A => B', 'line' => 3, 'column' => 1,
+                                 'fix' => { 'range' => [10, 11], 'text' => 'B' } },
+                               { 'ruleId' => 'other', 'message' => 'A => C', 'line' => 3, 'column' => 1,
+                                 'fix' => { 'range' => [10, 11], 'text' => 'C' } },
+                               { 'ruleId' => 'prh', 'message' => 'A => B', 'line' => 4, 'column' => 1,
+                                 'fix' => { 'range' => [30, 31], 'text' => 'B' } },
+                               { 'ruleId' => 'max-ten', 'message' => '読点が多すぎます', 'line' => 3, 'column' => 1 },
+                               { 'ruleId' => 'max-comma', 'message' => '読点が多すぎます', 'line' => 3, 'column' => 1 }
+                             ] }])
+
+        assert_equal 5, TextlintFormatter.aggregate_json(json, base_dir: '/p')[:total]
+      end
+
       def test_aggregate_json_suppresses_listed_lines
         result = TextlintFormatter.aggregate_json(
           sample_json, base_dir: '/proj',

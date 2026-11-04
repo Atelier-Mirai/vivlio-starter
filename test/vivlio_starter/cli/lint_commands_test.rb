@@ -225,6 +225,41 @@ module VivlioStarter
         ENV[LintCommands::TEXTLINT_ENV_VAR] = original
       end
 
+      # 辞書の specs が食い違うと textlint は辞書を読めずに止まる。生のスタックトレースではなく、
+      # 項目の場所と直す所を 🔴 で示し、件数 0 を「課題なし」と言わない
+      def test_prh_spec_failure_is_reported_and_not_called_a_clean_result
+        File.write('contents/11-install.md', "ユーザが使います。\n")
+        File.write('config/textlint_rewrite.yml', <<~YAML)
+          rules:
+            - expected: ユーザー
+              patterns:
+                - /ユーザ/
+              specs:
+                - from: ユーザーが使う
+                  to:   ユーザーが使う
+        YAML
+        stderr = "Unexpected error during file processing: Error: Error while loading rule 'prh': ユーザー spec failed. " \
+                 "\"ユーザーが使う\", expected \"ユーザーが使う\", but got \"ユーザーーが使う\", /(?:ユーザ)/gmu\n" \
+                 "    at Rule.check (/opt/homebrew/lib/node_modules/prh/lib/rule.js:102:20)\n"
+        fake_status = Struct.new(:success?).new(false)
+        def fake_status.exitstatus = 1
+
+        status = nil
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['', stderr, fake_status] }) do
+            stdout, = capture_io { status = LintCommands.execute_lint(['11-install']) }
+          end
+        end
+
+        assert_equal 1, status
+        assert_match(%r{🔴 表記の辞書の specs が、規則を当てた結果と合いません（config/textlint_rewrite\.yml:6）}, stdout)
+        assert_match(/規則を当てた結果: ユーザーーが使う/, stdout)
+        refute_match(/rule\.js/, stdout, 'スタックトレースは見せない')
+        refute_match(/課題は見つかりませんでした/, stdout, '日本語校正をしていないのに課題なしと言わない')
+        assert_match(/🔴 日本語校正は実行できませんでした/, stdout)
+      end
+
       # 検査の実装が textlint と独自ルールに分かれているのは都合であって、著者から見れば
       # 同じ「日本語校正」。1 ファイル 1 ブロックにまとめ、件数順に混ぜて並べる
       # （分けて出すと同じ原稿の見出しが 2 度現れ、どちらを先に直すのか読み取れない）
@@ -264,13 +299,12 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             expected_command = args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-install'], {})
             end
-            # 出力は常に json 集約。'STDOUT' は不正 json なので生出力へフォールバックして表示される
-            assert_match(/STDOUT/, stdout)
+            # 出力は常に json 集約。空の結果（[]）を返し、章の解決とコマンドの組み立てを見る
             assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
             assert_equal 'STDERR', stderr
           end
@@ -329,13 +363,11 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             commands << args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, = capture_io do
               returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
             end
-            # 'STDOUT' は不正 json なので生出力へフォールバックして表示される
-            assert_match(/STDOUT/, stdout)
             assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
           end
         end
@@ -384,12 +416,11 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             expected_command = args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['91', '93'], {})
             end
-            assert_match(/\ASTDOUT/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
@@ -415,12 +446,11 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             expected_command = args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['15'], {})
             end
-            assert_match(/STDOUT/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
@@ -448,12 +478,11 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             expected_command = args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-13'], {})
             end
-            assert_match(/^STDOUT$/, stdout)
             assert_includes stdout, '💡 11-13 のうち、原稿のある 3 章（11-install, 12-setup, 13-build）を検査します'
             assert_equal 'STDERR', stderr
           end
@@ -483,12 +512,11 @@ module VivlioStarter
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
             expected_command = args
-            ['STDOUT', 'STDERR', fake_status]
+            ['[]', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-install', '91', '11-12'], {})
             end
-            assert_match(/^STDOUT$/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
@@ -816,6 +844,26 @@ module VivlioStarter
           assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
           assert_equal dir, File.dirname(@runtime_config_path), '元設定と同じディレクトリに生成（相対パス保持）'
         end
+      end
+
+      # 読点の上限は上流の max-ten を切って独自の規則で数えるが、上限は .textlintrc.yml の
+      # max-ten.max から読む（31 章の説明どおりの場所）
+      def test_ten_limit_is_read_from_textlintrc_and_upstream_max_ten_is_disabled
+        File.write('config/.textlintrc.yml', { 'rules' => { 'preset-ja-technical-writing' => { 'max-ten' => { 'max' => 1 } } } }.to_yaml)
+        File.write('contents/11-install.md', "コミットし、実行し、閉じます。\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            stdout, = capture_io { LintCommands.execute_lint(['11-install']) }
+          end
+        end
+
+        assert_match(/\[max-ten\] 一文の読点が 2 個あります（上限 1 個/, stdout)
+        assert_equal false, runtime_config('config/.textlintrc.yml').dig('rules', 'preset-ja-technical-writing', 'max-ten'),
+                     '上流の max-ten は切る（二重に指摘しない）'
       end
 
       # 1.0 より前の雛形は preset-japanese を併用していた。更新していないプロジェクトでも

@@ -70,6 +70,7 @@ module VivlioStarter
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
         MISSING_PERIOD_RULE  = 'missing-period'
         SENTENCE_LENGTH_RULE = 'sentence-length'
+        TEN_RULE             = 'max-ten'
         UNCLOSED_SUPPRESSION_RULE = 'unclosed-suppression'
         WEAK_PHRASE_RULE     = 'ja-no-weak-phrase'
         INDEX_TERM_SPACING_RULE = 'index-term-spacing'
@@ -199,17 +200,33 @@ module VivlioStarter
           nil
         end
 
-        # 指摘語が除外リストに覆われているか。
+        # 指摘した語句（line の start...finish）を、allowlist に当たる範囲が覆うか。
         #
-        # **語全体が覆われたときだけ黙らせる**（textlint の allowlist と同じ判定）。
-        # 部分一致で黙らせると、「括弧」という 1 行が「かぎ括弧 => 鉤括弧」まで消してしまう
-        # ——除外リストには実際に「括弧」があり、あれは「括弧 => カッコ」を止めるためのもので、
-        # 交ぜ書きの指摘まで止める意図ではない。
-        def allowed?(word, patterns)
+        # **指摘の範囲をまるごと覆ったときだけ許可する**（textlint の allowlist と同じ判定）。
+        # 指摘より長い語句も書ける——「レビューアイコン」と書けば、その中の「レビューア」の
+        # 指摘が消える。一部しか覆わない語句では許可しない。allowlist には実際に「括弧」があり、
+        # あれは「括弧 => カッコ」を止めるためのもので、「かぎ括弧 => 鉤括弧」まで止める意図ではない。
+        #
+        # 照らすのは指摘を探したのと同じ文字列（コードを伏せた行・強調を外した行）なので、
+        # 位置がずれない。
+        def allowed_at?(line, start, finish, patterns)
           patterns.any? do |pattern|
-            matched = pattern.match(word)
-            matched && matched[0] == word
+            pos = 0
+            covered = false
+            # 指摘の始まりより前から始まる当たりだけが覆いうる。重なった当たりも拾うよう 1 字ずつ進める
+            while !covered && (matched = pattern.match(line, pos)) && matched.begin(0) <= start
+              covered = matched.end(0) >= finish
+              pos = matched.begin(0) + 1
+            end
+            covered
           end
+        end
+
+        # 行の中で pattern に当たり、allowlist に覆われていない最初の当たり
+        # @return [MatchData, nil]
+        def first_unallowed_match(line, pattern, allowlist)
+          line.to_enum(:scan, pattern).map { ::Regexp.last_match }
+              .find { !allowed_at?(line, it.begin(0), it.end(0), allowlist) }
         end
 
         # --- 検査 -------------------------------------------------------------
@@ -221,7 +238,9 @@ module VivlioStarter
         # @param parenthetical_max [Integer, :off, nil] book.yml lint.parenthetical_length_max
         # @return [Array<Finding>]
         # @param index_terms [Array<String>] 索引・用語集の辞書の語（index-term-spacing に使う）
-        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil, index_terms: [])
+        # @param ten_max [Integer, :off, nil] .textlintrc.yml の max-ten の max（読点の上限）
+        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil, index_terms: [],
+                  ten_max: nil)
           text  = File.read(path, encoding: 'UTF-8')
           rules = Array(disabled_rules).map(&:to_s)
 
@@ -231,7 +250,7 @@ module VivlioStarter
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(multiple_chapter_heading_findings(text)) unless rules.include?(MULTIPLE_CHAPTER_HEADINGS_RULE)
-          findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
+          findings.concat(slash_findings(text, allowlist))     unless rules.include?(SLASH_RULE)
           findings.concat(accidental_emphasis_findings(text))  unless rules.include?(ACCIDENTAL_EMPHASIS_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
           findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
@@ -241,13 +260,18 @@ module VivlioStarter
           unless rules.include?(SENTENCE_LENGTH_RULE) || sentence_max == :off
             findings.concat(sentence_length_findings(text, sentence_max || SENTENCE_LENGTH_MAX))
           end
-          findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
-          findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
-          findings.concat(weak_phrase_findings(text))          unless rules.include?(WEAK_PHRASE_RULE)
+          unless rules.include?(TEN_RULE) || ten_max == :off
+            findings.concat(ten_findings(text, ten_max || TEN_MAX))
+          end
+          findings.concat(kanji_lookalike_findings(text, allowlist)) unless rules.include?(KANJI_LOOKALIKE_RULE)
+          findings.concat(kansuji_counter_findings(text, allowlist)) unless rules.include?(KANSUJI_COUNTER_RULE)
+          findings.concat(weak_phrase_findings(text, allowlist)) unless rules.include?(WEAK_PHRASE_RULE)
           findings.concat(unclosed_suppression_findings(text)) unless rules.include?(UNCLOSED_SUPPRESSION_RULE)
-          findings.concat(index_term_spacing_findings(text, index_terms)) unless rules.include?(INDEX_TERM_SPACING_RULE)
-          findings.concat(affix_spacing_findings(text)) unless rules.include?(AFFIX_SPACING_RULE)
-          findings.concat(hiragana_spacing_findings(text)) unless rules.include?(HIRAGANA_SPACING_RULE)
+          unless rules.include?(INDEX_TERM_SPACING_RULE)
+            findings.concat(index_term_spacing_findings(text, index_terms, allowlist))
+          end
+          findings.concat(affix_spacing_findings(text, allowlist)) unless rules.include?(AFFIX_SPACING_RULE)
+          findings.concat(hiragana_spacing_findings(text, allowlist)) unless rules.include?(HIRAGANA_SPACING_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -256,9 +280,11 @@ module VivlioStarter
 
         # 交ぜ書きの指摘。コード領域は Masking が除くので、コード例の中の語は拾わない。
         #
-        # 除外リストが効くのは交ぜ書きだけである。あれは「この語はこのままでよい」という
-        # 語彙の宣言なので、構文の指摘（二通りに読める対比）には当てはまらない。
-        # 対比を黙らせるときは `<!-- no-lint-start -->` か `lint.disabled_rules` を使う。
+        # allowlist は「この語句はこのままでよい」という語彙の宣言なので、**語句を指摘する
+        # 規則**（交ぜ書き・康煕部首・空白・数の表記・スラッシュ・弱い表現）に効かせる。
+        # 文や記法を見る規則（二通りに読める対比・句点・文の長さ・字下げなど）には効かせない。
+        # 一つの語句を書いても、文の組み立ての指摘は消えるべきでないため。
+        # それらを外すときは `<!-- no-lint -->` か `lint.disabled_rules` を使う。
         def mazegaki_findings(text, allowlist = [])
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = protect_furigana(Masking.protect_code(line).first)
@@ -267,10 +293,9 @@ module VivlioStarter
             # 仕様: inline-emphasis-word-split-spec.md
             body, = Masking.strip_emphasis(protected_line)
             hits = MAZEGAKI.filter_map do |pattern, expected|
-              found = body[pattern]
-              next unless found && !allowed?(found, allowlist)
+              matched = first_unallowed_match(body, pattern, allowlist) or next
 
-              [found, expected]
+              [matched[0], expected]
             end
             hits.concat(scanner_hits(body, allowlist))
 
@@ -283,8 +308,8 @@ module VivlioStarter
         # 第 2 層（MeCab の形態素境界を見る語）の指摘。MeCab が無ければ常に空になり、
         # 第 1 層だけで動く。仕様: mazegaki-two-tier-spec.md §2
         def scanner_hits(body, allowlist)
-          MazegakiScanner.scan(body).filter_map do |found, expected, _start, _finish|
-            [found, expected] unless allowed?(found, allowlist)
+          MazegakiScanner.scan(body).filter_map do |found, expected, start, finish|
+            [found, expected] unless allowed_at?(body, start, finish, allowlist)
           end
         end
 
@@ -346,10 +371,12 @@ module VivlioStarter
         #
         # 直し方を著者に委ねる（`--fix` しない）のは、`・` と ` / ` のどちらが合うかが
         # 意味で決まるため。見出しで両方を示す。
-        def slash_findings(text)
+        def slash_findings(text, allowlist = [])
           prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
-            slash_pairs(protected_line).map do |left, separator, right|
+            slash_pairs(protected_line).filter_map do |left, separator, right, start, finish|
+              next if allowed_at?(protected_line, start, finish, allowlist)
+
               Finding.new(line: lineno, rule: SLASH_RULE,
                           label: "#{left}#{separator}#{right} は和文どうしの並列です" \
                                  '（並べるなら `・`、どれか一つなら前後に空きを入れた ` / ` か全角 `／` に）')
@@ -358,21 +385,26 @@ module VivlioStarter
         end
 
         # 1 行から、両側が和文で、空きなしで、`・` の並びの外にあるスラッシュだけを拾う
+        # @return [Array<Array(String, String, String, Integer, Integer)>] 左・区切り・右と、allowlist で覆う範囲
         def slash_pairs(line)
           pairs = []
           line.scan(SLASH_PAIR) do
-            left, separator, right = ::Regexp.last_match(1), ::Regexp.last_match(2), ::Regexp.last_match(3)
+            matched = ::Regexp.last_match
+            left, separator, right = matched[1], matched[2], matched[3]
             next unless left[-1].match?(JAPANESE_CHAR) && right[0].match?(JAPANESE_CHAR)
             next if separator.match?(SPACED_SLASH)
             next if "#{left}#{right}".include?('・')
 
-            pairs << [left, separator, right]
+            # allowlist で覆う範囲は、スラッシュと両隣の 1 字（左右 6 字の窓まで含めると、
+            # 「前書き/後書き」と書いても「前書き/後書きを付け」を覆えない）
+            slash_at = matched.begin(0) + left.length
+            pairs << [left, separator, right, slash_at - 1, slash_at + separator.length + 1]
           end
           pairs
         end
         private_class_method :slash_pairs
 
-        # --- 強調に化ける `*`・`_` ------------------------------------------------
+        # --- 意図しない強調になる `*`・`_` ----------------------------------------
 
         # 地の文の `A*探索` の `*` は、Markdown では強調の記号にもなれる。同じ段落に次の `*` があると、
         # その間が強調（本の CSS では下線）になり、`*` は 2 つとも消える（改善案 #128。spiral-ruby の
@@ -611,6 +643,110 @@ module VivlioStarter
           end
         end
 
+        # --- 一文の読点の数 ---------------------------------------------------
+
+        TEN = '、'
+        TEN_MAX = 3
+
+        # 読点の前後で、名詞に挟まれているかを見るときに飛ばす記号（上流と同じく括弧は見ない）
+        TEN_BRACKETS = %w[（ ） ( ) 「 」 『 』 ［ ］ [ ]].freeze
+
+        # 読点を数えない段落（表・見出し・引用）。箇条書きの項目は数える
+        TEN_SKIPPED_BLOCK = /\A[ \t]*(?:\||\#+[ \t]|>)/
+
+        # 文の切れ目。句点・疑問符・感嘆符と、表のセル境界
+        TEN_SENTENCE_BREAK = /(?<=[。？！?!])|(?<=\|)/
+
+        # 画像（代替テキストごと数えない）
+        TEN_IMAGE = /!\[[^\]]*\]\([^)]*\)/
+
+        # 一文の読点の数。上流の max-ten の置き換え（lint.rb の SUPERSEDED_TEXTLINT_RULES）。
+        #
+        # **丸かっこの外と中を別に数える。** 上流は一文の読点をすべて数えるので、本筋の文に
+        # 2 つ、補足に 2 つでも「4 つ」と指摘していた。sentence-length が丸かっこの中を数えない
+        # のと同じ理由で、読者は補足を読み飛ばして本筋を追える。ただし補足の中を数えないと、
+        # 補足にいくら読点を打っても指摘されない（長さと違い、補足の読点を別に見る規則が無い）。
+        # そこで丸かっこの中は、一つずつ別の文として同じ上限で数える。
+        #
+        # **名詞に挟まれた読点は数えない**（上流の strict: false と同じ）。「赤、青、黄」のような
+        # 並列は、文を読みにくくしない。判定には MeCab を使う（交ぜ書きの第 2 層と同じ解析）。
+        # MeCab が無い環境では挟まれた読点も数える——指摘が増える側に倒し、見逃さない。
+        #
+        # **数える範囲は上流と同じにする。** 段落と箇条書きの項目だけを見て、見出し・表・引用は
+        # 見ない（上流は Paragraph だけを見て、引用の中は飛ばす）。画像の代替テキストも数えない
+        # （上流の指摘は .textlintrc.yml の node-types フィルタが Image の範囲で消していた）。
+        # 文は句点のほか「？」「！」でも切る（上流の sentence-splitter と同じ）。
+        #
+        # 上限は `.textlintrc.yml` の `max-ten.max` を読む（31 章の説明どおりの場所）。
+        # `--fix` はしない（どこで文を切るかは著者が決めること）。
+        def ten_findings(text, limit = TEN_MAX)
+          prose_paragraphs(NotationGuard.strip_notation(blank_comment_blocks(text))).flat_map do |paragraph|
+            next [] if paragraph[:text].match?(TEN_SKIPPED_BLOCK)
+
+            # 画像は文に分ける前に伏せる（代替テキストの句点で画像が途中から切れ、伏せ損なう）
+            body = paragraph[:text].gsub(TEN_IMAGE) { 'x' * it.length }
+            offset = 0
+            body.split(TEN_SENTENCE_BREAK).flat_map do |sentence|
+              start   = offset
+              offset += sentence.length
+              ten_counts(sentence).filter_map do |inside, positions|
+                count = positions.size
+                next if count <= limit
+
+                # 行は上限を超えた読点の行にする（上流と同じ）。文の頭の行だと、段落の頭の
+                # 記法（`@vspace` の行など）や、何行も前の行を指してしまう
+                where = inside ? '丸かっこの中の読点' : '一文の読点'
+                Finding.new(line: line_at(paragraph, start + positions[limit]), rule: TEN_RULE,
+                            label: "#{where}が #{count} 個あります（上限 #{limit} 個。文を分けるか、読点を減らしてください）")
+              end
+            end
+          end
+        end
+
+        # 文の読点を、丸かっこの外と、丸かっこごとに数える。
+        # インラインコードの中は数えない（字数を保ったまま伏せるので、位置はずれない）。
+        # @return [Array<Array(Boolean, Array<Integer>)>] [丸かっこの中か, 数えた読点の文の中の位置]
+        def ten_counts(sentence)
+          masked = sentence.gsub(Masking::INLINE_CODE_SPAN) { 'x' * it.length }
+          parentheticals = masked.to_enum(:scan, PARENTHETICAL).map { ::Regexp.last_match.then { it.begin(0)...it.end(0) } }
+          sandwiched = noun_sandwiched_tens(masked)
+
+          counted = Hash.new { |hash, key| hash[key] = [] }
+          masked.each_char.with_index do |char, index|
+            next unless char == TEN && !sandwiched.include?(index)
+
+            counted[parentheticals.find { it.cover?(index) }] << index
+          end
+          counted.map { |range, positions| [!range.nil?, positions] }
+        end
+        private_class_method :ten_counts
+
+        # 複数行にわたる HTML コメント（執筆メモなど）を空白にする。行数と位置は保つ。
+        # 上流は HTML を検査しないので、メモの中の読点を数えると指摘が増えるだけになる。
+        # 1 行のコメント（`<!-- no-lint -->` などの目印）は残す——抑止の判定が使う
+        COMMENT_BLOCK = /<!--(?:(?!-->).)*\n.*?-->/m
+
+        def blank_comment_blocks(text)
+          text.gsub(COMMENT_BLOCK) { it.gsub(/[^\n]/, ' ') }
+        end
+        private_class_method :blank_comment_blocks
+
+        # 名詞と名詞に挟まれた読点の位置（括弧は飛ばして隣を見る）。MeCab が無ければ空。
+        def noun_sandwiched_tens(sentence)
+          return Set.new unless MazegakiScanner.available?
+
+          morphemes = MazegakiScanner.morphemes_of(sentence)
+                                     .reject { |start, finish, _| TEN_BRACKETS.include?(sentence[start...finish]) }
+          morphemes.each_with_index.filter_map do |(start, finish, _), index|
+            next unless sentence[start...finish] == TEN && index.positive?
+
+            before = morphemes[index - 1]
+            after  = morphemes[index + 1]
+            start if before&.last == '名詞' && after&.last == '名詞'
+          end.to_set
+        end
+        private_class_method :noun_sandwiched_tens
+
         # --- かっこの隣の空白 -------------------------------------------------
 
         OPENING_BRACKETS = %w[（ ［ 「 『].freeze
@@ -755,20 +891,22 @@ module VivlioStarter
         # 意味は読んでいない。自動で直すと、判定を外した箇所に「空白二つ」が黙って入る。
         #
         # 文体の選択なので、別の方針（JTF の「1つ」など）を採る著者は `disabled_rules` で切る。
-        def kansuji_counter_findings(text)
+        def kansuji_counter_findings(text, allowlist = [])
           prose_lines(text).flat_map do |lineno, line|
             protected_line, spans = Masking.protect_code(line)
             spans.each do |placeholder, code|
               protected_line = protected_line.sub(placeholder, SYMBOL_CODE_MARK) if code.match?(SYMBOL_ONLY_CODE)
             end
             body, = Masking.strip_emphasis(protected_line)
-            counter_suffixes(body).filter_map do |found, value, symbol|
+            counter_suffixes(body).filter_map do |found, value, symbol, start, finish|
+              next if allowed_at?(body, start, finish, allowlist)
+
               kansuji_counter_finding(lineno, found, value, symbol)
             end
           end
         end
 
-        # 1 行から [書かれた形, 数, 記号の個数か] を拾う
+        # 1 行から [書かれた形, 数, 記号の個数か, 行の中の始まり, 終わり] を拾う
         def counter_suffixes(body)
           hits = []
           body.to_enum(:scan, COUNTER_SUFFIX).each do
@@ -776,7 +914,7 @@ module VivlioStarter
             value = counter_value(matched)
             symbol = body[0...matched.begin(0)].match?(SYMBOL_BEFORE_COUNT) ||
                      body[matched.end(0)..].match?(SYMBOL_AFTER_COUNT)
-            hits << [matched[0], value, symbol]
+            hits << [matched[0], value, symbol, matched.begin(0), matched.end(0)]
           end
           hits
         end
@@ -847,11 +985,11 @@ module VivlioStarter
           [/可能性を示唆/,    '可能性を示唆している']
         ].freeze
 
-        def weak_phrase_findings(text)
+        def weak_phrase_findings(text, allowlist = [])
           prose_lines(text).flat_map do |lineno, line|
             body, = Masking.protect_code(line)
             WEAK_PHRASES.filter_map do |pattern, name|
-              next unless body.match?(pattern)
+              next unless first_unallowed_match(body, pattern, allowlist)
 
               Finding.new(line: lineno, rule: WEAK_PHRASE_RULE,
                           label: "「#{name}」は弱い表現です（言い切れるなら言い切る）")
@@ -873,10 +1011,12 @@ module VivlioStarter
         # そのプリセットを外した（残り 11 ルールは preset-ja-technical-writing と重複していた）
         # ときにこちらへ移した。単体の npm パッケージとして足さなかったのは、`vs upgrade` で
         # 設定だけが先に届くと、未導入のルールを読めずに textlint ごと止まるため。
-        def kanji_lookalike_findings(text)
+        def kanji_lookalike_findings(text, allowlist = [])
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
-            protected_line.scan(KANGXI_RADICAL).uniq.map do |radical|
+            protected_line.to_enum(:scan, KANGXI_RADICAL).map { ::Regexp.last_match }
+                          .reject { allowed_at?(protected_line, it.begin(0), it.end(0), allowlist) }
+                          .map { it[0] }.uniq.map do |radical|
               Finding.new(line: lineno, rule: KANJI_LOOKALIKE_RULE,
                           label: "#{radical} => #{kangxi_ideograph(radical)}（漢字に見える康煕部首です）")
             end
@@ -885,14 +1025,19 @@ module VivlioStarter
 
         # 康煕部首を漢字へ置換したテキストを返す。行数は入力と必ず一致する。
         # 置換は 1 文字を 1 文字へ替えるだけなので、強調記法をまたぐ心配はない。
-        def fix_kanji_lookalike(text)
+        # allowlist に覆われた字は置換しない（指摘しない字を直すと、表示と --fix が食い違う）。
+        def fix_kanji_lookalike(text, allowlist = [])
           prose = authored_prose_lines(text).to_h
 
           text.each_line.with_index(1).map do |line, lineno|
             next line unless prose.key?(lineno)
 
             protected_line, spans = Masking.protect_code(line)
-            Masking.restore_code(protected_line.gsub(KANGXI_RADICAL) { kangxi_ideograph(it) }, spans)
+            fixed = protected_line.gsub(KANGXI_RADICAL) do
+              matched = ::Regexp.last_match
+              allowed_at?(protected_line, matched.begin(0), matched.end(0), allowlist) ? matched[0] : kangxi_ideograph(matched[0])
+            end
+            Masking.restore_code(fixed, spans)
           end.join
         end
 
@@ -907,13 +1052,13 @@ module VivlioStarter
         #
         # 空白の有無を問うのは、辞書の語が空白を持つ位置と、英数字と和文の境目だけ。
         # 英字どうし・和文どうしの間は問わない（「PD F」「組 版」のような分け方は揺れではなく誤り）。
-        def index_term_spacing_findings(text, terms)
+        def index_term_spacing_findings(text, terms, allowlist = [])
           variants = spacing_variants(terms)
           return [] if variants.empty?
 
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
-            spacing_mismatches(protected_line, variants).map do |term, written|
+            spacing_mismatches(protected_line, variants, allowlist).map do |term, written|
               # ほかのルールと同じ「書かれた形 => 直す形」の短い形
               Finding.new(line: lineno, rule: INDEX_TERM_SPACING_RULE, label: "#{written} => #{term}（索引・用語集の綴り）")
             end
@@ -921,8 +1066,9 @@ module VivlioStarter
         end
 
         # 1 行の中の [辞書の語, 書かれた形] の組。長い語から照らし、その範囲の中は短い語で数えない
-        # ——辞書に「Type 3 フォント」と「Type 3」があると、「Type3 フォント」を 2 度指摘していた
-        def spacing_mismatches(line, variants)
+        # ——辞書に「Type 3 フォント」と「Type 3」があると、「Type3 フォント」を 2 度指摘していた。
+        # allowlist に覆われた範囲も「照らし済み」に数える（中の短い語を改めて指摘しない）
+        def spacing_mismatches(line, variants, allowlist = [])
           covered = []
           found = variants.flat_map do |term, pattern|
             line.to_enum(:scan, pattern).filter_map do
@@ -931,6 +1077,8 @@ module VivlioStarter
               next if covered.any? { it.cover?(range.begin) || range.cover?(it.begin) }
 
               covered << range
+              next if allowed_at?(line, range.begin, range.end, allowlist)
+
               [term, match[0]] unless match[0] == term
             end
           end
@@ -938,7 +1086,8 @@ module VivlioStarter
         end
 
         # 空白だけ違う書き方を辞書の綴りへ直したテキストを返す。行数は入力と必ず一致する。
-        def fix_index_term_spacing(text, terms)
+        # allowlist に覆われた書き方は直さない
+        def fix_index_term_spacing(text, terms, allowlist = [])
           variants = spacing_variants(terms)
           return text if variants.empty?
 
@@ -947,7 +1096,13 @@ module VivlioStarter
             next line unless prose.key?(lineno)
 
             protected_line, spans = Masking.protect_code(line)
-            variants.each { |term, pattern| protected_line = protected_line.gsub(pattern) { term } }
+            variants.each do |term, pattern|
+              current = protected_line
+              protected_line = current.gsub(pattern) do
+                matched = ::Regexp.last_match
+                allowed_at?(current, matched.begin(0), matched.end(0), allowlist) ? matched[0] : term
+              end
+            end
             Masking.restore_code(protected_line, spans)
           end.join
         end
@@ -982,12 +1137,12 @@ module VivlioStarter
         AFFIX_PATTERNS = [AFFIX_AFTER_WORD, AFFIX_BEFORE_WORD].freeze
 
         # 英字の語と一覧の語が空白なしで接した箇所の指摘（「EPUB用 => EPUB 用」）
-        def affix_spacing_findings(text)
-          spacing_findings(text, AFFIX_PATTERNS, AFFIX_SPACING_RULE, '英字の語と和文の間の空白')
+        def affix_spacing_findings(text, allowlist = [])
+          spacing_findings(text, AFFIX_PATTERNS, AFFIX_SPACING_RULE, '英字の語と和文の間の空白', allowlist)
         end
 
         # 英字の語と一覧の語の間に空白を入れたテキストを返す。行数は入力と必ず一致する。
-        def fix_affix_spacing(text) = fix_spacing(text, AFFIX_PATTERNS)
+        def fix_affix_spacing(text, allowlist = []) = fix_spacing(text, AFFIX_PATTERNS, allowlist)
 
         # --- 英字の語とひらがなの間（改善案 #106）--------------------------------
 
@@ -1001,12 +1156,12 @@ module VivlioStarter
         ].freeze
 
         # 英字の語とひらがなが空白なしで接した箇所の指摘（「IDの => ID の」）
-        def hiragana_spacing_findings(text)
-          spacing_findings(text, HIRAGANA_PATTERNS, HIRAGANA_SPACING_RULE, '英字の語とひらがなの間の空白')
+        def hiragana_spacing_findings(text, allowlist = [])
+          spacing_findings(text, HIRAGANA_PATTERNS, HIRAGANA_SPACING_RULE, '英字の語とひらがなの間の空白', allowlist)
         end
 
         # 英字の語とひらがなの間に空白を入れたテキストを返す。行数は入力と必ず一致する。
-        def fix_hiragana_spacing(text) = fix_spacing(text, HIRAGANA_PATTERNS)
+        def fix_hiragana_spacing(text, allowlist = []) = fix_spacing(text, HIRAGANA_PATTERNS, allowlist)
 
         # --- 空白を入れる 2 つのルールの共通の処理 ---------------------------------
 
@@ -1016,33 +1171,39 @@ module VivlioStarter
         SPACING_OPAQUE = %r{@[\w:./-]+|\]\(#{Masking::LINK_DESTINATION}\)|#{Masking::URL}|\[\^[^\]]*\]|<[^>]*>|#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__}
 
         # @param patterns [Array<Regexp>] 2 つ目のグループの頭が、空白を入れる位置
-        def spacing_findings(text, patterns, rule, note)
+        def spacing_findings(text, patterns, rule, note, allowlist = [])
           authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
-            spacing_gaps(protected_line, patterns).map(&:last).uniq.map do |written|
+            spacing_gaps(protected_line, patterns, allowlist).map { it[1] }.uniq.map do |written|
               Finding.new(line: lineno, rule:, label: "#{written} => #{spaced_form(written, patterns)}（#{note}）")
             end
           end
         end
 
-        def fix_spacing(text, patterns)
+        def fix_spacing(text, patterns, allowlist = [])
           prose = authored_prose_lines(text).to_h
           text.each_line.with_index(1).map do |line, lineno|
             next line unless prose.key?(lineno)
 
             protected_line, spans = Masking.protect_code(line)
-            fixed = spacing_gaps(protected_line, patterns).map(&:first).sort.reverse
-                                                          .reduce(protected_line.dup) { |acc, gap| acc.insert(gap, ' ') }
+            fixed = spacing_gaps(protected_line, patterns, allowlist).map(&:first).sort.reverse
+                                                                     .reduce(protected_line.dup) { |acc, gap| acc.insert(gap, ' ') }
             Masking.restore_code(fixed, spans)
           end.join
         end
 
-        # 空白を入れる位置と、書かれた形の組
+        # 空白を入れる位置と、書かれた形の組。allowlist に覆われた書き方は除く
+        # （指摘からも --fix からも外れる）。伏せる記号は同じ長さなので、位置は元の行のまま照らせる
         # @return [Array<Array(Integer, String)>]
-        def spacing_gaps(protected_line, patterns)
+        def spacing_gaps(protected_line, patterns, allowlist = [])
           masked = protected_line.gsub(SPACING_OPAQUE) { "\u0000" * it.length }
           patterns.flat_map do |pattern|
-            masked.to_enum(:scan, pattern).map { ::Regexp.last_match.then { [it.begin(2), it[0]] } }
+            masked.to_enum(:scan, pattern).filter_map do
+              matched = ::Regexp.last_match
+              next if allowed_at?(protected_line, matched.begin(0), matched.end(0), allowlist)
+
+              [matched.begin(2), matched[0]]
+            end
           end.uniq(&:first)
         end
 
@@ -1204,7 +1365,7 @@ module VivlioStarter
           end
           MazegakiScanner.scan(plain).each { |found, expected, start, finish| hits << [start, finish, expected, found] }
 
-          hits.reject { |_s, _e, _x, found| allowed?(found, allowlist) }
+          hits.reject { |start, finish, _x, _found| allowed_at?(plain, start, finish, allowlist) }
               .sort_by { |start, finish, _x, _f| [start, start - finish] }
               .each_with_object([]) do |hit, chosen|
                 chosen << hit unless chosen.any? { |kept| hit[0] < kept[1] && kept[0] < hit[1] }

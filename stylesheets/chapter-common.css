@@ -798,6 +798,18 @@ p.references {
   margin-inline: 2em;
 }
 
+/* 囲みの中の補足は、文字だけ小さくする。上下 1 行・左右 2 字の余白は、本文から
+   切り離すためのもので、囲みの中では padding がその役を受け持つ。残すと padding に
+   余白が足され、囲みの内側だけが大きく空いて見える（31 章の .notice で実測）。 */
+.column p.small, .column div.small, .column p.references, .column div.references,
+.tip p.small, .tip div.small, .tip p.references, .tip div.references,
+.memo p.small, .memo div.small, .memo p.references, .memo div.references,
+.note p.small, .note div.small, .note p.references, .note div.references,
+.notice p.small, .notice div.small, .notice p.references, .notice div.references {
+  margin-block: 0;
+  margin-inline: 0;
+}
+
 /* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。
    p.small（段落末 {.small}）と div.small 内の段落の両方に効かせる。 */
 .small,
