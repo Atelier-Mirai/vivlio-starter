@@ -124,6 +124,12 @@ p-value
 t-test
 chi-squared
 ANOVA
+TTR
+Type-Token
+Moving-Average
+TF-IDF
+TF
+IDF
 
 # Discrete Mathematics
 graph

@@ -1,19 +1,23 @@
-# vivlio-starter のドキュメントで用いる技術用語のうち、cspell 由来の標準辞書に
-# 未収録のものを補う、プロジェクト管理の辞書。
+# vivlio-starter 自身の機能・記法・コマンド名・設定キーのうち、cspell 由来の
+# 標準辞書に未収録のものを補う、プロジェクト管理の辞書（フォークの原稿でも使う語）。
 # 大文字小文字は無視されるため（word_map は downcase キー）、小文字 1 形で十分。
-# 例: textlint を登録すれば「textlint」「Textlint」の両方が認識される。
 #
-# ここに置くのは「どの技術書でも出てくる広く知られたツール名・略語」と
-# 「vivlio-starter 自身の機能・記法・コマンド名（フォークの原稿でも使う語）」。
+# どの技術書でも出てくるツール名・略語・人名は、内容の合う辞書に置く
+# （製品・ツール・規格は products.txt、略語は abbreviations.txt、人名は famous-people.txt）。
 # 本固有の作例（サンプル画像のローマ字名・作例の識別子など）は config/spellcheck_user_dictionary.yml へ。
 
-# vivlio-starter 固有の機能・記法・コマンド・内部名
+# 名前・同梱の gem
+vivlio-starter
+vivlio-starter-pdf
 querystream
-parenthetical
 query-stream
+
+# コマンド・サブコマンド
 renumber
-add-missing
-postface
+preflight
+rasterize
+
+# 記法・クラス名
 book-card
 rotate-table
 long-table
@@ -21,132 +25,24 @@ image-group
 sideimage
 align-right
 text-right
-page-settings
-CrossReference
-TokenResolver
-vivlio-starter-pdf
-vivliostyle
-vivlio-starter
-RSC
-
-# 校正・スペルチェック関連ツール
-textlint
-prh
-SCOWL
-
-# Markdown・組版フォーマット
-VFM
-CommonMark
-GFM
-ATX
-MathJax
-Flavored
-hardLineBreaks
-Sectionization
-kebab-case
-
-# 電子書籍・出版
-Kobo
-KPF
-KDP
-KFX
-ISBN
-epubcheck
-kindlepreviewer
-OPF
-NCName
-Techbook
-preflight
-frontispiece
-ornament
-Coated
-typography
-glossary
 recto
 verso
 
-# PDF・画像・組版ツール
-HexaPDF
-Prawn
-CombinePDF
-pdf-reader
-poppler
-pdftotext
-pdftoppm
-pdfinfo
-qpdf
-Ghostscript
-ruby-vips
-inkscape
-librsvg
-rsvg-convert
-vips
-libvips
-mathjax-full
-rasterize
-mermaid-cli
-mmdc
-Guesslang
+# 記法（フロントマターの vfm: に書く VFM のオプション）
+hardLineBreaks
+Sectionization
 
-# mermaid の図の種別
-sequenceDiagram
-classDiagram
-stateDiagram
-erDiagram
-
-# OCR・自然言語処理
-OCR
-Tesseract
-MeCab
-natto
-
-# Ruby・開発環境・CLI ツール
-Samovar
-Psych
-chromium
-cask
-brew
-WSL
-CLT
-CI
-iTerm
-Finder
-ruby-build
+# 設定キー・ファイル名（book.yml・catalog.yml・config/ の語）
+parenthetical
+postface
+page-settings
+typography
+frontispiece
+ornament
+glossary
+Techbook
 scaffold
 
-# 文章メトリクス・CSS
-TTR
-Type-Token
-Moving-Average
-Flesch
-Kincaid
-TF-IDF
-TF
-IDF
-at-rule
-target-counter
-UX
-
-# フォント
-Zen
-Kaku
-Maru
-NF
-
-# Markdown の歴史（人名）
-John
-Gruber
-Aaron
-Swartz
-Fireball
-
-# 本書が引用した論文の著者
-Covington
-McFall
-
-# ライセンス・略語
-AGPL
-
-# よく使うファイル拡張子・略語
-yml
-bak
+# 内部のクラス名（開発者向けの文書で使う）
+CrossReference
+TokenResolver
