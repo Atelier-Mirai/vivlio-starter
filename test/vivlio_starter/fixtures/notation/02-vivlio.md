@@ -180,8 +180,7 @@ pointer:2 200, 120 {label="矢印"} 矢印の見本
 
 `codes/` に置いたファイルを取り込みます。
 
-```include: codes/sample.rb
-```
+```include:sample.rb```
 
 ## 改ページ
 

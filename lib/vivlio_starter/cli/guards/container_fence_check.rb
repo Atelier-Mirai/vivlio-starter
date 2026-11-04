@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'container_scanner'
+require_relative 'manuscript_scope'
 
 module VivlioStarter
   module CLI
@@ -17,14 +18,14 @@ module VivlioStarter
       #   深さが負になれば「対応する開始がない終了」、走査後に正なら「閉じ忘れ」。
       #   入れ子（`:::{.column}` の中の `:::{.note}`）は正しく均衡と判定される。
       class ContainerFenceCheck < BaseCheck
+        include ManuscriptScope
+
         # @return [Array<Violation>] エラーの配列（合格なら空配列）
         def validate
           markdown_files.filter_map { check_file(it) }
         end
 
         private
-
-        def markdown_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
 
         # 1 ファイルを走査し、不整合があれば違反を返す（整合なら nil）。
         def check_file(path)

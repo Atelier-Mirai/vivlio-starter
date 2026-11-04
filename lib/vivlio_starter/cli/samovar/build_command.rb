@@ -97,6 +97,8 @@ module VivlioStarter
             Guards::ChapterTargetCheck.new(targets)
           )
           Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { common.log_always(it) }
+          # 原稿の中身の検査（閉じ忘れは 🔴 で止める）。preflight と同じ並び
+          run_manuscript_checks!
           select_volume!(volume)
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）

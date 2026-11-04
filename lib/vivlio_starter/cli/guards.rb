@@ -37,6 +37,7 @@ require_relative 'guards/node_check'
 require_relative 'guards/vfm_check'
 require_relative 'guards/images_dir_check'
 require_relative 'guards/image_filename_check'
+require_relative 'guards/manuscript_scope'
 require_relative 'guards/code_fence_check'
 require_relative 'guards/stray_page_break_check'
 require_relative 'guards/container_scanner'
@@ -88,6 +89,21 @@ module VivlioStarter
       end
 
       module_function
+
+      # 原稿の中身を点検する検査の並び。build と preflight が同じものを使う
+      # （原稿を点検する指摘は両方で同じものを出す・terminal-output-notes.md §1）。
+      # 閉じ忘れ（コードフェンス・コンテナ）は 🔴 で止め、改ページの取り残しと未知のクラスは 🟡。
+      # 検査を足すときは、ここへ 1 つ足せば両方のコマンドに効く。
+      # @param paths [Array<String>, nil] 調べる原稿。nil なら contents/ の全原稿
+      # @return [Array<BaseCheck>]
+      def manuscript_checks(paths = nil)
+        [
+          CodeFenceCheck.new(paths:),
+          StrayPageBreakCheck.new(paths:),
+          ContainerFenceCheck.new(paths:),
+          ContainerClassCheck.new(paths:)
+        ]
+      end
 
       # コマンドの call 冒頭用ヘルパー。Guard を実行し、
       # 違反時は終了コード 1 を返す（合格時は nil）。違反は Guard.run! が 1 件ずつ 🔴 で出しているので、

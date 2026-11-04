@@ -37,6 +37,16 @@ module VivlioStarter
         # @return [Array<TokenResolver::Entry>]
         def resolve_target_entries = TokenResolver::Resolver.new.resolve(targets).select(&:in_catalog?)
 
+        # 原稿の中身の検査（Guards.manuscript_checks）を、build と preflight でそろえて走らせる。
+        # 章を指定したときは、組む章だけを調べる（書きかけのほかの章の閉じ忘れで止めない）。
+        # 指定しなければ contents/ の全原稿を調べる。章の指定の誤りを ChapterTargetCheck が
+        # 止めた後に呼ぶ（解決できない指定を、ここで読まない）。
+        # @raise [Guards::GuardError] 🔴 の違反があれば
+        def run_manuscript_checks!
+          paths = targets.any? ? resolve_target_entries.map(&:path).select { File.exist?(it) } : nil
+          Guards::Guard.run!(*Guards.manuscript_checks(paths))
+        end
+
         # CLI の --verify-links をスレッドローカルに設定する（vs build・vs preflight）。
         # LinkImageValidator が resolve_config で参照する
         #

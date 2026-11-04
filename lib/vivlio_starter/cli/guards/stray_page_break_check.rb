@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../masking'
+require_relative 'manuscript_scope'
 
 module VivlioStarter
   module CLI
@@ -32,6 +33,8 @@ module VivlioStarter
       #
       # 重大度は警告（🟡）。改ページ自体は動作しており、意図なら正しい原稿だからである。
       class StrayPageBreakCheck < BaseCheck
+        include ManuscriptScope
+
         # CommonMark の thematic break（`-` `*` `_` を 3 つ以上・間に空白可・行頭 3 空白まで）。
         # Vivlio ではこれが改ページになる。
         THEMATIC_BREAK = /\A {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})\z/
@@ -41,9 +44,10 @@ module VivlioStarter
 
         # @param section_pagebreak [Boolean] h2 が CSS で自動改ページするか。
         #   既定は正典（Common）から取り、テストからは差し替える
-        def initialize(section_pagebreak: Common.section_pagebreak_enabled?)
+        # @param paths [Array<String>, nil] 調べる原稿（ManuscriptScope）
+        def initialize(section_pagebreak: Common.section_pagebreak_enabled?, paths: nil)
           @section_pagebreak = section_pagebreak
-          super()
+          super(paths:)
         end
 
         # @return [Array<Violation>] 警告の配列（合格なら空配列）
@@ -52,10 +56,6 @@ module VivlioStarter
         end
 
         private
-
-        def markdown_files
-          Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
-        end
 
         # 1 ファイルを走査し、取り残しがあれば 1 件に集約した警告を返す。
         def check_file(path)

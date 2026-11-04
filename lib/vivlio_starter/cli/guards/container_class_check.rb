@@ -2,6 +2,7 @@
 
 require 'did_you_mean'
 require_relative 'container_scanner'
+require_relative 'manuscript_scope'
 
 module VivlioStarter
   module CLI
@@ -22,6 +23,8 @@ module VivlioStarter
       #   著者の自由記述用に用意されているため「クラスに CSS を書けば自動的に許可される」で
       #   完結する。過剰許可（Prism のトークンクラス等が混ざる）は偽陰性しか生まないため許容する。
       class ContainerClassCheck < BaseCheck
+        include ManuscriptScope
+
         # 経路 A（Ruby 前処理）が扱うクラス。convert_container_blocks の 6 クラスに加え、
         # showcase は ShowcaseTransformer がブロックごと消費して figure.vs-showcase へ
         # 変換するため、CSS に `.showcase` セレクタが存在しないのが正しい状態。
@@ -43,8 +46,6 @@ module VivlioStarter
         end
 
         private
-
-        def markdown_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
 
         def check_file(path)
           ContainerScanner.scan(path).select { it.kind == :open }.flat_map do |directive|

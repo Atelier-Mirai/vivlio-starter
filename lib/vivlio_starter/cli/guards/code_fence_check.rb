@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../masking'
+require_relative 'manuscript_scope'
 
 module VivlioStarter
   module CLI
@@ -20,16 +21,14 @@ module VivlioStarter
       # 重大度はエラー（ビルドしても意図通りにならないため、画像名チェック等と同様に
       # ビルド前に停止させる）。
       class CodeFenceCheck < BaseCheck
+        include ManuscriptScope
+
         # @return [Array<Violation>] エラーの配列（合格なら空配列）
         def validate
           markdown_files.filter_map { |path| check_file(path) }
         end
 
         private
-
-        def markdown_files
-          Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
-        end
 
         # 1 ファイルのフェンス区切り行を数え、奇数なら警告を返す（偶数なら nil）。
         # フェンス判定は Masking（唯一の実装）の FENCE を参照する（先頭空白は lstrip で許容）。

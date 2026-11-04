@@ -14,6 +14,7 @@
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
 | `chapter-lead-size-spec.md` | 章リードの文字の大きさ（`theme.lead_size`・章扉だけの上書き `theme.frontispiece.lead_size`）・章扉からのはみ出しの検出・EPUB の章扉を横長の扉絵に（改善案 #125） | 実装済み（2026-10-28） |
+| `text-table-spec.md` | 本文の右に短い表を並べる記法 `:::{.text-table}`（flex で組む・表は自然な幅・目安は版面の半分で安全弁は 3 分の 2・EPUB と Kindle は縦に並べる・build と preflight の 🟡） | 実装待ち（§7.1 の build での検査は 2026-11-05 実装済み） |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
