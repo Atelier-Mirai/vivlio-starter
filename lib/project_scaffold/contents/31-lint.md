@@ -375,7 +375,7 @@ lint:
 - `config/spellcheck_dictionaries/`: スペルチェックの辞書
 - `config/spellcheck_user_dictionary.yml`: スペルチェックのユーザー辞書
 
-`🔴 textlint 設定ファイルが見つかりません` と表示されたら、プロジェクトのルートで実行しているかを確かめます。設定ファイルを消したときや textlint がないときは、`vs doctor --fix` で戻せます（@chapref:ch-doctor）。
+設定ファイルを削除してしまったときや、textlint がインストールされていないときは、`vs lint` はエラー（🔴）を出して止まります。どちらも `vs doctor --fix` で戻せます（@chapref:ch-doctor）。
 
 ### 読点・半角カンマの上限を変える
 

@@ -22,8 +22,6 @@ sideimage
 align-right
 text-right
 page-settings
-textlint-only
-spellcheck-only
 CrossReference
 TokenResolver
 vivlio-starter-pdf
