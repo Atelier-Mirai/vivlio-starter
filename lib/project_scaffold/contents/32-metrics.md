@@ -37,21 +37,16 @@ vs metrics 11-13 15
 
 章を指定すると、その章は節（`##`）まで展開して表示します。章は、ファイル名・番号・範囲のどれでも指定できます。書き方は @ch-chapter-management の章の @pageref:chapter-targets を参照してください。分冊の本では、`vs metrics upper` のように巻の `id` を指定できます。
 
-### 全章を節まで展開する — `--sections`
-
-すべての章を節まで展開し、節ごとの文字数を表示します。
+### 節まで展開する — `--sections`・`--warn`
 
 ```bash
-vs metrics --sections
+vs metrics --sections   # 全章を節まで展開する
+vs metrics --warn       # 印の付いた章だけを、節まで展開する
 ```
 
-### 印の付いた章だけを表示する — `--warn`
+`--sections` は、すべての章を節まで展開し、節ごとの文字数を表示します。
 
-💡 または 🤔 の印が付いた章（節に印がある章を含む）だけを、節まで展開して表示します。分量が基準から外れた章や、表現が単調・やや難解と評価された章を素早く特定できます。
-
-```bash
-vs metrics --warn
-```
+`--warn` は、💡 または 🤔 の印が付いた章（節に印がある章を含む）だけを表示します。分量が基準から外れた章や、表現が単調・やや難解と評価された章を素早く特定できます。
 
 ## 実行結果の見方
 
@@ -204,7 +199,7 @@ RS は、値が大きいほど読みやすいことを示します。漢字が�
 | 40〜60 | Standard | 一般的なビジネス・実用書 |
 | 40 未満 | Professional | やや難解 |
 
-技術書は漢字や専門用語が多いので、Standard〜Professional に収まるのが自然です。評価の境界の値は `metrics.readability` で変更できます（@pageref:metrics-readability-config）。
+技術書は漢字や専門用語が多いので、Standard〜Professional に収まるのが自然です。境界の値は `metrics.readability` で変更できます（@pageref:metrics-readability-config）。
 
 ## book.yml で調整する
 
