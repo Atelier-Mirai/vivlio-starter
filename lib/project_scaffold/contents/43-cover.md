@@ -4,7 +4,7 @@
 一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の画像や SVG を用意する場合も、準備から生成・確認までの流れは共通です。
 :::
 
-表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙と、電子書籍用の表紙だけは、プロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
+表紙の元になる画像は `covers/` に置きます。表紙は `vs build` がビルドのたびに作り直して本に組み込むので、`vs cover` を先に実行する必要はありません。`vs cover` は、デザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときに、本文を組まずに表紙だけを作るために使います。
 
 ## 表紙のデザインを選ぶ
 
@@ -14,13 +14,9 @@
 
 ```yaml
 book:
-  # 同梱のデザインを使う場合
-  cover: light   # 明るいテーマ（既定）
-  # cover: dark  # 暗いテーマ
-
-  # 著者が用意した独自デザインを使う場合
-  # cover: floral  # covers/frontcover_floral.png などを使用
-  # cover: master  # covers/frontcover_master.png などを使用
+  cover: light     # 同梱の明るいテーマ（既定）
+  # cover: dark    # 同梱の暗いテーマ
+  # cover: floral  # 著者が用意した covers/frontcover_floral.png など
 ```
 
 `cover: <テーマ名>` を指定すると、表紙と裏表紙のそれぞれについて、次の順に元の画像を探します。
@@ -43,11 +39,6 @@ book:
 
 `light` または `dark` を選ぶと、同梱のテンプレート（`covers/bundled/` の SVG）に、それぞれのテーマの色を当てて表紙を作ります。表紙には `book.yml` の書名（`main_title`）・副題（`subtitle`）・著者名（`author`）・連載名（`series`）・発行日（`release`）が入ります。本の情報を設定すれば、画像を用意しなくても表紙ができます。
 
-```yaml
-book:
-  cover: dark  # 暗いテーマのデザインを使用
-```
-
 ### 独自の SVG を使う
 
 表紙を `frontcover_<テーマ名>.svg`、裏表紙を `backcover_<テーマ名>.svg` の名前で `covers/` に置き、`book.yml` にテーマ名を書きます。デザインごとに名前を変えて置いておけば、`cover:` を書き換えるだけで別の案に切り替えられます。
@@ -60,18 +51,13 @@ covers/
 ```
 :::
 
-```yaml
-book:
-  cover: floral  # frontcover_floral.svg を使用
-```
-
 SVG の中に `{{title}}`・`{{subtitle}}`・`{{author}}`・`{{series}}`・`{{release}}` と書いた箇所には、ビルドのときに `book.yml` の値が入ります。書名や著者名を変えても、SVG を編集し直す必要はありません。
 
 SVG は、判型と同じ縦横比の `viewBox` で描きます（A4 なら `viewBox="0 0 595 842"`）。入稿用の表紙の塗り足し（@pageref:print-cover）には、`viewBox` の外側に描いた部分が使われます。背景のように紙の端まで届けたい要素は、四辺とも `viewBox` の外へ 3 mm 以上（A4 の `viewBox` なら 9 以上）広げて描いてください。`viewBox` の中だけに描くと、塗り足しは白になります。同梱の `covers/bundled/frontcover.svg` は背景と上下の帯を外側まで描いてあり、描き方の見本になります。
 
 ### 独自の画像を使う
 
-表紙を `frontcover_<テーマ名>.png`、裏表紙を `backcover_<テーマ名>.png` の名前で `covers/` に置きます。JPEG なら拡張子は `.jpg`、WebP なら `.webp` です。次はテーマ名を `master` にした例です。
+表紙を `frontcover_<テーマ名>.png`、裏表紙を `backcover_<テーマ名>.png` の名前で `covers/` に置きます。JPEG なら拡張子は `.jpg`、WebP なら `.webp` です。次は、テーマ名を `master` にした例です。
 
 :::{.diagram}
 ```text
@@ -80,11 +66,6 @@ covers/
 └── backcover_master.png
 ```
 :::
-
-```yaml
-book:
-  cover: master  # frontcover_master.png・backcover_master.png を使用
-```
 
 画像は、仕上がりの判型を 350 dpi で表す大きさで用意します。入稿用の表紙を作るとき、300 dpi に満たない画像には 🟡 で警告します。
 
@@ -128,8 +109,6 @@ vs cover
 
 入稿用と電子書籍用の表紙はプロジェクト直下に置かれるので、開いて確かめてください。閲覧用は、`vs build` で本に組み込んだ姿で確かめます。
 
-`vs build` も表紙を作り直すので、本を組む前に `vs cover` を実行する必要はありません。`vs cover` は、デザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときに、表紙だけを作るために使います。
-
 ### 分冊の本の表紙
 
 分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を作ります。巻の `cover` に書いたテーマを使い、`light`・`dark` には巻の書名が入ります（@pageref:volume-book-values）。プロジェクト直下の表紙の名前には、`mybook_lower_frontcover_v0.1.0.pdf` のように巻の `id` が付きます。
@@ -137,7 +116,7 @@ vs cover
 ## 生成される表紙
 
 :::{.section-lead}
-閲覧・入稿・電子書籍では、表紙に求められる大きさと色が異なります。ここでは生成物ごとの違いと、確かめるときの注意点をまとめます。
+閲覧・入稿・電子書籍では、表紙に求められる大きさと色が異なります。
 :::
 
 ### 閲覧用 PDF
