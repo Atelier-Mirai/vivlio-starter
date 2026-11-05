@@ -472,12 +472,25 @@ Chromium は字を書体の並び（`font-family`）の順に探し、どれに�
 | 本の書体にない漢字 | その字を持つ書体から字の形を取り、図形にする | `Gaiji`・`GlyphOutline` |
 | 地の文の数学用英数字（`ℝ`・`𝔽`） | `$…$` で包み、MathJax で組む | `MathLetterWrapper` |
 
-`Gaiji` が字の形を取るのは、OFL の書体と、macOS 付属の書体のうち埋め込みを許すものです。OFL の書体から取った形は `images/gaiji/` に保存するので、その書体のない PC でも同じ形で組めます。
+技術書典向けモード（`output.pdf.techbook: true`・既定）では、HTML の段階でさらに次を置き換えます。いずれも PDF だけの処理で、EPUB はリーダーの表示に任せます。原稿のファイルは書き換えません。
+
+| 字 | 組み方 | 実装 |
+| :--- | :--- | :--- |
+| 本文の絵文字 | Twemoji の SVG 画像に置き換える。クレジットは `legal.twemoji` | `Techbook::EmojiReplacer` |
+| 目見出し・号見出しの記号（`♣`・`♦`） | Twemoji の図形をアクセント色に塗り替えた画像にする | `Techbook::Processor` |
+| 囲み数字（①〜⑳） | 事前に用意した WebP 画像に置き換える | `Techbook::Processor` |
+| 全角チルダ（U+FF5E） | 波ダッシュ（U+301C）にそろえる。Zen 系の書体は全角チルダを持たない | `Techbook::Processor` |
+
+`Gaiji` が字の形を取るのは、OFL の書体（思源宋体・Noto Serif CJK など）と、macOS 付属の書体のうち使用許諾が埋め込みを許すもの（宋体・ヒラギノ角ゴ簡体中文など）です。選ぶ順は、周りの字に合う形（明朝の本文には明朝系、見出しとコードにはゴシック系の太い面）→ OFL の書体 → 太さの近い面です。OFL の書体から取った形は `images/gaiji/` に保存するので、その書体のない PC でも同じ形で組めます。macOS の書体から取った形は再配布できないので保存せず、組むたびに取り直します。EPUB では置き換えず、リーダーの書体で表示します。
+
+`StrokedText` は、`<text>` の位置を 1 行の字として読めるものだけを置き換えます。`<tspan>` を入れ子にした字や、`dy`・`letter-spacing`・`dominant-baseline` を指定した字は位置を読み取れないので、組む前の検査で図のファイル名と字を警告し、1 行の `<text>` に書き直すか、縁取りをやめて字の下に白い `<rect>` を敷くよう案内します。
+
+数式の画像の字は、`SvgFontEmbedder` が埋め込む本文書体だけで組まれます。本文では HackGen や DejaVu で補える字でも、数式の中では補えないので、組む前の検査が警告します。
 
 検査は次の 2 段です。
 
 - **組む前**: `GlyphCoverageCheck` が、原稿と図の字を書体の並びと照合し、行を添えて警告します。`vs preflight` と単章ビルドでも実行します
-- **組んだ後**: 全章ビルドの `check type 3 fonts` で、`Type3FontCheck` が仕上がった PDF を検査し、ページと字を報告します。`GlyphCoverageCheck` が報告した字は重ねて報告しません
+- **組んだ後**: 全章ビルドの `check type 3 fonts` で、`Type3FontCheck` が仕上がった PDF を検査し、ページと字を報告します。ページは PDF の通し番号で、かっこの中にそのページの章や節の題を添えます。`GlyphCoverageCheck` が報告した字は重ねて報告しません
 
 ### 章扉のリード
 
