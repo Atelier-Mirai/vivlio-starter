@@ -124,7 +124,7 @@ module VivlioStarter
             Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
           end
 
-          # `:::{.text-table}` の div ができた（組み込み置換ルールの）後に行う
+          # `:::{.text-table}`・`:::{.table-text}` の div ができた（組み込み置換ルールの）後に行う
           begin
             wrap_text_table_blocks!(html_file)
           rescue StandardError => e
@@ -902,9 +902,10 @@ module VivlioStarter
       module_function :wrap_img_text_blocks!
 
       # ================================================================
-      # text-table コンテナの正規化（text-table-spec.md §2.1）
+      # text-table / table-text コンテナの正規化（text-table-spec.md §2.1・§13）
       # ----------------------------------------------------------------
-      # `:::{.text-table}` は本文を左、表を右に並べる。VFM は中身をそのまま並べるので、
+      # `:::{.text-table}` は本文を左、表を右に、`:::{.table-text}` は表を左、本文を右に並べる。
+      # VFM は中身をそのまま並べるので、
       #   <div class="text-table"><p>本文</p><p>本文</p><p><strong>キャプション</strong></p><table>…</table></div>
       # のままでは、flex の列が子の数だけできる（本文が 2 段落なら 3 列）。表の側（キャプションと
       # 表、またはラベル付きの div.cross-ref-table）と、それ以外（本文）をそれぞれ包み、
@@ -912,42 +913,49 @@ module VivlioStarter
       #     <div class="text-table-body">本文…</div>
       #     <div class="text-table-table">キャプション・表</div>
       #   </div>
-      # の 2 列にする。本文を先、表を後に並べ直すので、原稿で表を先に書いても、EPUB・Kindle で
-      # 縦に積んだときに本文から読める（display: block では CSS の order が効かない）。
-      # 表が無ければ包まない（本文だけが全幅で組まれる）。表が二つ以上あれば最初の表だけを右へ置き、
+      # の 2 列にする（table-text は table-text-table を先、table-text-body を後）。原稿の順ではなく
+      # 記法の順に並べ直すので、EPUB・Kindle で縦に積んだときも、text-table は本文から、
+      # table-text は表から読める（display: block では CSS の order が効かない）。
+      # 表が無ければ包まない（本文だけが全幅で組まれる）。表が二つ以上あれば最初の表だけを表の側へ置き、
       # 残りは本文の側に入る。どちらも preflight と build が 🟡 で知らせる（TextTableCheck）。
       # ================================================================
+
+      # 表と本文を並べる囲みのクラスと、左の列に置く側
+      TABLE_BESIDE_TEXT = { 'text-table' => :body, 'table-text' => :table }.freeze
+
       def wrap_text_table_blocks!(html_file)
         content = File.read(html_file, encoding: 'utf-8')
         doc = HtmlParser.parse_html_document(content)
-        wrapped = doc.css('div.text-table').count { wrap_text_table(it) }
+        wrapped = TABLE_BESIDE_TEXT.sum do |klass, left|
+          doc.css("div.#{klass}").count { wrap_text_table(it, klass, left) }
+        end
         return if wrapped.zero?
 
         HtmlParser.save_html_document(html_file, doc)
-        Common.log_success("#{html_file}: text-table コンテナを正規化しました")
+        Common.log_success("#{html_file}: text-table / table-text コンテナを正規化しました")
       end
       module_function :wrap_text_table_blocks!
 
-      # 1 つの text-table を 2 列に包む。包んだら true
-      def wrap_text_table(container)
-        return false if container.at_css('> div.text-table-table')
+      # 1 つの囲みを、本文の列（"#{klass}-body"）と表の列（"#{klass}-table"）に包む。
+      # left が :table なら表の列を先（左）に置く。包んだら true
+      def wrap_text_table(container, klass, left)
+        return false if container.at_css("> div.#{klass}-table")
 
         table_side = text_table_side(container)
         return false if table_side.empty?
 
         body_nodes = container.children.reject { table_side.include?(it) || (it.text? && it.text.strip.empty?) }
-        body = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = 'text-table-body' }
-        table = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = 'text-table-table' }
+        body = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = "#{klass}-body" }
+        table = Nokogiri::XML::Node.new('div', container.document).tap { it['class'] = "#{klass}-table" }
         container.children.each(&:unlink)
         body_nodes.each { body.add_child(it) }
         table_side.each { table.add_child(it) }
-        container.add_child(body)
-        container.add_child(table)
+        (left == :table ? [table, body] : [body, table]).each { container.add_child(it) }
         true
       end
       module_function :wrap_text_table
 
-      # 右の列へ置くノード。最初の表（ラベル付きなら div.cross-ref-table ごと）と、
+      # 表の列へ置くノード。最初の表（ラベル付きなら div.cross-ref-table ごと）と、
       # 表の直前にある太字だけの段落（キャプション）
       def text_table_side(container)
         first = container.element_children.find do |node|

@@ -11,6 +11,7 @@
 #   - 表が無い・二つ以上・.long-table が中にある、を 🟡 で開始行とともに指摘する
 #   - コードフェンスの中の記法の解説は調べない
 #   - 改ページの `---` を表の区切り行と取り違えない
+#   - :::{.table-text} も同じに調べ、そのクラス名で指摘する（§13）
 # ================================================================
 
 require 'test_helper'
@@ -99,6 +100,28 @@ module VivlioStarter
         violations = check(":::{.text-table}\nA | B の比較。\n---\n:::\n")
 
         assert_equal [':::{.text-table} の中に表がありません'], violations.map { it.message.split(' - ').last }
+      end
+
+      def test_should_accept_table_text_with_one_table
+        violations = check(<<~MD)
+          :::{.table-text}
+          | 指定 | 向き |
+          |---|---|
+          | `dir=right` | ▶ 右向き |
+
+          表の後に本文を書きます。
+          :::
+        MD
+
+        assert_empty violations
+      end
+
+      # table-text の指摘は、そのクラス名と「本文の左に並べる」で出す
+      def test_should_warn_table_text_without_table_with_its_own_name
+        violations = check(":::{.table-text}\n本文だけです。\n:::\n")
+
+        assert_equal ['contents/11-sample.md:1 - :::{.table-text} の中に表がありません'], violations.map(&:message)
+        assert_includes violations.first.detail, '本文の左に並べる表'
       end
 
       private

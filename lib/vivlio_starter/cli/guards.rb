@@ -94,7 +94,7 @@ module VivlioStarter
       # 原稿の中身を点検する検査の並び。build と preflight が同じものを使う
       # （原稿を点検する指摘は両方で同じものを出す・terminal-output-notes.md §1）。
       # 閉じ忘れ（コードフェンス・コンテナ）は 🔴 で止め、改ページの取り残し・未知のクラス・
-      # 並べられない :::{.text-table} は 🟡。
+      # 並べられない :::{.text-table}・:::{.table-text} は 🟡。
       # 検査を足すときは、ここへ 1 つ足せば両方のコマンドに効く。
       # @param paths [Array<String>, nil] 調べる原稿。nil なら contents/ の全原稿
       # @return [Array<BaseCheck>]

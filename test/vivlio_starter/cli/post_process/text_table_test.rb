@@ -9,13 +9,14 @@ module VivlioStarter
     module PostProcessCommands
       # wrap_text_table_blocks! は `:::{.text-table}` の中身を、本文（.text-table-body）と
       # 表の側（.text-table-table）の 2 列に包む（text-table-spec.md §2.1）。
+      # `:::{.table-text}` は表の側を先に置く（§13）。
       class TextTableTest < Minitest::Test
-        def wrap(inner)
+        def wrap(inner, klass: 'text-table')
           Tempfile.create(['vs_text_table_test_', '.html']) do |f|
-            f.write(%(<html><body><div class="text-table">#{inner}</div></body></html>))
+            f.write(%(<html><body><div class="#{klass}">#{inner}</div></body></html>))
             f.flush
             PostProcessCommands.wrap_text_table_blocks!(f.path)
-            return Nokogiri::HTML(File.read(f.path, encoding: 'utf-8')).at_css('div.text-table')
+            return Nokogiri::HTML(File.read(f.path, encoding: 'utf-8')).at_css("div.#{klass}")
           end
         end
 
@@ -67,6 +68,23 @@ module VivlioStarter
 
           assert_equal 'a', box.at_css('.text-table-table td').text
           assert_equal 'b', box.at_css('.text-table-body td').text
+        end
+
+        # table-text は表の側を先（左）、本文を後（右）に並べる。キャプションは表と一緒に動く
+        def test_should_put_table_before_body_for_table_text
+          box = wrap("<p><strong>向きと伸びる方向</strong></p>#{TABLE}<p>一つ目。</p><p>二つ目。</p>",
+                     klass: 'table-text')
+
+          assert_equal %w[table-text-table table-text-body], box.element_children.map { it['class'] }
+          assert_equal %w[p table], box.at_css('.table-text-table').element_children.map(&:name)
+          assert_equal %w[p p], box.at_css('.table-text-body').element_children.map(&:name)
+        end
+
+        # 原稿で本文を先に書いても、table-text は表を先に並べる（縦に積んだとき表から読める）
+        def test_should_put_table_first_for_table_text_even_when_written_after
+          box = wrap("<p>本文。</p>#{TABLE}", klass: 'table-text')
+
+          assert_equal %w[table-text-table table-text-body], box.element_children.map { it['class'] }
         end
       end
     end

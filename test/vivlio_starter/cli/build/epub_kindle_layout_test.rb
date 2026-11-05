@@ -246,12 +246,13 @@ module VivlioStarter
         assert_empty offenders
       end
 
-      # 本文の右に表を並べる :::{.text-table} は、EPUB（画面幅が分からない）と Kindle（flex を解さない）で
-      # 上下に積む（text-table-spec.md §4）
+      # 本文と表を並べる :::{.text-table}・:::{.table-text} は、EPUB（画面幅が分からない）と
+      # Kindle（flex を解さない）で上下に積む（text-table-spec.md §4・§13）
       def test_should_stack_text_table_for_epub_and_kindle
         css = File.read(File.expand_path('../../../../stylesheets/layout-utils.css', __dir__), encoding: 'utf-8')
 
-        assert_match(/body\.vs-epub \.text-table,\s*body\.vs-kindle \.text-table \{\s*display: block;/, css)
+        selectors = %w[text-table table-text].flat_map { |klass| %w[epub kindle].map { "body\\.vs-#{it} \\.#{klass}" } }
+        assert_match(/#{selectors.join(',\s*')} \{\s*display: block;/, css)
       end
 
       # Previewer 4 は ::before の content を本文へ差し込むので、実体マーカーと二重にならないよう止める

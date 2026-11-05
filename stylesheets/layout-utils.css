@@ -512,19 +512,22 @@ body.vs-kindle .side-by-side > * {
   margin-block: 3mm;
 }
 
-/* 本文の右に短い表を並べるコンテナ（text-table-spec.md）
+/* 本文と短い表を並べるコンテナ（text-table-spec.md）
    使用例:
-   :::{.text-table}
+   :::{.text-table}        … 本文を左、表を右（本文が主で、表で補う）
    本文…
 
    | 範囲 | 評価 |
    |------|------|
    | …    | …    |
    :::
-   後処理（wrap_text_table_blocks!）が、本文を .text-table-body、キャプションと表を
-   .text-table-table に包んで 2 列にする。.side-by-side と同じ理由で grid ではなく flex で組む。
+   :::{.table-text} は表を左、本文を右に並べる（表が主で、本文で補う）。
+   後処理（wrap_text_table_blocks!）が、本文を .text-table-body（.table-text-body）、キャプションと表を
+   .text-table-table（.table-text-table）に包み、記法の順に並べて 2 列にする。
+   .side-by-side と同じ理由で grid ではなく flex で組む。
    並べた箱はページの途中で分けられず、収まらなければ丸ごと次のページへ送られる */
-.text-table {
+.text-table,
+.table-text {
   display: flex;
   gap: 1rem;
   align-items: flex-start;
@@ -532,7 +535,8 @@ body.vs-kindle .side-by-side > * {
 }
 
 /* 本文は残りの幅をすべて使う。min-inline-size: 0 がないと、長い語が列を押し広げる */
-.text-table > .text-table-body {
+.text-table > .text-table-body,
+.table-text > .table-text-body {
   flex: 1 1 0;
   min-inline-size: 0;
 }
@@ -540,28 +544,34 @@ body.vs-kindle .side-by-side > * {
 /* 表は自然な幅で組む（列幅を比率で決めると、表は狭すぎて折り返すか、広すぎて空く）。
    目安は版面の半分（マニュアルに書く）。上限の 3 分の 2 は本文の列を守る安全弁で、
    横に広い表を囲んでも本文が 1 字ずつ折り返すほど細くならないよう、超えた分はセルの中で折り返す */
-.text-table > .text-table-table {
+.text-table > .text-table-table,
+.table-text > .table-text-table {
   flex: 0 0 auto;
   max-inline-size: calc(100% * 2 / 3);
 }
 
 /* 列の上端をそろえる。表の上下の余白と、本文の最初・最後の段落の余白を消す */
-.text-table table {
+.text-table table,
+.table-text table {
   margin-block: 0;
 }
 
-.text-table-body > :first-child {
+.text-table-body > :first-child,
+.table-text-body > :first-child {
   margin-block-start: 0;
 }
 
-.text-table-body > :last-child {
+.text-table-body > :last-child,
+.table-text-body > :last-child {
   margin-block-end: 0;
 }
 
 /* EPUB は読者の画面幅が分からず、Kindle は flex を解さない。.side-by-side と同じく
-   本文、表の順に上下に積む（後処理が本文を先に並べている） */
+   上下に積む。順は記法のとおり（後処理が並べている）: text-table は本文、表。table-text は表、本文 */
 body.vs-epub .text-table,
-body.vs-kindle .text-table {
+body.vs-kindle .text-table,
+body.vs-epub .table-text,
+body.vs-kindle .table-text {
   display: block;
 }
 
@@ -569,6 +579,12 @@ body.vs-epub .text-table > .text-table-table,
 body.vs-kindle .text-table > .text-table-table {
   max-inline-size: none;
   margin-block-start: 3mm;
+}
+
+body.vs-epub .table-text > .table-text-table,
+body.vs-kindle .table-text > .table-text-table {
+  max-inline-size: none;
+  margin-block-end: 3mm;
 }
 
 /* グリッド内の配置 */
