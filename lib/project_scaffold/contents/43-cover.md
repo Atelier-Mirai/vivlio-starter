@@ -33,7 +33,9 @@ book:
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
 | 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート（`light`・`dark` のみ） |
 
-1 の画像は、PNG のほかに JPEG（`.jpg`・`.jpeg`）と WebP（`.webp`）も使えます。裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。`master` は画像だけを探すテーマ名です。SVG を使うときは、`master` 以外のテーマ名を付けてください。
+1 の画像は、PNG のほかに JPEG（`.jpg`・`.jpeg`）と WebP（`.webp`）も使えます。裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。
+
+テーマ名には、`floral` のように好きな名前を付けられます。使える文字は半角の英小文字・数字・`_` です。ただし `master` は、`vs import` が取り込んだ表紙に付ける名前で（@chapref:ch-import）、画像だけを探し、SVG は使いません。
 
 独自のテーマ名で画像も SVG も見つからないときは、同梱のテンプレートで代用せず、🔴 で報告して表紙を作りません（@pageref:cover-missing）。テーマ名やファイル名の書き誤りは、表紙を作る時点で分かります。
 
