@@ -838,6 +838,17 @@ p.references {
   text-indent: 0;
 }
 
+/* 枠の内側の空きは padding で取る。最初の子の上の余白と最後の子の下の余白が padding に
+   重なると、中身によって空きが変わる（図なら 4mm、.image-group なら 0.5 行が上乗せされる）。
+   特異度 (0,2,0) で、figure の margin-block (0,1,1) や .image-group の margin-block (0,1,0) に勝つ */
+.output > :first-child {
+  margin-block-start: 0;
+}
+
+.output > :last-child {
+  margin-block-end: 0;
+}
+
 /* 表示例の中の見出しは見本なので、本の見出しの「直後で改ページしない」を外す。
    囲みの最後の見出しの break-after: avoid は囲みの外へ伝わり、囲みが次の見出しや段落と
    一かたまりになって、入る空きがあっても次のページへ送られる */
