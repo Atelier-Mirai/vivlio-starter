@@ -4,12 +4,12 @@
 一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の SVG や PNG を用意する場合も、準備から生成・確認までの流れは共通です。
 :::
 
-表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙だけは、プロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
+表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙と、電子書籍用の表紙だけは、プロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
 
-## カバーテーマの選択
+## 表紙のデザインを選ぶ
 
 :::{.section-lead}
-最初に `book.yml` の `book.cover` で使うデザインを選びます。同梱テンプレートを使うか、名前を付けた独自の SVG または PNG を使うかで指定します。
+`book.yml` の `book.cover` に、使うデザインの名前（テーマ名）を書きます。同梱の `light`・`dark` を使うか、自分で用意した SVG または PNG を使うかを選べます。
 :::
 
 ```yaml
@@ -19,42 +19,36 @@ book:
   # cover: dark  # 暗いテーマ
 
   # 著者が用意した独自デザインを使う場合
-  # cover: floral    # covers/frontcover_floral.png または frontcover_floral.svg を使用
-  # cover: mandala   # covers/frontcover_mandala.png または frontcover_mandala.svg を使用
-  # cover: master    # covers/frontcover_master.png を使用
+  # cover: floral  # covers/frontcover_floral.png か .svg を使用
+  # cover: master  # covers/frontcover_master.png を使用
 ```
 
-### テーマ別のソースファイル探索順
+`cover: <テーマ名>` を指定すると、表紙と裏表紙のそれぞれについて、次の順に元の画像を探します。
 
-`cover: <テーマ名>` を指定すると、以下の順でソースファイルを探索します。
+**元の画像を探す順序**
 
 | 優先順位 | 探索先 | 説明 |
 |:---:|:---|:---|
 | 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した PNG |
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
-| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート SVG（`light` / `dark` のみ） |
+| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート（`light`・`dark` のみ） |
 
-たとえば `cover: dark` なら、次の順に探します。
-1. `covers/frontcover_dark.png` があればそれを使用
-2. なければ `covers/frontcover_dark.svg` を使用
-3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
+裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。`master` は PNG だけを探すテーマ名です。SVG を使うときは、`master` 以外のテーマ名を付けてください。
 
-`floral` のような独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートには切り替えず、ビルドが 🔴 で報告します。テーマ名やファイル名の書き誤りに気づけるようにするためです。
-
-PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異なります。PNG は、塗り足しまで描いた `_bleed` 付きの画像や `cover_bleed` の設定（後述）が使えます。SVG は、仕上がりの大きさで描いた画像に、トンボを付けて書き出します。
+独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートで代用せず、🔴 で報告して表紙を作りません（@pageref:cover-missing）。テーマ名やファイル名の書き誤りは、表紙を作る時点で分かります。
 
 ### light / dark テーマ
 
-`light` または `dark` を選ぶと、同梱の `covers/bundled/frontcover.svg` に対応する色が使われます。タイトルや著者名も `book.yml` から入るため、まず本の情報を設定して試し刷りできます。
+`light` または `dark` を選ぶと、同梱のテンプレート（`covers/bundled/` の SVG）に、それぞれのテーマの色を当てて表紙を作ります。表紙には `book.yml` の書名（`main_title`）・副題（`subtitle`）・著者名（`author`）・連載名（`series`）・発行日（`release`）が入ります。本の情報を設定すれば、画像を用意しなくても表紙ができます。
 
 ```yaml
 book:
   cover: dark  # 暗いテーマのデザインを使用
 ```
 
-### 著者独自デザインの svg 画像を用いる
+### 独自の SVG を使う
 
-独自の SVG を使う場合は、`covers/` に `frontcover_<テーマ名>.svg` を置き、`book.yml` にテーマ名を書きます。別案を試すときも、ファイルを残したまま設定を切り替えられます。
+`covers/` に `frontcover_<テーマ名>.svg` と `backcover_<テーマ名>.svg` を置き、`book.yml` にテーマ名を書きます。デザインごとに名前を変えて置いておけば、`cover:` を書き換えるだけで別の案に切り替えられます。
 
 :::{.diagram}
 ```text
@@ -69,17 +63,13 @@ book:
   cover: floral  # frontcover_floral.svg を使用
 ```
 
-SVG に `{{title}}` や `{{author}}` などを書いておけば、ビルド時に `book.yml` の値が入りますので、書籍名や著者名を変えてもデザインファイルを編集し直さずに済みます。
+SVG の中に `{{title}}`・`{{subtitle}}`・`{{author}}`・`{{series}}`・`{{release}}` と書いた箇所には、ビルドのときに `book.yml` の値が入ります。書名や著者名を変えても、SVG を編集し直す必要はありません。
 
-:::{.note}
-**複数デザインの管理**
+SVG は、判型と同じ縦横比の `viewBox` で描きます（A4 なら `viewBox="0 0 595 842"`）。入稿用の表紙の塗り足し（@pageref:print-cover）には、`viewBox` の外側に描いた部分が使われます。背景のように紙の端まで届けたい要素は、四辺とも `viewBox` の外へ 3 mm 以上（A4 の `viewBox` なら 9 以上）広げて描いてください。`viewBox` の中だけに描くと、塗り足しは白になります。同梱の `covers/bundled/frontcover.svg` は背景と上下の帯を外側まで描いてあり、描き方の見本になります。
 
-`floral`、`mandala` など複数のデザインを `covers/` に用意しておき、`book.yml` の `cover:` を切り替えるだけで異なるデザインを試せます。
-:::
+### 独自の PNG を使う
 
-### 著者独自デザインの png 画像を用いる
-
-デザインツールから PNG を書き出して使う場合は、`covers/frontcover_<テーマ名>.png` に置きます。
+デザインツールで描いた画像を使うときは、`covers/frontcover_<テーマ名>.png` と `backcover_<テーマ名>.png` に PNG で置きます。次はテーマ名を `master` にした例です。
 
 :::{.diagram}
 ```text
@@ -91,222 +81,120 @@ covers/
 
 ```yaml
 book:
-  cover: master  # covers/frontcover_master.png, covers/backcover_master.png を使用
+  cover: master  # frontcover_master.png・backcover_master.png を使用
 ```
 
-画像は、仕上がりの判型に合わせた大きさ（350 dpi）で用意します。作図のソフトで下敷きにできるよう、判型ごとの雛形を `covers/templates/` に用意しています。雛形には、画像の大きさ、裁ち落とされる範囲、電子書籍で切れる範囲、文字を置ける範囲を書き込んであります。
+画像は、仕上がりの判型を 350 dpi で表す大きさで用意します。入稿用の表紙を作るとき、300 dpi に満たない画像には 🟡 で警告します。
 
-| 判型 | 画像の大きさ | 雛形 |
+**判型ごとの画像の大きさ（塗り足し 3 mm のとき）**
+
+| 判型 | 画像の大きさ | 塗り足し込み（`_bleed`） |
 | :--- | :--- | :--- |
-| A4（210 × 297 mm） | 2,894 × 4,093 px | `frontcover_a4.png`・`backcover_a4.png` |
-| B5（182 × 257 mm） | 2,508 × 3,541 px | `frontcover_b5.png`・`backcover_b5.png` |
-| A5（148 × 210 mm） | 2,039 × 2,894 px | `frontcover_a5.png`・`backcover_a5.png` |
+| A4（210 × 297 mm） | 2,894 × 4,093 px | 2,976 × 4,175 px |
+| B5（182 × 257 mm） | 2,508 × 3,541 px | 2,590 × 3,623 px |
+| A5（148 × 210 mm） | 2,039 × 2,894 px | 2,121 × 2,976 px |
 
-雛形の文字と線は、使い方を示すためのものです。削除してから `covers/frontcover_master.png` として保存します。
+作図のソフトで下敷きにできるよう、判型ごとの雛形を `covers/templates/` に用意しています（`frontcover_a4.png`・`backcover_a4.png` など）。雛形には、画像の大きさ、裁ち落とされる範囲、電子書籍で切れる範囲、文字を置ける範囲を書き込んであります。雛形の文字と線は使い方を示すためのものなので、削除してから `covers/frontcover_master.png` として保存します。
 
-## カバー画像の生成
+入稿用の表紙の塗り足しは、次のいずれかの方法で埋めます。
+
+- 塗り足しまで描いた画像を、名前に `_bleed` を付けて置く（`covers/frontcover_master_bleed.png`）。大きさは上の表の右の列のとおりで、この画像をそのまま使う
+- 何も置かなければ、仕上がりの大きさの画像を塗り足しまで拡大して使う（`output.print_pdf.cover_bleed: scale`、既定）。画像の四辺は裁ち落とされる
+- `cover_bleed: keep` にすると拡大せず、塗り足しは白になる。紙の端まで色の付いていないデザインに使う
+
+## 表紙を生成する
 
 :::{.section-lead}
-デザインを選んだら、`vs cover` で各用途のカバーを生成します。生成後は、閲覧用と印刷用で色や端の見え方が違わないか、実際のファイルを開いて確認します。
+デザインを選んだら、`vs cover` で表紙を生成します。作る形式は `output.targets` で、大きさは判型で決まります。
 :::
-
-### 基本的な使い方
-
-設定したテーマのカバーは、次のコマンドでまとめて作ります。
 
 ```bash
 vs cover
 ```
 
-`vs cover` は `book.yml` のテーマ・判型・`output.targets` を読み、必要な表紙を作ります。`pdf` があれば閲覧用（RGB）、`print_pdf` があれば入稿用（CMYK）、`epub` か `kindle` があれば電子書籍用（JPEG）です。入稿用と電子書籍用の表紙はプロジェクト直下に置かれるので、それを開いて確かめてください。閲覧用は、`vs build` で本に組み込んだ姿で確かめます。
+:::{.text-table}
+`vs cover` は `book.yml` の `book.cover`・`page.use`・`output.targets` を読み、必要な表紙を作ります。判型は `page.use` に選んだプリセットの判型（`a4_custom` なら A4）で、表紙が対応する判型は A4・B5・A5 です。
 
-### 表紙だけを作り直す
+**`output.targets` と作る表紙**
 
-表紙の判型は `page.use`、作る形式は `output.targets` で決まります。別の判型や形式で作りたいときは、`book.yml` を書き換えてから実行します。分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を作ります。巻の `cover` に書いた画像を使い、`light`・`dark` には巻の書名が入ります（@pageref:volumes）。
-
-表紙のデザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときは、本文を組み直さずに `vs cover` だけを実行すれば足ります。`vs build` も表紙を作り直すので、本を組むときに `vs cover` を先に実行しておく必要はありません。
-
-## 設定のカスタマイズ
-
-:::{.section-lead}
-判型は `book.yml` のページ設定から読み取られます。まずは書籍の判型と、生成されるカバーのサイズが合っているかを確認してください。
+| `output.targets` | 作る表紙 |
+|:---|:---|
+| `pdf` | 閲覧用 PDF（RGB） |
+| `print_pdf` | 入稿用 PDF（CMYK） |
+| `epub`・`kindle` | 電子書籍用 JPEG |
 :::
 
-### ページサイズの自動判定
+入稿用と電子書籍用の表紙はプロジェクト直下に置かれるので、開いて確かめてください。閲覧用は、`vs build` で本に組み込んだ姿で確かめます。
 
-印刷用 PDF の判型は、`book.yml` の `page.use` から決まります。本文の判型を変えたら、カバーも再生成してサイズを確かめてください。
+`vs build` も表紙を作り直すので、本を組む前に `vs cover` を実行する必要はありません。`vs cover` は、デザインを直したときや、入稿用・電子書籍用の表紙だけを渡し直すときに、表紙だけを作るために使います。
 
-```yaml
-page:
-  use: b5_standard  # B5サイズとして処理
-  # use: a5_standard  # A5サイズとして処理
-  # use: a4_standard  # A4サイズとして処理
-```
+### 分冊の本の表紙
 
-## 出力フォーマットの詳細
+分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を作ります。巻の `cover` に書いたテーマを使い、`light`・`dark` には巻の書名が入ります（@pageref:volume-book-values）。プロジェクト直下の表紙の名前には、`mybook_lower_frontcover_v0.1.0.pdf` のように巻の `id` が付きます。
+
+## 生成される表紙
 
 :::{.section-lead}
-閲覧・印刷・電子書籍では、色空間や画像の大きさが変わります。ここでは生成物ごとの違いと、デザインを確かめるときの注意点をまとめます。
+閲覧・入稿・電子書籍では、表紙に求められる大きさと色が異なります。ここでは生成物ごとの違いと、確かめるときの注意点をまとめます。
 :::
 
-### PDF 用（RGB 版）
+### 閲覧用 PDF
 
-**用途**: PDF閲覧、電子配布
+仕上がりの判型の大きさで、色は RGB です。PNG は 350 dpi の画像として、SVG は図形のまま PDF にします。この表紙は、`vs build` が本文の前後に結合します。結合しないときは、`output.pdf.combined` を `false` にします（@chapref:ch-build）。
 
-- **サイズ**: `page.use` の判型に合わせる（B5 なら 182 × 257 mm）
-- **解像度**: 350 dpi
-- **カラーモード**: RGB
-- **ファイル形式**: PDF（通常）
-- **特徴**: ファイルサイズは大きめだが、画面での閲覧に向く
+### 入稿用 PDF @print-cover
 
-### 印刷用 PDF（CMYK 版、PDF/X-1a）
+仕上がりの判型に塗り足し（`output.print_pdf.bleed`、既定 3 mm）を加え、トンボを付けた PDF です。色は Japan Color 2001 Coated の ICC プロファイルで CMYK に変換し、PDF/X-1a:2001 として書き出します。表紙と裏表紙は別のファイルで、プロジェクト直下に置かれます（`mybook_frontcover_v0.1.0.pdf`・`mybook_backcover_v0.1.0.pdf`）。
 
-**用途**: 商業印刷、印刷所入稿
-
-- **サイズ**: `page.use` の判型に塗り足しを加えた大きさ
-- **塗り足し**: 3 mm（商業印刷標準）
-- **解像度**: 350 dpi
-- **カラーモード**: CMYK（Japan Color 2001 Coated による ICC ベース変換を自動適用）
-- **ファイル形式**: PDF/X-1a:2001準拠（出力インテント埋め込み）
-- **特徴**: 印刷所への入稿を想定した仕様
-
-印刷用 PDF では、表紙画像が塗り足し領域まで拡大されます。裁断で周辺が落ちることを見込み、タイトルや著者名などは端から十分に離して配置してください。
-
-塗り足しまで描いた表紙を用意したときは、`covers/frontcover_master_bleed.png` のように、表紙の画像の名前に `_bleed` を付けて置きます。こちらを拡大せずにそのまま使います。拡大したくないが、塗り足し用の画像もないときは、`config/book.yml` の `output.print_pdf.cover_bleed` を `keep` にします。この場合、塗り足しの帯は白のまま残ります。
+塗り足しは、裁断で切り落とされる部分です。書名や著者名などは、仕上がりの端から十分に離して置いてください。
 
 :::{.note}
 **PDF/X-1a とは**
 
-PDF/X-1a は、商業印刷向けの PDF 規格です。色空間やフォントなどに条件が定められており、印刷工程での扱いを揃える助けになります。入稿先に固有の指定がある場合は、その条件も確認してください。
+PDF/X-1a は、商業印刷向けの PDF の規格です。色を CMYK に限ることや、フォントを埋め込むことなどが定められています。準拠しているかは、Adobe Acrobat Pro のプリフライトで確かめられます。入稿先に固有の指定があるときは、その条件も確かめてください。
 :::
 
-### 電子書籍用（JPEG）
+### 電子書籍用 JPEG
 
-**用途**: 電子書籍（EPUB・Kindle）
+EPUB と Kindle は同じ 1 枚の JPEG を使います。大きさは KDP の推奨の 1,600 × 2,560 px、色は sRGB、JPEG の品質は 95 です。Display P3 などで描いた画像も、sRGB に変換して書き出します。プロジェクト直下には `mybook_frontcover_v0.1.0.jpg` の名前で置かれます。
 
-- **サイズ**: 1,600 × 2,560 px（KDP の推奨の寸法）
-- **縦横比**: 1:1.6
-- **色**: sRGB
-- **品質**: JPEG 95%
-- **置き場所**: プロジェクト直下（例: `mybook_frontcover_v0.1.0.jpg`）
-
-EPUB と Kindle は同じ 1 枚を使います。EPUB には、この表紙が埋め込まれます。Kindle 用の `.kpf` には表紙を含めません。KDP では、本と表紙を別々にアップロードする決まりだからです。KDP の登録画面で、プロジェクト直下の JPEG を表紙としてアップロードしてください（@chapref:ch-build）。
-
-元の画像に Display P3 などの色の情報が付いていても、sRGB に変換して書き出します。sRGB の色の情報は OS にあるものを使います。見つからない環境では、元の色の情報のまま書き出します。KDP の指定（RGB）は、そのままでも満たしています。
+EPUB には、この表紙が埋め込まれます。Kindle 用の `.kpf` には表紙を含めません。KDP では、本と表紙を別々にアップロードする決まりだからです。KDP の登録画面で、プロジェクト直下の JPEG を表紙としてアップロードしてください（@chapref:ch-build）。
 
 :::{.note}
 **電子書籍用の表紙は左右が切り落とされます**
 
-元の画像を高さ 2,560 px に縮めてから、中央の幅 1,600 px を切り出します。A4 判のマスター画像（2,894 × 4,093 px）なら、縮めた横幅は約 1,810 px なので、左右を約 105 px ずつ切り落とします。同梱の `light`・`dark` の表紙では、左右の細い金の縦線がこの切り落としにかかり、上下の金の帯だけが残ります。
+元の画像を高さ 2,560 px に縮めてから、中央の幅 1,600 px を切り出します。A4 判の画像（2,894 × 4,093 px）なら、縮めた横幅は約 1,810 px なので、左右を約 105 px ずつ切り落とします。同梱の `light`・`dark` の表紙では、左右の細い金の縦線がこの切り落としにかかり、上下の金の帯だけが残ります。
 
-電子書籍用にはマスター画像の中央部分が残ります。タイトルや著者名が左右の切り落としにかからないよう、中央寄りへ配置してください。
+タイトルや著者名が左右の切り落としにかからないよう、中央寄りへ配置してください。
 :::
-
-## カバー画像の削除
-
-:::{.section-lead}
-デザインを差し替えて作り直すときは、`vs clean --cover` で生成済みのカバーを削除できます。`covers/` に置いたソース画像は残るので、同じデザインから再生成できます。
-:::
-
-```bash
-vs clean --cover
-```
-
-### 複数のオプションとの組み合わせ
-
-カバー以外のキャッシュや生成物も片付けるときは、オプションを組み合わせます。削除範囲を確認してから実行してください。
-
-```bash
-# カバー画像とキャッシュを削除
-vs clean --cover --cache
-
-# カバー画像とキャッシュと生成物をすべて削除
-vs clean --cover --cache --purge
-```
 
 ## トラブルシューティング
 
 :::{.section-lead}
-ImageMagick や Ghostscript などのツールがない・動かないときは、`vs doctor --fix` で導入してください。ここでは、ツールをインストールしても解決しない症状を扱います。
+ImageMagick や Ghostscript などのツールがない・動かないときは、`vs doctor --fix` でインストールしてください。ここでは、ツールをインストールしても解決しない症状を扱います。
 :::
 
-### マスターファイルが見つからない
+### 表紙の画像が見つからない @cover-missing
 
-**症状**: コマンド実行時に警告が表示される。
-
-:::{.output}
-```text
-🟡 表紙マスターが見つかりません: covers/frontcover_master.png
-        → covers/templates/ の雛形を下敷きに画像を作って置くか、config/book.yml の book.cover を light にしてください
-```
-:::
-
-独自のテーマ名で PNG も SVG も見つからないときは、次のように表示されます。
+**症状**: 表紙が作られず、次のように報告される。
 
 :::{.output}
 ```text
 🔴 カスタム画像 'floral' のPNGファイルもSVGファイルも見つかりません
         covers/frontcover_floral.png または .svg
         covers/backcover_floral.png または .svg
-        → book.yml の book.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください
+        → config/book.yml の book.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください
 ```
 :::
 
-**原因**: 表紙の画像が指定された場所に存在しない。
+**原因**: `book.cover` のテーマ名に対応する画像が `covers/` にない。
 
-**解決方法**:
-1. `covers/` ディレクトリが存在するか確認
-2. ファイル名が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた名前になっているか確認（`master` なら `frontcover_master.png` と `backcover_master.png`）
-3. `book.yml` の `book.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
+**解決方法**: 画像の名前が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた形になっているか確かめる。`master` は `.png` だけを使う。
 
 ### CMYK 変換で色が変わる
 
-**症状**: 印刷用 PDF（CMYK 版）の色が RGB 版と異なる。
+**症状**: 入稿用の表紙の色が、閲覧用の表紙よりくすんで見える。
 
-**原因**: RGB と CMYK では表現できる色域（ガマット）が異なり、RGB でしか出せない鮮やかな色（とくに青や緑）は、くすんだ近い色に置き換わる。
+**原因**: CMYK で表せる色の範囲（色域）は RGB より狭く、RGB でしか出せない鮮やかな色（とくに青や緑）は、近い色に置き換わる。
 
-**解決方法**:
-- 印刷に使う色は、CMYK へ変換した結果を見ながら選ぶ
-- Photoshop などで CMYK プレビューを確認し、必要なら色を調整する
-
-## 実用的なワークフロー
-
-:::{.section-lead}
-ここまでの設定を、初回の生成、デザインの修正、入稿前の確認という三つの場面に沿って並べます。どの場面でも、生成したファイルを開いて仕上がりを確かめます。
-:::
-
-### 初回生成
-
-```bash
-# 1. マスター画像を配置
-# covers/frontcover_master.png
-# covers/backcover_master.png を配置
-# 2. カバー画像を生成
-vs cover
-# 3. 本文と結合してビルドし、表紙を確かめる
-vs build
-```
-
-### デザインの修正と再生成
-
-```bash
-# 1. マスター画像を修正（デザインツールで編集）
-# 2. 古いカバー画像を削除
-vs clean --cover
-# 3. 新しいカバー画像を生成
-vs cover
-# 4. PDFに統合してビルド
-vs build
-```
-
-### 印刷所入稿前の最終確認
-
-```bash
-# 1. 入稿用の表紙を作り直す（output.targets に print_pdf を入れておく）
-vs cover
-# 2. プロジェクト直下の入稿用表紙を開いて確かめる
-open mybook_frontcover_v0.1.0.pdf
-open mybook_backcover_v0.1.0.pdf
-# 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
-# 4. 問題なければ印刷所に入稿
-```
+**解決方法**: 入稿用の表紙 PDF を開いて色を確かめ、変わりすぎた色をデザインの側で選び直す。Photoshop などの CMYK プレビューを使うと、描きながら確かめられる。
