@@ -309,7 +309,7 @@ theme:
 
 ### 色を組み合わせる
 
-テーマカラーのほかに、前書き・後書きの色（`preface_color`）と付録の色（`appendix_color`）も選べます（@ch-book-yml の章）。3 色を同じ系統からとると、本全体の印象がそろいます。
+テーマカラーのほかに、前書き・後書きの色（`preface_color`）と付録の色（`appendix_color`）も選べます。3 色を同じ系統からとると、本全体の印象がそろいます。
 
 | 印象 | `color` | `preface_color` | `appendix_color` |
 | --- | --- | --- | --- |
