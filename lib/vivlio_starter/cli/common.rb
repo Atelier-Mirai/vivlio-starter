@@ -858,7 +858,7 @@ module VivlioStarter
         project = CONFIG&.project
         project_name = project&.name || 'vivlio_starter'
         project_version = project&.version
-        include_version = CONFIG&.output&.include_version || false
+        include_version = project&.include_version || false
 
         filename = output_basename(project_name)
         filename += '_print' if target == 'print_pdf'
@@ -894,7 +894,7 @@ module VivlioStarter
       # @return [String]
       def generate_cover_output_filename(side, ext: 'pdf')
         project = CONFIG&.project
-        include_version = CONFIG&.output&.include_version || false
+        include_version = project&.include_version || false
 
         filename = "#{output_basename(project&.name || 'vivlio_starter')}_#{side}cover"
         filename += "_v#{project&.version}" if include_version && !blank?(project&.version)

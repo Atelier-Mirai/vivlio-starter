@@ -129,6 +129,41 @@ module VivlioStarter
         YAML
       end
 
+      # 行末の注釈が次の行へ続いていれば、続きのコメントも一緒に移す（字下げは移した先に合わせる）
+      def test_should_move_continued_comments_with_the_key
+        text = <<~YAML
+          project:
+            name: "mybook"
+            version: "0.1.0"
+
+          output:
+            targets: pdf
+            include_version: false # true:  mybook_v0.1.0.pdf
+                                   # false: mybook.pdf
+            # include_version: true
+        YAML
+
+        assert_equal <<~YAML, RetiredKeyRemover.move(text, %w[output include_version], %w[project include_version])
+          project:
+            name: "mybook"
+            version: "0.1.0"
+            include_version: false # true:  mybook_v0.1.0.pdf
+                                   # false: mybook.pdf
+
+          output:
+            targets: pdf
+            # include_version: true
+        YAML
+      end
+
+      # 移した先の字下げが深ければ、続きのコメントも同じだけ深くする
+      def test_should_shift_continued_comments_to_the_new_indent
+        text = "book:\n    main_title: \"本\"\noutput:\n  cover: light # 一行目\n               # 二行目\n  targets: pdf\n"
+
+        assert_equal "book:\n    main_title: \"本\"\n    cover: light # 一行目\n                 # 二行目\noutput:\n  targets: pdf\n",
+                     RetiredKeyRemover.move(text, %w[output cover], %w[book cover])
+      end
+
       # 手で移した後など、移した先がすでにあれば、そちらを残して元の行だけを消す
       def test_should_keep_the_new_key_when_it_is_already_written
         text = "book:\n  cover: dark\noutput:\n  cover: master\n  targets: pdf\n"

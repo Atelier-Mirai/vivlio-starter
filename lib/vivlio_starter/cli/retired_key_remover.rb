@@ -90,13 +90,32 @@ module VivlioStarter
         # 字下げは親の下の最初のキーにそろえる（孫のキーの字下げを拾わない）
         child = parent.to_a.drop(1).find { lines[it].match?(KEY_LINE) } or return nil
         indent = lines[child][KEY_LINE, :indent]
-        lines.insert(parent.last + 1, "#{indent}#{to.last}: #{value}\n")
+        shift = indent.size - lines[source][KEY_LINE, :indent].size
+        comments = continued_comments(lines, source).map { shift_indent(it, shift) }
+        lines.insert(parent.last + 1, "#{indent}#{to.last}: #{value}\n", *comments)
 
         result = remove(lines.join, [from]) or return nil
         moved?(text, result, from, to) ? result : nil
       end
 
       private
+
+      # キーの行に続く、キーより深く字下げしたコメントだけの行（行末の注釈の続き）。
+      #   include_version: true # true:  mybook_v1.0.0.pdf
+      #                         # false: mybook.pdf        ← これ
+      # キーと同じ字下げのコメント（`# cover: dark` のような別の書き方の例）は含めない
+      def continued_comments(lines, index)
+        depth = lines[index][KEY_LINE, :indent].size
+        lines.drop(index + 1).take_while { it.match?(/\A {#{depth + 1},}#/) }
+      end
+
+      # 行の字下げを shift 文字ぶん深く（負なら浅く）する。移した先の字下げが元と違っても、
+      # 続きのコメントの位置を、移したキーの行との相対でそろえるため
+      def shift_indent(line, shift)
+        return (' ' * shift) + line if shift.positive?
+
+        line.sub(/\A {0,#{-shift}}/, '')
+      end
 
       # 移した先に元の値が入り、元のキーとその下だけが無くなり、ほかは変わっていないか
       def moved?(before, after, from, to)

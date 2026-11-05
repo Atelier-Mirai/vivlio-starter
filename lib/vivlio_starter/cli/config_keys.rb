@@ -65,6 +65,7 @@ module VivlioStarter
       # ------- project -------
       %i[project name]                                => Spec[authored: "mybook"],
       %i[project version]                             => Spec[default: "0.1.0"],
+      %i[project include_version]                     => Spec[default: true],
 
       # ------- theme -------
       %i[theme color]                                 => Spec[default: "green"],
@@ -104,7 +105,6 @@ module VivlioStarter
 
       # ------- output -------
       %i[output targets]                              => Spec[default: "pdf"],
-      %i[output include_version]                      => Spec[default: true],
       %i[output pdf_preview close_existing_windows]   => Spec[default: true],
       %i[output pdf_preview window_bounds]            => Spec[default: "{0, 0, 1280, 960}"],
       %i[output pdf combined]                         => Spec[default: true],
@@ -265,6 +265,7 @@ module VivlioStarter
       %i[metrics clause_length]                  => Spec[retired: "使われていなかった設定です。消しても結果は変わりません"],
       %i[index max_sub_references]               => Spec[retired: "副次参照の最大値は 8 で固定になりました"],
       %i[output cover]                           => Spec[retired:"巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
+      %i[output include_version]                 => Spec[retired: "ファイル名を決める name・version と同じ project: の下に置きます", moved_to: %i[project include_version]],
       }.freeze
 
       # 現役キーと廃止キーを合わせた全宣言

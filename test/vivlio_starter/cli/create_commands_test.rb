@@ -279,8 +279,8 @@ module VivlioStarter
             vfm: vfm
           book:
             main_title: #{title}
-          output:
-              include_version: false
+          project:
+            include_version: false
         YAML
       end
 
@@ -325,8 +325,8 @@ module VivlioStarter
             vfm: vfm
           book:
             main_title: Sample
-          output:
-              include_version: false
+          project:
+            include_version: false
         YAML
 
         File.write('config/catalog.yml', <<~YAML)
