@@ -80,7 +80,7 @@ output:
     combined: true                    # true で結合、false で除外
 ```
 
-表紙の PDF がまだ存在しない場合、ビルド時に `book.cover` のテーマから自動生成されます。
+表紙の PDF は、ビルドのたびに `book.cover` のテーマから作り直します。表紙のデザインの選び方は @chapref:ch-cover で説明します。
 
 ### PDF 圧縮
 
@@ -150,7 +150,7 @@ output:
 
 ### 入稿用の表紙
 
-印刷入稿用の表紙は、本文とは別のファイルとしてプロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で出力されます（@chapref:ch-cover）。Japan Color 2001 Coated の ICC プロファイルで CMYK に変換し、出力インテントを埋め込んだ PDF/X-1a:2001 として書き出します（`@vivliostyle/cli` 同梱の ICC を自動利用）。別のプロファイルを使いたいときだけ、パスを指定してください。
+印刷入稿用の表紙は、本文とは別のファイルとして、プロジェクト直下に出力されます（例: `mybook_frontcover_v0.1.0.pdf`）。塗り足しの埋め方や色の変換は @chapref:ch-cover で説明します。CMYK への変換には、`@vivliostyle/cli` に同梱の Japan Color 2001 Coated の ICC プロファイルを使います。別のプロファイルを使いたいときだけ、パスを指定してください。
 
 ```yaml
 output:
