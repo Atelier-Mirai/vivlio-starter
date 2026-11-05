@@ -62,7 +62,7 @@ module VivlioStarter
             assert_includes error.message, '番号の範囲か一行の形で書いた章があります'
             assert_includes error.message, "config/catalog.yml:2\n      - 21-25\n"
             assert_includes error.message, "      - 21\n      - 22\n      - 23\n      - 25\n"
-            assert_includes error.message, 'vs build 21-23 のように範囲を打てます'
+            assert_includes error.message, 'vs build 21-23 のように範囲を指定できます'
           end
         end
 

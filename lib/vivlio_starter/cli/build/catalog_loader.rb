@@ -224,11 +224,11 @@ module VivlioStarter
           blocks = sections_of(catalog).flat_map { |key, value| untrackable_blocks(key, value, lines) }
           return nil if blocks.empty?
 
-          ["#{CATALOG_FILE} に、番号の範囲か一行の形で書いた章があります。章の追加・削除・改番で書き換えられないので、書けなくなりました",
+          ["#{CATALOG_FILE} に、番号の範囲か一行の形で書いた章があります",
            *blocks.flat_map do |block|
              ["  #{block[:where]}", *block[:before].map { "    #{it}" }, '  → リストの形で、章を一つずつ書いてください:', *block[:after].map { "    #{it}" }]
            end,
-           '一部の章だけを組むなら、catalog.yml は変えずに vs build 21-23 のように範囲を打てます'].join("\n")
+           '一部の章だけを組むなら、catalog.yml は変えずに vs build 21-23 のように範囲を指定できます'].join("\n")
         end
 
         # 区分のキーと値の組（分冊の目次では、巻ごとの区分も）
