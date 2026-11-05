@@ -3,7 +3,7 @@
 :::{.chapter-lead}
 `config/book.yml` には、本のタイトルや著者名だけでなく、紙面のデザイン、出力形式、校正などの設定を集めている Vivlio Starter プロジェクトの中心となる設定ファイルです。制作中に何をどこで変えられるかを知っておくと、書籍の姿を調整しやすくなります。
 
-本章では項目を「**必ず設定する**」「**必要に応じて調整する**」「**機能別の詳細設定**」の三つに分け、設定を探しやすい順に紹介します。最後に、章の構成を書く `config/catalog.yml` と、一冊を上下巻などに分ける分冊の書き方を説明します。
+本章では項目を「**本ごとに決める**」「**必要に応じて調整する**」「**機能ごとの設定**」の三つに分け、設定を探しやすい順に紹介します。続けて、章の構成を書く `config/catalog.yml` と、一冊を上下巻などに分ける分冊の書き方を説明し、最後に設定の書き方を調べるコマンドを紹介します。
 :::
 
 ## はじめに — 設定項目の全体像
@@ -12,40 +12,13 @@
 
 | 種別 | セクション | 説明 |
 | :--- | :--- | :--- |
-| 必ず設定する | `book` `project` `theme` `page` | 書籍ごとに異なる基本情報 |
-| 必要に応じて調整する | `typography` `output` `verify` `legal` | 既定値で動くが、カスタマイズしたい場合に |
-| 機能別の詳細設定 | `index_glossary` `index` `glossary` `metrics` `lint` `spellcheck` `pdf_read` | 各機能を使う場合のみ設定 |
+| 本ごとに決める | `book`<br>`project`<br>`theme`<br>`page` | 書籍ごとに異なる基本情報 |
+| 必要に応じて調整する | `typography`<br>`output`<br>`verify`<br>`legal` | 既定値で動くが、カスタマイズしたい場合に |
+| 機能ごとの設定 | `index_glossary`<br>`index`<br>`glossary`<br>`metrics`<br>`lint`<br>`spellcheck`<br>`pdf_read` | 各機能を使う場合のみ設定 |
 
-### 設定の書き方を調べる（`vs config:book`）
+本章の設定例のうち、`book` と `project` の値は記入例で、それ以外は書かなかったときの既定値です。
 
-キーの書き方は `vs config:book` で確認できます。表示するだけのコマンドで、`book.yml` は書き換えません。プロジェクトの外でも使えます。
-
-```bash
-vs config:book                      # 区分の一覧
-vs config:book index                # 区分のキーと説明
-vs config:book index.target_terms   # キーの説明と今の値
-vs config:book 目次                 # 言葉で探す
-```
-
-キーを指定すると、`vs new` が作る `book.yml` と同じ説明に、今の値を添えて表示します。書いていないキーは既定値を示します。
-
-:::{.output}
-```text
-index.target_terms
-
-  # ======= 索引設定 =======
-  index:
-    target_terms: light # 索引語数の目安
-
-今の値: 書いていません（既定値: light）
-```
-:::
-
-廃止されたキーを指定すると、代わりの書き方を案内します。
-
-ほかの設定ファイルも同じように調べられます。`vs config:catalog` は `catalog.yml` の書き方とこの本の章立てを、`vs config:talk` は `talk.yml` の書き方とこの本の話者を表示します。`vs config` は、これらのコマンドの一覧を表示します。
-
-## 必ず設定する項目
+## 本ごとに決める項目
 
 ### book — 書籍情報 @book-section
 
@@ -88,20 +61,20 @@ project:
 
 ```yaml
 theme:
-  style: simple      # image: 扉絵あり / simple: 扉絵なし
-  lead_size: 1.2     # リード文の文字の大きさ（本文に対する倍率）
+  style: image       # image: 扉絵・節絵あり / simple: なし
+  lead_size: 1.2     # リード文の文字の大きさ（本文に対する倍率・1.0〜2.0）
 
-  color: blue        # アクセントカラー（下記カラーパレットから選択）
-  preface_color: indigo   # 前書き・後書き専用カラー（省略時は color と同じ）
-  appendix_color: yellow  # 付録専用カラー（省略時は color と同じ）
+  color: green       # アクセントカラー（カラーパレットから選択）
+  preface_color:     # 前書き・後書きの色（空なら color と同じ）
+  appendix_color:    # 付録の色（空なら color と同じ）
 
   frontispiece:      # 章扉の背景画像（style: image のときのみ有効）
-    image: asagao
-    edge_inset: 10mm      # 扉絵の上下と紙の端の間の余白
+    image: sakura
+    edge_inset: 5mm       # 扉絵の上下と紙の端の間の余白
     heading_offset: 15mm  # 見出しブロック（章番号〜リード）を下げる量
-    heading_chars: 8      # 章題を 1 行に何文字入れるか
-    lead_chars: 20        # リード文を 1 行に何文字入れるか
-    lead_size: 1.1        # 章扉のリード文の大きさ（省略時は theme.lead_size）
+    heading_chars: 10     # 章題を 1 行に何文字入れるか
+    lead_chars: 24        # リード文を 1 行に何文字入れるか
+    lead_size:            # 章扉のリード文の大きさ（空なら theme.lead_size）
 
   ornament:          # 節見出しの装飾画像（style: image のときのみ有効）
     image: sakura
@@ -112,18 +85,19 @@ theme:
     h4: ♦            # 号見出し（h4）の先頭記号
 ```
 
+`color`・`preface_color`・`appendix_color` には、カラーパレットの色の名前か、`'#ff0000'` のような HEX 記法を書きます。
+
 **カラーパレット**
 
 | 系統 | 選択肢 |
 | :--- | :--- |
-| 暖色 | `yellow` `orange` `red` `magenta` |
-| 寒色 | `purple` `indigo` `navy` `blue` |
-| 中間色 | `cyan` `teal` `green` `lime` |
-| カスタム | `'#ff0000'` のような HEX 記法も指定可 |
+| 暖色 | <span style="color: #f0a000">■</span>`yellow` <span style="color: #ea580c">■</span>`orange` <span style="color: #dc2626">■</span>`red` <span style="color: #e11d74">■</span>`magenta` |
+| 寒色 | <span style="color: #7c3aed">■</span>`purple` <span style="color: #4f46e5">■</span>`indigo` <span style="color: #1d4ed8">■</span>`navy` <span style="color: #0186d8">■</span>`blue` |
+| 中間色 | <span style="color: #06b6d4">■</span>`cyan` <span style="color: #0d9488">■</span>`teal` <span style="color: #15803d">■</span>`green` <span style="color: #65a30d">■</span>`lime` |
 
-`style: simple` を選ぶと、`frontispiece` と `ornament` の設定は使われません。扉絵を使わずに仕上げたい本なら、この設定から始められます。
+`style: simple` を選ぶと、`frontispiece` と `ornament` の設定は使われません。付録は、`image` の本でも `simple` で組みます。
 
-`lead_size` は、章のリード文（`:::{.chapter-lead}`）を本文の何倍の大きさで組むかを決めます。1.0〜2.0 の値を書け、既定は 1.2 です。`simple` の章や付録にも有効です。`image` の章扉だけを変えたいときは、`frontispiece` の `lead_size` に書きます。
+画像の選び方、章題とリード文の字数・大きさの調整、色の組み合わせ方は @chapref:ch-frontispiece で説明しています。
 
 ### page — ページ設定
 
@@ -131,9 +105,9 @@ theme:
 
 ```yaml
 page:
-  use: b5_airy    # a5_standard / a5_airy / a5_compact / a5_custom
-                  # b5_standard / b5_airy / b5_compact / b5_custom
-                  # a4_standard / a4_airy / a4_compact / a4_custom
+  use: b5_standard  # a5_standard / a5_airy / a5_compact / a5_custom
+                    # b5_standard / b5_airy / b5_compact / b5_custom
+                    # a4_standard / a4_airy / a4_compact / a4_custom
   section_pagebreak: true   # 節（##）をページの先頭から始めるか
   chapter_pagebreak: recto  # 章などをどちら側の面から始めるか
   toc_depth: 3              # 目次にどの深さの見出しまで載せるか
@@ -161,11 +135,12 @@ page:
 原稿中に書いた `@pagebreak:recto` / `@pagebreak:verso` は、**この設定より優先されます**。「本全体はどちらでもよいが、この章の扉だけは必ず右から」といった使い分けができます。
 
 :::{.memo}
-`chapter_pagebreak` は**PDF だけに適用されます**。EPUB・Kindle はリフロー型で「右ページ／左ページ」という概念がなく、そもそも 1 章が 1 ファイルとして独立しているため、章の始まりでは常にページが改まります。EPUB のファイルサイズやページ数は変わりません。
+`chapter_pagebreak` は**PDF だけに適用されます**。EPUB・Kindle には右ページ・左ページの区別がなく、章は常に新しいページから始まります。
 :::
 
 #### `toc_depth` — 目次にどの深さまで載せるか
 
+:::{.text-table}
 目次に載せる見出しの深さを選びます。既定の `3` では、章・節（`##`）・項（`###`）まで載ります。項の多い本では目次が長くなるので、`2` にして節までに絞ると、目次のページが減ります。
 
 | 値 | 目次に載る見出し |
@@ -173,12 +148,13 @@ page:
 | `1` | 章だけ |
 | `2` | 節（`##`）まで |
 | `3` | 項（`###`）まで（既定） |
+:::
 
 付録は、`3` でも節までです。早見表のような付録は項が細かく、目次を埋めるだけになるためです。この設定が変えるのは PDF の目次ページだけです。PDF のしおり（アウトライン）や、EPUB・Kindle の目次は変わりません。
 
 #### `heading_numbering` — 見出しに番号を振るか
 
-既定では、本文の章に「第1章」、付録に「付録 A」、節（`##`）に「1-1」「A-1」と番号を振ります。番号は、章扉・節の見出し・目次・柱・図表番号・`@chapref` に出ます。
+既定では、本文の章に「第1章」、付録に「付録 A」、節（`##`）に「1-1」「A-1」と番号を振ります。番号は、章扉・節の見出し・目次・柱・図表番号・`@chapref`・PDF のしおりに出ます。
 
 | 値 | 章・付録 | 節 | 図表番号 |
 |---|---|---|---|
@@ -219,30 +195,30 @@ typography:
 
 ```yaml
 output:
-  targets: pdf          # 出力形式: pdf / print_pdf / epub / kindle
-                        # 複数指定: pdf, print_pdf  または  [pdf, epub, kindle]
+  targets: pdf           # pdf / print_pdf / epub / kindle
+                         # 複数なら pdf, print_pdf か [pdf, epub, kindle]
 
-  include_version: true     # true: mybook_v1.0.0.pdf / false: mybook.pdf
+  include_version: true  # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
   pdf:
-    combined: true          # true: 表紙を本文 PDF に結合する
-    compress: false         # true: ビルド後に自動圧縮（処理時間が増加）
-    techbook: true          # true: 絵文字を Twemoji の SVG 画像へ差し替える（既定）
+    combined: true       # 表紙を本文 PDF に結合する
+    compress: false      # ビルド後に圧縮する（処理時間が増える）
+    techbook: true       # 絵文字を Twemoji の画像へ置き換える
 
-  print_pdf:                # 印刷入稿用 PDF の設定
-    bleed: 3mm              # 塗り足し幅（既定: 3mm）
-    crop_marks: true        # トンボを付けるか（既定: true）
-    full_bleed: false       # 本文にフチなし（塗り足しまで届く）要素があるか（既定: false）
-    cover_bleed: scale      # 表紙の塗り足し: scale（拡大して流用・既定）/ keep（拡大しない）
-    icc_profile:            # CMYK 変換の ICC プロファイル（空なら同梱の Japan Color 2001 Coated）
+  print_pdf:             # 印刷入稿用 PDF
+    bleed: 3mm           # 塗り足しの幅
+    crop_marks: true     # トンボを付ける
+    full_bleed: false    # 本文に塗り足しまで届く要素があるか
+    cover_bleed: scale   # 表紙の塗り足し: scale（拡大）/ keep（拡大しない）
+    icc_profile:         # CMYK 変換の ICC（空なら Japan Color 2001 Coated）
 
-  epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
-    embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
-    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
+  epub:                  # 楽天 Kobo / Apple Books 向け
+    embed: true          # 表紙を埋め込む
+    layout: reflowable   # リフロー型（指定できるのはこの値だけ）
 
-  kindle:                   # Amazon Kindle 向け（KPF へ自動変換）
-    embed: false            # false: KDP で別途アップロードするため埋め込まない（既定・推奨）
-    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
+  kindle:                # Amazon Kindle 向け（KPF へ変換）
+    embed: false         # 表紙を埋め込まない（KDP で別に登録する）
+    layout: reflowable   # リフロー型（指定できるのはこの値だけ）
 ```
 
 各形式の違いと、`techbook`・`full_bleed` などの使いどころは @chapref:ch-build で説明しています。どの表紙を使うかは、`output` ではなく `book.cover` で選びます。
@@ -260,23 +236,24 @@ output:
 
 ### legal — 免責・商標
 
-奥付に載せる免責事項と商標の文面を指定します。既定の文章を使う場合も、自分の本の内容や権利表記に合っているかを確認してください。
+タイトルページの次のページに載せる、免責事項・商標・絵文字のクレジットの文面を指定します。
 
 ```yaml
 legal:
   disclaimer: |
-    本書は教育目的で作成された入門書です。内容の正確性には万全を期しておりますが、
-    本書の内容を参考にした結果生じた損害について、著者および関係者は一切の責任を負いかねます。
+    本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
+    本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
   trademark: |
     本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
     本書では ™、®、© などのマークは省略しています。
   twemoji: |
     本書で使用している絵文字画像は Twemoji (https://twemoji.twitter.com) を利用しています。
-    Copyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0
-    (https://creativecommons.org/licenses/by/4.0/).
+    Copyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
 ```
 
-`twemoji` は、奥付にクレジット表記として挿入されるテキストです。`output.pdf.techbook: true` にして絵文字を Twemoji SVG に差し替える場合は、ライセンス表記としてここに設定してください（未設定なら何も挿入されません）。
+既定の文面のまま使うときも、自分の本の内容や権利表記に合っているかを確認してください。
+
+`twemoji` は、絵文字の画像（Twemoji）のクレジットです。`output.pdf.techbook: true`（既定）で絵文字を画像に置き換える本に載せます。絵文字を使わない本では、`twemoji: ""` と空にすると載りません。行を削除したときは、既定の文面が載ります。
 
 ### verify — 原稿の検証
 
@@ -284,104 +261,25 @@ legal:
 
 ```yaml
 verify:
-  external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false。--verify-links で有効化）
+  external_links: false  # 外部 URL に接続して確かめるか
   timeout: 10            # HTTP チェックのタイムアウト秒数
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は @chapref:ch-build を参照してください。
+外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるときは `true` にし、一度だけ確かめるときは `vs build --verify-links` を使います。詳細は @chapref:ch-build を参照してください。
 
-## 機能別の詳細設定
+## 機能ごとの設定
 
-ここからは、索引、文章分析、校正など、機能ごとの設定です。必要になった項目から確認できるよう、それぞれの用途と参照先をまとめます。
+索引・用語集、分量の計測、文章校正、PDF の読み取りの設定は、それぞれの機能の章で、使い方と合わせて説明しています。
 
-### index_glossary / index / glossary — 索引・用語集
+**機能ごとの設定と説明している章**
 
-索引・用語集を有効にするか、候補をどの程度抽出するかを指定します。主な設定は次のとおりです。主要参照の表示方法などを含む全体と、索引語の選び方は @chapref:ch-index-glossary で説明しています。
-
-```yaml
-index_glossary:
-  enabled: true          # false にすると索引・用語集の両方が無効になる
-  use_mecab: true        # MeCab による読み自動推測を使用するか
-  timezone: 'Asia/Tokyo'
-  context_width: 40      # キーワード前後の文脈抽出幅（文字数）
-
-index:
-  auto_discovery: true   # 手動登録以外の語句を自動で探索・提案するか
-  title: '索引'
-  target_terms: light    # 索引語数の目安: light / standard / thorough / 数値で直接指定
-  candidate_pool: 3.0    # 目安語数の何倍までを候補として提示するか
-  auto_approve: false    # true: 推奨する語を自動で辞書へ登録する
-
-glossary:
-  title: '用語集'
-  require_definition: false   # true: 説明文がないとエラー
-  max_definition_length: 500
-```
-
-索引ライブラリ（用語集の `[g]` と棄却語を書籍間で持ち運ぶ仕組み）に設定は要りません。`vs index:export` / `vs index:import` は既定で `index_library.yml` を読み書きし、別の場所を使いたいときは `vs index:export ~/vivlio/shared.yml` のように引数でパスを渡します。
-
-### metrics — メトリクス基準値
-
-`vs metrics` が章や節の分量を比べる基準を指定します。`use` でプリセットを選ぶと、本の規模に合った分量目安に切り替わります。語彙難度と読解難度の基準はプリセットと独立しているため、必要に応じて別に調整できます。
-
-```yaml
-metrics:
-  use: standard                      # 下の表から選ぶ
-  exclude_chapters: [00, 90-98, 99]  # 警告と比較から外す章番号
-```
-
-選ぶ目安は**本全体の本文字数**（コードと記法を除いた地の文の量）です。ページ数は判型・余白・書体・図版の量で変わるため、参考値として併記しています。
-
-| プリセット | 本全体の本文字数 | 想定する本の規模 |
-| :--- | :--- | :--- |
-| `compact` | 〜3.5 万字 | 20〜50 ページ程度の薄い本 |
-| `handy` | 3.5〜6.5 万字 | 50〜100 ページ程度の手に取りやすい技術書 |
-| `standard` | 6.5〜9 万字 | 100〜200 ページ程度の同人誌・技術書 |
-| `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
-| `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
-| `author_custom` | — | 自分で基準値を定義したい場合 |
-| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は @chapref:ch-metrics） |
-
-`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは @chapref:ch-metrics を参照してください。
-
-`exclude_chapters` に挙げた章は、分量の判定（✅ 💡）と文章の質の判定（🤔）から外れます。章別の一覧には表示されますが、印は付きません。前書き・付録・後書きのように、短いことに意味がある章を外すための設定です。既定は `[00, 90-98, 99]`（前書き・付録・後書き）で、章番号と `90-98` のような範囲で書きます。本文の章を外したいときも、ここへ番号を追加します。
-
-### lint / spellcheck — 文章校正
-
-`vs lint` に書籍の文体を反映し、スペルチェックで使う追加辞書を指定します。指摘が多すぎると感じたときは、どの規則が本の方針と合わないかを見てから調整します。
-
-```yaml
-lint:
-  disabled_rules: [arabic-kanji-numbers]  # 無効にする textlint ルール ID
-  sentence_length_max: 100                # 一文の最大文字数（0 で検査しない。かっこの中は数えない）
-  parenthetical_length_max: 60            # かっこ内の補足の最大文字数（0 で検査しない）
-  trim_long_vowel: true                   # 「サーバ」等、末尾長音を省く文体
-  allow_space_around_code: true           # インラインコードと和文の間のスペースを許容
-  allow_space_between_ja_en: true         # 全角と半角の間のスペースを許容
-  line_links: compact                     # 指摘の「行:」をクリックで開く（compact / path / off）
-
-spellcheck:
-  extra_dictionaries: []   # オンデマンドダウンロード辞書（例: ada）
-  check_code_blocks: false # コードブロック内をチェック対象にするか
-```
-
-上の値がいずれも既定です。技術書では和欧間のスペースを入れる書き方が普通なので、`allow_space_*` は最初から許容してあります。`arabic-kanji-numbers`（`一つ → 1つ`）を無効にしてあるのは、逆の指摘をする `kansuji-counter-suffix`（`1つ → 一つ`）と競合するためです。既定では、数を漢数字で書く側に合わせています。
-
-ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、個別の語を指摘させたくないときは専用のファイルに書きます。
-
-| したいこと | 書く場所 |
+| セクション | 説明している章 |
 | :--- | :--- |
-| ルールの追加・削除、閾値の変更 | `config/.textlintrc.yml` |
-| この語句は指摘しないでほしい（日本語校正） | `config/textlint_allowlist.yml` |
-| この語は綴り誤りではない（スペルチェック） | `config/spellcheck_user_dictionary.yml` |
-| この表記に統一したい | `config/textlint_rewrite.yml` |
-
-詳細は @chapref:ch-lint を参照してください。
-
-### pdf_read — PDF 読み取り設定
-
-`vs pdf:read` で PDF からテキストを取り出す範囲と、OCR の動作を指定します。設定の例と各項目の説明は @chapref:ch-pdf-read にあります。
+| `index_glossary`<br>`index`<br>`glossary` | @chapref:ch-index-glossary |
+| `metrics` | @chapref:ch-metrics |
+| `lint`<br>`spellcheck` | @chapref:ch-lint |
+| `pdf_read` | @chapref:ch-pdf-read |
 
 ## config/catalog.yml — 章の構成 @catalog-yml
 
@@ -539,3 +437,37 @@ vs build         # 全巻を一冊にまとめた合本を組む
 別の巻の章や図も、同じ巻の章や図と同じ書き方で参照できます。紙面では「上巻 第8章「…」」「上巻 図 8-2」のように巻の名前を添え、リンクにはしません。`@pageref` も、ページ番号を付けずに章で示します。
 
 巻に `whole_toc: true` を書くと、その巻の目次の前に、全巻の構成を示す「全巻目次」を載せます。今の巻を濃く、ほかの巻を薄く組みます。載せる深さは、その巻の目次と同じく `page.toc_depth` に従い、`2` 以上なら節まで載ります。ページ番号は載せません。
+
+## 設定の書き方を調べる（`vs config:book`）
+
+キーの書き方は `vs config:book` で確認できます。表示するだけのコマンドで、`book.yml` は書き換えません。プロジェクトの外でも使えます。
+
+```bash
+vs config:book                      # 区分の一覧
+vs config:book index                # 区分のキーと説明
+vs config:book index.target_terms   # キーの説明と今の値
+vs config:book 目次                 # 言葉で探す
+```
+
+キーを指定すると、`vs new` が作る `book.yml` と同じ説明に、今の値を添えて表示します。書いていないキーは既定値を示します。
+
+:::{.output}
+```text
+index.target_terms
+
+  # ======= 索引設定 =======
+  index:
+    target_terms: light # 索引語数の目安
+                        #   light    … 少なめ（主要な語だけを載せる。既定）
+                        #   standard … 標準
+                        #   thorough … 多め（初学者向けに広く載せる）
+                        #   260      … 語数を直接指定することもできる
+                        # 目安は本文の文字数から算出される。vs index:plan で確認できる
+
+今の値: 書いていません（既定値: light）
+```
+:::
+
+廃止されたキーを指定すると、代わりの書き方を案内します。
+
+ほかの設定ファイルも同じように調べられます。`vs config:catalog` は `catalog.yml` の書き方とこの本の章立てを、`vs config:talk` は `talk.yml` の書き方とこの本の話者を表示します。`vs config` は、これらのコマンドの一覧を表示します。
