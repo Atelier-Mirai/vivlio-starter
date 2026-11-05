@@ -288,8 +288,12 @@ module VivlioStarter
 
       # `21, 22` `21-22` `21 22` のいずれも章トークンの配列にする。
       # 解決（番号 → basename）は TokenResolver の仕事なので、ここでは分割だけ。
+      #
+      # 節の指定（`21#Markdown とは`）を含む値は、半角カンマでだけ区切る。見出しの文言は
+      # 空白や読点を含むので、空白でも区切ると「21#Markdown」と「とは」の 2 章に割れていた
       def split_chapter_tokens(text)
-        text.split(/[,、\s]+/).map(&:strip).reject(&:empty?)
+        separator = text.include?('#') ? /\s*,\s*/ : /[,、\s]+/
+        text.split(separator).map(&:strip).reject(&:empty?)
       end
 
       # 登録済み用語セクションで読みが変更された用語を抽出

@@ -318,6 +318,47 @@ module VivlioStarter
         assert_equal ['21-intro'], UnifiedTermsManager.new.find_term('Markdown')['main']
       end
 
+      # --- phase: 節を指す主要参照（index-main-reference-section-spec.md R2） ---
+
+      def write_chapter_with_section
+        File.write('contents/21-intro.md', <<~MD)
+          # Markdown 入門
+
+          ## Markdown とは
+
+          Markdown は軽量マークアップ言語です。Markdown の記法を学びます。
+        MD
+      end
+
+      # 子行の `21#Markdown とは` は、章を basename に解決して節を付けたまま登録する。
+      # 見出しの空白で割れたり、`#` 以降が落ちて章だけになったりしない
+      def test_should_register_a_section_written_on_the_child_line
+        write_chapter_with_section
+        seed_unified_terms([{ name: 'Markdown', flags: 'i' }])
+        capture_io { @manager.auto_process!(['21-intro']) }
+
+        review = File.read('_index_glossary_review.md')
+        File.write('_index_glossary_review.md',
+                   review.sub(/^(- \[im\?21\][^\n]*\*\*Markdown\*\*[^\n]*\n)/, "\\1  - 主要参照: 21#Markdown とは\n"))
+        capture_io { @manager.apply_markdown_review! }
+
+        assert_equal ['21-intro#Markdown とは'], UnifiedTermsManager.new.find_term('Markdown')['main']
+      end
+
+      # 辞書の節の指定は、レビューファイルに子行で出し、そのまま apply しても章だけに戻らない
+      def test_should_keep_a_section_through_a_review_round_trip
+        write_chapter_with_section
+        seed_unified_terms([{ name: 'Markdown', flags: 'i' }])
+        @manager.terms_manager.merge_terms!([{ 'term' => 'Markdown', 'main' => ['21-intro#Markdown とは'] }], flags: '')
+        capture_io { @manager.auto_process!(['21-intro']) }
+
+        assert_includes File.read('_index_glossary_review.md'), "  - 主要参照: 21#Markdown とは\n"
+
+        capture_io { @manager.apply_markdown_review! }
+
+        assert_equal ['21-intro#Markdown とは'], UnifiedTermsManager.new.find_term('Markdown')['main']
+      end
+
       # 主要参照は索引の機能なので、用語集だけの語には「付けない」を記録しない
       def test_glossary_only_term_gets_no_main_record
         seed_unified_terms([{ name: 'WWW', flags: 'g' }])

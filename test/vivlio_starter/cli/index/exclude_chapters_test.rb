@@ -59,6 +59,21 @@ module VivlioStarter
           end
         end
 
+        # 名指しした章が外れたときだけ知らせる。引数なし（全章）で book.yml のとおりに外すのは
+        # 著者が決めたことなので、実行のたびに 🟡 を出さない
+        def test_should_warn_only_when_a_named_chapter_is_excluded
+          in_project(CHAPTERS) do
+            drop_sample = ->(list, **) { list - ['97-sample'] }
+            IndexCommands.stub(:without_excluded_chapters, drop_sample) do
+              all_chapters = capture_io { IndexCommands.resolve_chapters([]) }.join
+              named = capture_io { IndexCommands.resolve_chapters(%w[22 97]) }.join
+
+              refute_includes all_chapters, 'exclude_chapters'
+              assert_includes named, '対象外です: 97-sample'
+            end
+          end
+        end
+
         private
 
         def in_project(chapters)

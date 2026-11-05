@@ -126,9 +126,13 @@ module VivlioStarter
           basenames = entries.select(&:valid?).map(&:basename)
           Common.log_info("引数から対象章を特定しました: #{basenames.join(', ')}")
           kept = without_excluded_chapters(basenames)
-          # 名指しした章を黙って落とすと、指定が効かなかった理由が分からない
+          # 名指しした章を黙って落とすと、指定が効かなかった理由が分からない。
+          # 引数なし（全章）でも resolve は全章を返すので、名指ししたときに限る——
+          # でないと、book.yml で外した章を実行のたびに 🟡 で知らせていた
           dropped = basenames - kept
-          Common.log_warn("次の章は index_glossary.exclude_chapters により索引の対象外です: #{dropped.join(', ')}") if dropped.any?
+          if tokens.any? && dropped.any?
+            Common.log_warn("次の章は index_glossary.exclude_chapters により索引の対象外です: #{dropped.join(', ')}")
+          end
           kept
         else
           begin

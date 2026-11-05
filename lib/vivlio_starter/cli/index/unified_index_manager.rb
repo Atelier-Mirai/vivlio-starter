@@ -947,10 +947,18 @@ module VivlioStarter
 
       # 章トークンを basename へ解決する。解決できないトークンは捨てずに知らせる
       # ——黙って落とすと「書いたのに効かない」になる（警告は具体的な修正案とセットで）。
+      #
+      # 節の指定（`21#Markdown とは`）は、章の部分だけを解決して節を付け直す。トークンを
+      # まるごと TokenResolver へ渡すと番号の照合で `#` 以降が落ち、章だけが登録されていた
       def resolve_main_chapters(resolver, tokens, term)
-        entries = resolver.resolve(tokens)
-        resolved = entries.select(&:valid?).map(&:basename)
-        return resolved if resolved.size == tokens.size || resolved.size >= entries.size
+        unresolved = false
+        resolved = tokens.flat_map do |token|
+          ref = IndexCommands::MainReference.parse(token)
+          entries = resolver.resolve([ref.chapter])
+          unresolved ||= entries.empty? || !entries.all?(&:valid?)
+          entries.select(&:valid?).map { ([it.basename] + ref.path).join('#') }
+        end
+        return resolved unless unresolved
 
         Common.log_warn(
           "「#{term}」の主要参照に解決できない章があります: #{tokens.join(', ')}",
@@ -979,8 +987,14 @@ module VivlioStarter
       # 切っているなら候補も警告も出さない——使わない機能の未設定を促すのは筋が通らない。
       def main_reference_disabled? = @config[:reference_style].to_s == 'all'
 
-      # 辞書の basename を、著者が読みやすい章トークン（番号）へ落とす
-      def chapter_tokens(main) = Array(main).map { it.to_s[/\A\d+/] || it.to_s }
+      # 辞書の basename を、著者が読みやすい章トークン（番号）へ落とす。節の指定（`#…`）は残す
+      # ——落とすと、レビューファイルを通すたびに章だけの指定へ書き戻されていた
+      def chapter_tokens(main)
+        Array(main).map do
+          ref = IndexCommands::MainReference.parse(it)
+          ([ref.chapter[/\A\d+/] || ref.chapter] + ref.path).join('#')
+        end
+      end
 
       # 主要参照が未指定の語に候補を添える（R2・対象は R7）。
       #

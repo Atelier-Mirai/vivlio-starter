@@ -133,6 +133,25 @@ module VivlioStarter
           assert_empty outline.nearest(['まったく無関係な文字列'])
         end
 
+        # 走査するのは前処理の後の原稿で、ラベルの付いた見出しには <span> が入っている。
+        # 警告の一覧と候補には、章題を除いた見出しの文言だけを出す
+        def test_should_show_section_text_without_the_chapter_title_or_anchor_tags
+          o = HeadingOutline.parse(<<~MD)
+            # 執筆 <span id="ch-intro" class="vs-sec-anchor"></span>
+
+            ## 主な用途 <span id="uses" class="vs-sec-anchor"></span>
+
+            ### 例
+
+            ## 拡張
+
+            ### 例
+          MD
+
+          assert_equal %w[主な用途 例 拡張 例], o.summary
+          assert_equal %w[主な用途#例 拡張#例], o.locate(['例']).candidates
+        end
+
         # --- phase: MainReference の分解 ---
 
         def test_parses_chapter_only

@@ -49,9 +49,12 @@ module VivlioStarter
             m = HEADING.match(line) or next
             level = m[1].size
             stack.pop while stack.any? && stack.last.level >= level
+            # 走査するのは前処理の後の原稿で、ラベルを付けた見出しには
+            # `<span id="…" class="vs-sec-anchor">` が入っている。警告に出す文言なので外す
+            text = m[2].gsub(/<[^>]+>/, '').strip
             headings << Heading.new(
-              lineno:, level:, text: m[2],
-              normalized: normalize(m[2]), ancestors: stack.map(&:normalized)
+              lineno:, level:, text:,
+              normalized: normalize(text), ancestors: stack.map(&:normalized)
             )
             stack.push(headings.last)
           end
@@ -86,9 +89,9 @@ module VivlioStarter
                       candidates: hits.map { describe(it) })
         end
 
-        # 警告に添える見出しの一覧（先頭から数件）
+        # 警告に添える見出しの一覧（先頭から数件）。章題（`#`）は節ではないので挙げない
         def summary(limit: 6)
-          @headings.map(&:text).first(limit)
+          @headings.reject { it.level == 1 }.map(&:text).first(limit)
         end
 
         # 「近いもの」を 1〜2 件だけ挙げる。候補を並べ立てない
@@ -136,8 +139,9 @@ module VivlioStarter
           idx = @headings.index(heading)
           level = heading.level
           chain = []
+          # 章題は鎖に入れない。章はトークンの側（`21#…`）が指しており、中間は省略できる
           @headings[0...idx].reverse_each do |h|
-            next if h.level >= level
+            next if h.level >= level || h.level == 1
 
             chain.unshift(h.text)
             level = h.level
