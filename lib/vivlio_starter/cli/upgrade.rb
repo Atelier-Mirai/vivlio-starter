@@ -58,15 +58,16 @@ module VivlioStarter
       # overlapping … :conflict のうち「祖先が取れたうえで衝突した」＝双方が
       #               本当に同じ場所を変えたもの。適用すれば著者の変更が消えるので、
       #               そう名指しできる（祖先が取れなかった競合では断定できない）
-      # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）
       # 改名した設定ファイル（旧名 → 新名）と、中の参照を書き換えた設定ファイル
       Renames = Data.define(:moved, :rewritten) do
         def initialize(moved: {}, rewritten: {}) = super
         def empty? = moved.empty? && rewritten.empty?
       end
 
-      SyncResult = Data.define(:code, :new_keys, :aborted, :renames) do
-        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new) = super
+      # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）。
+      # summary は最後のまとめの行に載せる一言（例: "追加 6・更新 30"）。雛形の段を飛ばしたときは nil
+      SyncResult = Data.define(:code, :new_keys, :aborted, :renames, :summary) do
+        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil) = super
       end
 
       # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
@@ -174,16 +175,33 @@ module VivlioStarter
         end
 
         # --- Phase: ③ 外部ツール更新 ---
+        tools_summary = nil
         tools_code = DoctorCommands::ToolUpgrader.run!(
           { yes: options[:yes], dry_run: options[:dry_run], verbose: options[:verbose] },
-          deps: tool_deps
+          deps: tool_deps, report: ->(text) { tools_summary = text }
         )
 
         # --- Phase: 改名と足した設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
         report_renames(sync.renames)
         ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
 
-        [self_result == :failed ? 1 : 0, sync.code, tools_code].max
+        code = [self_result == :failed ? 1 : 0, sync.code, tools_code].max
+        report_completion(code, scaffold: sync.summary, tools: tools_summary, dry_run: options[:dry_run])
+        code
+      end
+
+      # 最後のまとめの行。どの段の報告も最後の行にならないよう、全部の段が終わった後に 1 行で出す
+      # （改名の報告などで終わると、まだ続きがあるように見えて、終わったと分からなかった）。
+      def report_completion(code, scaffold:, tools:, dry_run:)
+        parts = [("雛形: #{scaffold}" if scaffold), ("外部ツール: #{tools}" if tools)].compact
+        details = parts.empty? ? '' : "（#{parts.join('／')}）"
+        if dry_run
+          Common.log_result("vs upgrade --dry-run が終わりました。何も変更していません#{details}", status: :success)
+        elsif code.zero?
+          Common.log_result("vs upgrade が完了しました#{details}", status: :success)
+        else
+          Common.log_result("vs upgrade が終わりました。上の 🔴・🟡 を確かめてください#{details}", status: :warning)
+        end
       end
 
       # gem 自身のリポジトリか。ここにも config/book.yml（本書の原稿の設定）があるので、
@@ -237,22 +255,22 @@ module VivlioStarter
         if plan.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
           save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
-          return SyncResult.new(new_keys: tidy.new_keys)
+          return SyncResult.new(new_keys: tidy.new_keys, summary: '最新')
         end
         if cmd.options[:dry_run]
           finish_dry_run(plan)
-          return SyncResult.new(new_keys: tidy.new_keys)
+          return SyncResult.new(new_keys: tidy.new_keys, summary: "変更できるもの #{plan.size} 件")
         end
 
         # --- Phase: 適用（改名 → 追加・更新・合流 → 競合の個別確認） ---
         applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests, renames)
-        return SyncResult.new(aborted: true) if applied.nil? # 全体確認で中止
+        return SyncResult.new(aborted: true, summary: '適用しませんでした') if applied.nil? # 全体確認で中止
 
         # --- Phase: lock・基準の更新 → 著者データの整理 → 完了報告 ---
         save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
         backup_dir, new_keys = apply_tidy(tidy, lock, backup_dir)
-        print_summary(plan, applied, skipped, backup_dir)
-        SyncResult.new(new_keys:, renames:)
+        summary = print_summary(plan, applied, skipped, backup_dir)
+        SyncResult.new(new_keys:, renames:, summary:)
       end
 
       private
@@ -735,21 +753,25 @@ module VivlioStarter
         ScaffoldBase.sync!('.', scaffold_source:, lock_files: files)
       end
 
+      # 雛形の段の結果を報告し、件数の一言（最後のまとめの行に使う）を返す
+      # @return [String] 例: "追加 6・更新 30・整理 1・改名 1"
       def print_summary(plan, applied, skipped, backup_dir)
         add_count    = applied.count { %i[add add_empty].include?(it.status) }
         merge_count  = applied.count { it.status == :merge }
         update_count = applied.count { %i[update conflict].include?(it.status) }
-        message = "アップグレード完了: 追加 #{add_count}・更新 #{update_count}"
+        counts = "追加 #{add_count}・更新 #{update_count}"
         tidy_count   = plan.count { it.status == :tidy }
-        message += "・合流 #{merge_count}" if merge_count.positive?
-        message += "・整理 #{tidy_count}" if tidy_count.positive?
+        counts += "・合流 #{merge_count}" if merge_count.positive?
+        counts += "・整理 #{tidy_count}" if tidy_count.positive?
         rename_count = plan.count { it.status == :rename }
-        message += "・改名 #{rename_count}" if rename_count.positive?
-        message += "・スキップ #{skipped.size}"
+        counts += "・改名 #{rename_count}" if rename_count.positive?
+        message = "雛形を更新しました: #{counts}・スキップ #{skipped.size}"
         message += "（バックアップ: #{backup_dir}/）" if backup_dir
         Common.log_result(message, status: :success)
 
         Common.log_always('   git 管理下です。git diff で差分確認、git checkout で巻き戻しできます。') if Dir.exist?('.git')
+        # まとめの行では、スキップは 1 件以上のときだけ言う
+        skipped.any? ? "#{counts}・スキップ #{skipped.size}" : counts
       end
 
       # ================================================================

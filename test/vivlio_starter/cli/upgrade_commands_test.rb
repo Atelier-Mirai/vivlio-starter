@@ -572,6 +572,45 @@ module VivlioStarter
         end
       end
 
+      # --- 最後のまとめの行: 全部の段が終わった後に、雛形と外部ツールの結果を 1 行で出す ---
+      # 改名の報告などで終わると、まだ続きがあるように見えて、終わったと分からなかった
+      def test_should_end_with_a_completion_line_after_every_phase
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/new.css', "a {}\n")
+          UpgradeCommands.scaffold_source = scaffold
+          tools = lambda do |*, report: nil, **|
+            report&.call('すべて最新')
+            0
+          end
+          out, = capture_io do
+            DoctorCommands::ToolUpgrader.stub(:run!, tools) do
+              UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run: false, yes: true, skip_self_update: true }))
+            end
+          end
+
+          assert_match(/雛形を更新しました: 追加 1・更新 0・スキップ 0/, out)
+          assert_equal '✅ vs upgrade が完了しました（雛形: 追加 1・更新 0／外部ツール: すべて最新）', out.lines.last.chomp
+        ensure
+          UpgradeCommands.scaffold_source = nil
+        end
+      end
+
+      # 失敗した段があれば、完了とは言わず、上の報告を確かめるよう促す
+      def test_should_end_with_a_warning_line_when_a_phase_failed
+        within_project do |scaffold|
+          UpgradeCommands.scaffold_source = scaffold
+          out, = capture_io do
+            DoctorCommands::ToolUpgrader.stub(:run!, 1) do
+              UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run: false, yes: true, skip_self_update: true }))
+            end
+          end
+
+          assert_match(/\A❗ vs upgrade が終わりました。上の 🔴・🟡 を確かめてください（雛形: 最新）\z/, out.lines.last.chomp)
+        ensure
+          UpgradeCommands.scaffold_source = nil
+        end
+      end
+
       # --- 終了コード: ツール更新フェーズの失敗（1）が全体の終了コードに反映される ---
       def test_should_propagate_tool_phase_failure_to_exit_code
         within_project do |scaffold|

@@ -529,6 +529,23 @@ module VivlioStarter
           assert_includes out, '✅ 外部ツールはすべて最新です'
         end
 
+        # vs upgrade の最後のまとめの行へ、結果を一言で渡す
+        def test_should_report_the_outcome_in_a_word
+          reported = []
+          with_host_os('darwin') do
+            stub_logging do
+              DoctorCommands.stub(:pdf_plugin_installed?, false) do
+                capture_io do
+                  ToolUpgrader.run!({ yes: false, dry_run: false, verbose: false },
+                                    deps: stub_deps(capture: capture_map, input: ''), report: ->(text) { reported << text })
+                end
+              end
+            end
+          end
+
+          assert_equal ['すべて最新'], reported
+        end
+
         # 表で最新と確かめた後に、同じことをもう一度診断しない
         def test_should_skip_the_rediagnosis_when_nothing_changes
           deps = stub_deps(capture: capture_map, input: '')

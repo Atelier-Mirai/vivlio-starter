@@ -187,17 +187,21 @@ module VivlioStarter
 
         # 外部ツール更新の一連の流れ（計画提示 → 確認 → 実行 → 再診断 → 集計 → お知らせ）を統率する。
         # @param options [Hash] { yes:, dry_run:, verbose:, ... }
+        # @param report [#call, nil] 結果を一言で受け取る（vs upgrade の最後のまとめの行に使う。例: "すべて最新"）
         # @return [Integer] 終了コード（全成功＋再診断 OK / スキップ → 0、失敗あり/再診断 NG/中断 → 1）
-        def run!(options, deps: default_deps)
+        def run!(options, deps: default_deps, report: nil)
+          outcome = ->(text) { report&.call(text) }
           # --- Phase: 前提確認（--fix と同じく macOS + Homebrew のみ対応・spec §0）---
           # 非対応環境はエラーではなくスキップ——vs upgrade の他フェーズ（本体更新・
           # 雛形追従）はプラットフォーム非依存で、ここで全体を止める理由がない
           unless RbConfig::CONFIG['host_os'] =~ /darwin/i
             Common.log_warn('外部ツールの更新は macOS + Homebrew のみ対応のためスキップします（診断は vs doctor で実行できます）。')
+            outcome.('スキップ（macOS のみ対応）')
             return 0
           end
           unless deps.run.call('which brew >/dev/null 2>&1')
             Common.log_warn('Homebrew が見つからないため外部ツールの更新をスキップします。vs doctor --fix で導入するか、https://brew.sh/ を参照してください。')
+            outcome.('スキップ（Homebrew なし）')
             return 0
           end
 
@@ -205,25 +209,32 @@ module VivlioStarter
           Common.log_always('🔍 外部ツールのバージョンを確認しています…')
           unless deps.run.call('brew update >/dev/null 2>&1')
             Common.log_error('最新版の確認ができません（オフライン？）。ネットワーク接続を確認して再実行してください。')
+            outcome.('確認できず')
             return 1
           end
           plan = build_plan(deps)
-          return 1 unless plan
+          unless plan
+            outcome.('確認できず')
+            return 1
+          end
 
           # --- Phase: 計画提示 → 確認（何も変わらない表は見せない。--dry-run は確かめるために見せる）---
           present_plan(plan) if !plan.settled? || options[:dry_run]
           if options[:dry_run]
             Common.log_always('--dry-run のためツール更新は実行しません。') if plan.updates.any?
+            outcome.(plan.updates.any? ? "更新できるもの #{plan.updates.size} 件" : 'すべて最新')
             return 0
           end
           # 何も変わっていないので、表で確かめたことを再診断で繰り返さない
           if plan.settled?
             Common.log_always('✅ 外部ツールはすべて最新です')
             announce_new_versions(deps)
+            outcome.('すべて最新')
             return 0
           end
           if plan.updates.any? && !confirm_upgrade?(options, deps)
             Common.log_always('更新をスキップしました。--yes を付けると確認なしで実行できます。')
+            outcome.('更新をスキップ')
             return 0
           end
 
@@ -241,8 +252,18 @@ module VivlioStarter
           Common.log_always("✅ 更新完了: #{results.count(&:ok)} 件成功 / #{failed.size} 件失敗") if results.any?
           report_failures(failed)
           announce_new_versions(deps)
+          outcome.(update_outcome(results.count(&:ok), failed.size, rediagnosis_ok))
 
           failed.empty? && rediagnosis_ok ? 0 : 1
+        end
+
+        # 更新したときの結果の一言。更新したものが無い（未導入のツールを再診断で導入しただけ）ときも言い分ける
+        def update_outcome(updated, failed, rediagnosis_ok)
+          return rediagnosis_ok ? '不足していたツールを導入' : '導入に失敗' if (updated + failed).zero?
+
+          text = "#{updated} 件を更新"
+          text += "・#{failed} 件が失敗" if failed.positive?
+          text
         end
 
         # ============================================================
