@@ -156,6 +156,36 @@ module VivlioStarter
         YAML
       end
 
+      # 前後を空行で区切ったキーを移しても、元の場所に空行が 2 行並んで残らない
+      def test_should_not_leave_doubled_blank_lines_where_the_key_was
+        text = <<~YAML
+          project:
+            name: "mybook"
+
+          output:
+            targets: pdf
+
+            include_version: true # true:  mybook_v0.1.0.pdf
+                                  # false: mybook.pdf
+
+            pdf_preview:
+              close_existing_windows: true
+        YAML
+
+        assert_equal <<~YAML, RetiredKeyRemover.move(text, %w[output include_version], %w[project include_version])
+          project:
+            name: "mybook"
+            include_version: true # true:  mybook_v0.1.0.pdf
+                                  # false: mybook.pdf
+
+          output:
+            targets: pdf
+
+            pdf_preview:
+              close_existing_windows: true
+        YAML
+      end
+
       # 移した先の字下げが深ければ、続きのコメントも同じだけ深くする
       def test_should_shift_continued_comments_to_the_new_indent
         text = "book:\n    main_title: \"本\"\noutput:\n  cover: light # 一行目\n               # 二行目\n  targets: pdf\n"

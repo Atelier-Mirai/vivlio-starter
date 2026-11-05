@@ -59,6 +59,7 @@ module VivlioStarter
           path = pending.shift
           range = block_range(lines, path) or return nil
           lines.slice!(range)
+          drop_doubled_blank_line(lines, range.first)
           removed << path
           parent = path[0...-1]
           pending << parent if parent.any? && !pending.include?(parent) && empty_block?(lines, parent)
@@ -99,6 +100,15 @@ module VivlioStarter
       end
 
       private
+
+      # 消した跡で空行が 2 行並んだら、1 行にする。前後を空行で区切ったキー
+      # （`include_version:` の段落など）を消すと、区切りの空行だけが重なって残るため。
+      # @param at [Integer] 消した範囲の先頭の行番号（消した後は、跡のすぐ後ろの行）
+      def drop_doubled_blank_line(lines, at)
+        return unless at.positive? && lines[at - 1]&.strip&.empty? && lines[at]&.strip&.empty?
+
+        lines.delete_at(at)
+      end
 
       # キーの行に続く、キーより深く字下げしたコメントだけの行（行末の注釈の続き）。
       #   include_version: true # true:  mybook_v1.0.0.pdf
