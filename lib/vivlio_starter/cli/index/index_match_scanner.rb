@@ -43,14 +43,21 @@ module VivlioStarter
         @post_build_messages << message unless @post_build_messages.include?(message)
       end
 
-      def self.flush_post_build_messages
-        return if @post_build_messages.nil? || @post_build_messages.empty?
+      # 索引をどう組んだかの報告（💡 副次参照を絞りました など）。直すべきことではなく、組み上がった
+      # PDF の索引が思ったより短いときに理由を伝えるためのもの。紙面を見ない vs preflight では出さない
+      # （直すべき 🔴・🟡 の中に、直す必要のない知らせが混ざるため）
+      def self.add_post_build_report(message)
+        @post_build_reports ||= []
+        @post_build_reports << message unless @post_build_reports.include?(message)
+      end
 
-        @post_build_messages.each do |message|
-          emit_index_message(message, use_log_warn: false)
-        end
-
-        @post_build_messages.clear
+      # 積んだ知らせを出して空にする。reports: false（vs preflight）なら、索引の組み方の報告は出さずに捨てる
+      # @param reports [Boolean] add_post_build_report で積んだ報告も出すか
+      def self.flush_post_build_messages(reports: true)
+        messages = Array(@post_build_messages) + (reports ? Array(@post_build_reports) : [])
+        messages.each { emit_index_message(it, use_log_warn: false) }
+        @post_build_messages&.clear
+        @post_build_reports&.clear
       end
 
       def self.emit_index_message(message, use_log_warn: true)

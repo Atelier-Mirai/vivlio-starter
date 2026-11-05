@@ -117,8 +117,9 @@ module VivlioStarter
 
           # 索引処理が積んだ案内（未走査章の vs index:auto 誘導・辞書不在）を吐き出す。
           # build 側は従来から flush しており、preflight だけが握り潰していた
-          # （＝原稿の問題を先に知るための機能なのに知らせていなかった）
-          IndexCommands.flush_post_build_messages
+          # （＝原稿の問題を先に知るための機能なのに知らせていなかった）。
+          # 索引をどう組んだかの報告（💡）は紙面を見る vs build でだけ出し、ここでは出さない
+          IndexCommands.flush_post_build_messages(reports: false)
 
           # --verify-links 有効時のみ外部 URL チェックを実行
           PreProcessCommands::LinkImageValidator.check_external_urls!
@@ -155,7 +156,9 @@ module VivlioStarter
         # 章別サマリーを表示する（preflight-chapter-summary-spec.md §1）。
         # 前処理はファイル単位（並列）で流れるため 🔴🟡 が章をまたいで混在する。
         # 「どの章に何件あるか」を最後に一覧化して読み取れるようにする。
-        # 指摘ゼロの章も載せる（検査したことの証明）が、全章 ✅ なら 1 行へ短縮する。
+        # 指摘ゼロの章も載せる（検査したことの証明）が、全章 ✅ なら表を出さない——
+        # 最終行の「✅ Preflight 完了: 良好な状態です」が同じことを言うので、「全 N 章: 問題なし」を
+        # 重ねない（1 章のときは「全 1 章」という不自然な言い方にもなっていた）。
         # 章に紐付かない指摘（Guard 警告・索引まわり）は**この表に出さない**。
         # 件数だけの「章に紐付かない指摘 🟡 警告 1 件」は、著者に何も伝えない
         # ——何について警告されていて、どう直せばよいかが分からない。
@@ -165,10 +168,7 @@ module VivlioStarter
         def print_chapter_summary(entries)
           rows = chapter_summary_rows(entries, PreProcessCommands::IssueRegistry.summary_by_chapter)
 
-          if rows.all? { |_, counts| counts.clean? }
-            Common.log_result("全 #{rows.size} 章: 問題なし", status: :success) unless rows.empty?
-            return
-          end
+          return if rows.all? { |_, counts| counts.clean? }
 
           Common.log_always ''
           Common.log_always '📋 章別サマリー'

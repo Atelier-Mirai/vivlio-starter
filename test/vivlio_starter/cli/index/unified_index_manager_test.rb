@@ -1674,6 +1674,25 @@ module VivlioStarter
         refute_match(/main_chapter_only_over/, message)
       end
 
+      # 索引の組み方の報告は、紙面を見ない vs preflight（reports: false）では出さない。
+      # 直すべき知らせ（🟡 索引候補の抽出が未実施 など）は、これまでどおり出す
+      def test_report_is_held_back_in_preflight
+        limitation = IndexCommands::UnifiedPageBuilder::Limitation.new(
+          style: 'main_and_sub', limit: 8, terms: %w[関数], main_chapter_only: []
+        )
+        out, err = capture_io do
+          @manager.send(:report_reference_style, ReportedBuilder.new(limitation))
+          IndexCommands.add_post_build_message('🟡 索引候補の抽出が未実施の章があります: 11-intro')
+          IndexCommands.flush_post_build_messages(reports: false)
+        end
+
+        refute_match(/語を見出しに掲げた節に絞りました/, out + err)
+        assert_match(/索引候補の抽出が未実施の章があります/, out + err)
+
+        later, = capture_io { IndexCommands.flush_post_build_messages }
+        assert_empty later, '出さなかった報告を、次の実行へ持ち越さない'
+      end
+
       def test_report_omits_the_narrowing_line_when_no_term_was_narrowed
         message = reported_message(main_chapter_only: [])
 

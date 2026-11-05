@@ -669,7 +669,7 @@ module VivlioStarter
         if narrowed.any?
           lines << "   見出しに出る節が多い #{narrowed.size} 語は、主要参照の章の外の ### の節を省きました: #{narrowed.join('・')}"
         end
-        IndexCommands.add_post_build_message(lines.join("\n"))
+        IndexCommands.add_post_build_report(lines.join("\n"))
       end
 
       # 広く散らばっているのに主要参照が未指定の索引語を促す（R7）。

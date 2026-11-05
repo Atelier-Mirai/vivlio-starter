@@ -260,15 +260,15 @@ module VivlioStarter
           end
 
           refute_includes output, '章に紐付かない'
-          assert_includes output, '✅ 全 1 章: 問題なし', '章としては問題ないと言い切る'
+          refute_includes output, '📋 章別サマリー', '章としては問題ないので、表を出さない'
         end
 
-        # 全章 ✅ なら表は 1 行へ短縮され、最終行は ✅・終了コード 0
+        # 全章 ✅ なら表を出さず（「全 N 章: 問題なし」も重ねない）、最終行は ✅・終了コード 0
         def test_should_shorten_table_when_all_chapters_are_clean
           output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'))
 
           assert_equal 0, status
-          assert_includes output, '✅ 全 2 章: 問題なし'
+          refute_includes output, '問題なし'
           refute_includes output, '📋 章別サマリー'
           assert_includes output, '✅ Preflight 完了: 良好な状態です'
         end
