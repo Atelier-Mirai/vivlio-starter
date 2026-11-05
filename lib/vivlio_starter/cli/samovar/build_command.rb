@@ -121,6 +121,7 @@ module VivlioStarter
                 return 1
               end
 
+              warn_compress_ignored_in_single_mode
               run_single_mode_build(target_entries)
             else
               run_full_mode_build
@@ -217,6 +218,16 @@ module VivlioStarter
 
           common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",
                           detail: '対処: これらを使うには vs new で作成したプロジェクトでビルドしてください。')
+        end
+
+        # 単章ビルドで --compress を付けたときに、圧縮しないことを知らせる。単章ビルドは紙面の確認用で、
+        # 圧縮の段を持たない。指定したのに何も起きないと、圧縮したつもりの PDF を配ることになる。
+        # book.yml の output.pdf.compress は全章ビルド向けの設定なので、ここでは触れない
+        def warn_compress_ignored_in_single_mode
+          return unless options[:compress] == true
+
+          common.log_warn('単章ビルドでは圧縮しません（--compress は無視されます）',
+                          detail: '→ 圧縮した PDF が要るときは、章を指定せずに vs build --compress を実行してください')
         end
 
         # 通常ビルドでの --theme を案内する（テーマ色はプロジェクトの設定が正典・spec §2.1）。

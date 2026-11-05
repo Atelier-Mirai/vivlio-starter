@@ -121,6 +121,19 @@ module VivlioStarter
           assert_match(/theme\.color/, out.join)
         end
 
+        # 単章ビルドは圧縮しないので、--compress を付けたら知らせる（--no-compress と指定なしは黙る）
+        def test_should_warn_that_single_build_does_not_compress
+          out = capture_io { BuildCommand.new(['10-intro', '--compress']).send(:warn_compress_ignored_in_single_mode) }
+
+          assert_match(/単章ビルドでは圧縮しません/, out.join)
+          assert_match(/章を指定せずに vs build --compress/, out.join)
+
+          %w[--no-compress].push(nil).each do |flag|
+            quiet = capture_io { BuildCommand.new(['10-intro', flag].compact).send(:warn_compress_ignored_in_single_mode) }
+            assert_empty quiet.join, "#{flag || '指定なし'}では知らせない"
+          end
+        end
+
         # プロジェクトの章を .md で指定したら、本の設定で組む指定を添える（改善案 #83）。
         # プロジェクトの外や、contents/ 以外の .md には出さない
         def test_should_hint_chapter_build_for_project_chapter
