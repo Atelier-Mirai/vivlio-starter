@@ -35,9 +35,10 @@ module VivlioStarter
       PAGE_PRESETS_FILE = 'config/page_presets.yml'
       FONT_SIZE_KEYS = %i[base_font_size folio_font_size].freeze
       PAGE_PRESET_EXCLUDE_KEYS = %i[preset use preset_name].freeze
-      # 直接ビルド（book.yml を持たない単一 Markdown）の版面。日本の技術書の主流サイズであり、
-      # resolve_page_size の既定フォールバック（B5）とも一致する。
-      DIRECT_PAGE_PRESET = 'b5_standard'
+      # 直接ビルド（book.yml を持たない単一 Markdown）の版面。配布資料は A4 が一般的なので A4。
+      # 行送りは本書と同じ a4_custom（1.6）——A4 は 1 行が約 44 字と長く、標準の 1.5 では窮屈に見える。
+      # 直接ビルドは gem 同梱の page_presets.yml を読むので、著者が自分の本の a4_custom を変えても影響しない
+      DIRECT_PAGE_PRESET = 'a4_custom'
       LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
       # --log 未指定時のレベル（🟡 警告と 🔴 エラーだけを出す）
       DEFAULT_LOG_LEVEL = LEVELS['warn']

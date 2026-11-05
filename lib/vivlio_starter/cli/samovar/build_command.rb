@@ -191,7 +191,8 @@ module VivlioStarter
 
           warn_ignored_options!
           hint_book_build(source)
-          BuildCommands::DirectBuild.new(source, theme: options[:theme]).call
+          BuildCommands::DirectBuild.new(source, theme: options[:theme], compress: options[:compress] == true,
+                                                 verify_links: options[:verify_links] == true).call
         end
 
         # プロジェクトの章を .md で指定すると直接ビルドになり、book.yml を読まない
@@ -212,8 +213,6 @@ module VivlioStarter
         def warn_ignored_options!
           ignored = []
           ignored << '--no-clean' if options[:clean] == false
-          ignored << '--verify-links' if options[:verify_links]
-          ignored << (options[:compress] ? '--compress' : '--no-compress') unless options[:compress].nil?
           return if ignored.empty?
 
           common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",

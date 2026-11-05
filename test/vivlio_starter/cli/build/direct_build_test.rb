@@ -54,10 +54,11 @@ module VivlioStarter
           page = Common.build_direct_configuration.page
 
           assert_equal Common::DIRECT_PAGE_PRESET, page.use
-          assert_equal 'JIS-B5', page.size
+          # 配布資料は A4（本書と同じ a4_custom）
+          assert_equal 'A4', page.size
           assert_equal '10.5pt', page.base_font_size
           # 行送りは倍率ではなく絶対 pt へ解決済み（page-unit-conversion-spec §3.3）
-          assert_equal '17.85pt', page.base_line_height
+          assert_equal '16.8pt', page.base_line_height
         end
 
         def test_should_install_and_restore_configuration
@@ -261,12 +262,49 @@ module VivlioStarter
           assert_equal Common::DIRECT_PAGE_PRESET, page.use
         end
 
+        # --compress なら圧縮版も作り、作成の報告に並べ、圧縮版を開く
+        def test_should_deliver_the_compressed_pdf_when_compress_is_given
+          Dir.chdir(@tmpdir) do
+            build = direct_build_for('handout.md', compress: true)
+            build.instance_variable_set(:@generated_pdf, File.join(@tmpdir, 'generated.pdf'))
+            File.write('generated.pdf', "%PDF-1.7\n")
+            compress = ->(_options, input, output) { FileUtils.cp(input, output) }
+            opened = []
+
+            out, = PdfCommands.stub(:execute_pdf_compress, compress) do
+              build.stub(:open_pdf, ->(path) { opened << path }) { capture_io { build.send(:deliver, 1.0) } }
+            end
+
+            assert_match(/handout\.pdf, handout_compressed\.pdf を作成しました/, out)
+            assert_equal ['handout_compressed.pdf'], opened
+          end
+        end
+
+        # 圧縮版を作れなかったとき（gs が無いなど）は、圧縮前の PDF だけを報告して開く
+        def test_should_fall_back_to_the_plain_pdf_when_compression_fails
+          Dir.chdir(@tmpdir) do
+            build = direct_build_for('handout.md', compress: true)
+            build.instance_variable_set(:@generated_pdf, File.join(@tmpdir, 'generated.pdf'))
+            File.write('generated.pdf', "%PDF-1.7\n")
+            File.write('handout_compressed.pdf', '前の回の圧縮版')
+            opened = []
+
+            out, = PdfCommands.stub(:execute_pdf_compress, ->(*) {}) do
+              build.stub(:open_pdf, ->(path) { opened << path }) { capture_io { build.send(:deliver, 1.0) } }
+            end
+
+            assert_match(/handout\.pdf を作成しました/, out)
+            refute_match(/handout_compressed\.pdf/, out)
+            assert_equal ['handout.pdf'], opened
+          end
+        end
+
         private
 
-        def direct_build_for(filename, content = "# 見出し\n", theme: nil)
+        def direct_build_for(filename, content = "# 見出し\n", theme: nil, compress: false)
           path = File.join(@tmpdir, filename)
           File.write(path, content, encoding: 'utf-8')
-          DirectBuild.new(path, theme: theme)
+          DirectBuild.new(path, theme:, compress:)
         end
       end
     end

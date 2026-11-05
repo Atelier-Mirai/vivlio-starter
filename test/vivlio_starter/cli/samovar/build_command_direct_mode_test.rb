@@ -94,12 +94,23 @@ module VivlioStarter
         # ------------------------------------------------------------
 
         def test_should_warn_that_project_options_are_ignored
-          command = BuildCommand.new(['myawesome.md', '--no-clean', '--verify-links'])
+          command = BuildCommand.new(['myawesome.md', '--no-clean', '--verify-links', '--compress'])
           out = capture_io { command.send(:warn_ignored_options!) }
 
           assert_match(/無視されます/, out.join)
           assert_match(/--no-clean/, out.join)
-          assert_match(/--verify-links/, out.join)
+          # --verify-links と --compress は配布資料にも役立つので受け付ける（無視したとは言わない）
+          refute_match(/--verify-links/, out.join)
+          refute_match(/--compress/, out.join)
+        end
+
+        # --compress は配布資料を軽くするのに使えるので、直接ビルドでも受け付ける（無視したとは言わない）
+        def test_should_accept_compress_in_direct_mode
+          command = BuildCommand.new(['myawesome.md', '--compress'])
+          out = capture_io { command.send(:warn_ignored_options!) }
+
+          refute_match(/無視されます/, out.join)
+          assert_equal true, command.options[:compress]
         end
 
         def test_should_warn_that_theme_option_needs_direct_build

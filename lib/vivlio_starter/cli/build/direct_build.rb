@@ -19,7 +19,9 @@
 #   - 章番号はファイルごとに振られるので、1 ファイルに `#` を複数書いた原稿は
 #     `#` ごとに章ファイルへ分けて組む（改善案 #77）
 #   - theme.style は simple 固定。扉絵・節絵アセットの生成は軽量経路の趣旨に反する
-#   - 出力は閲覧用 PDF のみ（print_pdf / EPUB / Kindle は対象外）
+#   - 出力は閲覧用 PDF のみ（print_pdf / EPUB / Kindle は対象外）。--compress を付けたときだけ、
+#     圧縮した <元basename>_compressed.pdf も作る（配布資料はメールや Web で配ることが多いため）
+#   - --verify-links を付けたときは、外部 URL の到達性も確かめる（配る資料の URL の誤りを見つけるため）
 #
 # 仕様書との差分（実装時に判明した都合）:
 #   - stylesheets は「コピーではなくシンボリックリンク」。実体は fonts / twemoji を
@@ -94,10 +96,14 @@ module VivlioStarter
 
         # @param source [String] 入力 Markdown のパス（呼び出し元 cwd 基準）
         # @param theme [String, nil] --theme の値（省略時 blue）
-        def initialize(source, theme: nil)
+        # @param compress [Boolean] --compress を付けたか（圧縮版も作る）
+        # @param verify_links [Boolean] --verify-links を付けたか（外部 URL の到達性を確かめる）
+        def initialize(source, theme: nil, compress: false, verify_links: false)
           # ワークスペースへ chdir した後も同じファイルを指せるよう絶対パスで保持する
           @source = File.expand_path(source.to_s)
           @theme = theme
+          @compress = compress
+          @verify_links = verify_links
         end
 
         # @return [Integer] 終了コード
@@ -379,11 +385,11 @@ module VivlioStarter
         # ------------------------------------------------------------
 
         # 既存の :single パイプラインをワークスペース内で実行する。
-        # options は CLI から素通しせず固定値を渡す（直接ビルドでは画像最適化・圧縮・
-        # クリーン指定を受け付けないため・spec §1.4）。resize: false は必須——
+        # options は CLI から素通しせず固定値を渡す（画像最適化とクリーン指定は受け付けず、
+        # 圧縮は deliver で行うため・spec §1.4）。resize: false は必須——
         # symlink 先である著者の stylesheets/images を書き換えさせないため。
         def run_pipeline
-          Thread.current[:vs_verify_options] = { verify_external_links: false }
+          Thread.current[:vs_verify_options] = { verify_external_links: @verify_links }
           PreProcessCommands::LinkImageValidator.reset!
           PreProcessCommands::IssueRegistry.reset!
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = chapters.map(&:basename)
@@ -400,6 +406,7 @@ module VivlioStarter
             @generated_pdf = File.expand_path(name) if name && File.file?(name)
           end
 
+          PreProcessCommands::LinkImageValidator.check_external_urls!
           PreProcessCommands::LinkImageValidator.print_summary
         end
 
@@ -426,9 +433,20 @@ module VivlioStarter
           destination = "#{source_name}.pdf"
           FileUtils.rm_f(destination)
           FileUtils.mv(@generated_pdf, destination)
-          Common.log_result("#{destination} を作成しました (#{format('%.1f', elapsed)}s)", status: :artifact)
-          open_pdf(destination)
+          created = [destination, (compress_pdf(destination) if @compress)].compact
+          Common.log_result("#{created.join(', ')} を作成しました (#{format('%.1f', elapsed)}s)", status: :artifact)
+          open_pdf(created.last)
           0
+        end
+
+        # 圧縮版 <元basename>_compressed.pdf を作り、そのパスを返す（作れなければ nil）。
+        # vs build の圧縮と同じく、gs が無い・圧縮に失敗したときは 🟡 を出し、圧縮前の PDF で続ける
+        # （pipeline: true）。前の回の圧縮版が残っていると、作れなかったのに作ったと報告するので先に消す
+        def compress_pdf(pdf)
+          compressed = "#{File.basename(pdf, '.pdf')}_compressed.pdf"
+          FileUtils.rm_f(compressed)
+          PdfCommands.execute_pdf_compress({ pipeline: true }, pdf, compressed)
+          compressed if File.exist?(compressed)
         end
 
         def open_pdf(path)
