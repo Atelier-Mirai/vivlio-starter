@@ -29,6 +29,28 @@ vs build
 | `epub` | EPUB | 楽天 Kobo、Apple Books への配信 |
 | `kindle` | Kindle 用 KPF | Amazon Kindle（KDP）への配信 |
 
+:::{.text-table}
+生成したファイルは、プロジェクト直下に置かれます。ファイル名には、`book.yml` の `project.name` と `project.version` を使います。
+
+```yaml
+project:
+  name: "mybook"        # ファイル名
+  version: "0.1.0"      # 書籍の版
+  include_version: true # 版を付ける
+```
+
+`include_version` を `false` にすると、ファイル名に版（`_v0.1.0`）を付けません。
+
+**この設定のときのファイル名**
+
+| 形式 | ファイル名 |
+|:---|:---|
+| `pdf` | `mybook_v0.1.0.pdf` |
+| `print_pdf` | `mybook_print_v0.1.0.pdf` |
+| `epub` | `mybook_v0.1.0.epub` |
+| `kindle` | `mybook_v0.1.0.kpf` |
+:::
+
 複数の形式を作るときは、カンマで区切って並べます。`[pdf, epub, kindle]` のように配列でも書けます。
 
 ```yaml
@@ -37,8 +59,6 @@ output:
 ```
 
 執筆中は `pdf` だけで内容を確かめ、入稿の前に `pdf, print_pdf` へ切り替えます。電子書籍も作るなら `pdf, epub, kindle` です。`output` セクションの設定の一覧は @chapref:ch-book-yml にあります。
-
-生成したファイルは、プロジェクト直下に `project.name` と `project.version` から付けた名前で置かれます。`mybook` と `0.1.0` なら、閲覧用 PDF は `mybook_v0.1.0.pdf`、印刷入稿用 PDF は `mybook_print_v0.1.0.pdf`、EPUB は `mybook_v0.1.0.epub`、Kindle 用は `mybook_v0.1.0.kpf` です。`output.include_version` を `false` にすると、名前に版（`_v0.1.0`）を付けません。
 
 
 ## 閲覧用 PDF のビルド
