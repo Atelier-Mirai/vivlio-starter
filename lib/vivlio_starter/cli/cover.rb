@@ -22,7 +22,7 @@ module VivlioStarter
     #   1. covers/<side>cover_<theme>.png（.jpg・.jpeg・.webp）→ 画像の経路（このファイル）
     #   2. covers/<side>cover_<theme>.svg → SVG の経路（cover/svg_cover.rb）。文字だけを当てる
     #   3. covers/bundled/<side>cover.svg → 同梱テンプレート（light / dark だけ）。パレットと文字を当てる
-    #   master は画像（PNG・JPEG・WebP）だけを使うテーマ。
+    #   master は片面だけでも組むテーマ（vs import の取り込み先。裏表紙の無い本が多い）。
     #
     # 成果物（生成物はキャッシュへ、入稿・KDP へ渡すものは直下へも複製する）:
     #   pdf         → <side>cover_<theme>_<size>_rgb.pdf（閲覧用・仕上がりサイズ）
@@ -134,11 +134,11 @@ module VivlioStarter
         covers_dir = Common.covers_dir
         raster = Common.cover_raster_path("#{side}cover_#{theme}")
         return { type: :raster, path: raster } if raster
-        # master は画像だけのテーマ。足りない面は check_master_files が知らせている
-        return { type: :missing } if theme == 'master'
 
         svg = File.join(covers_dir, "#{side}cover_#{theme}.svg")
         return { type: :svg, path: svg, bundled: false } if File.exist?(svg)
+        # master の足りない面は check_master_files が 🟡 で知らせている
+        return { type: :missing } if theme == 'master'
 
         # 同梱のテンプレートを使うのは light / dark だけ。独自のテーマの画像が無いことは
         # validate_cover_settings が先に 🔴 で報告する
@@ -180,13 +180,13 @@ module VivlioStarter
         end
       end
 
-      # master テーマの元の画像（PNG・JPEG・WebP）があるか。足りない面を知らせ、1 枚も無ければ false。
+      # master テーマの元（画像か SVG）があるか。足りない面を知らせ、1 枚も無ければ false。
       def check_master_files(covers_dir, theme = 'master')
-        frontcover = File.join(covers_dir, "frontcover_#{theme}.png（.jpg・.webp も可）")
-        backcover = File.join(covers_dir, "backcover_#{theme}.png（.jpg・.webp も可）")
+        frontcover = File.join(covers_dir, "frontcover_#{theme}.png（.jpg・.webp・.svg も可）")
+        backcover = File.join(covers_dir, "backcover_#{theme}.png（.jpg・.webp・.svg も可）")
 
-        front_exists = !Common.cover_raster_path("frontcover_#{theme}", dir: covers_dir).nil?
-        back_exists = !Common.cover_raster_path("backcover_#{theme}", dir: covers_dir).nil?
+        front_exists = Common.cover_source?("frontcover_#{theme}", dir: covers_dir)
+        back_exists = Common.cover_source?("backcover_#{theme}", dir: covers_dir)
 
         guidance = Common.master_cover_guidance
         Common.log_warn("表紙マスターが見つかりません: #{frontcover}", detail: guidance) unless front_exists

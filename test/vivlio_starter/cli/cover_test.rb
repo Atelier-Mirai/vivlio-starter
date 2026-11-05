@@ -662,6 +662,19 @@ module VivlioStarter
         assert Common.validate_cover_settings, 'master も JPEG で通るべきです'
       end
 
+      # master もほかのテーマ名と同じく SVG を使える。片面だけでも通す
+      def test_should_accept_svg_for_master_theme
+        setup_basic_config('master')
+        Common.reload_configuration!
+        File.write('covers/frontcover_master.svg', %(<svg xmlns="http://www.w3.org/2000/svg"/>))
+
+        assert Common.validate_cover_settings, 'SVG の master は有効であるべきです'
+        assert_pattern { CoverCommands.resolve_source('front', 'master') => { type: :svg, bundled: false } }
+        out, = capture_io { assert CoverCommands.check_master_files('covers'), '表紙が SVG なら true' }
+        assert_match(/🟡 裏表紙マスターが見つかりません/, out)
+        refute_match(/🟡 表紙マスターが見つかりません/, out)
+      end
+
       # 塗り足し込みの画像は、元の画像と形式が違ってもよい（frontcover_master.png と frontcover_master_bleed.jpg）
       def test_should_find_bleed_image_in_any_raster_format
         create_dummy_png('covers/frontcover_master.png')

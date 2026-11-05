@@ -1193,6 +1193,9 @@ module VivlioStarter
       def cover_raster_path(base, dir: covers_dir)
         COVER_RASTER_EXTENSIONS.map { File.join(dir, "#{base}.#{it}") }.find { File.exist?(it) }
       end
+      # 表紙の元（画像か SVG）があるか
+      # @param base [String] 拡張子を除いた名前（frontcover_master）
+      def cover_source?(base, dir: covers_dir) = !cover_raster_path(base, dir:).nil? || File.exist?(File.join(dir, "#{base}.svg"))
       def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
       def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
@@ -1231,13 +1234,13 @@ module VivlioStarter
         # 標準テーマの場合は有効
         return true if %w[light dark].include?(theme)
 
-        # master は画像（PNG・JPEG・WebP）だけを使うテーマ。片面だけでも通す。
+        # master は、片面だけでも通す。
         # Re:VIEW Starter の本は裏表紙が無いことが多く（vs import）、ここで止めると
         # 取り込めた表紙まで本から消える。足りない面は check_master_files が知らせる。
         if theme == 'master'
-          return true if %w[front back].any? { cover_raster_path("#{it}cover_#{theme}") }
+          return true if %w[front back].any? { cover_source?("#{it}cover_#{theme}") }
 
-          log_error("マスター画像 '#{theme}' の画像ファイル（PNG・JPEG・WebP）が見つかりません", detail: master_cover_guidance)
+          log_error("マスター画像 '#{theme}' の画像ファイル（PNG・JPEG・WebP・SVG）が見つかりません", detail: master_cover_guidance)
           return false
         end
 
@@ -1249,9 +1252,7 @@ module VivlioStarter
 
         # カスタムテーマは、表・裏それぞれに画像（PNG・JPEG・WebP）か SVG があればよい（改善案.md #65）。
         # 絵を描くのが苦手な著者が、SVG を編集して独自の表紙を作れるようにするため。
-        missing = %w[front back].reject do |side|
-          cover_raster_path("#{side}cover_#{theme}") || File.exist?(File.join(covers_dir, "#{side}cover_#{theme}.svg"))
-        end
+        missing = %w[front back].reject { cover_source?("#{it}cover_#{theme}") }
         return true if missing.empty?
 
         log_error("カスタム画像 '#{theme}' の画像ファイル（PNG・JPEG・WebP・SVG）が見つかりません",
@@ -1278,7 +1279,7 @@ module VivlioStarter
                       :appendix_template_path, :postface_template_path,
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
-                      :cover_theme, :cover_setting_label, :master_cover_guidance, :cover_raster_path, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
+                      :cover_theme, :cover_setting_label, :master_cover_guidance, :cover_raster_path, :cover_source?, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,
