@@ -115,7 +115,8 @@ module VivlioStarter
 
         assert_includes output, 'build'
         assert_includes output, 'compress'
-        assert_includes output, 'clean'
+        # --[no]-clean は開発用の内部オプションなので、使い方には出さない
+        refute_includes output, 'clean'
       end
 
       # vs clean --help: クリーンコマンドのヘルプ（--all オプション含む）

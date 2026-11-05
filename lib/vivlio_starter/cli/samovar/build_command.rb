@@ -48,7 +48,8 @@ module VivlioStarter
         options do
           option '--theme <color>', 'テーマカラー（.md 直接指定時のみ有効）', key: :theme
           option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
-          option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
+          # 開発用（中間生成物を調べるとき）。著者には要らないので、使い方には出さない
+          internal_option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -420,7 +421,7 @@ module VivlioStarter
             files << normal_pdf if File.exist?(normal_pdf)
           end
 
-          if targets.include?('pdf') && options[:compress]
+          if targets.include?('pdf') && compress_requested?
             compressed_pdf = Common.generate_compressed_pdf_filename('pdf')
             files << compressed_pdf if File.exist?(compressed_pdf)
           end
@@ -444,6 +445,11 @@ module VivlioStarter
 
           files
         end
+
+        # 閲覧用 PDF を圧縮したか。--compress / --no-compress を優先し、無ければ book.yml の
+        # output.pdf.compress を見る（パイプラインの determine_compress_setting と同じ決め方）。
+        # --compress だけを見ていたときは、book.yml で圧縮した PDF が作成の一覧から漏れていた
+        def compress_requested? = options[:compress].nil? ? Common.pdf_compress? : options[:compress]
 
         # 作成されたファイルメッセージを表示
         # build_timings が渡された場合は所要時間を末尾に付加する（通常時のみ）。

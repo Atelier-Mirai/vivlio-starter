@@ -23,6 +23,34 @@ module VivlioStarter
           assert_equal false, command.options[:clean], '--no-clean 指定時は options[:clean] が false になるはずです'
         end
 
+        # book.yml の compress: true で作った圧縮版も、作成したファイルの一覧（📚）に入る。
+        # --no-compress を付けた回は、残っている前回の圧縮版を載せない
+        def test_should_list_compressed_pdf_when_book_yml_enables_compress
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              pdf = Common.generate_output_filename('pdf')
+              compressed = Common.generate_compressed_pdf_filename('pdf')
+              [pdf, compressed].each { File.write(it, '') }
+
+              Build::PdfMerger.stub(:extract_targets, ['pdf']) do
+                Common.stub(:pdf_compress?, true) do
+                  assert_equal [pdf, compressed], BuildCommand.new([]).send(:get_created_files_list)
+                  assert_equal [pdf], BuildCommand.new(['--no-compress']).send(:get_created_files_list)
+                end
+              end
+            end
+          end
+        end
+
+        # --[no]-clean は開発用の内部オプション。解釈はするが、使い方には出さない
+        def test_should_hide_clean_option_from_usage
+          output = StringIO.new
+          BuildCommand.new(['--help'], name: 'build', output:).print_usage
+
+          refute_includes output.string, 'clean', '使い方に --[no]-clean が出ないはずです'
+          assert_includes output.string, '--verify-links', 'ほかのオプションは使い方に出るはずです'
+        end
+
         # Samovar は `--opt=value` を解さないため、初期化時に `--opt value` へ開いている
         def test_should_accept_equals_separated_option_values
           assert_equal 'blue', BuildCommand.new(['x.md', '--theme=blue']).options[:theme]

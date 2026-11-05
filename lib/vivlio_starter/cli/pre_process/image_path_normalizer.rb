@@ -80,8 +80,8 @@ module VivlioStarter
         def fix_image_paths(content, filename, source_path: nil)
           chapter_dir = filename.sub(/\.md$/, '')
 
-          # 元ファイルの行番号マップを構築（画像名 → 元ファイルでの行番号）
-          source_line_map = build_source_image_line_map(source_path)
+          # 元ファイルの行番号（画像名 → 元ファイルで出てくる行番号の並び）
+          source_lines = source_path && File.exist?(source_path) ? source_image_lines(File.read(source_path, encoding: 'utf-8')) : {}
 
           # コードブロック・インラインコードを退避して変換対象から除外する
           protected_text, spans = MarkdownUtils.extract_code_spans(content)
@@ -114,8 +114,8 @@ module VivlioStarter
                              end
 
                 original_image_name = File.basename(image_path)
-                # 元ファイルの行番号があればそちらを使う
-                source_ln = source_line_map[original_image_name] || line_number
+                # 元ファイルの行番号があればそちらを使う（同じ画像は出てきた順に）
+                source_ln = source_lines[original_image_name]&.shift || line_number
                 resolved_placeholder_or_path(alt_text, normalized, filename, source_ln, original_image_name)
               end
             end
@@ -152,21 +152,21 @@ module VivlioStarter
           "![#{alt_text}](#{placeholder_path})"
         end
 
-        # 元ファイルから画像名 → 行番号のマップを構築する。
-        # pre_process で行数が変わる前の正しい行番号を取得するため。
-        # コード領域の除外は Masking（唯一の実装）に委ね、地の文の画像記法のみ拾う。
-        def build_source_image_line_map(source_path)
-          return {} unless source_path && File.exist?(source_path)
-
-          map = {}
-          source = File.read(source_path, encoding: 'utf-8')
+        # 元の原稿から「画像名 → その画像が出てくる行番号の並び」を作る。
+        # pre_process で行数が変わる前の、著者の手元の行番号を示すため。
+        # コードブロックは Masking で、地の文の中のインラインコード（`![…](foo.png)` と書いた
+        # 記法の例）は strip_inline_code で外し、本物の画像記法だけを拾う。同じ画像を何度も
+        # 使う原稿では、呼び出し側が出てきた順に shift して使う（最初の行に寄せない）。
+        # @param source [String] 元の原稿
+        # @return [Hash{String => Array<Integer>}]
+        def source_image_lines(source)
+          lines = {}
           Masking.each_prose_line(source) do |line, lineno|
-            line.scan(/!\[[^\]]*\]\(([^)]+)\)/) do
-              image_name = File.basename(::Regexp.last_match(1))
-              map[image_name] ||= lineno
+            Masking.strip_inline_code(line).scan(/!\[[^\]]*\]\(([^)]+)\)/) do
+              (lines[File.basename(::Regexp.last_match(1))] ||= []) << lineno
             end
           end
-          map
+          lines
         end
 
         # 拡張子違いを探すときの順。**png / jpg を webp より先に見る**——同名の原本が

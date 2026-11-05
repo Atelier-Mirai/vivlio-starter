@@ -33,6 +33,7 @@ require 'uri'
 require 'monitor'
 require_relative '../common'
 require_relative '../masking'
+require_relative 'image_path_normalizer'
 require_relative 'issue_registry'
 
 module VivlioStarter
@@ -102,7 +103,7 @@ module VivlioStarter
           #
           # 解決済みのパスでないとファイルの有無を判定できないため、この時点の行番号は
           # 原稿とずれている。`source_path` を渡すと元ファイルから同じ画像を含む行を
-          # 引き当てて付け替える（同じ画像を何度も使う原稿では最初の行に丸まる）。
+          # 引き当てて付け替える（同じ画像を何度も使う原稿では、出てきた順に当てる）。
           #
           # @param content [String] Markdown テキスト（画像パス正規化済み）
           # @param filename [String] 対象ファイル名
@@ -111,8 +112,10 @@ module VivlioStarter
           def validate_images(content, filename, source_path: nil)
             image_issues = scan_missing_images(content, filename)
 
-            source_content = source_path && File.exist?(source_path) ? File.read(source_path, encoding: 'utf-8') : nil
-            image_issues = image_issues.map { correct_line_number(it, source_content) } if source_content
+            if source_path && File.exist?(source_path)
+              source_lines = ImagePathNormalizer.source_image_lines(File.read(source_path, encoding: 'utf-8'))
+              image_issues = image_issues.map { correct_line_number(it, source_lines) }
+            end
 
             image_issues.each { record_to_registry(it) }
             merge_into_report(filename, image_issues: image_issues)
@@ -292,25 +295,12 @@ module VivlioStarter
           end
 
           # 画像 issue の行番号を元ファイルの行番号に補正する。
-          # プレースホルダー SVG から抽出した画像名を元ファイルで検索し、
-          # 元ファイルでの行番号を返す。
-          def correct_line_number(issue, source_content)
-            image_name = issue.image_path
-            return issue if image_name == '(不明)'
-
-            # 元ファイルで画像名を含む行を探す
-            source_content.each_line.with_index(1) do |line, idx|
-              if line.include?(image_name) && line.match?(/!\[/)
-                return ImageIssue.new(
-                  filename: issue.filename,
-                  line_number: idx,
-                  image_path: issue.image_path,
-                  issue_type: issue.issue_type
-                )
-              end
-            end
-
-            issue
+          # プレースホルダー SVG から抽出した画像名を、元ファイルで出てきた行（ImagePathNormalizer.source_image_lines）
+          # に当てる。コードやインラインコードの中の記法の例は拾わない。当てた行は使い切る（shift）。
+          # @param source_lines [Hash{String => Array<Integer>}]
+          def correct_line_number(issue, source_lines)
+            line_number = source_lines[issue.image_path]&.shift
+            line_number ? issue.with(line_number:) : issue
           end
 
           # book.yml + CLI オプションから検証設定を解決する。

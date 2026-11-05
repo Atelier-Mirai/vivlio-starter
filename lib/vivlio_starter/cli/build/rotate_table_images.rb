@@ -224,7 +224,7 @@ module VivlioStarter
 
         def warn_unresolved(ids)
           Common.log_warn("回転テーブルのページ位置を特定できませんでした: #{ids.join(', ')}",
-                          detail: '対処: vs build --clean で中間生成物を作り直してください。' \
+                          detail: '対処: vs clean で中間生成物を削除してから、もう一度 vs build を実行してください。' \
                                   '解消しない場合は該当の :::{.rotate-table} ブロックをお知らせください。')
         end
       end

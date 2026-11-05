@@ -27,9 +27,32 @@ require_relative 'option_token_normalizer'
 module VivlioStarter
   module CLI
     module SamovarCommands
+      # 使い方の表示に出さないオプション（internal_option）を宣言できる Options。
+      # 開発用の `vs build --no-clean` のように、動くが著者には見せないオプションのため。
+      # Samovar には表示しないオプションの仕組みがないので、使い方の 1 行目（to_s）と
+      # オプションの一覧（usage）の両方から外す。解釈（parse）と引数の正規化は通常のオプションと同じ。
+      class VsOptions < Samovar::Options
+        def internal_option(...)
+          option(...)
+          (@internal_options ||= []) << @ordered.last
+        end
+
+        def to_s = visible_options.collect(&:to_s).join(' ')
+
+        def usage(rows) = visible_options.each { rows << it }
+
+        private
+
+        def visible_options = @ordered - Array(@internal_options)
+      end
+
       # 公開コマンドの基底クラス
       class VsCommand < Samovar::Command
         prepend OptionTokenNormalizer
+
+        # 子の `options do ... end` を VsOptions で組む（internal_option を使えるように）。
+        # 行を足すのは子のクラスなので、上に書いた宣言順の方針とは干渉しない
+        def self.options(...) = append(VsOptions.parse(...))
 
         private
 

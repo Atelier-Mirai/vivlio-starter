@@ -48,7 +48,11 @@ module VivlioStarter
         end
 
 
-        # 簡易スレッドプールで並列実行
+        # 簡易スレッドプールで並列実行。
+        #
+        # CLI の --verify-links はスレッドローカル（VsCommand#setup_verify_options!）に置かれ、
+        # Thread.current[] は新しいスレッドへ受け継がれない。章の前処理（リンクの検証を含む）は
+        # この作業スレッドで走るので、呼び出し元の値を渡さないと --verify-links が無視される
         def parallel_each(items, concurrency: 1, &)
           list = Array(items)
           effective_concurrency = concurrency.to_i
@@ -60,8 +64,10 @@ module VivlioStarter
           list.each { |it| q << it }
           sentinel = Object.new
           effective_concurrency.times { q << sentinel }
+          verify_options = Thread.current[:vs_verify_options]
           workers = Array.new(effective_concurrency) do
             Thread.new do
+              Thread.current[:vs_verify_options] = verify_options
               loop do
                 it = q.pop
                 break if it.equal?(sentinel)

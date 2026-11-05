@@ -462,7 +462,7 @@ module VivlioStarter
 
           Common.log_error('[前付・奥付] 本文 PDF に組まれているのにページ位置を特定できませんでした')
           Common.log_error('  個別にレンダすると同じページが二重に入るため、ビルドを中止します。')
-          Common.log_error('  対処: vs build --clean で中間生成物を作り直してください。')
+          Common.log_error('  対処: vs clean で中間生成物を削除してから、もう一度 vs build を実行してください。')
           exit 1
         end
 

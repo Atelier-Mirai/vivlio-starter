@@ -159,6 +159,38 @@ module VivlioStarter
         end
       end
 
+      # 見つからない画像の代替画像（data: URI の SVG）も、Kindle では画像ファイルへ焼く。
+      # data: URI の SVG が残ると、Kindle Previewer が W14224 のあと内部エラーで KPF を出さない
+      def test_should_rasterize_a_svg_data_uri_for_kindle
+        in_temp_project do
+          placeholder = PreProcessCommands::ImagePathNormalizer.placeholder_image_path('images/44-build/foo.png')
+          html = File.join('epub', 'chapter.html')
+          FileUtils.mkdir_p('epub')
+          File.write(html, %(<html><body><img src="#{placeholder}" alt="t"></body></html>), encoding: 'utf-8')
+
+          Builder.stage_author_svg_for_epub!([html], flavor: :kindle)
+
+          staged = staged_src(File.read(html))
+          assert_match %r{\Aimages/_epub_assets/[0-9a-f]{16}\.(png|jpg)\z}, staged
+          assert File.size?(File.join('epub', staged)), '焼いた画像がパッケージに置かれるはずです'
+          assert_empty Dir.glob('epub/**/*.svg'), 'SVG をパッケージに残さないはずです'
+        end
+      end
+
+      # クリーン EPUB の代替画像は data: URI のまま（リーダーは SVG を表示できる）
+      def test_should_keep_a_svg_data_uri_for_clean_epub
+        in_temp_project do
+          placeholder = PreProcessCommands::ImagePathNormalizer.placeholder_image_path('images/44-build/foo.png')
+          html = File.join('epub', 'chapter.html')
+          FileUtils.mkdir_p('epub')
+          File.write(html, %(<html><body><img src="#{placeholder}" alt="t"></body></html>), encoding: 'utf-8')
+
+          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+
+          assert_equal placeholder, staged_src(File.read(html))
+        end
+      end
+
       private
 
       # 書体を置いた一時プロジェクトで実行する。消費者 dir は epub/ を使う。

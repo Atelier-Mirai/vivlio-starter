@@ -1556,9 +1556,12 @@ module VivlioStarter
 
           updated = html.gsub(/<img\b[^>]*>/i) do |tag|
             src = tag[/\ssrc="([^"]*)"/i, 1]
-            next tag unless src&.match?(/\.svg\z/i)
+            svg_data_uri = flavor == :kindle && src&.start_with?(SVG_DATA_URI_PREFIX)
+            next tag unless svg_data_uri || src&.match?(/\.svg\z/i)
 
-            staged = cache.fetch(src) { cache[src] = stage_author_svg(src, File.dirname(path), flavor) }
+            staged = cache.fetch(src) do
+              cache[src] = svg_data_uri ? stage_svg_data_uri(src, File.dirname(path)) : stage_author_svg(src, File.dirname(path), flavor)
+            end
             next tag unless staged
 
             changed = true
@@ -1596,6 +1599,30 @@ module VivlioStarter
           place_author_svg(embedded || source, src_attr, base_dir, flavor)
         rescue StandardError => e
           Common.log_warn("[EPUB] SVG 図版の差し替えに失敗（#{src_attr}）: #{e.message}")
+          nil
+        end
+
+        # 本文に data: URI で埋め込んだ SVG。見つからない画像の代わりに置く代替画像
+        # （ImagePathNormalizer#placeholder_image_path）がこの形になる。
+        SVG_DATA_URI_PREFIX = 'data:image/svg+xml'
+
+        # data: URI の SVG を Kindle 用に画像ファイルへ焼き、参照用の相対パスを返す（できなければ nil）。
+        # Kindle Previewer は data: URI の SVG を「無効な datauri」（W14224）とし、内部エラーで変換を
+        # 止めて KPF を出さない。焼く元の SVG はパッケージの外（一時ディレクトリ）に書く——
+        # 同梱された SVG は 1 枚でも Enhanced Typesetting を落とすため（stage_author_svg と同じ事情）。
+        def stage_svg_data_uri(src_attr, base_dir)
+          header, data = decode_html_entities(src_attr).split(',', 2)
+          svg = header.include?(';base64') ? data.to_s.unpack1('m') : CGI.unescape(data.to_s)
+          dir = File.join(base_dir, Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
+          FileUtils.mkdir_p(dir)
+
+          Dir.mktmpdir('vs-svg-data-uri') do |tmp|
+            source = File.join(tmp, 'image.svg')
+            File.write(source, svg)
+            rasterize_author_svg(source, dir, Digest::SHA256.hexdigest(src_attr)[0, 16])
+          end
+        rescue StandardError => e
+          Common.log_warn("[EPUB] data: URI の SVG を画像にできませんでした: #{e.message}")
           nil
         end
 

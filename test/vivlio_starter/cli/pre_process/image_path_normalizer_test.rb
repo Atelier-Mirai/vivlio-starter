@@ -49,4 +49,32 @@ class ImagePathNormalizerTest < Minitest::Test
       refute_includes result, 'data:image/svg+xml', 'プレースホルダー化されないべき'
     end
   end
+
+  # 記法の例（コードブロック・インラインコード）の中の画像は、行番号の手がかりにしない
+  def test_should_collect_image_lines_outside_code
+    source = <<~MD
+      ```markdown
+      ![例](foo.png)
+      ```
+      画像は `![代替テキスト](foo.png)` と書きます。
+
+      ![一つ目](foo.png)
+      ![二つ目](images/11-intro/foo.png)
+    MD
+
+    assert_equal({ 'foo.png' => [6, 7] }, NORMALIZER.source_image_lines(source))
+  end
+
+  # 見つからない画像は、原稿で出てきた行で報告する（記法の例の行や、最初の行に寄せない）
+  def test_should_report_missing_images_at_their_own_lines
+    in_tmp do
+      source = "画像は `![代替テキスト](foo.png)` と書きます。\n\n![一つ目](foo.png)\n\n![二つ目](foo.png)\n"
+      File.write('11-intro.md', source)
+
+      out, err = capture_io { NORMALIZER.fix_image_paths(source, '11-intro.md', source_path: '11-intro.md') }
+      reported = (out + err).scan(/11-intro\.md:(\d+) - 画像 'foo\.png' が見つかりません/).flatten
+
+      assert_equal %w[3 5], reported
+    end
+  end
 end
