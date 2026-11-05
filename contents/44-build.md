@@ -60,6 +60,19 @@ output:
 
 執筆中は `pdf` だけで内容を確かめ、入稿の前に `pdf, print_pdf` へ切り替えます。電子書籍も作るなら `pdf, epub, kindle` です。`output` セクションの設定の一覧は @chapref:ch-book-yml にあります。
 
+### オプション
+
+`vs build` には次のオプションを付けられます。一覧は `vs build --help` でも表示できます。
+
+| オプション | 説明 |
+|:---|:---|
+| `--compress`<br>`--no-compress` | その回だけ PDF を圧縮する / しない（@pageref:pdf-compress） |
+| `--verify-links` | 外部 URL の到達性を確かめる（@pageref:verify-links） |
+| `--theme <color>` | テーマカラーを指定する（@pageref:direct-build） |
+| `--log <level>` | 表示するログの水準を指定する（error / warn / info / debug） |
+
+`--log` だけを付けると `info` になり、処理の経過が詳しく表示されます。
+
 
 ## 閲覧用 PDF のビルド
 
@@ -316,23 +329,7 @@ vs build ~/notes/idea.md --theme blue      # ディレクトリやテーマカ�
 :::
 
 
-## コマンドラインオプション
-
-:::{.section-lead}
-`book.yml` の設定をその回のビルドだけ変えるときや、処理の経過を詳しく見たいときは、コマンドラインオプションを使います。使えるオプションは `vs build --help` で表示できます。
-:::
-
-| オプション | 説明 |
-|:---|:---|
-| `--compress`<br>`--no-compress` | その回だけ PDF を圧縮する / しない（@pageref:pdf-compress） |
-| `--verify-links` | 外部 URL の到達性を確かめる（@pageref:verify-links） |
-| `--theme <color>` | テーマカラーを指定する（@pageref:direct-build） |
-| `--log <level>` | 表示するログの水準を指定する（error / warn / info / debug） |
-
-`--log` だけを付けると `info` になり、処理の経過が詳しく表示されます。
-
-
-## リンク・画像の自動検証
+## 画像・リンクの自動検証
 
 :::{.section-lead}
 `vs build` では、原稿中の画像パスや URL も検証します。参照先が見つからないまま完成稿へ進まないよう、ビルド結果に出る報告も確認してください。
