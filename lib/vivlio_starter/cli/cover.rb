@@ -15,12 +15,13 @@ module VivlioStarter
     # Module: CoverCommands（表紙・裏表紙の生成）
     # ================================================================
     # 入口は `vs cover`（execute_generate）と `vs build`（ensure_cover_files_for_build!）の 2 つで、
-    # どちらも generate! を通る。判型は book.yml の page.use、作るものは output.targets で決まる。
+    # どちらも validate_cover_settings で設定を検査してから generate! を通る。判型は book.yml の page.use、
+    # 作るものは output.targets で決まる。
     #
     # 表と裏はそれぞれソースを決める（resolve_source）:
     #   1. covers/<side>cover_<theme>.png → PNG の経路（このファイル）
     #   2. covers/<side>cover_<theme>.svg → SVG の経路（cover/svg_cover.rb）。文字だけを当てる
-    #   3. covers/bundled/<side>cover.svg → 同梱テンプレート。パレットと文字を当てる
+    #   3. covers/bundled/<side>cover.svg → 同梱テンプレート（light / dark だけ）。パレットと文字を当てる
     #   master は PNG だけを使うテーマ。
     #
     # 成果物（生成物はキャッシュへ、入稿・KDP へ渡すものは直下へも複製する）:
@@ -80,26 +81,30 @@ module VivlioStarter
       end
 
       # vs cover の本体。表紙だけを作り直して確かめる・入稿や KDP へ出し直すときに使う。
+      # vs build と同じ検査を通す。独自のテーマの画像が無ければ 🔴 で報告して作らない
+      # （同梱のデザインで代わりに作ると、テーマ名やファイル名の書き誤りが表紙の見た目に紛れる）。
+      # @return [Boolean] 表紙を作れたか
       def execute_generate(_context = nil)
-        theme = Common.cover_theme
-        unless theme
+        unless Common.cover_theme
           Common.log_error 'book.cover 設定が見つかりません'
-          return
+          return false
         end
+        return false unless Common.validate_cover_settings
 
         Common.log_info '📚 カバー画像の生成を開始します'
         targets = target_list(Common::CONFIG)
         unless generate!(targets:)
           Common.log_warn('カバーを作れませんでした（上のメッセージを確かめてください）')
-          return
+          return false
         end
 
+        # 閲覧用だけのときは成果品の行（📚）が出ないので、作ったものを既定のログでも 1 行で報告する
         page_label = book_page_size.to_s.upcase
-        labels = { 'pdf' => "PDF用（#{page_label}、RGB）", 'print_pdf' => "印刷用（#{page_label}、PDF/X-1a）" }
+        labels = { 'pdf' => "閲覧用 PDF（#{page_label}・RGB）", 'print_pdf' => "入稿用 PDF（#{page_label}・CMYK）" }
                  .filter_map { |target, label| label if targets.include?(target) }
-        labels << '電子書籍用（JPEG）' if ebook_target?(targets)
-        Common.log_success "\n✅ カバー画像の生成が完了しました"
-        Common.log_info "生成されたカバー: #{labels.join(', ')}"
+        labels << '電子書籍用 JPEG' if ebook_target?(targets)
+        Common.log_result("表紙を生成しました: #{labels.join('、')}", status: :success)
+        true
       end
 
       # 表と裏の表紙を作る。
@@ -135,26 +140,18 @@ module VivlioStarter
         svg = File.join(covers_dir, "#{side}cover_#{theme}.svg")
         return { type: :svg, path: svg, bundled: false } if File.exist?(svg)
 
+        # 同梱のテンプレートを使うのは light / dark だけ。独自のテーマの画像が無いことは
+        # validate_cover_settings が先に 🔴 で報告する
         bundled = File.join(covers_dir, 'bundled', "#{side}cover.svg")
-        if File.exist?(bundled)
-          warn_custom_theme_fallback(side, theme, png, svg)
-          return { type: :svg, path: bundled, bundled: true }
+        candidates = [png, svg]
+        if %w[light dark].include?(theme)
+          return { type: :svg, path: bundled, bundled: true } if File.exist?(bundled)
+
+          candidates << bundled
         end
 
-        Common.log_error("#{side}cover のソースが見つかりません。", detail: "確認先:\n#{[png, svg, bundled].join("\n")}")
+        Common.log_error("#{side}cover のソースが見つかりません。", detail: "確認先:\n#{candidates.join("\n")}")
         { type: :missing }
-      end
-
-      # 独自テーマ（light / dark 以外）の画像が無くて同梱テンプレートで作ったことを知らせる（改善案.md #65）。
-      # 黙って同梱のデザインで作ると、`cover: floral` の書き誤りやファイル名の食い違いに気づけない。
-      def warn_custom_theme_fallback(side, theme, png_path, svg_path)
-        return if %w[light dark].include?(theme)
-
-        Common.log_warn(
-          "#{side}cover_#{theme} の画像が見つからないため、同梱のテンプレート（light）で作りました",
-          detail: "探した場所: #{png_path}\n          #{svg_path}\n" \
-                  "→ #{Common.cover_setting_label} のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください"
-        )
       end
 
       # 出力ターゲットの一覧。無指定なら pdf。

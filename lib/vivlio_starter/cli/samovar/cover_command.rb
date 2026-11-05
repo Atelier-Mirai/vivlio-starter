@@ -38,12 +38,12 @@ module VivlioStarter
           return guard_failure if guard_failure
 
           volumes = selected_volumes
-          if volumes.empty?
-            CoverCommands.execute_generate(self)
-          else
-            volumes.each { generate_for(it) }
-          end
-          0
+          made = if volumes.empty?
+                   CoverCommands.execute_generate(self)
+                 else
+                   volumes.map { generate_for(it) }.all? # 1 巻作れなくても、残りの巻は作る
+                 end
+          made ? 0 : 1
         rescue Build::Volumes::SelectionError => e
           Common.log_error(e.message, detail: e.detail)
           1
@@ -64,6 +64,7 @@ module VivlioStarter
 
         # 巻の値（書名・表紙など）を book.yml に重ねて表紙を作り、book.yml の値へ戻す。
         # 表紙が読むのは CONFIG だけなので、vs build と違い全巻を同じプロセスで続けて作れる
+        # @return [Boolean] 表紙を作れたか
         def generate_for(volume)
           Common.log_action("#{volume.name}（#{volume.id}）の表紙を作ります")
           book_config = Common::CONFIG

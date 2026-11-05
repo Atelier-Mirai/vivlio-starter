@@ -182,12 +182,47 @@ module VivlioStarter
           FileUtils.mkdir_p(covers_dir)
           create_dummy_master_files(covers_dir)
 
-          assert_equal 0, SamovarCommands::CoverCommand.new([]).call
+          status = nil
+          out, = capture_io { status = SamovarCommands::CoverCommand.new([]).call }
 
+          assert_equal 0, status
           # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
           %w[frontcover_master_b5_rgb.pdf backcover_master_b5_rgb.pdf cover_master.jpg].each do |name|
             assert File.exist?(File.join(Common.cover_cache_dir, name)), "#{name} が生成されるべきです"
           end
+          # 閲覧用は成果品の行（📚）が出ないので、既定のログでも作ったものを 1 行で報告する
+          assert_match(/✅ 表紙を生成しました: 閲覧用 PDF（B5・RGB）、電子書籍用 JPEG/, out)
+        end
+      end
+
+      # 独自のテーマの画像が無いときは、vs build と同じく 🔴 で報告し、同梱のデザインで代わりに作らない
+      def test_should_report_missing_custom_theme_images_without_using_the_bundled_template
+        within_temp_dir do
+          setup_config(theme: "floral")
+          FileUtils.mkdir_p("covers/bundled")
+          File.write("covers/bundled/frontcover.svg", %(<svg xmlns="http://www.w3.org/2000/svg"/>))
+
+          status = nil
+          out, = capture_io { status = SamovarCommands::CoverCommand.new([]).call }
+
+          assert_equal 1, status
+          assert_match(/🔴 カスタム画像 .floral. のPNGファイルもSVGファイルも見つかりません/, out)
+          refute Dir.exist?(Common.cover_cache_dir) && !Dir.empty?(Common.cover_cache_dir), "表紙を作らない"
+        end
+      end
+
+      # 巻の無い本で巻を指定したら、巻の書き方を行ごとに案内して止める（detail が行の配列でも表示できる）
+      def test_should_guide_how_to_write_volumes_when_the_book_has_none
+        within_temp_dir do
+          setup_config
+
+          status = nil
+          out, = capture_io { status = SamovarCommands::CoverCommand.new(["upper"]).call }
+
+          assert_equal 1, status
+          assert_match(/🔴 config\/catalog\.yml に巻（VOLUMES）が書かれていないので、巻 upper を選べません/, out)
+          assert_match(/^\s+VOLUMES:$/, out)
+          refute_match(/NoMethodError/, out)
         end
       end
 
@@ -570,7 +605,7 @@ module VivlioStarter
         assert Common.validate_cover_settings, 'SVG を置いたカスタムテーマは有効であるべきです'
       end
 
-      # 表紙の元は面ごとに PNG → 著者の SVG → 同梱テンプレートの順で決まる。master は PNG だけ（改善案.md #65）
+      # 表紙の元は面ごとに PNG → 著者の SVG → 同梱テンプレート（light / dark）の順で決まる。master は PNG だけ（改善案.md #65）
       def test_should_resolve_each_side_png_then_svg_then_bundled
         setup_basic_config('floral')
         File.write('covers/frontcover_floral.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
@@ -578,8 +613,10 @@ module VivlioStarter
         File.write('covers/bundled/backcover.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
 
         assert_pattern { CoverCommands.resolve_source('front', 'floral') => { type: :svg, bundled: false } }
-        back = Common.stub(:log_warn, nil) { CoverCommands.resolve_source('back', 'floral') }
-        assert_pattern { back => { type: :svg, bundled: true } }
+        # 同梱のテンプレートを使うのは light / dark だけ。独自のテーマの足りない面は作らない
+        back = Common.stub(:log_error, nil) { CoverCommands.resolve_source('back', 'floral') }
+        assert_equal({ type: :missing }, back)
+        assert_pattern { CoverCommands.resolve_source('back', 'dark') => { type: :svg, bundled: true } }
         assert_equal({ type: :missing }, CoverCommands.resolve_source('front', 'master'))
 
         create_custom_theme_files('floral')

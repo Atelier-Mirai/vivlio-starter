@@ -568,12 +568,11 @@ module VivlioStarter
         %w[y yes].include?(answer)
       end
 
-      # detail 文字列を行配列に変換する。nil の場合は空配列を返す。
+      # detail を行配列に変換する。改行区切りの文字列のほかに、行の配列も受け付ける
+      # （巻の選び方の案内のように、行ごとに組み立てる detail がある）。nil の場合は空配列を返す。
       # log_* からのみ呼ばれる内部ヘルパー。
       def format_detail(detail)
-        return [] if detail.nil?
-
-        detail.lines.map(&:chomp)
+        Array(detail).flat_map { it.to_s.lines }.map(&:chomp)
       end
       private :format_detail
 
