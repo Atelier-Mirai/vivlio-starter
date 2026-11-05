@@ -47,12 +47,13 @@ book:
 
 ### project — プロジェクト情報
 
-生成するファイルの名前は、`name` と `version` で決まります。書籍名とは別に、配布ファイルを見分けやすい名前を付けてください。
+生成するファイルの名前は、`name` と `version` で決まります。書籍名とは別に、配布ファイルを見分けやすい名前を付けてください。`include_version` を `false` にすると、ファイル名に版を付けません。
 
 ```yaml
 project:
   name: "vivlio_starter"     # 出力例: vivlio_starter_v1.0.0.pdf
   version: "1.0.0"
+  include_version: true      # false: vivlio_starter.pdf
 ```
 
 ### theme — テーマ設定
@@ -191,14 +192,12 @@ typography:
 
 ### output — 出力設定
 
-`output.targets` で、目的に合う出力形式を指定します。閲覧・配布用なら `pdf`、印刷所への入稿用なら `print_pdf`、電子書籍なら `epub` や `kindle` を選びます。このセクションでは、出力ファイル名や表紙の扱いも設定できます。
+`output.targets` で、目的に合う出力形式を指定します。閲覧・配布用なら `pdf`、印刷所への入稿用なら `print_pdf`、電子書籍なら `epub` や `kindle` を選びます。このセクションでは、表紙の扱いや圧縮なども設定できます。
 
 ```yaml
 output:
   targets: pdf           # pdf / print_pdf / epub / kindle
                          # 複数なら pdf, print_pdf か [pdf, epub, kindle]
-
-  include_version: true  # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
   pdf:
     combined: true       # 表紙を本文 PDF に結合する

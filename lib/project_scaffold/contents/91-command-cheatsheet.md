@@ -204,7 +204,6 @@
 | オプション | 説明 |
 |:---|:---|
 | `--compress` / `--no-compress` | PDF 圧縮を行う / スキップする |
-| `--no-clean` | 中間生成物のクリーンアップをスキップする（既定: 実行） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックも実行する |
 | `--theme <color>` | テーマカラーを指定する（`.md` ファイルの直接指定時のみ有効） |
 | `--log <level>` | ログレベルを指定する（`error` / `warn` / `info` / `debug`） |

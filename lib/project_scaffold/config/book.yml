@@ -48,6 +48,8 @@ book:
 project:
   name: "{{PROJECT_NAME}}" # 出力ファイル名のベース
   version: "0.1.0" # 書籍のバージョン（既定: 0.1.0）
+  include_version: true # true:  vivlio_starter_v1.0.0.pdf
+                        # false: vivlio_starter.pdf
 
 # ======= テーマ =======
 theme:
@@ -170,9 +172,6 @@ output:
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
   # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF,
                                           # 電子書籍EPUB, Kindle用KPF
-
-  include_version: true # true:  vivlio_starter_v1.0.0.pdf
-                        # false: vivlio_starter.pdf
 
   # ------- PDF プレビュー設定（macOS のみ） -------
   pdf_preview:
