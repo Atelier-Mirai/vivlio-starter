@@ -465,6 +465,13 @@ figure.align-center {
   object-fit: contain;
 }
 
+/* 中の図の上下の余白を消す（.pictures・.img-text 系と同じ）。消さないと、本文の図の既定
+   （chapter-common.css の figure { margin-block: 4mm }）が、.image-group 自身の余白に重なる。
+   23 章の表示例では上下が約 1cm 空き、ページの下に入る高さの囲みが次のページへ送られた */
+.image-group figure {
+  margin: 0;
+}
+
 /* 二つのブロックを左右に並べるコンテナ。記法のコードと表示例を見比べる用途が主
    使用例（VFM コンテナ。中の .output と区別するため外枠は ::::）:
    ::::{.side-by-side}
