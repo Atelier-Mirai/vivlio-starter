@@ -66,8 +66,9 @@ module VivlioStarter
         FALLBACK_NUMBER = '10'
         FALLBACK_SLUG = 'document'
 
-        # ワークスペースに置く 1 章分の原稿
-        Chapter = Data.define(:basename, :body)
+        # ワークスペースに置く 1 章分の原稿。offset は、この章の 1 行目が元の原稿の何行目の次か
+        # （報告の行を元の原稿の行へ読み替えるのに使う）
+        Chapter = Data.define(:basename, :body, :offset)
 
         # 章見出し（ATX の `#` 1 つ）。`##` 以下や `#タグ` は含めない
         CHAPTER_HEADING = /\A {0,3}\#[ \t]+\S/
@@ -120,7 +121,8 @@ module VivlioStarter
           prepare_workspace!(workspace)
           Dir.chdir(workspace) do
             Common.install_configuration!(direct_configuration)
-            run_pipeline
+            # 報告は作業用の名前（10-myawesome.md）ではなく、著者が指定した原稿の名前と行で出す
+            SourceAliases.with(source_aliases) { run_pipeline }
           end
 
           # --- Phase: 成果物を呼び出し元へ回収する（CONFIG は PdfOpener のため未復帰）---
@@ -155,7 +157,7 @@ module VivlioStarter
             number, slug = basename.split('-', 2)
             chapter_bodies.each_with_index.map do |body, index|
               name = index.zero? ? basename : format('%02d-%s-%d', number.to_i + index, slug, index + 1)
-              Chapter.new(basename: name, body:)
+              Chapter.new(basename: name, body:, offset: chapter_offsets[index])
             end
           end
         end
@@ -176,8 +178,22 @@ module VivlioStarter
 
             lines = text.lines
             starts = [0] + cuts.drop(1).map { it - 1 }
+            @chapter_offsets = starts
             bodies = starts.zip(starts.drop(1) + [lines.size]).map { |from, to| lines[from...to].join }
             bodies[0...-1].map { it.sub(TRAILING_PAGEBREAKS, "") } + [bodies.last]
+          end
+        end
+
+        # 各章の 1 行目が、元の原稿の何行目の次か（chapter_bodies が切り分けたときに決まる）
+        def chapter_offsets
+          chapter_bodies
+          @chapter_offsets
+        end
+
+        # 作業用の原稿の名前と行を、著者が指定した原稿の名前と行へ読み替える表
+        def source_aliases
+          chapters.map do |chapter|
+            SourceAliases::Alias.new(workspace: "#{chapter.basename}.md", source: "#{source_name}.md", offset: chapter.offset)
           end
         end
 

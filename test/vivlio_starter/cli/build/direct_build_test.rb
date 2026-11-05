@@ -207,6 +207,17 @@ module VivlioStarter
           assert_equal "# github について\n\n## github の基本\n", chapters.last.body
         end
 
+        # 報告の読み替え表: 作業用の名前を著者の原稿の名前へ、2 章目以降の行を元の原稿の行へ
+        def test_should_map_each_chapter_back_to_the_source_file_and_lines
+          body = "# git について\n\n## git の基本\nいろいろ書く\n\n---\n\n# github について\n\n## github の基本\n"
+          aliases = direct_build_for('notes.md', body).send(:source_aliases)
+
+          assert_equal [['10-notes.md', 'notes.md', 0], ['11-notes-2.md', 'notes.md', 7]],
+                       aliases.map { [it.workspace, it.source, it.offset] }
+          # 2 章目の 1 行目（# github について）は、元の原稿の 8 行目
+          assert_equal 8, body.lines.index("# github について\n") + 1
+        end
+
         # コードの中のシェルのコメントでは切らない。章見出しが一つなら従来どおり 1 章
         def test_should_not_split_at_hash_comment_in_code
           body = "# 手順\n\n```bash\n# インストール\nbrew install git\n```\n"

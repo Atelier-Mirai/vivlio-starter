@@ -7,6 +7,7 @@ require 'yaml'
 require_relative 'config_keys'
 require_relative 'units'
 require_relative 'spinner'
+require_relative 'source_aliases'
 require_relative 'build/volumes'
 
 # Common::CONFIG — book.yml の再帰的 Data ラッパー
@@ -419,6 +420,8 @@ module VivlioStarter
       # 親が合流時にまとめて吐く——スピナーと 2 つの枝が同じ TTY を奪い合うと行が
       # 混ざるため、**書き手を常に 1 つに保つ**（build-target-parallelization-spec.md §3.4）。
       def emit(line)
+        # 設定ファイルなしのビルドでは、作業用の原稿の名前と行を、著者の原稿の名前と行へ読み替える
+        line = SourceAliases.localize(line)
         sink = Thread.current[EMIT_SINK_KEY]
         return sink << line if sink
 
