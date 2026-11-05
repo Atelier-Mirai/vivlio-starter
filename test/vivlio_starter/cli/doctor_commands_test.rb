@@ -425,6 +425,43 @@ module VivlioStarter
         end
       end
 
+      # vs build の始めに、壊れた Chrome を自動で削除する。直近に書き込まれたもの（別の本の
+      # ビルドが取得・展開している最中のもの）は削除しない
+      def test_build_repairs_only_stale_broken_chrome
+        Dir.mktmpdir do |home|
+          chrome = File.join(home, 'browsers', 'chrome')
+          FileUtils.mkdir_p(File.join(chrome, 'mac_arm-146', 'app', 'MacOS')) # Framework 欠落
+          old_zip = File.join(chrome, '146-chrome-mac-arm64.zip')
+          fresh_zip = File.join(chrome, '155-chrome-mac-arm64.zip')
+          [old_zip, fresh_zip].each { FileUtils.touch(it) }
+          long_ago = Time.now - (DoctorCommands::CHROME_DOWNLOAD_GRACE_SEC + 60)
+          [old_zip, File.join(chrome, 'mac_arm-146')].each { File.utime(long_ago, long_ago, it) }
+
+          removed = nil
+          out, = capture_io do
+            DoctorCommands.stub(:vivliostyle_browsers_cache_dir, File.join(home, 'browsers')) do
+              removed = DoctorCommands.repair_vivliostyle_chrome!
+            end
+          end
+
+          assert_match(/壊れた Vivliostyle の Chrome を削除しました/, out)
+          assert_equal 2, removed
+          refute File.exist?(old_zip), '古い残骸は削除する'
+          refute Dir.exist?(File.join(chrome, 'mac_arm-146')), '古い壊れた版は削除する'
+          assert File.exist?(fresh_zip), '取得の途中かもしれない新しいものは残す'
+        end
+      end
+
+      # 壊れたものが無ければ、何も表示しない
+      def test_build_stays_silent_when_chrome_is_healthy
+        Dir.mktmpdir do |home|
+          DoctorCommands.stub(:vivliostyle_browsers_cache_dir, File.join(home, 'browsers')) do
+            out, = capture_io { assert_equal 0, DoctorCommands.repair_vivliostyle_chrome! }
+            assert_empty out
+          end
+        end
+      end
+
       # KPF の変換に使うのは Kindle Previewer 4 の CLI だけ。3 のアプリは更新の案内にだけ使う
       def test_should_use_only_version_four_for_kpf_conversion
         assert_includes DoctorCommands::KINDLE_PREVIEWER_APP_BIN, 'KindlePreviewer4CLI'

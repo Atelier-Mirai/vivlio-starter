@@ -68,6 +68,7 @@ module VivlioStarter
           # （直接ビルドも Markdown → HTML は VFM を通る）。
           if direct_mode?
             Guards::Guard.run!(Guards::NodeCheck.new, Guards::VfmCheck.new)
+            DoctorCommands.repair_vivliostyle_chrome!
             return run_direct_build
           end
 
@@ -98,6 +99,8 @@ module VivlioStarter
             Guards::ChapterTargetCheck.new(targets)
           )
           Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { common.log_always(it) }
+          # 中断したビルドで壊れた Chrome のキャッシュは、PDF の生成を失敗させるので、組む前に削除する
+          DoctorCommands.repair_vivliostyle_chrome!
           # 原稿の中身の検査（閉じ忘れは 🔴 で止める）。preflight と同じ並び
           run_manuscript_checks!
           select_volume!(volume)

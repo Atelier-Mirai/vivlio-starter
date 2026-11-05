@@ -113,6 +113,10 @@ module VivlioStarter
       KINDLE_PREVIEWER_CASK = 'kindle-previewer'
       ROSETTA = 'rosetta'
 
+      # 壊れて見える Chrome のキャッシュでも、これより新しいものは取得・展開の途中とみなして削除しない（秒）。
+      # Chrome の取得と展開は数分で終わるので、10 分あれば別の本のビルドの途中のものを消さない
+      CHROME_DOWNLOAD_GRACE_SEC = 600
+
       # Vivliostyle CLI が要求する Node.js の下限の**予備**。
       #
       # 本来の下限は、ビルドで実際に使われる Vivliostyle の package.json（engines.node）から
@@ -1331,6 +1335,22 @@ module VivlioStarter
           Common.log_warn("Vivliostyle CLI の別名 vs を外せませんでした（#{e.message}）",
                           detail: "rm #{path} で外してください")
         end
+      end
+
+      # 壊れた Chrome のキャッシュを、vs build の始めに自動で削除する（著者が vs doctor --fix を
+      # 打たずに済むように）。Vivliostyle は Chrome が無ければ取得し直すので、削除するだけでよい。
+      # 別の本の vs build が取得・展開している最中のものも壊れて見えるので、直近に書き込まれたもの
+      # （CHROME_DOWNLOAD_GRACE_SEC 以内）は削除しない。
+      # @return [Integer] 削除した数
+      def repair_vivliostyle_chrome!(now: Time.now)
+        stale = broken_vivliostyle_chrome_entries.select { now - File.mtime(it) > CHROME_DOWNLOAD_GRACE_SEC }
+        return 0 if stale.empty?
+
+        stale.each { FileUtils.rm_rf(it) }
+        Common.log_always('✅ ビルドの中断で壊れた Vivliostyle の Chrome を削除しました（必要な版は、このビルドで取得し直します）')
+        stale.size
+      rescue SystemCallError
+        0
       end
 
       # vivliostyle のブラウザキャッシュ内で「不完全な Chrome」のパス一覧を返す。
