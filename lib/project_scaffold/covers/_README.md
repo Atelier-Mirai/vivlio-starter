@@ -21,17 +21,17 @@ covers/
 vs cover    # config/book.yml の設定に従って表紙画像を生成
 ```
 
-`config/book.yml` の `book.cover` でテーマ名を指定します（未指定なら `light`）。`light` / `dark` は gem 同梱テンプレートを使用しますが、`master`、`special`、`awesome` など任意のスラッグ(ファイル名)を指定することもできます。著者独自の表紙画像を用いる場合には `covers/frontcover_<theme>.png` や `covers/frontcover_<theme>.svg` を用意してください。
+`config/book.yml` の `book.cover` でテーマ名を指定します（未指定なら `light`）。`light` / `dark` は gem 同梱テンプレートを使用しますが、`master`、`special`、`awesome` など任意のスラッグ(ファイル名)を指定することもできます。著者独自の表紙画像を用いる場合には `covers/frontcover_<theme>.png`（`.jpg`・`.jpeg`・`.webp` も可）や `covers/frontcover_<theme>.svg` を用意してください。
 
 `templates/` の雛形は、画像を自作するときの下敷きです。判型に合うものを開いて描き、文字と線を削除してから `covers/frontcover_master.png` として保存し、`book.cover` を `master` にします。
 
 ## ソースの優先順位
 
-1. `covers/<side>cover_<theme>.png` — 著者が用意した PNG
+1. `covers/<side>cover_<theme>.png` — 著者が用意した画像（`.jpg`・`.jpeg`・`.webp` も可。この順に探す）
 2. `covers/<side>cover_<theme>.svg` — 著者が用意した SVG
 3. `covers/bundled/<side>cover.svg` — gem 同梱テンプレート（`light`・`dark` のみ。自動でテキスト置換）
 
-`master` は PNG だけを探します。SVG を使うときは、`master` 以外のテーマ名を付けてください。
+`master` は画像（PNG・JPEG・WebP）だけを探します。SVG を使うときは、`master` 以外のテーマ名を付けてください。
 
 ## クリーンアップ
 

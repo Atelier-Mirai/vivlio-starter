@@ -1,7 +1,7 @@
 # カバー画像の生成
 
 :::{.chapter-lead}
-一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の SVG や PNG を用意する場合も、準備から生成・確認までの流れは共通です。
+一冊の本でも、画面で見る PDF、印刷所へ渡す PDF、電子書籍では、表紙に必要な画像形式が異なります。`vs cover` は、一つのデザインから用途に合った表紙画像（カバー）を生成するコマンドです。同梱の `light` / `dark` テーマを使う場合も、独自の画像や SVG を用意する場合も、準備から生成・確認までの流れは共通です。
 :::
 
 表紙の元になる画像は `covers/` に置きます。生成した表紙はビルドのときに本へ組み込まれるので、著者が生成物を探して扱う必要はありません。印刷所へ渡す入稿用の表紙と、電子書籍用の表紙だけは、プロジェクト直下に `mybook_frontcover_v0.1.0.pdf` のような名前で置かれます（`project.name` と `project.version` から付く名前です）。
@@ -9,7 +9,7 @@
 ## 表紙のデザインを選ぶ
 
 :::{.section-lead}
-`book.yml` の `book.cover` に、使うデザインの名前（テーマ名）を書きます。同梱の `light`・`dark` を使うか、自分で用意した SVG または PNG を使うかを選べます。
+`book.yml` の `book.cover` に、使うデザインの名前（テーマ名）を書きます。同梱の `light`・`dark` を使うか、自分で用意した画像（PNG・JPEG・WebP）または SVG を使うかを選べます。
 :::
 
 ```yaml
@@ -19,8 +19,8 @@ book:
   # cover: dark  # 暗いテーマ
 
   # 著者が用意した独自デザインを使う場合
-  # cover: floral  # covers/frontcover_floral.png か .svg を使用
-  # cover: master  # covers/frontcover_master.png を使用
+  # cover: floral  # covers/frontcover_floral.png などを使用
+  # cover: master  # covers/frontcover_master.png などを使用
 ```
 
 `cover: <テーマ名>` を指定すると、表紙と裏表紙のそれぞれについて、次の順に元の画像を探します。
@@ -29,13 +29,13 @@ book:
 
 | 優先順位 | 探索先 | 説明 |
 |:---:|:---|:---|
-| 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した PNG |
+| 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した画像 |
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
 | 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート（`light`・`dark` のみ） |
 
-裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。`master` は PNG だけを探すテーマ名です。SVG を使うときは、`master` 以外のテーマ名を付けてください。
+1 の画像は、PNG のほかに JPEG（`.jpg`・`.jpeg`）と WebP（`.webp`）も使えます。裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。`master` は画像だけを探すテーマ名です。SVG を使うときは、`master` 以外のテーマ名を付けてください。
 
-独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートで代用せず、🔴 で報告して表紙を作りません（@pageref:cover-missing）。テーマ名やファイル名の書き誤りは、表紙を作る時点で分かります。
+独自のテーマ名で画像も SVG も見つからないときは、同梱のテンプレートで代用せず、🔴 で報告して表紙を作りません（@pageref:cover-missing）。テーマ名やファイル名の書き誤りは、表紙を作る時点で分かります。
 
 ### light / dark テーマ
 
@@ -48,7 +48,7 @@ book:
 
 ### 独自の SVG を使う
 
-`covers/` に `frontcover_<テーマ名>.svg` と `backcover_<テーマ名>.svg` を置き、`book.yml` にテーマ名を書きます。デザインごとに名前を変えて置いておけば、`cover:` を書き換えるだけで別の案に切り替えられます。
+表紙を `frontcover_<テーマ名>.svg`、裏表紙を `backcover_<テーマ名>.svg` の名前で `covers/` に置き、`book.yml` にテーマ名を書きます。デザインごとに名前を変えて置いておけば、`cover:` を書き換えるだけで別の案に切り替えられます。
 
 :::{.diagram}
 ```text
@@ -67,9 +67,9 @@ SVG の中に `{{title}}`・`{{subtitle}}`・`{{author}}`・`{{series}}`・`{{re
 
 SVG は、判型と同じ縦横比の `viewBox` で描きます（A4 なら `viewBox="0 0 595 842"`）。入稿用の表紙の塗り足し（@pageref:print-cover）には、`viewBox` の外側に描いた部分が使われます。背景のように紙の端まで届けたい要素は、四辺とも `viewBox` の外へ 3 mm 以上（A4 の `viewBox` なら 9 以上）広げて描いてください。`viewBox` の中だけに描くと、塗り足しは白になります。同梱の `covers/bundled/frontcover.svg` は背景と上下の帯を外側まで描いてあり、描き方の見本になります。
 
-### 独自の PNG を使う
+### 独自の画像を使う
 
-デザインツールで描いた画像を使うときは、`covers/frontcover_<テーマ名>.png` と `backcover_<テーマ名>.png` に PNG で置きます。次はテーマ名を `master` にした例です。
+表紙を `frontcover_<テーマ名>.png`、裏表紙を `backcover_<テーマ名>.png` の名前で `covers/` に置きます。JPEG なら拡張子は `.jpg`、WebP なら `.webp` です。次はテーマ名を `master` にした例です。
 
 :::{.diagram}
 ```text
@@ -98,7 +98,7 @@ book:
 
 入稿用の表紙の塗り足しは、次のいずれかの方法で埋めます。
 
-- 塗り足しまで描いた画像を、名前に `_bleed` を付けて置く（`covers/frontcover_master_bleed.png`）。大きさは上の表の右の列のとおりで、この画像をそのまま使う
+- 塗り足しまで描いた画像を、名前に `_bleed` を付けて置く（`covers/frontcover_master_bleed.png` など）。大きさは上の表の右の列のとおりで、この画像をそのまま使う
 - 何も置かなければ、仕上がりの大きさの画像を塗り足しまで拡大して使う（`output.print_pdf.cover_bleed: scale`、既定）。画像の四辺は裁ち落とされる
 - `cover_bleed: keep` にすると拡大せず、塗り足しは白になる。紙の端まで色の付いていないデザインに使う
 
@@ -140,7 +140,7 @@ vs cover
 
 ### 閲覧用 PDF
 
-仕上がりの判型の大きさで、色は RGB です。PNG は 350 dpi の画像として、SVG は図形のまま PDF にします。この表紙は、`vs build` が本文の前後に結合します。結合しないときは、`output.pdf.combined` を `false` にします（@chapref:ch-build）。
+仕上がりの判型の大きさで、色は RGB です。画像は 350 dpi の画像として、SVG は図形のまま PDF にします。この表紙は、`vs build` が本文の前後に結合します。結合しないときは、`output.pdf.combined` を `false` にします（@chapref:ch-build）。
 
 ### 入稿用 PDF @print-cover
 
@@ -180,16 +180,16 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 
 :::{.output}
 ```text
-🔴 カスタム画像 'floral' のPNGファイルもSVGファイルも見つかりません
-        covers/frontcover_floral.png または .svg
-        covers/backcover_floral.png または .svg
+🔴 カスタム画像 'floral' の画像ファイル（PNG・JPEG・WebP・SVG）が見つかりません
+        covers/frontcover_floral.png（.jpg・.webp・.svg も可）
+        covers/backcover_floral.png（.jpg・.webp・.svg も可）
         → config/book.yml の book.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください
 ```
 :::
 
 **原因**: `book.cover` のテーマ名に対応する画像が `covers/` にない。
 
-**解決方法**: 画像の名前が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた形になっているか確かめる。`master` は `.png` だけを使う。
+**解決方法**: 画像の名前が、`frontcover_<テーマ名>`・`backcover_<テーマ名>` に上の拡張子を付けた形か確かめる。
 
 ### CMYK 変換で色が変わる
 
