@@ -708,6 +708,22 @@ module VivlioStarter
         end
       end
 
+      # テーマ名にはハイフンも使える。使えない文字のときは、使える文字と例を示す
+      def test_should_accept_hyphen_in_theme_names_and_guide_invalid_ones
+        setup_basic_config('my-floral')
+        Common.reload_configuration!
+        create_custom_theme_files('my-floral')
+        assert Common.validate_cover_settings, 'ハイフンを含むテーマ名は有効であるべきです'
+
+        setup_basic_config('My Floral')
+        Common.reload_configuration!
+        result = nil
+        out, err = capture_io { result = Common.validate_cover_settings }
+        refute result
+        assert_match(/テーマ名 .My Floral. に使えない文字があります/, out + err)
+        assert_match(/半角の英小文字・数字・_・- で書いてください（例: my-floral）/, out + err)
+      end
+
       # カバー設定バリデーション：設定未指定なら既定の light で通ることを確認
       def test_should_use_light_theme_when_cover_setting_missing
         config_content = {

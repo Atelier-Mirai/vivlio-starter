@@ -1244,9 +1244,10 @@ module VivlioStarter
           return false
         end
 
-        # カスタムテーマの場合は命名規則をチェック
-        unless theme.match?(/\A[a-z0-9_]+\z/)
-          log_error("テーマ名 '#{theme}' は無効な形式です")
+        # テーマ名はファイル名（covers/frontcover_<テーマ名>.png）になるので、ファイル名に安全な文字に限る
+        unless theme.match?(/\A[a-z0-9_-]+\z/)
+          log_error("テーマ名 '#{theme}' に使えない文字があります",
+                    detail: "→ 半角の英小文字・数字・_・- で書いてください（例: my-floral）")
           return false
         end
 
