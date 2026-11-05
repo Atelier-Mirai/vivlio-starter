@@ -52,6 +52,8 @@ module VivlioStarter
       CODES_DIR = 'codes'
       TEMPLATES_DIR = 'templates'
       COVERS_DIR = 'covers'
+      # 表紙の元にできる画像の拡張子（この順に探す）。どれも ImageMagick がそのまま読む
+      COVER_RASTER_EXTENSIONS = %w[png jpg jpeg webp].freeze
       VFM_COMMAND = 'vfm'
       CACHE_DIR = '.cache/vs'
       # ------------------------------------------------------------
@@ -1186,6 +1188,11 @@ module VivlioStarter
       def master_cover_guidance
         "→ covers/templates/ の雛形を下敷きに画像を作って置くか、#{cover_setting_label} を light にしてください"
       end
+      # 表紙の元の画像（PNG・JPEG・WebP）のうち、最初に見つかったもののパス。無ければ nil
+      # @param base [String] 拡張子を除いた名前（frontcover_master・frontcover_master_bleed）
+      def cover_raster_path(base, dir: covers_dir)
+        COVER_RASTER_EXTENSIONS.map { File.join(dir, "#{base}.#{it}") }.find { File.exist?(it) }
+      end
       def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
       def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
@@ -1224,13 +1231,13 @@ module VivlioStarter
         # 標準テーマの場合は有効
         return true if %w[light dark].include?(theme)
 
-        # masterテーマは特別扱い（既存のmaster.pngファイルを使用）。片面だけでも通す。
+        # master は画像（PNG・JPEG・WebP）だけを使うテーマ。片面だけでも通す。
         # Re:VIEW Starter の本は裏表紙が無いことが多く（vs import）、ここで止めると
         # 取り込めた表紙まで本から消える。足りない面は check_master_files が知らせる。
         if theme == 'master'
-          return true if %w[front back].any? { File.exist?(File.join(covers_dir, "#{it}cover_#{theme}.png")) }
+          return true if %w[front back].any? { cover_raster_path("#{it}cover_#{theme}") }
 
-          log_error("マスター画像 '#{theme}' のPNGファイルが見つかりません", detail: master_cover_guidance)
+          log_error("マスター画像 '#{theme}' の画像ファイル（PNG・JPEG・WebP）が見つかりません", detail: master_cover_guidance)
           return false
         end
 
@@ -1240,15 +1247,15 @@ module VivlioStarter
           return false
         end
 
-        # カスタムテーマは、表・裏それぞれに PNG か SVG があればよい（改善案.md #65）。
-        # 絵を PNG で描くのが苦手な著者が、SVG を編集して独自の表紙を作れるようにするため。
+        # カスタムテーマは、表・裏それぞれに画像（PNG・JPEG・WebP）か SVG があればよい（改善案.md #65）。
+        # 絵を描くのが苦手な著者が、SVG を編集して独自の表紙を作れるようにするため。
         missing = %w[front back].reject do |side|
-          %w[png svg].any? { File.exist?(File.join(covers_dir, "#{side}cover_#{theme}.#{it}")) }
+          cover_raster_path("#{side}cover_#{theme}") || File.exist?(File.join(covers_dir, "#{side}cover_#{theme}.svg"))
         end
         return true if missing.empty?
 
-        log_error("カスタム画像 '#{theme}' のPNGファイルもSVGファイルも見つかりません",
-                  detail: missing.map { "covers/#{it}cover_#{theme}.png または .svg" }.join("\n") +
+        log_error("カスタム画像 '#{theme}' の画像ファイル（PNG・JPEG・WebP・SVG）が見つかりません",
+                  detail: missing.map { "covers/#{it}cover_#{theme}.png（.jpg・.webp・.svg も可）" }.join("\n") +
                           "\n→ #{cover_setting_label} のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください")
         false
       end
@@ -1271,7 +1278,7 @@ module VivlioStarter
                       :appendix_template_path, :postface_template_path,
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
-                      :cover_theme, :cover_setting_label, :master_cover_guidance, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
+                      :cover_theme, :cover_setting_label, :master_cover_guidance, :cover_raster_path, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,

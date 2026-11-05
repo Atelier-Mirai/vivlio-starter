@@ -19,10 +19,10 @@ module VivlioStarter
     # 作るものは output.targets で決まる。
     #
     # 表と裏はそれぞれソースを決める（resolve_source）:
-    #   1. covers/<side>cover_<theme>.png → PNG の経路（このファイル）
+    #   1. covers/<side>cover_<theme>.png（.jpg・.jpeg・.webp）→ 画像の経路（このファイル）
     #   2. covers/<side>cover_<theme>.svg → SVG の経路（cover/svg_cover.rb）。文字だけを当てる
     #   3. covers/bundled/<side>cover.svg → 同梱テンプレート（light / dark だけ）。パレットと文字を当てる
-    #   master は PNG だけを使うテーマ。
+    #   master は画像（PNG・JPEG・WebP）だけを使うテーマ。
     #
     # 成果物（生成物はキャッシュへ、入稿・KDP へ渡すものは直下へも複製する）:
     #   pdf         → <side>cover_<theme>_<size>_rgb.pdf（閲覧用・仕上がりサイズ）
@@ -32,7 +32,7 @@ module VivlioStarter
     module CoverCommands
       module_function
 
-      # master テーマの元の画像（vs import が書き出す名前でもある）
+      # vs import が書き出す master テーマの元の画像（表紙の元は JPEG・WebP でもよい）
       FRONTCOVER_MASTER = 'frontcover_master.png'
       BACKCOVER_MASTER = 'backcover_master.png'
 
@@ -116,8 +116,8 @@ module VivlioStarter
         FileUtils.mkdir_p(Common.cover_cache_dir)
         %w[front back].map do |side|
           case resolve_source(side, theme)
-          in { type: :png, path: }
-            write_png_outputs!(side, path, theme, page_size, targets)
+          in { type: :raster, path: }
+            write_raster_outputs!(side, path, theme, page_size, targets)
             true
           in { type: :svg, path:, bundled: }
             SvgCover.write_outputs!(side, path, theme, page_size, targets, bundled:)
@@ -128,13 +128,13 @@ module VivlioStarter
         end.any?
       end
 
-      # 片面の元の画像を、PNG → 著者の SVG → 同梱テンプレートの順に探す（改善案.md #65）。
-      # @return [Hash] { type: :png, path: } / { type: :svg, path:, bundled: } / { type: :missing }
+      # 片面の元の画像を、画像（PNG・JPEG・WebP）→ 著者の SVG → 同梱テンプレートの順に探す（改善案.md #65）。
+      # @return [Hash] { type: :raster, path: } / { type: :svg, path:, bundled: } / { type: :missing }
       def resolve_source(side, theme)
         covers_dir = Common.covers_dir
-        png = File.join(covers_dir, "#{side}cover_#{theme}.png")
-        return { type: :png, path: png } if File.exist?(png)
-        # master は PNG だけのテーマ。足りない面は check_master_files が知らせている
+        raster = Common.cover_raster_path("#{side}cover_#{theme}")
+        return { type: :raster, path: raster } if raster
+        # master は画像だけのテーマ。足りない面は check_master_files が知らせている
         return { type: :missing } if theme == 'master'
 
         svg = File.join(covers_dir, "#{side}cover_#{theme}.svg")
@@ -143,7 +143,7 @@ module VivlioStarter
         # 同梱のテンプレートを使うのは light / dark だけ。独自のテーマの画像が無いことは
         # validate_cover_settings が先に 🔴 で報告する
         bundled = File.join(covers_dir, 'bundled', "#{side}cover.svg")
-        candidates = [png, svg]
+        candidates = [File.join(covers_dir, "#{side}cover_#{theme}.png（.jpg・.webp も可）"), svg]
         if %w[light dark].include?(theme)
           return { type: :svg, path: bundled, bundled: true } if File.exist?(bundled)
 
@@ -180,13 +180,13 @@ module VivlioStarter
         end
       end
 
-      # master テーマの元の PNG があるか。足りない面を知らせ、1 枚も無ければ false。
+      # master テーマの元の画像（PNG・JPEG・WebP）があるか。足りない面を知らせ、1 枚も無ければ false。
       def check_master_files(covers_dir, theme = 'master')
-        frontcover = File.join(covers_dir, "frontcover_#{theme}.png")
-        backcover = File.join(covers_dir, "backcover_#{theme}.png")
+        frontcover = File.join(covers_dir, "frontcover_#{theme}.png（.jpg・.webp も可）")
+        backcover = File.join(covers_dir, "backcover_#{theme}.png（.jpg・.webp も可）")
 
-        front_exists = File.exist?(frontcover)
-        back_exists = File.exist?(backcover)
+        front_exists = !Common.cover_raster_path("frontcover_#{theme}", dir: covers_dir).nil?
+        back_exists = !Common.cover_raster_path("backcover_#{theme}", dir: covers_dir).nil?
 
         guidance = Common.master_cover_guidance
         Common.log_warn("表紙マスターが見つかりません: #{frontcover}", detail: guidance) unless front_exists
@@ -196,26 +196,26 @@ module VivlioStarter
       end
 
       # ================================================================
-      # PNG の経路
+      # 画像（PNG・JPEG・WebP）の経路
       # ================================================================
 
-      # 片面の PNG から、targets に応じた成果物を作る（SvgCover.write_outputs! と対になる）。
-      def write_png_outputs!(side, png, theme, page_size, targets)
+      # 片面の画像（PNG・JPEG・WebP）から、targets に応じた成果物を作る（SvgCover.write_outputs! と対になる）。
+      def write_raster_outputs!(side, image, theme, page_size, targets)
         cache_dir = Common.cover_cache_dir
         size = SIZES.fetch(page_size)
 
         if targets.include?('pdf')
-          generate_rgb_pdf_single(png, File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf"), size)
+          generate_rgb_pdf_single(image, File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf"), size)
         end
 
         if targets.include?('print_pdf')
-          warn_low_print_resolution(png, page_size)
-          write_print_cover!(side, png, theme, page_size)
+          warn_low_print_resolution(image, page_size)
+          write_print_cover!(side, image, theme, page_size)
         end
 
         return unless side == 'front' && ebook_target?(targets)
 
-        write_ebook_cover!(png, File.join(cache_dir, "cover_#{theme}.jpg"))
+        write_ebook_cover!(image, File.join(cache_dir, "cover_#{theme}.jpg"))
       end
 
       # PNG の画素数が判型に対して足りなければ知らせる。PNG に書かれた dpi の値は見ない
@@ -297,23 +297,24 @@ module VivlioStarter
 
       # print 用の入力画像と充填モードを決める。
       #
-      # 塗り足し込みの著者画像 `<base>_bleed.png`（例 frontcover_master_bleed.png）があれば
+      # 塗り足し込みの著者画像 `<base>_bleed.png`（例 frontcover_master_bleed.png。.jpg・.jpeg・.webp も可）があれば
       # 最優先で採用する（実画が塗り足しまで届くのでトリム画像との絵柄差が出ない）。無ければ
       # `output.print_pdf.cover_bleed` 設定で分岐する:
       #   scale（既定）= トリム画像を塗り足しまで拡大して流用（中央拡大・端裁断を許容）
       #   keep         = 拡大しない（塗り足し帯は白。フチが端まで無いデザイン向け）
       #
-      # @param png [String] 仕上がりサイズの元の PNG
+      # @param image [String] 仕上がりサイズの元の画像
       # @param cover_bleed [String] 'scale' | 'keep'
-      # @return [Array(String, Symbol)] [入力 PNG, 充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）]
-      def resolve_print_cover_input(png, cover_bleed)
-        bleed_png = png.sub(/\.png\z/i, '_bleed.png')
-        if File.exist?(bleed_png)
-          Common.log_info "  塗り足し込み画像を使用: #{File.basename(bleed_png)}"
-          return [bleed_png, :bleed]
+      # @return [Array(String, Symbol)] [入力画像, 充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）]
+      def resolve_print_cover_input(image, cover_bleed)
+        # 元の画像と塗り足し込みの画像は、形式が違ってもよい（frontcover_master.png と frontcover_master_bleed.jpg）
+        bleed_image = Common.cover_raster_path("#{File.basename(image, '.*')}_bleed", dir: File.dirname(image))
+        if bleed_image
+          Common.log_info "  塗り足し込み画像を使用: #{File.basename(bleed_image)}"
+          return [bleed_image, :bleed]
         end
 
-        cover_bleed == 'keep' ? [png, :trim] : [png, :bleed]
+        cover_bleed == 'keep' ? [image, :trim] : [image, :bleed]
       end
 
       # CMYK PDF 生成（単一ファイル）

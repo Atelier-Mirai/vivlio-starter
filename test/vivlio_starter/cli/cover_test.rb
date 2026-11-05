@@ -195,6 +195,27 @@ module VivlioStarter
         end
       end
 
+      # JPEG・WebP の画像からも、PNG と同じく閲覧用・入稿用・電子書籍用の表紙を作る
+      def test_should_make_covers_from_jpeg_and_webp_images
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config(theme: 'photo', targets: 'pdf, print_pdf, epub')
+          FileUtils.mkdir_p('covers')
+          create_dummy_png('covers/frontcover_photo.jpg', width: 2508, height: 3541)
+          create_dummy_png('covers/backcover_photo.webp', width: 2508, height: 3541)
+
+          status = nil
+          capture_io { status = SamovarCommands::CoverCommand.new([]).call }
+
+          assert_equal 0, status
+          %w[frontcover_photo_b5_rgb.pdf backcover_photo_b5_rgb.pdf frontcover_photo_b5_cmyk.pdf
+             backcover_photo_b5_cmyk.pdf cover_photo.jpg].each do |name|
+            assert File.exist?(File.join(Common.cover_cache_dir, name)), "#{name} が生成されるべきです"
+          end
+        end
+      end
+
       # 独自のテーマの画像が無いときは、vs build と同じく 🔴 で報告し、同梱のデザインで代わりに作らない
       def test_should_report_missing_custom_theme_images_without_using_the_bundled_template
         within_temp_dir do
@@ -206,7 +227,7 @@ module VivlioStarter
           out, = capture_io { status = SamovarCommands::CoverCommand.new([]).call }
 
           assert_equal 1, status
-          assert_match(/🔴 カスタム画像 .floral. のPNGファイルもSVGファイルも見つかりません/, out)
+          assert_match(/🔴 カスタム画像 .floral. の画像ファイル（PNG・JPEG・WebP・SVG）が見つかりません/, out)
           refute Dir.exist?(Common.cover_cache_dir) && !Dir.empty?(Common.cover_cache_dir), "表紙を作らない"
         end
       end
@@ -620,8 +641,36 @@ module VivlioStarter
         assert_equal({ type: :missing }, CoverCommands.resolve_source('front', 'master'))
 
         create_custom_theme_files('floral')
-        assert_equal :png, CoverCommands.resolve_source('front', 'floral')[:type],
-                     'PNG があれば PNG の処理（PDF/X-1a・塗り足し）へ回す'
+        assert_equal :raster, CoverCommands.resolve_source('front', 'floral')[:type],
+                     '画像があれば画像の処理（PDF/X-1a・塗り足し）へ回す'
+      end
+
+      # 表紙の元の画像は PNG のほかに JPEG・WebP も使える。master も同じ
+      def test_should_accept_jpeg_and_webp_cover_images
+        setup_basic_config('photo')
+        Common.reload_configuration!
+        create_dummy_png('covers/frontcover_photo.jpg')
+        create_dummy_png('covers/backcover_photo.webp')
+
+        assert Common.validate_cover_settings, 'JPEG・WebP を置いた独自のテーマは有効であるべきです'
+        assert_equal({ type: :raster, path: 'covers/frontcover_photo.jpg' }, CoverCommands.resolve_source('front', 'photo'))
+        assert_equal({ type: :raster, path: 'covers/backcover_photo.webp' }, CoverCommands.resolve_source('back', 'photo'))
+
+        setup_basic_config('master')
+        Common.reload_configuration!
+        create_dummy_png('covers/frontcover_master.jpeg')
+        assert Common.validate_cover_settings, 'master も JPEG で通るべきです'
+      end
+
+      # 塗り足し込みの画像は、元の画像と形式が違ってもよい（frontcover_master.png と frontcover_master_bleed.jpg）
+      def test_should_find_bleed_image_in_any_raster_format
+        create_dummy_png('covers/frontcover_master.png')
+        create_dummy_png('covers/frontcover_master_bleed.jpg')
+
+        assert_equal ['covers/frontcover_master_bleed.jpg', :bleed],
+                     CoverCommands.resolve_print_cover_input('covers/frontcover_master.png', 'keep')
+        assert_equal ['covers/backcover_master.webp', :trim],
+                     CoverCommands.resolve_print_cover_input('covers/backcover_master.webp', 'keep')
       end
 
       # カバー設定バリデーション：カスタムテーマ（PNGファイルなし）が無効であることを確認
