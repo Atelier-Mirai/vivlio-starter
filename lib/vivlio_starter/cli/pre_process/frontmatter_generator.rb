@@ -31,6 +31,7 @@ require_relative '../theme_color'
 require_relative 'css_updater'
 require_relative 'book_settings_css'
 require_relative 'theme_image_resolver'
+require_relative 'book_setting_warning'
 
 module VivlioStarter
   module CLI
@@ -151,7 +152,7 @@ module VivlioStarter
           if count.positive? && v =~ /\A\d+\z/
             count
           else
-            Common.log_warn("#{label} は 1 行の文字数（正の整数）で指定してください (#{v})。既定値を使います。")
+            BookSettingWarning.report("#{label} は 1 行の文字数（正の整数）で指定してください (#{v})。既定値を使います。")
             nil
           end
         end
@@ -379,7 +380,7 @@ module VivlioStarter
           elsif v =~ /^-?\d+(?:\.\d+)?(?:mm|cm|in|px|pt|pc|em|rem|vw|vh|vmin|vmax|%)$/i
             v
           else
-            Common.log_warn("#{label} の形式が想定外です (#{v})。#{fallback_unit}単位として扱います。")
+            BookSettingWarning.report("#{label} の形式が想定外です (#{v})。#{fallback_unit}単位として扱います。")
             numeric = v.gsub(/[^0-9.-]/, '')
             return default if numeric.empty?
 

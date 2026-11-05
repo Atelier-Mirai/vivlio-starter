@@ -34,7 +34,9 @@ module VivlioStarter
         module_function
 
         # 色値を正規化（色名 or HEX）
-        def normalize_color_value(raw_value, fallback: "var(--accent-#{ThemeColor::DEFAULT_NAME})")
+        # @param warn [Boolean] 読めない色を 🟡 で知らせるか。theme の色は ThemeValidator が
+        #   キーの名前と直し方を添えて知らせるので、theme の色を渡すときは false
+        def normalize_color_value(raw_value, fallback: "var(--accent-#{ThemeColor::DEFAULT_NAME})", warn: true)
           raw_string = raw_value.to_s.strip
           return fallback if raw_string.empty?
 
@@ -52,7 +54,7 @@ module VivlioStarter
           elsif ALLOWED_COLORS.include?(normalized)
             "var(--accent-#{normalized})"
           else
-            Common.log_warn("認識できない色: '#{raw_value}'。フォールバックを使用します。")
+            Common.log_warn("認識できない色: '#{raw_value}'。フォールバックを使用します。") if warn
             fallback
           end
         end

@@ -41,3 +41,17 @@ rescue LoadError
 end
 
 $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
+
+# 前処理の指摘の集計（IssueRegistry）は、テストごとに空から始める。
+# book.yml の値の警告は同じ文言を 1 回だけ出すので、前のテストの記録が残ると
+# 後のテストで警告が出なくなる
+module ResetIssueRegistryBeforeEachTest
+  def before_setup
+    super
+    return unless defined?(VivlioStarter::CLI::PreProcessCommands::IssueRegistry)
+
+    VivlioStarter::CLI::PreProcessCommands::IssueRegistry.reset!
+  end
+end
+
+Minitest::Test.include(ResetIssueRegistryBeforeEachTest)

@@ -40,6 +40,7 @@ require_relative '../post_process/heading_processor'
 require_relative 'frontmatter_generator'
 require_relative 'talk_registry'
 require_relative 'svg_font_embedder'
+require_relative 'book_setting_warning'
 
 module VivlioStarter
   module CLI
@@ -357,7 +358,7 @@ module VivlioStarter
           return if advance_mm <= 0 || chars * advance_mm <= text_mm
 
           fits = (text_mm / advance_mm).floor
-          Common.log_warn(
+          BookSettingWarning.report(
             "#{label}: #{chars} は版面幅 #{format_mm(text_mm)} に収まりません（最大 #{fits} 文字）",
             detail: "#{label.split('.').last}: #{fits} をお試しください"
           )
@@ -378,8 +379,8 @@ module VivlioStarter
           accent = settings[:theme_accent_value]
 
           [
-            "--appendix-accent-color: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent)};",
-            "--color-preface-accent: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent)};"
+            "--appendix-accent-color: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};",
+            "--color-preface-accent: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};"
           ]
         end
 
@@ -575,7 +576,7 @@ module VivlioStarter
           raw = page_cfg[:chapter_pagebreak].to_s.strip
           return if raw.empty? || CHAPTER_PAGEBREAK_VALUES.include?(raw.downcase)
 
-          Common.log_warn(
+          BookSettingWarning.report(
             "config/book.yml の page.chapter_pagebreak の値が不正です（#{raw}）\n" \
             "   使える値: #{CHAPTER_PAGEBREAK_VALUES.join(' / ')}\n" \
             "   before: chapter_pagebreak: #{raw}\n" \
@@ -633,7 +634,7 @@ module VivlioStarter
           return if raw.empty? || values.include?(raw.downcase)
 
           default = PostProcessCommands::HeadingProcessor::DEFAULT_HEADING_NUMBERING
-          Common.log_warn(
+          BookSettingWarning.report(
             "config/book.yml の page.heading_numbering の値が不正です（#{raw}）\n" \
             "   使える値: #{values.join(' / ')}\n" \
             "   before: heading_numbering: #{raw}\n" \

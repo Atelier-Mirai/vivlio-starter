@@ -8,7 +8,7 @@
 #   指定された名前から実際のファイルパスまたはプレースホルダーを返す。
 #
 # 探索順序:
-#   1. {name}_portrait.webp（バリアント。ユーザー手置き → 生成キャッシュ .cache/vs/theme-images/）
+#   1. {name}_portrait.{webp,png,jpg,jpeg}（バリアント。ユーザー手置き → 生成キャッシュ .cache/vs/theme-images/）
 #   2. images/{name}.webp
 #   3. images/{name}.png/.jpg/.jpeg
 #   4. プレースホルダー SVG（見つからない場合）
@@ -19,7 +19,7 @@
 #     生成位置 .cache/vs/ 基準。BookSettingsCss.rebase_relative はこの形を素通しする）
 #
 # バリアント:
-#   - portrait: 縦長（扉絵用、ページ比率に合わせてクロップ）
+#   - portrait: 縦長（扉絵用、ページ比率に合わせて飾りの間を広げる）
 #   - landscape: 横長（飾り画像用、2.39:1 シネマスコープ）
 #
 # 依存:
@@ -51,6 +51,11 @@ module VivlioStarter
         MIN_BINDING_RATIO = 1.35
         MAX_BINDING_RATIO = 2.2
         FRONTISPIECE_RATIO_TOLERANCE = 0.05
+
+        # 生成済みの扉絵の縦横比が、今の判型から求めた比とこれ以上ずれたら作り直す。
+        # 生成時の丸め（画素の整数化・幅 2880px への縮小）より大きく、判型の違い
+        # （ノドと小口の差が 2mm 変わるだけでも約 1%）を見逃さない幅
+        CACHED_VARIANT_RATIO_TOLERANCE = 0.005
 
         FRONTISPIECE_PLACEHOLDER_SVG = <<~SVG
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210" height="297">
@@ -248,9 +253,9 @@ module VivlioStarter
         # バリアント画像を探索。
         # ユーザーが stylesheets/images/ に手置きしたバリアント（意図的な上書き）を優先し、
         # 次に生成キャッシュ（.cache/vs/theme-images/。ImageGenerator の出力先）を見る。
+        # 手置きは元画像と同じく WebP・PNG・JPEG を受ける（ornament の直接探索と揃える）。
         def find_existing_theme_variant(base_slug, variant)
-          find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled],
-                                                               allowed_extensions: ['.webp']) ||
+          find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled]) ||
             find_cached_theme_variant(base_slug, variant)
         end
 
@@ -260,10 +265,34 @@ module VivlioStarter
         def find_cached_theme_variant(base_slug, variant)
           %W[#{base_slug}_#{variant}.webp bundled/#{File.basename(base_slug)}_#{variant}.webp].uniq.each do |candidate|
             path = File.join(theme_images_cache_root, candidate)
-            return path if File.exist?(path)
+            return path if File.exist?(path) && cached_variant_current?(path, variant)
           end
 
           nil
+        end
+
+        # 生成キャッシュのバリアントが今も使えるか。元画像を描き直した（元のほうが新しい）とき、
+        # 扉絵では判型が変わって縦横比が合わなくなったときは false（作り直す）。
+        # 元画像が見つからないときは、残っているバリアントを使う。
+        # @param cached_path [String] 生成キャッシュ内のバリアント
+        # @param variant [:portrait, :landscape]
+        # @return [Boolean]
+        def cached_variant_current?(cached_path, variant)
+          source = variant_source(cached_path, variant)
+          return true unless source
+          return false if File.mtime(source) > File.mtime(cached_path)
+          return true unless variant == :portrait
+
+          ratio = image_ratio(cached_path)
+          expected = binding_safe_portrait_ratio
+          ratio.nil? || ((ratio - expected).abs / expected) <= CACHED_VARIANT_RATIO_TOLERANCE
+        end
+
+        # 生成キャッシュのバリアントの元画像（stylesheets/images/ の同じサブパス）。
+        # ImageGenerator は元画像のサブパスを保って出力するので、そこから逆に引ける
+        def variant_source(cached_path, variant)
+          stem = cached_path.delete_prefix("#{theme_images_cache_root}/").delete_suffix("_#{variant}.webp")
+          THEME_IMAGE_EXTENSIONS.map { File.join(theme_images_root, "#{stem}#{it}") }.find { File.exist?(it) }
         end
 
         # テーマ画像スラッグを正規化
@@ -327,10 +356,17 @@ module VivlioStarter
           path.sub(%r{\A#{Regexp.escape(theme_images_root)}/}, 'images/')
         end
 
-        # 画像のアスペクト比を取得
+        # 画像のアスペクト比（縦 / 横）を取得。章ごとに同じ画像を何度も調べるので、
+        # パスと更新日時ごとに覚えておく（Common.image_size は magick を起動する）
         def image_ratio(path)
+          key = [path, File.mtime(path)]
+          @image_ratio_cache ||= {}
+          return @image_ratio_cache[key] if @image_ratio_cache.key?(key)
+
           width, height = Common.image_size(path)
-          height.to_f / width if width
+          @image_ratio_cache[key] = (height.to_f / width if width)
+        rescue SystemCallError
+          nil
         end
 
         # frontispiece 用の許容アスペクト比かチェック
@@ -347,8 +383,10 @@ module VivlioStarter
         end
 
         def binding_safe_portrait_ratio
-          # page の版面キー（width 等）は page_presets 由来で存在保証がないため [] で参照する
-          page_cfg = Common::CONFIG.page
+          # 紙の幅・高さは book.yml に書かれず判型（size）から決まるので、
+          # BookSettingsCss と同じく normalize_page_size! で補ってから読む
+          page = Common::CONFIG.page
+          page_cfg = Common.normalize_page_size!(page.respond_to?(:to_h) ? page.to_h : {})
           width_mm = Units.length_to_mm(page_cfg[:width]) || DEFAULT_PAGE_WIDTH_MM
           height_mm = Units.length_to_mm(page_cfg[:height]) || DEFAULT_PAGE_HEIGHT_MM
           margin_inner_mm = Units.length_to_mm(page_cfg[:margin_inner]) || 0

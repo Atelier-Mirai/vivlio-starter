@@ -57,6 +57,20 @@ module VivlioStarter
             issue
           end
 
+          # 同じ指摘（章・行・重要度・カテゴリ・メッセージが同じ）が未記録のときだけ記録する。
+          # 章ごとに何度も読まれる値（book.yml の設定など）の指摘を 1 件にまとめるために使う。
+          # 引数は record と同じ。
+          # @return [Issue, nil] 記録した指摘（既に記録済みなら nil）
+          def record_once(severity:, category:, message:, chapter: nil, line: nil)
+            issue = Issue.new(chapter: normalize_chapter(chapter), line:, severity:, category:, message:)
+            @monitor.synchronize do
+              next nil if @issues.include?(issue)
+
+              @issues << issue
+              issue
+            end
+          end
+
           # 蓄積された全指摘のコピーを返す（呼び出し側での絞り込み用）
           def issues = @monitor.synchronize { @issues.dup }
 

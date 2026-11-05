@@ -5,11 +5,11 @@
 # ================================================================
 # 責務:
 #   テーマ画像のバリアント（portrait/landscape）を生成する。
-#   waifu2x による高解像度化と ImageMagick によるクロップを行う。
+#   左上と右下に飾りを置いた元画像を対角線で 2 つに分け、飾りの間を広げて置き直す。
 #
 # 生成処理:
-#   1. waifu2x-ncnn-vulkan で 2x アップスケール + ノイズ除去
-#   2. ImageMagick で指定アスペクト比にクロップ
+#   1. ImageMagick で透明な余白を除き、対角線で分けて指定の縦横比の画布へ置き直す
+#   2. waifu2x-ncnn-vulkan で 2x アップスケール + ノイズ除去（あれば）
 #   3. WebP 形式で出力（quality=90）
 #
 # バリアント:
@@ -49,10 +49,11 @@ module VivlioStarter
           }
         end
 
-        # バリアント画像が存在しなければ生成。
+        # バリアント画像が無いか古ければ生成。
         # 生成物はソースの隣ではなく生成キャッシュ .cache/vs/theme-images/ へ
         # （images root からの相対サブパスを維持・generated-assets 移設仕様 §2）。
         # waifu2x を伴う高コスト処理のため、生成済みチェックが実質のメモ化になる。
+        # 元画像を描き直したときと、判型が変わって扉絵の縦横比が合わなくなったときは作り直す。
         def ensure_variant_generated(source_path, variant)
           images_root = ThemeImageResolver.theme_images_root
           relative = source_path.sub(%r{\A#{Regexp.escape(images_root)}/}, '')
@@ -60,7 +61,7 @@ module VivlioStarter
 
           base = relative.sub(/\.[^.]+\z/, '')
           target = File.join(ThemeImageResolver.theme_images_cache_root, "#{base}_#{variant}.webp")
-          return target if File.exist?(target)
+          return target if File.exist?(target) && ThemeImageResolver.cached_variant_current?(target, variant)
 
           success = generate_frontispiece_and_ornament_from(relative)
           success ? target : nil

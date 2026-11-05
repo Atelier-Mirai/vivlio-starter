@@ -14,13 +14,17 @@
 #
 # 検証内容:
 #   - theme.color: 既定色名・HEX 以外を指定 → 警告（既定色 ThemeColor::DEFAULT_NAME で継続）
+#   - theme.preface_color / theme.appendix_color: 同上（theme.color と同じ色で継続）
 #   - theme.frontispiece / theme.ornament: 実在しない画像名 → 警告
 #     （プレースホルダー画像で代用される旨を案内）
 #   - theme.lead_size / theme.frontispiece.lead_size: 範囲外・読めない倍率 → 警告
 #     （実際に組む値と、書き直し案を案内）
+#
+#   警告は BookSettingWarning を通す（preflight / build の最終判定に数える）。
 # ================================================================
 
 require_relative '../common'
+require_relative 'book_setting_warning'
 require_relative 'frontmatter_generator'
 require_relative 'theme_image_resolver'
 
@@ -41,6 +45,8 @@ module VivlioStarter
 
           # color とリードの倍率は image / simple どちらのスタイルでも使われるため常に検証する
           validate_color(theme_cfg[:color])
+          validate_color(theme_cfg[:preface_color], key: :preface_color)
+          validate_color(theme_cfg[:appendix_color], key: :appendix_color)
           validate_lead_size('theme.lead_size', theme_cfg[:lead_size], cfg:)
 
           # simple スタイルは扉絵・飾り画像を使わないため画像検証はスキップする
@@ -68,17 +74,17 @@ module VivlioStarter
 
           case problem
           in :too_small
-            Common.log_warn("#{label} は #{range.min} 以上にしてください（#{raw} は本文より小さくなります）。" \
-                            "#{ratio} 倍で組みます",
-                            detail: "book.yml: #{key}: #{raw} → #{ratio}\n" \
-                                    'リードが章扉に収まらないときは、リードを縮めてください')
+            BookSettingWarning.report("#{label} は #{range.min} 以上にしてください（#{raw} は本文より小さくなります）。" \
+                                      "#{ratio} 倍で組みます",
+                                      detail: "book.yml: #{key}: #{raw} → #{ratio}\n" \
+                                              'リードが章扉に収まらないときは、リードを縮めてください')
           in :too_large
-            Common.log_warn("#{label} は #{range.max} 以下にしてください（#{raw} は章題と張り合う大きさです）。" \
-                            "#{ratio} 倍で組みます",
-                            detail: "book.yml: #{key}: #{raw} → #{ratio}")
+            BookSettingWarning.report("#{label} は #{range.max} 以下にしてください（#{raw} は章題と張り合う大きさです）。" \
+                                      "#{ratio} 倍で組みます",
+                                      detail: "book.yml: #{key}: #{raw} → #{ratio}")
           in :length | :invalid
-            Common.log_warn("#{label} は本文に対する倍率（#{range.min}〜#{range.max}）で書いてください（#{raw}）。#{fallback}",
-                            detail: "book.yml: #{key}: #{raw} → #{suggested_lead_size(raw, problem, cfg)}")
+            BookSettingWarning.report("#{label} は本文に対する倍率（#{range.min}〜#{range.max}）で書いてください（#{raw}）。#{fallback}",
+                                      detail: "book.yml: #{key}: #{raw} → #{suggested_lead_size(raw, problem, cfg)}")
           end
         end
 
@@ -102,14 +108,17 @@ module VivlioStarter
           raw.is_a?(String) || raw.is_a?(Symbol) ? nil : raw&.dig(:lead_size)
         end
 
-        # theme.color の妥当性を検証する
-        def validate_color(raw)
+        # theme.color / theme.preface_color / theme.appendix_color の妥当性を検証する。
+        # 前書き・付録の色は、読めなければ theme.color と同じ色になる（書かなかったときと同じ）
+        # @param key [Symbol] 警告に出すキー
+        def validate_color(raw, key: :color)
           value = raw.to_s.strip
-          return if value.empty? # 未指定は既定色
+          return if value.empty? # 未指定は既定色（前書き・付録は theme.color と同じ色）
           return if valid_color?(value)
 
-          Common.log_warn(
-            "theme.color '#{raw}' は無効な色名です。既定色（#{ThemeColor::DEFAULT_NAME}）でビルドを続行します。",
+          fallback = key == :color ? "既定色（#{ThemeColor::DEFAULT_NAME}）" : 'theme.color と同じ色'
+          BookSettingWarning.report(
+            "theme.#{key} '#{raw}' は無効な色名です。#{fallback}でビルドを続行します。",
             detail: "指定できる色: #{VALID_COLORS.join(' / ')}、" \
                     "または '#ff0000' のような HEX（#rrggbb / #rrggbbaa）"
           )
@@ -124,7 +133,7 @@ module VivlioStarter
           return if ThemeImageResolver.theme_image_available?(source, variant: variant)
 
           fallback = ThemeImageResolver::FALLBACK_THEME_IMAGE_SLUG
-          Common.log_warn(
+          BookSettingWarning.report(
             "theme.#{kind} の画像 '#{source}' が見つかりません。既定画像（#{fallback}）で代用します。",
             detail: "stylesheets/images/#{source}.webp を配置するか、" \
                     'バンドル画像名（sakura・himawari など）またはスペルを確認してください。'

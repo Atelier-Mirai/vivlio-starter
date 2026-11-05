@@ -29,6 +29,18 @@ module VivlioStarter
           IssueRegistry.reset!
         end
 
+        # record_once は同じ指摘を 1 件にまとめ、2 回目は nil を返す。文言が違えば別の指摘
+        def test_record_once_records_same_issue_only_once
+          first = IssueRegistry.record_once(severity: :warn, category: :book_settings, message: 'theme.color')
+          second = IssueRegistry.record_once(severity: :warn, category: :book_settings, message: 'theme.color')
+          other = IssueRegistry.record_once(severity: :warn, category: :book_settings, message: 'theme.preface_color')
+
+          refute_nil first
+          assert_nil second
+          refute_nil other
+          assert_equal 2, IssueRegistry.counts.warns
+        end
+
         # record した指摘が severity 別に集計される
         def test_should_count_issues_by_severity
           IssueRegistry.record(chapter: '21-images', severity: :error, category: :image, message: '存在しない画像: a.png')

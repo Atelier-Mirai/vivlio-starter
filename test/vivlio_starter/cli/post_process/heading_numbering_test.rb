@@ -185,7 +185,7 @@ module VivlioStarter
 
         def test_should_warn_once_and_fall_back_for_unknown_value
           warned = []
-          Common.stub(:log_warn, ->(msg) { warned << msg }) do
+          Common.stub(:log_warn, ->(msg, **) { warned << msg }) do
             assert_equal '', BSC.heading_numbering_rule({ heading_numbering: 'chapters' })
           end
 

@@ -34,6 +34,18 @@ module VivlioStarter
         assert_in_delta(210.0 / 143, TIR.binding_safe_portrait_ratio, 0.001)
       end
 
+      # 紙の幅・高さを書かない本（判型プリセットの size だけ）でも、その判型の寸法で求める。
+      # 以前は幅・高さが読めず、いつも A4 の寸法で計算していた
+      def test_binding_safe_portrait_ratio_uses_size_when_width_is_absent
+        @original_config = Common::CONFIG
+        @config_stubbed = true
+        Common.send(:remove_const, :CONFIG)
+        Common.const_set(:CONFIG, Common.wrap_config(page: { size: 'A5', margin_inner: '20mm', margin_outer: '15mm' }))
+
+        # A5 は 148 × 210mm。effective_width = 148 - (20 - 15) = 143mm
+        assert_in_delta(210.0 / 143, TIR.binding_safe_portrait_ratio, 0.001)
+      end
+
       # 綴じ側マージンが極端に大きい場合でも実効幅は下限（幅の40%）を割らず、
       # 結果として算出比が MAX_BINDING_RATIO(2.2) でクランプされることを確認
       def test_binding_safe_portrait_ratio_clamps_to_max

@@ -22,6 +22,8 @@ module VivlioStarter
   module CLI
     # テーマ画像解決のユニットテスト
     class ThemeImageResolutionTest < Minitest::Test
+      TIR = PreProcessCommands::ThemeImageResolver
+
       # 既存のバリアント画像がそのまま使用されることを確認
       def test_frontispiece_and_ornament_use_existing_variants
         with_temp_theme_images do |images_root|
@@ -129,7 +131,85 @@ module VivlioStarter
         end
       end
 
+      # 手置きの扉絵用バリアントは、元画像と同じく PNG でも使われる（ornament と揃える）
+      def test_user_portrait_variant_accepts_png
+        with_temp_theme_images do |images_root|
+          File.write(File.join(images_root, 'sample_portrait.png'), 'user')
+
+          front = PreProcessCommands.resolve_frontispiece_path('sample', allow_generation: false)
+
+          assert_equal 'images/sample_portrait.png', front
+        end
+      end
+
+      # 元画像のほうが新しければ（描き直した）、生成済みのバリアントは使わない
+      def test_cached_variant_is_stale_when_source_is_newer
+        with_temp_theme_images do |images_root|
+          source, cached = write_source_and_cached_variant(images_root, :landscape)
+
+          File.utime(Time.now, Time.now - 60, cached)
+
+          refute TIR.cached_variant_current?(cached, :landscape)
+
+          File.utime(Time.now, Time.now - 120, source)
+
+          assert TIR.cached_variant_current?(cached, :landscape)
+        end
+      end
+
+      # 扉絵のバリアントは、縦横比が今の判型の比からずれていれば使わない（判型を変えたとき）
+      def test_cached_portrait_is_stale_when_ratio_differs
+        with_temp_theme_images do |images_root|
+          _source, cached = write_source_and_cached_variant(images_root, :portrait)
+
+          TIR.stub(:binding_safe_portrait_ratio, 1.44) do
+            TIR.stub(:image_ratio, 1.44) { assert TIR.cached_variant_current?(cached, :portrait) }
+            TIR.stub(:image_ratio, 1.414) { refute TIR.cached_variant_current?(cached, :portrait) }
+          end
+        end
+      end
+
+      # 元画像が見つからないバリアントは、残っているものを使う
+      def test_cached_variant_without_source_is_current
+        with_temp_theme_images do |_images_root|
+          cached = File.join(TIR.theme_images_cache_root, 'gone_landscape.webp')
+          FileUtils.mkdir_p(File.dirname(cached))
+          File.write(cached, 'l')
+
+          assert TIR.cached_variant_current?(cached, :landscape)
+        end
+      end
+
+      # 古いバリアントは解決の段階で作り直す（生成済みでも ensure_variant_generated が生成し直す）
+      def test_stale_variant_is_regenerated
+        with_temp_theme_images do |images_root|
+          _source, cached = write_source_and_cached_variant(images_root, :landscape)
+          File.utime(Time.now, Time.now - 60, cached)
+          calls = []
+
+          PreProcessCommands::ImageGenerator.stub(:generate_frontispiece_and_ornament_from,
+                                                  ->(spec) { calls << spec }) do
+            result = PreProcessCommands.resolve_ornament_path('sample', allow_generation: true)
+
+            assert_equal 'theme-images/bundled/sample_landscape.webp', result
+          end
+
+          assert_equal ['bundled/sample.webp'], calls
+        end
+      end
+
       private
+
+      # bundled/sample.webp と、その生成済みバリアント（キャッシュ）を作る
+      def write_source_and_cached_variant(images_root, variant)
+        source = File.join(images_root, 'bundled', 'sample.webp')
+        FileUtils.mkdir_p(File.dirname(source))
+        File.write(source, 'base')
+        cached = File.join(TIR.theme_images_cache_root, 'bundled', "sample_#{variant}.webp")
+        FileUtils.mkdir_p(File.dirname(cached))
+        File.write(cached, variant.to_s)
+        [source, cached]
+      end
 
       # テストごとに stylesheets/images 相当の一時ディレクトリを差し替える
       # ThemeImageResolver モジュールの @theme_images_root を差し替える

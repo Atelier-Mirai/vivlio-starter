@@ -72,9 +72,9 @@ module VivlioStarter
           frontispiece_entry = theme_cfg[:frontispiece]
           ornament_entry = theme_cfg[:ornament]
 
-          # String の場合はそのまま、Data オブジェクトの場合は :image を取得
+          # String（画像名だけの短縮形）の場合はそのまま、Data オブジェクトの場合は :image を取得
           frontispiece_source = frontispiece_entry.is_a?(String) ? frontispiece_entry : frontispiece_entry&.dig(:image)
-          ornament_source = ornament_entry
+          ornament_source = ornament_entry.is_a?(String) ? ornament_entry : ornament_entry&.dig(:image)
 
           generated_any = false
 

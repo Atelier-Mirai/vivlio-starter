@@ -12,6 +12,7 @@
 #   - theme.style: simple では画像検証をスキップ（色検証は継続）
 #   - URL/url() 指定は検証対象外
 #   - ThemeImageResolver.theme_image_available? の判定
+#   - 前書き・付録の色の検証、警告が preflight / build の最終判定に数えられること
 # ================================================================
 
 require 'test_helper'
@@ -27,6 +28,24 @@ module VivlioStarter
 
       def teardown
         restore_theme_images_root
+      end
+
+      # 前書き・付録の色もキーの名前を添えて警告し、theme.color と同じ色になることを示す
+      def test_invalid_preface_color_warns_with_key
+        out = capture_stdout { TV.validate_color('pinky', key: :preface_color) }
+
+        assert_match(/theme\.preface_color 'pinky' は無効な色名です。theme\.color と同じ色で/, out)
+      end
+
+      # 警告は最終判定の件数に数えられ、同じ文言は 1 回だけ出る
+      def test_warning_is_counted_once
+        out = capture_stdout do
+          TV.validate_color('pink')
+          TV.validate_color('pink')
+        end
+
+        assert_equal 1, out.scan("theme.color 'pink'").size
+        assert_equal 1, PreProcessCommands::IssueRegistry.counts.warns
       end
 
       # 無効な色名は警告する（既定色フォールバックの案内込み）

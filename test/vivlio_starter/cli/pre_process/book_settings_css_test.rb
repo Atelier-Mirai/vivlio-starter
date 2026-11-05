@@ -428,7 +428,7 @@ class BookSettingsCssPageTest < Minitest::Test
   # 綴り間違いは 🟡 で知らせたうえで既定（recto）へ倒す。黙って戻ると著者は気づけない。
   def test_should_warn_and_fall_back_when_chapter_pagebreak_is_unknown
     warned = []
-    VivlioStarter::CLI::Common.stub(:log_warn, ->(msg) { warned << msg }) do
+    VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warned << msg }) do
       assert_equal '', BSC.chapter_pagebreak_rule({ chapter_pagebreak: 'rect' })
     end
 
@@ -443,7 +443,7 @@ class BookSettingsCssPageTest < Minitest::Test
   # 正しい値では警告を出さない（毎ビルド鳴ると警告の価値が下がる）
   def test_should_not_warn_for_valid_chapter_pagebreak_values
     warned = []
-    VivlioStarter::CLI::Common.stub(:log_warn, ->(msg) { warned << msg }) do
+    VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warned << msg }) do
       %w[recto verso any].each { BSC.chapter_pagebreak_rule({ chapter_pagebreak: it }) }
       BSC.chapter_pagebreak_rule({})
     end
