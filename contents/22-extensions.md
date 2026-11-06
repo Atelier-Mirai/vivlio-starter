@@ -40,7 +40,7 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 :::
 ```
 
-### 独自のクラスを追加する
+### 独自のクラスを追加する @custom-class
 
 本章にない装飾がほしいときは、任意のクラス名でブロックを囲み、`stylesheets/custom.css` に見た目を定義します。
 

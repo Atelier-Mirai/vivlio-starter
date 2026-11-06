@@ -113,6 +113,7 @@ module VivlioStarter
             #{font_synthesis_rules(cfg)}
             #{fallback_font_rules(image_prefix:)}
             #{kindle_accent_rules(cfg)}
+            #{kindle_custom_color_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
         end
@@ -709,6 +710,118 @@ module VivlioStarter
             /* Kindle 用テーマ色リテラル（KFX は var()/color-mix 非対応・最後に読まれ静的フォールバックを上書き） */
             #{lines.join("\n")}
           CSS
+        end
+
+        # ================================================================
+        # Kindle 用: custom.css で変えた色（45 章「custom.css で変えられる色」の表）
+        # ================================================================
+        CUSTOM_CSS = File.join('stylesheets', 'custom.css')
+
+        # custom.css の :root で上書きできる色と、Kindle で同じ箇所を塗る規則（%s に色が入る）。
+        # KFX は var() を解さないので、custom.css で変えた変数は Kindle に届かない。上書きされた
+        # 変数だけ値をリテラルにして body.vs-kindle の規則を書く。kindle_accent_rules と同じ
+        # セレクタを後に置くので、テーマ色より custom.css の色が勝つ。book-settings.css は
+        # custom.css より前に読まれるので、著者が custom.css に書いた body.vs-kindle の規則はさらに勝つ。
+        #
+        # 表のうち次の 4 つは Kindle に対応する箇所が無いので対象外:
+        # --folio-color（ノンブルが無い）・--section-number-color（節番号は節絵の画像に描く）・
+        # --talk-bg（吹き出しを組まない）・--color-figure-border（図に枠を付けない）。
+        KINDLE_CUSTOM_COLOR_RULES = {
+          '--color-link' => ['body.vs-kindle a { color: %s; }'],
+          '--color-strong' => ['body.vs-kindle strong { color: %s; }'],
+          '--color-em-underline' => ['body.vs-kindle em { text-decoration-color: %s; }'],
+          '--color-column-bg' => ['body.vs-kindle .column { background: %s; }'],
+          # 先頭のラベルは、PDF の角のタブ（.column・.memo）と枠の線（.note・.notice）の代わりに
+          # Kindle だけに出すもの。同じ色にそろえる
+          '--color-column-border' => ['body.vs-kindle .column, body.vs-kindle .memo { border-color: %s; }',
+                                      'body.vs-kindle .column .vs-adm-label, body.vs-kindle .memo .vs-adm-label ' \
+                                      '{ color: %s; }'],
+          '--color-mark' => ['body.vs-kindle .subsection-marker, body.vs-kindle .column h5 { color: %s; }',
+                             'body.vs-kindle .note, body.vs-kindle .notice { border-color: %s; }',
+                             'body.vs-kindle .note .vs-adm-label, body.vs-kindle .notice .vs-adm-label { color: %s; }'],
+          '--color-border-weak' => ['body.vs-kindle .diagram { border-color: %s; }'],
+          '--heading-accent' => ['body.vs-header-simple.vs-kindle h1 { border-color: %s; }',
+                                 'body.vs-header-simple.vs-kindle h1 .chapter-number { color: %s; }',
+                                 'body.vs-header-simple.vs-kindle h2 { border-color: %s; border-left-color: %s; }',
+                                 'body.vs-header-simple.vs-kindle h2 .section-number { background: %s; }']
+        }.freeze
+
+        # custom.css の :root で変えた色を、Kindle 用のリテラルの規則にする。
+        # 色に直せない値（calc() など）は書き出さず、Kindle を組む本なら 🟡 で知らせる。
+        # @return [String] 規則（変えた色が無ければ空）
+        def kindle_custom_color_rules(cfg, custom_css: CUSTOM_CSS)
+          overrides = root_variables(custom_css).slice(*KINDLE_CUSTOM_COLOR_RULES.keys)
+          return '' if overrides.empty?
+
+          variables = root_variables(ThemeColor::THEME_CSS).merge(root_variables(custom_css))
+          accent = ThemeColor.to_hex6(cfg.theme.color)
+          lines = []
+          unresolved = []
+          overrides.each do |name, value|
+            color = kindle_literal_color(value, variables, accent)
+            next unresolved << [name, value] if color.nil?
+
+            lines.concat(KINDLE_CUSTOM_COLOR_RULES.fetch(name).map { format(it, *Array.new(it.scan('%s').size, color)) })
+            lines << h4_marker_kindle_rule(cfg, color) if name == '--color-mark'
+          end
+          warn_unconvertible_custom_colors(cfg, unresolved)
+          return '' if lines.empty?
+
+          "/* Kindle 用: custom.css で変えた色（KFX は var() 非対応） */\n#{lines.join("\n")}"
+        end
+
+        # CSS ファイルの :root { … } に書いた変数（後に書いたものが勝つ）。コメントは読まない。
+        # @return [Hash{String => String}] 変数名 → 値
+        def root_variables(path)
+          return {} unless File.file?(path)
+
+          css = File.read(path, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
+          css.scan(/:root\s*\{([^}]*)\}/).flat_map { it[0].scan(/(--[\w-]+)\s*:\s*([^;]+);/) }
+             .to_h { |name, value| [name, value.strip] }
+        end
+
+        # CSS の色の値を、Kindle が解せるリテラルにする。読めなければ nil。
+        # 色名（red）と rgb() はそのまま渡す（ThemeColor.resolve は色名をテーマのパレットで引くので
+        # 使わない。custom.css の red は CSS の red であってテーマの赤ではない）。
+        # var() は custom.css と theme.css の :root を辿り、--theme-accent は book.yml のテーマ色、
+        # --accent-<色名> はパレットで解く。color-mix(in srgb, 色 N%, white) は混色を計算する。
+        def kindle_literal_color(value, variables, accent, depth = 0)
+          v = value.to_s.strip
+          return nil if v.empty? || depth > 8
+
+          case v
+          when /\A#(?:\h{3}|\h{6}|\h{8})\z/ then ThemeColor.normalize_hex6(v)
+          when /\A[a-z]+\z/i then v.downcase
+          when %r{\Argba?\(\s*[\d.\s,%/]+\)\z}i then v
+          when /\Avar\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)\z/
+            kindle_literal_color(variable_value(Regexp.last_match(1), Regexp.last_match(2), variables, accent),
+                                 variables, accent, depth + 1)
+          when /\Acolor-mix\(\s*in\s+srgb\s*,\s*(.+?)\s+([\d.]+)%\s*,\s*white\s*\)\z/i
+            ratio = Regexp.last_match(2).to_f / 100
+            base = ThemeColor.normalize_hex6(kindle_literal_color(Regexp.last_match(1), variables, accent, depth + 1))
+            base && ThemeColor.mix_with_white(base, ratio)
+          end
+        end
+
+        # var() が指す変数の値。--theme-accent は book.yml のテーマ色（theme.css の値は既定の緑のまま）
+        def variable_value(name, fallback, variables, accent)
+          return accent if name == '--theme-accent'
+
+          variables[name] || ThemeColor.palette[name.delete_prefix('--accent-')] || fallback
+        end
+
+        # 色に直せなかった custom.css の値を、Kindle を組む本にだけ知らせる。
+        # book-settings.css は 1 回のビルドで何度か作るので、同じ値は 1 度だけ出す。
+        def warn_unconvertible_custom_colors(cfg, unresolved)
+          return if unresolved.empty? || !Build::Targets.resolve(cfg).kindle
+
+          @warned_custom_colors ||= Set.new
+          unresolved.each do |name, value|
+            next unless @warned_custom_colors.add?([name, value])
+
+            Common.log_warn("stylesheets/custom.css の #{name}（#{value}）は Kindle 用の色に直せません",
+                            detail: "Kindle では元の色で表示されます。同じ色にするときは、値を #1a73e8 のような色で書いてください")
+          end
         end
 
         # 付録アクセントのリテラル hex。appendix_color 未指定時はテーマ色へフォールバック

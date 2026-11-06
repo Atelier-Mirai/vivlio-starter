@@ -920,3 +920,67 @@ class BookSettingsCssFallbackFontTest < Minitest::Test
     assert_equal 'U+2190-2192, U+2303', BSC.unicode_ranges([0x2303, 0x2191, 0x2190, 0x2192])
   end
 end
+
+# Kindle 用: custom.css の :root で変えた色を、リテラルの body.vs-kindle 規則にする
+class BookSettingsCssKindleCustomColorTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  Common = VivlioStarter::CLI::Common
+
+  # hex はそのまま、var(--theme-accent) は book.yml のテーマ色、color-mix は混色を計算し、
+  # 色名は CSS の色名として渡す。Kindle に対応する箇所の無い --folio-color は書き出さない
+  def test_should_write_literal_kindle_rules_for_overridden_colors
+    css = rules_for(<<~CUSTOM, theme_color: 'yellow')
+      /* :root { --color-strong: #000000; } コメントの中は読まない */
+      :root {
+        --color-link: #1a73e8;
+        --color-strong: red;
+        --color-column-bg: color-mix(in srgb, var(--accent-red) 20%, white);
+        --color-mark: var(--theme-accent);
+        --folio-color: #333;
+      }
+    CUSTOM
+
+    assert_includes css, 'body.vs-kindle a { color: #1a73e8; }'
+    assert_includes css, 'body.vs-kindle strong { color: red; }'
+    assert_includes css, 'body.vs-kindle .column { background: #f8d4d4; }'
+    assert_includes css, 'body.vs-kindle .note, body.vs-kindle .notice { border-color: #f0a000; }'
+    assert_includes css, 'body.vs-kindle .note .vs-adm-label, body.vs-kindle .notice .vs-adm-label { color: #f0a000; }'
+    assert_includes css, 'body.chapter.vs-kindle h4::before'
+    refute_includes css, '#333'
+    refute_includes css, '#000000'
+  end
+
+  # 変えた色が無ければ何も書かない（PDF・クリーン EPUB の紙面と book-settings.css は今のまま）
+  def test_should_write_nothing_without_overrides
+    assert_equal '', rules_for(":root {\n  --my-own: #123456;\n}\n")
+    assert_equal '', rules_for(nil)
+  end
+
+  # 色に直せない値は書き出さず、Kindle を組む本にだけ 🟡 で知らせる
+  def test_should_warn_unconvertible_colors_only_for_kindle_books
+    custom = ":root {\n  --heading-accent: calc(1px + 2px);\n}\n"
+
+    out_kindle, = capture_io { assert_equal '', rules_for(custom, targets: 'pdf, kindle') }
+    out_pdf, = capture_io { assert_equal '', rules_for(custom, targets: 'pdf') }
+
+    assert_includes out_kindle, 'stylesheets/custom.css の --heading-accent（calc(1px + 2px)）は Kindle 用の色に直せません'
+    refute_includes out_pdf, '--heading-accent'
+  end
+
+  private
+
+  def rules_for(custom_css, theme_color: 'green', targets: 'pdf')
+    cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color),
+                              output: Common::CONFIG.output.with(targets:))
+    BSC.instance_variable_set(:@warned_custom_colors, nil)
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        if custom_css
+          FileUtils.mkdir_p('stylesheets')
+          File.write(File.join('stylesheets', 'custom.css'), custom_css)
+        end
+        BSC.kindle_custom_color_rules(cfg)
+      end
+    end
+  end
+end

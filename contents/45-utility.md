@@ -130,7 +130,7 @@ vs pdf:pages --pages=1,5,12-14 --dpi=150 --output=./samples
 ## 紙面の見た目を調整する @custom-css
 
 :::{.section-lead}
-判型・書体・テーマ色は `config/book.yml` で選べます。リンクの色やコードブロックの背景など、`book.yml` に設定のない部分の見た目は、`stylesheets/custom.css` で調整します。
+判型・書体・テーマ色は `config/book.yml` で選べます。リンクやコラムの色など、`book.yml` に設定のない部分の見た目は、`stylesheets/custom.css` で調整します。
 :::
 
 章の HTML には、次の順でスタイルシートが読み込まれます。
@@ -153,7 +153,7 @@ vs pdf:pages --pages=1,5,12-14 --dpi=150 --output=./samples
 }
 ```
 
-** custom.css で変えられる主な CSS 変数 **
+** custom.css で変えられる色 **
 
 | 変数名 | 既定値 | 色を付ける箇所 |
 | :--- | :--- | :--- |
@@ -163,27 +163,17 @@ vs pdf:pages --pages=1,5,12-14 --dpi=150 --output=./samples
 | `--color-column-bg` | テーマ色を淡くした色 | コラムの背景 |
 | `--color-column-border` | テーマ色 | コラム・メモの枠線 |
 | `--color-figure-border` | `#ccc` | 画像の枠線 |
+| `--color-mark` | テーマ色 | 小見出し（`###`・`####`）の記号、`.note` の上下の線、`.notice` の左の線 |
+| `--color-border-weak` | `#ddd` | 引用の左の線、`.notice`・`.diagram` の枠線 |
+| `--folio-color` | `#777` | ノンブル（ページ番号） |
+| `--section-number-color` | テーマ色 | 節番号（`style: image` の本） |
+| `--heading-accent` | テーマ色 | 章・節の見出しの枠線（`style: simple` の本） |
+| `--talk-bg` | `#fff` | 会話文の吹き出しの地 |
 
-Kindle は CSS 変数に対応していないので、変数で変えた色は Kindle には反映されません。Kindle にも同じ色を使うときは、`body.vs-kindle .column { background: #f5f5dc; }` のように、`body.vs-kindle` を前に付けたセレクタに色を直接書きます。
+Kindle は CSS 変数に対応していないので、この表の色は、ビルドのときに Kindle 用の色へ置き換えて組みます。ただし、`--folio-color`・`--section-number-color` は PDF だけに、`--talk-bg`・`--color-figure-border` は PDF と EPUB だけに効きます。
 
 ### 規則を書いて変える
 
-変数のない部分は、CSS の規則を書いて変えます。たとえば、コラムの文字を小さくするときは次のように書きます。
-
-```css:stylesheets/custom.css
-.column {
-  font-size: 9pt;
-}
-```
-
-雛形の CSS と同じセレクタで書くと、確実に上書きできます。コードブロックは、雛形の `code.css` が `pre[class*="language-"]` で指定しているので、背景の色も同じセレクタで指定します。`pre { … }` と書くと詳細度が低く、反映されません。
-
-```css:stylesheets/custom.css
-pre[class*="language-"] {
-  background: #f8f8f8;
-}
-```
-
-反映されないときは、雛形の CSS から同じ部分のセレクタを探して使います。
+表にない部分も、CSS の規則を書けば変えられます（`.column { font-size: 9pt; }` など）。独自のクラスに装飾を付ける方法は、@pageref:custom-class で説明しています。
 
 CSS 変数やクラスの名前は、今後のバージョンで変わることがあります。バージョンを上げたら、`custom.css` の指定が紙面に反映されているかを確かめてください。
