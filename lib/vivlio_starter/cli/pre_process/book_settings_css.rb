@@ -318,25 +318,28 @@ module VivlioStarter
           ['/* 章リードの文字の大きさ（theme.lead_size / theme.frontispiece.lead_size） */', *rules].join("\n")
         end
 
-        # 節リードの 1 行の字数（chapter-common.css の .section-lead の inline-size: 32em）
+        # 節リードの幅（chapter-common.css の .section-lead の inline-size: 32em）。字数で決めた幅ではなく、
+        # 版面より一回り狭く見せるための見た目の幅で、字間 0 なら 1 行 32 字になる
         SECTION_LEAD_CHARS = 32
 
-        # 節リードの幅。字間（letter_spacing）が付いているときだけ、32 字と字間のぶんの幅を書き、
-        # 字間を広げても 1 行の字数を保つ（版面より広くはしない: chapter-common.css の max-inline-size）。
+        # 節リードの幅は max(32em, 32 字と字間のぶん)。字間を広げたときだけ書き出し、
+        # 32 字が入らなくならないよう幅を広げる（版面より広くはしない: chapter-common.css の
+        # max-inline-size）。字間を詰めたときは 32em のまま、詰めたぶん多くの字を入れる——
+        # 32 字に合わせて縮めると、本文が版面いっぱいに組まれる横で節リードだけが細くなる。
         #
-        # 字間 0 なら何も出さず、chapter-common.css の 32em に任せる。CSS 側で
+        # 字間 0 以下では何も出さず、chapter-common.css の 32em に任せる。CSS 側で
         # calc(32em + 32 * var(--letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
-        # わずかにずれた（改行は同じ。2026-11-06 に単章ビルドの画素の比較で確かめた）。
+        # わずかにずれた（vivliostyle-css-pitfalls-notes.md §2.18）。
         # EPUB・Kindle は components.css の inline-size: auto が勝つ（特異度 0,2,1）。
         def section_lead_width_rule(page_cfg)
+          return '' unless letter_spacing_mm(page_cfg, 1.0).positive?
+
           value = page_cfg[:letter_spacing].to_s.strip
           width = if value.match?(/\A-?[\d.]+\s*em\z/i)
                     "#{format_number(SECTION_LEAD_CHARS * (1 + value.to_f))}em"
-                  elsif (mm = Units.length_to_mm(value)) && !mm.zero?
-                    "calc(#{SECTION_LEAD_CHARS}em + #{format_mm(SECTION_LEAD_CHARS * mm)})"
+                  else
+                    "calc(#{SECTION_LEAD_CHARS}em + #{format_mm(SECTION_LEAD_CHARS * Units.length_to_mm(value))})"
                   end
-          return '' if width.nil? || !letter_spaced?(page_cfg)
-
           "/* 節リードの幅（32 字と字間。page プリセットの letter_spacing） */\nbody .section-lead { inline-size: #{width}; }"
         end
 

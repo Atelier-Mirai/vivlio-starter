@@ -157,8 +157,9 @@ section:has(hr:last-child) + section > h3:first-child {
 /* 節リード */
 .section-lead {
   display: block;
-  /* 1 行 32 字。字間（letter_spacing）を広げたときは、book-settings.css が 32 字と字間の
-     ぶんの幅で上書きする（BookSettingsCss.section_lead_width_rule）。版面より広くはしない */
+  /* 字間 0 なら 1 行 32 字。字間（letter_spacing）を広げたときだけ、book-settings.css が 32 字と
+     字間のぶんの幅で上書きする（BookSettingsCss.section_lead_width_rule）。詰めたときは 32em の
+     まま字数を増やす。版面より広くはしない */
   inline-size: 32em;
   max-inline-size: 100%;
   margin-block: -15mm 1.5rlh; /* 上へずらして配置 */
