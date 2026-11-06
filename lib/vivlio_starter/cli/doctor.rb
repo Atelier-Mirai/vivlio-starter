@@ -1262,14 +1262,15 @@ module VivlioStarter
       # 下限より古いか。版が分からないときは言い立てない（false）。
       def node_too_old?(version, requirement) = !version.nil? && version < requirement.min_version
 
-      # 古い Node.js の更新を案内する。**`--fix` でも自動では更新しない。** nvm などで
-      # 入れた Node を Homebrew が上書きすると、どちらが使われるか分かりにくくなるため。
+      # 古い Node.js の更新を案内する。**`--fix` でも自動では更新しない。** --fix は不足しているツールを
+      # インストールするもので、更新は vs upgrade の役割である。vs upgrade は Homebrew の Node.js を
+      # Vivliostyle CLI と一緒に更新するので、brew upgrade node だけを示すより版が食い違わない。
       def report_node_outdated(version, requirement)
         minimum = requirement.min_version
         Common.log_warn(
           "Node.js #{version} は #{requirement.requester} の要求を満たしません（#{minimum} 以上が必要です）",
-          detail: "→ brew upgrade node\n" \
-                  "  Homebrew 以外（nvm など）で入れた場合は、その道具で #{minimum} 以上へ更新してください。"
+          detail: "→ vs upgrade\n" \
+                  "  Homebrew 以外（nvm など）でインストールした場合は、そのツールで #{minimum} 以上へ更新してください。"
         )
       end
 

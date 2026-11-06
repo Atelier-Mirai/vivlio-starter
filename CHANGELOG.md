@@ -16,6 +16,7 @@
 
 ### Changed
 
+- **`vs doctor` が古い Node.js に示す更新方法を `brew upgrade node` から `vs upgrade` にした**。`brew upgrade node` は Node.js だけを更新し、Vivliostyle CLI が古いまま残る。`vs upgrade` は Homebrew の Node.js を Vivliostyle CLI と一緒に更新する。`--fix` はこれまでどおり Node.js を更新しない（不足しているツールのインストールだけを行う）。
 - **`vs upgrade` の更新計画の行の注記を短くした**（「雛形が改良・著者は未変更 → 自動適用可」→「著者は未変更」、「雛形も著者も同じ場所を変更 → diff 確認」→「同じ場所を変更 → 確認」など）。ファイル名の列と合わせると 90 桁を超え、端末でも 51 章の紙面でも折り返していた。分類の意味は 51 章の表で説明している。
 - **`vs clean` のオプションを 2 つにまとめた**。`vs clean` はキャッシュ（`.cache/` を丸ごと）を、`vs clean --purge` はキャッシュとプロジェクト直下の生成物（PDF・EPUB・KPF・表紙の JPEG・索引のレビューファイル）を、`vs clean --index-dictionaries` は索引・用語集の辞書だけを（確認のうえで）削除する。確認で断ったときは「削除しませんでした」と表示する（今までは「削除対象はありませんでした」だった）。表紙・扉絵の生成画像もキャッシュの下にあり、種類ごとに選んで消す理由が無いので、`--cache`・`--cover`・`--generated-images`・`--all` は削除した。今までの `vs clean` はビルドの作業フォルダだけを消していて、`vs build` のたびの掃除と同じだった。12・45・91 章を書き直した。
 - **`vs upgrade` の退避先を `.cache/vs/upgrade-backup/` から `.vs-backup/upgrade/<日時>/` へ移した**。キャッシュの下にあったので、`vs clean --cache` が退避した元のファイルも消していた。雛形の `.gitignore` に `/.vs-backup/` を加えた（`vs upgrade` で既存の本にも入る）。消すためのオプションは作らない。不要になったら `.vs-backup/` フォルダを削除するよう 51 章に書いた。以前の版が `.cache/vs/upgrade-backup/` に残した退避は、`vs upgrade` が確認なしで `.vs-backup/upgrade/` へ移す（雛形の更新を断っても移す・`--dry-run` では移すことを示すだけ）。

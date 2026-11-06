@@ -26,13 +26,13 @@ Vivlio Starter で本を作るには、組版や画像処理などに使う外�
 
 ### Node.js の版
 
-Node.js が Vivliostyle の求める版より古いと、ツールの一覧の後に次の警告が表示されます。`--fix` では Node.js を更新しないので、表示されたコマンドで更新してください。
+Node.js が Vivliostyle の求める版より古いと、ツールの一覧の後に次の警告が表示されます。`vs upgrade` を実行すると、Vivliostyle CLI と一緒に更新されます。
 
 :::{.output}
 ```text
 🟡 Node.js 20.19.0 は Vivliostyle CLI 11.3.3 の要求を満たしません（22.12.0 以上が必要です）
-        → brew upgrade node
-          Homebrew 以外（nvm など）で入れた場合は、その道具で 22.12.0 以上へ更新してください。
+        → vs upgrade
+          Homebrew 以外（nvm など）でインストールした場合は、そのツールで 22.12.0 以上へ更新してください。
 ```
 :::
 

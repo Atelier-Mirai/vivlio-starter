@@ -97,7 +97,7 @@ module VivlioStarter
         assert_includes warned[0], '22.12.0'
         assert_includes warned[0], 'Vivliostyle CLI 12.0.0'
         assert_includes warned[0], '24.0.0'
-        assert_includes warned[1], 'brew upgrade node'
+        assert_includes warned[1], 'vs upgrade'
         assert_includes warned[1], 'nvm'
       end
 
