@@ -7,12 +7,12 @@
 # -------------------------------------------------------------
 a5_standard: &a5_std
   size: A5
-  
+
   # タイポグラフィ設定
   base_font_size: 10pt         # 基準文字サイズ
   base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
   letter_spacing: 0em          # 字間調整
-  
+
   # 版面の余白（見開き対応）
   margin_top: 22mm             # 天（上余白）
   margin_bottom: 22mm          # 地（下余白）
@@ -35,12 +35,12 @@ a5_compact:
 # book.yml で「use: a5_custom」と指定することで適用されます。
 a5_custom:
   size: A5
-  
+
   # タイポグラフィ設定
   base_font_size: 10pt         # 基準文字サイズ
   base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
   letter_spacing: 0em          # 字間調整
-  
+
   # 版面の余白（見開き対応）
   margin_top: 22mm             # 天（上余白）
   margin_bottom: 22mm          # 地（下余白）
@@ -52,12 +52,12 @@ a5_custom:
 # -------------------------------------------------------------
 b5_standard: &b5_std
   size: JIS-B5
-  
+
   # タイポグラフィ設定
   base_font_size: 10.5pt       # 基準文字サイズ
   base_line_height: 1.7        # 行送り倍率（10.5pt × 1.7 = 17.85pt）
   letter_spacing: 0em          # 字間調整
-  
+
   # 版面の余白（見開き対応）
   margin_top: 25mm             # 天（上余白）
   margin_bottom: 25mm          # 地（下余白）
@@ -80,12 +80,12 @@ b5_compact:
 # book.yml で「use: b5_custom」と指定することで適用されます。
 b5_custom:
   size: JIS-B5
-  
+
   # タイポグラフィ設定
   base_font_size: 10.5pt       # 基準文字サイズ
   base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
   letter_spacing: 0em          # 字間調整
-  
+
   # 版面の余白（見開き対応）
   margin_top: 25mm             # 天（上余白）
   margin_bottom: 25mm          # 地（下余白）
@@ -97,12 +97,12 @@ b5_custom:
 # -------------------------------------------------------------
 a4_standard: &a4_std
   size: A4
-  
+
   # タイポグラフィ設定
   base_font_size: 10.5pt       # 基準文字サイズ
   base_line_height: 1.5        # 行送り倍率
   letter_spacing: 0em
-  
+
   # 版面の余白（見開き対応）
   margin_top: 26mm             # 天（上余白）
   margin_bottom: 26mm          # 地（下余白）
