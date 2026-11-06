@@ -1,109 +1,98 @@
 # 補助コマンドとカスタマイズ
 
 :::{.chapter-lead}
-原稿を書く作業の周りには、PDF の閲覧・圧縮・画像化、生成物の片づけといった小さな作業があります。本章では、そのときに使う補助コマンドと、紙面の CSS や章の雛形を自分の本に合わせる方法をまとめます。必要な場面から読んでください。
+原稿を書く作業の周りには、PDF の閲覧・圧縮・画像化、生成物の片づけといった小さな作業があります。本章では、そのときに使う補助コマンドと、紙面の見た目を `custom.css` で調整する方法をまとめます。必要な場面から読んでください。
 :::
 
-| コマンド | カテゴリ | 目的 |
-| :--- | :--- | :--- |
-| `open` | プレビュー | PDF を即座に開く |
-| `pdf:compress` | 圧縮 | PDF を軽量化する |
-| `pdf:pages` | 画像化 | PDF のページを画像にする |
-| `pdf:rasterize` | 入稿対策 | PDF の全ページを画像にして結合し直す |
-| `clean` | メンテナンス | 不要な生成ファイルを削除する |
+** 本章で扱うコマンド **
 
-## vs open — PDF を開く
+| コマンド | 目的 |
+| :--- | :--- |
+| `vs --help`・`vs --version` | コマンドの使い方と、Vivlio Starter のバージョンを表示する |
+| `vs open` | PDF を開く |
+| `vs pdf:compress` | PDF を圧縮する |
+| `vs pdf:pages` | PDF のページを画像にする |
+| `vs pdf:rasterize` | PDF の全ページを画像にして結合し直す |
+| `vs clean` | 生成したファイルやキャッシュを削除する |
+
+## コマンドの使い方を調べる
 
 :::{.section-lead}
-ビルド後に閉じた PDF をもう一度確かめるなら、macOS では `vs open` を使えます。ファイル名を指定すれば、章ごとに作った PDF も開けます。
+コマンドの名前やオプションを忘れたときは、本書を開かなくても端末で確かめられます。
 :::
 
 ```bash
-# ビルド生成物を自動選択して開く
-vs open
-
-# ファイル名を指定して開く（拡張子は省略可）
-vs open 11-intro
-vs open 11-intro.pdf
+vs --help          # コマンドの一覧
+vs build --help    # vs build のオプション
+vs --version       # インストールされている Vivlio Starter のバージョン
 ```
 
-引数を省略すると、通常版と圧縮版のうち新しいほうを開きます。ファイル名を指定したときは、プロジェクト直下、`sources/` の順に探します。macOS 専用のコマンドです。
+どのコマンドにも `--help` を付けられます。`vs --version` は、`vs upgrade` で本体が更新されたかを確かめるときに使えます。
 
-## vs pdf:compress — PDF を圧縮・軽量化する
+:::{.output}
+vivlio-starter 1.0.0
+:::
+
+## PDF を開く
 
 :::{.section-lead}
-レビュー用の PDF を送る前に容量を抑えたいときは、`vs pdf:compress` を使います。Ghostscript でビルド済みの PDF を圧縮し、別名のファイルを作ります。
+ビルドの後に閉じた PDF をもう一度確かめるときは、`vs open` を使います。単章ビルドの PDF も開けます。
 :::
 
-画像の解像度を下げて容量を減らすので、印刷所へは圧縮していない入稿用 PDF を渡してください。
-
-### 基本的な使い方
-
 ```bash
-# 既定のファイルを圧縮
-vs pdf:compress
-
-# 入力ファイル名を指定（拡張子 .pdf は省略可）
-vs pdf:compress 11-intro
-vs pdf:compress 11-intro.pdf
-
-# 入出力ファイル名を明示指定
-vs pdf:compress input.pdf output.pdf
+vs open                # 本全体の閲覧用 PDF を開く
+vs open 11-intro       # 11-intro.pdf を開く（.pdf は省略可）
 ```
 
-引数を省略すると、本全体の PDF を圧縮します。出力は、元のファイル名に `_compressed` を付けた名前になります。
+引数を省略すると、本全体の閲覧用 PDF（`mybook_v0.1.0.pdf`）を開きます。圧縮版（`mybook_v0.1.0_compressed.pdf`）もあるときは、更新日時の新しいほうを開きます。ファイル名を指定したときは、プロジェクト直下、`sources/` の順に探します。
 
-```bash
-vs build 11-intro        # → 11-intro.pdf が生成される
-vs pdf:compress 11-intro # → 11-intro_compressed.pdf が生成される
-```
+ビルドの後と同じく、`close_existing_windows` が `true` なら、開く前にプレビューのウィンドウをすべて閉じます（@chapref:ch-build）。
 
-ビルドのたびに圧縮版を作るには、`config/book.yml` の `output.pdf.compress` を `true` にします（@chapref:ch-build）。処理時間が増えるので、普段は `false` のままにして、必要なときにこのコマンドを使うのがお勧めです。
-
-## vs pdf:pages / vs pdf:rasterize
+## PDF を圧縮する
 
 :::{.section-lead}
-完成した PDF から見本ページを画像にしたいときや、印刷所からフォントに関する指摘を受けたときは、PDF を加工するコマンドを使えます。用途と、加工後に変わる性質を確認してから選んでください。
+`vs pdf:compress` は、レビュー用の PDF を送る前に容量を抑えたいときに使います。Ghostscript で画像の解像度を 150 dpi に下げ、別のファイルに書き出します。元の PDF は変更しません。
 :::
 
-### 本のページを画像として保存する（vs pdf:pages）
-`vs pdf:pages` は、表紙や本文の一部を JPEG に書き出します。SNS やイベント告知に載せる見本ページを作るときに使えます。
-
 ```bash
-vs pdf:pages
+vs pdf:compress                       # 本全体の閲覧用 PDF を圧縮する
+vs pdf:compress 11-intro              # 11-intro.pdf を圧縮する（.pdf は省略可）
+vs pdf:compress input.pdf output.pdf  # 出力するファイル名も指定する
 ```
 
-引数を付けずに実行すると、書籍全体をビルドした閲覧用 PDF（`mybook_v0.1.0.pdf` など、`project.name` と `project.version` から付く名前）のすべてのページを画像にし、`mybook_v0.1.0_images/` のようなフォルダへ保存します。プロジェクト直下に単章ビルドの PDF が並んでいても、それらは選ばれません。
+出力するファイル名を省略すると、元のファイル名に `_compressed` を付けた名前になります（`11-intro.pdf` → `11-intro_compressed.pdf`）。
 
-別の PDF を画像にしたいときは、引数でファイル名を指定します（`.pdf` は省けます）。
+印刷所へは、圧縮していない入稿用 PDF を渡してください。入稿用 PDF を指定すると、印刷所の基準（300〜350 dpi）を下回ることを 🟡 で警告し、圧縮を続けるかを確認します。
 
-```bash
-vs pdf:pages 95-sample       # 95 章だけをビルドした 95-sample.pdf を画像にする
-```
+ビルドのたびに圧縮版も作るときは、`config/book.yml` の `output.pdf.compress` を `true` にします（@chapref:ch-build）。
 
-#### 特定のページだけを画像にする
-「表紙と、3ページ目、そして5〜8ページ目だけを画像にしたい」という場合は、`--pages` オプションを使ってページを指定します。
+## ページを画像にする
 
-```bash
-# 1ページ、3ページ、5〜8ページのみを画像にする
-vs pdf:pages --pages="1,3,5-8"
-```
-
-#### 画像の画質や保存先を調整する
-画像の解像度や保存フォルダを変更することもできます。
-
-| オプション | 既定値 | 説明 | 使用例 |
-|:---|:---:|:---|:---|
-| `--dpi` | `350` | 画像の解像度を指定します。数値を大きくするとより鮮明になります。 | `--dpi=600` |
-| `--quality` | `95` | 画像の保存品質（1〜100）を指定します。 | `--quality=90` |
-| `--output` | `(自動)` | 画像を保存するフォルダの名前を指定します。 | `--output=./samples` |
+:::{.section-lead}
+見本のページを画像にして、SNS やイベントの告知に載せるときは、`vs pdf:pages` を使います。
+:::
 
 ```bash
-# 解像度を600dpiにして、./samples フォルダに保存する
-vs pdf:pages --dpi=600 --output=./samples
+vs pdf:pages                   # 本全体の閲覧用 PDF の全ページ
+vs pdf:pages 95-sample         # 95-sample.pdf の全ページ
+vs pdf:pages --pages=1,3,5-8   # 1・3・5〜8 ページだけ
 ```
 
-### 印刷エラーを確実に回避する「ラスタライズ」（vs pdf:rasterize）
+引数を省略すると、本全体の閲覧用 PDF を画像にします。画像は `page-001.jpg` のような名前で、`mybook_v0.1.0_images/` のようなフォルダに保存されます。単章ビルドの PDF は、ファイル名を指定したときだけ対象になります。ページ番号は PDF の 1 枚目から数えるので、紙面のノンブルとは一致しないことがあります。
+
+同じ PDF をもう一度画像にすると、保存先のフォルダにある前回の画像（`page-*.jpg`）は削除されます。残す画像は、別のフォルダへ移すか、`--output` で保存先を変えます。
+
+** vs pdf:pages のオプション **
+
+| オプション | 既定値 | 説明 |
+| :--- | :---: | :--- |
+| `--pages` | （全ページ） | 画像にするページ（`1,3,5-8`） |
+| `--dpi` | `350` | 解像度。大きくするほど鮮明になり、ファイルも大きくなる |
+| `--quality` | `95` | JPEG の品質（1〜100） |
+| `--output` | （自動） | 保存先のフォルダ（`--output=./samples`） |
+
+## 画像だけの PDF を作る
+
 印刷所のシステムが PDF 内のフォントを受け付けない場合は、原因を確認したうえで、ページ全体を画像化する方法もあります。`vs pdf:rasterize` は、**すべてのページを画像にして結合し直した PDF** を作ります。文字を検索できなくなる、ファイルサイズが大きくなるなどのデメリットが発生します。必要に応じて用いてください。
 
 ```bash
@@ -112,7 +101,7 @@ vs pdf:rasterize
 
 元の PDF の各ページを画像にして結合し直し、`<元のファイル名>_rasterized.pdf` を作成します。
 
-#### ラスタライズした PDF の性質
+**ラスタライズした PDF の性質**
 
 - **フォントに由来する問題を避けられます**: 文字が画像になるので、入稿先がフォントを処理する必要がなくなります。画像の PDF を受け付けるかは、入稿先の条件で確かめてください
 - **文字を選択・検索できなくなります**: 印刷の仕上がりには影響しません
@@ -120,151 +109,90 @@ vs pdf:rasterize
 
 途中で書き出した各ページの JPEG を、終わったあとに削除するときは `vs pdf:rasterize --clean` とします。
 
-`vs pdf:pages` と `vs pdf:rasterize` には `pdftoppm` が必要です。インストールされていないときは、`vs doctor --fix` で導入できます。
-
-## vs clean — 生成ファイルを削除する
+## 生成物を削除する
 
 :::{.section-lead}
-`vs clean` は、ビルドで作られたファイルを削除するコマンドです。中間ファイルはビルドの後に自動で削除されます。キャッシュを作り直したいときや、生成した PDF をまとめて削除したいときに使います。
+ビルドの途中で作る中間ファイルは、ビルドの後に自動で削除されます。`vs clean` は、キャッシュを作り直したいときや、プロジェクト直下に出力した PDF などをまとめて削除したいときに使います。
 :::
 
-### オプション一覧
+** vs clean のオプション **
 
-| オプション | 説明 |
-|------------|------|
-| `--purge` / `-P` | 最終 PDF も含めてすべて削除 |
-| `--cache` / `-C` | `.cache/vs/`・`.cache/metrics/` キャッシュのみ削除 |
-| `--cover` | 生成されたカバー画像のみ削除（マスターは保持） |
-| `--generated-images` | 生成された扉絵・装飾画像を削除 |
-| `--all` | `--index-dictionaries` を除く上記すべてをまとめて実行 |
-| `--index-dictionaries` | 索引・用語集辞書データを削除（確認あり） |
+| オプション | 削除するもの |
+| :--- | :--- |
+| `--cache` / `-C` | キャッシュ（`.cache/vs/`） |
+| `--purge` / `-P` | プロジェクト直下に出力したファイル |
+| `--cover` | 生成した表紙の画像 |
+| `--generated-images` | 生成した扉絵・節絵の画像 |
+| `--all` | `--index-dictionaries` 以外の上のすべて |
+| `--index-dictionaries` | 索引・用語集の辞書（確認あり） |
+
+キャッシュと生成した画像は、次のビルドで作り直されます。`covers/` に置いた表紙の元の画像は削除しません。
+
+`--purge` は、PDF・EPUB・Kindle 用のファイル・表紙の JPEG に加えて、索引のレビューファイル（`_index_glossary_review.md`）も削除します。レビューファイルを編集している間は、先に `vs index:apply` で辞書へ登録してから実行してください（@chapref:ch-index-glossary）。
+
+`--index-dictionaries` は、索引・用語集に登録した語・除外した語・読みの辞書を削除します。削除の前に確認があります。
 
 :::{.tip}
-ビルド結果が更新されないなど、キャッシュが原因と思われるときは `vs clean --cache` を試せます。次のビルドでは必要なデータが作り直されます。
+原稿や設定を直したのに紙面が変わらないときは、`vs clean --cache` の後にビルドし直すと、キャッシュを作り直した紙面で確かめられます。
 :::
 
-## カスタム CSS — スタイルを調整する @custom-css
+## 紙面の見た目を調整する @custom-css
 
 :::{.section-lead}
-書籍全体の色や書体は `config/book.yml` で選べます。リンクの色やコードブロックの枠など、一部分の見た目を調整したいときは `stylesheets/custom.css` を編集します。
-
-この機能は実験的なもので、次のメジャーバージョンで仕様が変わる可能性があります。
+判型・書体・テーマ色は `config/book.yml` で選べます。リンクの色やコードブロックの背景など、`book.yml` に設定のない部分の見た目は、`stylesheets/custom.css` で調整します。
 :::
 
-### 仕組み
+章の HTML には、次の順でスタイルシートが読み込まれます。
 
-ビルド時、各章の Markdown には次の順番でスタイルシートが適用されます。
+1. `theme.css`: テーマ色などの CSS 変数の既定値
+2. `chapter.css` など: 章の種類ごとの紙面
+3. `book-settings.css`: `book.yml` の設定から、ビルドのたびに作られる
+4. `custom.css`: 著者が編集するファイル
 
-1. **`theme.css`** — テーマ色や見出しの寸法などの CSS 変数の既定値
-2. **`chapter.css`** 等 — 章タイプごとのレイアウト
-3. **`book-settings.css`** — `book.yml` の設定をビルド時に書き出したもの（`.cache/vs/` に作られます）
-4. **`custom.css`** — 著者が自由に編集できるファイル（**ビルドで上書きされない**）
+`custom.css` は最後に読み込まれるので、同じ詳細度（どの指定を優先するかを決める、セレクタの強さ）の指定なら、ここに書いたものが優先されます。`vs upgrade` は `custom.css` を書き換えません。ほかの CSS は新しい雛形へ更新されるので、直接編集せず、変えたい指定を `custom.css` に書いてください。
 
-`custom.css` は最後に読み込まれます。同じ条件の CSS ルールなら後から書かれた指定が優先されるため、ここまでのスタイルを上書きできます。
+### CSS 変数で色を変える
 
-::: {.note}
-`theme.css` や `page-settings.css` は `vs upgrade` で新しい雛形へ更新されます。直接編集すると、雛形が変わるたびに手元の変更との突き合わせが必要になります。恒久的なカスタマイズには `custom.css` を使ってください。
-:::
+色の多くは CSS 変数で決まっています。`custom.css` の `:root` に同じ名前の変数を書くと、その色に変わります。
 
-### 使い方
-
-`stylesheets/custom.css` を開き、変更したい CSS 変数やルールを記述します。
-
-```css
-/* stylesheets/custom.css */
+```css:stylesheets/custom.css
 :root {
-  --color-link: #1a73e8;        /* リンク色を青に変更 */
-  --color-column-bg: #f5f5dc;   /* コラム背景をベージュに */
+  --color-link: #1a73e8;       /* リンクを青に */
+  --color-column-bg: #f5f5dc;  /* コラムの背景をベージュに */
 }
 ```
 
-`vs build` を実行すると、変更が即座に PDF に反映されます。
+** custom.css で変えられる主な CSS 変数 **
 
-### カスタマイズ可能な CSS 変数
-
-`theme.css` と `page-settings.css` で定義されている主な CSS カスタムプロパティの一覧です。`custom.css` でこれらの値を上書きできます。コラムの文字の大きさのように変数のないものは、`.column { font-size: 9pt; }` のように規則を書きます。
-
-#### 配色（theme.css）
-
-| 変数名 | 既定値 | 説明 |
+| 変数名 | 既定値 | 色を付ける箇所 |
 | :--- | :--- | :--- |
-| `--theme-accent` | `var(--accent-green)` | テーマのアクセントカラー |
-| `--color-text` | `#000` | 本文テキスト色 |
-| `--color-link` | `#000` | リンク色 |
-| `--color-strong` | `var(--theme-accent)` | 太字（`**強調**`）の色 |
-| `--color-em-underline` | `var(--theme-accent)` | 強意（`*イタリック*`）の下線色 |
-| `--color-border` | `#ccc` | 画像など汎用枠線色 |
-| `--color-column-bg` | テーマ色を淡くした色 | コラム背景色 |
-| `--color-column-border` | `var(--theme-accent)` | コラム枠線色 |
-| `--color-figure-border` | `#ccc` | 図の枠線色 |
-| `--color-danger` | `#f00` | 警告色 |
+| `--color-link` | `#000` | リンクの文字 |
+| `--color-strong` | テーマ色 | 太字（`**強調**`） |
+| `--color-em-underline` | テーマ色 | 強意（`*強意*`）の下線 |
+| `--color-column-bg` | テーマ色を淡くした色 | コラムの背景 |
+| `--color-column-border` | テーマ色 | コラム・メモの枠線 |
+| `--color-figure-border` | `#ccc` | 画像の枠線 |
 
-#### 版面・フォント（page-settings.css）
+Kindle は CSS 変数に対応していないので、変数で変えた色は Kindle には反映されません。Kindle にも同じ色を使うときは、`body.vs-kindle .column { background: #f5f5dc; }` のように、`body.vs-kindle` を前に付けたセレクタに色を直接書きます。
 
-既定値は `b5_standard` の例です。実際の値は `page.use` と `typography` で決まります。
+### 規則を書いて変える
 
-| 変数名 | 既定値（例） | 説明 |
-| :--- | :--- | :--- |
-| `--base-font-size` | `10.5pt` | 基準文字サイズ |
-| `--base-line-height` | `17.85pt` | 行送り |
-| `--letter-spacing` | `0em` | 字間 |
-| `--page-margin-top` | `25mm` | 天（上余白） |
-| `--page-margin-bottom` | `25mm` | 地（下余白） |
-| `--page-margin-inner` | `25mm` | ノド（綴じ側余白） |
-| `--page-margin-outer` | `20mm` | 小口（外側余白） |
-| `--font-main-text` | `"Noto Serif JP"` | 本文フォント |
-| `--font-header` | `"Noto Sans JP"` | 見出しフォント |
-| `--font-code` | `"HackGen35 Console NF"` | コードフォント |
+変数のない部分は、CSS の規則を書いて変えます。たとえば、コラムの文字を小さくするときは次のように書きます。
 
-:::{.tip}
-`book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
-:::
+```css:stylesheets/custom.css
+.column {
+  font-size: 9pt;
+}
+```
 
-### 実践例
+雛形の CSS と同じセレクタで書くと、確実に上書きできます。コードブロックは、雛形の `code.css` が `pre[class*="language-"]` で指定しているので、背景の色も同じセレクタで指定します。`pre { … }` と書くと詳細度が低く、反映されません。
 
-#### コードブロックの見た目を変える
-
-```css
-/* コードブロックに背景色と角丸を追加 */
-pre {
+```css:stylesheets/custom.css
+pre[class*="language-"] {
   background: #f8f8f8;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
 }
 ```
 
-#### 引用ブロックの装飾を変える
+反映されないときは、雛形の CSS から同じ部分のセレクタを探して使います。
 
-```css
-blockquote {
-  border-left: 4px solid var(--theme-accent);
-  padding-left: 1em;
-  font-style: italic;
-}
-```
-
-## 章テンプレートのカスタマイズ
-
-:::{.section-lead}
-`vs create` で章を作るときは、`templates/` の雛形が使われます。毎回必要な見出しやリード文の枠を入れておけば、新しい章を作ったところから本文を書き始められます。
-:::
-
-### テンプレートの編集
-
-章番号と雛形の対応は @chapref:ch-chapter-management で説明しています。`templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は、章のスラッグ（`11-intro` なら `intro`）に置き換わります。
-
-```markdown
-<!-- templates/chapter.md の例 -->
-# {{TITLE}}
-
-:::{.chapter-lead}
-:::
-
-## はじめに
-
-## まとめ
-```
-
-### QueryStream テンプレート
-
-`templates/` には章テンプレートのほかに、ファイル名の先頭に `_` が付く QueryStream のデータ展開テンプレート（`_book.md` など）も置かれます。新しいデータファイルを追加するときは、対応するテンプレートをここに作成します（@chapref:ch-querystream）。
+CSS 変数やクラスの名前は、今後のバージョンで変わることがあります。バージョンを上げたら、`custom.css` の指定が紙面に反映されているかを確かめてください。

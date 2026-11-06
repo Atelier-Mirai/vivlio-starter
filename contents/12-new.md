@@ -167,7 +167,7 @@ vs clean --cover       # 生成されたカバー画像を削除
 
 `markdown_snippet.md` は章の雛形ではなく、利用できる記法を実例とともに並べた見本です。書き方を確かめたいときに開き、必要な部分を原稿へコピーして使えます。
 
-章テンプレートを自分の執筆手順に合わせる方法は @chapref:ch-utility で、QueryStream テンプレートの仕組みは @chapref:ch-querystream で詳しく扱います。
+章テンプレートを自分の執筆手順に合わせる方法は @chapref:ch-chapter-management で、QueryStream テンプレートの仕組みは @chapref:ch-querystream で詳しく扱います。
 
 ### sources/
 
