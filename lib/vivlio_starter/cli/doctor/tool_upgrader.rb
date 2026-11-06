@@ -233,7 +233,7 @@ module VivlioStarter
             return 0
           end
           if plan.updates.any? && !confirm_upgrade?(options, deps)
-            Common.log_always('更新をスキップしました。--yes を付けると確認なしで実行できます。')
+            Common.log_always('外部ツールの更新をスキップしました。')
             outcome.('更新をスキップ')
             return 0
           end

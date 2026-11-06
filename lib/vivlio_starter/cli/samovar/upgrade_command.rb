@@ -17,7 +17,9 @@ module VivlioStarter
 
         options do
           option '--dry-run', '計画（何が追加/更新/競合か）の表示のみで書き込みしない', default: false, key: :dry_run
-          option '--yes/-y', '競合以外（追加＋未カスタムの更新）を確認なしで適用する', default: false, key: :yes
+          # 自己更新の後の再起動（relaunch!）が引き継ぐために受け付ける。著者は確認の画面で計画を見て答えるので、
+          # ヘルプとマニュアルには載せない（vs doctor の --yes と同じ扱い）
+          internal_option '--yes/-y', '競合以外（追加＋未カスタムの更新）を確認なしで適用する', default: false, key: :yes
           option '--skip-self-update', 'vivlio-starter 本体の gem 更新を行わない', default: false, key: :skip_self_update
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
