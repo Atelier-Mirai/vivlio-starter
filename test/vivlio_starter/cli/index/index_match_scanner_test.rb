@@ -425,6 +425,29 @@ module VivlioStarter
                        '†はリンクの外の出現に付く')
         end
 
+        # 見出しの語には † を付けず、すぐ下の本文の出現へ回す。見出しに付けると、† の分だけ
+        # 見出しが 2 行に折れることがある。索引タグは見出しにも付ける（索引のページ番号は残す）
+        def test_should_move_glossary_link_from_heading_to_next_body_occurrence
+          write_glossary_term('Kindle', yomi: 'Kindle')
+          File.write('92-heading.md', <<~MD)
+            # 章題
+
+            ## Kindle での見え方
+
+            Kindle では、数式をテキストにします。
+          MD
+
+          IndexMatchScanner.new.scan_and_tag_file!('92-heading.md')
+
+          tagged = File.read('92-heading.md')
+          heading = tagged.lines.find { it.start_with?('## ') }
+          assert_match(/class="index-term"[^>]*>Kindle</, heading, '見出しの語も索引に載る')
+          refute_match(/glossary-link/, heading, '見出しには † を付けない')
+          assert_match(%r{>Kindle</span><a [^>]*class="glossary-link"[^>]*><sup>†</sup></a> では}, tagged,
+                       '† は本文の最初の出現に付く')
+          assert_equal 1, tagged.scan(/class="glossary-link"/).size
+        end
+
         # 短い語が長い語の一部を先に食うと、長いほうは二度と一致しない
         # （実測: <dfn>マスター</dfn>画像 と組まれ、用語集の「マスター画像」に
         # 本文リンクが 1 件も付かなかった）。辞書は読み順に並ぶため順序では守れない

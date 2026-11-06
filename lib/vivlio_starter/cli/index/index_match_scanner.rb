@@ -784,8 +784,13 @@ end
         #
         # `@term_occurrence` を使わないのは、あちらが**書籍全体**の通し番号で、
         # 索引アンカー `idx-<hash>-<n>` の一意性を担っているためである（章でリセットできない）。
+        #
+        # **見出しには付けない。** 見出しの語はすぐ下の本文にも出るので、† はそちらで足りる。
+        # 見出しに付けると、† の分だけ見出しが 2 行に折れることがある（「ディスプレイ数式†」）。
+        # 「章の最初の †」の権利は消費せず、次の本文の出現へ回す。索引タグは見出しにも付ける。
         def build_glossary_link(term_text, file_basename, occurrence_num)
           return nil unless @glossary_terms.key?(term_text)
+          return nil if @current_heading_level
           return nil unless @glossary_linked_terms.add?(term_text)
 
           slug = generate_glossary_slug(term_text)
