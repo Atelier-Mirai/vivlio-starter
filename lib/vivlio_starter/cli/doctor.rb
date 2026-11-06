@@ -351,7 +351,7 @@ module VivlioStarter
                           status: :warning)
 
         unless options[:fix]
-          Common.log_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
+          Common.log_always('ヒント: macOS の場合は `vs doctor --fix` で自動修正を試行できます')
           if missing.include?('xcode-command-line-tools')
             Common.log_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
           end

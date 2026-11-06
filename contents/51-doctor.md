@@ -86,7 +86,7 @@ vs doctor
 …
 ✅ Google Fonts 用 SSL 証明書: OK
 ❗ 不足しているツール: pdfinfo (poppler), pdftoppm (poppler), pdftotext (poppler)（3 件）
-ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます
+ヒント: macOS の場合は `vs doctor --fix` で自動修正を試行できます
 ```
 :::
 
