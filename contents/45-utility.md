@@ -162,15 +162,15 @@ vs pdf:pages --pages=1,5,12-14 --dpi=150 --output=./samples
 | `--color-em-underline` | テーマ色 | 強意（`*強意*`）の下線 |
 | `--color-column-bg` | テーマ色を淡くした色 | コラムの背景 |
 | `--color-column-border` | テーマ色 | コラム・メモの枠線 |
-| `--color-figure-border` | `#ccc` | 画像の枠線 |
+| `--color-figure-border` | `#ccc` | 画像の枠線<br><span class="small">※ PDF・EPUB のみ</span> |
 | `--color-mark` | テーマ色 | 小見出し（`###`・`####`）の記号、`.note` の上下の線、`.notice` の左の線 |
 | `--color-border-weak` | `#ddd` | 引用の左の線、`.notice`・`.diagram` の枠線 |
-| `--folio-color` | `#777` | ノンブル（ページ番号） |
-| `--section-number-color` | テーマ色 | 節番号（`style: image` の本） |
+| `--folio-color` | `#777` | ノンブル（ページ番号）<br><span class="small">※ PDF のみ</span> |
+| `--section-number-color` | テーマ色 | 節番号（`style: image` の本）<br><span class="small">※ PDF のみ</span> |
 | `--heading-accent` | テーマ色 | 章・節の見出しの枠線（`style: simple` の本） |
-| `--talk-bg` | `#fff` | 会話文の吹き出しの地 |
+| `--talk-bg` | `#fff` | 会話文の吹き出しの地<br><span class="small">※ PDF・EPUB のみ</span> |
 
-Kindle は CSS 変数に対応していないので、この表の色は、ビルドのときに Kindle 用の色へ置き換えて組みます。ただし、`--folio-color`・`--section-number-color` は PDF だけに、`--talk-bg`・`--color-figure-border` は PDF と EPUB だけに効きます。
+Kindle は CSS 変数に対応していませんが、この表の色は、ビルドのときに Kindle 用の色へ置き換えて組みます（※ の付いた色を除きます）。
 
 ### 規則を書いて変える
 
