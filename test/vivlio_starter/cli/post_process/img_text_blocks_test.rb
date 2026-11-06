@@ -100,6 +100,37 @@ module VivlioStarter
           assert body.at_css('figure.language-yaml pre'), 'コードブロックは本文の側に入る'
           assert_nil body.at_css('img'), '画像は本文の側に入らない'
         end
+
+        # 本文に残ったバッククォートとリンク記法は <code>・<a> に直すが、コードの中の文字は
+        # 書いたとおりに残す（Markdown の書き方を示すコードが組み替えられていた）。
+        def test_should_convert_markdown_in_prose_but_leave_code_untouched
+          html = <<~HTML
+            <!DOCTYPE html>
+            <html><head><title>t</title></head><body>
+            <div class="sideimage-right">
+              <figure><img src="a.webp"></figure>
+              <p>本文の `vs build` と [公式](https://example.com) を直す</p>
+              <pre><code class="language-markdown">`vs build` と [公式](https://example.com)</code></pre>
+              <p><code>[a](b)</code> はそのまま</p>
+            </div>
+            </body></html>
+          HTML
+
+          doc = Tempfile.create(['vs_sideimage_', '.html']) do |f|
+            f.write(html)
+            f.flush
+            PostProcessCommands.wrap_sideimage_blocks!(f.path)
+            Nokogiri::HTML(File.read(f.path, encoding: 'utf-8'))
+          end
+
+          prose, inline_code = doc.css('div.sideimage-body > p').to_a
+          assert_equal 'vs build', prose.at_css('code').text
+          assert_equal 'https://example.com', prose.at_css('a')['href']
+
+          code = doc.at_css('div.sideimage-body pre code')
+          assert_equal '`vs build` と [公式](https://example.com)', code.inner_html
+          assert_equal '[a](b)', inline_code.at_css('code').inner_html
+        end
       end
     end
   end

@@ -668,10 +668,13 @@ module VivlioStarter
           changed = true
         end
 
-        # sideimage-body 内に残っているバッククォート付きコードを <code> 要素に変換
+        # sideimage-body 内に残っているバッククォート付きコードを <code> 要素に変換。
+        # 変換するのは地の文だけで、コードブロックとインラインコードの中は書いたとおりに残す
+        # （Markdown の書き方を示すコードの `…` や [テキスト](URL) が組み替えられていた）。
         doc.css('div.sideimage-body').each do |body|
           body.traverse do |node|
             next unless node.text?
+            next if node.ancestors('pre, code').any?
 
             text = node.text
             next unless text.include?('`')
@@ -701,6 +704,7 @@ module VivlioStarter
           # 脚注参照 [^urlN] は一旦そのまま残す（後で process_sideimage_footnotes! で処理）
           body.traverse do |node|
             next unless node.text?
+            next if node.ancestors('pre, code').any?
 
             text = node.text
             next unless text.match?(/\[.+?\]\(.+?\)/)
