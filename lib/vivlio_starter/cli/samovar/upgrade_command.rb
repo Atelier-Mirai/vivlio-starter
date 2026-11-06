@@ -20,7 +20,9 @@ module VivlioStarter
           # 自己更新の後の再起動（relaunch!）が引き継ぐために受け付ける。著者は確認の画面で計画を見て答えるので、
           # ヘルプとマニュアルには載せない（vs doctor の --yes と同じ扱い）
           internal_option '--yes/-y', '競合以外（追加＋未カスタムの更新）を確認なしで適用する', default: false, key: :yes
-          option '--skip-self-update', 'vivlio-starter 本体の gem 更新を行わない', default: false, key: :skip_self_update
+          # 本体を更新した後、新しい版の vs で起動し直すとき（relaunch!）に付けて、更新の確かめを繰り返さない。
+          # 著者は本体の更新の確認で「いいえ」と答えれば同じことになるので、ヘルプとマニュアルには載せない
+          internal_option '--skip-self-update', 'vivlio-starter 本体の gem 更新を行わない', default: false, key: :skip_self_update
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 

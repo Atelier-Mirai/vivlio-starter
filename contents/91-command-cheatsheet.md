@@ -54,7 +54,6 @@
 | オプション | 説明 |
 |:---|:---|
 | `--dry-run` | 計画（何が追加 / 更新 / 合流 / 競合か）の表示のみで書き込みしない |
-| `--skip-self-update` | `vivlio-starter` 本体の gem 更新を行わない |
 :::
 
 ### `vs import` — Re:VIEW Starter からの移行

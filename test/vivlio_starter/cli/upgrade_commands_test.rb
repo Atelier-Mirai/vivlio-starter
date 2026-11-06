@@ -560,7 +560,7 @@ module VivlioStarter
           out, status = Open3.capture2e(RbConfig.ruby, '-I', "#{repo}/lib", "#{repo}/bin/vs", 'upgrade', '--help', chdir: dir)
 
           assert_predicate status, :success?, out
-          assert_includes out, '--skip-self-update'
+          assert_includes out, '--dry-run'
           refute_includes out, '必須設定ファイルが見つかりません'
         end
       end

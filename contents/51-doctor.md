@@ -121,9 +121,8 @@ vs doctor --fix
 3. **外部ツールの一括更新** — Homebrew・npm・gem でインストールしたツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer は、アプリの更新機能で更新します
 
 ```bash
-vs upgrade                    # 計画を表示し、確認してから適用
-vs upgrade --dry-run          # 計画を表示するだけで、何も変更しない
-vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
+vs upgrade            # 計画を表示し、確認してから適用
+vs upgrade --dry-run  # 計画を表示するだけで、何も変更しない
 ```
 
 プロジェクトの外で実行すると、雛形の追従を省き、本体と外部ツールだけを更新します。
