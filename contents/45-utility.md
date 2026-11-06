@@ -8,29 +8,32 @@
 
 | コマンド | 目的 |
 | :--- | :--- |
-| `vs --help`・`vs --version` | コマンドの使い方と、Vivlio Starter のバージョンを表示する |
+| `vs --version` | Vivlio Starter のバージョンを表示する |
+| `vs --help` | コマンドの使い方を表示する |
 | `vs open` | PDF を開く |
 | `vs pdf:compress` | PDF を圧縮する |
 | `vs pdf:pages` | PDF のページを画像にする |
 | `vs clean` | 生成したファイルやキャッシュを削除する |
 
-## コマンドの使い方を調べる
+## バージョンと使い方を調べる
 
 :::{.section-lead}
-コマンドの名前やオプションを忘れたときは、本書を開かなくても端末で確かめられます。
+インストールされている Vivlio Starter のバージョンや、コマンドの名前・オプションは、本書を開かなくても端末で確かめられます。
 :::
 
 ```bash
+vs --version       # インストールされている Vivlio Starter のバージョン
 vs --help          # コマンドの一覧
 vs build --help    # vs build のオプション
-vs --version       # インストールされている Vivlio Starter のバージョン
 ```
 
-どのコマンドにも `--help` を付けられます。`vs --version` は、`vs upgrade` で本体が更新されたかを確かめるときに使えます。
+`vs --version` は、`vs upgrade` で本体が更新されたかを確かめるときに使えます。
 
 :::{.output}
 vivlio-starter 1.0.0
 :::
+
+どのコマンドにも `--help` を付けられます。
 
 ## PDF を開く
 
