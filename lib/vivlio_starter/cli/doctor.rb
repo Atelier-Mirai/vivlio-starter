@@ -283,14 +283,7 @@ module VivlioStarter
           report_rosetta_missing unless rosetta_ready?(is_macos) || install_rosetta
         end
 
-        if is_macos
-          if ssl_certificate_configured?
-            report_ok('✅ Google Fonts 用 SSL 証明書: OK', options)
-          else
-            Common.log_error('Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
-            missing << 'ssl-certificates'
-          end
-        end
+        missing << 'ssl-certificates' if is_macos && !diagnose_ssl_certificate(options)
 
         # Vivliostyle の headless Chrome キャッシュの健全性（中断ビルド等で壊れた残骸を掃除）
         # ※ missing.empty? の早期 return より前に実行し、他ツールが揃っていても修復できるようにする
@@ -546,7 +539,7 @@ module VivlioStarter
                end
           still_missing << label unless ok
         end
-        still_missing << 'ssl-certificates' if is_macos && !ssl_certificate_configured?
+        still_missing << 'ssl-certificates' if is_macos && ssl_certificate_status == :invalid
         # プラグイン未導入の利用者には OCR ツールの不足を ❗ として残さない（spec §5.1）
         still_missing.reject! { OCR_OPTIONAL_TOOLS.include?(it) } unless plugin_installed
 
@@ -651,11 +644,52 @@ module VivlioStarter
     module DoctorCommands
       module_function
 
-      def ssl_certificate_configured?
-        test_cmd = "ruby -ropen-uri -e 'URI.open(\"https://fonts.googleapis.com/css2?family=Roboto&display=swap\") { |r| exit(r.status.first == \"200\" ? 0 : 1) }'"
-        system(test_cmd)
+      # 証明書を確かめるために接続する先（Google Fonts の CSS）
+      GOOGLE_FONTS_PROBE_URL = 'https://fonts.googleapis.com/css2?family=Roboto&display=swap'
+
+      # 別の Ruby で接続する（--fix が SSL_CERT_FILE を設定した後の再診断にも、その値が効く）。
+      # 終了コード 2 は「接続そのものができない」。証明書の誤りや HTTP のエラーは 1 になる
+      SSL_PROBE_SCRIPT = <<~'RUBY'
+        require 'open-uri'
+        begin
+          URI.open(ARGV.fetch(0), open_timeout: 10, read_timeout: 10) { exit(it.status.first == '200' ? 0 : 1) }
+        rescue OpenSSL::SSL::SSLError
+          exit(1)
+        rescue SocketError, SystemCallError, Timeout::Error
+          exit(2)
+        end
+      RUBY
+
+      # Google Fonts へ HTTPS で接続できるか。
+      #
+      # オフラインのときは :unreachable として、証明書の不足と分ける。分けないと、ネットワークが
+      # 無いだけで 🔴 の不足に数え、--fix が openssl@3 と ca-certificates を入れ直そうとする。
+      # @return [Symbol] :ok / :invalid（証明書で検証できない）/ :unreachable（接続できない）
+      def ssl_certificate_status(url = GOOGLE_FONTS_PROBE_URL)
+        system('ruby', '-e', SSL_PROBE_SCRIPT, url, out: File::NULL, err: File::NULL)
+        case $?&.exitstatus
+        in 0 then :ok
+        in 2 then :unreachable
+        else :invalid
+        end
       rescue StandardError
-        false
+        :invalid
+      end
+
+      # 証明書の行を出し、不足でなければ true。接続できないときは確かめられないので、不足に数えない
+      def diagnose_ssl_certificate(options)
+        case ssl_certificate_status
+        in :ok
+          report_ok('✅ Google Fonts 用 SSL 証明書: OK', options)
+          true
+        in :unreachable
+          Common.log_warn('Google Fonts 用 SSL 証明書: ネットワークに接続できないため、確かめていません',
+                          detail: 'ネットワークに接続してから vs doctor を実行してください')
+          true
+        in :invalid
+          Common.log_error('Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
+          false
+        end
       end
 
       def install_ssl_certificates!

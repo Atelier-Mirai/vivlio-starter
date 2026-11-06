@@ -50,6 +50,37 @@ module VivlioStarter
         assert_equal ["brew install ghostscript"], calls
       end
 
+      # 接続できない先は :unreachable（閉じたポートへ接続して、オフラインと同じ失敗を起こす）
+      def test_should_tell_unreachable_network_from_invalid_certificate
+        assert_equal :unreachable, DoctorCommands.ssl_certificate_status('https://127.0.0.1:1/')
+      end
+
+      # オフラインでは証明書を確かめられないので、🟡 で知らせ、不足（🔴）に数えない
+      def test_should_not_count_certificate_as_missing_when_offline
+        warnings = []
+        errors = []
+        ready = Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
+          Common.stub(:log_error, ->(msg, **) { errors << msg }) do
+            DoctorCommands.stub(:ssl_certificate_status, :unreachable) { DoctorCommands.diagnose_ssl_certificate({}) }
+          end
+        end
+
+        assert ready
+        assert_empty errors
+        assert_match(/ネットワークに接続できないため、確かめていません/, warnings.join)
+      end
+
+      # 証明書で検証できないときは、不足に数えて --fix の対象にする
+      def test_should_count_certificate_as_missing_when_invalid
+        errors = []
+        ready = Common.stub(:log_error, ->(msg, **) { errors << msg }) do
+          DoctorCommands.stub(:ssl_certificate_status, :invalid) { DoctorCommands.diagnose_ssl_certificate({}) }
+        end
+
+        refute ready
+        assert_match(/Google Fonts 用 SSL 証明書: 未設定/, errors.join)
+      end
+
       # すべてのツールが揃っている場合、正常終了することを確認
       def test_doctor_reports_success_when_environment_complete
         with_host_os('linux') do
@@ -106,7 +137,7 @@ module VivlioStarter
           diagnose_called = false
 
           stub_logging do
-            DoctorCommands.stub :ssl_certificate_configured?, true do
+            DoctorCommands.stub :ssl_certificate_status, :ok do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
@@ -164,7 +195,7 @@ module VivlioStarter
           diagnose_called = false
 
           stub_logging do
-            DoctorCommands.stub :ssl_certificate_configured?, true do
+            DoctorCommands.stub :ssl_certificate_status, :ok do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
                   # 存在チェック・機能チェックとも同じ述語（textlint は install 後に true）で駆動する
@@ -228,7 +259,7 @@ module VivlioStarter
           brew_env = nil
 
           stub_logging do
-            DoctorCommands.stub :ssl_certificate_configured?, true do
+            DoctorCommands.stub :ssl_certificate_status, :ok do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
@@ -276,7 +307,7 @@ module VivlioStarter
           tesseract_lang_installed = false
 
           stub_logging do
-            DoctorCommands.stub :ssl_certificate_configured?, true do
+            DoctorCommands.stub :ssl_certificate_status, :ok do
               DoctorCommands.stub :waifu2x_available?, true do
                       DoctorCommands.stub :mathjax_full_available?, true do
                       DoctorCommands.stub :diagnose_config_files!, nil do
