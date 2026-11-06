@@ -88,7 +88,7 @@ vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあり�
 | Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer`（Kindle を選んだときだけ） | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
-Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
+Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。
 
 Kindle Previewer は、`config/book.yml` の `targets` に `kindle` がある本で `vs doctor --fix` を実行するとインストールされます。導入スクリプトで Kindle 向けにも作ると答えた場合は、その時点でインストールされます。Kindle を選んでいない本ではインストールしません。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれるので、Apple Silicon の Mac には **Rosetta 2** も一緒にインストールします。どちらも管理者のパスワードを尋ねます。インストール後は、アプリの更新機能で新しい版へ更新されます。
 
