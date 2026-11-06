@@ -46,7 +46,9 @@ module VivlioStarter
       REVIEW_FILE_PATTERNS = %w[_index_glossary_review.md].freeze
 
       # 削除結果の内訳。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
-      CleanSummary = Data.define(:cache, :artifacts, :dictionaries) do
+      # declined は、辞書の削除を確認で断ったか（「削除対象はありませんでした」と区別する）。
+      CleanSummary = Data.define(:cache, :artifacts, :dictionaries, :declined) do
+        def initialize(cache:, artifacts:, dictionaries:, declined: false) = super
         def total = cache + artifacts + dictionaries
         def none? = total.zero?
       end
@@ -62,11 +64,15 @@ module VivlioStarter
         opts = option_hash || {}
 
         dictionaries = opts[:index_dictionaries] ? clean_index_dictionaries : 0
-        return CleanSummary.new(cache: 0, artifacts: 0, dictionaries:) if opts[:index_dictionaries] && !opts[:purge]
+        declined = dictionaries.nil?
+        dictionaries ||= 0
+        if opts[:index_dictionaries] && !opts[:purge]
+          return CleanSummary.new(cache: 0, artifacts: 0, dictionaries:, declined:)
+        end
 
         cache = clean_cache_files
         artifacts = opts[:purge] ? purge_root_artifacts! : 0
-        CleanSummary.new(cache:, artifacts:, dictionaries:)
+        CleanSummary.new(cache:, artifacts:, dictionaries:, declined:)
       end
 
       # ビルドの作業フォルダだけを削除する（vs build・vs preflight・章番号の付け直し）。
@@ -141,7 +147,7 @@ module VivlioStarter
 
       # 索引・用語集辞書データを削除する（確認プロンプトあり）
       #
-      # @return [Integer] 削除した対象の数（未実施・キャンセル時は 0）
+      # @return [Integer, nil] 削除した対象の数（対象が無いときは 0、確認で断ったときは nil）
       #
       # 削除対象:
       #   - config/index_glossary_terms.yml（登録済み用語）
@@ -162,10 +168,7 @@ module VivlioStarter
         Common.log_warn('以下の索引・用語集辞書データを削除しようとしています:')
         targets.each { |f| Common.log_always("  - #{f}") }
         Common.log_always('これらのファイルには著者が登録した用語データが含まれています。')
-        unless Common.confirm?('本当に削除しますか？')
-          Common.log_info('索引辞書データの削除をキャンセルしました')
-          return 0
-        end
+        return nil unless Common.confirm?('本当に削除しますか？')
 
         targets.each do |f|
           FileUtils.rm_f(f)

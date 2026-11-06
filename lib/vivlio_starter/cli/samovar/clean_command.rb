@@ -55,13 +55,16 @@ module VivlioStarter
         # 削除の実績を既定ログレベルでも 1 行で報告する。
         # 実行して無音だと「効いたのか分からない」ため、何も無かった場合も黙らない。
         # 表示はコマンド層の責務とし、ドメイン層（CleanCommands）は件数を返すだけにする。
+        # 辞書の削除を確認で断ったときは「削除しませんでした」と答える（対象が無かったのではない）。
         def report_result(summary)
           if summary.none?
-            VivlioStarter::CLI::Common.log_result('削除対象はありませんでした', status: :success)
+            message = summary.declined ? '削除しませんでした' : '削除対象はありませんでした'
+            VivlioStarter::CLI::Common.log_result(message, status: :success)
             return
           end
 
-          VivlioStarter::CLI::Common.log_result("削除しました（#{breakdown(summary)}）", status: :success)
+          declined = summary.declined ? '。辞書は削除しませんでした' : ''
+          VivlioStarter::CLI::Common.log_result("削除しました（#{breakdown(summary)}）#{declined}", status: :success)
         end
 
         # 実績のあったカテゴリだけを並べる（「キャッシュ 3 件・生成物 12 件」）

@@ -122,6 +122,53 @@ module VivlioStarter
         end
       end
 
+      # --- 以前の版の退避（.cache/vs/upgrade-backup/）は .vs-backup/upgrade/ へ移す ---
+      # キャッシュの下に残すと、次の vs clean で消える。雛形が最新でも移す
+      def test_should_move_legacy_backups_out_of_the_cache
+        within_project do |scaffold|
+          write_lock
+          write('.cache/vs/upgrade-backup/20261001-100000', 'config/book.yml', "book: {}\n")
+          write('.cache/vs/upgrade-backup/20261002-100000', 'stylesheets/custom.css', OLD_CSS)
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_equal "book: {}\n", File.read('.vs-backup/upgrade/20261001-100000/config/book.yml')
+          assert_equal OLD_CSS, File.read('.vs-backup/upgrade/20261002-100000/stylesheets/custom.css')
+          refute Dir.exist?('.cache/vs/upgrade-backup'), '移した後の古い置き場は残さないべき'
+          assert_includes out, '✅ 以前の退避 2 件を .vs-backup/upgrade/ へ移しました'
+        end
+      end
+
+      # 同じ日時のフォルダが移し先にもあれば、移し先に無いファイルだけを足す（移し先の中身を残す）
+      def test_should_merge_a_legacy_backup_into_the_same_timestamp
+        within_project do |scaffold|
+          write_lock
+          write('.vs-backup/upgrade/20261001-100000', 'config/book.yml', "book: { first: true }\n")
+          write('.cache/vs/upgrade-backup/20261001-100000', 'config/book.yml', "book: {}\n")
+          write('.cache/vs/upgrade-backup/20261001-100000', 'stylesheets/custom.css', OLD_CSS)
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_equal "book: { first: true }\n", File.read('.vs-backup/upgrade/20261001-100000/config/book.yml')
+          assert_equal OLD_CSS, File.read('.vs-backup/upgrade/20261001-100000/stylesheets/custom.css')
+          refute Dir.exist?('.cache/vs/upgrade-backup')
+        end
+      end
+
+      # --dry-run は移すことを示すだけで、ファイルを動かさない
+      def test_should_not_move_legacy_backups_on_dry_run
+        within_project do |scaffold|
+          write_lock
+          write('.cache/vs/upgrade-backup/20261001-100000', 'config/book.yml', "book: {}\n")
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert File.exist?('.cache/vs/upgrade-backup/20261001-100000/config/book.yml')
+          refute Dir.exist?('.vs-backup')
+          assert_includes out, '📣 以前の退避 1 件を .vs-backup/upgrade/ へ移します。--dry-run のため移しません。'
+        end
+      end
+
       # --- 競合: n でスキップ → 現物は無傷・退避されず・lock は旧ハッシュのまま ---
       def test_should_skip_conflict_and_keep_old_lock_hash_when_user_declines
         within_project do |scaffold|

@@ -121,16 +121,19 @@ module VivlioStarter
         end
       end
 
-      # 確認で「いいえ」と答えたら辞書を残す
+      # 確認で「いいえ」と答えたら辞書を残し、断ったことを返す
       def test_should_keep_the_dictionaries_when_declined
         within_temp_dir do
           write_file(File.join('config', 'index_glossary_terms.yml'))
 
+          summary = nil
           with_stdin("n\n") do
-            capture_io { CleanCommands.execute_clean({ index_dictionaries: true }) }
+            capture_io { summary = CleanCommands.execute_clean({ index_dictionaries: true }) }
           end
 
           assert File.exist?('config/index_glossary_terms.yml')
+          assert summary.declined, '断ったことを内訳で返すべきです（対象が無かったのと区別する）'
+          assert_equal 0, summary.dictionaries
         end
       end
 

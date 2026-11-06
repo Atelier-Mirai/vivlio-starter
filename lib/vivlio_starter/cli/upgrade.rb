@@ -143,6 +143,9 @@ module VivlioStarter
       # 消すオプションは持たない（不要になったら著者がフォルダを削除する・51 章）。
       BACKUP_ROOT = File.join('.vs-backup', 'upgrade')
 
+      # 以前の版の退避の置き場。キャッシュの下にあり、vs clean で消えてしまう
+      LEGACY_BACKUP_ROOT = File.join(Common::CACHE_DIR, 'upgrade-backup')
+
       GEMFILE_LOCK = 'Gemfile.lock'
 
       # Gemfile.lock が固定している vivlio-starter の版を拾う。specs 節と CHECKSUMS 節に
@@ -174,6 +177,7 @@ module VivlioStarter
         if gem_repository?
           Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
         elsif File.exist?(File.join('config', 'book.yml'))
+          move_legacy_backups!(options)
           sync = sync_scaffold!(cmd)
           refresh_gemfile_lock!(options) unless sync.aborted
         else
@@ -308,6 +312,46 @@ module VivlioStarter
         else
           Common.log_warn('Gemfile.lock の更新に失敗しました。手元で bundle update vivlio-starter を実行してください' \
                           '（vs コマンド自体は lock を見ないため、このままでも執筆は続けられます）。')
+        end
+      end
+
+      # 以前の版が .cache/vs/upgrade-backup/ に残した退避を .vs-backup/upgrade/ へ移す。
+      # 放っておくと、次の vs clean でキャッシュと一緒に消える。
+      #
+      # 確認は求めない（refresh_gemfile_lock! と同じ考え）。動かすのは vs upgrade 自身が
+      # 作った退避だけで、中身は変えない。雛形の更新を「いいえ」で断っても移す。
+      def move_legacy_backups!(options)
+        return unless File.directory?(LEGACY_BACKUP_ROOT)
+
+        stamps = Dir.children(LEGACY_BACKUP_ROOT).sort
+        if options[:dry_run]
+          unless stamps.empty?
+            Common.log_always("📣 以前の退避 #{stamps.size} 件を #{BACKUP_ROOT}/ へ移します。--dry-run のため移しません。")
+          end
+          return
+        end
+
+        stamps.each { merge_backup!(File.join(LEGACY_BACKUP_ROOT, it), File.join(BACKUP_ROOT, it)) }
+        FileUtils.rm_rf(LEGACY_BACKUP_ROOT)
+        Common.log_result("以前の退避 #{stamps.size} 件を #{BACKUP_ROOT}/ へ移しました", status: :success) unless stamps.empty?
+      end
+
+      # 退避 1 回分を移す。同じ日時のフォルダが移し先にもあるときは、移し先に無いファイルだけを
+      # 足す（同じ秒の退避は最初の中身を残す、backup! と同じ扱い）。
+      def merge_backup!(source, destination)
+        unless File.exist?(destination)
+          FileUtils.mkdir_p(File.dirname(destination))
+          FileUtils.mv(source, destination)
+          return
+        end
+
+        Dir.glob('**/*', File::FNM_DOTMATCH, base: source).each do |relative|
+          from = File.join(source, relative)
+          to = File.join(destination, relative)
+          next if File.directory?(from) || File.exist?(to)
+
+          FileUtils.mkdir_p(File.dirname(to))
+          FileUtils.mv(from, to)
         end
       end
 
