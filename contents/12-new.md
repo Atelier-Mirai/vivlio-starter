@@ -225,6 +225,6 @@ cd mybook
 vs doctor --fix
 ```
 
-それでも揃わないときは、`vs doctor` で足りないツールを表示し、@ch-doctor の章の @pageref:doctor-troubleshooting で解決策を探してください。
+それでも揃わないときは、`vs doctor` で足りないツールを表示し、@ch-install の章の @pageref:install-troubleshooting で解決策を探してください。
 
 書籍名や判型、出力形式などは、`config/book.yml` を編集して変えます。キーの説明と今の値は、`vs config:book` で確認できます。

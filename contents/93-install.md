@@ -220,7 +220,7 @@ vs build
 
 Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は上の「Linux / WSL」を参照してください。
 
-## トラブルシューティング
+## トラブルシューティング @install-troubleshooting
 
 ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確かめてください。macOS では `vs doctor --fix` で導入も試せます。使い分けは @chapref:ch-doctor で説明しています。
 
@@ -229,6 +229,7 @@ Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は�
 | :--- | :--- | :--- |
 | `vs` を実行すると `ERROR Error: No input is set.` と出る | Vivliostyle CLI がインストールする同じ名前の `vs` が実行されている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を削除します。Vivliostyle は `vivliostyle` で使えます） |
 | 導入スクリプトのあと、新しいターミナルで `vs` が見つからない | シェルの設定ファイルへの書き込みを断った | スクリプトが最後に示した行を設定ファイルに追加し、新しいターミナルを開く |
+| Google Fonts の SSL エラーが解消しない | 証明書の設定が、開いているターミナルに反映されていない | 新しいターミナルを開き、`vs doctor` を再実行 |
 | Homebrew の PATH が通らない（Apple Silicon） | `/opt/homebrew/bin` が PATH に未追加 | `echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile && source ~/.zprofile` |
 | Ruby のバージョンが合わない | `.ruby-version` と不一致 | `rbenv install $(cat .ruby-version) && rbenv global $(cat .ruby-version)` |
 | `bundler` が見つからない | bundler 未インストール | `gem install bundler` |
