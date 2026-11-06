@@ -60,7 +60,7 @@ gem install vivlio-starter vivlio-starter-pdf
 
 vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあります。本体だけでも、PDF のしおりと `vs pdf:read` の画像抽出・OCR 以外の処理はすべて動きます。
 
-## 自動インストールの内訳
+## 自動インストールの内訳 @install-tools
 
 導入スクリプトと `vs new mybook` の最後では `vs doctor --fix` が呼び出され、必要なツールを導入します。どのツールが何に使われるか、ここで確認できます。
 
@@ -71,20 +71,20 @@ vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあり�
 | Node.js / npm | `brew install node` | Vivliostyle CLI の前提（Node 22.12 以上） |
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
 | VFM | `npm install -g @vivliostyle/vfm` | Markdown から HTML への変換 |
-| textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
+| textlint と推奨ルール | `npm install -g textlint ...` | 文章校正 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
 | poppler（pdfinfo / pdftoppm / pdftotext） | `brew install poppler` | PDF メタデータ取得・ページ画像化・しおりの位置の特定 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
 | Inkscape | `brew install --cask inkscape` | SVG ラスタライズの予備経路（任意） |
 | librsvg（rsvg-convert） | `brew install librsvg` | EPUB 扉絵・節絵の合成画像ラスタライズ |
-| libvips | `brew install vips` | 高速画像処理 |
-| Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
-| MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
+| libvips | `brew install vips` | `vs pdf:read` の OCR の画像処理（vivlio-starter-pdf を使うとき） |
+| Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | `vs pdf:read` の OCR（vivlio-starter-pdf を使うとき） |
+| MeCab | `brew install mecab mecab-ipadic` | 索引の読みの推測・交ぜ書きの検出 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
-| `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
+| `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（任意） |
 | Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer`（Kindle を選んだときだけ） | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
