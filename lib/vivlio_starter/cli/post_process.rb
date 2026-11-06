@@ -612,7 +612,8 @@ module VivlioStarter
         changed = false
 
         doc.css('div.sideimage-right, div.sideimage-left, div.sideimage').each do |container|
-          figure = container.at_css('> figure')
+          # ファイル名付きのコードブロックも <figure> なので、コードを含まない figure を画像とする
+          figure = container.css('> figure').find { !it.at_css('pre') }
           next unless figure
 
           # 画像幅指定（width=50% など）から列比率を推定し、CSS変数として埋め込む
@@ -842,6 +843,11 @@ module VivlioStarter
       #     <figure>…</figure>
       #   </div>
       # という 2 要素構造に正規化する。
+      #
+      # 画像の列へ置くのは、コードを含まない figure。ファイル名を付けたコードブロック
+      # （```yaml:config/book.yml）も VFM は <figure class="language-yaml"> で出力するので、
+      # 最初の figure を画像とみなすと、本文の中のコードが画像の列へ押し出され、
+      # 画像が本文の列の幅で大きく組まれる。
       # ================================================================
       def wrap_img_text_blocks!(html_file)
         content = File.read(html_file, encoding: 'utf-8')
@@ -852,7 +858,7 @@ module VivlioStarter
         css_selector = selectors.map { "div.#{it}" }.join(', ')
 
         doc.css(css_selector).each do |container|
-          figure = container.at_css('> figure')
+          figure = container.css('> figure').find { !it.at_css('pre') }
           next unless figure
 
           children = container.children
