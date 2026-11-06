@@ -192,7 +192,6 @@ vs --help
     open             生成された PDF を開きます（macOS 専用）
     pdf:compress     生成済みの PDF を圧縮します
     pdf:pages        PDF をページ単位で JPEG 画像に切り出します
-    pdf:rasterize    PDF をラスタライズして再結合します（Type3 フォント対策）
 ```
 
 まずはこの3つだけで十分です。

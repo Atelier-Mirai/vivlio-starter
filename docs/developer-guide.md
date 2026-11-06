@@ -71,7 +71,7 @@ lib/vivlio_starter/
 |---------|---------|
 | `renumber` | `rename_command.rb` の `RenumberCommand`。実装は `cli/rename.rb` を共用 |
 | `index` ・ `index:plan` ・ `index:auto` ・ `index:apply` ・ `index:export` ・ `index:import` | `index_command.rb` ＋ `cli/index/` 配下 |
-| `pdf:read` ・ `pdf:compress` ・ `pdf:pages` ・ `pdf:rasterize` | `pdf_command.rb` ＋ `cli/pdf.rb`・`cli/pdf/` 配下 |
+| `pdf:read` ・ `pdf:compress` ・ `pdf:pages` | `pdf_command.rb` ＋ `cli/pdf.rb`・`cli/pdf/` 配下 |
 | `open` | `open_command.rb` ＋ `cli/pdf.rb` の `PdfOpener` |
 | `config` ・ `config:book` ・ `config:catalog` ・ `config:talk` | `config_command.rb` ＋ `cli/config_guide.rb` |
 | `preflight` | `preflight_command.rb` ＋ `cli/build/pipeline.rb` |

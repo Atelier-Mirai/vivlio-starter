@@ -10,7 +10,6 @@
 # コマンド分類 (help_spec.md 準拠):
 #   - pdf:compress: Public コマンド（利用者向け）
 #   - pdf:pages: Public コマンド（PDFページ画像化）
-#   - pdf:rasterize: Public コマンド（Type3フォント対策）
 #   - pdf:read: Public コマンド（PDF→Markdown 変換）
 #
 # PDF 生成そのもの（PdfCommands.execute_pdf）はビルドパイプラインが
@@ -126,48 +125,6 @@ module VivlioStarter
         end
       end
 
-      # pdf:rasterize コマンドの Samovar 実装（Public コマンド）
-      class PdfRasterizeCommand < VsCommand
-        self.description = 'PDF をラスタライズして再結合します（Type3 フォント対策）'
-
-        # options を位置引数より先に宣言する（§5.3 — one が先だと `-h` を食う）
-        options do
-          option '--dpi <value>', '解像度（dpi、既定: 350）', type: Integer, default: 350, key: :dpi
-          option '--quality <value>', 'JPEG品質 1〜100（既定: 95）', type: Integer, default: 95, key: :quality
-          option '--clean', '中間JPEGを処理後に削除する', default: false, key: :clean
-          option '-h/--help', 'このコマンドの使い方を表示', key: :help
-        end
-
-        one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
-
-        def call
-          return print_usage if options[:help]
-
-          # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
-          guard_failure = Guards.precheck(
-            Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new),
-            Guards::PdfArtifactCheck.new(input)
-          )
-          return guard_failure if guard_failure
-
-          PdfCommands.execute_pdf_rasterize(build_options, input)
-          0
-        rescue StandardError => e
-          Common.log_error("[pdf:rasterize] #{e.message}")
-          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
-          1
-        end
-
-        private
-
-        def build_options
-          {
-            dpi: options[:dpi],
-            quality: options[:quality],
-            clean: options[:clean]
-          }
-        end
-      end
 
       # pdf:read コマンドの Samovar 実装（Public コマンド）
       class PdfReadCommand < VsCommand

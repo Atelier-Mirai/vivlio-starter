@@ -18,7 +18,6 @@ module VivlioStarter
         def test_should_exclude_flags_that_take_no_value
           refute_includes BuildCommand.value_option_flags, '--high'
           refute_includes BuildCommand.value_option_flags, '--clean'
-          refute_includes PdfRasterizeCommand.value_option_flags, '--clean'
         end
 
         # 短縮形も対象に含める（`-s=3` を通すため）
@@ -63,7 +62,7 @@ module VivlioStarter
         # type: Integer のオプションは正規化後に Samovar が型変換する
         def test_should_convert_typed_values_after_normalization
           assert_equal 200, PdfPagesCommand.new(['a.pdf', '--dpi=200']).options[:dpi]
-          assert_equal 80, PdfRasterizeCommand.new(['a.pdf', '--quality=80']).options[:quality]
+          assert_equal 80, PdfPagesCommand.new(['a.pdf', '--quality=80']).options[:quality]
           assert_equal 2, RenameCommand.new(['--step=2']).options[:step]
         end
 

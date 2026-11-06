@@ -9,7 +9,7 @@
 # 検証内容:
 #   - vs --help: Public Commands のみ表示
 #   - vs pdf --help: pdf:compress への案内表示
-#   - vs pdf:compress / pdf:pages / pdf:rasterize --help: PDF系コマンドのヘルプ表示
+#   - vs pdf:compress / pdf:pages --help: PDF系コマンドのヘルプ表示
 #   - vs build --help: ビルドコマンドのヘルプ表示
 #   - Internal Commands: --help 非対応
 # ================================================================
@@ -41,7 +41,6 @@ module VivlioStarter
         assert_includes output, 'import'
         assert_includes output, 'pdf:compress'
         assert_includes output, 'pdf:pages'
-        assert_includes output, 'pdf:rasterize'
 
         # Internal Commands が含まれないことの確認
         refute_includes output, 'pre_process'
@@ -61,7 +60,6 @@ module VivlioStarter
         assert_includes output, 'build'
         assert_includes output, 'pdf:compress'
         assert_includes output, 'pdf:pages'
-        assert_includes output, 'pdf:rasterize'
       end
 
       # 旧 `vs pdf`（内部コマンド）は手動フロー撤去で削除済み
@@ -91,19 +89,6 @@ module VivlioStarter
         assert_includes output, '--dpi'
         assert_includes output, '--pages'
         assert_includes output, '--output'
-      end
-
-      # vs pdf:rasterize --help: ラスタライズコマンドの詳細ヘルプ
-      def test_pdf_rasterize_help_shows_usage
-        output, = capture_io do
-          status = ::VivlioStarter::CLI.start(['pdf:rasterize', '--help'])
-          assert_equal 0, status
-        end
-
-        assert_includes output, 'pdf:rasterize'
-        assert_includes output, '--dpi'
-        assert_includes output, '--quality'
-        assert_includes output, '--clean'
       end
 
       # vs build --help: ビルドコマンドのヘルプ（print_usage）
@@ -198,7 +183,7 @@ module VivlioStarter
         assert_includes public_commands, 'clean'
         assert_includes public_commands, 'pdf:compress'
         assert_includes public_commands, 'pdf:pages'
-        assert_includes public_commands, 'pdf:rasterize'
+        refute_includes public_commands, 'pdf:rasterize'
         assert_includes public_commands, 'index'
         refute_includes public_commands, 'pdf'
         refute_includes public_commands, 'pre_process'

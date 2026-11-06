@@ -8,7 +8,6 @@ require 'open3'
 
 require_relative 'common'
 require_relative 'pdf/pdf_to_jpeg'
-require_relative 'pdf/jpeg_to_pdf'
 
 module VivlioStarter
   module CLI
@@ -52,15 +51,6 @@ module VivlioStarter
       # @return [Hash] 生成結果
       def execute_pdf_pages(options, input = nil)
         PdfPagesExporter.new(options, input).call
-      end
-
-      # PDF を JPEG 化して再結合し、Type3 フォントを含まないラスタライズ PDF を生成する
-      #
-      # @param options [Hash] :dpi, :quality, :clean
-      # @param input [String, nil] 入力 PDF パス
-      # @return [Hash] 生成結果
-      def execute_pdf_rasterize(options, input = nil)
-        PdfRasterizer.new(options, input).call
       end
 
       # PDF を Preview.app で開く
@@ -358,7 +348,7 @@ module VivlioStarter
         end
       end
 
-      # PdfPagesExporter・PdfRasterizer の入力 PDF の解決。どちらも options と cli_input を持つ
+      # PdfPagesExporter の入力 PDF の解決。options と cli_input を持つクラスへ混ぜる
       module InputPdf
         private
 
@@ -434,76 +424,6 @@ module VivlioStarter
 
         def normalized_quality
           (options[:quality] || 95).to_i
-        end
-      end
-
-      # PDF 全ページを JPEG 経由でラスタライズして再結合する
-      class PdfRasterizer
-        include InputPdf
-
-        def initialize(options, cli_input = nil,
-                       pdf_to_jpeg: ::VivlioStarter::Pdf::PdfToJpeg,
-                       jpeg_to_pdf: ::VivlioStarter::Pdf::JpegToPdf)
-          @options = options || {}
-          @cli_input = cli_input
-          @pdf_to_jpeg = pdf_to_jpeg
-          @jpeg_to_pdf = jpeg_to_pdf
-        end
-
-        def call
-          pdf_path = resolve_pdf_path
-          ensure_input_exists!(pdf_path)
-          ensure_pdf_rasterize_tools!
-
-          base = File.basename(pdf_path, '.*')
-          work_dir = "#{base}_images"
-          output_pdf = "#{base}_rasterized.pdf"
-
-          Common.log_action("--- Phase 1: PDF → JPEG (#{normalized_dpi}dpi / quality #{normalized_quality}) ---")
-          images = pdf_to_jpeg.convert(pdf_path, output_dir: work_dir, dpi: normalized_dpi, quality: normalized_quality)
-          Common.log_info("#{images.size} ページを生成しました")
-
-          Common.log_action('--- Phase 2: JPEG → PDF ---')
-          jpeg_to_pdf.convert(images, output_pdf)
-
-          Common.log_result("#{images.size} ページをラスタライズしました: " \
-                            "#{File.basename(output_pdf)}（#{output_size_mb(output_pdf)} MB）", status: :success)
-          cleanup_work_dir_if_needed(work_dir)
-
-          { pdf_path:, work_dir:, output_pdf:, images: }
-        end
-
-        private
-
-        attr_reader :options, :cli_input, :pdf_to_jpeg, :jpeg_to_pdf
-
-        # PDFラスタライズ用の外部ツール存在チェック
-        # ※ JPEGからPDFへの再結合に独自実装 JpegToPdf を使用するため、img2pdfのチェックを削除しました。
-        def ensure_pdf_rasterize_tools!
-          Common.ensure_external_command!('pdftoppm', purpose: 'PDFラスタライズ')
-        end
-
-        def normalized_dpi
-          (options[:dpi] || 350).to_i
-        end
-
-        def normalized_quality
-          (options[:quality] || 95).to_i
-        end
-
-        def output_size_mb(output_pdf)
-          return 0.0 unless File.exist?(output_pdf)
-
-          (File.size(output_pdf) / 1024.0 / 1024.0).round(1)
-        end
-
-        def cleanup_work_dir_if_needed(work_dir)
-          if options[:clean]
-            FileUtils.rm_rf(work_dir)
-            Common.log_info("中間ファイルを削除しました: #{work_dir}")
-          else
-            Common.log_info("中間ファイルを保存しました: #{work_dir}/")
-          end
         end
       end
 

@@ -64,7 +64,6 @@ module VivlioStarter
               'index:import' => IndexImportCommand,
               'pdf:compress' => PdfCompressCommand,
               'pdf:pages' => PdfPagesCommand,
-              'pdf:rasterize' => PdfRasterizeCommand,
               'pdf:read' => PdfReadCommand,
               'lint' => LintCommand,
               'metrics' => MetricsCommand,

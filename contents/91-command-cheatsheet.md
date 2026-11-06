@@ -36,7 +36,6 @@
 | `vs open` | 生成された PDF を開く（macOS 専用） | 補助コマンドとカスタマイズ |
 | `vs pdf:compress` | 生成済み PDF を圧縮 | 補助コマンドとカスタマイズ |
 | `vs pdf:pages` | PDF をページ単位で JPEG 画像に切り出し | 補助コマンドとカスタマイズ |
-| `vs pdf:rasterize` | PDF をラスタライズして再結合（Type 3 フォント対策） | 補助コマンドとカスタマイズ |
 :::
 
 グローバルオプション: `-h` / `--help`（ヘルプ）・`--version`（バージョン表示）。
@@ -227,7 +226,3 @@
 | `--pages <指定>` | ページ指定（例: `1,3,5-8`） |
 | `--output <dir>` | 出力ディレクトリ（既定: `<basename>_images`） |
 :::
-
-### `vs pdf:rasterize` — PDF のラスタライズ再結合
-
-`vs pdf:rasterize <入力PDF> [オプション]`（Type 3 フォント対策。入力省略時はビルド生成物）。`--dpi`・`--quality` は `vs pdf:pages` と同じで、`--clean` は中間 JPEG を処理後に削除します。

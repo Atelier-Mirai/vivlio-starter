@@ -13,7 +13,7 @@ Kindle(KFX) の CSS 対応は極めて古く、`var()`/`::before`/grid/数式サ
 
 ## 1. 技術的実現性 — 足場はある（実装は可能）
 
-- **ページ画像化**: `vs pdf:rasterize`（`pdf.rb:62`）が既に PDF→ラスタライズの道具立てを持つ。A5 PDF は通常ビルドで生成済みなので、追加は「ページ画像化 → 固定レイアウト EPUB 包装」のみ。
+- **ページ画像化**: `vs pdf:pages`（`Pdf::PdfToJpeg`・pdftoppm）が既に PDF→ページ画像の道具立てを持つ。A5 PDF は通常ビルドで生成済みなので、追加は「ページ画像化 → 固定レイアウト EPUB 包装」のみ。
 - **固定レイアウト EPUB→KPF**: 画像ベースの fixed-layout はマンガの標準パイプラインそのもので、e-ink Kindle 端末でも確実に動く（日本のマンガが実証済み）。EPUB 側は `rendition:layout: pre-paginated`＋`original-resolution` 等のメタデータと 1 ページ 1 画像の spine 構成。`kindlepreviewer` CLI での KPF 変換は現行機構を流用できる。
 - **論理目次**: fixed でも nav（目次）はページへのリンクとして機能する。既存の目次抽出（章→ページ対応）を流用可能。
 

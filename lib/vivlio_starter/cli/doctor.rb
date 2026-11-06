@@ -190,7 +190,6 @@ module VivlioStarter
         end
 
         # コマンド存在チェック定義
-        # ※ img2pdfはJPEGからPDFへの結合に独自実装 JpegToPdf を使用するため依存排除されました。
         checks = {
           'node' => 'node',
           'textlint' => 'textlint',

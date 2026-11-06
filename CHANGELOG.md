@@ -56,6 +56,7 @@
 
 ### Removed
 
+- **`vs pdf:rasterize` を削除した**。全ページを画像にして結合し直し、Type 3 フォントを含まない PDF を作るコマンドで、入稿先に Type 3 を断られたときの緊急策だった。今は、原因になりやすい字をビルドで処理し、処理できない字を報告し、全章の `vs build` が仕上がった PDF の Type 3 をページと字で報告する（44 章）ので、文字を検索できなくなる画像の PDF に頼る場面が無い。PDF のページを画像にする `vs pdf:pages` は残す。45・91 章の節と表から外した。
 - **`-v` / `--verbose` オプションを削除した**（`vs --verbose` と、`vs open`・`vs delete`・`vs index:auto`・`vs index:apply` の `-v` / `--verbose`）。ふだんの出力は何も変わらず、予期しないエラーのときに Ruby のスタックトレースの先頭 5 行を足すだけだった。スタックトレースは、ほかの箇所と同じく環境変数 `VS_DEBUG=1` で全部を表示する。
 - 雛形の `stylesheets/images/` から、どこからも使っていない画像 4 枚（`clouds`・`door1`・`door2`・`old_scroll`）を削除した。`floral.webp` は、一枚の絵を扉絵にする例として残す（42 章）。
 

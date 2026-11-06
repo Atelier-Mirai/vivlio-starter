@@ -2182,13 +2182,11 @@ terms:
   yomi: ラスタライズ
   flags: ig
   definition: ベクタの図形や文字を、画素の集まりの画像へ変換すること。Kindle（KFX）は SVG を扱えないため、図版や扉絵はビルド時に JPEG
-    などへ変換して収める。入稿先がフォントを受け付けないときは、`vs pdf:rasterize` で PDF の全ページを画像にできる。
+    などへ変換して収める。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラスタライズ/"
   updated_at: '2026-10-04 00:05:46'
-  main:
-  - 45-utility
 scanned_chapters:
 - 00-preface
 - 11-workflow
