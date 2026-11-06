@@ -24,15 +24,9 @@ Vivlio Starter で本を作るには、組版や画像処理などに使う外�
 
 `vs doctor` は、PDF を組む Vivliostyle をはじめ、PDF の加工・画像の変換・文章の校正・索引・数式・図に使う外部ツールと、Google Fonts 用の SSL 証明書を調べます。ツールごとの用途とインストール方法は、@ch-install の章の @pageref:install-tools にまとめてあります。
 
-ツールは、実際に起動できるかまで確かめます。インストールされていても起動できないものは「見つかりません」と表示します。
+### Node.js の版
 
-Kindle Previewer がないことを報告するのは、`config/book.yml` の `targets` に `kindle` がある本だけです。
-
-### ツールの版を確かめる
-
-ツールがインストールされていても、版が古いと正しく動かないことがあります。`vs doctor` は、Node.js と Kindle Previewer の版も確かめます。
-
-**Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js がインストールされていると、ツールの一覧の後に更新方法を表示します。`--fix` を付けても Node.js は更新しないので、表示されたコマンドで更新してください。
+Node.js が Vivliostyle の求める版より古いと、ツールの一覧の後に次の警告が表示されます。`--fix` では Node.js を更新しないので、表示されたコマンドで更新してください。
 
 :::{.output}
 ```text
@@ -41,8 +35,6 @@ Kindle Previewer がないことを報告するのは、`config/book.yml` の `t
           Homebrew 以外（nvm など）で入れた場合は、その道具で 22.12.0 以上へ更新してください。
 ```
 :::
-
-Kindle Previewer 3 だけがインストールされていれば、4 への更新を案内します。Kindle Previewer と、Apple Silicon の Mac で必要になる Rosetta 2 については、@ch-build の章の @pageref:kindle-previewer で説明しています。
 
 ### 設定ファイルの診断
 
@@ -106,10 +98,6 @@ vs doctor --fix
 
 診断で不足が見つかったツールをインストールします。Homebrew 自体や Xcode Command Line Tools がインストールされていない場合は、その導入前に確認を求められます。
 
-ツールは Homebrew か npm でインストールします。vivliostyle や textlint など、npm で導入するツールには Node.js が必要なので、Node.js を先にインストールします。Homebrew で配布されていない `waifu2x-ncnn-vulkan` は、GitHub Releases からダウンロードします。
-
-Vivliostyle CLI は、`vivliostyle` の別名として `vs` というコマンドもインストールします。Vivlio Starter の `vs` と同じ名前なので、`--fix` はこの別名を削除します（`vs upgrade` も同じです）。Vivliostyle は `vivliostyle` の名前でそのまま使えます。
-
 :::{.output}
 ```text
 🔎 環境診断を開始します…
@@ -121,8 +109,6 @@ Vivliostyle CLI は、`vivliostyle` の別名として `vs` というコマン�
 ✅ すべてのツールがインストールされました
 ```
 :::
-
-インストール手順は、ツールの側で変わることがあります。案内どおりに進まないときは、各ツールの公式ドキュメントで現在の手順を確認してください。
 
 ### 確認プロンプトをスキップ（--yes）
 
@@ -138,9 +124,9 @@ vs doctor --fix --yes
 `vs upgrade` は、使っている執筆環境をまとめて更新するコマンドです。プロジェクトの直下で実行すると、Vivlio Starter 本体、プロジェクトの雛形、外部ツールの順に更新します。
 :::
 
-1. **`vivlio-starter` 本体の更新** — 新版があれば、確認後に `gem update vivlio-starter` を実行します。その後の処理は**新しい版で自動的に続行**するため、雛形の取り込みをやり直す必要はありません
+1. **`vivlio-starter` 本体の更新** — 新版があれば、確認後に `gem update vivlio-starter` を実行します。続きの処理は、新しい版で実行します
 2. **プロジェクトの雛形追従** — 新しい版のスタイルシートやテンプレートを既存プロジェクトへ取り込み、最後に `Gemfile.lock` が指す版も合わせます
-3. **外部ツールの一括更新** — Homebrew（formula / cask）、npm、gem で導入したツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer はアプリの更新機能で更新されるので、計画では対象外と表示します
+3. **外部ツールの一括更新** — Homebrew・npm・gem でインストールしたツールの更新計画を示し、確認後にまとめて更新します。Kindle Previewer は、アプリの更新機能で更新します
 
 ```bash
 vs upgrade                    # 計画を表示し、確認してから適用
@@ -157,7 +143,6 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 | 分類 | 意味 | 動作 |
 |------|------|------|
-| 改名 | 名前が変わった設定ファイル | 新しい名前へ移します（中身はそのまま） |
 | 追加 | 雛形の新規ファイル | コピーします |
 | 更新 | 雛形は変更され、手元では未変更 | 新しい雛形で置き換えます |
 | 合流 | 雛形と手元で**別の箇所**を変更 | 両方の変更を取り込みます |
@@ -187,7 +172,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 `contents/`・`images/`・`covers/`（`bundled/`・`templates/` を除く）・`codes/`・`data/` と、`README.md`・`book.yml`・`catalog.yml`・`talk.yml`・索引と用語集の辞書・スペルチェックのユーザー辞書・`textlint_allowlist.yml` は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。
 
-著者データ領域に手を入れるのは、更新計画に「整理」として示したものだけです。`book.yml` の廃止キーの削除と新しいキーの追加、原稿のない章を指す索引辞書の主要参照の削除、今の版では使わない `contents/` の特別ページ（扉・免責事項・奥付・部扉）の削除がこれに当たります。
+著者データ領域に手を入れるのは、`book.yml` への新しい設定の追加など、更新計画に「整理」として示したものだけです。
 
 書き換えるファイルは、その前に `.vs-backup/upgrade/<日時>/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。不要になったら `.vs-backup/` フォルダを削除してください。
 :::
@@ -226,22 +211,6 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 `theme: { color: red }` のように 1 行にまとめて書いた区分には追加できません。その場合は追加する行を表示するので、使いたい設定だけを `config/book.yml` へコピーしてください。
 
-### Gemfile.lock の追随
-
-雛形を取り込んだあと、`Gemfile.lock` が指す Vivlio Starter の版を、使っている版に合わせます（`bundle update vivlio-starter` に相当します）。失敗したときは 🟡 で警告し、`bundle update vivlio-starter` の実行を案内します。
-
-:::{.note}
-**`vs` が `Bundler::GemNotFound` で起動しないとき**
-
-1.0.0 より前の版で作ったプロジェクトでは、`vs` の起動時に `Could not find vivlio-starter-… in locally installed gems` というエラーが出ることがあります。`Gemfile.lock` に記録された版が手元にないためで、この状態では `vs upgrade` も実行できません。`vs` を使わずに gem を更新してください。
-
-```bash
-gem update vivlio-starter
-```
-
-1.0.0 以降の `vs` は `Gemfile.lock` を見ずに起動します。gem の更新後は `vs upgrade` を実行し、残りの環境を整えられます。
-:::
-
 ### 外部ツールの一括更新
 
 雛形を取り込んだあと、導入済みの外部ツールを調べます。更新計画には、対象のツール、現在と更新後の版、導入経路が表示されます。内容を確認してから更新を進めます。
@@ -271,10 +240,10 @@ gem update vivlio-starter
 
 - 更新したあと、`vs doctor --fix` と同じように診断し、不足しているツールもインストールします。外部ツールがすべて最新で不足もないときは、診断を省きます。設定ファイルや証明書を確かめるときは、`vs doctor` を実行してください
 - 一部のツールで更新に失敗しても、ほかのツールの処理は続けます。失敗したものには、手動での復旧コマンドを示します
-- node を更新するときは、版の組み合わせによる不具合を避けるため、vivliostyle CLI も同時に最新版へ更新します
+- node を更新するときは、vivliostyle CLI も最新版へ更新します
 - Ruby 本体は自動更新しません。新版がある場合は、実行の最後に「📣 お知らせ」として、rbenv など使用中の導入経路に合った手順を示します
 - Homebrew がインストールされていないときは、外部ツールの更新を省きます
-- ネットワークに接続できないときは、途中まで更新した状態にならないよう、更新を始める前に処理を中止します
+- ネットワークに接続できないときは、更新を始める前に処理を中止します
 
 ## vs doctor と vs upgrade の使い分け
 
