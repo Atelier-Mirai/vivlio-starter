@@ -14,6 +14,13 @@
 
 - [High] **小説（挿絵入り）への対応**: 現在は技術書専用。小説向けレイアウト（縦書き・挿絵配置・章扉など）に対応できるようテーマ／組版を拡張する。合わせて、小説など特定の書体を厳密に保ちたい用途に向けたフォント埋め込みオプションを `config/book.yml` に追加する。
 - [High] **テーマシステムの実装**: vivliostyle 公式の `bunko.css` などの既存テーマ CSS を活用。`book.yml` からのテーマ選択、CSS の動的切り替え、小説用縦書き・技術書用横書きのプリセット提供。
+- [Medium] **スタイルシートの構造を整理し直す**: 見た目を変えずに、CSS の構造だけを作り直す。今は三つの出力（PDF・クリーン EPUB・Kindle）が一つのカスケードに同居し、Kindle 用の上書き（`body.vs-kindle`）が 10 ファイルに散っている。劣化のさせ方も、静的な CSS のリテラル・`BookSettingsCss` が書き出す規則・`EpubBuilder` の DOM の組み替えの三か所に分かれている。ほかにも、値が `theme.css`・`page-settings.css` → `book-settings.css` → `custom.css` の三層に重なっていること、ページの種類ごとに読み込む部品が少しずつ違うこと（`preface.css` は `chapter-common.css` を読まず、段落・引用・字間の規則を別に持つ）、`!important`（18 か所）と詳細度の綱引き、1,000 行を超える `chapter-common.css` が整理の対象になる。案は次の五つ。
+  - **cascade layers で優先順位を宣言する**: 土台 → 値（トークン）→ 部品 → ページの種類 → `book-settings` → `custom` の層に分け、`!important` と詳細度の調整をなくす。Vivliostyle（core 2.45.2）は `@layer` を読む実装を持つが、紙面での挙動は小さな実験で確かめてから進める。
+  - **Kindle 用の CSS を別に生成する**: ビルドのときに `var()`・`color-mix()` を解いたリテラルの CSS を作り、構造の劣化（flex・`::before` の代わり）だけを小さな `kindle.css` に書く。共有の CSS から `body.vs-kindle` が消える。KFX は `@layer` を解さないので、上の案と組みで要る。`custom.css` の 8 色を Kindle 用に書き出す仕組み（`BookSettingsCss.kindle_custom_color_rules`）を一般化した形になる。
+  - **値を一か所に集め、公開と内部を分ける**: 著者が `custom.css` で変える変数は名前の規則をそろえて表にし（今は `--color-*`・`--heading-accent`・`--section-number-color`・`--talk-*` が混在）、それ以外は内部用の名前にする。使われていない変数（`--color-shadow`）は消す。これで 45 章の「実験的な機能」の注記を外せる。
+  - **ページの種類の差は body のクラスと値で出す**: 前書き・章・付録が同じ部品を読み、違いは色などの値で出す。字間のような規則を二か所に書かずに済む。
+  - **`chapter-common.css` を部品ごとに分ける**: 見出し・本文・リスト・図・囲み・コード・表に分ける。エンジンの癖の実測記録はコメントから `vivliostyle-css-pitfalls-notes.md` へ移し、CSS のコメントは「なぜ」の一、二行にする。
+  - 確かめ方: 写しの本で全章を組み、変更前と全ページの画素を比べる（字間の変更で使った方法・`vivliostyle-css-pitfalls-notes.md` §2.18）。Kindle は Kindle Previewer で見る。
 - [Low] **CLI 終了コードの体系化**: 現状「正常 0 / 問題あり 1」の 2 値を、UNIX 慣例（例: grep の 0=見つかった / 1=見つからない / 2=エラー）に倣いエラー種別ごとに分ける。影響範囲が広く後方互換を破るため v2.0 で対応。
 
 ---
