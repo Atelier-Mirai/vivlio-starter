@@ -103,6 +103,32 @@ p {
   text-indent: 1em;
 }
 
+/* 字間。判型の letter_spacing（book.yml の *_custom プリセット）が --letter-spacing に入る。
+   効かせるのは本文の段落・箇条書き・引用だけ。letter-spacing は子へ継承されるので、
+   中に入るコード・表・キャプションと、字数で幅を決めているリード（章扉の見積もり
+   lead_layout.rb が字間 0 で測る）・段落の形の小見出しでは 0 に戻す。
+   Kindle は var() を含む宣言を捨てるので、字間 0 のまま組まれる。 */
+p,
+li,
+blockquote {
+  letter-spacing: var(--letter-spacing);
+}
+
+pre,
+code,
+kbd,
+samp,
+table,
+figcaption,
+.table-caption,
+.code-caption,
+.chapter-lead,
+.section-lead,
+.strong-heading,
+:is(table, figcaption, .chapter-lead, .section-lead) :is(p, li, blockquote) {
+  letter-spacing: normal;
+}
+
 /* 最初の段落はインデントなし */
 h1 + p,
 h2 + p,
