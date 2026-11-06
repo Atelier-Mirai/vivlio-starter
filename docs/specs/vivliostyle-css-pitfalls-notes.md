@@ -34,6 +34,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | 二段組（`.text-2dan`）の箇条書きが左の段にだけ入り、右の段が空く | **`.text-2dan > * { break-inside: avoid }` がリスト全体に掛かり**、リストが段をまたげない | layout-utils.css（リストは auto・`li` を avoid） | §2.14 |
 | 囲み（`.output` など）が、入る空きがあるのに次の見出しや段落ごと次ページへ送られる | **囲みの最後の子の `break-after: avoid` が囲みの外へ伝わる**（表示例の中の見本の見出し） | chapter-common.css（`.output` の中の見出しは `auto`） | §2.15 |
 | flex の中の画像が中央にそろわず、間が `gap` より広く空く | **全体の `figure` の規則の `margin-inline-end: auto`** が行の余りを吸う（コンテナ側の `margin: 0` より特異度が高い） | layout-utils.css（`.pictures` の figure の余白を打ち消す） | §2.16 |
+| 長さが同じはずの `calc(32em)` に書き換えただけで、両端揃えの字の位置がわずかにずれる（改行は同じ） | **`calc()` の中の `em`** が素の `em` と別の経路で解かれ、箱の幅が約 1/16 px 違う | book_settings_css.rb（必要なときだけリテラルを書き出す） | §2.18 |
 
 ---
 
@@ -160,6 +161,24 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **原因**: Vivliostyle の text-spacing（`text-spacing: auto` の約物の詰め・trim-adjacent）。約物を `<viv-ts-open class="viv-ts-trim">` などの要素で包んで間を詰める処理と、Chromium の pretty の行分割が両立していない。内部の経路までは追っていない。
 - **対処**: 未対応。text-spacing を切るのは和文の組版を崩すので採らない。目立つ段落は文を書き換えて避ける（25 章は節を書き直して解消）。**pretty が効かない段落を見つけたら、まず「、「」「、（」など約物の連続を探す。**
 
+### 2.18 `calc()` の中の `em` は、素の `em` と同じ長さにならない
+
+- **症状**: 字間（`letter_spacing`）を節リードの幅に足すため、chapter-common.css の `.section-lead { inline-size: 32em }` を `calc(32em + 32 * var(--letter-spacing))` に変えた。字間 `0em` なら数式の上では `32em` のままなので紙面は変わらないはずが、全章ビルドの画素の比較で 55 ページが違った（2026-11-06）。違いは節リードの字の縁の数画素で、改行の位置は同じだった。
+- **切り分け**: 1 章を書き方だけ変えて組み、節リードの 1 行目の位置を `pdftotext -bbox` で読んだ。
+
+  | 書き方 | 1 行目の左端（pt） | 素の `32em` と |
+  | :--- | :---: | :---: |
+  | `32em` | 134.4492 | — |
+  | `448px`（10.5pt＝14px なので同じ長さ） | 134.4492 | 同じ |
+  | `calc(448px)` | 134.4492 | 同じ |
+  | `calc(32em)` | 134.4727 | 違う |
+  | `calc(32em + 0em)` | 134.4727 | 違う |
+  | `calc(32em + 32 * var(--letter-spacing))` | 134.4727 | 違う |
+
+  `var()` を外しても、`calc()` で包んでも中が `px` なら変わらない。違うのは **`calc()` の中に `em` があるときだけ**。左端は 0.0234pt（CSS の 1/32 px）右へ動いた。節リードは `margin-inline: auto` で中央に置くので、箱が約 1/16 px 狭くなり、左右が半分ずつ寄ったことになる。両端揃えの行は余りの空きを字の間に配り直すので、箱の幅がわずかに変わると行の中の字が少しずつ動き、字の縁のにじみの色が変わる。
+- **原因（推定）**: 長さを解く経路の違い。Vivliostyle はスタイルシートを自分で読んでカスケードを計算してから Chromium に組ませる。素の `em` は Vivliostyle が px の数値に直し（`448px` と同じ結果になる）、`em` を含む `calc()` は Chromium が要素の文字サイズで解く。Chromium は長さを 1/64 px 単位で持つので、pt から px への換算と丸めの差が出る、という見立て。Vivliostyle のソースは確かめていない。
+- **対処**: CSS には素の `32em` を残し、字間が付いているときだけ BookSettingsCss が book-settings.css にリテラルの幅を書き出す（`section_lead_width_rule`。`0.05em` なら `body .section-lead { inline-size: 33.6em; }`）。字間 `0em` では何も出さないので、変更前と全ページの画素が一致した。**既定の紙面を変えたくない既存の宣言に、数式の上で等しいからといって `calc()` や `var()` を足さない。** 必要な場合だけリテラルを書き出す（§3 のリテラル焼き込みと同じ考え方）。確かめるときは、変更前と後を全ページの画素で比べる（§4 の 3）。
+
 ---
 
 ## 3. 今回確立した実装パターン
@@ -167,6 +186,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | パターン | 実装箇所 | 用途 |
 |---|---|---|
 | **リテラル焼き込み @page 上書き** | `BookSettingsCss.frontispiece_position_rule` | var/calc を解さない @page 系プロパティへ設定値を渡す（size の前例と同型） |
+| **必要なときだけのリテラル書き出し** | `BookSettingsCss.section_lead_width_rule` | 既定では CSS の値を残し、設定が既定から外れたときだけ上書きを出す（既定の紙面を画素単位で保つ・§2.18） |
 | **扉絵の上下分割**（`FRONTISPIECE_SPLIT = 0.62`） | `HeadingImageComposer` + `inject_frontispiece_tail!` | EPUB で「見出し → リード文 → 裾飾り」の PDF と同じ読み順を再現。裾は文字なしで全章 1 枚を共用 |
 | **節絵の均一サイズ＋2 行折返し**（`ORNAMENT_FONT_RATIO = 0.14` / `ORNAMENT_MAX_LINES = 2`） | `HeadingImageComposer.ornament_layout` | 節題の長短でフォントが暴れない。表示幅は半角 0.55 換算、Latin 語は空白で折る（`split_by_display_width`） |
 | **keyfont の選択同梱** | `EpubBuilder.keyfont_asset?` + `strip_font_faces_except_keyfont` | フォント非埋め込み既定の中で、リーダーに代替が無い 1 書体だけ実体（TTF）＋対の @font-face を運ぶ |
