@@ -604,6 +604,12 @@ end
         # 記法ごと退避して当てない。URL に括弧を含むリンク（`…_(2008).jpg`）も退避する。
         MARKDOWN_LINK_PATTERN = /!?\[[^\[\]\n]*\]\(#{Masking::LINK_DESTINATION}\)/
 
+        # 前処理が HTML にしたリンク要素（章参照 `@chapref:` の `<a class="cross-ref-link">` など）。
+        # Markdown のリンクと同じ理由で、中の文字に用語を当てない——†の <a> が入れ子になり、
+        # HTML の解析で外側のリンクがそこで閉じられる。章参照ではページ番号（リンクの ::after）が
+        # 章題の途中に出ていた（「第 5 章「Markdown（p.31）† 執筆チュートリアル」」）。
+        HTML_LINK_ELEMENT_PATTERN = %r{<a\b[^>]*>.*?</a>}m
+
         # config/index_glossary_terms.yml に基づく自動タグ付けを適用
         def apply_auto_indexing(line, file_basename)
           return line if @chapter_index_terms.empty?
@@ -652,6 +658,9 @@ end
           # /<[^>]+>/ より先に置く——後にすると <code> と </code> が個別に退避され、
           # 中身を囲む対が消えて保護できない。
           mask.protect!(Masking::HTML_INLINE_CODE)
+          # リンク要素も中身ごと退避する。理由は HTML_INLINE_CODE と同じで、/<[^>]+>/ より後だと
+          # <a> と </a> が個別に退避され、リンクの文字が露出する
+          mask.protect!(HTML_LINK_ELEMENT_PATTERN)
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
           mask.protect!(MARKDOWN_LINK_PATTERN) # リンク・画像記法 [ラベル](URL)
           # 裸 URL と、リンクを脚注にした定義行（`[^url1]: https://…`）の URL。

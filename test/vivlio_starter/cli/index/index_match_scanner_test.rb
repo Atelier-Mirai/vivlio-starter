@@ -405,6 +405,26 @@ module VivlioStarter
           refute_match(/index-term|glossary-link/, tagged)
         end
 
+        # 章参照は前処理で <a class="cross-ref-link"> になってから索引付けに来る。その中の語に
+        # †の <a> を付けると入れ子になり、外側のリンクが途中で閉じられて、ページ番号が
+        # 章題の途中に出る。リンクの文字には当てず、† はリンクの外の次の出現へ回す
+        def test_should_not_tag_term_inside_html_link_element
+          write_glossary_term('Markdown', yomi: 'Markdown')
+          File.write('92-ref.md', <<~MD)
+            基本は<a href="21-markdown-tutorial.html#ch-markdown-tutorial" class="cross-ref-link pageref">第5章「Markdown 執筆チュートリアル」</a>で説明します。
+
+            Markdown の書き方です。
+          MD
+
+          IndexMatchScanner.new.scan_and_tag_file!('92-ref.md')
+
+          tagged = File.read('92-ref.md')
+          assert_includes tagged, 'class="cross-ref-link pageref">第5章「Markdown 執筆チュートリアル」</a>',
+                          'リンクの文字はそのまま残る'
+          assert_match(%r{<dfn[^>]*>Markdown</dfn><a [^>]*class="glossary-link"[^>]*><sup>†</sup></a> の書き方}, tagged,
+                       '†はリンクの外の出現に付く')
+        end
+
         # 短い語が長い語の一部を先に食うと、長いほうは二度と一致しない
         # （実測: <dfn>マスター</dfn>画像 と組まれ、用語集の「マスター画像」に
         # 本文リンクが 1 件も付かなかった）。辞書は読み順に並ぶため順序では守れない
