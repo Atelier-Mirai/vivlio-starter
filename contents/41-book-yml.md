@@ -119,7 +119,7 @@ page:
 
 #### `page_presets.yml` — 判型プリセットの中身
 
-`config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、使う判型の `*_custom`（A4 なら `a4_custom`）を編集し、`book.yml` の `page.use` でそれを選びます。`standard`・`airy`・`compact` は雛形の値のまま使い、手を入れるのは `*_custom` だけにしてください。`vs upgrade` は `page_presets.yml` をファイルごと新しい雛形と比べ、著者が変えた行と雛形が変えた行が離れていれば、両方を残して取り込みます（@pageref:scaffold-follow）。同じ行を両方が変えたときは、どちらを残すかを尋ねます。
+`config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、使う判型の `*_custom`（A4 なら `a4_custom`）を編集し、`book.yml` の `page.use` でそれを選びます。`standard`・`airy`・`compact` は雛形の値のまま使い、手を入れるのは `*_custom` だけにしてください。
 
 ```yaml
 a4_custom:
