@@ -12,7 +12,7 @@
 `book.yml` の `book.cover` に、使うデザインの名前（テーマ名）を書きます。同梱の `light`・`dark` を使うか、自分で用意した画像（PNG・JPEG・WebP）または SVG を使うかを選べます。
 :::
 
-```yaml
+```yaml:config/book.yml
 book:
   cover: light     # 同梱の明るいテーマ（既定）
   # cover: dark    # 同梱の暗いテーマ

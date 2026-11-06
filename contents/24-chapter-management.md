@@ -55,8 +55,7 @@
 
 章を指定しないと、`config/catalog.yml` に載っているすべての章が対象になります。コメントアウトした章や、載せていない章は対象外です。
 
-```yaml
-# config/catalog.yml
+```yaml:config/catalog.yml
 CHAPTERS:
   - 11-intro
   - 12-basics

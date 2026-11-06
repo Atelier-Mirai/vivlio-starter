@@ -145,7 +145,7 @@ images/
 
 変換時の余白や OCR の動作は、`config/book.yml` の `pdf_read` で調整できます。
 
-```yaml
+```yaml:config/book.yml
 pdf_read:
   text_area:
     top_margin:           # 上端からの除外幅 (mm)。既定では書かない
@@ -182,7 +182,7 @@ OCR の結果には、傾きの補正や、形の似た字（`力` と `カ`）�
 
 原本と見比べて繰り返し見つかる誤読は、`config/ocr_corrections.yml` に登録できます。校正辞書（`config/textlint_rewrite.yml`）と同じ形式で、`patterns` に文字列か正規表現（`/pattern/` 形式）を書きます。
 
-```yaml
+```yaml:config/ocr_corrections.yml
 version: 1
 rules:
   - expected: 人工知能      # 人 → 入

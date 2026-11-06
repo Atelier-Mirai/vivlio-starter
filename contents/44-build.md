@@ -43,7 +43,7 @@ vs build
 :::{.text-table}
 生成したファイルは、プロジェクト直下に置かれます。ファイル名には、`book.yml` の `project.name` と `project.version` を使います。
 
-```yaml
+```yaml:config/book.yml
 project:
   name: "mybook"        # ファイル名
   version: "0.1.0"      # 書籍の版
@@ -64,7 +64,7 @@ project:
 
 複数の形式を作るときは、カンマで区切って並べます。`[pdf, epub, kindle]` のように配列でも書けます。
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: pdf, print_pdf      # 閲覧用 PDF と印刷入稿用 PDF
 ```
@@ -105,7 +105,7 @@ output:
 
 閲覧用 PDF には、本文の前に表紙が、後ろに裏表紙が付きます。付けないときは `combined` を `false` にします。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf:
     combined: true       # false にすると表紙と裏表紙を付けない
@@ -117,7 +117,7 @@ output:
 
 メールで送る、Web で配布するなど、ファイルを小さくしたいときは、`compress` を `true` にします。既定は `false` です。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf:
     compress: true
@@ -138,7 +138,7 @@ vs build --no-compress   # 今回だけ圧縮しない
 
 技術書典などの入稿では、カラー絵文字が Type 3 フォントとして PDF に入っていると、エラーになることがあります。`techbook` が `true`（既定）なら、本文の絵文字を Twemoji の SVG 画像に置き換えて、これを避けます。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf:
     techbook: true       # 絵文字を Twemoji の画像に置き換える
@@ -156,7 +156,7 @@ PDF ビューアーの「しおり」（ブックマーク）に、章・節・�
 
 macOS では、ビルドが終わるとプレビューで PDF を開きます。開く前にプレビューのウィンドウをすべて閉じ、開いた PDF を `window_bounds` の位置と大きさで表示します。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf_preview:
     close_existing_windows: true            # 閉じて並べる（false: 開くだけ）
@@ -178,7 +178,7 @@ output:
 印刷所へ渡す PDF は `targets: print_pdf` で生成します。トンボ（トリムマーク）と塗り足し（ブリード）が付くため、仕上がりサイズだけでなく、紙端の見え方も確認してください。
 :::
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: print_pdf
   print_pdf:
@@ -197,7 +197,7 @@ output:
 
 CMYK への変換には、`@vivliostyle/cli` と一緒にインストールされる Japan Color 2001 Coated の ICC プロファイルを使います。印刷所から別のプロファイルを指定されたときは、そのファイルのパスを書きます。
 
-```yaml
+```yaml:config/book.yml
 output:
   print_pdf:
     icc_profile: /path/to/JapanColor2001Coated.icc
@@ -210,7 +210,7 @@ output:
 楽天 Kobo や Apple Books 向けの EPUB は、`targets: epub` で生成します。本文が画面幅に合わせて流れる形式なので、PDF とは別に、macOS の「ブック」アプリや Calibre などで、文字サイズを変えたときの改行や画像の収まり方を確かめます。Kindle 向けには、後述の `targets: kindle` を使います。
 :::
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: epub
   epub:
@@ -239,7 +239,7 @@ EPUB ではフォントを埋め込まず、本文・見出し・コードはリ
 Amazon Kindle（KDP）向けには `targets: kindle` を指定します。Kindle 用に調整した中間 EPUB を作り、`kindlepreviewer` で `.kpf` へ変換します。図や数式の扱いが通常の EPUB と異なるため、完成後は Kindle Previewer で確認してください。
 :::
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: kindle
 ```

@@ -41,7 +41,7 @@ EPUB・Kindle では、扉絵から作った横長の画像に章番号と章題
 
 扉絵と装飾画像に使う画像の名前を、`frontispiece` と `ornament` の `image` に書きます。
 
-```yaml
+```yaml:config/book.yml
 theme:
   style: image
   frontispiece:
@@ -52,7 +52,7 @@ theme:
 
 画像の名前のほかに書く項目がなければ、名前だけを書く形も使えます。次の例は、章扉に桜、節見出しに梅を使います。
 
-```yaml
+```yaml:config/book.yml
 theme:
   style: image
   frontispiece: sakura
@@ -74,7 +74,7 @@ theme:
 
 本の題材に合わせた画像を使うときは、`stylesheets/images/` に置き、設定には拡張子を除いた名前を書きます。画像は WebP（推奨）・PNG・JPEG を使えます。
 
-```yaml
+```yaml:config/book.yml
 theme:
   frontispiece: my_image  # stylesheets/images/my_image.webp
   ornament: my_image
@@ -88,7 +88,7 @@ theme:
 :::{.text2-img}
 扉絵には、ページ全体に描いた一枚の絵も使えます。縦横比が用紙に近い画像（A 判・B 判なら縦:横 ≒ 1.41:1）は、分けずにそのまま扉絵に使われます。一枚の絵の例として、`vs new` で作った本には額縁の形の `floral.webp` が `stylesheets/images/` に入っています。次のように書くと、章扉は右の図のようになります。
 
-```yaml
+```yaml:config/book.yml
 theme:
   frontispiece: floral
 ```
@@ -109,7 +109,7 @@ theme:
 
 扉絵と文字の重なり具合は、画像の構図によって変わります。余白や文字の幅が合わないときは、`frontispiece` の次の項目で調整します。例の値は既定値です。
 
-```yaml
+```yaml:config/book.yml
 theme:
   frontispiece:
     image: sakura
@@ -151,7 +151,7 @@ theme:
 
 `lead_chars` は 1 行の字数なので、文字を小さくすると 1 行の幅も狭くなります。幅を保ったまま文字を小さくするときは、次の例のように `lead_chars` も増やします。
 
-```yaml
+```yaml:config/book.yml
 theme:
   frontispiece:
     lead_size: 1.1  # 章扉のリード文を本文の 1.1 倍で組む
@@ -182,7 +182,7 @@ theme:
 
 節見出しの装飾画像は版面の幅いっぱいに置かれるので、`ornament` の `heading_chars` は、その幅に何文字並べるかを指定します。章題とは違い、字数を少なくすると節題は大きく、多くすると小さく組まれます。
 
-```yaml
+```yaml:config/book.yml
 theme:
   ornament:
     image: sakura
@@ -208,7 +208,7 @@ theme:
 `theme.style: simple` は、背景画像を使わず、テーマカラーと書体で章扉や節見出しを組むスタイルです。画像の用意に時間をかけず、本文の見え方から先に確かめたいときにも向いています。
 :::
 
-```yaml
+```yaml:config/book.yml
 theme:
   style: simple
   color: teal  # テーマカラー
@@ -268,7 +268,7 @@ theme:
 目見出し（h3）と号見出し（h4）の前には、それぞれ記号を置けます。記号は `theme.markers` で選び、色はテーマカラーになります。
 :::
 
-```yaml
+```yaml:config/book.yml
 theme:
   markers:
     h3: ♣  # 目見出し（h3）の前に置く記号

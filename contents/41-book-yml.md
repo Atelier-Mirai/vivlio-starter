@@ -24,7 +24,7 @@
 
 書籍の基本情報を記入します。ここで指定したタイトルや著者名は、タイトルページ・奥付・EPUB のメタデータへ反映されるため、刊行前にもう一度確認してください。
 
-```yaml
+```yaml:config/book.yml
 book:
   main_title: "はじめての技術書づくり"
   subtitle: "Vivlio Starter 実践ガイド"
@@ -49,7 +49,7 @@ book:
 
 生成するファイルの名前は、`name` と `version` で決まります。書籍名とは別に、配布ファイルを見分けやすい名前を付けてください。`include_version` を `false` にすると、ファイル名に版を付けません。
 
-```yaml
+```yaml:config/book.yml
 project:
   name: "vivlio_starter"     # 出力例: vivlio_starter_v1.0.0.pdf
   version: "1.0.0"
@@ -60,7 +60,7 @@ project:
 
 章扉のスタイルやアクセントカラー、扉絵、節見出しの装飾画像をここで選びます。まず `style` を決めると、必要な項目が見通しやすくなります。
 
-```yaml
+```yaml:config/book.yml
 theme:
   style: image       # image: 扉絵・節絵あり / simple: なし
   lead_size: 1.2     # リード文の文字の大きさ（本文に対する倍率・1.0〜2.0）
@@ -104,7 +104,7 @@ theme:
 
 用紙サイズ・余白・文字サイズを含む版面は、`config/page_presets.yml` のプリセットから選びます。書き始める段階では近いものを選び、組み上がった紙面を見て調整しても構いません。
 
-```yaml
+```yaml:config/book.yml
 page:
   use: b5_standard  # a5_standard / a5_airy / a5_compact / a5_custom
                     # b5_standard / b5_airy / b5_compact / b5_custom
@@ -121,7 +121,7 @@ page:
 
 `config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、使う判型の `*_custom`（A4 なら `a4_custom`）を編集し、`book.yml` の `page.use` でそれを選びます。`standard`・`airy`・`compact` は雛形の値のまま使い、手を入れるのは `*_custom` だけにしてください。
 
-```yaml
+```yaml:config/page_presets.yml
 a4_custom:
   size: A4                 # 用紙サイズ（A5・B5・A4）
   base_font_size: 10.5pt   # 文字サイズ
@@ -201,7 +201,7 @@ a4_custom:
 
 本文・見出し・コラム・コード・ページ番号の書体を指定します。既定の組み合わせで読みやすければ、そのまま使えます。
 
-```yaml
+```yaml:config/book.yml
 typography:
   body:
     font: Noto Serif JP         # 本文（明朝体）
@@ -222,7 +222,7 @@ typography:
 
 `output.targets` で、目的に合う出力形式を指定します。閲覧・配布用なら `pdf`、印刷所への入稿用なら `print_pdf`、電子書籍なら `epub` や `kindle` を選びます。このセクションでは、表紙の扱いや圧縮なども設定できます。
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: pdf           # pdf / print_pdf / epub / kindle
                          # 複数なら pdf, print_pdf か [pdf, epub, kindle]
@@ -254,7 +254,7 @@ output:
 
 `pdf_preview` セクションでは、`vs build` 後に自動表示する PDF のウィンドウ位置を設定できます。デュアルモニター環境でサブモニターに表示させたい場合などに便利です。`close_existing_windows` が `true` のときは、開く前にプレビューのウィンドウをすべて閉じ、開いたあと `window_bounds` の位置へ並べます。`false` にすると、閉じも並べもせず、開くだけにします。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf_preview:
     close_existing_windows: true
@@ -265,7 +265,7 @@ output:
 
 タイトルページの次のページに載せる、免責事項・商標・絵文字のクレジットの文面を指定します。
 
-```yaml
+```yaml:config/book.yml
 legal:
   disclaimer: |
     本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
@@ -286,7 +286,7 @@ legal:
 
 `vs build` と `vs preflight` は、画像の参照先を毎回確かめます。ここで選べるのは、原稿に書いた外部 URL（リンク記法の URL も、そのまま書いた URL も）に実際にアクセスして確かめるかどうかです。公開前のリンク確認に使います。
 
-```yaml
+```yaml:config/book.yml
 verify:
   external_links: false  # 外部 URL に接続して確かめるか
   timeout: 10            # HTTP チェックのタイムアウト秒数
@@ -316,7 +316,7 @@ verify:
 
 ### 一冊の本の書き方
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-preface
 CHAPTERS:
@@ -344,7 +344,7 @@ POSTFACE:
 
 行の先頭に `#` を付けてコメントにすると、原稿を `contents/` に残したまま本から外せます。`#` を外せば元に戻ります。
 
-```yaml
+```yaml:config/catalog.yml
 CHAPTERS:
   - 11-intro
   # - 12-draft       # 書きかけ。今回は載せない
@@ -361,7 +361,7 @@ CHAPTERS:
 
 前の節の一冊の本を、上巻と下巻に分けると、次のようになります（部は省いています）。
 
-```yaml
+```yaml:config/catalog.yml
 VOLUMES:
   - name: 上巻
     id: upper
@@ -397,7 +397,7 @@ VOLUMES:
 
 シリーズの紹介や本全体の結びのように、どの巻のものでもない前書き・後書きは、`VOLUMES:` と並べて書きます。
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-about-this-book   # 本全体の前書き
 POSTFACE:
@@ -434,7 +434,7 @@ VOLUMES:
 
 `book.yml` の `book:` の下の値（@pageref:book-section）は、巻の中に同じ名前で書くと、その巻だけ上書きできます。巻に書かなかった値は `book.yml` のものを使います。合本はいつも `book.yml` の値で組みます。
 
-```yaml
+```yaml:config/catalog.yml
   - name: 下巻
     id: lower
     main_title: "はじめての技術書づくり 下巻"

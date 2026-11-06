@@ -24,8 +24,7 @@ QueryStream は、データ・テンプレート・原稿内の展開指示と�
 
 内容を記録する YAML ファイルを `data/` ディレクトリへ置きます。一件分のデータを一つのハッシュで表し、それらを配列として並べます。各項目で同じキーを使うと、テンプレートから共通の名前で値を取り出せます。
 
-```yaml
-# data/books.yml
+```yaml:data/books.yml
 - title: たのしいRuby
   author:
     name: 高橋征義
@@ -53,8 +52,7 @@ QueryStream は、データ・テンプレート・原稿内の展開指示と�
 
 次に、一件分をどのように表示するかを Markdown のテンプレートへ書きます。ファイルは `templates/` ディレクトリへ置き、名前は先頭の `_`（アンダースコア）に続けてデータ名の**単数形**にします。`data/books.yml` のテンプレートは `templates/_book.md` です。
 
-```markdown
-<!-- templates/_book.md -->
+```markdown:templates/_book.md
 :::{.book-card}
 ![](cover)
 **= title**
@@ -248,8 +246,7 @@ QueryStream は、データ・テンプレート・原稿内の展開指示と�
 
 複数件を比べるときは、表の形のテンプレートも使えます。`= key` を含む行だけが件数分繰り返され、見出しと区切りの行は一度だけ出力されます。
 
-```markdown
-<!-- templates/_book.table.md -->
+```markdown:templates/_book.table.md
 | 書名 | 著者 | 出版社 | 発行年 |
 | --- | --- | --- | --- |
 | = title | = author.name | = publisher | = year |
@@ -284,8 +281,7 @@ QueryStream は、データ・テンプレート・原稿内の展開指示と�
 
 `data/` ディレクトリに YAML ファイルを置きます。拡張子を除いたファイル名が、そのままデータ名になります。拡張子は `.yml` のほか、`.yaml` と `.json` も使えます。
 
-```yaml
-# data/prefectures.yml
+```yaml:data/prefectures.yml
 - name: 北海道
   capital: 札幌市
   region: 北海道

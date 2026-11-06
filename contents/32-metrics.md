@@ -211,7 +211,7 @@ RS は、値が大きいほど読みやすいことを示します。漢字が�
 
 分量の基準は、プリセットから選びます。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   use: standard  # 下の表の名前か relative
 ```
@@ -236,7 +236,7 @@ metrics:
 :::{.text-table}
 `relative` を選ぶと、その本自身の章の文字数の中央値と比べます。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   use: relative
 ```
@@ -264,7 +264,7 @@ metrics:
 
 `use: author_custom` を選ぶと、`author_custom` に書いた値で判定します。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   use: author_custom
   author_custom:
@@ -282,7 +282,7 @@ metrics:
 
 前書き・付録・後書きのように、短いことに意味がある章は判定から除外できます。挙げた章も章別分量には表示され、基本情報と詳細分析の集計にも含まれますが、印は付きません。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   exclude_chapters: [00, 90-98, 99]
 ```
@@ -291,7 +291,7 @@ metrics:
 
 漢字比率と平均語長の評価の範囲を変更できます。分量と同じく、`min`・`ideal`・`max` で書きます。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   kanji_ratio: { min: 20, ideal: [25, 35], max: 45 }
   word_length: { min: 1.5, ideal: [2.0, 2.5], max: 3.0 }
@@ -303,7 +303,7 @@ metrics:
 
 読解難度の評価（Easy／Standard／Professional）を分ける RS の値を変更できます。`easy` 以上を Easy、`standard` 以上を Standard、それ未満を Professional と評価します。
 
-```yaml
+```yaml:config/book.yml
 metrics:
   readability:
     easy: 60     # この値以上を Easy

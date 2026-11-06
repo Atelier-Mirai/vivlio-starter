@@ -108,7 +108,7 @@ vs renumber            # 章番号を一括で整列
 
 ファイルは `PREFACE`（前書き）・`CHAPTERS`（本文）・`APPENDICES`（付録）・`POSTFACE`（後書き）の四つに分かれ、各章は拡張子 `.md` を省いたファイル名で登録します。`CHAPTERS` の下へ末尾に半角コロン `:` を付けたタイトルを置くと、その配下の章が一つの「部」にまとまり、部扉ページも生成されます。
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-preface
 
