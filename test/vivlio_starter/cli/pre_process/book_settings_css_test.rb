@@ -217,6 +217,36 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     assert_includes changed, '--frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
   end
 
+# 本文の字間はリードにも付くので、1 字の送りに足す。em はリードの字の大きさに対する比、
+# mm などはそのままの長さ
+def test_should_include_letter_spacing_in_lead_advance
+  base = BSC.chapter_lead_advance_mm(A4, 1.2)
+
+  assert_in_delta base * 1.05, BSC.chapter_lead_advance_mm(A4.merge(letter_spacing: '0.05em'), 1.2), 1e-9
+  assert_in_delta base + 0.5, BSC.chapter_lead_advance_mm(A4.merge(letter_spacing: '0.5mm'), 1.2), 1e-9
+  assert_in_delta base, BSC.chapter_lead_advance_mm(A4.merge(letter_spacing: '0em'), 1.2), 1e-9
+end
+
+# 字数も倍率も既定でも、字間が付いていれば既定の字数（20）で幅を出し直す。theme.css の既定幅は
+# 字間 0 で決めてあるので、そのままだと 1 行の字数が減る
+def test_should_resolve_default_chars_when_letter_spaced
+  spaced = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+                                           A4.merge(letter_spacing: '0.05em'))
+  unspaced = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+                                             A4.merge(letter_spacing: '0em'))
+
+  assert_includes spaced, '--frontispiece-lead-width: 93.34mm;' # 20 字 × 10.5pt × 1.2 × 1.05
+  refute(unspaced.any? { it.start_with?('--frontispiece-lead-width:') }, '字間 0 なら theme.css に任せる')
+end
+
+# 節リードは 1 行 32 字。字間が付いているときだけ字間のぶんの幅を書き、字間 0 なら
+# chapter-common.css の 32em に任せる（calc と var() で書くと字間 0 でも字の位置がずれた）
+def test_should_widen_section_lead_only_when_letter_spaced
+  assert_equal '', BSC.section_lead_width_rule(A4.merge(letter_spacing: '0em'))
+  assert_includes BSC.section_lead_width_rule(A4.merge(letter_spacing: '0.05em')), 'body .section-lead { inline-size: 33.6em; }'
+  assert_includes BSC.section_lead_width_rule(A4.merge(letter_spacing: '0.5mm')), 'body .section-lead { inline-size: calc(32em + 16mm); }'
+end
+
   # 生成した CSS 全文に、リードの規則が入る
   def test_should_render_lead_size_rules
     cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(

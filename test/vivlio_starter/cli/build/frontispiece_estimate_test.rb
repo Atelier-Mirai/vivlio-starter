@@ -29,6 +29,7 @@ class TestFrontispieceEstimate < Minitest::Test
     Estimate::Page.new(height: 297.0, margin_top: 20.0, margin_bottom: 20.0, scale: 1.0, base_font_mm: 10.5 * 25.4 / 72,
                        base_line_mm: 15.75 * 25.4 / 72, text_width: 162.0, heading_offset: 15.0, heading_width: 129.6,
                        lead_width: ->(size, chars) { (chars * 10.5 * 25.4 / 72 * size).round(2) },
+                       letter_spacing: ->(_font_mm) { 0.0 },
                        fonts: LeadLayout::Fonts.new(body:, bold: nil, code: nil),
                        title_font: FontMetrics.load("#{FONTS}/Noto_Sans_JP/NotoSansJP-Bold.ttf"))
   end

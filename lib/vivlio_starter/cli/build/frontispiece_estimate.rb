@@ -47,7 +47,8 @@ module VivlioStarter
 
         # 本の版面と書体（倍率と字数によらない部分）
         Page = Data.define(:height, :margin_top, :margin_bottom, :scale, :base_font_mm, :base_line_mm,
-                           :text_width, :heading_offset, :heading_width, :lead_width, :fonts, :title_font)
+                           :text_width, :heading_offset, :heading_width, :lead_width, :letter_spacing, :fonts,
+                           :title_font)
 
         # theme.css の既定（book.yml に書いていないとき）
         DEFAULT_HEADING_WIDTH_MM = 103.7
@@ -73,7 +74,8 @@ module VivlioStarter
           font_mm = page.base_font_mm * size
           counts = LeadLayout.line_counts(chapter.paragraphs, fonts: page.fonts,
                                                               width_px: page.lead_width.(size, chars) * PX_PER_MM,
-                                                              font_px: font_mm * PX_PER_MM)
+                                                              font_px: font_mm * PX_PER_MM,
+                                                              letter_spacing: page.letter_spacing.(font_mm) / font_mm)
           pitch = font_mm * LEAD_LINE_HEIGHT
           room = page.height - page.margin_bottom - lead_top(chapter, page)
           capacity = ((room / pitch) + 1e-6).floor
@@ -139,6 +141,7 @@ module VivlioStarter
             text_width:, heading_offset: mm(settings[:heading_offset_value]) || 0.0,
             heading_width: [heading_width, text_width].min,
             lead_width: ->(size, chars) { [lead_width_mm(page_cfg, size, chars), text_width].min },
+            letter_spacing: ->(font_mm) { bsc.letter_spacing_mm(page_cfg, font_mm) },
             fonts: LeadLayout::Fonts.new(body: FontMetrics.load(body), bold: bold && File.file?(bold) ? FontMetrics.load(bold) : nil,
                                          code: code && File.file?(code) ? FontMetrics.load(code) : nil),
             title_font: FontMetrics.load(title)
@@ -149,10 +152,10 @@ module VivlioStarter
         end
 
         # リードの幅（mm）。BookSettingsCss が CSS に書く値と同じく、小数 2 桁に丸める
-        # （heading_metric_declarations）。字数も倍率も既定なら theme.css の既定の幅
+        # （heading_metric_declarations）。字数も倍率も既定で字間が無ければ theme.css の既定の幅
         def lead_width_mm(page_cfg, size, chars)
           bsc = PreProcessCommands::BookSettingsCss
-          chars ||= bsc::DEFAULT_LEAD_CHARS unless size == bsc::DEFAULT_LEAD_SIZE
+          chars ||= bsc::DEFAULT_LEAD_CHARS unless size == bsc::DEFAULT_LEAD_SIZE && !bsc.letter_spaced?(page_cfg)
           chars ? round_mm(chars * bsc.chapter_lead_advance_mm(page_cfg, size)) : DEFAULT_LEAD_WIDTH_MM
         end
 

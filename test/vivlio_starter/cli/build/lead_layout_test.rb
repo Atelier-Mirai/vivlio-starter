@@ -94,6 +94,23 @@ class TestLeadLayout < Minitest::Test
     assert_in_delta 0.1 + (0.7 * fonts.body.advance('†')), mark.first.width, 1e-9
   end
 
+# 本文の字間（letter_spacing）は字ごとに足す。インラインコードは CSS で字間を 0 に戻すので足さない
+def test_should_add_letter_spacing_except_inline_code
+  plain = LeadLayout.atoms('あい', fonts, 0.25)
+  code = LeadLayout.atoms('<code>ab</code>', fonts, 0.25)
+
+  assert_equal [1.25, 1.25], plain.map(&:width)
+  assert_in_delta 0.604 * 2, code.sum(&:width), 1e-3
+end
+
+# 字間を広げると、同じ幅に入る字数が減る（20 字の幅に 39 字は 2 行、字間 0.25 なら 16 字ずつで 3 行）
+def test_should_count_more_lines_with_letter_spacing
+  paragraph = ['あ' * 39]
+
+  assert_equal [2], LeadLayout.line_counts(paragraph, fonts:, width_px: 200.0, font_px: 10.0)
+  assert_equal [3], LeadLayout.line_counts(paragraph, fonts:, width_px: 200.0, font_px: 10.0, letter_spacing: 0.25)
+end
+
   # @pageref は CSS が「（p.123）」を足す。組む前はページが分からないので 3 桁とみる
   def test_should_count_page_reference_suffix
     atoms = LeadLayout.atoms('<a class="cross-ref-link pageref" href="#x">第2章</a>', fonts)

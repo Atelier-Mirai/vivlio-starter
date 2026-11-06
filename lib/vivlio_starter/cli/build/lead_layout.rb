@@ -65,10 +65,11 @@ module VivlioStarter
         # @param fonts [Fonts]
         # @param width_px [Float] 行の幅（CSS の px）
         # @param font_px [Float] 字の大きさ（CSS の px）
+        # @param letter_spacing [Float] 字間。字の大きさに対する比（本文の letter_spacing。既定は 0）
         # @return [Array<Integer>]
-        def line_counts(paragraphs, fonts:, width_px:, font_px:)
+        def line_counts(paragraphs, fonts:, width_px:, font_px:, letter_spacing: 0.0)
           limit = layout_px(width_px) / font_px
-          paragraphs.map { break_lines(atoms(it, fonts), limit).size }
+          paragraphs.map { break_lines(atoms(it, fonts, letter_spacing), limit).size }
         end
 
         # 行に入る幅。Chromium は幅を 1/64 px の単位で持ち、入るかを比べるときに 1 単位の遊びを足す。
@@ -79,8 +80,10 @@ module VivlioStarter
 
         # --- 字の並び ---
 
-        # 段落の HTML を字の並びにする。字の送りは、同じ書体が続くあいだカーニングを足す
-        def atoms(html, fonts)
+        # 段落の HTML を字の並びにする。字の送りは、同じ書体が続くあいだカーニングを足す。
+        # 字間は字ごとに足す（行末の字のぶんも数える）。コードは CSS で字間を 0 に戻すので足さず、
+        # 数式などの画像は字ではないので足さない
+        def atoms(html, fonts, letter_spacing = 0.0)
           items = []
           collect(Nokogiri::HTML.fragment(html.to_s), :body, items)
           items = items.flat_map do |face, value|
@@ -93,7 +96,8 @@ module VivlioStarter
             next Atom.new(IMAGE, value * (value.negative? ? -fonts.body.x_height : 1)) if face == :image
 
             following = items[i + 1]
-            Atom.new(value, char_width(face, value, following&.first == face ? following.last : nil, fonts))
+            spacing = face == :code ? 0.0 : letter_spacing
+            Atom.new(value, char_width(face, value, following&.first == face ? following.last : nil, fonts) + spacing)
           end
         end
 

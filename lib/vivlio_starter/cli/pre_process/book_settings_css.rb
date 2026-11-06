@@ -109,6 +109,7 @@ module VivlioStarter
             #{chapter_pagebreak_rule(page_cfg)}
             #{heading_numbering_rule(page_cfg)}
             #{chapter_lead_size_rules(settings)}
+            #{section_lead_width_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
             #{fallback_font_rules(image_prefix:)}
             #{kindle_accent_rules(cfg)}
@@ -235,11 +236,12 @@ module VivlioStarter
                                          chapter_title_advance_mm(scale), text_mm)
           end
 
-          # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率に比例する。字数が
-          # 未指定でも倍率を変えたなら、theme.css の既定幅（既定の字数 × 1.2 倍）のままでは
+          # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率と字間で決まる。字数が
+          # 未指定でも倍率や字間を変えたなら、theme.css の既定幅（既定の字数 × 1.2 倍）のままでは
           # 字数が合わなくなるので、既定の字数で幅を出し直す。
           lead_size = settings[:frontispiece_lead_size_value] || DEFAULT_LEAD_SIZE
-          chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless lead_size == DEFAULT_LEAD_SIZE)
+          default_width = lead_size == DEFAULT_LEAD_SIZE && !letter_spaced?(page_cfg)
+          chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless default_width)
           if chars
             advance_mm = chapter_lead_advance_mm(page_cfg, lead_size)
             lines << "--frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
@@ -274,11 +276,26 @@ module VivlioStarter
         def chapter_title_font_q(scale) = (scale * 48).clamp(34, 50)
 
         # 章リード 1 字の送り（mm）。リードは本文の基準の大きさ（page プリセットの
-        # base_font_size）の lead_size 倍で、letter-spacing は本文既定（0）。
+        # base_font_size）の lead_size 倍で、本文と同じ字間（letter_spacing）が付く。
+        # 字間を広げても lead_chars の字数が 1 行に入るよう、送りに字間を含める。
         def chapter_lead_advance_mm(page_cfg, lead_size = DEFAULT_LEAD_SIZE)
           base_mm = Units.length_to_mm(page_cfg[:base_font_size]) || (10.5 * 25.4 / 72.0)
-          base_mm * lead_size
+          font_mm = base_mm * lead_size
+          font_mm + letter_spacing_mm(page_cfg, font_mm)
         end
+
+        # 本文の字間（page プリセットの letter_spacing）を、大きさ font_mm の字に付けたときの mm。
+        # em は字の大きさに対する比（CSS の var() の em は、使う要素の字の大きさで解ける）。
+        # mm・pt などはそのままの長さ。読めない値は 0（CSS 側でも効かない）。
+        def letter_spacing_mm(page_cfg, font_mm)
+          value = page_cfg[:letter_spacing].to_s.strip
+          return value.to_f * font_mm if value.match?(/\A-?[\d.]+\s*em\z/i)
+
+          Units.length_to_mm(value) || 0.0
+        end
+
+        # 字間が付いているか（既定の幅のままでは字数が合わなくなるか）
+        def letter_spaced?(page_cfg) = !letter_spacing_mm(page_cfg, 1.0).zero?
 
         # 章リードの文字の大きさ（chapter-lead-size-spec.md §6.2）。既定の 1.2 倍のままなら
         # 何も出さず、chapter-common.css の `larger` に任せる。
@@ -299,6 +316,28 @@ module VivlioStarter
           return '' if rules.empty?
 
           ['/* 章リードの文字の大きさ（theme.lead_size / theme.frontispiece.lead_size） */', *rules].join("\n")
+        end
+
+        # 節リードの 1 行の字数（chapter-common.css の .section-lead の inline-size: 32em）
+        SECTION_LEAD_CHARS = 32
+
+        # 節リードの幅。字間（letter_spacing）が付いているときだけ、32 字と字間のぶんの幅を書き、
+        # 字間を広げても 1 行の字数を保つ（版面より広くはしない: chapter-common.css の max-inline-size）。
+        #
+        # 字間 0 なら何も出さず、chapter-common.css の 32em に任せる。CSS 側で
+        # calc(32em + 32 * var(--letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
+        # わずかにずれた（改行は同じ。2026-11-06 に単章ビルドの画素の比較で確かめた）。
+        # EPUB・Kindle は components.css の inline-size: auto が勝つ（特異度 0,2,1）。
+        def section_lead_width_rule(page_cfg)
+          value = page_cfg[:letter_spacing].to_s.strip
+          width = if value.match?(/\A-?[\d.]+\s*em\z/i)
+                    "#{format_number(SECTION_LEAD_CHARS * (1 + value.to_f))}em"
+                  elsif (mm = Units.length_to_mm(value)) && !mm.zero?
+                    "calc(#{SECTION_LEAD_CHARS}em + #{format_mm(SECTION_LEAD_CHARS * mm)})"
+                  end
+          return '' if width.nil? || !letter_spaced?(page_cfg)
+
+          "/* 節リードの幅（32 字と字間。page プリセットの letter_spacing） */\nbody .section-lead { inline-size: #{width}; }"
         end
 
         # 節題の基準フォントサイズ（Q）。節絵の帯は版面幅から左右の飾り避け（padding-inline）を
