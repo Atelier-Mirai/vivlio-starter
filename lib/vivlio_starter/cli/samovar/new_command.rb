@@ -16,7 +16,9 @@ module VivlioStarter
         many :names, 'プロジェクト名', default: []
 
         options do
-          option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes
+          # 質問はどれも Enter で既定の値を選べるので、著者向けのヘルプとマニュアルには載せない。
+          # テストや検証用のプロジェクト作り（developer-guide.md）が対話せずに作るために受け付ける
+          internal_option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes
           option '--log <level>', 'ログレベル（debug など）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
