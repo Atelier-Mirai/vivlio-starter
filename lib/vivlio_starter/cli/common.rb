@@ -879,7 +879,7 @@ module VivlioStarter
       def generate_print_pdf_filename = generate_output_filename('print_pdf')
 
       # 成果品の名前の頭。分冊の巻を選んで組んだときは、巻の id を足す（`mybook_lower`・multivolume-spec.md §4.6）。
-      # 続けて組んでも前の巻の PDF を上書きしないため。vs clean は project.name から始まる名前を消すので、巻の出力も消える
+      # 続けて組んでも前の巻の PDF を上書きしないため。vs clean --purge は project.name から始まる名前を消すので、巻の出力も消える
       def output_basename(project_name)
         volume = Build::Volumes.current
         volume ? "#{project_name}_#{volume.id}" : project_name.to_s.dup

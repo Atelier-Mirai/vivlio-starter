@@ -97,7 +97,7 @@ module VivlioStarter
           # 原稿の中身の検査。build と同じ並びで、章を指定したら組む章だけを調べる
           run_manuscript_checks!
 
-          # ensure 節の execute_clean は本処理開始後のみ実行する
+          # ensure 節の clean_build_workspace は本処理開始後のみ実行する
           # （Guard 違反＝プロジェクト外の可能性があるディレクトリでクリーンを走らせない）
           @preflight_started = true
 
@@ -146,7 +146,7 @@ module VivlioStarter
         ensure
           # 前処理で生成した中間 .md ファイルを後始末する（本処理開始後のみ。
           # --help や Guard 違反時はプロジェクト外で実行された可能性があるため触らない）
-          CleanCommands.execute_clean({}) if @preflight_started
+          CleanCommands.clean_build_workspace if @preflight_started
           Thread.current[:vs_verify_options] = nil
           Build::Volumes.select!(nil)
         end

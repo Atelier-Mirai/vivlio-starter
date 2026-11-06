@@ -355,7 +355,7 @@ module VivlioStarter
         pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
-        # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう
+        # Step F もスタブしないと実際にビルドの作業フォルダを消してしまう
         pipeline.define_singleton_method(:run_final_clean) {}
       end
 
@@ -626,7 +626,7 @@ module VivlioStarter
         pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
-        # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう
+        # Step F もスタブしないと実際にビルドの作業フォルダを消してしまう
         pipeline.define_singleton_method(:run_final_clean) {}
       end
 

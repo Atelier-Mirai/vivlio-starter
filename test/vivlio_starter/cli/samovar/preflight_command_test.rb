@@ -151,7 +151,7 @@ module VivlioStarter
         # ここで見たいのは resolver と pipeline に渡る値であって、掃除そのものは
         # `clean_commands_test.rb` が一時ディレクトリで見ている。
         def run_in_isolation(command)
-          CleanCommands.stub :execute_clean, nil do
+          CleanCommands.stub :clean_build_workspace, nil do
             PreProcessCommands::LinkImageValidator.stub :reset!, nil do
               PreProcessCommands::LinkImageValidator.stub :print_summary, nil do
                 Common.stub :log_always, nil do
@@ -367,7 +367,7 @@ module VivlioStarter
         def with_stubs(resolver, recorder, &block)
           validator = PreProcessCommands::LinkImageValidator
           Guards::Guard.stub(:run!, nil) do
-            CleanCommands.stub(:execute_clean, nil) do
+            CleanCommands.stub(:clean_build_workspace, nil) do
               TokenResolver::Resolver.stub(:new, -> { resolver }) do
                 BuildCommands::UnifiedBuildPipeline.stub(:new, ->(*, **) { RecordingPipelineStub.new(recorder) }) do
                   validator.stub(:reset!, nil) do

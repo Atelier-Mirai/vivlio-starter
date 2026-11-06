@@ -143,8 +143,7 @@ POSTFACE:
 `config/book.yml` の `book.cover` でテーマ名を指定します。既定は `light` で、同梱のテンプレートに書名と著者名が入ります。`dark` も選べます。著者が用意した画像（PNG・JPEG・WebP）や SVG を使う場合は、`covers/frontcover_<theme>.png` などを配置してください。画像の雛形は、判型ごとに `covers/templates/` にあります。
 
 ```bash
-vs cover               # book.yml の設定に従ってカバー画像を生成
-vs clean --cover       # 生成されたカバー画像を削除
+vs cover    # book.yml の設定に従ってカバー画像を生成
 ```
 
 テーマの選び方や、著者が用意した画像の使い方は @chapref:ch-cover で詳しく説明します。

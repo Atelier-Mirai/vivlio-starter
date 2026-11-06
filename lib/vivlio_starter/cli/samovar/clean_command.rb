@@ -5,13 +5,12 @@
 # ================================================================
 # 責務:
 #   Samovar CLI の clean コマンドを実装する。
-#   ビルド生成物・キャッシュ・カバー画像の削除を行う。
+#   キャッシュとビルドの生成物の削除を行う。
 #
 # 主要オプション:
-#   - (なし): 中間生成物を削除、最終 PDF は保持
-#   - --purge: 最終 PDF も含めてすべて削除
-#   - --cache: キャッシュのみ削除
-#   - --cover: カバー画像のみ削除（マスターは保持）
+#   - (なし): キャッシュ（.cache/）を削除
+#   - --purge: キャッシュに加えて、ルート直下の生成物（PDF・EPUB など）も削除
+#   - --index-dictionaries: 索引・用語集の辞書だけを削除（確認あり）
 #
 # 依存:
 #   - CleanCommands: 実際の削除処理
@@ -29,12 +28,9 @@ module VivlioStarter
         self.description = '生成物やキャッシュを削除します'
 
         options do
-          option '--purge/-P', '生成物（PDF含む）をすべて削除します', default: false, key: :purge
-          option '--cache/-C', 'キャッシュのみを削除します', default: false, key: :cache
-          option '--cover', '生成されたカバー画像のみを削除します', default: false, key: :cover
-          option '--generated-images', '生成された扉絵/装飾などの画像を削除します', default: false, key: :generated_images
-          option '--index-dictionaries', '索引・用語集辞書データを削除します（確認あり）', default: false, key: :index_dictionaries
-          option '--all', 'index-dictionaries を除くすべての削除オプションをまとめて実行します', default: false, key: :all
+          option '--purge/-P', 'キャッシュに加えて、プロジェクト直下の PDF・EPUB などの生成物も削除します',
+                 default: false, key: :purge
+          option '--index-dictionaries', '索引・用語集の辞書だけを削除します（確認あり）', default: false, key: :index_dictionaries
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -58,8 +54,7 @@ module VivlioStarter
 
         # 削除の実績を既定ログレベルでも 1 行で報告する。
         # 実行して無音だと「効いたのか分からない」ため、何も無かった場合も黙らない。
-        # 表示をここで行うのは、同じ execute_clean を vs build の Step 0 も呼ぶため
-        # （ドメイン層で報告するとビルドのたびに混ざる）。
+        # 表示はコマンド層の責務とし、ドメイン層（CleanCommands）は件数を返すだけにする。
         def report_result(summary)
           if summary.none?
             VivlioStarter::CLI::Common.log_result('削除対象はありませんでした', status: :success)
@@ -74,8 +69,6 @@ module VivlioStarter
           {
             'キャッシュ' => summary.cache,
             '生成物' => summary.artifacts,
-            'カバー画像' => summary.cover,
-            '生成画像' => summary.generated_images,
             '辞書' => summary.dictionaries
           }.filter_map { |label, count| "#{label} #{count} 件" if count.positive? }.join('・')
         end

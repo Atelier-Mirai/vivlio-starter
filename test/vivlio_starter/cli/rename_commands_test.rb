@@ -173,7 +173,7 @@ module VivlioStarter
           setup_single_chapter_fixture('15', images: true)
 
           clean_calls = []
-          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(opts) { clean_calls << opts } do
+          VivlioStarter::CLI::CleanCommands.stub :clean_build_workspace, -> { clean_calls << :workspace } do
             error = assert_raises(SystemExit) do
               capture_io { executor.call }
             end
@@ -191,7 +191,7 @@ module VivlioStarter
           refute Dir.exist?('images/31-beta')
           refute Dir.exist?('images/15')
 
-          assert_equal [{}], clean_calls
+          assert_equal [:workspace], clean_calls
         end
       end
 
@@ -205,7 +205,7 @@ module VivlioStarter
           end
 
           out = err = nil
-          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+          VivlioStarter::CLI::CleanCommands.stub :clean_build_workspace, nil do
             out, err = capture_io do
               assert_raises(SystemExit) { build_rename_executor(step: 2).call }
             end
@@ -227,7 +227,7 @@ module VivlioStarter
           File.write('config/catalog.yml', "PREFACE:\nCHAPTERS:\n  - 11\n  - 13\n  - 15\nAPPENDICES:\nPOSTFACE:\n")
           %w[11 13 15].each { setup_single_chapter_fixture(it) }
 
-          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+          VivlioStarter::CLI::CleanCommands.stub :clean_build_workspace, nil do
             capture_io { assert_raises(SystemExit) { build_rename_executor.call } }
           end
 
@@ -252,7 +252,7 @@ module VivlioStarter
           YAML
           %w[91-appendix-b 93-appendix-d 95-appendix-glossary].each { setup_single_chapter_fixture(it) }
 
-          VivlioStarter::CLI::CleanCommands.stub :execute_clean, ->(_opts) {} do
+          VivlioStarter::CLI::CleanCommands.stub :clean_build_workspace, nil do
             capture_io { assert_raises(SystemExit) { build_rename_executor.call } }
           end
 

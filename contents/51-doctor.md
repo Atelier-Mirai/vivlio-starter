@@ -212,7 +212,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 :::{.note}
 **原稿と辞書は構造的に安全です**
 
-`contents/`・`images/`・`covers/`（`bundled/`・`templates/` を除く）・`codes/`・`data/` と、`README.md`・`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを削除し、新しいキーを追加します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.cache/vs/upgrade-backup/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。
+`contents/`・`images/`・`covers/`（`bundled/`・`templates/` を除く）・`codes/`・`data/` と、`README.md`・`book.yml`・`catalog.yml`・索引/用語集辞書・ユーザー辞書は「著者データ領域」です。`vs upgrade` はこれらを雛形で上書きしません。`book.yml` だけは、廃止されたキーを削除し、新しいキーを追加します。書いてある値とコメントはそのまま残ります。更新対象のファイルも、上書きする前に `.vs-backup/upgrade/<日時>/` へ退避します。変更を戻したいときは、そこから元の内容を確認できます。不要になったら `.vs-backup/` フォルダを削除してください。
 :::
 
 同梱の素材は著者データ領域の外にあり、新しい雛形に合わせて更新されます。表紙のテンプレート（`covers/bundled/`）、自作の表紙の雛形（`covers/templates/`）、扉絵・装飾画像（`stylesheets/images/bundled/`）、テーマ色（`stylesheets/theme.css`）です。新しく同梱された素材も追加されます。
@@ -232,7 +232,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 
 `vs build 11` のように章を指定したときは案内しません。`vs upgrade` を実行すると、次に雛形が変わるまで表示されなくなります。競合を断ったスタイルシートも、次に雛形が変わるまで案内しません。
 
-増えた設定は、`vs upgrade` が `book.yml` へコメントごと追加します。更新計画に「整理」の行として示し、確認で「いいえ」と答えれば追加しません。値は既定値なので、組み上がりは変わりません。雛形の並びのとおりに差し込み、ほかの行には触れません。変更前のファイルは `.cache/vs/upgrade-backup/` に残ります。
+増えた設定は、`vs upgrade` が `book.yml` へコメントごと追加します。更新計画に「整理」の行として示し、確認で「いいえ」と答えれば追加しません。値は既定値なので、組み上がりは変わりません。雛形の並びのとおりに差し込み、ほかの行には触れません。変更前のファイルは `.vs-backup/upgrade/` に残ります。
 
 :::{.output}
 ```text

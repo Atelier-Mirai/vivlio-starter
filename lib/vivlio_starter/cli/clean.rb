@@ -4,48 +4,39 @@
 # File: lib/vivlio_starter/cli/clean.rb
 # ================================================================
 # 責務:
-#   ビルド生成物・中間ファイル・キャッシュを安全にクリーンアップする。
-#   最終成果物（output.pdf）は通常保持し、--purge で削除可能。
+#   キャッシュとビルドの生成物を削除する。
 #
-# 削除対象:
-#   - .cache/vs/build/: ビルドワークスペース（P4: 現行パイプラインの中間物はここに閉じる）
-#   - ルートの最終成果物・_index_review.md 等: --purge のときだけ
-#   - .cache/vs/: ビルドキャッシュ（--cache オプション）
-#   - .cache/metrics/: metrics キャッシュ（--cache オプション）
-#   - .cache/vs/covers/: 生成されたカバー画像（--cover オプション。covers/ は
-#     著者マスターのみになったため触れない）
+# vs clean の削除対象:
+#   - (なし): キャッシュ（.cache/ を丸ごと。ビルドの作業フォルダ .cache/vs/build/ もここ）
+#   - --purge: キャッシュに加えて、ルート直下の生成物（PDF・EPUB・KPF・表紙の JPEG・
+#     索引のレビューファイル）
+#   - --index-dictionaries: 索引・用語集の辞書だけ（確認あり）
 #
-# ルートは掃かない。中間生成物はすべて .cache/vs/build/ に閉じており、ルートに
-# 出るのは最終成果物だけなので、パターンで薙ぐ掃除は持たない（V2.0 予定を前倒しで
-# 撤去・2026-09-12）。著者が置いた *.html や NN-*.md を巻き込む事故の芽を断つ。
+# キャッシュはどれも次のビルドで作り直せるので、種類ごとに選ばせない（表紙・扉絵の
+# 生成画像も .cache/vs/ の下にある）。vs upgrade の退避は .vs-backup/ に置き、
+# キャッシュと一緒に消えないようにしてある。
 #
-# 保持対象（--purge 未指定時）:
-#   - 最終 PDF: output.pdf, output_compressed.pdf（config で名称変更可）
-#   - 最終 EPUB / Kindle: <project>*.epub, <project>*.kpf
-#   - 表紙: <project>_frontcover*.pdf（入稿用）, <project>_frontcover*.jpg（KDP へ上げる電子書籍用）
-#   - ドキュメント: README.md, CHANGELOG.md 等
+# ルートは --purge のときだけ、決まった名前の生成物に限って触れる。パターンで薙ぐ
+# 掃除は持たない（著者が置いた *.html や NN-*.md を巻き込む事故の芽を断つ）。
 #
-# --purge 指定時は上記の最終 PDF / EPUB / KPF も含めてすべて削除する。
+# vs build・vs preflight・章番号の付け直しの後始末は clean_build_workspace で、
+# 作業フォルダだけを消す。キャッシュは残す（作り直すとビルドが遅くなる）。
 #
 # 依存:
 #   - Common: 設定読み込み・ログ出力・パス定数
-#   - config/book.yml: カバー画像のファイル名設定
 # ================================================================
 
 require 'fileutils'
 
 module VivlioStarter
   module CLI
-    # ビルド生成物のクリーンアップコマンド
-    #
-    # オプション:
-    #   - (なし): 中間生成物を削除、最終 PDF / EPUB / KPF は保持
-    #   - --purge: 最終 PDF / EPUB / KPF も含めてすべて削除
-    #   - --cache: キャッシュディレクトリのみ削除
-    #   - --cover: 生成されたカバー画像のみ削除（マスターは保持）
-    #   - --all: 上記すべてを実行（開発者向け）
+    # キャッシュとビルド生成物の削除
     module CleanCommands
       module_function
+
+      # キャッシュの置き場。vs が作るキャッシュ（.cache/vs・.cache/metrics・
+      # .cache/spellcheck-dictionaries など）はすべてこの下にある。
+      CACHE_ROOT = '.cache'
 
       # 索引レビューファイル。`vs index:auto` が書き出すが、そこから先は
       # **著者が編集する入力**であって中間生成物ではない。ビルドのたびに消すと、
@@ -55,119 +46,46 @@ module VivlioStarter
       REVIEW_FILE_PATTERNS = %w[_index_glossary_review.md].freeze
 
       # 削除結果の内訳。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
-      # `vs build` の Step 0 も execute_clean を呼ぶため、ここで結果報告を出すと
-      # ビルドのたびに「削除しました」が混ざってしまう。
-      CleanSummary = Data.define(:cache, :cover, :generated_images, :artifacts, :dictionaries) do
-        def total = cache + cover + generated_images + artifacts + dictionaries
+      CleanSummary = Data.define(:cache, :artifacts, :dictionaries) do
+        def total = cache + artifacts + dictionaries
         def none? = total.zero?
       end
 
-      # クリーンアップ処理のエントリーポイント
+      # vs clean の本体
       #
-      # @param option_hash [Hash] オプション設定
-      #   - :all [Boolean] すべてのクリーンオプションを有効化
-      #   - :cover [Boolean] カバー画像のみ削除
-      #   - :cache [Boolean] キャッシュのみ削除
-      #   - :purge [Boolean] 最終 PDF も含めて削除
-      #   - :generated_images [Boolean] テーマバリアント画像を削除
+      # @param option_hash [Hash]
+      #   - :purge [Boolean] ルート直下の生成物も削除する
+      #   - :index_dictionaries [Boolean] 索引・用語集の辞書を削除する（確認あり）。
+      #     これだけを指定したときはキャッシュに触れない
       # @return [CleanSummary] 削除した対象の内訳
       def execute_clean(option_hash)
         opts = option_hash || {}
 
-        # --all は他のすべてのオプションを暗黙的に有効化する（--index-dictionaries は除く）
-        all_mode = opts[:all]
-        cover_requested = opts[:cover] || all_mode
-        cache_requested = opts[:cache] || all_mode
-        purge_requested = opts[:purge] || all_mode
-        variant_cleanup_requested = opts[:generated_images] || all_mode
-        index_dictionaries_requested = opts[:index_dictionaries] # --all には含めない
+        dictionaries = opts[:index_dictionaries] ? clean_index_dictionaries : 0
+        return CleanSummary.new(cache: 0, artifacts: 0, dictionaries:) if opts[:index_dictionaries] && !opts[:purge]
 
-        cover = cover_requested ? clean_cover_files : 0
-        generated_images = variant_cleanup_requested ? clean_bundled_variant_images : 0
-        dictionaries = index_dictionaries_requested ? clean_index_dictionaries : 0
-        cache = cache_requested ? clean_cache_files : 0
-
-        # キャッシュディレクトリを特定できない異常時は後続の削除も行わない（従来の挙動）
-        if cache.nil?
-          return CleanSummary.new(cache: 0, cover: cover, generated_images: generated_images,
-                                  artifacts: 0, dictionaries: dictionaries)
-        end
-
-        # --cache または --cover のみが指定された場合は通常のクリーン処理をスキップ。
-        # --purge 指定時、またはオプションなしの場合は通常のクリーン処理を実行する
-        artifacts = if (cache_requested || cover_requested) && !purge_requested
-                      0
-                    else
-                      clean_build_artifacts(purge_requested)
-                    end
-
-        CleanSummary.new(cache: cache, cover: cover, generated_images: generated_images,
-                         artifacts: artifacts, dictionaries: dictionaries)
+        cache = clean_cache_files
+        artifacts = opts[:purge] ? purge_root_artifacts! : 0
+        CleanSummary.new(cache:, artifacts:, dictionaries:)
       end
 
-      # キャッシュ類（.cache/vs・.cache/metrics）を削除する
+      # ビルドの作業フォルダだけを削除する（vs build・vs preflight・章番号の付け直し）。
+      # 前回の HTML が次の組版へ混ざらないようにする。キャッシュは残す。
+      def clean_build_workspace = FileUtils.rm_rf(Common::BUILD_DIR)
+
+      # .cache/ を丸ごと削除する
       #
-      # @return [Integer, nil] 削除した対象の数。キャッシュディレクトリが特定できない場合は nil
+      # @return [Integer] 削除した .cache/ 直下の項目の数
       def clean_cache_files
-        deleted = 0
-        dir = begin
-          Common.cache_dir
-        rescue StandardError
-          '.cache/vs'
-        end
+        return 0 unless File.directory?(CACHE_ROOT)
 
-        if dir.nil? || dir.to_s.strip.empty?
-          Common.log_warn('キャッシュディレクトリが不明のため中止します')
-          return nil
-        end
-
-        if File.directory?(dir)
-          Common.log_action("キャッシュディレクトリを削除中: #{dir}")
-          FileUtils.rm_rf(dir)
-          deleted += 1
-          Common.log_success('キャッシュ削除が完了しました')
-        else
-          Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
-        end
-
-        # metrics キャッシュも削除
-        metrics_cache = File.join('.cache', 'metrics')
-        if File.directory?(metrics_cache)
-          Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
-          FileUtils.rm_rf(metrics_cache)
-          deleted += 1
-          Common.log_info("#{metrics_cache} を削除しました")
-        end
-
-        deleted
-      rescue StandardError => e
-        Common.log_warn("clean --cache 実行中にエラー: #{e}")
-        deleted
+        entries = Dir.children(CACHE_ROOT)
+        Common.log_action("キャッシュを削除中: #{CACHE_ROOT}/")
+        FileUtils.rm_rf(CACHE_ROOT)
+        entries.size
       end
 
-      # ビルドの中間生成物・成果物を削除する
-      #
-      # @param purge [Boolean] 最終 PDF / EPUB も削除対象に含めるか
-      # @return [Integer] 削除した対象の数
-      def clean_build_artifacts(purge)
-        deleted = 0
-
-        # ビルドワークスペース（P4: 現行パイプラインの中間物はすべてここに閉じる）を一括削除
-        if File.directory?(Common::BUILD_DIR)
-          FileUtils.rm_rf(Common::BUILD_DIR)
-          deleted += 1
-          Common.log_info("#{Common::BUILD_DIR} を削除しました")
-        end
-
-        # ルートに出るのは最終成果物だけ。既定のビルド（Step 0）はそれを残し、
-        # 意図が明示された --purge のときだけ手を伸ばす。
-        deleted += purge_root_artifacts! if purge
-
-        Common.log_success('不要ファイルの削除が完了しました')
-        deleted
-      end
-
-      # --purge でルート直下の最終成果物を削除する。
+      # --purge でルート直下の生成物を削除する。
       # ここが `vs clean` がルートへ触れる唯一の場所である。
       #
       # @return [Integer] 削除した対象の数
@@ -221,29 +139,6 @@ module VivlioStarter
         patterns << "#{project_name}_frontcover*.jpg"
       end
 
-      # 生成されたテーマバリアント画像を削除する
-      #
-      # 正位置は生成キャッシュ .cache/vs/theme-images/（generated-assets 移設仕様 §2）。
-      # 丸ごと削除して次ビルドで再生成させる。
-      #
-      # @return [Integer] 削除した対象の数
-      def clean_bundled_variant_images
-        deleted = 0
-        cache_dir = Common.theme_images_cache_dir
-        if Dir.exist?(cache_dir)
-          FileUtils.rm_rf(cache_dir)
-          deleted += 1
-          Common.log_success("テーマバリアント画像キャッシュを削除しました: #{cache_dir}")
-        else
-          Common.log_info("テーマバリアント画像キャッシュは存在しません: #{cache_dir}")
-        end
-
-        deleted
-      rescue StandardError => e
-        Common.log_warn("テーマバリアント削除中にエラー: #{e.message}")
-        deleted
-      end
-
       # 索引・用語集辞書データを削除する（確認プロンプトあり）
       #
       # @return [Integer] 削除した対象の数（未実施・キャンセル時は 0）
@@ -278,28 +173,6 @@ module VivlioStarter
         end
         targets.size
       end
-
-      # 生成されたカバー画像を削除する
-      #
-      # 正位置は生成キャッシュ .cache/vs/covers/（generated-assets 移設仕様 §2）。
-      # 丸ごと削除して次ビルド／vs cover で再生成させる。covers/ は著者ソースのみに
-      # なったため触れない。
-      #
-      # @return [Integer] 削除した対象の数
-      def clean_cover_files
-        deleted = 0
-        cache_dir = Common.cover_cache_dir
-        if Dir.exist?(cache_dir)
-          FileUtils.rm_rf(cache_dir)
-          deleted += 1
-          Common.log_success("カバー画像キャッシュを削除しました: #{cache_dir}")
-        else
-          Common.log_info("カバー画像キャッシュは存在しません: #{cache_dir}")
-        end
-
-        deleted
-      end
-
     end
   end
 end

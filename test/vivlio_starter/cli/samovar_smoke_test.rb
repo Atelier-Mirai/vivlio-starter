@@ -194,7 +194,7 @@ module VivlioStarter
       # 報告の summary.none? が NoMethodError になり、「clean コマンド実行中にエラー」が表示されていた
       def test_clean_command_can_invoke_execute_clean
         execute_called = false
-        summary = CleanCommands::CleanSummary.new(cache: 0, cover: 0, generated_images: 0, artifacts: 0, dictionaries: 0)
+        summary = CleanCommands::CleanSummary.new(cache: 0, artifacts: 0, dictionaries: 0)
         status = nil
 
         out, = capture_io do

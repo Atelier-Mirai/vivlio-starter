@@ -104,16 +104,18 @@ module VivlioStarter
         refute_includes output, 'clean'
       end
 
-      # vs clean --help: クリーンコマンドのヘルプ（--all オプション含む）
-      def test_clean_help_shows_all_option
+      # vs clean --help: オプションは --purge と --index-dictionaries の 2 つだけ
+      def test_clean_help_shows_its_two_options
         output, = capture_io do
           status = ::VivlioStarter::CLI.start(['clean', '--help'])
           assert_equal 0, status
         end
 
         assert_includes output, 'clean'
-        assert_includes output, '--all'
         assert_includes output, '--purge'
+        assert_includes output, '--index-dictionaries'
+        refute_includes output, '--all'
+        refute_includes output, '--cache'
       end
 
       # vs index --help: 索引サブコマンドの案内

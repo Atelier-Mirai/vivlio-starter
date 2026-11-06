@@ -276,7 +276,7 @@ module VivlioStarter
 
       # 連番付け直し後の生成物クリーニングを行う
       def cleanup_after_renumber
-        CleanCommands.execute_clean({})
+        CleanCommands.clean_build_workspace
       rescue StandardError => e
         Common.log_warn("クリーンアップ中にエラー: #{e}")
       end

@@ -113,7 +113,7 @@ module VivlioStarter
           assert_equal NEW_CSS, File.read('stylesheets/new.css'), '追加ファイルがコピーされるべき'
           assert_equal NEW_CSS, File.read('stylesheets/improved.css'), '未カスタムの更新は自動適用されるべき'
 
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/stylesheets/improved.css')
+          backups = Dir.glob('.vs-backup/upgrade/*/stylesheets/improved.css')
           assert_equal 1, backups.size, '上書き前の現物が退避されるべき'
           assert_equal OLD_CSS, File.read(backups.first)
 
@@ -132,7 +132,7 @@ module VivlioStarter
           with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
 
           assert_equal CUSTOM_CSS, File.read('stylesheets/custom.css'), 'スキップした競合は無傷であるべき'
-          assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*.css'), 'スキップ分は退避されないべき'
+          assert_empty Dir.glob('.vs-backup/upgrade/**/*.css'), 'スキップ分は退避されないべき'
           lock = ScaffoldLock.read('.')
           assert_equal digest(OLD_CSS), lock[:files]['stylesheets/custom.css'], 'スキップ分の lock は旧ハッシュのままであるべき（次回また競合になる）'
         end
@@ -170,7 +170,7 @@ module VivlioStarter
           assert_match(/\+body \{ color: navy; \}/, out, '雛形側の行が + で表示されるべき')
           assert_equal NEW_CSS, File.read('stylesheets/custom.css')
 
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/stylesheets/custom.css')
+          backups = Dir.glob('.vs-backup/upgrade/*/stylesheets/custom.css')
           assert_equal CUSTOM_CSS, File.read(backups.first), '上書き前の著者版が退避されるべき'
         end
       end
@@ -188,7 +188,7 @@ module VivlioStarter
 
           assert_equal "# 著者の原稿\n", File.read('contents/10-sample.md')
           assert_includes File.read('config/index_glossary_terms.yml'), '著者の用語', '著者辞書は上書きされてはならない'
-          assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*'), '著者データは退避（＝上書き）対象にならないべき'
+          assert_empty Dir.glob('.vs-backup/upgrade/**/*'), '著者データは退避（＝上書き）対象にならないべき'
         end
       end
 
@@ -297,7 +297,7 @@ module VivlioStarter
           assert_match(%r{config/\.textlintrc\.yml\n\s+中で指している \./textlint_prh\.yml を \./textlint_rewrite\.yml に書き換えます}, out)
           assert File.exist?('config/textlint_rewrite.yml')
           assert_includes File.read('config/.textlintrc.yml'), './textlint_rewrite.yml'
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/.textlintrc.yml', File::FNM_DOTMATCH)
+          backups = Dir.glob('.vs-backup/upgrade/*/config/.textlintrc.yml', File::FNM_DOTMATCH)
           assert_equal 1, backups.size, '書き換える前の .textlintrc.yml を退避する'
           assert_includes File.read(backups.first), './textlint_prh.yml'
         end
@@ -452,7 +452,7 @@ module VivlioStarter
 
           capture_io { run_upgrade(scaffold, yes: true) }
 
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/book.yml')
+          backups = Dir.glob('.vs-backup/upgrade/*/config/book.yml')
           assert_equal [original], backups.map { File.read(it) }
         end
       end
@@ -467,7 +467,7 @@ module VivlioStarter
           capture_io { run_upgrade(scaffold, yes: true) }
 
           assert_equal "book:\n  main_title: \"本\"\n  cover: master # 表紙\n", File.read('config/book.yml')
-          assert(Dir.glob('.cache/vs/upgrade-backup/*/config/book.yml').any? { File.read(it).include?('clause_length') })
+          assert(Dir.glob('.vs-backup/upgrade/*/config/book.yml').any? { File.read(it).include?('clause_length') })
         end
       end
 
@@ -1057,7 +1057,7 @@ module VivlioStarter
 
           capture_io { run_upgrade(scaffold, yes: true) }
 
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/stylesheets/custom.css')
+          backups = Dir.glob('.vs-backup/upgrade/*/stylesheets/custom.css')
           assert_equal 1, backups.size, '合流も上書きなので退避されるべき'
           assert_equal mine, File.read(backups.first), '退避されるのは合流前の著者のファイル'
 
@@ -1186,7 +1186,7 @@ module VivlioStarter
           terms = YAML.safe_load_file('config/index_glossary_terms.yml')['terms'].to_h { [it['term'], it['main']] }
           assert_equal({ '索引' => nil, '原稿' => ['11-intro'], '付けない語' => [] }, terms,
                        '空になった語は main ごと消え、残る章と main: [] は保たれるべき')
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/config/*').map { File.basename(it) }.sort
+          backups = Dir.glob('.vs-backup/upgrade/*/config/*').map { File.basename(it) }.sort
           assert_equal %w[book.yml index_glossary_terms.yml], backups
         end
       end
@@ -1257,7 +1257,7 @@ module VivlioStarter
           out, = capture_io { run_upgrade(scaffold, yes: true) }
 
           refute_includes out, '整理'
-          assert_empty Dir.glob('.cache/vs/upgrade-backup/**/*')
+          assert_empty Dir.glob('.vs-backup/upgrade/**/*')
         end
       end
 
@@ -1273,7 +1273,7 @@ module VivlioStarter
 
           assert_includes out, "整理   contents/_colophon.md\n            今の版では使わないので削除します"
           assert_equal %w[11-intro.md _README.md], Dir.children('contents').sort
-          backups = Dir.glob('.cache/vs/upgrade-backup/*/contents/*').map { File.basename(it) }.sort
+          backups = Dir.glob('.vs-backup/upgrade/*/contents/*').map { File.basename(it) }.sort
           assert_equal %w[_colophon.md _legalpage.md _part1.md _titlepage.md], backups
         end
       end

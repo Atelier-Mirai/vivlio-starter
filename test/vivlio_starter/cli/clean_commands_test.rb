@@ -7,13 +7,13 @@
 #   CleanCommands モジュール（lib/vivlio_starter/cli/clean.rb）
 #
 # 検証内容:
-#   - --purge なし: ワークスペースのみ削除、最終 PDF は保持
-#   - --purge あり: 最終 PDF も含めてすべて削除
-#   - --cache: キャッシュディレクトリのみ削除
-#   - --cover: 生成キャッシュのみ削除（covers/ の著者ソースは触れない）
-#   - **ルートを掃かないこと**——中間生成物は .cache/vs/build/ に閉じており、
-#     著者が置いた *.html / NN-*.md / images/ の下位 dir は消えてはならない
-#     （2026-09-12 に legacy 掃除を撤去。以前はこれらを毎ビルド薙いでいた）
+#   - オプションなし: .cache/ を丸ごと削除し、ルート直下の生成物は残す
+#   - --purge: キャッシュに加えてルート直下の生成物も削除
+#   - --index-dictionaries: 辞書だけを削除（キャッシュには触れない）
+#   - clean_build_workspace: ビルドの作業フォルダだけを削除し、キャッシュは残す
+#   - .vs-backup/ と covers/ には、どのオプションでも触れない
+#   - **ルートを掃かないこと**——著者が置いた *.html / NN-*.md / images/ の下位 dir は
+#     消えてはならない（2026-09-12 に legacy 掃除を撤去。以前はこれらを毎ビルド薙いでいた）
 #
 # テスト環境:
 #   - 一時ディレクトリで副作用を隔離
@@ -23,7 +23,6 @@
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
-require 'yaml'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/clean'
 
@@ -31,33 +30,26 @@ module VivlioStarter
   module CLI
     # CleanCommands のユニットテスト
     class CleanCommandsTest < Minitest::Test
-      # --purge なしで中間生成物のみ削除され最終 PDF が残ることを確認
-      def test_clean_preserves_final_pdfs_without_purge
+      # オプションなしは .cache/ を丸ごと削除する。ビルドの作業フォルダも、
+      # 表紙・扉絵の生成画像も、.cache/vs/ の外のキャッシュ（metrics など）もこの下にある
+      def test_should_remove_the_whole_cache_directory_by_default
         within_temp_dir do
           setup_generated_files
-          CleanCommands.execute_clean({})
+          setup_cache_files
 
-          assert_clean_directory
+          summary = CleanCommands.execute_clean({})
+
+          refute Dir.exist?('.cache'), '.cache/ は丸ごと削除されるべきです'
+          assert_equal 2, summary.cache, '.cache/ 直下の vs・metrics の 2 件を数えるべきです'
+          assert_equal 0, summary.artifacts
+          assert_author_files_intact
           assert_final_pdfs_exist
           assert File.exist?('11-sample.pdf'), '単章PDFは purge なしでは残るはずです'
         end
       end
 
-      # --purge 指定で clean 実行時、最終PDFや単章PDFも削除されることを確認
-      def test_clean_with_purge_removes_final_outputs
-        within_temp_dir do
-          setup_generated_files
-          CleanCommands.execute_clean({ purge: true })
-
-          assert_clean_directory
-          assert_final_pdfs_removed
-          refute File.exist?('11-sample.pdf'), 'purge 指定時は単章PDFも削除されるはずです'
-        end
-      end
-
       # 索引レビューファイルは著者が編集する入力なので、既定の掃除では残す。
-      # ビルドのたびに消えると、レビュー途中の判断がまるごと失われる。
-      def test_clean_preserves_the_index_review_file
+      def test_should_keep_the_index_review_file_by_default
         within_temp_dir do
           setup_generated_files
           write_file('_index_glossary_review.md')
@@ -68,188 +60,97 @@ module VivlioStarter
         end
       end
 
-      # 掃除の意図が明示された --purge のときだけ消す
-      def test_purge_removes_the_index_review_file
+      # --purge はキャッシュに加えて、ルート直下の生成物（単章 PDF・レビューファイルも）を削除する
+      def test_should_remove_cache_and_root_artifacts_with_purge
         within_temp_dir do
           setup_generated_files
+          setup_cache_files
           write_file('_index_glossary_review.md')
+
+          summary = CleanCommands.execute_clean({ purge: true })
+
+          refute Dir.exist?('.cache'), '--purge でもキャッシュは削除されるべきです'
+          assert_final_pdfs_removed
+          refute File.exist?('11-sample.pdf'), 'purge 指定時は単章PDFも削除されるはずです'
+          refute File.exist?('_index_glossary_review.md')
+          assert_operator summary.artifacts, :>=, 4
+          assert_author_files_intact
+        end
+      end
+
+      # vs upgrade の退避（.vs-backup/）と covers/ の著者ソースは、--purge でも残す
+      def test_should_never_touch_backups_or_cover_sources
+        within_temp_dir do
+          setup_generated_files
+          setup_cache_files
+          write_file(File.join('.vs-backup', 'upgrade', '20261106-120000', 'config', 'book.yml'))
+          %w[frontcover_master.png backcover_photo.jpg frontcover_hand_drawn.pdf].each do |name|
+            write_file(File.join('covers', name))
+          end
 
           CleanCommands.execute_clean({ purge: true })
 
-          refute File.exist?('_index_glossary_review.md')
+          assert File.exist?(File.join('.vs-backup', 'upgrade', '20261106-120000', 'config', 'book.yml')),
+                 'vs upgrade の退避を消してはいけません'
+          %w[frontcover_master.png backcover_photo.jpg frontcover_hand_drawn.pdf].each do |name|
+            assert File.exist?(File.join('covers', name)), "covers/#{name} は著者ソースなので保持されるべきです"
+          end
         end
       end
 
-      # --cache 指定で clean 実行時、キャッシュのみ削除されることを確認
-      def test_clean_cache_only_removes_cache_directory
+      # --index-dictionaries は 3 つの辞書（terms/rejected/読みの個人辞書）だけを削除し、キャッシュには触れない
+      def test_should_remove_only_the_dictionaries_with_index_dictionaries
         within_temp_dir do
-          setup_generated_files
-          cache_dir = VivlioStarter::CLI::Common.cache_dir
-          FileUtils.mkdir_p(cache_dir)
-          write_file(File.join(cache_dir, 'cached.pdf'))
-
-          CleanCommands.execute_clean({ cache: true })
-
-          refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
-          assert_author_files_intact
-          assert_final_pdfs_exist
-          assert File.exist?('11-sample.pdf'), '単章PDFは保持されるはずです'
-        end
-      end
-
-      # --cover 指定で clean 実行時、カバー画像のみ削除されることを確認
-      def test_clean_cover_only_removes_cover_files
-        within_temp_dir do
-          setup_generated_files
-          setup_cover_files
-          setup_config_for_cover
-
-          CleanCommands.execute_clean({ cover: true })
-
-          # カバー画像が削除されること
-          assert_cover_files_removed
-          # マスター画像は保持されること
-          assert_master_files_exist
-          # 通常の生成物は保持されること
-          assert Dir.exist?(VivlioStarter::CLI::Common::BUILD_DIR),
-                 '--cover ではワークスペースを削除しないはずです'
-          assert_author_files_intact
-          assert_final_pdfs_exist
-        end
-      end
-
-      # ビルドの Step 0 が呼ぶ形（オプションなし）。ワークスペースだけを消し、
-      # 著者がルートや images/ に置いたものには一切触れない。
-      def test_default_clean_never_touches_author_files
-        within_temp_dir do
-          setup_generated_files
-          write_file(File.join('contents', '11-sample.md'))
-
-          CleanCommands.execute_clean({})
-
-          assert_author_files_intact
-          assert File.exist?(File.join('contents', '11-sample.md')), '原稿を消してはいけません'
-        end
-      end
-
-      # --cover --cache 指定で clean 実行時、カバー画像とキャッシュが削除されることを確認
-      def test_clean_cover_and_cache
-        within_temp_dir do
-          setup_generated_files
-          setup_cover_files
-          setup_config_for_cover
-          cache_dir = VivlioStarter::CLI::Common.cache_dir
-          FileUtils.mkdir_p(cache_dir)
-          write_file(File.join(cache_dir, 'cached.pdf'))
-
-          CleanCommands.execute_clean({ cover: true, cache: true })
-
-          # カバー画像が削除されること
-          assert_cover_files_removed
-          # キャッシュが削除されること
-          refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
-          # 通常の生成物は保持されること
-          assert_author_files_intact
-          assert_final_pdfs_exist
-        end
-      end
-
-      # --cover --purge 指定で clean 実行時、カバー画像と通常のクリーンが実行されることを確認
-      def test_clean_cover_and_purge
-        within_temp_dir do
-          setup_generated_files
-          setup_cover_files
-          setup_config_for_cover
-
-          CleanCommands.execute_clean({ cover: true, purge: true })
-
-          # カバー画像が削除されること
-          assert_cover_files_removed
-          # 通常のクリーンも実行されること
-          assert_clean_directory
-          assert_final_pdfs_removed
-        end
-      end
-
-      # --cover --cache --purge 指定で clean 実行時、すべてが削除されることを確認
-      def test_clean_cover_cache_and_purge
-        within_temp_dir do
-          setup_generated_files
-          setup_cover_files
-          setup_config_for_cover
-          cache_dir = VivlioStarter::CLI::Common.cache_dir
-          FileUtils.mkdir_p(cache_dir)
-          write_file(File.join(cache_dir, 'cached.pdf'))
-
-          CleanCommands.execute_clean({ cover: true, cache: true, purge: true })
-
-          # カバー画像が削除されること
-          assert_cover_files_removed
-          # キャッシュが削除されること
-          refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
-          # 通常のクリーンも実行されること
-          assert_clean_directory
-          assert_final_pdfs_removed
-        end
-      end
-
-      # --all 指定で clean 実行時、開発者用のフルクリーンが行われることを確認
-      def test_clean_with_all_option
-        within_temp_dir do
-          setup_generated_files
-          setup_cover_files
-          setup_config_for_cover
-          cache_dir = VivlioStarter::CLI::Common.cache_dir
-          FileUtils.mkdir_p(cache_dir)
-          write_file(File.join(cache_dir, 'cached.pdf'))
-
-          CleanCommands.execute_clean({ all: true })
-
-          # カバー画像が削除されること
-          assert_cover_files_removed
-          # キャッシュが削除されること
-          refute Dir.exist?(cache_dir), '--all ではキャッシュを削除するはずです'
-          # 通常のクリーンも実行されること
-          assert_clean_directory
-          assert_final_pdfs_removed
-        end
-      end
-
-      # --index-dictionaries で 3 つの辞書（terms/rejected/読みの個人辞書）が削除されることを確認
-      def test_clean_index_dictionaries_removes_yomi_overrides
-        within_temp_dir do
+          setup_cache_files
           FileUtils.mkdir_p('config')
           %w[index_glossary_terms.yml index_glossary_rejected.yml index_yomi_overrides.yml].each do |name|
             write_file(File.join('config', name))
           end
 
+          summary = nil
           with_stdin("y\n") do
-            capture_io { CleanCommands.execute_clean({ index_dictionaries: true }) }
+            capture_io { summary = CleanCommands.execute_clean({ index_dictionaries: true }) }
           end
 
           refute File.exist?('config/index_glossary_terms.yml'), '登録済み用語辞書は削除されるべきです'
           refute File.exist?('config/index_glossary_rejected.yml'), '除外用語辞書は削除されるべきです'
           refute File.exist?('config/index_yomi_overrides.yml'), '読みの個人辞書は削除されるべきです'
+          assert Dir.exist?(VivlioStarter::CLI::Common.cache_dir), '辞書だけの指定ではキャッシュを残すべきです'
+          assert_equal 3, summary.dictionaries
+          assert_equal 0, summary.cache
         end
       end
 
-      # covers/ は著者ソース専用。ファイル名も拡張子も問わず --cover で消えない。
-      # 生成物の正位置は .cache/vs/covers/ で、そちらだけが掃除の対象になる。
-      def test_clean_cover_never_touches_the_covers_directory
+      # 確認で「いいえ」と答えたら辞書を残す
+      def test_should_keep_the_dictionaries_when_declined
+        within_temp_dir do
+          write_file(File.join('config', 'index_glossary_terms.yml'))
+
+          with_stdin("n\n") do
+            capture_io { CleanCommands.execute_clean({ index_dictionaries: true }) }
+          end
+
+          assert File.exist?('config/index_glossary_terms.yml')
+        end
+      end
+
+      # vs build・vs preflight・章番号の付け直しの後始末。作業フォルダだけを消し、
+      # キャッシュと著者の持ち物には触れない
+      def test_should_remove_only_the_build_workspace_after_a_build
         within_temp_dir do
           setup_generated_files
-          covers_dir = 'covers'
-          %w[custom_front.pdf custom_back.pdf custom_cover.jpg frontcover_master.png].each do |name|
-            write_file(File.join(covers_dir, name))
-          end
-          setup_custom_config_for_cover('custom_front.pdf', 'custom_back.pdf', 'custom_cover.jpg')
+          setup_cache_files
+          write_file(File.join('contents', '11-sample.md'))
 
-          CleanCommands.execute_clean({ cover: true })
+          CleanCommands.clean_build_workspace
 
-          %w[custom_front.pdf custom_back.pdf custom_cover.jpg frontcover_master.png].each do |name|
-            assert File.exist?(File.join(covers_dir, name)),
-                   "covers/#{name} は著者ソースなので保持されるべきです"
-          end
+          refute Dir.exist?(VivlioStarter::CLI::Common::BUILD_DIR), 'ビルドワークスペースは削除されるべきです'
+          assert File.exist?(File.join(VivlioStarter::CLI::Common.cover_cache_dir, 'cover.jpg')),
+                 '生成した表紙のキャッシュは残すべきです'
+          assert File.exist?(File.join('.cache', 'metrics', '11-sample.yml')), 'metrics のキャッシュは残すべきです'
+          assert_author_files_intact
+          assert_final_pdfs_exist
+          assert File.exist?(File.join('contents', '11-sample.md')), '原稿を消してはいけません'
         end
       end
 
@@ -287,11 +188,11 @@ module VivlioStarter
         write_file(File.join('images', 'math', 'author_formula.svg'))
       end
 
-      # 中間生成物が削除されたことを検証する
-      def assert_clean_directory
-        refute Dir.exist?(VivlioStarter::CLI::Common::BUILD_DIR),
-               'ビルドワークスペースは削除されるべきです'
-        assert_author_files_intact
+      # キャッシュ一式。.cache/vs/ の生成画像（表紙・扉絵）と、.cache/metrics/ のキャッシュ
+      def setup_cache_files
+        write_file(File.join(VivlioStarter::CLI::Common.cover_cache_dir, 'cover.jpg'))
+        write_file(File.join(VivlioStarter::CLI::Common.theme_images_cache_dir, 'chapter.webp'))
+        write_file(File.join('.cache', 'metrics', '11-sample.yml'))
       end
 
       # 著者の持ち物が残っていることを検証する
@@ -338,70 +239,6 @@ module VivlioStarter
       def write_file(path)
         FileUtils.mkdir_p(File.dirname(path)) unless File.dirname(path) == '.'
         FileUtils.touch(path)
-      end
-
-      # カバーの生成物は生成キャッシュ（.cache/vs/covers/）に出る。covers/ は
-      # 著者ソース専用で、拡張子を問わず clean の対象外。
-      def setup_cover_files
-        cache_dir = VivlioStarter::CLI::Common.cover_cache_dir
-        %w[frontcover_rgb.pdf backcover_rgb.pdf frontcover_cmyk.pdf
-           frontcover_light.svg cover.jpg].each do |name|
-          write_file(File.join(cache_dir, name))
-        end
-
-        covers_dir = 'covers'
-        # 著者ソース。png/svg だけでなく pdf/jpg を置いても消えてはならない
-        # （かつての legacy 掃除は covers/*.pdf と *.jpg を無条件に消していた）。
-        %w[frontcover_master.png backcover_master.png
-           frontcover_hand_drawn.pdf backcover_photo.jpg].each do |name|
-          write_file(File.join(covers_dir, name))
-        end
-      end
-
-      # カバー画像用の設定ファイルを生成
-      def setup_config_for_cover
-        FileUtils.mkdir_p('config')
-        config = {
-          'directories' => {
-            'covers' => 'covers'
-          },
-          'book' => { 'cover' => 'master' },
-          'output' => {
-            'targets' => 'pdf'
-          }
-        }
-        File.write('config/book.yml', config.to_yaml)
-      end
-
-      # カスタムファイル名の設定ファイルを生成
-      def setup_custom_config_for_cover(_front_pdf, _back_pdf, _epub_cover)
-        FileUtils.mkdir_p('config')
-        config = {
-          'directories' => {
-            'covers' => 'covers'
-          },
-          'book' => { 'cover' => 'master' },
-          'output' => {
-            'targets' => 'pdf'
-          }
-        }
-        File.write('config/book.yml', config.to_yaml)
-      end
-
-      # 生成キャッシュが丸ごと消えたことを検証する
-      def assert_cover_files_removed
-        refute Dir.exist?(VivlioStarter::CLI::Common.cover_cache_dir),
-               'カバー生成キャッシュは削除されるべきです'
-      end
-
-      # covers/ の著者ソースが 1 つも消えていないことを検証する
-      def assert_master_files_exist
-        covers_dir = 'covers'
-        %w[frontcover_master.png backcover_master.png
-           frontcover_hand_drawn.pdf backcover_photo.jpg].each do |name|
-          assert File.exist?(File.join(covers_dir, name)),
-                 "covers/#{name} は著者ソースなので保持されるべきです"
-        end
       end
     end
   end

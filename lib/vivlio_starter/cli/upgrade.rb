@@ -28,7 +28,8 @@
 #   祖先が得られないファイルは従来どおり競合として著者に尋ねる。
 #
 # 安全策:
-#   - 上書き前に必ず .cache/vs/upgrade-backup/<timestamp>/ へ元ファイルを退避
+#   - 上書き前に必ず .vs-backup/upgrade/<timestamp>/ へ元ファイルを退避
+#     （.cache/ の外に置く。vs clean でキャッシュと一緒に消えないように）
 #   - --dry-run はファイルシステムに一切書き込まない（lock 含む）
 #   - プロジェクト外（config/book.yml なし）では雛形追従だけをスキップし、
 #     本体更新・ツール更新は実行できる
@@ -136,6 +137,11 @@ module VivlioStarter
       }.freeze
 
       DIFF_PREVIEW_LINES = 20
+
+      # 上書き・書き換えの前に元のファイルを退避する場所。.cache/ の外に置くのは、
+      # vs clean がキャッシュを丸ごと消しても退避が残るようにするため。
+      # 消すオプションは持たない（不要になったら著者がフォルダを削除する・51 章）。
+      BACKUP_ROOT = File.join('.vs-backup', 'upgrade')
 
       GEMFILE_LOCK = 'Gemfile.lock'
 
@@ -706,10 +712,10 @@ module VivlioStarter
         File.executable?(binstub) ? binstub : $PROGRAM_NAME
       end
 
-      # 上書き対象の現物を .cache/vs/upgrade-backup/<timestamp>/ へツリー構造のまま退避する
+      # 上書き対象の現物を .vs-backup/upgrade/<timestamp>/ へツリー構造のまま退避する
       # @return [String] バックアップディレクトリ（初回呼び出しで作成）
       def backup!(relative, backup_dir)
-        backup_dir ||= File.join(Common.cache_dir, 'upgrade-backup', Time.now.strftime('%Y%m%d-%H%M%S'))
+        backup_dir ||= File.join(BACKUP_ROOT, Time.now.strftime('%Y%m%d-%H%M%S'))
         destination = File.join(backup_dir, relative)
         FileUtils.mkdir_p(File.dirname(destination))
         # 同じ秒に 2 度退避すると、書き換えた後の中身で元を潰す。最初の中身を残す

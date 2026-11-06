@@ -41,7 +41,7 @@ module VivlioStarter
       extend self
 
       # 保存基準の置き場所（`.cache/vs/scaffold-base/`）。
-      # キャッシュなので `vs clean --cache` で消えるが、経路 A と 2-way が控えている。
+      # キャッシュなので `vs clean` で消えるが、経路 A と 2-way が控えている。
       BASE_RELATIVE = File.join(Common::CACHE_DIR, 'scaffold-base')
 
       # 3-way マージの材料になり得る拡張子。**著者が手で編集する設定・スタイルだけ**を
