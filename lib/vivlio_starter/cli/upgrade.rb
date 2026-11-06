@@ -595,10 +595,10 @@ module VivlioStarter
 
       STATUS_LABELS = {
         add: ['追加', '雛形の新規ファイル'],
-        add_empty: ['追加', '著者辞書が無いため空の辞書を用意'],
-        update: ['更新', '雛形が改良・著者は未変更 → 自動適用可'],
-        merge: ['合流', '雛形も著者も変更・別の場所 → 自動で両立'],
-        conflict: ['競合', '雛形も著者も同じ場所を変更 → diff 確認'],
+        add_empty: ['追加', '空の辞書を用意'],
+        update: ['更新', '著者は未変更'],
+        merge: ['合流', '別の場所を変更 → 両立'],
+        conflict: ['競合', '同じ場所を変更 → 確認'],
         tidy: ['整理', nil],
         rename: ['改名', nil]
       }.freeze
