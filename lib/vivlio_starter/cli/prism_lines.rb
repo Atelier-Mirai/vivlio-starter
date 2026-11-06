@@ -16,7 +16,6 @@ module VivlioStarter
     #     入力HTML内の Prism.js コードブロックに行番号を追加する。
     #
     # 備考:
-    #   - -v/--verbose で詳細ログを表示（ENV には反映しません）。
     #   - OUTPUT_FILE を省略した場合、INPUT_FILE を上書きします。
     # ==============================================================================
     module PrismLinesCommands

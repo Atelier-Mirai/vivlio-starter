@@ -186,7 +186,7 @@ module VivlioStarter
         end
 
         # 外部ツール更新の一連の流れ（計画提示 → 確認 → 実行 → 再診断 → 集計 → お知らせ）を統率する。
-        # @param options [Hash] { yes:, dry_run:, verbose:, ... }
+        # @param options [Hash] { yes:, dry_run:, ... }
         # @param report [#call, nil] 結果を一言で受け取る（vs upgrade の最後のまとめの行に使う。例: "すべて最新"）
         # @return [Integer] 終了コード（全成功＋再診断 OK / スキップ → 0、失敗あり/再診断 NG/中断 → 1）
         def run!(options, deps: default_deps, report: nil)
@@ -244,7 +244,7 @@ module VivlioStarter
           # --- Phase: 再診断（未導入分のインストールは既存 --fix へ委譲＝上位互換・spec §1.2）---
           Common.log_always('🩺 更新後の診断を実行します…')
           rediagnosis_ok = DoctorCommands.execute_doctor(
-            { options: { fix: true, yes: options[:yes], verbose: options[:verbose] } }
+            { options: { fix: true, yes: options[:yes] } }
           )
 
           # --- Phase: 集計 → 新版お知らせ ---

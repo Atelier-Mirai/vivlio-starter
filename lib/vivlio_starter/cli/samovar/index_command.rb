@@ -105,7 +105,7 @@ module VivlioStarter
           raise e
         rescue StandardError => e
           Common.log_error("index:plan 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
       end
@@ -115,7 +115,6 @@ module VivlioStarter
         self.description = '索引・用語集の候補を抽出し、確認用ファイルを作成します'
 
         options do
-          option '-v/--verbose', '詳細出力', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -132,8 +131,6 @@ module VivlioStarter
             Guards::ContentsDirCheck.new
           )
           return guard_failure if guard_failure
-
-          ENV['VERBOSE'] = '1' if options[:verbose]
 
           # auto_discovery 設定を確認（未設定 nil は true 扱い、false のみ無効化）
           unless Common::CONFIG.index.auto_discovery != false
@@ -153,7 +150,7 @@ module VivlioStarter
           raise e
         rescue StandardError => e
           Common.log_error("index:auto 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
       end
@@ -163,7 +160,6 @@ module VivlioStarter
         self.description = '確認済みの候補を索引辞書（index_glossary_terms.yml）に登録します'
 
         options do
-          option '-v/--verbose', '詳細出力', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -178,8 +174,6 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          ENV['VERBOSE'] = '1' if options[:verbose]
-
           manager = UnifiedIndexManager.new
           manager.apply_markdown_review!
           0
@@ -187,7 +181,7 @@ module VivlioStarter
           raise e
         rescue StandardError => e
           Common.log_error("index:apply 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
       end

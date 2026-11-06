@@ -82,9 +82,9 @@ module VivlioStarter
         # SectionBuilder の既存パイプライン（pre_process → convert → post_process）を再利用
         # @param basename [String] 中扉の basename（例: "_part1"）
         def convert_to_html!(basename)
-          PreProcessCommands.execute_pre_process({}, [basename])
-          ConvertCommands.execute_convert({}, [basename])
-          PostProcessCommands.execute_post_process({}, [basename])
+          PreProcessCommands.execute_pre_process([basename])
+          ConvertCommands.execute_convert([basename])
+          PostProcessCommands.execute_post_process([basename])
         end
 
         # 部タイトル情報と章 HTML リストから、中扉を適切な位置に挿入した HTML リストを返す

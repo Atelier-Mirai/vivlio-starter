@@ -59,16 +59,9 @@ module VivlioStarter
           {
             options: {
               fix: options[:fix],
-              yes: options[:yes],
-              verbose: verbose_from_parent?
+              yes: options[:yes]
             }
           }
-        end
-
-        def verbose_from_parent?
-          return false unless parent.respond_to?(:options)
-
-          !!parent.options[:verbose]
         end
       end
     end

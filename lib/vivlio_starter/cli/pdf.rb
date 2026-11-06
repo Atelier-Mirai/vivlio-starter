@@ -28,7 +28,6 @@ module VivlioStarter
       # PDF 生成を実行する（パイプライン専用・P4 §3.2）
       #
       # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param config_path [String] 生成 config（-c で vivliostyle へ渡す）
       # @param output_path [String] config の output に対応する成否確認先
       # @return [Boolean] ビルドが成功し出力ファイルまで生成できたか
@@ -39,7 +38,6 @@ module VivlioStarter
       # PDF 圧縮を実行する
       #
       # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param input [String, nil] 入力PDFパス
       # @param output [String, nil] 出力PDFパス
       # @return [void]
@@ -49,7 +47,7 @@ module VivlioStarter
 
       # PDF をページ単位の JPEG に切り出す
       #
-      # @param options [Hash] :dpi, :quality, :pages, :output, :verbose
+      # @param options [Hash] :dpi, :quality, :pages, :output
       # @param input [String, nil] 入力 PDF パス
       # @return [Hash] 生成結果
       def execute_pdf_pages(options, input = nil)
@@ -58,7 +56,7 @@ module VivlioStarter
 
       # PDF を JPEG 化して再結合し、Type3 フォントを含まないラスタライズ PDF を生成する
       #
-      # @param options [Hash] :dpi, :quality, :clean, :verbose
+      # @param options [Hash] :dpi, :quality, :clean
       # @param input [String, nil] 入力 PDF パス
       # @return [Hash] 生成結果
       def execute_pdf_rasterize(options, input = nil)
@@ -68,7 +66,6 @@ module VivlioStarter
       # PDF を Preview.app で開く
       #
       # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param path [String, nil] 開くPDFパス
       # @return [void]
       def execute_open_pdf(options, path = nil)
@@ -100,7 +97,6 @@ module VivlioStarter
         end
 
         def call
-          apply_verbose
           Common.log_action('PDFを生成しています…')
           execute_build
           handle_build_result
@@ -118,10 +114,6 @@ module VivlioStarter
         private
 
         attr_reader :options, :config_path, :output_path
-
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
 
         # Vivliostyle CLI を実行して PDF を生成する
         def execute_build
@@ -212,7 +204,6 @@ module VivlioStarter
         end
 
         def call
-          apply_verbose
           determine_paths
           ensure_input_exists
           return unless confirm_print_pdf_compression
@@ -228,10 +219,6 @@ module VivlioStarter
 
         # ビルドパイプライン（Step 12）から呼ばれているか
         def pipeline_mode? = !!options[:pipeline]
-
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
 
         # 入出力ファイルのパスを決定する
         def determine_paths
@@ -375,10 +362,6 @@ module VivlioStarter
       module InputPdf
         private
 
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
-
         def resolve_pdf_path
           explicit = normalize_pdf_extension(cli_input)
           return explicit if explicit
@@ -411,7 +394,6 @@ module VivlioStarter
         end
 
         def call
-          apply_verbose
           pdf_path = resolve_pdf_path
           ensure_input_exists!(pdf_path)
           ensure_pdf_pages_tools!
@@ -469,7 +451,6 @@ module VivlioStarter
         end
 
         def call
-          apply_verbose
           pdf_path = resolve_pdf_path
           ensure_input_exists!(pdf_path)
           ensure_pdf_rasterize_tools!
@@ -560,7 +541,6 @@ module VivlioStarter
             return
           end
 
-          apply_verbose
           pdf_path = resolve_pdf_path
           Common.log_action('PDFを開いています…')
           Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")
@@ -596,10 +576,6 @@ module VivlioStarter
         attr_reader :options, :explicit_path
 
         def suppressed? = Common.truthy?(ENV.fetch(SUPPRESS_ENV, nil))
-
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
 
         # 開くべき PDF ファイルのパスを決定する
         def resolve_pdf_path

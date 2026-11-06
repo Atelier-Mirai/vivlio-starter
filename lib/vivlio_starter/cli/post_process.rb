@@ -56,13 +56,9 @@ module VivlioStarter
     module PostProcessCommands
       module_function
 
-      # Samovar/直接呼び出し用エントリポイント
-      # @param context_or_options [Hash, Object] コマンドコンテキスト
+      # 変換済みの HTML に後処理をかける（ビルドの各段から呼ぶ）
       # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
-      def execute_post_process(context_or_options, entries = [])
-        opts = normalize_options(context_or_options)
-        ENV['VERBOSE'] = '1' if opts[:verbose]
-
+      def execute_post_process(entries)
         entry_map = resolve_entry_map(entries)
 
         entry_map.each do |html_file, entry|
@@ -216,18 +212,6 @@ module VivlioStarter
         Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
       end
       module_function :execute_post_process
-
-      # オプションを正規化
-      def normalize_options(context_or_options)
-        if context_or_options.is_a?(Hash)
-          context_or_options[:options] || context_or_options
-        elsif context_or_options.respond_to?(:options)
-          context_or_options.options || {}
-        else
-          {}
-        end
-      end
-      module_function :normalize_options
 
       # Entry 配列を解決し、HTML パス => Entry の Hash を返す
       # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）

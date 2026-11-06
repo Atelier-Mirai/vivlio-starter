@@ -25,7 +25,6 @@ module VivlioStarter
       # EPUB 生成を実行する
       #
       # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param target_output [String, nil] 出力ファイル名（リネーム先）
       # @param config_path [String] --config で渡す生成 config のパス（消費者 dir 内・P4 §5.2）
       # @param output_path [String] config の output と一致する生成先（消費者 dir 内）
@@ -47,7 +46,6 @@ module VivlioStarter
         # EPUB ビルドを実行し、成功時にリネームする
         # @return [Boolean] ビルド成功なら true
         def call
-          apply_verbose
           Common.log_action('EPUB を生成しています…')
           execute_build
           handle_build_result
@@ -57,11 +55,6 @@ module VivlioStarter
         private
 
         attr_reader :options, :target_output, :config_path, :output_path
-
-        # verbose モードを有効化する
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
 
         # Vivliostyle CLI を実行して EPUB を生成する
         def execute_build

@@ -56,6 +56,7 @@
 
 ### Removed
 
+- **`-v` / `--verbose` オプションを削除した**（`vs --verbose` と、`vs open`・`vs delete`・`vs index:auto`・`vs index:apply` の `-v` / `--verbose`）。ふだんの出力は何も変わらず、予期しないエラーのときに Ruby のスタックトレースの先頭 5 行を足すだけだった。スタックトレースは、ほかの箇所と同じく環境変数 `VS_DEBUG=1` で全部を表示する。
 - 雛形の `stylesheets/images/` から、どこからも使っていない画像 4 枚（`clouds`・`door1`・`door2`・`old_scroll`）を削除した。`floral.webp` は、一枚の絵を扉絵にする例として残す（42 章）。
 
 ### Fixed

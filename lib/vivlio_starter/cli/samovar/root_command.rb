@@ -10,7 +10,6 @@
 # グローバルオプション:
 #   - --help: ヘルプ表示
 #   - --version: バージョン表示
-#   - --verbose: 詳細ログ出力
 #
 # コマンド分類 (help_spec.md 準拠):
 #   Public Commands   … 利用者が直接実行する。`vs --help` に表示する
@@ -34,7 +33,6 @@ module VivlioStarter
         options do
           option '-h/--help', 'Vivlio Starter のヘルプを表示', key: :help
           option '--version', 'バージョン情報を表示', key: :version
-          option '-v/--verbose', '冗長出力を有効化', default: false, key: :verbose
         end
 
         class << self
@@ -101,8 +99,6 @@ module VivlioStarter
 
           return print_version if options[:version]
 
-          set_verbose_flag if options[:verbose]
-
           return help_command.call if options[:help]
 
           target = command || help_command
@@ -120,10 +116,6 @@ module VivlioStarter
 
         def mark_cli_context
           ENV['VS_CLI'] ||= '1'
-        end
-
-        def set_verbose_flag
-          ENV['VERBOSE'] = '1'
         end
 
         def print_version

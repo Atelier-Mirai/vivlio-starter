@@ -57,12 +57,8 @@ module VivlioStarter
       FRONTISPIECE_DEFAULT_PATH = ThemeImageResolver::FRONTISPIECE_DEFAULT_PATH
       ORNAMENT_DEFAULT_PATH = ThemeImageResolver::ORNAMENT_DEFAULT_PATH
 
-      # @param command_or_ctx [Hash, Object] コマンドコンテキスト
       # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
-      def execute_pre_process(command_or_ctx, entries)
-        ctx = Common.normalized_context(command_or_ctx)
-        Common.enable_verbose(ctx)
-
+      def execute_pre_process(entries)
         entries = resolve_entries(entries)
 
         Common.log_action('Markdownファイルの前処理を行っています...')

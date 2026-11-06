@@ -22,7 +22,6 @@ module VivlioStarter
       # 目次生成を実行する
       #
       # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param htmls [Array<String>] 対象 HTML ファイルリスト
       # @return [void]
       def execute_toc(options, htmls = [])
@@ -40,7 +39,6 @@ module VivlioStarter
         end
 
         def call
-          apply_verbose
           targets = resolver.resolve
           return warn_no_targets if targets.empty?
 
@@ -53,10 +51,6 @@ module VivlioStarter
         private
 
         attr_reader :options, :resolver
-
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
 
         # 対象 HTML が無い場合の警告
         def warn_no_targets

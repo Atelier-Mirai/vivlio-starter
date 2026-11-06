@@ -47,7 +47,6 @@ module VivlioStarter
     #   RenameCommandExecutor.new(options).call  # 全章連番付け直し
     class RenameCommandExecutor
       # @param options [Hash] オプション設定
-      #   - :verbose [Boolean] 詳細ログを出力
       #   - :step [Integer] 章番号の刻み幅（デフォルト: 1）
       def initialize(options = {})
         @options = (options || {}).dup
@@ -60,8 +59,6 @@ module VivlioStarter
       # @return [void]
       # @raise [SystemExit] エラー時または処理完了時
       def call(old_arg = nil, new_arg = nil)
-        enable_verbose_mode
-
         if old_arg.nil? && new_arg.nil?
           renumber_all_chapters
         else
@@ -72,11 +69,6 @@ module VivlioStarter
       private
 
       attr_reader :options
-
-      # verbose 時はログを詳細化する
-      def enable_verbose_mode
-        ENV['VERBOSE'] = '1' if options[:verbose]
-      end
 
       # 全章の連番を付け直す
       #

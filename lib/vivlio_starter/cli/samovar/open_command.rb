@@ -21,15 +21,12 @@ module VivlioStarter
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
         # PDF ファイル名（target）として消費してしまう（契約テスト CL-01 で検出）
         options do
-          option '-v/--verbose', '冗長出力', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
         one :target, 'PDFファイル名（省略時はビルド生成物を自動選択）', required: false
 
         def call
-          apply_verbose
-
           if options[:help]
             print_usage
             return 0
@@ -41,31 +38,23 @@ module VivlioStarter
           guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
           return guard_failure if guard_failure
 
-          PdfCommands.execute_open_pdf(build_options, target)
+          PdfCommands.execute_open_pdf({}, target)
           0
         rescue SystemExit => e
           raise e
         rescue StandardError => e
           Common.log_error("open 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
 
         private
 
-        def apply_verbose
-          ENV['VERBOSE'] = '1' if options[:verbose]
-        end
-
-        def build_options
-          { verbose: options[:verbose] }
-        end
-
         def print_usage
           puts <<~USAGE
             vs open - 生成されたPDFを開く（macOS専用）
 
-            Usage: vs open [TARGET] [-v/--verbose] [-h/--help]
+            Usage: vs open [TARGET] [-h/--help]
 
             引数:
               TARGET  PDFファイル名（拡張子 .pdf は省略可）

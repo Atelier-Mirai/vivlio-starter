@@ -81,13 +81,13 @@ module VivlioStarter
 
         # 単一章の前処理
         def preprocess_single_chapter!(basename)
-          PreProcessCommands.execute_pre_process({}, [basename])
+          PreProcessCommands.execute_pre_process([basename])
         end
 
         # 単一章の変換（HTML生成）
         def convert_single_chapter!(basename)
-          ConvertCommands.execute_convert({}, [basename])
-          PostProcessCommands.execute_post_process({}, [basename])
+          ConvertCommands.execute_convert([basename])
+          PostProcessCommands.execute_post_process([basename])
         end
 
         # セクション（前書き/本文/付録/後書き）の前処理を一括実行

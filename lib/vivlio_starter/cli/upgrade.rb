@@ -177,7 +177,7 @@ module VivlioStarter
         # --- Phase: ③ 外部ツール更新 ---
         tools_summary = nil
         tools_code = DoctorCommands::ToolUpgrader.run!(
-          { yes: options[:yes], dry_run: options[:dry_run], verbose: options[:verbose] },
+          { yes: options[:yes], dry_run: options[:dry_run] },
           deps: tool_deps, report: ->(text) { tools_summary = text }
         )
 

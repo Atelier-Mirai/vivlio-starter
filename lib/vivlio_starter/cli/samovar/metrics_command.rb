@@ -59,7 +59,7 @@ module VivlioStarter
           e.status
         rescue StandardError => e
           Common.log_error("metrics 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         ensure
           Build::Volumes.select!(nil)

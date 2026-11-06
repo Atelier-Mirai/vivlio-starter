@@ -380,7 +380,7 @@ module VivlioStarter
           return unless path && File.exist?(path)
           return unless defined?(VivlioStarter::CLI::PdfCommands::PdfOpener)
 
-          VivlioStarter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
+          VivlioStarter::CLI::PdfCommands::PdfOpener.new({}, path).call
         rescue StandardError
           # PDF を開く処理は失敗してもビルド結果には影響させない
         end
@@ -392,7 +392,7 @@ module VivlioStarter
           end
           return unless defined?(VivlioStarter::CLI::PdfCommands::PdfOpener)
 
-          VivlioStarter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
+          VivlioStarter::CLI::PdfCommands::PdfOpener.new({}, path).call
         rescue StandardError
           # macOS 専用機能のため失敗しても握りつぶす
         end
@@ -413,14 +413,6 @@ module VivlioStarter
           return true if targets.empty?
 
           targets.any? { |target| target.include?('pdf') }
-        end
-
-        def pdf_command_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
         end
 
         # 生成されたファイルのリストを取得

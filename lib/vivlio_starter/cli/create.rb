@@ -49,15 +49,12 @@ module VivlioStarter
 
       # 章ファイルと画像ディレクトリを一括生成する
       #
-      # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @param names [Array<String>] 生成する章名のリスト
       #   - 形式: "XX-slug" または "XX-slug.md"（XX は並び順を示す数字）
       #   - 例: ['11-install', '12-tutorial']
       # @return [void]
       # @raise [SystemExit] 1つ以上の章生成に失敗した場合
-      def execute_create(options, names)
-        apply_verbose(options)
+      def execute_create(names)
         ensure_names_present!(names)
 
         resolver = TokenResolver::Resolver.new
@@ -118,13 +115,10 @@ module VivlioStarter
 
       # タイトルページ（扉）を config/book.yml から生成する
       #
-      # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_titlepage.md
-      def execute_titlepage(options)
-        apply_verbose(options)
+      def execute_titlepage
         title, subtitle = extract_title_and_subtitle
         author  = fetch_config_value(:book, :author)
         series  = fetch_config_value(:book, :series)
@@ -154,13 +148,10 @@ module VivlioStarter
 
       # 奥付ページを config/book.yml から生成する
       #
-      # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_colophon.md
-      def execute_colophon(options)
-        apply_verbose(options)
+      def execute_colophon
         title, subtitle = extract_title_and_subtitle
         author    = fetch_config_value(:book, :author)
         publisher = fetch_config_value(:book, :publisher)
@@ -206,13 +197,10 @@ module VivlioStarter
 
       # 免責事項・商標情報を含むリーガルページを生成する
       #
-      # @param options [Hash] オプション
-      #   - :verbose [Boolean] 詳細ログ出力
       # @return [void]
       #
       # 生成ファイル: .cache/vs/_legalpage.md
-      def execute_legalpage(options)
-        apply_verbose(options)
+      def execute_legalpage
         FileUtils.mkdir_p(Common::CACHE_DIR)
         # 常に上書き再生成する（book.yml 変更を確実に反映するため）
         target = File.join(Common::CACHE_DIR, '_legalpage.md')
@@ -425,10 +413,6 @@ module VivlioStarter
       # ================================================================
       # 章番号管理ヘルパー
       # ================================================================
-
-      def apply_verbose(options)
-        ENV['VERBOSE'] = '1' if options[:verbose]
-      end
 
       def ensure_names_present?(names)
         !names.nil? && !names.empty?

@@ -302,7 +302,7 @@ module VivlioStarter
       private
 
       def build_rename_executor(options = {})
-        defaults = { dry_run: false, verbose: false, chapter_step: nil, step: nil }
+        defaults = { dry_run: false, chapter_step: nil, step: nil }
         VivlioStarter::CLI::RenameCommandExecutor.new(defaults.merge(options))
       end
 

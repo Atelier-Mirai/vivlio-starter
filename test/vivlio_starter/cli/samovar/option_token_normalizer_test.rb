@@ -232,7 +232,7 @@ module VivlioStarter
 
         # 従来 🔴 だった代表例（[B] 型の one を持つコマンド）
         def test_should_accept_a_positional_argument_before_options_on_one_style_commands
-          assert_equal 'foo.pdf', OpenCommand.new(['foo.pdf', '--verbose']).target
+          assert_equal 'foo.pdf', OpenCommand.new(['foo.pdf', '--help']).target
           assert_equal 'images', ResizeCommand.new(['images', '--high']).dir
         end
 

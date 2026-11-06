@@ -43,9 +43,9 @@ module VivlioStarter
           FileUtils.mkdir_p(File.dirname(md_path))
           File.write(md_path, markdown, encoding: 'utf-8')
 
-          PreProcessCommands.execute_pre_process({}, [BASENAME])
-          ConvertCommands.execute_convert({}, [BASENAME])
-          PostProcessCommands.execute_post_process({}, [BASENAME])
+          PreProcessCommands.execute_pre_process([BASENAME])
+          ConvertCommands.execute_convert([BASENAME])
+          PostProcessCommands.execute_post_process([BASENAME])
           Common.log_success("[WholeToc] #{HEADING}を作りました")
           BASENAME
         end

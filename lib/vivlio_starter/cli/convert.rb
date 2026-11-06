@@ -13,10 +13,7 @@ module VivlioStarter
     module ConvertCommands
       module_function
 
-      def execute_convert(command_or_context, tokens_or_entries)
-        ctx = Common.normalized_context(command_or_context)
-        Common.enable_verbose(ctx)
-
+      def execute_convert(tokens_or_entries)
         # 中間 .md / .html はワークスペースの html/ に置かれる（P4 §3.4-1）
         base_dir = Common::BUILD_HTML_DIR
         md_files = resolve_md_files_for_convert(tokens_or_entries, base_dir)

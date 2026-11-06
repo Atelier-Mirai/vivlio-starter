@@ -194,7 +194,7 @@ module VivlioStarter
           [['11-sample'], []].each do |tokens|
             error = nil
             out, err = with_stdin("y\n" * 4, terminal: false) do
-              capture_io { error = assert_raises(SystemExit) { DeleteCommands::DeleteCommandExecutor.new({}, tokens).call } }
+              capture_io { error = assert_raises(SystemExit) { DeleteCommands::DeleteCommandExecutor.new(tokens).call } }
             end
 
             assert_equal 1, error.status
@@ -210,7 +210,7 @@ module VivlioStarter
       def test_delete_exits_when_targets_missing
         within_temp_dir do
           error = assert_raises(SystemExit) do
-            capture_io { DeleteCommands::DeleteCommandExecutor.new({}, ['11-missing']).call }
+            capture_io { DeleteCommands::DeleteCommandExecutor.new(['11-missing']).call }
           end
           assert_equal 1, error.status
         end
@@ -222,7 +222,7 @@ module VivlioStarter
 
       def run_delete_with_output(tokens)
         summary = nil
-        out, = capture_io { summary = DeleteCommands::DeleteCommandExecutor.new({}, tokens).call }
+        out, = capture_io { summary = DeleteCommands::DeleteCommandExecutor.new(tokens).call }
         [out, summary]
       end
 

@@ -153,14 +153,13 @@ module VivlioStarter
       # 環境診断を実行し、不足ツールを報告・インストールする
       #
       # @param command [Hash, Object, nil] コマンドコンテキスト
-      #   - Hash: { options: { fix: true, yes: true, verbose: false } }
+      #   - Hash: { options: { fix: true, yes: true } }
       #   - Object: #options で Hash を返すオブジェクト
       # @return [void]
       #
       # オプション:
       #   - :fix [Boolean] 不足ツールを自動インストール（macOS + Homebrew のみ）
       #   - :yes [Boolean] 確認プロンプトをスキップ
-      #   - :verbose [Boolean] 詳細ログを出力
       #
       # 戻り値:
       #   - 「必要ツールがすべて揃っているか」の Boolean
@@ -168,7 +167,6 @@ module VivlioStarter
       #       doctor コマンド自身は戻り値を終了コードへ反映しない）
       def execute_doctor(command = nil)
         options = extract_options(command)
-        ENV['VERBOSE'] = '1' if options[:verbose]
 
         missing = []
         os = RbConfig::CONFIG['host_os']

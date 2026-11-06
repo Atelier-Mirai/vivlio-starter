@@ -39,7 +39,7 @@
 | `vs pdf:rasterize` | PDF をラスタライズして再結合（Type 3 フォント対策） | 補助コマンドとカスタマイズ |
 :::
 
-グローバルオプション: `-h` / `--help`（ヘルプ）・`-v` / `--verbose`（冗長出力）・`--version`（バージョン表示）。
+グローバルオプション: `-h` / `--help`（ヘルプ）・`--version`（バージョン表示）。
 
 ## プロジェクト管理
 
@@ -125,7 +125,7 @@
 
 ### `vs delete` — 章の削除
 
-`vs delete <対象>`（章番号 / 範囲 / ファイル名）。端末から実行します。`--verbose` / `-v` で冗長ログを表示します。
+`vs delete <対象>`（章番号 / 範囲 / ファイル名）。端末から実行します。
 
 ### `vs rename` / `vs renumber` — 章番号・スラッグの変更
 
@@ -168,8 +168,6 @@
 ### `vs index:apply` — 辞書への登録
 
 `vs index:apply`（レビュー結果を `index_glossary_terms.yml` に適用）
-
-`index:auto` と `index:apply` は `--verbose` / `-v` で詳細出力になります。
 
 ### `vs index:export` / `vs index:import` — 索引ライブラリの持ち運び
 

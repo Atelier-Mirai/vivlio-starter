@@ -73,15 +73,8 @@ module VivlioStarter
 
         def executor_options
           {
-            step: options[:step],
-            verbose: verbose_from_parent?
+            step: options[:step]
           }
-        end
-
-        def verbose_from_parent?
-          return false unless parent.respond_to?(:options)
-
-          !!parent.options[:verbose]
         end
       end
 

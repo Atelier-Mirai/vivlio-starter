@@ -65,7 +65,6 @@ module VivlioStarter
           puts <<~FOOTER
             オプション:
               -h, --help       ヘルプを表示
-              -v, --verbose    冗長出力を有効化
               --version        バージョン情報を表示
 
             各コマンドの詳細: vs <command> --help

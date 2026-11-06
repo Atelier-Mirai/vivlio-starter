@@ -153,9 +153,9 @@ module VivlioStarter
           # 以前は build_target_sections_html が同じ処理を独自に束ねており、それが
           # 全章側との差分の温床だった。ここでは前処理・変換・後処理へ届く
           # トークンが全章経路と同じであることを見る。
-          PreProcessCommands.stub :execute_pre_process, ->(opts, tokens) { pre_calls << tokens } do
-            ConvertCommands.stub :execute_convert, ->(opts, tokens) { conv_calls << tokens } do
-              PostProcessCommands.stub :execute_post_process, ->(opts, tokens) { post_calls << tokens } do
+          PreProcessCommands.stub :execute_pre_process, ->(tokens) { pre_calls << tokens } do
+            ConvertCommands.stub :execute_convert, ->(tokens) { conv_calls << tokens } do
+              PostProcessCommands.stub :execute_post_process, ->(tokens) { post_calls << tokens } do
                 Build::SectionBuilder.preprocess_sections!(pipeline.entries)
                 Build::SectionBuilder.convert_sections_html!(pipeline.entries)
               end

@@ -45,7 +45,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          report_created(CreateCommands.execute_create(build_options, names))
+          report_created(CreateCommands.execute_create(names))
           0
         rescue SystemExit => e
           raise e
@@ -67,14 +67,6 @@ module VivlioStarter
 
           Common.log_result("#{created.size} 章を作成しました（#{created.join(', ')}）", status: :success)
         end
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
       end
 
       # create:titlepage コマンド（内部コマンド）
@@ -82,7 +74,7 @@ module VivlioStarter
         self.description = 'タイトルページを生成します（内部コマンド）'
 
         def call
-          CreateCommands.execute_titlepage(build_options)
+          CreateCommands.execute_titlepage
           0
         rescue SystemExit => e
           raise e
@@ -92,14 +84,6 @@ module VivlioStarter
         end
 
         private
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
       end
 
       # create:colophon コマンド（内部コマンド）
@@ -107,7 +91,7 @@ module VivlioStarter
         self.description = '奥付を生成します（内部コマンド）'
 
         def call
-          CreateCommands.execute_colophon(build_options)
+          CreateCommands.execute_colophon
           0
         rescue SystemExit => e
           raise e
@@ -117,14 +101,6 @@ module VivlioStarter
         end
 
         private
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
       end
 
       # create:legalpage コマンド（内部コマンド）
@@ -132,7 +108,7 @@ module VivlioStarter
         self.description = 'リーガルページを生成します（内部コマンド）'
 
         def call
-          CreateCommands.execute_legalpage(build_options)
+          CreateCommands.execute_legalpage
           0
         rescue SystemExit => e
           raise e
@@ -142,14 +118,6 @@ module VivlioStarter
         end
 
         private
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
       end
     end
   end

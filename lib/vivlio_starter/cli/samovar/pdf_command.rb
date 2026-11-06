@@ -54,7 +54,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          PdfCommands.execute_pdf_compress(build_options, input, output)
+          PdfCommands.execute_pdf_compress({}, input, output)
         end
 
         private
@@ -78,14 +78,6 @@ module VivlioStarter
               vs pdf:compress input.pdf output.pdf      # 入出力を明示指定
           HELP
           0
-        end
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
         end
       end
 
@@ -118,7 +110,7 @@ module VivlioStarter
           0
         rescue StandardError => e
           Common.log_error("[pdf:pages] #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
 
@@ -129,13 +121,8 @@ module VivlioStarter
             dpi: options[:dpi],
             quality: options[:quality],
             pages: options[:pages],
-            output: options[:output],
-            verbose: parent_verbose?
+            output: options[:output]
           }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
         end
       end
 
@@ -167,7 +154,7 @@ module VivlioStarter
           0
         rescue StandardError => e
           Common.log_error("[pdf:rasterize] #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
 
@@ -177,13 +164,8 @@ module VivlioStarter
           {
             dpi: options[:dpi],
             quality: options[:quality],
-            clean: options[:clean],
-            verbose: parent_verbose?
+            clean: options[:clean]
           }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
         end
       end
 
@@ -225,7 +207,7 @@ module VivlioStarter
           1
         rescue StandardError => e
           Common.log_error("[pdf:read] 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
 
@@ -237,11 +219,7 @@ module VivlioStarter
         end
 
         def build_options
-          { verbose: parent_verbose?, force: options[:force] || false, pages: options[:pages] }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
+          { force: options[:force] || false, pages: options[:pages] }
         end
 
         def print_usage

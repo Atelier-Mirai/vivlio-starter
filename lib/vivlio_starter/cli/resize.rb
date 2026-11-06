@@ -69,7 +69,6 @@ module VivlioStarter
 
       # Samovar/直接呼び出し用: プリセット指定でリサイズ
       def execute_resize_with_preset(preset_name, dir, options = {})
-        ENV['VERBOSE'] = '1' if options[:verbose]
         ENV['FORCE'] = '1' if options[:force]
 
         preset = WEBP_PRESETS[preset_name]

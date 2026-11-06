@@ -536,7 +536,7 @@ module VivlioStarter
             stub_logging do
               DoctorCommands.stub(:pdf_plugin_installed?, false) do
                 capture_io do
-                  ToolUpgrader.run!({ yes: false, dry_run: false, verbose: false },
+                  ToolUpgrader.run!({ yes: false, dry_run: false },
                                     deps: stub_deps(capture: capture_map, input: ''), report: ->(text) { reported << text })
                 end
               end
@@ -591,7 +591,7 @@ module VivlioStarter
             Common.stub(:log_always, ->(message) { said << message }) do
               DoctorCommands.stub(:execute_doctor, true) do
                 DoctorCommands.stub(:pdf_plugin_installed?, false) do
-                  capture_io { ToolUpgrader.run!({ yes: false, dry_run: false, verbose: false }, deps:) }
+                  capture_io { ToolUpgrader.run!({ yes: false, dry_run: false }, deps:) }
                 end
               end
             end
@@ -610,7 +610,7 @@ module VivlioStarter
             stub_logging do
               DoctorCommands.stub(:execute_doctor, rediagnose) do
                 DoctorCommands.stub(:pdf_plugin_installed?, false) do
-                  capture_io { code = ToolUpgrader.run!({ yes:, dry_run:, verbose: false }, deps:) }
+                  capture_io { code = ToolUpgrader.run!({ yes:, dry_run: }, deps:) }
                 end
               end
             end

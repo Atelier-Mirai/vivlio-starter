@@ -28,7 +28,7 @@ module VivlioStarter
       # 章ファイルと画像ディレクトリが正しく生成されることを確認
       def test_create_generates_markdown_and_images_directory
         within_temp_dir do
-          capture_io { CreateCommands.execute_create(command_context, ['11-sample']) }
+          capture_io { CreateCommands.execute_create(['11-sample']) }
 
           assert File.exist?(File.join(Common::CONTENTS_DIR, '11-sample.md'))
           assert Dir.exist?(File.join(Common::IMAGES_DIR, '11-sample'))
@@ -37,7 +37,7 @@ module VivlioStarter
 
       def test_create_supports_numeric_only_name
         within_temp_dir do
-          capture_io { CreateCommands.execute_create(command_context, ['15']) }
+          capture_io { CreateCommands.execute_create(['15']) }
 
           assert File.exist?(File.join(Common::CONTENTS_DIR, '15.md')), '数字のみ指定でも Markdown を生成すべき'
           assert Dir.exist?(File.join(Common::IMAGES_DIR, '15')), '画像ディレクトリは数字のみで作成されるべき'
@@ -49,7 +49,7 @@ module VivlioStarter
 
       def test_create_assigns_number_for_slug_only_input
         within_temp_dir do
-          capture_io { CreateCommands.execute_create(command_context, ['three-elements']) }
+          capture_io { CreateCommands.execute_create(['three-elements']) }
 
           assert File.exist?(File.join(Common::CONTENTS_DIR, '02-three-elements.md')),
                  '本文の最後の章の次の番号 (02) を払い出してファイルを生成するべき'
@@ -67,7 +67,7 @@ module VivlioStarter
       def test_should_assign_the_number_after_the_last_chapter
         within_temp_dir do
           File.write('config/catalog.yml', "CHAPTERS:\n  - 11-one\n  - 13-three\n")
-          capture_io { CreateCommands.execute_create(command_context, %w[next after]) }
+          capture_io { CreateCommands.execute_create(%w[next after]) }
       
           assert File.exist?(File.join(Common::CONTENTS_DIR, '14-next.md'))
           assert File.exist?(File.join(Common::CONTENTS_DIR, '15-after.md'))
@@ -77,7 +77,7 @@ module VivlioStarter
       def test_should_use_a_free_number_when_main_chapter_numbers_run_out
         within_temp_dir do
           File.write('config/catalog.yml', "CHAPTERS:\n  - 89-last\n")
-          capture_io { CreateCommands.execute_create(command_context, %w[next]) }
+          capture_io { CreateCommands.execute_create(%w[next]) }
       
           assert File.exist?(File.join(Common::CONTENTS_DIR, '01-next.md'))
         end
@@ -97,7 +97,7 @@ module VivlioStarter
                 CHAPTERS:
                   - 21-two
           YAML
-          capture_io { CreateCommands.execute_create(command_context, %w[next]) }
+          capture_io { CreateCommands.execute_create(%w[next]) }
       
           assert File.exist?(File.join(Common::CONTENTS_DIR, '22-next.md'))
           assert_includes File.read('config/catalog.yml'), "      - 21-two\n      - 22-next\n"
@@ -109,7 +109,7 @@ module VivlioStarter
           File.write(File.join(Common::CONTENTS_DIR, '97-sample.md'), "# sample\n")
 
           out, = capture_io do
-            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['97-foo']) }
+            assert_raises(SystemExit) { CreateCommands.execute_create(['97-foo']) }
           end
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '97-foo.md'))
@@ -122,7 +122,7 @@ module VivlioStarter
       def test_should_refuse_a_number_listed_only_in_catalog
         within_temp_dir do
           out, = capture_io do
-            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['01-other']) }
+            assert_raises(SystemExit) { CreateCommands.execute_create(['01-other']) }
           end
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '01-other.md'))
@@ -138,7 +138,7 @@ module VivlioStarter
           File.write(File.join(Common::CONTENTS_DIR, '97-sample.md'), "# sample\n")
 
           out, = capture_io do
-            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['02-sample']) }
+            assert_raises(SystemExit) { CreateCommands.execute_create(['02-sample']) }
           end
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '02-sample.md'))
@@ -150,7 +150,7 @@ module VivlioStarter
       # 大文字と `_` は整えて作る（ビルド前の検査が止める形の章を作らない）
       def test_should_normalize_capitals_and_underscores
         within_temp_dir do
-          capture_io { CreateCommands.execute_create(command_context, ['12-My_Chapter']) }
+          capture_io { CreateCommands.execute_create(['12-My_Chapter']) }
 
           assert File.exist?(File.join(Common::CONTENTS_DIR, '12-my-chapter.md'))
         end
@@ -160,7 +160,7 @@ module VivlioStarter
       def test_should_refuse_a_name_outside_the_rule
         within_temp_dir do
           out, = capture_io do
-            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, ['12-notes.v2']) }
+            assert_raises(SystemExit) { CreateCommands.execute_create(['12-notes.v2']) }
           end
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '12-notes.v2.md'))
@@ -172,7 +172,7 @@ module VivlioStarter
       def test_should_refuse_duplicated_numbers_in_one_command
         within_temp_dir do
           out, = capture_io do
-            assert_raises(SystemExit) { CreateCommands.execute_create(command_context, %w[30-a 30-b]) }
+            assert_raises(SystemExit) { CreateCommands.execute_create(%w[30-a 30-b]) }
           end
 
           refute File.exist?(File.join(Common::CONTENTS_DIR, '30-a.md'))
@@ -184,7 +184,7 @@ module VivlioStarter
       def test_create_without_arguments_exits_with_usage
         within_temp_dir do
           assert_raises(SystemExit) do
-            capture_io { CreateCommands.execute_create(command_context, []) }
+            capture_io { CreateCommands.execute_create([]) }
           end
         end
       end
@@ -194,7 +194,7 @@ module VivlioStarter
       # _titlepage.md が .cache/vs/ に生成されることを確認
       def test_titlepage_generated_in_cache_dir
         within_temp_dir do
-          capture_io { CreateCommands.execute_titlepage({}) }
+          capture_io { CreateCommands.execute_titlepage }
 
           assert File.exist?(File.join(Common::CACHE_DIR, '_titlepage.md')),
                  '_titlepage.md は .cache/vs/ に生成されるべき'
@@ -206,7 +206,7 @@ module VivlioStarter
       # _colophon.md が .cache/vs/ に生成されることを確認
       def test_colophon_generated_in_cache_dir
         within_temp_dir do
-          capture_io { CreateCommands.execute_colophon({}) }
+          capture_io { CreateCommands.execute_colophon }
 
           assert File.exist?(File.join(Common::CACHE_DIR, '_colophon.md')),
                  '_colophon.md は .cache/vs/ に生成されるべき'
@@ -218,7 +218,7 @@ module VivlioStarter
       # _legalpage.md が .cache/vs/ に生成されることを確認
       def test_legalpage_generated_in_cache_dir
         within_temp_dir do
-          capture_io { CreateCommands.execute_legalpage({}) }
+          capture_io { CreateCommands.execute_legalpage }
 
           assert File.exist?(File.join(Common::CACHE_DIR, '_legalpage.md')),
                  '_legalpage.md は .cache/vs/ に生成されるべき'
@@ -236,7 +236,7 @@ module VivlioStarter
           original = "# 既存タイトル\n"
           File.write(File.join(Common::CACHE_DIR, '_titlepage.md'), original)
 
-          capture_io { CreateCommands.execute_titlepage({}) }
+          capture_io { CreateCommands.execute_titlepage }
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           refute_equal original, content,
@@ -248,7 +248,7 @@ module VivlioStarter
       # book.yml のタイトル変更が反映されることを確認
       def test_titlepage_reflects_book_yml_title
         within_temp_dir do
-          capture_io { CreateCommands.execute_titlepage({}) }
+          capture_io { CreateCommands.execute_titlepage }
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           assert_match(/Sample/, content, 'book.yml の title が反映される')
@@ -257,7 +257,7 @@ module VivlioStarter
           update_book_title('New Title')
           Common.reload_configuration!
 
-          capture_io { CreateCommands.execute_titlepage({}) }
+          capture_io { CreateCommands.execute_titlepage }
 
           content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
           assert_match(/New Title/, content, 'book.yml 更新後に再生成すると新タイトルが反映される')
@@ -282,10 +282,6 @@ module VivlioStarter
           project:
             include_version: false
         YAML
-      end
-
-      def command_context(options = {})
-        { options: options }
       end
 
       # 一時ディレクトリで副作用を隔離

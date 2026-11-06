@@ -30,7 +30,6 @@ module VivlioStarter
         many :targets, '削除対象（章番号/レンジ/ファイル名）', default: []
 
         options do
-          option '--verbose/-v', '冗長ログを表示', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -45,7 +44,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          report_result(DeleteCommands::DeleteCommandExecutor.new(options, target_args).call)
+          report_result(DeleteCommands::DeleteCommandExecutor.new(target_args).call)
           0
         rescue SystemExit => e
           raise e

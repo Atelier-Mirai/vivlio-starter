@@ -55,7 +55,7 @@ module VivlioStarter
             Common.log_warn('[Step 6] _toc.html が見つかりません。')
             return
           end
-          PostProcessCommands.execute_post_process({}, ['_toc'])
+          PostProcessCommands.execute_post_process(['_toc'])
           Common.log_success('[Step 6] _toc.html を生成しました（PDF ビルドはスキップ）')
         end
       end

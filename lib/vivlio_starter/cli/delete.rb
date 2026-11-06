@@ -47,15 +47,11 @@ module VivlioStarter
       # オプション解釈・対象解決・削除処理の各責務を分離し、
       # テスト容易性と保守性を確保している。
       class DeleteCommandExecutor
-        # @param options_source [Hash, Object] オプション情報
-        #   - Hash: { verbose: false }
-        #   - Object: #options メソッドで Hash を返すオブジェクト
         # @param tokens [Array<String>] 削除対象の指定
         #   - 章番号: "11" → 11-*.md にマッチ
         #   - 範囲: "11-13" → 11〜13 番の章すべて
         #   - ファイル名: "11-install" → 11-install.md
-        def initialize(options_source, tokens)
-          @options = DeleteOptions.new(options_source)
+        def initialize(tokens)
           @resolver = TargetResolver.new(tokens)
           @deletion = ChapterDeletion.new
         end
@@ -65,7 +61,6 @@ module VivlioStarter
         # @return [DeleteSummary] 削除した対象の内訳（表示は呼び出し側の責務）
         # @raise [SystemExit] 対象が見つからない場合・端末でない場合 exit(1)
         def call
-          options.apply_verbose!
           ensure_targets!
           ensure_terminal!
 
@@ -74,7 +69,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :resolver, :deletion
+        attr_reader :resolver, :deletion
 
         # 削除対象が空の場合、警告を出力して終了する
         # CI/CD での検知を可能にするため exit(1) で異常終了
@@ -97,46 +92,6 @@ module VivlioStarter
         # @return [Array<String>] 削除対象のファイル名リスト
         def targets
           resolver.targets
-        end
-      end
-
-      # CLI オプションを正規化し、各種フラグへのアクセスを提供する
-      #
-      # 異なる形式のオプション入力（Hash / Samovar コマンド）を
-      # 統一的なインターフェースで扱えるようにする
-      class DeleteOptions
-        # @param source [Hash, Object] オプションソース
-        #   - Hash: { verbose: false }
-        #   - Object: #options で Hash を返すオブジェクト
-        def initialize(source)
-          @option_values = extract_option_values(source)
-        end
-
-        # verbose オプションが有効な場合、環境変数を設定してログを詳細化する
-        def apply_verbose!
-          ENV['VERBOSE'] = '1' if verbose?
-        end
-
-        # @return [Boolean] verbose モードが有効か
-        def verbose?
-          !!option_values[:verbose]
-        end
-
-        private
-
-        attr_reader :option_values
-
-        # オプションソースから Hash を抽出する
-        # @param source [Hash, Object] オプションソース
-        # @return [Hash] オプション Hash
-        def extract_option_values(source)
-          if source.respond_to?(:options)
-            source.options || {}
-          elsif source.is_a?(Hash)
-            source
-          else
-            {}
-          end
         end
       end
 

@@ -783,7 +783,7 @@ module VivlioStarter
       end
 
       def options_context(opts = {})
-        { options: { fix: false, yes: false, verbose: false }.merge(opts) }
+        { options: { fix: false, yes: false }.merge(opts) }
       end
 
       # OCR 任意ツール診断テスト（PT-01/PT-02）共通のスタブ一式。
