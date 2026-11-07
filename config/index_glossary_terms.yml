@@ -2149,7 +2149,7 @@ terms:
   - 21-markdown-tutorial
   updated_at: '2026-10-04 00:05:46'
 - term: アバター
-  yomi: アバター
+  yomi: あばたー
   flags: i
   definition: ''
   source: auto_extracted
@@ -2159,7 +2159,7 @@ terms:
   - 22-extensions
   updated_at: '2026-10-04 00:05:46'
 - term: スラッグ
-  yomi: スラッグ
+  yomi: すらっぐ
   flags: i
   definition: ''
   source: auto_extracted
@@ -2169,7 +2169,7 @@ terms:
   main:
   - 24-chapter-management
 - term: プリセット
-  yomi: プリセット
+  yomi: ぷりせっと
   flags: i
   definition: ''
   source: auto_extracted
@@ -2179,7 +2179,7 @@ terms:
   main:
   - 32-metrics
 - term: ラスタライズ
-  yomi: ラスタライズ
+  yomi: らすたらいず
   flags: ig
   definition: ベクタの図形や文字を、画素の集まりの画像へ変換すること。Kindle（KFX）は SVG を扱えないため、図版や扉絵はビルド時に JPEG
     などへ変換して収める。
