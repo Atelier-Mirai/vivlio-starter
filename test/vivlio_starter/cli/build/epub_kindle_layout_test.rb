@@ -31,6 +31,7 @@ module VivlioStarter
 
       def teardown
         @saved_logs&.each { |name, m| Common.define_singleton_method(name, m) }
+        @compose_dirs&.each { FileUtils.rm_rf(it) }
       end
 
       # body に vs-kindle クラスが付与される
@@ -154,30 +155,50 @@ module VivlioStarter
         assert_includes style, 'float: left'
       end
 
-      # .pictures は KFX が flex を解さず 1 枚ずつ全幅になるので、inline-block の横並びにする。
-      # 1 行は 2 枚まで（3・4 枚目は次の行）。写真の間の空白は取り除く
-      def test_should_lay_out_pictures_side_by_side_with_inline_block
-        figures = (1..4).map { %(<figure><img src="images/p#{it}.jpg" alt=""></figure>) }.join("\n")
-        html = %(<html><body><div class="pictures" style="--pictures-columns: 4">\n#{figures}\n</div></body></html>)
-        doc = process(html) { |files| Builder.lay_out_pictures_for_kindle!(files) }
+      # .pictures は KFX が flex を解さず 1 枚ずつ全幅になるので、1 行 2 枚ずつ 1 枚の画像に合成する。
+      # 3 枚なら 2 行。どの行も同じ幅のキャンバスに焼き、本文の幅いっぱいに表示する。
+      # 1 行の写真は同じ大きさ（高さはいちばん高い写真に合わせて切り抜く）
+      def test_should_compose_pictures_into_one_image_per_row
+        skip 'ImageMagick (magick) が必要です' unless system('which magick > /dev/null 2>&1')
 
-        styles = doc.css('.pictures > figure').map { it['style'] }
-        assert(styles.all? { it.include?('display: inline-block') && it.include?('width: 48.5%') })
-        assert_includes doc.at_css('.pictures figure img')['style'], 'width: 100%'
-        assert_includes styles[0], 'margin: 0 1.0% 0.5em 0'
-        assert_includes styles[1], 'margin: 0 0% 0.5em 0', '2 枚目で行が終わる'
-        assert(doc.at_css('.pictures').children.none? { it.text? }, '写真の間の空白は取り除く')
+        sizes = { 'a' => '300x420', 'b' => '296x433', 'c' => '700x1000' }
+        figures = sizes.keys.map { %(<figure><img src="images/_epub_assets/#{it}.jpg" alt="#{it.upcase}"></figure>) }.join("\n")
+        doc, dir = compose(%(<div class="pictures" style="--pictures-columns: 3">\n#{figures}\n</div>), sizes)
+
+        imgs = doc.css('.pictures img')
+        assert_equal 2, imgs.size, '3 枚は 2 枚と 1 枚の 2 行'
+        assert_equal %w[A・B C], imgs.map { it['alt'] }
+        assert(imgs.all? { it['style'].include?('width: 100%') && it['src'].include?('pictures-') })
+        first, second = imgs.map { Common.image_size(File.join(dir, it['src'])) }
+        assert_equal 1024, first[0]
+        assert_equal 1024, second[0], '1 枚だけの行も同じ幅のキャンバス（写真は中央に同じ幅で置く）'
+        assert_equal (502 * 433 / 296.0).round, first[1], '行の高さはいちばん高い写真に合わせる'
       end
 
-      # .image-group は {width=40%} から作った比（--image-group-col1/2）で 2 枚を並べる
-      def test_should_lay_out_image_group_by_its_column_ratio
-        html = '<html><body><div class="image-group" style="--image-group-col1: 0.4fr; --image-group-col2: 0.6fr">' \
-               '<figure><img src="images/a.jpg" alt=""></figure><figure><img src="images/b.jpg" alt=""></figure></div></body></html>'
-        doc = process(html) { |files| Builder.lay_out_pictures_for_kindle!(files) }
+      # .image-group は {width=40%} から作った比（--image-group-col1/2）の幅で 1 枚に合成する
+      def test_should_compose_image_group_by_its_column_ratio
+        skip 'ImageMagick (magick) が必要です' unless system('which magick > /dev/null 2>&1')
 
-        styles = doc.css('.image-group > figure').map { it['style'] }
-        assert_includes styles[0], 'width: 38.8%'
-        assert_includes styles[1], 'width: 58.2%'
+        sizes = { 'meter' => '400x300', 'kilogram' => '600x400' }
+        html = '<div class="image-group" style="--image-group-col1: 0.4fr; --image-group-col2: 0.6fr">' +
+               sizes.keys.map { %(<figure><img src="images/_epub_assets/#{it}.jpg" alt=""></figure>) }.join + '</div>'
+        doc, = compose(html, sizes)
+
+        assert_equal 1, doc.css('.image-group img').size
+        layout = Builder.picture_row_layout(%w[meter kilogram].map { "#{@compose_dir}/images/_epub_assets/#{it}.jpg" },
+                                            ratio: [0.4, 0.6])
+        assert_equal [401, 602], layout[:cells].map { it[:width] }
+        assert_equal (602 * 400 / 600.0).round, layout[:height], '上をそろえ、高さは高いほう'
+      end
+
+      # 画像が見つからない囲みは、そのまま残す（写真が欠けるよりよい）
+      def test_should_leave_pictures_untouched_when_an_image_is_missing
+        doc = process('<html><body><div class="pictures"><figure><img src="images/x.jpg" alt=""></figure>' \
+                      '<figure><img src="images/y.jpg" alt=""></figure></div></body></html>') do |files|
+          Builder.compose_pictures_for_kindle!(files)
+        end
+
+        assert_equal %w[images/x.jpg images/y.jpg], doc.css('.pictures img').map { it['src'] }
       end
 
       # sideimage（figure 子）は figure に幅・float、内側 img に width:100% を付与
@@ -713,6 +734,21 @@ module VivlioStarter
       end
 
       private
+
+      # 写真の並びを合成する。画像は sizes の寸法で images/_epub_assets/ に作る。
+      # 一時ディレクトリは teardown で消す（@compose_dirs）。
+      # @return [Array(Nokogiri::HTML5::Document, String)] 結果の DOM と HTML のディレクトリ
+      def compose(container_html, sizes)
+        dir = Dir.mktmpdir('vs-kindle-pictures')
+        (@compose_dirs ||= []) << dir
+        @compose_dir = dir
+        FileUtils.mkdir_p(File.join(dir, 'images/_epub_assets'))
+        sizes.each { |name, size| system('magick', '-size', size, 'xc:gray', File.join(dir, "images/_epub_assets/#{name}.jpg")) }
+        path = File.join(dir, 'chapter.html')
+        File.write(path, "<html><body>#{container_html}</body></html>", encoding: 'utf-8')
+        Builder.compose_pictures_for_kindle!([path])
+        [Nokogiri::HTML5(File.read(path, encoding: 'utf-8')), dir]
+      end
 
       # 一時ファイルに html を書き、ブロックで変換を適用し、保存結果を Nokogiri で返す
       def process(html)

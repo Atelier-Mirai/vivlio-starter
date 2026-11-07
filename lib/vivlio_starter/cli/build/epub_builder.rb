@@ -397,7 +397,7 @@ module VivlioStarter
             mark_body_for_kindle!(chapter_htmls)
             restore_h3_markers_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
-            lay_out_pictures_for_kindle!(chapter_htmls)
+            compose_pictures_for_kindle!(chapter_htmls)
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
             textify_simple_math_for_kindle!(chapter_htmls)
@@ -2143,66 +2143,127 @@ module VivlioStarter
         # 2 枚を上限にする（3 枚なら 2 枚と 1 枚の 2 行。2026-11-07 ユーザー判断）
         KINDLE_PICTURES_MAX_COLUMNS = 2
 
-        # 横に並べた写真の間（本文の幅に対する %）
-        KINDLE_PICTURES_GAP = 1.0
+        # 合成する 1 行の画像の幅（px）と、写真の間（幅に対する割合）。
+        # どの行も同じ幅のキャンバスに焼き、Kindle では本文の幅いっぱいに表示する
+        KINDLE_PICTURES_ROW_WIDTH = KINDLE_IMAGE_MAX_EDGE
+        KINDLE_PICTURES_GAP_RATIO = 0.02
 
-        # 1 行の幅の合計に残すゆとり（%）。Previewer で確かめた合計（2 枚で 98%・3 枚で 96%）に
-        # 近づけ、字間などで行からあふれて折り返さないようにする
-        KINDLE_PICTURES_SLACK = 2.0
-
-        # 写真を横に並べる囲みを、Kindle で画像の横並びに組み替える。
+        # 写真を横に並べる囲み（.pictures・.image-group）を、Kindle では 1 行ずつ 1 枚の画像に
+        # 合成して差し替える（:::{.showcase} の注釈と同じ考え方）。
         #
-        # PDF は .pictures を flex、.image-group を grid で組むが、KFX はどちらも解さず block に
-        # 潰すので、写真が 1 枚ずつ本文の幅いっぱいに広がり、1 ページに 1 枚ずつ並んでいた。
-        # figure を inline-block にして幅の % を付ける（Tablet・Phone とも横に並ぶ）。
-        # 既知の癖: KFX は行の左の箱をおよそ 1 字分狭く組む（2 枚で左が右の 86〜91%）。
-        # 幅を img に付けると Tablet ではそろうが、Phone では幅が守られず 1 枚ずつ縦に並ぶ。
-        # 字下げなし・先頭の幅 0 の箱・負の左余白でも直らなかった。1 行の表は、写真がページの
-        # 高さまで広がって 1 ページに 1 枚になる（どれも Previewer で確かめた 2026-11-07）。
+        # PDF は .pictures を flex、.image-group を grid で組むが、KFX はどちらも解さず、写真が
+        # 1 枚ずつ本文の幅いっぱいに並んでいた。CSS で横に並べる手はどれも端末で崩れた
+        # （Previewer で確かめた 2026-11-07・kindle-css-compatibility-notes.md）:
+        # inline-block の箱に幅を付けると行の左の箱が約 1 字分狭くなり、img に幅を付けると
+        # Phone で幅が守られず縦に並び、1 行の表は 1 ページに 1 枚になる。画像に焼けば、
+        # どの端末でも PDF と同じ並びになる。
         #
-        # 画面の幅で枚数を変えることはできない。KFX は `@media (max-width: …)` を適用せず、
-        # `min-width` で幅を守らせても折り返さずに画面からはみ出す（同日に Phone で確かめた）。
-        # 写真の間の空白は、幅の計算に入らない字間になるので取り除く。
-        def lay_out_pictures_for_kindle!(html_files)
+        # 組み方は PDF に合わせる。.pictures は同じ幅で、行の高さはいちばん高い写真に合わせ、
+        # ほかは中央で切り抜く（object-fit: cover）。1 枚だけの行も同じ幅で中央に置く。
+        # .image-group は {width=40%} から作った比の幅で、上をそろえる（align-items: start）。
+        def compose_pictures_for_kindle!(html_files)
           html_files.each do |path|
             doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
             containers = doc.css('div.pictures, div.image-group')
             next if containers.empty?
 
-            containers.each do |container|
-              figures = container.element_children.select { it.name == 'figure' }
-              next if figures.size < 2
+            html_dir = File.dirname(path)
+            composed = containers.count { compose_picture_container!(it, html_dir) }
+            next if composed.zero?
 
-              container.children.each { it.remove if it.text? && it.text.strip.empty? }
-              widths = kindle_picture_widths(container, figures.size)
-              figures.each_with_index do |figure, i|
-                last_in_row = ((i + 1) % widths.size).zero? || i == figures.size - 1
-                add_inline_style(figure, "display: inline-block; vertical-align: top; width: #{widths[i % widths.size]}%; " \
-                                         "margin: 0 #{last_in_row ? 0 : KINDLE_PICTURES_GAP}% 0.5em 0;")
-                image = figure.at_css('img')
-                add_inline_style(image, 'width: 100%; height: auto; margin: 0;') if image
-              end
-              # PDF と同じく、行の余り（3 枚の行に 2 枚だけ回ったときなど）を左右に振り分ける
-              add_inline_style(container, 'text-align: center; text-indent: 0;')
-            end
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の写真を横に並べました")
+            Common.log_info("[EPUB] #{File.basename(path)} の写真の並び #{composed} か所を 1 行 1 枚の画像に合成しました")
           end
           html_files
         end
 
-        # 1 行に並べる写真の幅（%）を、行の左から順に返す。配列の長さが 1 行の枚数になる。
-        # .image-group は post_process が書いた比（--image-group-col1/2。{width=40%} から作る）に従う
-        def kindle_picture_widths(container, count)
-          available = ->(columns) { 100 - KINDLE_PICTURES_SLACK - (KINDLE_PICTURES_GAP * (columns - 1)) }
-          if container['class'].to_s.split.include?('image-group')
-            style = container['style'].to_s
-            ratio = %w[col1 col2].map { style[/--image-group-#{it}:\s*([\d.]+)fr/, 1]&.to_f || 1.0 }
-            return ratio.map { (available.(2) * it / ratio.sum).floor(1) }
-          end
+        # 囲み 1 つを、行ごとの合成画像に差し替える。合成できなければ何もせず false を返す
+        # （写真は 1 枚ずつ縦に並ぶ。欠けるよりよい）。
+        def compose_picture_container!(container, html_dir)
+          images = container.css('figure img')
+          return false if images.size < 2
 
-          columns = [count, KINDLE_PICTURES_MAX_COLUMNS].min
-          Array.new(columns, (available.(columns) / columns).floor(1))
+          sources = images.map { resolve_picture_source(it['src'].to_s, html_dir) }
+          return false if sources.any?(&:nil?)
+
+          group = container['class'].to_s.split.include?('image-group')
+          rows = sources.zip(images.map { it['alt'].to_s }).each_slice(group ? 2 : KINDLE_PICTURES_MAX_COLUMNS).to_a
+          ratio = group ? image_group_ratio(container['style'].to_s) : nil
+          figures = rows.map do |row|
+            rel = compose_picture_row(row.map(&:first), html_dir, ratio:)
+            return false unless rel
+
+            alt = CGI.escapeHTML(row.map(&:last).reject(&:empty?).join('・'))
+            %(<figure style="margin: 0 0 0.5em 0;"><img src="#{rel}" alt="#{alt}" style="width: 100%; height: auto; margin: 0;" /></figure>)
+          end
+          container.children.each(&:remove)
+          container.add_child(container.document.fragment(figures.join))
+          true
+        end
+
+        # 画像の実体のパス。変換済みの画像は HTML の隣、原稿の画像はルートからの相対で探す。
+        def resolve_picture_source(src, html_dir)
+          path = decode_html_entities(src)
+          [File.join(html_dir, path), path, File.join(Common::BUILD_HTML_DIR, path)].find { File.file?(it) }
+        end
+
+        # .image-group の 2 列の比（post_process が {width=40%} から書いた --image-group-col1/2）。
+        def image_group_ratio(style)
+          %w[col1 col2].map { style[/--image-group-#{it}:\s*([\d.]+)fr/, 1]&.to_f || 1.0 }
+        end
+
+        # 1 行を合成し、HTML から見た相対パスを返す。失敗したら nil。
+        def compose_picture_row(sources, html_dir, ratio: nil)
+          layout = picture_row_layout(sources, ratio:)
+          return nil unless layout
+
+          key = Digest::SHA256.hexdigest(
+            (sources.map { [File.expand_path(it), File.mtime(it).to_i] } + [ratio, KINDLE_PICTURES_ROW_WIDTH]).inspect
+          )[0, 16]
+          rel = "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/pictures-#{key}.jpg"
+          dest = File.join(html_dir, rel)
+          return rel if File.exist?(dest)
+
+          FileUtils.mkdir_p(File.dirname(dest))
+          cmd = ['magick', '-size', "#{KINDLE_PICTURES_ROW_WIDTH}x#{layout[:height]}", 'xc:white']
+          layout[:cells].each do |cell|
+            fit = if ratio
+                    ['-resize', "#{cell[:width]}x"]
+                  else
+                    ['-resize', "#{cell[:width]}x#{layout[:height]}^", '-gravity', 'center',
+                     '-extent', "#{cell[:width]}x#{layout[:height]}", '+gravity']
+                  end
+            cmd += ['(', cell[:source], '-background', 'white', '-flatten', *fit, ')',
+                    '-geometry', "+#{cell[:x]}+0", '-composite']
+          end
+          cmd += ['-strip', '-quality', '90', dest]
+          system(*cmd, out: File::NULL, err: File::NULL) && File.exist?(dest) ? rel : nil
+        end
+
+        # 1 行の各写真の幅と左端（px）と、行の高さ。
+        # .pictures（ratio なし）は同じ幅で、高さはいちばん高い写真に合わせる。枚数が上限に
+        # 満たない行も同じ幅のまま中央に置く。.image-group は比の幅で、高さは高いほう。
+        def picture_row_layout(sources, ratio: nil)
+          sizes = sources.map { Common.image_size(it) }
+          return nil if sizes.any?(&:nil?)
+
+          gap = (KINDLE_PICTURES_ROW_WIDTH * KINDLE_PICTURES_GAP_RATIO).round
+          columns = ratio ? 2 : KINDLE_PICTURES_MAX_COLUMNS
+          available = KINDLE_PICTURES_ROW_WIDTH - (gap * (columns - 1))
+          widths = if ratio
+                     ratio.first(sources.size).map { (available * it / ratio.sum).floor }
+                   else
+                     Array.new(sources.size, available / columns)
+                   end
+          height = sizes.zip(widths).map { |(w, h), cell| (cell * h.to_f / w).round }.max
+          used = widths.sum + (gap * (widths.size - 1))
+          x = (KINDLE_PICTURES_ROW_WIDTH - used) / 2
+          cells = sources.zip(widths).map do |source, width|
+            cell = { source:, width:, x: }
+            x += width + gap
+            cell
+          end
+          { height:, cells: }
         end
 
         # 枠の中の横並びを、float から 1 行の表へ組み替える。
