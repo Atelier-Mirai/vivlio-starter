@@ -215,8 +215,15 @@ module VivlioStarter
 
         # 読みの並べ順。英字の大文字と小文字を区別しない（辞書の並び）。文字コードのまま
         # 比べると大文字が小文字より先に来て、K の行が「KPF → Kindle」になっていた（改善案 #99）。
-        # 大文字・小文字だけが違う読みは、元の読みで並べて順番を毎回同じにする
-        def yomi_order(yomi) = [yomi.to_s.downcase, yomi.to_s]
+        # 大文字・小文字だけが違う読みは、元の読みで並べて順番を毎回同じにする。
+        #
+        # カタカナはひらがなにそろえて比べる。読みをカタカナで登録した語（ラスタライズ）は、
+        # 文字コードのままだと五十音の行の末尾に回り、「ラベル ID → ラスタライズ」と並んでいた。
+        # 行の振り分け（match_kana_row）はカタカナを受け付けるので、並びだけがずれていた
+        def yomi_order(yomi)
+          text = yomi.to_s
+          [text.downcase.tr('ァ-ヶ', 'ぁ-ゖ'), text]
+        end
 
         # 五十音の行ごとにグループ化
         def group_by_kana_row(sorted_terms)

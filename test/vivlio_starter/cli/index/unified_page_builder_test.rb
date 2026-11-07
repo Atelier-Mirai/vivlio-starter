@@ -96,6 +96,24 @@ module VivlioStarter
           assert_equal order.sort, order
         end
 
+        # 読みがカタカナの語も、ひらがなの読みと五十音順で混ぜて並べる。文字コード順だと
+        # 「ラスタライズ」が「ラベル ID」の後（ら行の末尾）に回っていた
+        def test_build_index_should_sort_katakana_readings_with_hiragana
+          create_index_cache(
+            { 'ラベル ID' => [{ 'yomi' => 'らべるID', 'link' => '01.html#a' }],
+              'ラスタライズ' => [{ 'yomi' => 'ラスタライズ', 'link' => '01.html#b' }],
+              '辞書' => [{ 'yomi' => 'じしょ', 'link' => '01.html#c' }],
+              'スラッグ' => [{ 'yomi' => 'スラッグ', 'link' => '01.html#d' }] }
+          )
+
+          @builder.build_index!
+
+          html = File.read(INDEX_OUTPUT_FILE)
+          order = ['辞書', 'スラッグ', 'ラスタライズ', 'ラベル ID'].map { html.index(">#{it}<") }
+          assert(order.all?, "語が見つからない: #{order.inspect}")
+          assert_equal order.sort, order
+        end
+
         def test_build_index_returns_nil_when_empty
           create_index_cache({})
 
@@ -443,6 +461,17 @@ module VivlioStarter
           html = File.read(GLOSSARY_OUTPUT_FILE)
           refute_includes html, '<rt>css</rt>'
           assert_includes html, '<rt>くみはん</rt>'
+        end
+
+        # 用語集も索引と同じ並び。読みがカタカナの語を、ら行の末尾へ回さない
+        def test_build_glossary_should_sort_katakana_readings_with_hiragana
+          terms = [{ 'term' => 'ラベル ID', 'yomi' => 'らべるID', 'definition' => '説明', 'flags' => 'g' },
+                   { 'term' => 'ラスタライズ', 'yomi' => 'ラスタライズ', 'definition' => '説明', 'flags' => 'g' }]
+
+          @builder.build_glossary!(terms)
+
+          html = File.read(GLOSSARY_OUTPUT_FILE)
+          assert_operator html.index('ラスタライズ'), :<, html.index('ラベル ID')
         end
 
         # R2: バックリンクは中間 YAML（_index_matches.yml）の glossary_backlinks から描画する
