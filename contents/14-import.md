@@ -52,7 +52,7 @@ vs import ../review_project
 
 `vs import` には、`catalog.yml` がある Re:VIEW Starter プロジェクトのルートを指定します。取り込み元のファイルは読み取るだけで、変更しません。
 
-移行先の `contents/`・`images/`・`codes/` は作り直すので、削除してよいかの確認が表示されます。索引・用語集の辞書（`config/index_glossary_terms.yml` など）も空に戻します。`vs new` で作った直後なら、削除されるのは雛形の見本だけです。
+移行先の `contents/`・`images/`・`codes/` は作り直すので、削除してよいかの確認が表示されます。索引・用語集の辞書（`config/index_glossary_terms.yml` など）も空に戻します。`vs new` で作った直後なら、削除されるのは雛形の見本だけです。取り込み直すときは、取り込んだ後に手を入れた原稿や画像を、先に別の場所へ保存してください。
 
 ## 変換の内容
 
@@ -156,29 +156,19 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 1. 🔴 が出ていたら、その箇所を手で直す
 2. `contents/` に Markdown が揃っているか
 3. `.webp` 以外の画像が残っていないか
-4. `covers/frontcover_master.png` と `backcover_master.png` が自分の表紙になっているか
-5. `config/book.yml` の `book.main_title` などが期待どおりか（コメントが消えていないか）
+4. `covers/` の表紙の画像が、自分の表紙になっているか
+5. `config/book.yml` の書名などが期待どおりか
 6. `config/catalog.yml` の章名が `.re` を含んでいないか
 
 確認後に `vs build` を実行し、章の並びや画像、表紙を PDF で見てください。索引・用語集を使う場合は、原稿に合わせて `vs index:auto` で辞書を作り直します。ここまで確かめれば、新しい環境での執筆を続けられます。
-
-:::{.notice}
-移行先の画像は WebP になります。元の PNG・JPEG・GIF は取り込み元に残ります。
-:::
 
 ## トラブルシューティング
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
 | `catalog.yml が見つかりません` | 指定したディレクトリに `catalog.yml` がない | `catalog.yml` のあるディレクトリを指定する |
-| `原稿（.re）が見つかりません` | 原稿のディレクトリに `.re` が一つもない | 原稿のディレクトリ（既定は `contents/`。`config.yml` の `contentdir` で変えているときはそのディレクトリ）を確かめる |
+| `原稿（.re）が見つかりません` | 原稿のディレクトリに `.re` が一つもない | `config.yml` の `contentdir`（既定は `contents/`）のディレクトリを確かめる |
 | 章が足りない | 取り込み元の `catalog.yml` に載っていない | `catalog.yml` に章を追加して、取り込み直す |
 | 会話の話者名が `avatar-b` のように表示され、アバターも付かない | `config/talk.yml` に話者が登録されていない | 🟡 が挙げた話者を `config/talk.yml` に登録する |
-| 表紙が取り込まれない | `frontcover_pdffile` に PDF 以外（PNG など）を指定している | 自分の表紙の画像を `covers/frontcover_master.png` に置く |
-| 本に裏表紙が付かない | 取り込み元に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を置く（雛形は `covers/templates/`） |
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を指定する |
 | `config/book.yml` に書名などが入らない | `config/book.yml` からその項目の行を削除したか、コメントにした | 🟡 が示す行を `config/book.yml` に書き足す |
-
-:::{.notice}
-取り込み直すと、移行先の `contents/`・`images/`・`codes/` は作り直されます。取り込んだ後に手を入れた原稿や画像は、先に別の場所へ保存してください。
-:::
