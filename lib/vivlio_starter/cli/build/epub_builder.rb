@@ -577,7 +577,8 @@ module VivlioStarter
         def write_epub_entries(base_dir, html_files)
           entries = html_files.map do |html|
             entry = CLI::EntriesCommands.build_entry(html).merge(path: "./#{File.basename(html)}")
-            entry.merge(title: EPUB_ENTRY_TITLES.fetch(File.basename(html, '.html'), entry[:title]))
+            title = EPUB_ENTRY_TITLES.fetch(File.basename(html, '.html'), entry[:title])
+            entry.merge(title: [chapter_number_display(html), title].compact.join(' '))
           end
 
           File.open(File.join(base_dir, EPUB_ENTRIES_FILE), 'w') do |f|
@@ -591,6 +592,18 @@ module VivlioStarter
             f.puts ']'
           end
         end
+
+# 章の見出しに付いた番号（「第1章」「付録 A」）。前書き・部扉・用語集など番号の無い文書と、
+# heading_numbering: none の本では nil。
+#
+# 読書アプリの目次（EPUB の nav・Kindle の Table of Contents）は entries の title から作られ、
+# title は各章の <title>（章題だけ）なので、「執筆ワークフローとクイックスタート」と番号無しで
+# 並んでいた。本文中の参照は「第1章「…」」と番号で指すので、目次にも添える。
+def chapter_number_display(html)
+  File.read(html, encoding: 'utf-8')[/<h1\b[^>]*\bdata-chapter-number-display="([^"]+)"/, 1]&.strip
+rescue StandardError
+  nil
+end
 
         # 除外対象の basename かどうかを判定する
         #

@@ -98,6 +98,28 @@ module VivlioStarter
         end
       end
 
+      # 読書アプリの目次に、章の番号（第1章・付録 A）を章題の前に添える。番号の無い文書はそのまま
+      def test_should_prefix_chapter_number_to_entry_titles
+        Dir.mktmpdir('vs-epub-entries') do |dir|
+          pages = {
+            '11-workflow.html' => '<h1 data-chapter-number-display="第1章">執筆</h1>',
+            '90-cheatsheet.html' => '<h1 data-chapter-number-display="付録 A">早見表</h1>',
+            '00-preface.html' => '<h1>はじめに</h1>'
+          }
+          paths = pages.map do |name, h1|
+            path = File.join(dir, name)
+            File.write(path, "<html><head><title>#{h1[/>([^<]+)</, 1]}</title></head><body>#{h1}</body></html>")
+            path
+          end
+          Builder.write_epub_entries(dir, paths)
+
+          entries = File.read(File.join(dir, Builder::EPUB_ENTRIES_FILE))
+          assert_includes entries, '"title": "第1章 執筆"'
+          assert_includes entries, '"title": "付録 A 早見表"'
+          assert_includes entries, '"title": "はじめに"'
+        end
+      end
+
       # 索引の語を横に並ぶ形へ組み替える（表にするとリンクをたどるのに拡大が要る）
       def test_should_layout_index_items_without_table
         html = <<~HTML
