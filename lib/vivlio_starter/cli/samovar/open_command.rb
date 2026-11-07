@@ -40,8 +40,6 @@ module VivlioStarter
 
           PdfCommands.execute_open_pdf({}, target)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("open 実行中にエラー: #{e.message}")
           Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']

@@ -47,8 +47,6 @@ module VivlioStarter
 
           report_created(CreateCommands.execute_create(names))
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("create コマンド実行中にエラー: #{e.message}")
           1
@@ -76,14 +74,10 @@ module VivlioStarter
         def call
           CreateCommands.execute_titlepage
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("create:titlepage 実行中にエラー: #{e.message}")
           1
         end
-
-        private
       end
 
       # create:colophon コマンド（内部コマンド）
@@ -93,14 +87,10 @@ module VivlioStarter
         def call
           CreateCommands.execute_colophon
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("create:colophon 実行中にエラー: #{e.message}")
           1
         end
-
-        private
       end
 
       # create:legalpage コマンド（内部コマンド）
@@ -110,14 +100,10 @@ module VivlioStarter
         def call
           CreateCommands.execute_legalpage
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("create:legalpage 実行中にエラー: #{e.message}")
           1
         end
-
-        private
       end
     end
   end

@@ -138,8 +138,6 @@ module VivlioStarter
         rescue Guards::GuardError
           # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("Error: #{e.message}")
           1

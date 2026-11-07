@@ -273,7 +273,7 @@ module VivlioStarter
         end
 
         # --- Phase: 適用（改名 → 追加・更新・合流 → 競合の個別確認） ---
-        applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests, renames)
+        applied, skipped, backup_dir = apply_plan(cmd, plan, renames)
         return SyncResult.new(aborted: true, summary: '適用しませんでした') if applied.nil? # 全体確認で中止
 
         # --- Phase: lock・基準の更新 → 著者データの整理 → 完了報告 ---
@@ -636,7 +636,7 @@ module VivlioStarter
       # 追加・更新の一括適用と、競合の個別確認を行う。
       # @return [Array(Array<PlanItem>, Array<PlanItem>, String?), Array(nil, nil, nil)]
       #   applied / skipped / バックアップ先（全体確認で中止した場合は applied が nil）
-      def apply_plan(cmd, plan, scaffold_digests, renames)
+      def apply_plan(cmd, plan, renames)
         adds      = plan.select { %i[add add_empty].include?(it.status) }
         updates   = plan.select { it.status == :update }
         merges    = plan.select { it.status == :merge }

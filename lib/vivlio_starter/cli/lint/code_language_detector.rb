@@ -28,7 +28,6 @@
 # ================================================================
 
 require 'json'
-require 'set'
 require_relative '../masking'
 require_relative '../pre_process/math_span_detector'
 require_relative 'code_language_guesser'

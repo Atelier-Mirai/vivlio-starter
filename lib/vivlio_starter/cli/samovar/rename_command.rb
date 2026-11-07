@@ -52,8 +52,6 @@ module VivlioStarter
           ensure_argument_count!
           executor.call(*arguments.first(2))
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           VivlioStarter::CLI::Common.log_error("rename コマンド実行中にエラー: #{e.message}")
           1

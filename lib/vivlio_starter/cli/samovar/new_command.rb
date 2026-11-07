@@ -29,8 +29,6 @@ module VivlioStarter
           return print_usage if options[:help]
 
           NewCommands.run_from_command(self)
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("new コマンド実行中にエラー: #{e.message}")
           log_debug(e.full_message) if debug?

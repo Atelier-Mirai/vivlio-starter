@@ -149,7 +149,7 @@ module VivlioStarter
           parent_error = nil
           begin
             run_pdf_branch
-          rescue Exception => e # rubocop:disable Lint/RescueException — Interrupt も拾って子枝へ伝える
+          rescue Exception => e # rubocop:disable Lint/RescueException -- Interrupt も拾って子枝へ伝える
             @aborted = true
             parent_error = e
           end
@@ -166,7 +166,7 @@ module VivlioStarter
             Common.with_emit_sink(branch[:logs]) do
               Common.reset_vivliostyle_build_timings
               run_phase(:epub, into: branch[:timings])
-            rescue Exception => e # rubocop:disable Lint/RescueException — 親へ持ち帰って投げ直す
+            rescue Exception => e # rubocop:disable Lint/RescueException -- 親へ持ち帰って投げ直す
               branch[:error] = e
             ensure
               branch[:vivliostyle] = Common.consume_vivliostyle_build_timings

@@ -183,7 +183,7 @@ module VivlioStarter
       def emit_paragraph(flow, atoms)
         text = stringify(atoms).strip
         return if text.empty?
-        return if footnote_body?(atoms, text)
+        return if footnote_body?(atoms)
 
         last = flow.last
         if flow.top && last&.dig(:kind) == :paragraph && continues_on_next_page?(last[:atoms], atoms)
@@ -267,7 +267,7 @@ module VivlioStarter
       # --- Phase: 脚注 ---
 
       # 本文より小さい字で、番号から始まる段落を脚注の本文とする。参照のある番号だけを脚注にする
-      def footnote_body?(atoms, text)
+      def footnote_body?(atoms)
         # 番号が太字で描かれると「**1.**」になるので、強調などの印を外した文字で見る
         text = stringify(atoms.reject { it.is_a?(Mark) && it.side != :inline }).strip
         glyphs = glyphs_of(atoms)

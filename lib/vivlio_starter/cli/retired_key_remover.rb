@@ -22,7 +22,6 @@
 # ================================================================
 
 require 'yaml'
-require 'set'
 
 module VivlioStarter
   module CLI

@@ -43,8 +43,6 @@ module VivlioStarter
 
           report_result(CleanCommands.execute_clean(options.dup))
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           VivlioStarter::CLI::Common.log_warn("clean コマンド実行中にエラー: #{e.message}")
           1

@@ -47,8 +47,6 @@ module VivlioStarter
           # 診断の戻り値（Boolean）は従来どおり終了コードへ反映しない
           DoctorCommands.execute_doctor(context_options)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           VivlioStarter::CLI::Common.log_error("doctor コマンド実行中にエラー: #{e.message}")
           1

@@ -149,7 +149,7 @@ module VivlioStarter
           elsif scanner.check(/\{/)
             consume_brace_group(scanner, upright:, allow_script:, allow_frac:) # 透過グループ
           elsif scanner.scan(/\\/)
-            consume_command(scanner, upright:, allow_frac:)
+            consume_command(scanner, allow_frac:)
           elsif (op = scanner.scan(OPERATORS))
             escape_html(op)
           elsif (raw = scanner.scan(PASSTHROUGH))
@@ -166,7 +166,7 @@ module VivlioStarter
         end
 
         # \command を消費する。\ は消費済みで、続く名前/記号を読む。
-        def consume_command(scanner, upright:, allow_frac:)
+        def consume_command(scanner, allow_frac:)
           if (name = scanner.scan(/[A-Za-z]+/))
             dispatch_named_command(name, scanner, allow_frac:)
           elsif scanner.scan(/,/)      # \,  細空白

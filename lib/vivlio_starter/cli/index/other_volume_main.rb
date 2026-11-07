@@ -15,7 +15,6 @@
 # 仕様: index-other-volume-main-spec.md R1
 # ================================================================
 
-require 'set'
 require_relative '../common'
 require_relative '../token_resolver'
 require_relative '../build/volumes'

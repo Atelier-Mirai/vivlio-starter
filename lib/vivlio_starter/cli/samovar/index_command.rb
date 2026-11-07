@@ -101,8 +101,6 @@ module VivlioStarter
 
           UnifiedIndexManager.new.plan!(chapters)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("index:plan 実行中にエラー: #{e.message}")
           Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
@@ -146,8 +144,6 @@ module VivlioStarter
           manager = UnifiedIndexManager.new
           manager.auto_process!(chapters)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("index:auto 実行中にエラー: #{e.message}")
           Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
@@ -177,8 +173,6 @@ module VivlioStarter
           manager = UnifiedIndexManager.new
           manager.apply_markdown_review!
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("index:apply 実行中にエラー: #{e.message}")
           Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
@@ -206,8 +200,6 @@ module VivlioStarter
           Common.log_info("書き出し先: #{path}")
           IndexCommands::IndexLibrary.new.export!(path)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("index:export 実行中にエラー: #{e.message}")
           1
@@ -234,8 +226,6 @@ module VivlioStarter
           Common.log_info("取り込み元: #{path}")
           result = IndexCommands::IndexLibrary.new.import!(path)
           result ? 0 : 1
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("index:import 実行中にエラー: #{e.message}")
           1

@@ -46,10 +46,8 @@ module VivlioStarter
 
           report_result(DeleteCommands::DeleteCommandExecutor.new(target_args).call)
           0
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
-          common.log_error("delete コマンド実行中にエラー: #{e.message}")
+          Common.log_error("delete コマンド実行中にエラー: #{e.message}")
           1
         end
 
@@ -60,7 +58,7 @@ module VivlioStarter
           return unless summary.is_a?(DeleteCommands::DeleteSummary)
 
           if summary.none?
-            common.log_result('削除したものはありません', status: :success)
+            Common.log_result('削除したものはありません', status: :success)
             return
           end
 
@@ -68,15 +66,11 @@ module VivlioStarter
           parts << "文書 #{summary.documents} 件" if summary.documents.positive?
           parts << "画像ディレクトリ #{summary.image_dirs} 件" if summary.image_dirs.positive?
           parts << "目次の項目 #{summary.catalog_entries} 件" if summary.catalog_entries.positive?
-          common.log_result("削除しました（#{parts.join('・')}）", status: :success)
+          Common.log_result("削除しました（#{parts.join('・')}）", status: :success)
         end
 
         def target_args
           Array(targets).dup
-        end
-
-        def common
-          VivlioStarter::CLI::Common
         end
       end
     end

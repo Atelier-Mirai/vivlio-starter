@@ -11,9 +11,7 @@
 #   - render_html_document: Nokogiri Document → HTML 文字列
 #   - zero_width_text?: ゼロ幅文字のみかどうかを判定
 #
-# 互換性:
-#   - Nokogiri::HTML5 が利用可能なら HTML5 パーサーを使用
-#   - 利用不可なら従来の HTML パーサーにフォールバック
+# 解析には HTML5 パーサーを使う（Nokogiri 1.12 以降は CRuby で常に使える）。
 # ================================================================
 
 require 'nokogiri'
@@ -27,11 +25,7 @@ module VivlioStarter
 
         # Nokogiri を用いて HTML 文字列からドキュメントオブジェクトを生成する
         def parse_html_document(html)
-          if defined?(Nokogiri::HTML5)
-            Nokogiri::HTML5.parse(html)
-          else
-            Nokogiri::HTML.parse(html, nil, 'UTF-8')
-          end
+          Nokogiri::HTML5.parse(html)
         end
 
         # Nokogiri ドキュメントを HTML 文字列へ戻す（HTML5/HTML 両対応）

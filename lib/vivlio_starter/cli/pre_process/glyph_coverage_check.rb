@@ -33,7 +33,6 @@
 # ================================================================
 
 require 'cgi'
-require 'set'
 require_relative '../masking'
 require_relative 'svg_font_embedder'
 require_relative '../build/font_metrics'

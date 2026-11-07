@@ -150,12 +150,9 @@ module VivlioStarter
 
             log_debug("コピー: #{relative}")
           end
-        rescue Interrupt, SignalException
-          # Ctrl+C / SIGTERM: 中途半端なディレクトリを残さない
-          cleanup_partial_scaffold(project_name, created_root)
-          raise
-        rescue StandardError
-          # 展開中のその他例外も同様にロールバック
+        rescue SignalException, StandardError
+          # Ctrl+C / SIGTERM（Interrupt は SignalException の子）も、展開中のその他の例外も、
+          # 中途半端なディレクトリを残さないようロールバックしてから投げ直す
           cleanup_partial_scaffold(project_name, created_root)
           raise
         end

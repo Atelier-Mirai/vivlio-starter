@@ -44,19 +44,15 @@ module VivlioStarter
 
           ImportCommands.execute_import(starter_dir)
         rescue ArgumentError => e
-          common.log_error(e.message)
+          Common.log_error(e.message)
           1
         rescue StandardError => e
-          common.log_error("Error: #{e.message}")
-          common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
+          Common.log_error("Error: #{e.message}")
+          Common.log_error(e.backtrace.join("\n")) if ENV['VS_DEBUG']
           1
         end
 
         private
-
-        def common
-          VivlioStarter::CLI::Common
-        end
 
         def ensure_starter_dir!(starter_dir)
           return unless starter_dir.to_s.strip.empty?

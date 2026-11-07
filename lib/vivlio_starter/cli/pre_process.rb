@@ -5,9 +5,8 @@
 # ----------------------------------------------------------------
 # 【役割】
 # - Markdownファイルの前処理パイプラインを統括
-# - 各処理モジュールを読み込み、コマンドとして公開
-# - 各モジュールのメソッドを module_function として再公開し、前処理の入口を
-#   PreProcessCommands 一つに揃える（呼び出し側が個々のモジュールを知らずに済む）
+# - 各処理モジュールを読み込み、前処理とクロスリファレンスの入口を公開
+#   （個々の変換は呼び出し側が各モジュールを直接呼ぶ）
 #
 # 【処理の流れ】
 # 1. 引数からMarkdownファイルを解決
@@ -79,7 +78,6 @@ module VivlioStarter
       end
       module_function :execute_cross_references
 
-
       # Entry 配列を解決する。空の場合は全ファイルを TokenResolver で解決。
       # @param entries [Array<TokenResolver::Entry>]
       # @return [Array<TokenResolver::Entry>]
@@ -112,129 +110,18 @@ module VivlioStarter
       module_function :process_single_markdown_file
 
       # ================================================================
-      # フロントマター関連メソッド (FrontmatterGenerator への委譲)
+      # テーマ画像のパス解決 (ThemeImageResolver への委譲)
       # ================================================================
-      def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
-        FrontmatterGenerator.generate_frontmatter(file_type, chapter_num, existing_frontmatter)
-      end
-      module_function :generate_frontmatter
-
-      def apply_frontmatter(content, file_type, chapter_num, path: nil)
-        FrontmatterGenerator.apply_frontmatter(content, file_type, chapter_num, path: path)
-      end
-      module_function :apply_frontmatter
-
-      def report_frontmatter_error(error, frontmatter_yaml)
-        FrontmatterGenerator.report_frontmatter_error(error, frontmatter_yaml)
-      end
-      module_function :report_frontmatter_error
-
-      # ================================================================
-      # テーマ画像解決関連メソッド (ThemeImageResolver への委譲)
-      # ================================================================
+      # 画像の最適化（build/image_optimizer.rb）が扉絵・飾り画像の解決をここから呼ぶ。
       def resolve_frontispiece_path(raw, allow_generation: false)
-        ThemeImageResolver.resolve_frontispiece_path(raw, allow_generation: allow_generation)
+        ThemeImageResolver.resolve_frontispiece_path(raw, allow_generation:)
       end
       module_function :resolve_frontispiece_path
 
       def resolve_ornament_path(raw, allow_generation: false)
-        ThemeImageResolver.resolve_ornament_path(raw, allow_generation: allow_generation)
+        ThemeImageResolver.resolve_ornament_path(raw, allow_generation:)
       end
       module_function :resolve_ornament_path
-
-      def resolve_image_path(raw, default_when_nil:, downcase_if: nil)
-        ThemeImageResolver.resolve_image_path(raw, default_when_nil: default_when_nil, downcase_if: downcase_if)
-      end
-      module_function :resolve_image_path
-
-      # ================================================================
-      # 画像パス正規化関連メソッド (ImagePathNormalizer への委譲)
-      # ================================================================
-      def fix_image_paths(content, filename)
-        ImagePathNormalizer.fix_image_paths(content, filename)
-      end
-      module_function :fix_image_paths
-
-      def resolved_placeholder_or_path(alt_text, normalized_path)
-        ImagePathNormalizer.resolved_placeholder_or_path(alt_text, normalized_path)
-      end
-      module_function :resolved_placeholder_or_path
-
-      def image_exists_for?(normalized_path)
-        ImagePathNormalizer.image_exists_for?(normalized_path)
-      end
-      module_function :image_exists_for?
-
-      def placeholder_image_path(missing_image_path = nil)
-        ImagePathNormalizer.placeholder_image_path(missing_image_path)
-      end
-      module_function :placeholder_image_path
-
-      def sanitize_placeholder_text(filename)
-        ImagePathNormalizer.sanitize_placeholder_text(filename)
-      end
-      module_function :sanitize_placeholder_text
-
-      def svg_to_data_uri(svg_content)
-        ImagePathNormalizer.svg_to_data_uri(svg_content)
-      end
-      module_function :svg_to_data_uri
-
-      # ================================================================
-      # Markdown変換関連メソッド (MarkdownTransformer への委譲)
-      # ================================================================
-      def detect_language(file_path)
-        MarkdownTransformer.detect_language(file_path)
-      end
-      module_function :detect_language
-
-      def render_markdown_to_html(md_text)
-        MarkdownTransformer.render_markdown_to_html(md_text)
-      end
-      module_function :render_markdown_to_html
-
-      def transform_links_to_footnotes(md_text)
-        MarkdownTransformer.transform_links_to_footnotes(md_text)
-      end
-      module_function :transform_links_to_footnotes
-
-      def normalize_book_card_md(md_text)
-        MarkdownTransformer.normalize_book_card_md(md_text)
-      end
-      module_function :normalize_book_card_md
-
-      def convert_book_card_inner_markdown(content)
-        MarkdownTransformer.convert_book_card_inner_markdown(content)
-      end
-      module_function :convert_book_card_inner_markdown
-
-      def format_book_card_inner_html(inner_html)
-        MarkdownTransformer.format_book_card_inner_html(inner_html)
-      end
-      module_function :format_book_card_inner_html
-
-      def convert_container_blocks(content, class_name:)
-        MarkdownTransformer.convert_container_blocks(content, class_name: class_name)
-      end
-      module_function :convert_container_blocks
-
-      def process_code_include(content, source_filename: nil)
-        MarkdownTransformer.process_code_include(content, source_filename: source_filename)
-      end
-      module_function :process_code_include
-
-      # ================================================================
-      # 画像生成関連メソッド (ImageGenerator への委譲)
-      # ================================================================
-      def generate_frontispiece_and_ornament_from(image_spec, **)
-        ImageGenerator.generate_frontispiece_and_ornament_from(image_spec, **)
-      end
-      module_function :generate_frontispiece_and_ornament_from
-
-      def ensure_variant_generated(source_path, variant)
-        ImageGenerator.ensure_variant_generated(source_path, variant)
-      end
-      module_function :ensure_variant_generated
 
       # ================================================================
       # クロスリファレンス

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'open3'
-require 'set'
 require 'yaml'
 
 require_relative '../lint/dict_manager'

@@ -36,8 +36,6 @@ module VivlioStarter
           return print_usage if options[:help]
 
           UpgradeCommands.run_from_command(self)
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
           Common.log_error("upgrade コマンド実行中にエラー: #{e.message}")
           1

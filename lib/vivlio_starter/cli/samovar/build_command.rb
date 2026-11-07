@@ -98,7 +98,7 @@ module VivlioStarter
             Guards::ImageFilenameCheck.new,
             Guards::ChapterTargetCheck.new(targets)
           )
-          Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { common.log_always(it) }
+          Guards::ChapterTargetCheck.range_notices(targets, verb: "ビルド").each { Common.log_always(it) }
           # 中断したビルドで壊れた Chrome のキャッシュは、PDF の生成を失敗させるので、組む前に削除する
           DoctorCommands.repair_vivliostyle_chrome!
           # 原稿の中身の検査（閉じ忘れは 🔴 で止める）。preflight と同じ並び
@@ -120,7 +120,7 @@ module VivlioStarter
               # ここへ来るのは空白だけの引数（vs build ""）のような、
               # 検査対象にすらならなかった指定に限られる。最後の網として残す。
               if target_entries.empty?
-                common.log_error("章として読める指定がありません: #{targets.join(', ').inspect}")
+                Common.log_error("章として読める指定がありません: #{targets.join(', ').inspect}")
                 return 1
               end
 
@@ -136,15 +136,13 @@ module VivlioStarter
           # 違反は Guard.run! が 1 件ずつ 🔴 で出している。要約を重ねて言わない
           1
         rescue Build::Volumes::SelectionError => e
-          common.log_error(e.message, detail: e.detail)
+          Common.log_error(e.message, detail: e.detail)
           1
         rescue BuildCommands::BuildLock::AlreadyLockedError => e
-          common.log_error(e.message)
+          Common.log_error(e.message)
           1
-        rescue SystemExit => e
-          raise e
         rescue StandardError => e
-          common.log_error("Error: #{e.message}")
+          Common.log_error("Error: #{e.message}")
           1
         ensure
           Thread.current[:vs_verify_options] = nil
@@ -171,7 +169,7 @@ module VivlioStarter
         def run_direct_build
           mixed = targets.reject { it.to_s.end_with?('.md') }
           if mixed.any?
-            common.log_error(".md ファイルと章の指定は同時に使えません: #{mixed.join(', ')}",
+            Common.log_error(".md ファイルと章の指定は同時に使えません: #{mixed.join(', ')}",
                              detail: '対処: 直接ビルドなら .md だけ' \
                                      "（vs build #{targets.find { it.to_s.end_with?('.md') }}）、" \
                                      "プロジェクトの章なら拡張子なし（vs build #{mixed.first}）で指定してください。")
@@ -179,7 +177,7 @@ module VivlioStarter
           end
 
           if targets.size > 1
-            common.log_error("直接ビルドは 1 ファイルのみ指定できます: #{targets.join(', ')}",
+            Common.log_error("直接ビルドは 1 ファイルのみ指定できます: #{targets.join(', ')}",
                              detail: '対処: 1 ファイルずつ実行するか、複数の原稿を 1 冊にまとめるなら ' \
                                      'vs new でプロジェクトを作成してください。')
             return 1
@@ -187,7 +185,7 @@ module VivlioStarter
 
           source = targets.first.to_s
           unless File.file?(source)
-            common.log_error("ファイルが見つかりません: #{source}",
+            Common.log_error("ファイルが見つかりません: #{source}",
                              detail: '対処: パスを確認してください。プロジェクトの章を指定する場合は' \
                                      '拡張子を付けません（例: vs build 10-intro）。')
             return 1
@@ -208,7 +206,7 @@ module VivlioStarter
           path = File.expand_path(source)
           return unless File.dirname(path) == File.expand_path(Common::CONTENTS_DIR)
 
-          common.log_always("💡 本の設定（book.yml）で組むなら vs build #{File.basename(path, '.md')} と指定します" \
+          Common.log_always("💡 本の設定（book.yml）で組むなら vs build #{File.basename(path, '.md')} と指定します" \
                             '（.md を付けると、設定ファイルなしのビルドになります）')
         end
 
@@ -219,7 +217,7 @@ module VivlioStarter
           ignored << '--no-clean' if options[:clean] == false
           return if ignored.empty?
 
-          common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",
+          Common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",
                           detail: '対処: これらを使うには vs new で作成したプロジェクトでビルドしてください。')
         end
 
@@ -229,7 +227,7 @@ module VivlioStarter
         def warn_compress_ignored_in_single_mode
           return unless options[:compress] == true
 
-          common.log_warn('単章ビルドでは圧縮しません（--compress は無視されます）',
+          Common.log_warn('単章ビルドでは圧縮しません（--compress は無視されます）',
                           detail: '→ 圧縮した PDF が要るときは、章を指定せずに vs build --compress を実行してください')
         end
 
@@ -237,7 +235,7 @@ module VivlioStarter
         def warn_theme_option_ignored
           return if options[:theme].nil?
 
-          common.log_warn('--theme は直接ビルド（.md 指定）専用です。',
+          Common.log_warn('--theme は直接ビルド（.md 指定）専用です。',
                           detail: "対処: config/book.yml の theme.color を '#{options[:theme]}' に変更してください。")
         end
 
@@ -254,7 +252,7 @@ module VivlioStarter
           Build::Volumes.select!(volume || (targets.any? ? :all : :combined))
           return unless volume
 
-          common.log_action("#{volume.name}（#{volume.id}）を組みます")
+          Common.log_action("#{volume.name}（#{volume.id}）を組みます")
           Build::Volumes.apply_config!(volume)
           @volume_config_applied = true
           # 単章ビルドは対象の章だけで「第1章」から数える（chapter-reference-spec.md）ので、全章ビルドのときだけ足す
@@ -279,21 +277,21 @@ module VivlioStarter
           volumes = Build::Volumes.list
           Build::Volumes.find!(Build::Volumes::ALL) if volumes.empty? # 巻の無い本は書き方を案内して止める
           volumes.each do |volume|
-            common.log_action("== #{volume.name}（#{volume.id}）を組みます（#{volume.index + 1}/#{volumes.size}）")
+            Common.log_action("== #{volume.name}（#{volume.id}）を組みます（#{volume.index + 1}/#{volumes.size}）")
             # 雛形の知らせは巻ごとでなく、全巻を組み終えた後に 1 回だけ出す
             next if system({ ScaffoldUpdates::SILENT_ENV => '1' }, RbConfig.ruby,
                            "-I#{File.expand_path('../../..', __dir__)}", $PROGRAM_NAME,
                            'build', volume.id, *passthrough_options)
 
-            common.log_error("#{volume.name}（#{volume.id}）の組版に失敗したので、ここで止めます",
+            Common.log_error("#{volume.name}（#{volume.id}）の組版に失敗したので、ここで止めます",
                              detail: "それまでに組んだ巻の出力は残しています。直したら vs build #{volume.id} から組み直せます。")
             return 1
           end
-          common.log_success("全 #{volumes.size} 巻を組みました: #{volumes.map(&:name).join('、')}")
+          Common.log_success("全 #{volumes.size} 巻を組みました: #{volumes.map(&:name).join('、')}")
           ScaffoldUpdates.report
           0
         rescue Build::Volumes::SelectionError => e
-          common.log_error(e.message, detail: e.detail)
+          Common.log_error(e.message, detail: e.detail)
           1
         end
 
@@ -311,7 +309,7 @@ module VivlioStarter
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
         def run_single_mode_build(entries)
           basenames = entries.map(&:basename)
-          common.log_action("単章/選択ビルドを実行します: #{basenames.join(', ')}")
+          Common.log_action("単章/選択ビルドを実行します: #{basenames.join(', ')}")
 
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = basenames
 
@@ -331,7 +329,7 @@ module VivlioStarter
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
 
-          common.log_success("単章ビルドが完了しました: #{generated_pdf}")
+          Common.log_success("単章ビルドが完了しました: #{generated_pdf}")
           created_files = [generated_pdf].compact.select { File.exist?(it) }
           print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
 
@@ -347,9 +345,9 @@ module VivlioStarter
           entries = resolver.resolve # 引数なし = catalog.yml 全章
 
           if entries.any?
-            common.log_action("[Subset] 対象章: #{entries.map(&:basename).inspect}")
+            Common.log_action("[Subset] 対象章: #{entries.map(&:basename).inspect}")
           else
-            common.log_action('[Subset] catalog.yml に章が定義されていません')
+            Common.log_action('[Subset] catalog.yml に章が定義されていません')
           end
 
           pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :full)
@@ -363,7 +361,7 @@ module VivlioStarter
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
 
-          common.log_success('全ファイルのビルドが完了しました')
+          Common.log_success('全ファイルのビルドが完了しました')
 
           created_files = get_created_files_list
           print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
@@ -378,9 +376,8 @@ module VivlioStarter
         # 単章は targets によらず常に閲覧用 PDF だけを生成するため、生成できた事実が唯一の条件。
         def open_generated_pdf(path)
           return unless path && File.exist?(path)
-          return unless defined?(VivlioStarter::CLI::PdfCommands::PdfOpener)
 
-          VivlioStarter::CLI::PdfCommands::PdfOpener.new({}, path).call
+          PdfCommands::PdfOpener.new({}, path).call
         rescue StandardError
           # PDF を開く処理は失敗してもビルド結果には影響させない
         end
@@ -390,9 +387,8 @@ module VivlioStarter
             Common.log_info('[open] output.targets に pdf/print_pdf が含まれないためスキップします')
             return
           end
-          return unless defined?(VivlioStarter::CLI::PdfCommands::PdfOpener)
 
-          VivlioStarter::CLI::PdfCommands::PdfOpener.new({}, path).call
+          PdfCommands::PdfOpener.new({}, path).call
         rescue StandardError
           # macOS 専用機能のため失敗しても握りつぶす
         end
@@ -475,10 +471,6 @@ module VivlioStarter
 
           # Kindle を選んだ本で Kindle Previewer が無ければ、ビルドの終わりに入れ方を添える
           Build::KindlePreviewerNotice.report
-        end
-
-        def common
-          VivlioStarter::CLI::Common
         end
       end
     end

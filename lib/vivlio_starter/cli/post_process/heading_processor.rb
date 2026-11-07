@@ -245,7 +245,7 @@ module VivlioStarter
                                                                           chapter_number_i)
                                     end,
             appendix_letter: if chapter_number_i && entry.kind == :appendix && chapter_numbering?
-                               resolve_appendix_letter(chapter_token, chapter_number_i)
+                               resolve_appendix_letter(chapter_number_i)
                              end,
             process_headings: %i[chapter appendix].include?(entry.kind)
           }
@@ -567,7 +567,7 @@ module VivlioStarter
         end
 
         # 付録のレター（A/B/C...）をビルド対象の付録の順番に基づいて解決する
-        def resolve_appendix_letter(chapter_token, chapter_number_i)
+        def resolve_appendix_letter(chapter_number_i)
           override = chapter_tokens_override
           if override && !override.empty?
             # 単章/選択ビルド: ビルド対象の付録トークンから Entry を構築

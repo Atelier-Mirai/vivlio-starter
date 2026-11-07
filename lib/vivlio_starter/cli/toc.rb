@@ -213,7 +213,7 @@ module VivlioStarter
             HeadingExtractor.new(target, entry, depth:).headings.each do |heading|
               list_state.transition_to(heading.level)
               markup = heading.list_markup
-              markup = with_appendix_counter(markup, target, entry) if heading.level == 1 && entry&.kind == :appendix
+              markup = with_appendix_counter(markup, entry) if heading.level == 1 && entry&.kind == :appendix
               list_state.open_item(markup)
             end
           end
@@ -231,11 +231,10 @@ module VivlioStarter
         # 分冊の本の付録は、巻をまたいで記号を振るので、巻の中では記号が飛ぶことがある（下巻の付録が A・C）。
         # 並び順に数えるカウンタでは表せないので、付録ごとに章扉と同じ記号をカウンタに与える（§5.2）。
         # 巻の無い本は今までどおりカウンタに任せる
-        def with_appendix_counter(markup, target, entry)
+        def with_appendix_counter(markup, entry)
           return markup unless Build::Volumes.enabled?
 
-          letter = PostProcessCommands::HeadingProcessor.resolve_appendix_letter(File.basename(target, '.html'),
-                                                                                 entry.number.to_i)
+          letter = PostProcessCommands::HeadingProcessor.resolve_appendix_letter(entry.number.to_i)
           index = letter && ('A'..'Z').to_a.index(letter)
           return markup unless index
 

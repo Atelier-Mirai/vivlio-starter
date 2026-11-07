@@ -25,7 +25,6 @@
 require 'open3'
 require 'shellwords'
 require 'rbconfig'
-require 'set'
 require 'tempfile'
 require 'yaml'
 
