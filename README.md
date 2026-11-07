@@ -172,7 +172,7 @@ vs --help
     renumber         章番号を一括で付け直します
 
   文章校正・統計:
-    lint             contents/ 以下の Markdown を textlint で検査します
+    lint             原稿の日本語・英単語の綴り・コードブロックの言語名を検査します
     metrics          Markdown の行数・文字数を集計します
 
   索引・用語集:
@@ -220,7 +220,7 @@ vs build --log=debug  # debug（すべてのログを出力）
 vs build --log=error  # error（エラーのみ）
 ```
 
-`--log` が使えるのは処理の段階が多い `vs build` / `vs preflight` / `vs new` です。
+`--log` が使えるのは処理の段階が多い `vs build` / `vs preflight` です。
 ほかのコマンドは実行結果を最後に 1 行で報告します。
 
 ### ビルド中の進捗表示（スピナー）
@@ -314,7 +314,7 @@ output:
 
 一括ビルドで PDF のページ数取得・分割/結合を行うため、以下の CLI を利用します。`vs doctor --fix` で自動導入されますが、手動でインストールする場合は以下の通りです。
 
-導入済みツールの更新は `vs upgrade` で一括して行えます。vivlio-starter 本体の gem 更新・プロジェクト雛形の追従とあわせて、更新計画（現在版 → 最新版）を提示し、確認後に brew / npm / gem をまとめて更新して再診断します（不足ツールのインストールも同時に行われます。`--yes` で確認スキップ、`--dry-run` で計画表示のみ）。
+導入済みツールの更新は `vs upgrade` で一括して行えます。vivlio-starter 本体の gem 更新・プロジェクト雛形の追従とあわせて、更新計画（現在版 → 最新版）を提示し、確認後に brew / npm / gem をまとめて更新して再診断します（不足ツールのインストールも同時に行われます。`--dry-run` で計画表示のみ）。
 
 ```bash
 brew install poppler qpdf ghostscript imagemagick librsvg vips mecab
