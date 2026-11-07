@@ -100,6 +100,13 @@ module VivlioStarter
           dictionary_writes['手動登録'] = added if added.any?
         end
 
+        # 1b. 語と同じカタカナの読みを、ひらがなに直す
+        katakana_yomi = katakana_yomi_changes
+        if katakana_yomi.any?
+          @terms_manager.update_yomi!(katakana_yomi)
+          dictionary_writes['読みをひらがなへ'] = katakana_yomi.map { it['term'] }
+        end
+
         # auto_discovery が無効の場合、自動候補抽出をスキップ
         unless auto_discovery
           @terms_manager.record_scanned_chapters!(chapters)
@@ -1542,6 +1549,25 @@ module VivlioStarter
         return true if term_text.match?(/^\d+$/)
 
         false
+      end
+
+      # 読みが語と同じカタカナのまま（「ラスタライズ」「ラベル ID」）の語を、ひらがなの読みへ直す変更。
+      #
+      # 読みの推測は、MeCab の辞書に無いカタカナ語の読みを語のまま返していた（2026-10-25 の修正まで）。
+      # その頃に登録した語は、辞書の読みが優先されるので index:auto を重ねてもカタカナのまま残り、
+      # 用語集では読みが語と同じとして振り仮名が省かれ、五十音順の並びもずれていた。
+      # 漢字を含まない語なら、カタカナをひらがなに置き換えるだけで読みになる。
+      # 漢字を含む語は読みを推測できなかった語なので、置き換えても読みにならず、対象にしない。
+      # @return [Array<Hash>] update_yomi! に渡す { 'term', 'yomi' }
+      def katakana_yomi_changes
+        @terms_manager.load_terms.filter_map do |entry|
+          term = entry['term'].to_s
+          yomi = entry['yomi'].to_s
+          next if term.match?(/\p{Han}/) || !yomi.match?(/\p{Katakana}/)
+          next unless yomi.delete(' ') == term.delete(' ')
+
+          { 'term' => term, 'yomi' => yomi.tr('ァ-ヶ', 'ぁ-ゖ') }
+        end
       end
 
       # R8: auto_process! が辞書へ書いた登録内容を既定ログレベルで必ず表示する。

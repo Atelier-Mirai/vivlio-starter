@@ -500,6 +500,27 @@ module VivlioStarter
         refute_includes load_rejected_terms, '見直し候補', '棄却はしない'
       end
 
+      # 読みが語と同じカタカナのまま残った語は、index:auto がひらがなの読みへ直す。
+      # 漢字を含む語（読みを推測できなかった語）と、著者が付けた別の読みには触らない
+      def test_auto_process_should_convert_katakana_yomi_equal_to_term_into_hiragana
+        File.write('contents/33-index.md', "# 索引\n\nラスタライズとラベル ID を選びます。\n")
+        File.write('config/index_glossary_terms.yml', { 'terms' => [
+          { 'term' => 'ラスタライズ', 'yomi' => 'ラスタライズ', 'flags' => 'ig', 'definition' => '画像へ変換すること。' },
+          { 'term' => 'ラベル ID', 'yomi' => 'ラベルID', 'flags' => 'i' },
+          { 'term' => 'フレーバー', 'yomi' => 'ふれーばー', 'flags' => 'ig' },
+          { 'term' => 'JSON', 'yomi' => 'ジェイソン', 'flags' => 'i' },
+          { 'term' => '互除法', 'yomi' => '互除ほう', 'flags' => 'i' }
+        ] }.to_yaml)
+        @manager.terms_manager.clear_cache!
+
+        output, = capture_io { @manager.auto_process!(['33-index']) }
+
+        yomis = YAML.load_file('config/index_glossary_terms.yml')['terms'].to_h { [it['term'], it['yomi']] }
+        assert_equal({ 'ラスタライズ' => 'らすたらいず', 'ラベル ID' => 'らべるID', 'フレーバー' => 'ふれーばー',
+                       'JSON' => 'ジェイソン', '互除法' => '互除ほう' }, yomis)
+        assert_includes output, '読みをひらがなへ 2 語（ラスタライズ, ラベル ID）'
+      end
+
       # 索引ライブラリから取り込んだ語は、原稿に出てこない間は 5 節に並べず、数だけ示す。
       # この本で外した語・棄却した語は並べる（index-library-reserve-spec.md §3.3）
       def test_absent_section_leaves_out_terms_imported_from_the_library
