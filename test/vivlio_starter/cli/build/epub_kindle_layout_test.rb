@@ -191,6 +191,23 @@ module VivlioStarter
         assert_equal (602 * 400 / 600.0).round, layout[:height], '上をそろえ、高さは高いほう'
       end
 
+      # side-by-side は EPUB・Kindle で上下に積むので、中の図を PDF の片側の幅（半分）に抑えて中央に置く。
+      # 書かれた幅（{width=60%}）はその半分、幅の無い mermaid は 50%。ディスプレイ数式は触らない
+      def test_should_shrink_side_by_side_figures_to_one_column
+        html = '<html><body><div class="side-by-side"><div class="output">' \
+               '<figure style="width: 60%"><img src="images/a.jpg" alt=""></figure>' \
+               '<figure class="vs-mermaid"><img src="images/m.png" alt=""></figure>' \
+               '<figure class="vs-math vs-math-display"><img src="images/x.png" style="width: 8em" alt=""></figure>' \
+               '</div></div><figure style="width: 60%"><img src="images/b.jpg" alt=""></figure></body></html>'
+        doc = process(html) { |files| Builder.shrink_side_by_side_figures_for_epub!(files) }
+
+        written, mermaid, math = doc.css('.side-by-side figure').map { it['style'].to_s }
+        assert_equal 'width: 30.0%; max-width: 30.0%; margin-left: auto; margin-right: auto;', written
+        assert_includes mermaid, 'width: 50.0%'
+        assert_empty math, 'ディスプレイ数式は触らない'
+        assert_equal 'width: 60%', doc.css('body > figure').first['style'], '囲みの外の図は触らない'
+      end
+
       # 画像が見つからない囲みは、そのまま残す（写真が欠けるよりよい）
       def test_should_leave_pictures_untouched_when_an_image_is_missing
         doc = process('<html><body><div class="pictures"><figure><img src="images/x.jpg" alt=""></figure>' \

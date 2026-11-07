@@ -366,6 +366,8 @@ module VivlioStarter
           inject_heading_images_for_epub!(chapter_htmls, flavor:)
           # 図解注釈（showcase）の参照を SVG→PNG へ差し替え（EPUB は SVG 内 base64 を運べない）
           localize_showcase_images!(chapter_htmls)
+          # 左右に並べる囲み（side-by-side）は上下に積むので、中の図を PDF の片側の幅に抑える
+          shrink_side_by_side_figures_for_epub!(chapter_htmls)
           # Prism の行番号付き pre を「1 論理行 = 1 ブロック＋ぶら下げインデント」へ変換（F 案・
           # epub-code-line-numbers-spec §2.1）。長行折返しでの番号ずれ（クリーン EPUB）と
           # テーブルセル起因の崩れ（Kindle）を同じ構造で解消するため、両フレーバ共通で行う。
@@ -2133,6 +2135,38 @@ module VivlioStarter
 
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
             Common.log_info("[EPUB] #{File.basename(path)} の横並び画像を inline で制約しました")
+          end
+          html_files
+        end
+
+        # side-by-side の片側が本文の幅に占める割合（PDF は左右 2 列）。
+        SIDE_BY_SIDE_COLUMN_RATIO = 0.5
+
+        # 左右に並べる囲み（side-by-side）の中の図を、PDF と同じ大きさに抑える（両フレーバ）。
+        #
+        # EPUB・Kindle は side-by-side を上下に積む（画面の幅が分からず、狭い画面では左右とも
+        # 読めなくなる・layout-utils.css）。積むと中の図が本文の幅いっぱいに広がり、PDF では
+        # 片側に収まっていた mermaid の図がタブレットの画面を占めていた。図の幅を、書かれた幅
+        # （{width=60%} など。無ければ 100%）に片側の割合を掛けた値にして、中央に置く。
+        # Kindle は外部 CSS の画像の大きさを無視するので inline で付け、中央寄せは
+        # margin-left / margin-right の auto で書く（margin-inline の auto は 0 に解かれる）。
+        # ディスプレイ数式は文字の大きさに合わせてあるので触らない。
+        def shrink_side_by_side_figures_for_epub!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            figures = doc.css('.side-by-side figure').reject { it['class'].to_s.split.include?('vs-math') || !it.at_css('img') }
+            next if figures.empty?
+
+            figures.each do |figure|
+              written = figure['style'].to_s[/(?:\A|;)\s*width:\s*([\d.]+)%/, 1]&.to_f || 100.0
+              width = (written * SIDE_BY_SIDE_COLUMN_RATIO).round(1)
+              style = figure['style'].to_s.gsub(/(?:\A|;)\s*(?:max-)?width:[^;]*/, '').sub(/\A;/, '').strip
+              figure['style'] = style
+              add_inline_style(figure, "width: #{width}%; max-width: #{width}%; margin-left: auto; margin-right: auto;")
+              add_inline_style(figure.at_css('img'), 'width: 100%; height: auto;')
+            end
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の side-by-side の図 #{figures.size} 枚を片側の幅に抑えました")
           end
           html_files
         end
