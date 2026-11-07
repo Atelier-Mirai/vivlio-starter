@@ -21,7 +21,7 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 - 本プロジェクトは中間 EPUB を生成し、**Kindle Previewer 同梱の `kindlepreviewer` CLI** で `.kpf` に変換する（`convert_epub_to_kpf!`）。実機・Previewer での表示が「正」であり、epubcheck が通っても Kindle で崩れることは普通にある。
 - **検証は必ず Kindle Previewer／実機で行う。** epubcheck の合格は KFX での正しい表示を保証しない（別レイヤーの検証）。
 - **版を読者に揃える。** Previewer 3 と 4 では判定が変わる（§5.5）。3 で KPF になっていた本が 4 では Mobi になるので、古い版で確かめても確かめたことにならない。
-- KPF 変換ログのエラー/警告コード（`E####` / `W####`）は `summarize_kpf_logs` が内訳集計する。例: `W14016`＝`embed:false` 時の "Cover not specified" 通知（表紙は KDP 側で付けるため想定内）。
+- KPF 変換ログのエラー/警告コード（`E####` / `W####`）は `summarize_kpf_logs` が説明文つきで表示する。`W14016`＝`embed:false`（Kindle は固定）による "Cover not specified" 通知は、毎回出る想定内のものなので `KPF_EXPECTED_CODES` で表示も件数もしない。
 
 ---
 
@@ -46,6 +46,8 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | MathML | ✅ | Previewer 内の MathJax が SVG へ描き起こす。ET は落ちない | （本プロジェクトは素の表記→SVG／テキスト化の経路を使う） |
 | modern 改ページ `break-before: page` | △ | 効かないことがある | legacy `page-break-before: always` を**併記** |
 | テーブルセルの `width` / `white-space:nowrap` | △ | 尊重されず、2桁行番号が縦に折れる等 | テーブル方式のレイアウトに依存しない（行番号は別仕様で検討） |
+| `@media (max-width: …)` | ❌ | Previewer の Phone でも Tablet と同じ規則のまま（`40em`・`600px` とも。2026-11-07） | 画面の幅で組み方を変えない。写真の横並びは端末によらず同じ枚数 |
+| `inline-block` の `min-width` | △ | 幅は守られるが、行に収まらなくても折り返さず画面からはみ出す（間に空白を置いても同じ） | 最小の幅で折り返させる組み方はしない |
 
 > ❌＝非対応（解されない）、△＝不安定（端末/状況で挙動が変わる）。
 
@@ -109,6 +111,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 | h3 の `♣`・h4 の `♦` が消えて字下げだけ残る | Techbook が印を WebP の背景で描き、Kindle には WebP も `var()` も届かない。h4 は `content: "" !important` で空にされている | h3 は `restore_h3_markers_for_kindle!` が文字へ戻す。h4 は `book-settings.css` に文字を `!important` で焼く |
 | 表の `--cover` や `.aki` のセルが左へずれる | KFX は等幅の字が `-` や `.` で始まるセルの 1 行目をずらす。`padding`・`text-indent`・`white-space` は効かない | `align_code_cells_for_kindle!` がコードで始まるセルの頭にゼロ幅の空白を添える |
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
+| 写真の横並び（`.pictures`・`.image-group`）が 1 枚ずつ全幅になり、1 ページに 1 枚ずつ並ぶ | flex・grid 非対応。1 行の表に組み替えると、写真がページの高さまで広がって同じく 1 ページに 1 枚になる | `inline-block` と幅の % を inline で付ける（`lay_out_pictures_for_kindle!`・1 行 2 枚まで（端末によらず同じ枚数になるので、スマートフォンに合わせる）・`.image-group` は列の比のまま）。写真の間の空白は取り除く。**行の左の箱はおよそ 1 字分狭く組まれる**（2 枚で左が右の 86〜91%）。幅を img に付けると Tablet ではそろうが Phone では守られず縦に並ぶ。字下げなし・先頭の幅 0 の箱・負の左余白でも直らない |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
 | 数式が極大表示／表内数式が崩れる／フォント変更に非追従 | 画像を本文フォント相対にできない KFX の本質的制約 | **単純式は `textify_simple_math_for_kindle!`（`MathTextRenderer`）で HTML テキスト化**し 100% 追従させる（Kindle 限定・`convert_math_units_for_epub!` の直前）。テキスト化不可の複雑式のみ従来の px フォールバックで巨大化を防ぐ（`kindle-inline-math-textify-spec.md`） |
 | 表の中の数式が本文の 10 倍近くに膨らむ（`1/4 倍` のように文字が並ぶセルは正常） | セルの中身が画像だけだと、KFX が画像を列の幅まで引き伸ばす。`padding` が `clamp()` で捨てられて 0 になると起きやすい。**実物の CSS でないと再現しない**（素の表では起きない）。NBSP は空白として捨てられて効かない | 数式だけのセルへゼロ幅の空白 U+200B を添え（`keep_cell_math_inline_for_kindle!`）、`body.vs-kindle td` に具体値の余白を書く（`table.css`） |

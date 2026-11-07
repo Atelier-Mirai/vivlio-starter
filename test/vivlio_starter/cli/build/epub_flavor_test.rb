@@ -208,6 +208,40 @@ module VivlioStarter
         end
       end
 
+      # 変換ログの注意は、コードの件数だけでなく説明文と出現箇所を並べる。
+      # 一時ディレクトリのパスは削って EPUB の中のファイル名だけを残し、ほかの行のまとめ（W14002）は
+      # 並べずに件数にだけ数え、vs が意図して起こすコード（W14016）は表示も件数もしない
+      def test_kpf_log_summary_lists_descriptions_with_file_names
+        Dir.mktmpdir('vs-kpf-log') do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'Logs'))
+          File.write(File.join(dir, 'Logs', 'book_log.csv'), <<~CSV)
+            ﻿"エラー: このエラーによって本の出版がブロックされます。"
+            "タイプ","内容紹介","ソース ファイル","行番号","警告またはエラーの前のテキスト","推奨される修正"
+            "注意","W14001: ハイパーリンクは解決されていません:  /private/var/T/kpr_cli_book/cTemp/mTemp/mobi-0/EPUB/25-cross-reference.xhtml#ruby-sample","","","",""
+            "注意","W14002: 解決できないハイパーリンクがあります。","","","",""
+            "注意","W14016: カバーが指定されていません","","","",""
+          CSV
+
+          summaries = capture_log(:log_summary) { Builder.summarize_kpf_logs(dir) }
+
+          assert_equal '[KPF] 変換ログ: エラー 0 件・注意 2 件（注意は出版を止めません）', summaries.first[:message]
+          assert_equal 'W14001 ハイパーリンクは解決されていません: 25-cross-reference.xhtml#ruby-sample', summaries.first[:detail]
+        end
+      end
+
+      # Kindle 用 EPUB は表紙を埋め込まないので、W14016（カバーが指定されていません）は毎回出る。
+      # それしか無ければ、変換ログの行そのものを出さない
+      def test_kpf_log_summary_is_silent_when_only_the_expected_cover_notice_remains
+        Dir.mktmpdir('vs-kpf-log-cover') do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'Logs'))
+          File.write(File.join(dir, 'Logs', 'book_log.csv'), %("注意","W14016: カバーが指定されていません","","","",""\n))
+
+          summaries = capture_log(:log_summary) { Builder.summarize_kpf_logs(dir) }
+
+          assert_empty summaries
+        end
+      end
+
       # 2 回とも落ちたら諦めて失敗を伝える。やり直しは 1 回まで。
       def test_kpf_conversion_gives_up_after_the_second_abort
         Dir.mktmpdir('vs-kpf-give-up') do |dir|

@@ -102,6 +102,9 @@ module VivlioStarter
           # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
           Build::EpubBuilder.sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
 
+          # --- Phase: 目次の文書の自分自身へのリンクに飛び先を付ける（Kindle のみ） ---
+          Build::EpubBuilder.anchor_nav_self_link!(target_name) if flavor == :kindle && File.exist?(target_name)
+
           # --- Phase: EPUB identifier 安定化 ---
           Build::EpubBuilder.stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 

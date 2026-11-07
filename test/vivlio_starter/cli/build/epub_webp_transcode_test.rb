@@ -54,6 +54,28 @@ module VivlioStarter
         end
       end
 
+      # 写真を横に並べる囲みの画像は、紙面での割合で縮めない。PDF では 3 枚並びで版面の 3 分の 1 弱だが、
+      # Kindle では 1 行 2 枚で画面の半分を占めるので、割合で縮めると画素数が足りない。
+      # 囲みの外の画像は、これまでどおり割合で縮める
+      def test_should_keep_gallery_images_at_full_kindle_resolution
+        in_temp_project do
+          FileUtils.mkdir_p('images/23-figures')
+          %w[cover photo].each do |name|
+            system('magick', '-size', '700x1000', 'xc:red', "images/23-figures/#{name}.webp", out: File::NULL, err: File::NULL)
+          end
+          File.write('chapter.html', <<~HTML, encoding: 'utf-8')
+            <html><body><div class="pictures"><figure><img src="images/23-figures/cover.webp" alt=""></figure></div>
+            <p><img src="images/23-figures/photo.webp" alt=""></p></body></html>
+          HTML
+
+          Builder.stub(:target_edge_for, 320) { Builder.transcode_webp_images_for_epub!(['chapter.html']) }
+          gallery, inline = File.read('chapter.html').scan(/src="([^"]+)"/).flatten
+
+          assert_equal [700, 1000], Common.image_size(gallery).to_a, '素材の画素数のまま（上限より小さいので縮めない）'
+          assert_equal 320, Common.image_size(inline).to_a.max
+        end
+      end
+
       # 透過のある WebP は PNG へ（透過保持・無劣化）
       def test_should_transcode_transparent_webp_to_png
         in_temp_project do

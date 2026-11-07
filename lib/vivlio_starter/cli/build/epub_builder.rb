@@ -397,6 +397,7 @@ module VivlioStarter
             mark_body_for_kindle!(chapter_htmls)
             restore_h3_markers_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
+            lay_out_pictures_for_kindle!(chapter_htmls)
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
             textify_simple_math_for_kindle!(chapter_htmls)
@@ -1836,12 +1837,14 @@ module VivlioStarter
         def transcode_webp_in_file!(path, cache)
           html = File.read(path, encoding: 'utf-8')
           changed = false
+          gallery = gallery_image_srcs(html)
 
           updated = html.gsub(/<img\b[^>]*>/i) do |tag|
             src = tag[/\ssrc="([^"]*)"/i, 1]
             next tag unless src&.match?(/\.webp\z/i)
 
-            staged = cache.fetch(src) { cache[src] = stage_webp_replacement(src, File.dirname(path)) }
+            full = gallery.include?(decode_html_entities(src))
+            staged = cache.fetch([src, full]) { cache[[src, full]] = stage_webp_replacement(src, File.dirname(path), full:) }
             next tag unless staged
 
             changed = true
@@ -1853,10 +1856,20 @@ module VivlioStarter
           Common.log_info("[EPUB] #{File.basename(path)} の WebP 画像を JPEG/PNG へ差し替えました")
         end
 
+        # 写真を横に並べる囲み（.pictures・.image-group）の中にある画像の src。
+        def gallery_image_srcs(html)
+          return [] unless html.match?(/class="(?:pictures|image-group)\b/)
+
+          doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+          doc.css('div.pictures img, div.image-group img').filter_map { it['src'] }.uniq
+        end
+
         # src の WebP を変換し、staging の相対パスを返す。変換不能なら nil（src 据え置き）。
         # 変換元は cwd（ルート）の著者資産を読み、出力は base_dir（消費者 dir）配下の
         # images/_epub_assets/ に置く（著者 dir を汚さない・P4 §5.3）。
-        def stage_webp_replacement(src_attr, base_dir)
+        #
+        # full: 写真を横に並べる囲みの画像は、紙面での割合で縮めない（convert_image_for_epub）。
+        def stage_webp_replacement(src_attr, base_dir, full: false)
           webp_path = decode_html_entities(src_attr)
           # 著者資産（cwd 相対）で見つからない場合はワークスペース生成物（html/images/data/ 等）を
           # フォールバックで探す。DataImageResolver が置いた data 画像は cwd に実体が無い（spec §3.5）。
@@ -1869,7 +1882,7 @@ module VivlioStarter
           source = transcode_source_for(webp_path)
           ext = epub_image_extension_for(source)
           key = Digest::SHA256.hexdigest(
-            [File.expand_path(source), File.mtime(source).to_i, ext].join('|')
+            [File.expand_path(source), File.mtime(source).to_i, ext, (full ? 'full' : nil)].compact.join('|')
           )[0, 16]
 
           dir = File.join(base_dir, Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
@@ -1878,7 +1891,7 @@ module VivlioStarter
           return rel if File.exist?(abs)
 
           FileUtils.mkdir_p(dir)
-          convert_image_for_epub(source, abs, ext) ? rel : nil
+          convert_image_for_epub(source, abs, ext, full:) ? rel : nil
         rescue StandardError => e
           Common.log_warn("[EPUB] WebP 変換に失敗（#{src_attr}）: #{e.message}")
           nil
@@ -1927,8 +1940,13 @@ module VivlioStarter
         # （`DerivedImage.viewport_target`）。版面の半分に並べた見本は Kindle でも画面の
         # 半分を占めるので、画面幅いっぱいの画素数は要らない。PDF を組んでいなければ
         # 従来どおり画面幅が上限になる。
-        def convert_image_for_epub(source, dest, ext)
-          edge = target_edge_for(source, KINDLE_IMAGE_MAX_EDGE)
+        #
+        # 写真を横に並べる囲み（.pictures・.image-group）の画像は `full: true` で、割合を掛けない。
+        # PDF では 3 枚並びで版面の 3 分の 1 弱だったが、Kindle では 1 行 2 枚で画面の半分を占める
+        # （lay_out_pictures_for_kindle!）。割合で縮めると長辺 322 px ほどになり、画面の半分に
+        # 広げるには画素数が足りない。
+        def convert_image_for_epub(source, dest, ext, full: false)
+          edge = full ? KINDLE_IMAGE_MAX_EDGE : target_edge_for(source, KINDLE_IMAGE_MAX_EDGE)
           resize = ['-resize', "#{edge}x#{edge}>"]
           cmd = if ext == 'png'
                   ['magick', source, *resize, '-strip', dest]
@@ -2117,6 +2135,74 @@ module VivlioStarter
             Common.log_info("[EPUB] #{File.basename(path)} の横並び画像を inline で制約しました")
           end
           html_files
+        end
+
+        # 写真を横に並べる囲み（.pictures）の、Kindle での 1 行の枚数の上限。
+        # PDF とクリーン EPUB は 1 枚を 12em 以上にして、画面の幅に合わせて折り返す（A4 の本文では
+        # 3 枚）。KFX は画面の幅で組み方を変えられないので、スマートフォンでも小さくなりすぎない
+        # 2 枚を上限にする（3 枚なら 2 枚と 1 枚の 2 行。2026-11-07 ユーザー判断）
+        KINDLE_PICTURES_MAX_COLUMNS = 2
+
+        # 横に並べた写真の間（本文の幅に対する %）
+        KINDLE_PICTURES_GAP = 1.0
+
+        # 1 行の幅の合計に残すゆとり（%）。Previewer で確かめた合計（2 枚で 98%・3 枚で 96%）に
+        # 近づけ、字間などで行からあふれて折り返さないようにする
+        KINDLE_PICTURES_SLACK = 2.0
+
+        # 写真を横に並べる囲みを、Kindle で画像の横並びに組み替える。
+        #
+        # PDF は .pictures を flex、.image-group を grid で組むが、KFX はどちらも解さず block に
+        # 潰すので、写真が 1 枚ずつ本文の幅いっぱいに広がり、1 ページに 1 枚ずつ並んでいた。
+        # figure を inline-block にして幅の % を付ける（Tablet・Phone とも横に並ぶ）。
+        # 既知の癖: KFX は行の左の箱をおよそ 1 字分狭く組む（2 枚で左が右の 86〜91%）。
+        # 幅を img に付けると Tablet ではそろうが、Phone では幅が守られず 1 枚ずつ縦に並ぶ。
+        # 字下げなし・先頭の幅 0 の箱・負の左余白でも直らなかった。1 行の表は、写真がページの
+        # 高さまで広がって 1 ページに 1 枚になる（どれも Previewer で確かめた 2026-11-07）。
+        #
+        # 画面の幅で枚数を変えることはできない。KFX は `@media (max-width: …)` を適用せず、
+        # `min-width` で幅を守らせても折り返さずに画面からはみ出す（同日に Phone で確かめた）。
+        # 写真の間の空白は、幅の計算に入らない字間になるので取り除く。
+        def lay_out_pictures_for_kindle!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            containers = doc.css('div.pictures, div.image-group')
+            next if containers.empty?
+
+            containers.each do |container|
+              figures = container.element_children.select { it.name == 'figure' }
+              next if figures.size < 2
+
+              container.children.each { it.remove if it.text? && it.text.strip.empty? }
+              widths = kindle_picture_widths(container, figures.size)
+              figures.each_with_index do |figure, i|
+                last_in_row = ((i + 1) % widths.size).zero? || i == figures.size - 1
+                add_inline_style(figure, "display: inline-block; vertical-align: top; width: #{widths[i % widths.size]}%; " \
+                                         "margin: 0 #{last_in_row ? 0 : KINDLE_PICTURES_GAP}% 0.5em 0;")
+                image = figure.at_css('img')
+                add_inline_style(image, 'width: 100%; height: auto; margin: 0;') if image
+              end
+              # PDF と同じく、行の余り（3 枚の行に 2 枚だけ回ったときなど）を左右に振り分ける
+              add_inline_style(container, 'text-align: center; text-indent: 0;')
+            end
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の写真を横に並べました")
+          end
+          html_files
+        end
+
+        # 1 行に並べる写真の幅（%）を、行の左から順に返す。配列の長さが 1 行の枚数になる。
+        # .image-group は post_process が書いた比（--image-group-col1/2。{width=40%} から作る）に従う
+        def kindle_picture_widths(container, count)
+          available = ->(columns) { 100 - KINDLE_PICTURES_SLACK - (KINDLE_PICTURES_GAP * (columns - 1)) }
+          if container['class'].to_s.split.include?('image-group')
+            style = container['style'].to_s
+            ratio = %w[col1 col2].map { style[/--image-group-#{it}:\s*([\d.]+)fr/, 1]&.to_f || 1.0 }
+            return ratio.map { (available.(2) * it / ratio.sum).floor(1) }
+          end
+
+          columns = [count, KINDLE_PICTURES_MAX_COLUMNS].min
+          Array.new(columns, (available.(columns) / columns).floor(1))
         end
 
         # 枠の中の横並びを、float から 1 行の表へ組み替える。
@@ -3351,6 +3437,47 @@ module VivlioStarter
           Common.log_warn("[EPUB] content.opf id 修正に失敗: #{e.message}")
         end
 
+        # 目次の文書（nav）にある、自分自身を指すリンクへ飛び先の印を付ける（Kindle 専用）。
+        #
+        # EPUB 3 は目次の文書を必ず 1 つ持ち、Vivliostyle はそれを最初の文書（前書き）の中に
+        # hidden で入れる。目次の最初の項目はその文書自身を指す `href="00-preface.xhtml"` になり、
+        # Kindle の変換は自分自身を指すファイル名だけのリンクを解決できず、W14001・W14002 の注意を
+        # 出す（ほかの文書を指すファイル名だけのリンクは解決できる）。章の参照と同じ
+        # `#ch-<スラッグ>` の印を付ければ解決できる。クリーン EPUB の読書アプリは困らないので触らない。
+        def anchor_nav_self_link!(epub_path)
+          abs_epub = File.expand_path(epub_path)
+
+          Dir.mktmpdir('vs-epub-nav') do |tmpdir|
+            system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir, out: File::NULL, err: File::NULL)
+            opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
+            return unless File.exist?(opf_path)
+
+            nav_href = File.read(opf_path, encoding: 'UTF-8')[/<item\b[^>]*\bhref="([^"]+)"[^>]*\bproperties="[^"]*\bnav\b/, 1]
+            return unless nav_href
+
+            member = "EPUB/#{nav_href}"
+            system('unzip', '-o', abs_epub, member, '-d', tmpdir, out: File::NULL, err: File::NULL)
+            nav_path = File.join(tmpdir, member)
+            return unless File.exist?(nav_path)
+
+            xhtml = File.read(nav_path, encoding: 'UTF-8')
+            anchor = xhtml[/<span id="(ch-[^"]+)" class="vs-sec-anchor"/, 1]
+            return unless anchor
+
+            self_link = %(href="#{File.basename(nav_href)}")
+            replaced = xhtml.sub(%r{<nav\b[^>]*epub:type="toc".*?</nav>}m) do
+              it.gsub(self_link, %(href="#{File.basename(nav_href)}##{anchor}"))
+            end
+            return if replaced == xhtml
+
+            File.write(nav_path, replaced)
+            zip_into(abs_epub, [member], from: tmpdir)
+            Common.log_info("[EPUB] 目次の文書の自分自身へのリンクに ##{anchor} を付けました")
+          end
+        rescue StandardError => e
+          Common.log_warn("[EPUB] 目次の文書のリンクの修正に失敗: #{e.message}")
+        end
+
         # プロジェクト名から決定的に算出した UUID を urn:uuid: に載せて返す。
         # プロジェクト名が未設定の場合は book.main_title を fallback とし、
         # それでも空なら nil を返す。
@@ -3555,26 +3682,67 @@ module VivlioStarter
              .max_by { File.mtime(it) }
         end
 
-        # kindlepreviewer のログ CSV から Kindle のエラー/警告コード件数を集計して要約表示する。
-        # ヘッダ列名（"Error" 等の語）を誤カウントしないよう、実データである E#####/W##### 形式の
-        # コード出現数で数える。版差でファイル名が変わっても拾えるよう出力配下の全 CSV を走査する。
-        # 内訳（どのコードが何件か）も併記して、著者が原因を追えるようにする。
+        # ほかの行のまとめにすぎないコード。W14002「解決できないハイパーリンクがあります」は、
+        # 個々のリンクを挙げる W14001 と同じことを言い直すだけなので並べない（件数には数える）。
+        KPF_SUMMARY_CODES = %w[W14002].freeze
+
+        # vs が意図して起こしていて、著者がすることのないコード。表示も件数もしない。
+        # W14016「カバーが指定されていません」は、Kindle 用 EPUB に表紙を埋め込まない（embed:false 固定・
+        # KDP では表紙を別にアップロードする・43 章）ために毎回出る。Kindle Previewer は表紙を EPUB に
+        # 含めて納める出版社にも使われる道具なので、表紙の無い EPUB には一律に注意を出す
+        KPF_EXPECTED_CODES = %w[W14016].freeze
+
+        # kindlepreviewer の変換ログを、コードと説明文つきで要約表示する。
+        #
+        # 本ごとのログ（Logs/*_log.csv）は 1 行に 1 件、「種類, 説明, ソースファイル, 行番号,
+        # 前のテキスト, 推奨される修正」の列を持ち、説明は `W14001: …` とコードで始まる。
+        # 以前はコードの件数だけを出していて、`W14001×2` と言われても著者には分からなかった。
+        # 説明は `--locale` の言語で書かれる。一時ディレクトリのパスは削り、EPUB の中の
+        # ファイル名だけを残す。版差でファイル名が変わっても拾えるよう出力配下の全 CSV を走査し、
+        # ヘッダ列名（"Error" 等の語）を数えないよう、コード（E#####/W#####）のある行だけを読む。
+        # 想定どおりのコード（KPF_EXPECTED_CODES）しか無ければ何も出さない。
         def summarize_kpf_logs(outdir)
           csvs = Dir.glob(File.join(outdir, '**', '*.csv'))
           return if csvs.empty?
 
-          codes = csvs.flat_map do |csv|
-            File.read(csv, encoding: 'UTF-8').scan(/\b[EW]\d{4,5}\b/)
-          rescue StandardError
-            []
-          end
-          errors   = codes.count { it.start_with?('E') }
-          warnings = codes.count { it.start_with?('W') }
-          breakdown = codes.tally.sort.map { |code, n| "#{code}×#{n}" }.join(', ')
-          detail = breakdown.empty? ? nil : "内訳: #{breakdown}"
-          Common.log_summary("[KPF] 変換ログ: Error=#{errors} / Warning=#{warnings}（#{csvs.size} CSV）", detail:)
+          rows = csvs.flat_map { kpf_log_rows(it) }.reject { KPF_EXPECTED_CODES.include?(it[:code]) }
+          return if rows.empty?
+
+          errors  = rows.count { it[:code].start_with?('E') }
+          notices = rows.count { it[:code].start_with?('W') }
+          headline = "[KPF] 変換ログ: エラー #{errors} 件・注意 #{notices} 件"
+          headline += '（注意は出版を止めません）' if errors.zero? && notices.positive?
+          lines = rows.reject { KPF_SUMMARY_CODES.include?(it[:code]) }.sort_by { it[:code] }.map { kpf_log_line(it) }
+          Common.log_summary(headline, detail: lines.empty? ? nil : lines.join("\n"))
         rescue StandardError => e
           Common.log_warn("[KPF] 変換ログの解析に失敗: #{e.message}")
+        end
+
+        # 変換ログ 1 本から、コードのある行を { code:, text:, fix: } で返す。
+        def kpf_log_rows(csv)
+          File.foreach(csv, encoding: 'bom|utf-8').filter_map do |line|
+            code = line[/\b([EW]\d{4,5})\b/, 1]
+            next unless code
+
+            fields = csv_fields(line.chomp)
+            description = fields.find { it.include?(code) } || line
+            text = description.sub(/\A.*?#{code}:?\s*/, '').gsub(%r{\S*/EPUB/}, '').squeeze(' ').strip
+            { code:, text:, fix: fields[5].to_s.strip }
+          end
+        rescue StandardError
+          []
+        end
+
+        # 表示する 1 行。Kindle Previewer の推奨される修正があれば添える
+        def kpf_log_line(row)
+          line = "#{row[:code]} #{row[:text]}"
+          line += " → #{row[:fix]}" unless row[:fix].empty?
+          line
+        end
+
+        # 引用符で囲んだ CSV の 1 行を列に分ける（"" は " に戻す）。csv gem は依存に入れていない
+        def csv_fields(line)
+          line.scan(/(?:\A|,)(?:"((?:[^"]|"")*)"|([^,]*))/).map { (it[0] || it[1]).to_s.gsub('""', '"') }
         end
       end
     end

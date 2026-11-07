@@ -203,6 +203,31 @@ module VivlioStarter
         assert_includes result, 'href="00-preface.xhtml"', 'href は変更しないべき'
       end
 
+      # 目次の文書（nav）の中で自分自身を指すリンクに、章の印 #ch-… を付ける。
+      # Kindle の変換はファイル名だけの自己リンクを解決できず W14001 を出していた。
+      # ほかの文書へのリンクと、nav の外のリンクは変えない
+      def test_should_anchor_self_link_in_nav_document
+        opf = <<~XML
+          <package><manifest>
+            <item id="id-00-prefacexhtml" href="00-preface.xhtml" media-type="application/xhtml+xml" properties="nav"></item>
+          </manifest></package>
+        XML
+        preface = <<~XHTML
+          <html><body><section><h1 id="はじめに-">はじめに<span id="ch-preface" class="vs-sec-anchor"></span></h1>
+          <p><a href="00-preface.xhtml">本文中の自己リンク</a></p></section>
+          <nav id="toc" role="doc-toc" epub:type="toc" hidden=""><ol><li><a href="00-preface.xhtml">はじめに</a></li><li><a href="11-workflow.xhtml">執筆</a></li></ol></nav>
+          </body></html>
+        XHTML
+        epub = build_epub_with_css('EPUB/content.opf' => opf, 'EPUB/00-preface.xhtml' => preface)
+
+        Build::EpubBuilder.anchor_nav_self_link!(epub)
+
+        result = read_css_from_epub(epub, 'EPUB/00-preface.xhtml')
+        assert_includes result, '<li><a href="00-preface.xhtml#ch-preface">はじめに</a></li>'
+        assert_includes result, '<li><a href="11-workflow.xhtml">執筆</a></li>'
+        assert_includes result, '<p><a href="00-preface.xhtml">本文中の自己リンク</a></p>'
+      end
+
       # --- EPF-09: フォント非埋め込み時に @font-face と fonts/ への @import を除去（既定）。
       #     ただし keyfont（kbd キーキャップ描画・実体同梱）だけは保持する ---
       def test_should_strip_font_face_when_not_embedding_fonts

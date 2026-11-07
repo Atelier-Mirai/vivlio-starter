@@ -154,6 +154,32 @@ module VivlioStarter
         assert_includes style, 'float: left'
       end
 
+      # .pictures は KFX が flex を解さず 1 枚ずつ全幅になるので、inline-block の横並びにする。
+      # 1 行は 2 枚まで（3・4 枚目は次の行）。写真の間の空白は取り除く
+      def test_should_lay_out_pictures_side_by_side_with_inline_block
+        figures = (1..4).map { %(<figure><img src="images/p#{it}.jpg" alt=""></figure>) }.join("\n")
+        html = %(<html><body><div class="pictures" style="--pictures-columns: 4">\n#{figures}\n</div></body></html>)
+        doc = process(html) { |files| Builder.lay_out_pictures_for_kindle!(files) }
+
+        styles = doc.css('.pictures > figure').map { it['style'] }
+        assert(styles.all? { it.include?('display: inline-block') && it.include?('width: 48.5%') })
+        assert_includes doc.at_css('.pictures figure img')['style'], 'width: 100%'
+        assert_includes styles[0], 'margin: 0 1.0% 0.5em 0'
+        assert_includes styles[1], 'margin: 0 0% 0.5em 0', '2 枚目で行が終わる'
+        assert(doc.at_css('.pictures').children.none? { it.text? }, '写真の間の空白は取り除く')
+      end
+
+      # .image-group は {width=40%} から作った比（--image-group-col1/2）で 2 枚を並べる
+      def test_should_lay_out_image_group_by_its_column_ratio
+        html = '<html><body><div class="image-group" style="--image-group-col1: 0.4fr; --image-group-col2: 0.6fr">' \
+               '<figure><img src="images/a.jpg" alt=""></figure><figure><img src="images/b.jpg" alt=""></figure></div></body></html>'
+        doc = process(html) { |files| Builder.lay_out_pictures_for_kindle!(files) }
+
+        styles = doc.css('.image-group > figure').map { it['style'] }
+        assert_includes styles[0], 'width: 38.8%'
+        assert_includes styles[1], 'width: 58.2%'
+      end
+
       # sideimage（figure 子）は figure に幅・float、内側 img に width:100% を付与
       def test_should_constrain_sideimage_figure_inline
         html = '<html><body><div class="sideimage-right"><figure><img src="images/a.jpg" alt=""></figure>' \
