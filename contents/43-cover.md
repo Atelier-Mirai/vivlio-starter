@@ -109,9 +109,25 @@ vs cover
 
 入稿用と電子書籍用の表紙はプロジェクト直下に置かれるので、開いて確かめてください。閲覧用は、`vs build` で本に組み込んだ姿で確かめます。
 
-### 分冊の本の表紙
+### 分冊の本の表紙 @volume-covers
 
-分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を作ります。巻の `cover` に書いたテーマを使い、`light`・`dark` には巻の書名が入ります（@pageref:volume-book-values）。プロジェクト直下の表紙の名前には、`mybook_lower_frontcover_v0.1.0.pdf` のように巻の `id` が付きます。
+分冊の本では、巻の `id`（`catalog.yml` で巻に付けた名前）を添えると、その巻の表紙を作ります。たとえば下巻に `id: lower` と付けたなら `vs cover lower` です。`vs cover all` なら全巻の表紙を、`id` を添えない `vs cover` なら合本の表紙を作ります。
+
+巻の表紙には巻の `cover` に書いたテーマを、合本の表紙には `book.yml` の `book.cover` に書いたテーマを使います（@pageref:volume-book-values）。独自の画像を使うときは、巻と合本でテーマ名を分け、それぞれの画像を `covers/` に並べます。
+
+:::{.diagram}
+```text
+covers/
+├── frontcover_upper.png       # 上巻（巻に cover: upper）
+├── backcover_upper.png
+├── frontcover_lower.png       # 下巻（巻に cover: lower）
+├── backcover_lower.png
+├── frontcover_complete.png    # 合本（book.yml に cover: complete）
+└── backcover_complete.png
+```
+:::
+
+`light`・`dark` には、巻の表紙なら巻の書名が、合本の表紙なら `book.yml` の書名が入ります。合本の表紙の画像を用意しないときは、`book.yml` を `cover: light` にすれば、合本の書名の入った表紙ができます。プロジェクト直下の表紙の名前には、`mybook_lower_frontcover_v0.1.0.pdf` のように巻の `id` が付きます。合本の表紙は `mybook_frontcover_v0.1.0.pdf` です。
 
 ## 生成される表紙
 

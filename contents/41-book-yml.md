@@ -434,7 +434,22 @@ VOLUMES:
 
 `book.yml` の `book:` の下の値（@pageref:book-section）は、巻の中に同じ名前で書くと、その巻だけ上書きできます。巻に書かなかった値は `book.yml` のものを使います。合本はいつも `book.yml` の値で組みます。
 
+合本も組む本では、`book.yml` に合本の書名と表紙を書き、巻の書名と表紙は、最初の巻のものも巻の中に書きます。巻に書かなかった巻は、合本と同じ書名と表紙で組まれます。次の例では、巻の原稿の並びを省いています。
+
+```yaml:config/book.yml
+book:
+  main_title: "はじめての技術書づくり"    # 合本の書名
+  cover: complete                      # 合本の表紙
+```
+
 ```yaml:config/catalog.yml
+VOLUMES:
+  - name: 上巻
+    id: upper
+    main_title: "はじめての技術書づくり 上巻"
+    cover: upper             # covers/frontcover_upper.png など
+    release: "令和八年十一月一日"
+    isbn: "978-4-…"
   - name: 下巻
     id: lower
     main_title: "はじめての技術書づくり 下巻"
@@ -443,7 +458,7 @@ VOLUMES:
     isbn: "978-4-…"
 ```
 
-`main_title`・`subtitle`・`author`・`release`・`isbn`・`cover` など、`book:` の下の値はどれも書けます。ISBN は巻ごとに書きます。`book.yml` の ISBN を二つ以上の巻が共有していると、🟡 で警告します。表紙だけを作り直すときは、`vs cover lower`（全巻なら `vs cover all`）を実行します（@chapref:ch-cover）。
+`main_title`・`subtitle`・`author`・`release`・`isbn`・`cover` など、`book:` の下の値はどれも書けます。ISBN は巻ごとに書きます。`book.yml` の ISBN を二つ以上の巻が共有していると、🟡 で警告します。巻と合本の表紙の画像の置き方と、表紙だけを作り直す `vs cover` の使い方は、@pageref:volume-covers で説明します。
 
 ### 巻をまたぐ参照と全巻目次
 
