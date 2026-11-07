@@ -171,11 +171,15 @@ module VivlioStarter
           end
 
           unescape_pipes_in_table_code!(html_file)
+          # ラベル付きのコードを先に包む。mark_code_captions! が `.side-by-side` の 1 列に
+          # 包むと、キャプションとコードの間の <!--xref:ID--> が包みの外に残り、ID が付かない
+          # （25 章の @ruby-sample の飛び先が無かった）。先に包めばキャプションに code-caption が
+          # 付き、mark_code_captions! はその段落を飛ばす
+          wrap_cross_ref_code_blocks!(html_file)
           mark_code_captions!(html_file)
           mark_strong_headings!(html_file)
           mark_inline_image_blocks!(html_file)
           add_line_break_opportunities!(html_file)
-          wrap_cross_ref_code_blocks!(html_file)
 
           begin
             HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)

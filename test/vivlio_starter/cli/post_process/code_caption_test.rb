@@ -64,6 +64,25 @@ module VivlioStarter
           assert_includes out, '<div><p class="code-caption"><strong>CSS の例</strong></p><pre><code>h1 {}</code></pre></div>'
         end
         
+        # ラベル付きのコードは、相互参照の包み（id 付き）がそのまま 1 列になる。
+        # 後処理と同じ順（wrap_cross_ref_code_blocks! → mark_code_captions!）で当てる。
+        # 逆の順では、1 列の包みの外に <!--xref:ID--> が残り、id が付かなかった（25 章の @ruby-sample）
+        def test_should_keep_cross_reference_id_on_labeled_code_in_side_by_side
+          Tempfile.create(['vs_caption_test_', '.html']) do |f|
+            f.write('<html><body><div class="side-by-side"><pre><code>src</code></pre>' \
+                    '<p><strong>リスト 9-1: Ruby のサンプル</strong></p><!--xref:ruby-sample-->' \
+                    '<pre><code>def hello; end</code></pre></div></body></html>')
+            f.flush
+            PostProcessCommands.wrap_cross_ref_code_blocks!(f.path)
+            PostProcessCommands.mark_code_captions!(f.path)
+            out = File.read(f.path, encoding: 'utf-8')
+
+            assert_includes out, '<div id="ruby-sample" class="cross-ref-list"><p class="code-caption">'
+            refute_includes out, '<div><div id="ruby-sample"'
+            refute_includes out, 'xref:'
+          end
+        end
+
         # 囲みの外では包まない（紙面の改ページの判定を変えない）
         def test_should_not_wrap_caption_outside_side_by_side
           out = mark('<p><strong>設定例</strong></p><pre><code>x = 1</code></pre>')
