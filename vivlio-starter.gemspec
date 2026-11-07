@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['contact@atelier-mirai.net']
 
   spec.summary       = 'Markdown で書いた原稿から高品質な PDF・EPUB・Kindle を生成する電子書籍執筆システム'
-  spec.description   = '組版エンジンに CSS 組版の Vivliostyle を採用した、執筆から入稿までを一貫して支える電子書籍執筆システムです。章ファイルの作成・改名といった原稿管理、textlint と独自ルールによる日本語校正・英語スペルチェック、索引と用語集の候補の抽出、分量と読みやすさのメトリクス、画像の最適化と表紙の生成、入稿前の検査（Type 3 フォント・本の書体にない字・組めない数式）、そして前処理（QueryStream 展開・クロスリファレンス）から後処理（PDF しおり・表紙結合・圧縮）までを、30 のコマンドで行います。出力は閲覧用 PDF、トンボと塗り足しを備えた印刷入稿用 PDF、Kobo / Apple Books 向けのクリーン EPUB、Amazon Kindle 向けの KPF。上下巻などの分冊と合本を組めるほか、導入スクリプトによる環境の構築、vs upgrade による本体・雛形・外部ツールの一括更新、Re:VIEW Starter プロジェクトの取り込み、PDF から Markdown への読み取りも備えています。'
+  spec.description   = '組版エンジンに CSS 組版の Vivliostyle を採用した、執筆から入稿までを一貫して支える電子書籍執筆システムです。章ファイルの作成・改名といった原稿管理、textlint と独自ルールによる日本語校正・英語スペルチェック、索引と用語集の候補の抽出、分量と読みやすさのメトリクス、画像の最適化と表紙の生成、入稿前の検査（Type 3 フォント・本の書体にない字・組めない数式）、そして前処理（QueryStream 展開・クロスリファレンス）から後処理（PDF しおり・表紙結合・圧縮）までを、29 のコマンドで行います。出力は閲覧用 PDF、トンボと塗り足しを備えた印刷入稿用 PDF、Kobo / Apple Books 向けのクリーン EPUB、Amazon Kindle 向けの KPF。上下巻などの分冊と合本を組めるほか、導入スクリプトによる環境の構築、vs upgrade による本体・雛形・外部ツールの一括更新、Re:VIEW Starter プロジェクトの取り込み、PDF から Markdown への読み取りも備えています。'
   spec.homepage      = 'https://github.com/Atelier-Mirai/vivlio-starter'
   spec.license       = 'MIT'
 
