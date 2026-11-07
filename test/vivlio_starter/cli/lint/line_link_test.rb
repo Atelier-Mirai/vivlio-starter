@@ -90,4 +90,15 @@ class TestLineLink < Minitest::Test
   ensure
     ENV['NO_COLOR'] = original
   end
+  # --verify-links の URL も、compact ではクリックで開けるリンクにする。
+  # 表示は URL のまま。path・off・端末でないときは素の URL（端末が文字列から見つけられる）
+  def test_web_url_is_a_link_only_in_compact_on_a_terminal
+    url = "https://example.com/page"
+    linked = LL.stub(:linkable?, true) { LL.stub(:mode, "compact") { LL.web(url) } }
+
+    assert_includes linked, "\e]8;;#{url}\e\\"
+    assert_equal url, linked.gsub(/\e\]8;;[^\e]*\e\\/, "").gsub(/\e\[[\d;]*m/, "")
+    assert_equal url, LL.stub(:linkable?, true) { LL.stub(:mode, "path") { LL.web(url) } }
+    assert_equal url, LL.stub(:linkable?, false) { LL.stub(:mode, "compact") { LL.web(url) } }
+  end
 end

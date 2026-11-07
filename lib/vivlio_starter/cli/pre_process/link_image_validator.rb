@@ -35,6 +35,7 @@ require_relative '../common'
 require_relative '../masking'
 require_relative 'image_path_normalizer'
 require_relative 'issue_registry'
+require_relative '../lint/line_link'
 
 module VivlioStarter
   module CLI
@@ -53,6 +54,12 @@ module VivlioStarter
         # URL の範囲は Masking::URL（全角の記号の手前で切る）。前処理が `<URL>` で囲み直す
         # 対象を決めるのに使う（MarkdownTransformer::DELIMITABLE_BARE_URL）
         BARE_URL = /(?<!\]\()(?<!\()(?<!@qr:)#{Masking::URL}/
+
+        # 自動では確かめられないことを示す応答。ページが無いのではなく、サイトが確認の要求を
+        # 門前払いしている（401 認証が必要・403 ボット対策・429 回数制限）。tumblr などは
+        # JavaScript を動かさない要求すべてへ 403 を返すので、リンク切れと呼ぶと誤る。
+        # 🟡 で知らせ、ブラウザで開いて確かめてもらう
+        UNVERIFIABLE_STATUSES = [401, 403, 429].freeze
 
         # リンク切れを確かめる URL。QR コード記法の引数（`@qr:https://…`）は除く
         CHECKABLE_URL = /(?<!@qr:)#{Masking::URL}/
@@ -153,7 +160,7 @@ module VivlioStarter
                 filename: result[:filename],
                 line_number: result[:line_number],
                 url: result[:url],
-                issue_type: :unreachable,
+                issue_type: UNVERIFIABLE_STATUSES.include?(result[:status_code]) ? :unverifiable : :unreachable,
                 status_code: result[:status_code],
                 message: result[:message]
               )
@@ -184,9 +191,11 @@ module VivlioStarter
             if total_link.positive?
               unreachable = reports.sum { it.link_issues.count { |i| i.issue_type == :unreachable } }
               dangerous = reports.sum { it.link_issues.count { |i| i.issue_type == :dangerous_scheme } }
+              unverifiable = reports.sum { it.link_issues.count { |i| i.issue_type == :unverifiable } }
               parts = []
               parts << "危険スキーム: #{dangerous}" if dangerous.positive?
               parts << "リンク切れ: #{unreachable}" if unreachable.positive?
+              parts << "自動では確かめられない: #{unverifiable}" if unverifiable.positive?
               detail_lines << "リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
             end
 
@@ -210,7 +219,18 @@ module VivlioStarter
               report.link_issues.select { it.issue_type == :unreachable }.each do |issue|
                 Common.log_error(
                   "#{issue.filename}:#{issue.line_number} - リンク切れを検出しました",
-                  detail: "URL: #{issue.url} → #{issue.message}"
+                  detail: "URL: #{Lint::LineLink.web(issue.url)} → #{issue.message}"
+                )
+              end
+            end
+
+            # --- 自動では確かめられないリンク（ページが無いとは限らない）---
+            reports.each do |report|
+              report.link_issues.select { it.issue_type == :unverifiable }.each do |issue|
+                Common.log_warn(
+                  "#{issue.filename}:#{issue.line_number} - 自動では確かめられないリンクがあります",
+                  detail: "URL: #{Lint::LineLink.web(issue.url)} → #{issue.message}（サイトが自動の確認を受け付けません）\n" \
+                          '→ ブラウザで開いて、ページがあるか確かめてください'
                 )
               end
             end
@@ -273,6 +293,7 @@ module VivlioStarter
           # 重要度は逐次ログの絵文字（log_error / log_warn）と一致させる。
           # この重要度が preflight の終了コードを決める（:error が 1 件でもあれば 1）:
           #   欠落画像・欠落コード・リンク切れ・危険スキーム = 🔴 error
+          #   自動では確かめられないリンク（401・403・429）= 🟡 warn
           def record_to_registry(issue)
             severity, category, message =
               case issue
@@ -282,6 +303,8 @@ module VivlioStarter
                 [:error, :code_include, "存在しないコードファイル: #{image_path}"]
               in LinkIssue[issue_type: :unreachable, url:, message: msg]
                 [:error, :link, "リンク切れ: #{url}（#{msg}）"]
+              in LinkIssue[issue_type: :unverifiable, url:, message: msg]
+                [:warn, :link, "自動では確かめられないリンク: #{url}（#{msg}）"]
               in LinkIssue[issue_type: :dangerous_scheme, url:]
                 [:error, :link, "危険なスキーム: #{url}"]
               else

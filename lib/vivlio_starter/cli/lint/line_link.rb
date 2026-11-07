@@ -56,6 +56,17 @@ module VivlioStarter
           end
         end
 
+        # Web の URL を、クリックでブラウザに開ける形にする（`--verify-links` の指摘）。
+        # 表示は URL そのままなので、path の設定でも端末が文字列から URL を見つけられる。
+        # compact では行番号と同じ薄い青にし、OSC 8 でリンクにする
+        # @param url [String]
+        # @return [String]
+        def web(url)
+          return url unless linkable? && mode == 'compact'
+
+          hyperlink(url, colorize(url))
+        end
+
         # リンクを出してよい場面か（端末に直接書いているときだけ）
         #
         # log_always は Common.emit を通り、並列ビルドや構造化出力では配列へ溜まる。

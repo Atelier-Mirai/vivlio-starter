@@ -279,6 +279,29 @@ module VivlioStarter
           end
         end
 
+        # 403・429 は、ページが無いのではなくサイトが自動の確認を断っている（tumblr のボット対策など）。
+        # リンク切れの 🔴 にせず、ブラウザで確かめるよう 🟡 で知らせる
+        def test_should_report_forbidden_and_rate_limited_urls_as_unverifiable_warnings
+          IssueRegistry.reset!
+          @server.mount_routes('/forbidden' => 403, '/too-many' => 429)
+          @server.start
+          Thread.current[:vs_verify_options] = { verify_external_links: true }
+          content = "[門前払い](http://localhost:#{@server.port}/forbidden)\n" \
+                    "[回数制限](http://localhost:#{@server.port}/too-many)\n"
+
+          LinkImageValidator.validate(content, '00-preface.md')
+          LinkImageValidator.check_external_urls!
+
+          out, = capture_io { LinkImageValidator.print_summary }
+          assert_includes out, '自動では確かめられない: 2'
+          assert_includes out, '自動では確かめられないリンクがあります'
+          refute_includes out, 'リンク切れ'
+          link_issues = IssueRegistry.issues.select { it.category == :link }
+          assert_equal %i[warn warn], link_issues.map(&:severity)
+        ensure
+          IssueRegistry.reset!
+        end
+
         # 同一 URL の重複は 1 回だけチェックされること
         def test_should_deduplicate_urls_before_checking
           # Arrange: 同じ URL を 2 ファイルから参照
