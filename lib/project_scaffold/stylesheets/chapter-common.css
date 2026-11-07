@@ -157,7 +157,11 @@ section:has(hr:last-child) + section > h3:first-child {
 /* 節リード */
 .section-lead {
   display: block;
+  /* 字間 0 なら 1 行 32 字。字間（letter_spacing）を広げたときだけ、book-settings.css が 32 字と
+     字間のぶんの幅で上書きする（BookSettingsCss.section_lead_width_rule）。詰めたときは 32em の
+     まま字数を増やす。版面より広くはしない */
   inline-size: 32em;
+  max-inline-size: 100%;
   margin-block: -15mm 1.5rlh; /* 上へずらして配置 */
   margin-inline: auto;
   font-weight: 700;
@@ -175,6 +179,35 @@ p {
   margin-block: 0;
   text-indent: 1em;
   text-align: justify;
+}
+
+/* 字間。判型の letter_spacing（book.yml の *_custom プリセット）が --letter-spacing に入る。
+   効かせるのは本文の段落・箇条書き・引用と、章・節のリード。letter-spacing は子へ継承
+   されるので、中に入るコード・表・キャプションと、実行結果などの見本を見せる枠
+   （.output・.diagram・.terminal）・段落の形の小見出しでは 0 に戻す。
+   章扉のリードは、字間を含めて lead_chars の字数で幅を決め（BookSettingsCss）、
+   行数を見積もる（lead_layout.rb）。
+   Kindle は var() を含む宣言を捨てるので、字間 0 のまま組まれる。 */
+p,
+li,
+blockquote {
+  letter-spacing: var(--letter-spacing);
+}
+
+pre,
+code,
+kbd,
+samp,
+table,
+figcaption,
+.table-caption,
+.code-caption,
+.output,
+.diagram,
+.terminal,
+.strong-heading,
+:is(table, figcaption, .output, .diagram, .terminal) :is(p, li, blockquote) {
+  letter-spacing: normal;
 }
 
 /* 段落全体が **強調** の行は、文中の強調ではなく小さな見出しとして書かれている

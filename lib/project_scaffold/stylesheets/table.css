@@ -190,6 +190,13 @@ thead:not(:has(th:not(:empty))) {
   min-inline-size: auto;
 }
 
+/* 見出しは折らない（PDF のみ）。列幅は内容から自動で配分されるので、本文の長い列に押されると
+   短い見出しまで「解説／章」と 1〜2 字ずつ折れる。見出しが長い表は <br> で折り返す。
+   EPUB・Kindle は画面が狭く、列の多い表が画面からはみ出すので対象外 */
+body:not(.vs-epub) .long-table th {
+  white-space: nowrap;
+}
+
 /* 横の揃えは通常の表と同じ（見出しは中央・本文は左）。中央に置きたい列は :---: で指定する */
 .long-table td {
   vertical-align: middle;

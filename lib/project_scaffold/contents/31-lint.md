@@ -4,6 +4,17 @@
 原稿を書き進めると、表記の揺れや英単語の綴りの誤りはどうしても紛れ込みます。`vs lint` は、日本語の校正と英語のスペルチェックをまとめて実行し、目で読むだけでは見落としやすい箇所を行番号付きで示すコマンドです。本章では、指摘の読み方、自動修正、意図した表記の残し方、書籍に合わせた調整を扱います。
 :::
 
+** 本章で扱うコマンド・記法・ファイル **
+
+| コマンド・記法・ファイル | 目的 |
+| :--- | :--- |
+| `vs lint` | 日本語校正とスペルチェックを実行する |
+| `vs lint --fix` | 修正方法が一つに決まる指摘を自動修正する |
+| `<!-- no-lint -->` | 原稿の一部を検査から除外する |
+| `textlint_allowlist.yml` | 語句を本全体で許可する |
+| `vs lint --register` | 指摘された英単語をユーザー辞書へ登録する |
+| `textlint_rewrite.yml` | この本の表記の辞書に語を加える |
+
 ## vs lint とは
 
 :::{.section-lead}
@@ -215,7 +226,7 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 
 ある語句を本全体で許可するときは、`config/textlint_allowlist.yml` に書きます。1 行に 1 語句で、`#` から後ろはコメントです。スラッシュで囲むと正規表現になり、末尾にフラグも書けます。
 
-```yaml
+```yaml:config/textlint_allowlist.yml
 - "Web技術で「本」が作れるCSS組版Vivliostyle入門"  # 書名は直さない
 - "基本情報技術者"  # 資格名称
 - "既定"            # この本は「既定」と書く（同梱の辞書は「デフォルト」へ直す）
@@ -233,7 +244,7 @@ allowlist で許可できるのは、修正候補の語句を指摘する規則�
 
 同じ継ぎ目を持つ語がいくつもあるときは、正規表現でまとめて許可します。次のように書くと、`レビューアイコン`・`レビューアカウント`・`レビューアプリ` が許可され、校閲者の意味の `レビューア` は引き続き検査されます。
 
-```yaml
+```yaml:config/textlint_allowlist.yml
 - "/レビューア(イコン|カウント|プリ)/"  # 「レビュー」で終わる複合語の継ぎ目
 ```
 
@@ -285,7 +296,7 @@ vs lint --register
 
 手で書き足すときは、次のように 1 行に 1 語を書きます。
 
-```yaml
+```yaml:config/spellcheck_user_dictionary.yml
 - "haruka"
 - "htmx"
 - "mirai"
@@ -301,7 +312,7 @@ vs lint --register
 
 スペルチェックの動作は、`config/book.yml` の `spellcheck` で設定します。
 
-```yaml
+```yaml:config/book.yml
 spellcheck:
   extra_dictionaries:      # 追加の辞書（初回実行時に取得）
     - ada
@@ -318,7 +329,7 @@ spellcheck:
 日本語校正の振る舞いは、`config/book.yml` の `lint` で書籍の文体に合わせます。文体に合わない規則を無効にしたり、許す表記を選んだりできます。
 :::
 
-```yaml
+```yaml:config/book.yml
 lint:
   # 無効にする規則（集約表示の [ ] に出る名前）
   disabled_rules:
@@ -394,7 +405,7 @@ lint:
 
 一文に打てる読点「、」と半角カンマ「,」の上限は、`config/.textlintrc.yml` に書いてあります。どちらも既定は 3 個です。
 
-```yaml
+```yaml:config/.textlintrc.yml
 rules:
   preset-ja-technical-writing:
     max-ten:
@@ -411,7 +422,7 @@ rules:
 
 `CSS 組版` と `CSS組版` のような表記の揺れは、`config/textlint_rewrite.yml` に書くと指摘され、`vs lint --fix` でまとめて直せます。ここに書くのは**この本の表記**だけです（製品名・技術用語・誤字は同梱の辞書にあります）。
 
-```yaml
+```yaml:config/textlint_rewrite.yml
 rules:
   - expected: CSS 組版      # そろえたい表記
     patterns:              # そこへ直したい表記

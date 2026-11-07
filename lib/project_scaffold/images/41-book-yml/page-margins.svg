@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="100%" viewBox="0 0 648 396" role="img">
+  <!-- 幅は A4 の版面幅 162mm × 4 = 648。
+       見開きは A4（210 × 297mm）を 1 単位 = 1mm で描き、余白も a4_custom の実寸
+       （天・地 20mm、ノド 26mm、小口 22mm）にしてある。 -->
+  <title>A4 の見開きで、天・地・ノド・小口の四つの余白と、余白を除いた本文の範囲である版面を示した図</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#993c1d" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <style>
+    /* 字 ------------------------------------- */
+    text   { font-family: "Noto Sans JP", sans-serif; }
+    .term  { font-size: 14px; font-weight: 700; fill: #1a1a1a; }  /* 用語 */
+    .key   { font-family: monospace; font-size: 12px; fill: #993c1d; }  /* 設定のキー */
+    .label { font-size: 14px; fill: #1a1a1a; }
+    .note  { font-size: 12px; fill: #555555; }
+    /* 線 ------------------------------------- */
+    .paper { fill: #ffffff; stroke: #1a1a1a; stroke-width: 2; }
+    .spine { stroke: #1a1a1a; stroke-width: 2; }
+    .row   { stroke: #9aa0a6; stroke-width: 1; }
+    .dim   { stroke: #993c1d; stroke-width: 1.5; fill: none; }
+    /* 面 ------------------------------------- */
+    .text-area { fill: #c9d3da; }
+    .plate     { fill: #ffffff; }
+  </style>
+
+  <!-- 見開きの紙（左ページ 114〜324、右ページ 324〜534、上下 50〜347） -->
+  <rect class="paper" x="114" y="50" width="210" height="297"/>
+  <rect class="paper" x="324" y="50" width="210" height="297"/>
+  <line class="spine" x1="324" y1="50" x2="324" y2="347"/>
+
+  <!-- 版面（左: 小口 22 / ノド 26、右: ノド 26 / 小口 22、天・地 20） -->
+  <rect class="text-area" x="136" y="70" width="162" height="257"/>
+  <rect class="text-area" x="350" y="70" width="162" height="257"/>
+
+  <!-- 版面の中の行（本文の行を表す線） -->
+  <g class="row">
+    <line x1="142" y1="84" x2="292" y2="84"/>   <line x1="356" y1="84" x2="506" y2="84"/>
+    <line x1="142" y1="98" x2="292" y2="98"/>   <line x1="356" y1="98" x2="506" y2="98"/>
+    <line x1="142" y1="112" x2="292" y2="112"/> <line x1="356" y1="112" x2="506" y2="112"/>
+    <line x1="142" y1="126" x2="292" y2="126"/> <line x1="356" y1="126" x2="506" y2="126"/>
+    <line x1="142" y1="140" x2="292" y2="140"/> <line x1="356" y1="140" x2="506" y2="140"/>
+    <line x1="142" y1="154" x2="250" y2="154"/> <line x1="356" y1="154" x2="506" y2="154"/>
+    <line x1="142" y1="252" x2="292" y2="252"/> <line x1="356" y1="168" x2="506" y2="168"/>
+    <line x1="142" y1="266" x2="292" y2="266"/> <line x1="356" y1="182" x2="470" y2="182"/>
+    <line x1="142" y1="280" x2="292" y2="280"/> <line x1="356" y1="210" x2="506" y2="210"/>
+    <line x1="142" y1="294" x2="292" y2="294"/> <line x1="356" y1="224" x2="506" y2="224"/>
+    <line x1="142" y1="308" x2="230" y2="308"/> <line x1="356" y1="238" x2="506" y2="238"/>
+                                                <line x1="356" y1="252" x2="506" y2="252"/>
+                                                <line x1="356" y1="266" x2="506" y2="266"/>
+                                                <line x1="356" y1="280" x2="506" y2="280"/>
+                                                <line x1="356" y1="294" x2="506" y2="294"/>
+                                                <line x1="356" y1="308" x2="440" y2="308"/>
+  </g>
+
+  <!-- 版面の名前（左ページの中央） -->
+  <rect class="plate" x="167" y="176" width="100" height="50" rx="3"/>
+  <text class="term" x="217" y="197" text-anchor="middle">版面</text>
+  <text class="note" x="217" y="216" text-anchor="middle">本文を組む範囲</text>
+
+  <!-- 天（margin_top）: 左ページの上 -->
+  <line class="dim" x1="217" y1="52" x2="217" y2="68" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="217" y="22" text-anchor="middle">天</text>
+  <text class="key" x="217" y="40" text-anchor="middle">margin_top</text>
+
+  <!-- 地（margin_bottom）: 左ページの下 -->
+  <line class="dim" x1="217" y1="329" x2="217" y2="345" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="217" y="368" text-anchor="middle">地</text>
+  <text class="key" x="217" y="386" text-anchor="middle">margin_bottom</text>
+
+  <!-- ノド（margin_inner）: 綴じる側。左右のページの両方にある -->
+  <line class="dim" x1="300" y1="196" x2="322" y2="196" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <line class="dim" x1="326" y1="196" x2="348" y2="196" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="324" y="368" text-anchor="middle">ノド</text>
+  <text class="key" x="324" y="386" text-anchor="middle">margin_inner</text>
+
+  <!-- 小口（margin_outer）: 外側。左ページは左、右ページは右 -->
+  <line class="dim" x1="116" y1="196" x2="134" y2="196" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="104" y="190" text-anchor="end">小口</text>
+  <text class="key" x="104" y="208" text-anchor="end">margin_outer</text>
+
+  <line class="dim" x1="514" y1="196" x2="532" y2="196" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="544" y="190">小口</text>
+  <text class="key" x="544" y="208">margin_outer</text>
+</svg>

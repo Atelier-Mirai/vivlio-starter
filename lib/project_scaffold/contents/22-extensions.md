@@ -40,7 +40,7 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 :::
 ```
 
-### 独自のクラスを追加する
+### 独自のクラスを追加する @custom-class
 
 本章にない装飾がほしいときは、任意のクラス名でブロックを囲み、`stylesheets/custom.css` に見た目を定義します。
 
@@ -301,7 +301,7 @@ Vivlio Starter の拡張記法の多くは、VFM（Vivliostyle Flavored Markdown
 
 まず話者を `config/talk.yml` に定義します。本書の雛形には、遙香（`haruka`）と未來（`mirai`）が記入例として入っています。書き方とこの本の話者は `vs config:talk` で確かめられます。
 
-```yaml
+```yaml:config/talk.yml
 haruka:
   name: 遙香            # 表示名（省略時はキーをそのまま表示）
   color: red           # テーマ色名 / HEX（省略時はテーマのアクセント色）
@@ -345,7 +345,7 @@ haruka: そうです。このガイドブック自体が実例ですよ。
 
 先頭の一文字が同じ話者がいるときや、欧文のイニシャルにしたいときは、`initial:` で円に入れる字を一文字か二文字で指定します。二文字は、円に収まる大きさまで縮めて描かれます。
 
-```yaml
+```yaml:config/talk.yml
 sato:
   name: 佐藤
   avatar: auto
@@ -369,7 +369,7 @@ bohr: 神が何をなさるかを、あなたが指図すべきではありま�
 
 表示は**`style`（形式）・`name`（話者名）・`avatar`（アバター）**の三つで決まります。本全体の既定は `config/talk.yml` の `display:` に書きます。
 
-```yaml
+```yaml:config/talk.yml
 display:
   style: chat         # chat（吹き出し）/ inline（「名前：発話」の 1 段落）
   name: true          # 話者名を表示する

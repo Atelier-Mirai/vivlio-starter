@@ -1,34 +1,20 @@
 # インストール詳細
 
 :::{.chapter-lead}
-通常の macOS 環境では、導入スクリプトが執筆に必要なツールを揃えます。この章は、その処理の内訳を確かめたいときや、macOS 以外の環境・CI/CD 環境を自分で整えたいときのための資料です。すぐに書き始めたい方は、必要になったところから参照してください。
+@chapref:ch-workflow で実行した導入スクリプトの処理の内訳、執筆に使うツールの一覧、インストールで起きる問題の解決策をまとめます。インストールした内容を確かめたいときや、導入スクリプトを使わずにインストールしたいときに参照してください。
 :::
 
-## 導入スクリプト
+## 導入スクリプトの処理
 
-macOS では、次の 1 行で Vivlio Starter と、執筆に使うツールをまとめてインストールできます。
+導入スクリプトは、次の順に処理を進めます。尋ねることは最初にまとめてあるので、確認が済めば、終わるまで席を外して構いません。
 
-```bash
-zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)"
-```
-
-:::{.memo}
-**ターミナルの開き方（macOS）**
-
-Spotlight から: `Cmd + Space` →「Terminal」と入力 → Enter。
-Finder から: アプリケーション → ユーティリティ → Terminal.app。
-[iTerm2](https://iterm2.com/)や[Warp](https://www.warp.dev/)などの代替ターミナルも利用できます。
-:::
-
-スクリプトは次の順に進みます。尋ねることは最初にまとめてあるので、確認が済めば、終わるまで席を外して構いません。
-
-1. 確認（Homebrew の導入・シェルの設定ファイルへの書き込み・プレビューの操作の許可・Kindle Previewer の導入・管理者のパスワード）
-2. Homebrew の導入（Xcode Command Line Tools も一緒にインストールされる）
-3. Kindle Previewer と Rosetta 2 の導入（Kindle 向けにも作ると答えたときだけ）
-4. Ruby の準備（次の表）
+1. インストールの確認と、管理者のパスワードの入力
+2. Homebrew のインストール（Xcode Command Line Tools を含む）
+3. Kindle Previewer と Rosetta 2 のインストール（確認で選んだときだけ）
+4. Ruby の準備（次の表）と bundler のインストール
 5. シェルの設定ファイルへの書き込み
-6. Vivlio Starter と vivlio-starter-pdf（PDF にしおりを付ける拡張）の導入
-7. 執筆に使うツールの導入（`vs doctor --fix`。内訳は次の節）
+6. Vivlio Starter と拡張機能 vivlio-starter-pdf のインストール
+7. 執筆に使うツールのインストール（`vs doctor --fix`。内訳は次の節）
 8. 新しいシェルへの切り替え（同じウィンドウのまま `vs` を使える）
 
 Ruby は、今使っている Ruby に合わせて用意します。
@@ -42,27 +28,62 @@ Ruby は、今使っている Ruby に合わせて用意します。
 
 シェルの設定ファイルには、新しいターミナルで Homebrew と Ruby を使うための行を書きます。Homebrew の設定は `~/.zprofile` に書きます。rbenv の設定は、`~/.zshrc` にすでに rbenv の記述があればそちらに、無ければ `~/.zprofile` に書きます。Homebrew の Ruby を使う場合は、gem がインストールするコマンドの置き場所を PATH に追加する行も書きます。同じ設定がすでにあれば、追加しません。
 
-オプションは、末尾に `install` と続けて渡します。たとえば確認を省くときは、`… install.zsh)" install -y` とします。
+オプションは、末尾に `install` と続けて渡します。
 
 | オプション | 説明 |
 | :--- | :--- |
-| `-y` | 確認をスキップして自動導入 |
-| `-v 4.0.9` | 指定した版の Ruby を rbenv で導入 |
-| `--no-bundler` | bundler の導入をスキップ |
+| `-y` | 確認をスキップしてインストール |
+| `-v 4.0.9` | 指定した版の Ruby を rbenv でインストール |
 
-スクリプトの中身は、gem に同梱の `bin/install.zsh` と同じです。実行する前に GitHub で読むこともできます。
+次の例は、確認をスキップしてインストールします。
 
-Ruby 3.4 以上がすでにあり、gem だけをインストールしたい場合は、次のようにします。執筆に使うツールは、最初の `vs new` がインストールします。
+```bash
+zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-starter/master/bin/install.zsh)" install -y
+```
+
+実行する前にスクリプトの中身を確かめたいときは、`install.zsh` で終わる URL を Web ブラウザで開きます。
+
+## 手動でインストールする
+
+Ruby 3.4 以上がすでにあれば、gem だけをインストールします。
 
 ```bash
 gem install vivlio-starter vivlio-starter-pdf
 ```
 
-vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあります。本体だけでも、PDF のしおりと `vs pdf:read` の画像抽出・OCR 以外の処理はすべて動きます。
+執筆に使うツールは、最初の `vs new` が `vs doctor --fix` でインストールします。Xcode Command Line Tools や Homebrew がインストールされていなければ、インストールの確認が表示されます。
 
-## 自動インストールの内訳
+vivlio-starter-pdf は、PDF にしおりを付け、`vs pdf:read` で画像の抽出と OCR を行う拡張機能です。インストールしなくても、それ以外の処理はすべて動きます。
 
-導入スクリプトと `vs new mybook` の最後では `vs doctor --fix` が呼び出され、必要なツールを導入します。どのツールが何に使われるか、ここで確認できます。
+Ruby がインストールされていないときは、Homebrew と rbenv で Ruby をインストールしてから、上の `gem install` を実行します。
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+source ~/.zprofile
+
+brew install rbenv ruby-build
+echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
+source ~/.zprofile
+rbenv install 4.0.9
+rbenv global 4.0.9
+```
+
+Intel の Mac では、2 行目の `/opt/homebrew` を `/usr/local` に読み替えます。
+
+インストールが済んだら、本のプロジェクトを作って組んでみます。
+
+```bash
+vs new mybook
+cd mybook
+vs build
+```
+
+`mybook_v0.1.0.pdf` が生成されれば、インストールは完了です。
+
+## 自動インストールの内訳 @install-tools
+
+導入スクリプトと `vs new mybook` の最後では `vs doctor --fix` が呼び出され、必要なツールをインストールします。どのツールが何に使われるか、ここで確認できます。
 
 | ツール | インストール方法 | 用途 |
 | :--- | :--- | :--- |
@@ -71,167 +92,33 @@ vivlio-starter-pdf は AGPL のため、本体とは別の gem にしてあり�
 | Node.js / npm | `brew install node` | Vivliostyle CLI の前提（Node 22.12 以上） |
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
 | VFM | `npm install -g @vivliostyle/vfm` | Markdown から HTML への変換 |
-| textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
+| textlint と推奨ルール | `npm install -g textlint ...` | 文章校正 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
 | poppler（pdfinfo / pdftoppm / pdftotext） | `brew install poppler` | PDF メタデータ取得・ページ画像化・しおりの位置の特定 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
 | Inkscape | `brew install --cask inkscape` | SVG ラスタライズの予備経路（任意） |
-| librsvg（rsvg-convert） | `brew install librsvg` | EPUB 扉絵・節絵の合成画像ラスタライズ |
-| libvips | `brew install vips` | 高速画像処理 |
-| Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
-| MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
+| librsvg（rsvg-convert） | `brew install librsvg` | 表紙・EPUB の扉絵と節絵の SVG ラスタライズ |
+| libvips | `brew install vips` | `vs pdf:read` の OCR の画像処理（vivlio-starter-pdf を使うとき） |
+| Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | `vs pdf:read` の OCR（vivlio-starter-pdf を使うとき） |
+| MeCab | `brew install mecab mecab-ipadic` | 索引の読みの推測・交ぜ書きの検出 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
-| `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
+| `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | 扉絵・節絵の画像の拡大（任意） |
 | Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer`（Kindle を選んだときだけ） | Kindle（KPF）変換（任意・targets: kindle 用） |
-| Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
+| Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード |
 
-Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
+`config/book.yml` の `targets` に `kindle` がある本では、`vs doctor --fix` が Kindle Previewer をインストールします。導入スクリプトの確認で選んだ場合は、その時点でインストールされます。Apple Silicon の Mac には、変換に使う **Rosetta 2** も一緒にインストールします。どちらも、インストールの際に管理者のパスワードを入力します。インストール後は、アプリの更新機能で新しい版へ更新されます。
 
-Kindle Previewer は、`config/book.yml` の `targets` に `kindle` がある本で `vs doctor --fix` を実行するとインストールされます。導入スクリプトで Kindle 向けにも作ると答えた場合は、その時点でインストールされます。Kindle を選んでいない本ではインストールしません。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれるので、Apple Silicon の Mac には **Rosetta 2** も一緒にインストールします。どちらも管理者のパスワードを尋ねます。インストール後は、アプリの更新機能で新しい版へ更新されます。
+## トラブルシューティング @install-troubleshooting
 
-<!-- no-lint -->
-**`vs doctor --fix` による自動インストールは、macOS と Homebrew の組み合わせに対応しています。** Linux と Windows は現時点で動作検証を行えておらず、公式のサポート対象外です。手動で環境を整えたい場合は、以降の手順をお使いの環境に読み替えてください。必要なツールが揃えば動作する見込みはありますが、手順や結果は環境によって異なります。
-
-## 手動インストール
-
-### macOS
-
-1) Xcode Command Line Tools
-
-```bash
-xcode-select --install
-```
-
-2) Homebrew
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-Homebrew を導入したら、使っている Mac に合わせて PATH を設定します。
-
-```bash
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile   # Apple Silicon
-echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile      # Intel（必要時）
-source ~/.zprofile
-```
-
-3) Ruby（rbenv）
-
-```bash
-brew install rbenv ruby-build
-echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
-source ~/.zprofile
-
-rbenv install 4.0.9
-rbenv global 4.0.9
-ruby -v
-```
-
-4) Node.js
-
-```bash
-brew install node
-node -v && npm -v
-```
-
-5) Vivliostyle CLI
-
-```bash
-npm install -g @vivliostyle/cli
-vivliostyle --version
-```
-
-6) 外部ツール（PDF・画像処理）
-
-```bash
-brew install qpdf poppler ghostscript imagemagick inkscape librsvg vips
-brew install tesseract tesseract-lang mecab mecab-ipadic
-```
-
-7) Vivlio Starter gem
-
-```bash
-gem install vivlio-starter vivlio-starter-pdf
-vs --version
-```
-
-8) プロジェクト作成と動作確認
-
-```bash
-vs new mybook
-cd mybook
-vs build
-```
-
-`mybook_v0.1.0.pdf` が生成されれば、基本的な動作を確認できています。
-
-### Linux / WSL（Ubuntu / Debian の例）
-
-1) 必要パッケージ
-
-```bash
-sudo apt-get update
-sudo apt-get install -y build-essential curl git \
-  qpdf ghostscript imagemagick poppler-utils librsvg2-bin \
-  tesseract-ocr tesseract-ocr-jpn libvips-tools mecab
-```
-
-2) Node.js（nvm 推奨）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-source ~/.nvm/nvm.sh
-nvm install --lts
-node -v && npm -v
-```
-
-3) Ruby（rbenv 推奨）
-
-```bash
-sudo apt-get install -y libssl-dev libreadline-dev zlib1g-dev
-curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
-export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init - bash)"
-rbenv install 4.0.9 && rbenv global 4.0.9
-ruby -v
-```
-
-4) Vivliostyle CLI と Vivlio Starter
-
-```bash
-npm install -g @vivliostyle/cli @vivliostyle/vfm mathjax-full @mermaid-js/mermaid-cli @vscode/vscode-languagedetection
-gem install vivlio-starter
-```
-
-5) プロジェクト作成と動作確認
-
-```bash
-vs new mybook
-cd mybook
-vs build
-```
-
-画面のない環境では PDF ビューアーは自動で開きません。生成された `mybook_v0.1.0.pdf` を、別の環境に移すなどして確認してください。
-
-### Windows
-
-Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は上の「Linux / WSL」を参照してください。
-
-## トラブルシューティング
-
-ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確かめてください。macOS では `vs doctor --fix` で導入も試せます。使い分けは @chapref:ch-doctor で説明しています。
+ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確かめてください。`vs doctor --fix` で、不足しているツールをインストールできます。使い分けは @chapref:ch-doctor で説明しています。
 
 :::{.long-table}
 | 症状 | 原因 | 解決策 |
 | :--- | :--- | :--- |
 | `vs` を実行すると `ERROR Error: No input is set.` と出る | Vivliostyle CLI がインストールする同じ名前の `vs` が実行されている | `vivlio-starter doctor --fix` を実行（Vivliostyle の `vs` を削除します。Vivliostyle は `vivliostyle` で使えます） |
 | 導入スクリプトのあと、新しいターミナルで `vs` が見つからない | シェルの設定ファイルへの書き込みを断った | スクリプトが最後に示した行を設定ファイルに追加し、新しいターミナルを開く |
-| Homebrew の PATH が通らない（Apple Silicon） | `/opt/homebrew/bin` が PATH に未追加 | `echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile && source ~/.zprofile` |
-| Ruby のバージョンが合わない | `.ruby-version` と不一致 | `rbenv install $(cat .ruby-version) && rbenv global $(cat .ruby-version)` |
-| `bundler` が見つからない | bundler 未インストール | `gem install bundler` |
-| Node.js の依存関係エラー | `node_modules` の不整合 | `rm -rf node_modules package-lock.json && npm install` |
-| ImageMagick の WebP 変換が失敗 | WebP 非対応ビルド | `brew reinstall imagemagick` |
+| Google Fonts の SSL エラーが解消しない | 証明書の設定が、開いているターミナルに反映されていない | 新しいターミナルを開き、`vs doctor` を再実行 |
 :::

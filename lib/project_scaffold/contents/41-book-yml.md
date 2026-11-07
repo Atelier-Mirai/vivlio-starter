@@ -16,7 +16,7 @@
 | 必要に応じて調整する | `typography`<br>`output`<br>`verify`<br>`legal` | 既定値で動くが、カスタマイズしたい場合に |
 | 機能ごとの設定 | `index_glossary`<br>`index`<br>`glossary`<br>`metrics`<br>`lint`<br>`spellcheck`<br>`pdf_read` | 各機能を使う場合のみ設定 |
 
-本章の設定例のうち、`book` と `project` の値は記入例で、それ以外は書かなかったときの既定値です。
+本章の設定例のうち、`book` と `project` の値は記入例で、それ以外は既定値です。
 
 ## 本ごとに決める項目
 
@@ -24,7 +24,7 @@
 
 書籍の基本情報を記入します。ここで指定したタイトルや著者名は、タイトルページ・奥付・EPUB のメタデータへ反映されるため、刊行前にもう一度確認してください。
 
-```yaml
+```yaml:config/book.yml
 book:
   main_title: "はじめての技術書づくり"
   subtitle: "Vivlio Starter 実践ガイド"
@@ -49,7 +49,7 @@ book:
 
 生成するファイルの名前は、`name` と `version` で決まります。書籍名とは別に、配布ファイルを見分けやすい名前を付けてください。`include_version` を `false` にすると、ファイル名に版を付けません。
 
-```yaml
+```yaml:config/book.yml
 project:
   name: "vivlio_starter"     # 出力例: vivlio_starter_v1.0.0.pdf
   version: "1.0.0"
@@ -60,7 +60,7 @@ project:
 
 章扉のスタイルやアクセントカラー、扉絵、節見出しの装飾画像をここで選びます。まず `style` を決めると、必要な項目が見通しやすくなります。
 
-```yaml
+```yaml:config/book.yml
 theme:
   style: image       # image: 扉絵・節絵あり / simple: なし
   lead_size: 1.2     # リード文の文字の大きさ（本文に対する倍率・1.0〜2.0）
@@ -104,7 +104,7 @@ theme:
 
 用紙サイズ・余白・文字サイズを含む版面は、`config/page_presets.yml` のプリセットから選びます。書き始める段階では近いものを選び、組み上がった紙面を見て調整しても構いません。
 
-```yaml
+```yaml:config/book.yml
 page:
   use: b5_standard  # a5_standard / a5_airy / a5_compact / a5_custom
                     # b5_standard / b5_airy / b5_compact / b5_custom
@@ -115,7 +115,35 @@ page:
   heading_numbering: chapter_and_section  # 見出しに番号を振るか
 ```
 
-`airy` は行間が広めの読みやすいレイアウト、`compact` はより多くの文字を詰めたレイアウトです。`custom` を選ぶと `page_presets.yml` で独自の版面を定義できます。
+`airy` は行間が広めの読みやすいレイアウト、`compact` はより多くの文字を詰めたレイアウトです。`custom` を選ぶと、`page_presets.yml` で版面を自分で決められます。
+
+#### `page_presets.yml` — 判型プリセットの中身
+
+`config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、使う判型の `*_custom`（A4 なら `a4_custom`）を編集し、`book.yml` の `page.use` でそれを選びます。`standard`・`airy`・`compact` は雛形の値のまま使い、手を入れるのは `*_custom` だけにしてください。
+
+```yaml:config/page_presets.yml
+a4_custom:
+  size: A4                 # 用紙サイズ（A5・B5・A4）
+  base_font_size: 10.5pt   # 文字サイズ
+  base_line_height: 1.6    # 行送り（文字サイズに対する倍率）
+  letter_spacing: 0em      # 本文の字間
+  margin_top: 20mm         # 天（上の余白）
+  margin_bottom: 20mm      # 地（下の余白）
+  margin_inner: 26mm       # ノド（綴じる側の余白）
+  margin_outer: 22mm       # 小口（外側の余白）
+```
+
+余白は見開きで決めます（@fig-page-margins）。綴じる側の余白がノド、外側の余白が小口で、左右のページで位置が入れ替わります。四方の余白を除いた、本文を組む範囲を版面と呼びます。
+
+** 見開きの余白と版面 @fig-page-margins **
+![A4 の見開きで、天・地・ノド・小口の四つの余白と、余白を除いた本文の範囲である版面を示した図](page-margins.svg){width=100% align=center}
+
+文字サイズは `pt` か `Q`、余白は `mm` で書きます。行送りは、行の頭から次の行の頭までの長さを、文字サイズに対する倍率で書きます（`1.6` なら 10.5pt の 1.6 倍で 16.8pt）。字間は、字と字の間に足す空きで、字の大きさに対する比で書きます（@fig-typography）。
+
+** 文字サイズ・行送り・字間 @fig-typography **
+![字の大きさ、行の頭から次の行の頭までの行送り、字と字の間に足す字間を、2 行に並べた字で示した図](typography.svg){width=90% align=center}
+
+字間は、`letter_spacing: 0.05em` のように書くと広がり、`-0.05em` のように負の値で書くと詰まります。効くのは本文の段落・箇条書き・引用とリードで、見出し・コード・表・キャプションと、`:::{.output}` などの枠の中の字間は変わりません。字間を広げると本文の 1 行に入る字数が減り、ページ数が増えます。章扉のリードは `lead_chars` の字数で折り返します。節リードは、字間を広げたときは 32 字で折り返し、詰めたときは幅を変えずに 1 行の字数が増えます（どちらも版面に入りきらないときは版面の幅で折り返します）。Kindle では字間は変わりません。
 
 #### `section_pagebreak` — 節で改ページするか
 
@@ -173,7 +201,7 @@ page:
 
 本文・見出し・コラム・コード・ページ番号の書体を指定します。既定の組み合わせで読みやすければ、そのまま使えます。
 
-```yaml
+```yaml:config/book.yml
 typography:
   body:
     font: Noto Serif JP         # 本文（明朝体）
@@ -194,7 +222,7 @@ typography:
 
 `output.targets` で、目的に合う出力形式を指定します。閲覧・配布用なら `pdf`、印刷所への入稿用なら `print_pdf`、電子書籍なら `epub` や `kindle` を選びます。このセクションでは、表紙の扱いや圧縮なども設定できます。
 
-```yaml
+```yaml:config/book.yml
 output:
   targets: pdf           # pdf / print_pdf / epub / kindle
                          # 複数なら pdf, print_pdf か [pdf, epub, kindle]
@@ -226,7 +254,7 @@ output:
 
 `pdf_preview` セクションでは、`vs build` 後に自動表示する PDF のウィンドウ位置を設定できます。デュアルモニター環境でサブモニターに表示させたい場合などに便利です。`close_existing_windows` が `true` のときは、開く前にプレビューのウィンドウをすべて閉じ、開いたあと `window_bounds` の位置へ並べます。`false` にすると、閉じも並べもせず、開くだけにします。
 
-```yaml
+```yaml:config/book.yml
 output:
   pdf_preview:
     close_existing_windows: true
@@ -237,7 +265,7 @@ output:
 
 タイトルページの次のページに載せる、免責事項・商標・絵文字のクレジットの文面を指定します。
 
-```yaml
+```yaml:config/book.yml
 legal:
   disclaimer: |
     本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
@@ -258,7 +286,7 @@ legal:
 
 `vs build` と `vs preflight` は、画像の参照先を毎回確かめます。ここで選べるのは、原稿に書いた外部 URL（リンク記法の URL も、そのまま書いた URL も）に実際にアクセスして確かめるかどうかです。公開前のリンク確認に使います。
 
-```yaml
+```yaml:config/book.yml
 verify:
   external_links: false  # 外部 URL に接続して確かめるか
   timeout: 10            # HTTP チェックのタイムアウト秒数
@@ -288,7 +316,7 @@ verify:
 
 ### 一冊の本の書き方
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-preface
 CHAPTERS:
@@ -316,7 +344,7 @@ POSTFACE:
 
 行の先頭に `#` を付けてコメントにすると、原稿を `contents/` に残したまま本から外せます。`#` を外せば元に戻ります。
 
-```yaml
+```yaml:config/catalog.yml
 CHAPTERS:
   - 11-intro
   # - 12-draft       # 書きかけ。今回は載せない
@@ -326,14 +354,14 @@ CHAPTERS:
 ## 分冊にする @volumes
 
 :::{.section-lead}
-上下巻や上中下巻のように、一冊を分けて刊行するときは、`catalog.yml` に巻ごとの目次を書きます。原稿は `contents/` に一つにまとめたまま、巻を選んで組めます。
+一冊を上下巻や上中下巻に分けて刊行するときは、巻ごとの章の構成を `catalog.yml` に書きます。原稿は `contents/` に一つにまとめたまま、巻を選んで組めます。
 :::
 
 ### 巻を書く
 
 前の節の一冊の本を、上巻と下巻に分けると、次のようになります（部は省いています）。
 
-```yaml
+```yaml:config/catalog.yml
 VOLUMES:
   - name: 上巻
     id: upper
@@ -357,17 +385,19 @@ VOLUMES:
       - 99-postface
 ```
 
-`VOLUMES:` の下に巻を並べ、巻ごとに、一冊の本と同じ区分で目次を書きます（部も書けます）。巻には、呼び名の `name`（「上巻」「第一分冊」）と、出力ファイル名や巻を選ぶのに使う `id` を付けます。`id` は半角英字で始め、数字は末尾にだけ使えます（`upper`・`vol1`）。記号は使えず、大文字と小文字は区別しません。`all` は全巻を指すので使えません。巻の数に決まりはありません。本文と付録は、巻の中にだけ書きます。
+`VOLUMES:` の下に巻を並べ、巻ごとに、一冊の本と同じ区分で原稿を並べます（部も書けます）。巻には、呼び名の `name`（「上巻」「第一分冊」）と、出力ファイル名や巻を選ぶのに使う `id` を付けます。`id` は半角英字で始め、数字は末尾にだけ使えます（`upper`・`vol1`）。記号は使えず、大文字と小文字は区別しません。`all` は全巻を指すので使えません。巻の数に決まりはありません。本文と付録は、巻の中にだけ書きます。
 
 同じ章を、二つ以上の巻に書くこともできます。共通の付録のほか、下巻だけを手に取る読者のために、インストールの章を両方の巻に載せるときに使います。合本には一度だけ載ります。
 
 2 巻目以降に前書きを付けるときは、使っていない番号で原稿を作り、その巻の `PREFACE` に書きます。`vs create 22-custom` のように番号を書くと、番号が一つ前の章を載せた巻の `CHAPTERS` に章を追加します（巻の境目の番号は前の巻に入ります）。`vs create custom` のように番号を省くと、最後の巻の末尾に追加します。前書きとして作ったときは、その行を `PREFACE` へ移してください。
 
+巻を選んで組む方法と、全巻をまとめた合本の組み方は、@pageref:build-volumes で説明します。
+
 ### 本全体の前書き・後書き @book-matter
 
 シリーズの紹介や本全体の結びのように、どの巻のものでもない前書き・後書きは、`VOLUMES:` と並べて書きます。
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-about-this-book   # 本全体の前書き
 POSTFACE:
@@ -394,21 +424,6 @@ VOLUMES:
 
 どの巻から読み始めた読者にも読ませたい前書きは、本全体の `PREFACE` に加えて、2 巻目以降の巻の `PREFACE` にも書きます。合本には一度だけ載ります。
 
-### 巻を選んで組む
-
-```bash
-vs build lower   # 下巻を組む（巻の id を書く）
-vs build all     # 全巻を、巻の順に一巻ずつ組む
-vs build         # 全巻を一冊にまとめた合本を組む
-```
-
-<!-- no-lint -->
-巻を選んで組むと、出力ファイル名に巻の `id` が入り（`mybook_lower_v1.0.0.pdf`）、目次の題は「下巻 目次」のように巻の名前を添えたものになります。合本は、全巻の本文と付録を一冊にまとめて組みます（載る前書き・後書きは @pageref:book-matter）。校正や、電子版の合本に使います。
-
-`vs preflight lower`・`vs lint lower`・`vs metrics lower` のように、ほかのコマンドでも巻を選べます。選ばなければ、すべての巻の原稿を対象にします。
-
-巻の `id` は、章と並べて書けません（`vs build lower 21` はエラーになります）。章を指定すると単章ビルドになり、巻は章から決まります。一つの巻に収まる章はその巻の番号の振り方で組み（`vs build 21`）、別の巻の章を並べたとき（`vs build 11 21`）は、巻のない本と同じように指定した章をすべて組みます。
-
 ### 章番号と付録の記号
 
 章番号は、前の巻から続けて振ります（上巻が第12章までなら、下巻は第13章から）。図表番号や `@chapref` の番号も同じです。巻の最初の章番号を変えるときは、その巻に `chapter_start: 1` のように番号を書きます。二つ以上の巻に書いた章には、それぞれの巻の中の位置で番号が付きます。
@@ -419,7 +434,7 @@ vs build         # 全巻を一冊にまとめた合本を組む
 
 `book.yml` の `book:` の下の値（@pageref:book-section）は、巻の中に同じ名前で書くと、その巻だけ上書きできます。巻に書かなかった値は `book.yml` のものを使います。合本はいつも `book.yml` の値で組みます。
 
-```yaml
+```yaml:config/catalog.yml
   - name: 下巻
     id: lower
     main_title: "はじめての技術書づくり 下巻"

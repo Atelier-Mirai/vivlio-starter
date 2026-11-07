@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="100%" viewBox="0 28 648 204" role="img">
+  <!-- 幅は A4 の版面幅 162mm × 4 = 648。字は 1 字 40 単位に拡大した模式図で、
+       行送りは 1.6 倍（64 単位）、字間は見えるよう 12 単位に広げて描いてある。 -->
+  <title>字の大きさ、行の頭から次の行の頭までの行送り、字と字の間に足す字間を、2 行に並べた字で示した図</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+            orient="auto-start-reverse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#993c1d" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <style>
+    /* 字 ------------------------------------- */
+    text   { font-family: "Noto Sans JP", sans-serif; }
+    .glyph { font-family: "Noto Serif JP", serif; font-size: 34px; fill: #1a1a1a; }
+    .term  { font-size: 14px; font-weight: 700; fill: #1a1a1a; }
+    .key   { font-family: monospace; font-size: 12px; fill: #993c1d; }
+    /* 線 ------------------------------------- */
+    .body  { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1; }
+    .guide { stroke: #9aa0a6; stroke-width: 1; fill: none; stroke-dasharray: 4 4; }
+    .dim   { stroke: #993c1d; stroke-width: 1.5; fill: none; }
+    /* 面 ------------------------------------- */
+    .gap   { fill: #c9d3da; }
+  </style>
+
+  <!-- 1 行目（上端 40）: 字の箱は 40 × 40、間に字間 12 -->
+  <rect class="gap" x="190" y="40" width="12" height="40"/>
+  <rect class="gap" x="242" y="40" width="12" height="40"/>
+  <rect class="gap" x="294" y="40" width="12" height="40"/>
+  <rect class="gap" x="346" y="40" width="12" height="40"/>
+  <rect class="gap" x="398" y="40" width="12" height="40"/>
+  <rect class="body" x="150" y="40" width="40" height="40"/>
+  <rect class="body" x="202" y="40" width="40" height="40"/>
+  <rect class="body" x="254" y="40" width="40" height="40"/>
+  <rect class="body" x="306" y="40" width="40" height="40"/>
+  <rect class="body" x="358" y="40" width="40" height="40"/>
+  <rect class="body" x="410" y="40" width="40" height="40"/>
+  <text class="glyph" x="153" y="72">本</text>
+  <text class="glyph" x="205" y="72">文</text>
+  <text class="glyph" x="257" y="72">の</text>
+  <text class="glyph" x="309" y="72">組</text>
+  <text class="glyph" x="361" y="72">み</text>
+  <text class="glyph" x="413" y="72">方</text>
+
+  <!-- 2 行目（上端 104 = 40 + 64） -->
+  <rect class="gap" x="190" y="104" width="12" height="40"/>
+  <rect class="gap" x="242" y="104" width="12" height="40"/>
+  <rect class="gap" x="294" y="104" width="12" height="40"/>
+  <rect class="gap" x="346" y="104" width="12" height="40"/>
+  <rect class="body" x="150" y="104" width="40" height="40"/>
+  <rect class="body" x="202" y="104" width="40" height="40"/>
+  <rect class="body" x="254" y="104" width="40" height="40"/>
+  <rect class="body" x="306" y="104" width="40" height="40"/>
+  <rect class="body" x="358" y="104" width="40" height="40"/>
+  <text class="glyph" x="153" y="136">を</text>
+  <text class="glyph" x="205" y="136">図</text>
+  <text class="glyph" x="257" y="136">に</text>
+  <text class="glyph" x="309" y="136">す</text>
+  <text class="glyph" x="361" y="136">る</text>
+
+  <!-- 文字サイズ（base_font_size）: 1 行目の字の高さ -->
+  <line class="guide" x1="120" y1="40" x2="150" y2="40"/>
+  <line class="guide" x1="120" y1="80" x2="150" y2="80"/>
+  <line class="dim" x1="128" y1="42" x2="128" y2="78" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="116" y="56" text-anchor="end">文字サイズ</text>
+  <text class="key" x="116" y="74" text-anchor="end">base_font_size</text>
+
+  <!-- 行送り（base_line_height）: 1 行目の頭から 2 行目の頭まで -->
+  <line class="guide" x1="450" y1="40" x2="492" y2="40"/>
+  <line class="guide" x1="398" y1="104" x2="492" y2="104"/>
+  <line class="dim" x1="484" y1="42" x2="484" y2="102" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="term" x="496" y="68">行送り</text>
+  <text class="key" x="496" y="86">base_line_height</text>
+
+  <!-- 字間（letter_spacing）: 2 行目の 2 字目と 3 字目の間 -->
+  <path class="dim" d="M242 150 V158 H254 V150"/>
+  <line class="dim" x1="248" y1="158" x2="248" y2="184"/>
+  <text class="term" x="248" y="202" text-anchor="middle">字間</text>
+  <text class="key" x="248" y="220" text-anchor="middle">letter_spacing</text>
+</svg>

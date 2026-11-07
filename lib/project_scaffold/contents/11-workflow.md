@@ -154,7 +154,7 @@ zsh -c "$(curl -fsSL https://raw.githubusercontent.com/Atelier-Mirai/vivlio-star
 
 ![](welcome.webp){width=80% align=center border=off crop="62px 0 52px 0"}
 
-インストールされるツールの内訳を知りたい方や、macOS 以外の環境へインストールしたい方は、@chapref:ch-install を参照してください。将来 Ruby の新しいバージョンが公開されたときは、`vs upgrade` が更新の手順を表示します。
+インストールされるツールの内訳は、@chapref:ch-install にまとめてあります。将来 Ruby の新しいバージョンが公開されたときは、`vs upgrade` が更新の手順を表示します。
 
 ### プロジェクトを作る
 

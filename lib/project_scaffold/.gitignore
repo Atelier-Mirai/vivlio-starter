@@ -32,6 +32,8 @@ pkg/*.gem
 # Vivlio Starter artifacts
 # （covers/ はソースのみになったため無視しない。生成物は /.cache/ 配下に出る）
 /.cache/
+# vs upgrade が上書き・書き換えの前に元のファイルを退避する場所
+/.vs-backup/
 # 表紙の編集ソース（Keynote 等）は大きい作業ファイルのため追跡しない
 *.key
 

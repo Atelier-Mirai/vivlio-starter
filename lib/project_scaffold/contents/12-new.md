@@ -108,7 +108,7 @@ vs renumber            # 章番号を一括で整列
 
 ファイルは `PREFACE`（前書き）・`CHAPTERS`（本文）・`APPENDICES`（付録）・`POSTFACE`（後書き）の四つに分かれ、各章は拡張子 `.md` を省いたファイル名で登録します。`CHAPTERS` の下へ末尾に半角コロン `:` を付けたタイトルを置くと、その配下の章が一つの「部」にまとまり、部扉ページも生成されます。
 
-```yaml
+```yaml:config/catalog.yml
 PREFACE:
   - 00-preface
 
@@ -143,8 +143,7 @@ POSTFACE:
 `config/book.yml` の `book.cover` でテーマ名を指定します。既定は `light` で、同梱のテンプレートに書名と著者名が入ります。`dark` も選べます。著者が用意した画像（PNG・JPEG・WebP）や SVG を使う場合は、`covers/frontcover_<theme>.png` などを配置してください。画像の雛形は、判型ごとに `covers/templates/` にあります。
 
 ```bash
-vs cover               # book.yml の設定に従ってカバー画像を生成
-vs clean --cover       # 生成されたカバー画像を削除
+vs cover    # book.yml の設定に従ってカバー画像を生成
 ```
 
 テーマの選び方や、著者が用意した画像の使い方は @chapref:ch-cover で詳しく説明します。
@@ -167,7 +166,7 @@ vs clean --cover       # 生成されたカバー画像を削除
 
 `markdown_snippet.md` は章の雛形ではなく、利用できる記法を実例とともに並べた見本です。書き方を確かめたいときに開き、必要な部分を原稿へコピーして使えます。
 
-章テンプレートを自分の執筆手順に合わせる方法は @chapref:ch-utility で、QueryStream テンプレートの仕組みは @chapref:ch-querystream で詳しく扱います。
+章テンプレートを自分の執筆手順に合わせる方法は @chapref:ch-chapter-management で、QueryStream テンプレートの仕組みは @chapref:ch-querystream で詳しく扱います。
 
 ### sources/
 
@@ -226,6 +225,6 @@ cd mybook
 vs doctor --fix
 ```
 
-それでも揃わないときは、`vs doctor` で足りないツールを表示し、@ch-doctor の章の @pageref:doctor-troubleshooting で解決策を探してください。
+それでも揃わないときは、`vs doctor` で足りないツールを表示し、@ch-install の章の @pageref:install-troubleshooting で解決策を探してください。
 
 書籍名や判型、出力形式などは、`config/book.yml` を編集して変えます。キーの説明と今の値は、`vs config:book` で確認できます。

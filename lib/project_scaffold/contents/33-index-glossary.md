@@ -4,6 +4,17 @@
 著者にはよく分かっている本の構成も、必要な情報を探してページを開く読者には見えていません。索引は説明のある場所へ案内し、用語集は読み進めるために必要な意味を補います。本章では、`vs index` コマンドを使った、用語の登録から候補の抽出、レビュー、索引・用語集ページの生成までを紹介します。
 :::
 
+** 本章で扱う記法とコマンド **
+
+| 記法・コマンド | 目的 |
+| :--- | :--- |
+| `[用語\|読み]` | 原稿に印を付けて語を登録する |
+| `vs index:auto` | 原稿から候補を抽出する |
+| `vs index:apply` | レビューの結果を辞書へ反映する |
+| `vs index:plan` | 索引語の数の目安を確かめる |
+| `vs index:export` | 別の本で使えるよう、辞書の判断を書き出す |
+| `vs index:import` | 書き出した判断を取り込む |
+
 ## 索引と用語集ができるまで
 
 :::{.section-lead}
@@ -260,7 +271,7 @@ vs index:apply
 
 既定では、候補は辞書に自動登録されません。`auto_approve` を `true` にすると、推奨する語がレビューを経ずに登録されます。索引の骨格を先に作りたいときには便利ですが、読者を適切な場所へ案内できるかは、あとから必ず確認してください。
 
-```yaml
+```yaml:config/book.yml
 index:
   auto_approve: false    # 既定。レビューファイルで著者が選ぶ
 ```
@@ -393,7 +404,7 @@ Markdown
 
 主要参照を指定すると、それ以外の出現（副次参照）をどこまで載せるかを選べます。
 
-```yaml
+```yaml:config/book.yml
 index:
   reference_style: main_and_sub   # 既定
 ```
@@ -521,7 +532,7 @@ vs index:import ~/vivlio/shared_library.yml
 候補の量や索引の表示方法は、`book.yml` で書籍に合わせて調整できます。索引と用語集で共通の設定は `index_glossary` に、索引だけの設定は `index` に、用語集だけの設定は `glossary` に置きます。
 :::
 
-```yaml
+```yaml:config/book.yml
 index_glossary:
   enabled: true                  # 索引・用語集の両方を有効化（false で両方無効）
   use_mecab: true                # MeCab による読みの自動推測を使う
