@@ -174,16 +174,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 11-workflow
-- term: HexaPDF
-  yomi: HexaPDF
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/\\bHexaPDF\\b/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 13-pdf-read
 - term: Homebrew
   yomi: Homebrew
   flags: i
@@ -665,18 +655,6 @@ terms:
   main:
   - 22-extensions
   updated_at: '2026-10-04 00:05:46'
-- term: アスペクト比
-  yomi: あすぺくとひ
-  flags: ig
-  definition: |-
-    画像の縦横比。扉絵は版面と同じ比率（A 判・B 判なら √2:1）、節絵は 2.39:1 が推奨。
-    比率の違う画像を指定しても、ビルド時に自動でクロップされる。
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/アスペクト比/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 42-frontispiece
 - term: アバター
   yomi: あばたー
   flags: i
@@ -947,18 +925,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 22-extensions
-- term: クリーン EPUB
-  yomi: くりーん EPUB
-  flags: ig
-  definition: |-
-    楽天 Kobo・Apple Books 向けの EPUB（`targets: epub`）。Kindle 向けの調整を含まず、SVG の図版や数式をそのまま収める。
-     一覧性を優先して出現箇所は省いています。
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/クリーン\\ EPUB/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 44-build
 - term: クロスリファレンス
   yomi: くろすりふぁれんす
   flags: i
@@ -969,16 +935,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 25-cross-reference
-- term: 形態素解析
-  yomi: けいたいそかいせき
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 21:00:15'
-  pattern: "/形態素解析/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 32-metrics
 - term: 言語名
   yomi: げんごめい
   flags: i
@@ -1103,16 +1059,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 31-lint
-- term: 終了コード
-  yomi: しゅうりょうこーど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/終了コード/"
-  main:
-  - 46-utility
-  updated_at: '2026-10-04 00:05:46'
 - term: 出力形式
   yomi: しゅつりょくけいしき
   flags: i
@@ -1218,18 +1164,6 @@ terms:
   main:
   - 33-index-glossary
   updated_at: '2026-10-04 00:05:46'
-- term: 自動ID
-  yomi: じどうID
-  flags: ig
-  definition: |-
-    キャプションに `@auto` と書くと割り当てられる内部的なラベル。
-    図表番号は振られるが、本文からは参照できない。「番号は要るが参照はしない」要素に向く。
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/自動ID/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 25-cross-reference
 - term: 自動インストール
   yomi: じどういんすとーる
   flags: i
@@ -1262,16 +1196,28 @@ terms:
   main:
   - 33-index-glossary
   updated_at: '2026-10-04 00:05:46'
-- term: 冗長表現
-  yomi: じょうちょうひょうげん
+- term: 縦横比
+  yomi: じゅうおうひ
+  flags: ig
+  definition: |-
+    画像の縦と横の比（アスペクト比）。扉絵は版面と同じ比率（A 判・B 判なら √2:1）、節絵は 2.39:1 が推奨。
+    比率の違う画像を指定しても、ビルド時に自動でクロップされる。
+  source: auto_extracted
+  approved_at: '2026-08-09 03:08:17'
+  pattern: "/縦横比/"
+  updated_at: '2026-11-08 19:48:24'
+  main:
+  - 42-frontispiece
+- term: 冗長な表現
+  yomi: じょうちょうなひょうげん
   flags: i
   definition: ''
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
-  pattern: "/冗長表現/"
+  pattern: "/冗長な表現/"
   main:
   - 31-lint
-  updated_at: '2026-10-04 00:05:46'
+  updated_at: '2026-11-08 20:08:08'
 - term: 水平線
   yomi: すいへいせん
   flags: i
@@ -1475,16 +1421,16 @@ terms:
   main:
   - 46-utility
   updated_at: '2026-10-04 00:05:46'
-- term: 綴り誤り
-  yomi: つづりあやまり
+- term: 綴りの誤り
+  yomi: つづりのあやまり
   flags: i
   definition: ''
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
-  pattern: "/綴り誤り/"
+  pattern: "/綴りの誤り/"
   main:
   - 31-lint
-  updated_at: '2026-10-04 00:05:46'
+  updated_at: '2026-11-08 20:08:08'
 - term: 定義リスト
   yomi: ていぎりすと
   flags: i
@@ -1494,14 +1440,6 @@ terms:
   pattern: "/定義リスト/"
   main:
   - 21-markdown-tutorial
-  updated_at: '2026-10-04 00:05:46'
-- term: テスト
-  yomi: てすと
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/テスト/"
   updated_at: '2026-10-04 00:05:46'
 - term: テンプレート
   yomi: てんぷれーと
@@ -1634,18 +1572,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 32-metrics
-- term: 波ダッシュ
-  yomi: なみだっしゅ
-  flags: ig
-  definition: |-
-    「〜」の文字。環境や入力方法によって異なる文字コード（波ダッシュ U+301C と全角チルダ U+FF5E）で保存され、特定の環境で文字化けする。
-    ビルド時に自動で統一されるため、著者が意識する必要はない。
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/波ダッシュ/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 44-build
 - term: 二段組
   yomi: にだんぐみ
   flags: i
@@ -1709,16 +1635,6 @@ terms:
   updated_at: '2026-10-04 00:05:46'
   main:
   - 33-index-glossary
-- term: 派生画像
-  yomi: はせいがぞう
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/派生画像/"
-  main:
-  - 42-frontispiece
-  updated_at: '2026-10-04 00:05:46'
 - term: 発行者
   yomi: はっこうしゃ
   flags: i
@@ -1840,16 +1756,6 @@ terms:
   pattern: "/表紙/"
   main:
   - 43-cover
-  updated_at: '2026-10-04 00:05:46'
-- term: フィールド
-  yomi: ふぃーるど
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/フィールド/"
-  main:
-  - 26-querystream
   updated_at: '2026-10-04 00:05:46'
 - term: フェンス
   yomi: ふぇんす
@@ -1979,18 +1885,6 @@ terms:
   main:
   - 24-chapter-management
   updated_at: '2026-10-04 00:05:46'
-- term: マスター画像
-  yomi: ますたーがぞう
-  flags: ig
-  definition: |-
-    表紙・裏表紙の元になる画像。`covers/frontcover_master.png` などの名前で置く。
-    閲覧用・印刷用・EPUB 用のカバーは、ここから自動で作られる。
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/マスター画像/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 43-cover
 - term: 交ぜ書き
   yomi: まぜがき
   flags: ig
@@ -2022,18 +1916,6 @@ terms:
   main:
   - 44-build
   updated_at: '2026-10-04 00:05:46'
-- term: 目安語数
-  yomi: めやすごすう
-  flags: ig
-  definition: |-
-    本文の分量から算出される、その本にふさわしい索引語数の範囲。
-    索引語の採否は、スコアの値ではなく、この枠に入るかどうかで決める。
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/目安語数/"
-  updated_at: '2026-10-04 00:05:46'
-  main:
-  - 33-index-glossary
 - term: ユーザー辞書
   yomi: ゆーざーじしょ
   flags: i
@@ -2094,16 +1976,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラスタライズ/"
-  updated_at: '2026-10-04 00:05:46'
-- term: ら抜き言葉
-  yomi: らぬきことば
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-10-01 01:26:09'
-  pattern: "/ら抜き言葉/"
-  main:
-  - 31-lint
   updated_at: '2026-10-04 00:05:46'
 - term: ラベル
   yomi: らべる
@@ -2166,16 +2038,6 @@ terms:
   pattern: "/レビューファイル/"
   main:
   - 33-index-glossary
-  updated_at: '2026-10-04 00:05:46'
-- term: ログレベル
-  yomi: ろぐれべる
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-09 03:08:17'
-  pattern: "/ログレベル/"
-  main:
-  - 91-command-cheatsheet
   updated_at: '2026-10-04 00:05:46'
 - term: ローマ数字
   yomi: ろーますうじ
