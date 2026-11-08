@@ -12,7 +12,6 @@
 | :--- | :--- |
 | `vs build` | 本全体を組む |
 | `output.targets` | 出力する形式を選ぶ |
-| `vs build lower` | 分冊の本で、巻を選んで組む |
 | `vs build 11` | 指定した章だけを組む |
 | `vs preflight` | 組まずに原稿を点検する |
 | `vs build memo.md` | 設定ファイルなしで 1 本の原稿を組む |
@@ -286,30 +285,6 @@ sudo softwareupdate --install-rosetta --agree-to-license
 :::
 
 KDP にアップロードする前に、`.kpf` を Kindle Previewer で開き、扉絵・図・コード・表・数式が意図どおり表示されるか（図の細い線や小さな文字が読めるか）を確かめてください。
-
-## 分冊と合本のビルド @build-volumes
-
-:::{.section-lead}
-上下巻のように分冊にした本では、巻を選んで組むことも、全巻を一冊にまとめた合本を組むこともできます。巻の書き方（`catalog.yml` の `VOLUMES:`）は @pageref:volumes で説明しています。
-:::
-
-```bash
-vs build lower   # 下巻を組む（巻の id を書く）
-vs build all     # 全巻を、巻の順に一巻ずつ組む
-vs build         # 全巻を一冊にまとめた合本を組む
-```
-
-<!-- no-lint -->
-巻を選んで組むと、出力ファイル名に巻の `id` が入り（`mybook_lower_v0.1.0.pdf`）、目次の題は「下巻 目次」のように巻の名前を添えたものになります。合本は、全巻の本文と付録を一冊にまとめて組みます（載る前書き・後書きは @pageref:book-matter）。書名と表紙は `book.yml` の値を使います（@pageref:volume-book-values）。校正や、電子版の合本に使います。
-
-巻でも合本でも、`output.targets` に書いた形式をすべて作ります。巻を選んで組んだときは、印刷入稿用 PDF・EPUB・Kindle 用 KPF の名前にも、巻の `id` が入ります。
-
-`vs build all` は、途中の巻で組版に失敗すると、そこで止まります。それまでに組んだ巻の出力は残るので、直したら `vs build lower` のように、止まった巻から組み直せます。
-
-巻の `id` は、章と並べて書けません（`vs build lower 21` はエラーになります）。章を指定すると単章ビルドになり、巻は章から決まります。一つの巻に収まる章はその巻の番号の振り方で組み（`vs build 21`）、別の巻の章を並べたとき（`vs build 11 21`）は、巻のない本と同じように指定した章をすべて組みます。
-
-`vs preflight lower`・`vs lint lower`・`vs metrics lower` のように、ほかのコマンドでも巻を選べます。選ばなければ、すべての巻の原稿を対象にします。
-
 
 ## 単章ビルド
 

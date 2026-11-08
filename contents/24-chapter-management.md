@@ -64,7 +64,7 @@ CHAPTERS:
 
 `vs build`・`vs preflight` は、章を指定したときも `catalog.yml` に載っている章だけを組みます。範囲の中に載っていない原稿があれば除外し、範囲の 💡 の行にそのことを添えます。載っていない章を名指ししたときは、何もせずに処理を中止し、`catalog.yml` へ追加するよう案内します。`vs lint`・`vs metrics` は原稿を読むだけなので、載っていない原稿も対象にします。
 
-`catalog.yml` の書き方（章の並べ方・分冊）は @pageref:catalog-yml で説明します。
+`catalog.yml` の書き方は @pageref:catalog-yml で、分冊の本の書き方は @chapref:ch-volumes で説明します。
 
 ## `vs create` — 章を作成する
 

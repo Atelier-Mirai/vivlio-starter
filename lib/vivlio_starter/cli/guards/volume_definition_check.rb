@@ -47,7 +47,7 @@ module VivlioStarter
           [error("config/catalog.yml に VOLUMES と、一番上の #{top.join('・')} が並んでいます",
                  detail: ['どちらが目次か決められないため、止めています。',
                           "→ 一番上の #{top.join('・')} を、どれかの巻の中へ移してください",
-                          '一番上に書けるのは、本全体の前書き・後書き（PREFACE・POSTFACE）だけです。'])]
+                          '一番上に書けるのは、書籍全体の前書き・後書き（PREFACE・POSTFACE）だけです。'])]
         end
 
         def volume_errors(volume)
