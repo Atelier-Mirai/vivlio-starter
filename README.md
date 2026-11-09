@@ -283,7 +283,7 @@ Vivlio Starter は、Vivliostyle を組版エンジンに使う、書籍づく�
 
 ### ビルド時間の内訳
 
-ガイドブック『はじめての技術書づくり』（A4・283 ページ）は、キャッシュを消してから全章ビルドすると約 3 分です（閲覧用 PDF のみ）。そのうち約 6 割が、Vivliostyle が紙面を組む時間です。
+ガイドブック[『はじめての技術書づくり』](https://techbookfest.org/product/qMsQg0tjxaYgRjs33zCaPG?productVariantID=m89uTcKPhu08bzpdx1FJHH)（A4・283 ページ）は、キャッシュを消してから全章ビルドすると約 3 分です（閲覧用 PDF のみ）。そのうち約 6 割が、Vivliostyle が紙面を組む時間です。
 
 ```
 vivliostyle 本体:      約 61%（107 秒：本文 PDF の組版 53 秒・バックリンク解決の再組版 53 秒）
