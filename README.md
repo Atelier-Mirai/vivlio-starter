@@ -7,6 +7,12 @@
 > **ブランドアイデンティティ**
 > ロゴの緑は Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制作を提供するという Vivlio Starter のメッセージを表現しています。
 
+## ガイドブック『はじめての技術書づくり』
+
+Vivlio Starter の使い方を一冊にまとめたガイドブックです（A4・283 ページ）。この本も Vivlio Starter で組んでおり、原稿は `contents/` にあります。技術書典で頒布しています。
+
+- [技術書典の頒布ページ](https://techbookfest.org/product/qMsQg0tjxaYgRjs33zCaPG?productVariantID=m89uTcKPhu08bzpdx1FJHH)
+
 ## Vivlio Starter でできること
 
 - **Markdown で執筆** — 使い慣れた記法でさくさく書ける。特別なフォーマットを覚える必要はありません
@@ -246,9 +252,9 @@ VS_NO_SPINNER=1 vs build
 
 ## Vivlio Starter のしくみ
 
-Vivlio Starter は、Vivliostyle を組版エンジンとして据えた独自ビルドシステムです。単なるラッパーではありません。`vs build` は 24 の工程からなり、そのうち Vivliostyle に組版を任せるのは PDF と EPUB を書き出す工程です。残る二十余りの工程——原稿の前処理と出力の後処理——は Vivlio Starter が自前で担っています。
+Vivlio Starter は、Vivliostyle を組版エンジンに使う、書籍づくりのためのビルドシステムです。`vs build` は二十を超える工程からなり、Vivliostyle が受け持つのは PDF と EPUB の紙面を組む工程です。原稿の前処理と出力の後処理にあたる残りの工程は、Vivlio Starter が担います。
 
-何をしているかは、次の一覧がそのまま答えになります。
+各工程の内容は次のとおりです。
 
 ### 前処理（vivliostyle 呼び出し前）
 
@@ -277,14 +283,14 @@ Vivlio Starter は、Vivliostyle を組版エンジンとして据えた独自�
 
 ### ビルド時間の内訳
 
-Vivlio Starter の使い方を解説したガイドブック『はじめての技術書づくり』（A4・347 ページ・`contents/` に原稿があります）の全章ビルドで約 5 分。大半は Vivliostyle が紙面を組む時間です。
+ガイドブック『はじめての技術書づくり』（A4・283 ページ）は、キャッシュを消してから全章ビルドすると約 3 分です（閲覧用 PDF のみ）。そのうち約 6 割が、Vivliostyle が紙面を組む時間です。
 
 ```
-vivliostyle 本体:      約 85%（本文 PDF の組版・バックリンク解決の再組版）
-vivlio-starter の処理: 約 15%（前処理・後処理・PDF 結合・しおり付与）
+vivliostyle 本体:      約 61%（107 秒：本文 PDF の組版 53 秒・バックリンク解決の再組版 53 秒）
+vivlio-starter の処理: 約 39%（67 秒：テーマ画像の用意 24 秒・原稿の前処理 12 秒・HTML 変換 6 秒・しおり付与 6 秒など）
 ```
 
-原稿の前処理は 4 秒、HTML 変換は 6 秒ほどで終わります。執筆中は `vs preflight`（数秒）と単章ビルド（約 30 秒）で確認し、仕上げに全章ビルドするのが快適です。
+画像や数式の生成結果はキャッシュに残るので、2 回目からのビルドはさらに短くなります。執筆中は `vs preflight`（数秒）と単章ビルド（約 30 秒）で確認し、仕上げに全章ビルドするのが快適です。
 
 ## 設定（config/book.yml）
 
