@@ -227,6 +227,19 @@
     - キーの付け方。連番（`speaker1`）は確実だが原稿で誰か分からない。ローマ字（`kisha`）は読みやすいが、本体にローマ字への変換が無い（MeCab のカタカナの読みに変換表を足す。MeCab が無ければ連番）。
     - アイコンだけの話者の表示名。Starter は名前を出さないが、Vivlio Starter は `name:` を省くとキーを出す。
 
+- [Medium] **`vs import` で Re:VIEW Starter の一部の章だけを取り込む**: 今の `vs import` はプロジェクトを丸ごと取り込む。`contents/`・`images/`・`codes/` を削除してから、`catalog.yml` に載っている章をすべて変換し、`catalog.yml`・`config.yml` も書き換える。既にある Vivlio Starter の本へ、別の Re:VIEW Starter の本から一章だけ持ってくることはできない。たとえば `book_sakura_fubuki` の Netlify の章だけが要る場合、取り込みたいのは次の 2 つ。
+  - `contents/51-netlify.re`（原稿）
+  - `images/51-netlify/`（その章の画像）
+
+  案は、`.re` ファイルを直に指定したら一部の取り込みにすること（`vs import ../book_sakura_fubuki/contents/51-netlify.re`、複数指定も可）。この形では既存のディレクトリを削除せず、`config.yml` も読み替えない。章の画像（`images/<章の basename>/`）は WebP にして写し、原稿が `//list[][][file=…]` などで参照する `source/` のファイルだけを `codes/` へ写す。
+  - **決めること:**
+    - 番号の扱い。取り込み先に同じ番号の章（`51-*.md`）や同じ名前の章があるとき、確かめて上書きするのか、番号を指定させるのか（`--as 23-netlify` のような形）。
+    - `catalog.yml` への追加。自動で末尾に足すのか、追加する行を示して著者に任せるのか。分冊の本では巻も決める必要がある。
+    - ラベルの重複。今の改名（`unify_labels`）は取り込む章どうしでしか見ていない。取り込み先の既存の章のラベルとも突き合わせる。
+    - 取り込まない章への参照。`@<chap>{52-netlify-form}` や `@<img>{other|…}` のように、一緒に取り込まない章を指す参照は宙に浮く。今の「参照されているラベルの報告」と同じ形で、出現箇所を添えて 🟡 で示す。
+    - `//sideimage` の幅の換算。mm の指定を比率へ直す基準の版面の幅（`text_area_width_mm`）は、今は Starter の `config-starter.yml` の判型から求めている。一部の取り込みでは、取り込み先の本の版面の幅で換算するのが自然。
+    - 索引の辞書。丸ごとの取り込みでは辞書を初期化している（`reset_index_dictionaries!`）が、一部の取り込みでは既存の辞書を残す。
+
 - [Low] **Linux / Windows の自動セットアップ対応（やるかもしれない枠）**: 現状 `vs doctor --fix` の自動インストールは macOS + Homebrew のみで、Linux / Windows は動作検証もできていない。将来的に Linux（apt / dnf など）や Windows（winget / Scoop / Chocolatey など）でも `vs doctor --fix` でひと通り揃うようにできると望ましい。需要と検証コスト次第で、対応するかどうかも含めて将来検討する。
 - [Low] **`book.yml` を機能別のファイルへ切り出すか**: 不要なキーを洗う段は 2026-08-08 のスリム化で済み（671 行 → 2026-10-19 時点で 462 行。判断の軸は `config-key-criteria-guidelines.md`）。残る論点は、`page_presets.yml` `catalog.yml` `textlint_*.yml` のように機能別の設定ファイルへ分けるかどうか。いま大きいのは `output` 64 行・`metrics` 77 行・`lint` 41 行。分けるなら、どれを切り出すかと、`book.yml` に残す境界を決める。
   - **後方互換に注意**。既存プロジェクトの `book.yml` からキーが消えることになるため、`vs upgrade` での移行か、両方の置き場所を読む移行期間が要る。
