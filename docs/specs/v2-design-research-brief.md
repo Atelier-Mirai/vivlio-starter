@@ -112,7 +112,7 @@ Fable が読まずに済むよう、数字と場所を書いておく。
 
 ### D. 設計の前提になる未知（Opus が先に実験する）
 
-Fable の判断を左右するので、小さな実験で先に答えを出しておく。結果は `*-notes.md` として残し、`NOTES.md` に一行足す。
+Fable の判断を左右するので、小さな実験で先に答えを出しておく。結果は `v2-feasibility-notes.md`（2026-11-13）。棚卸しの結果は `v2-inventory-report.md`。Kindle 向けの劣化は、§2 の三か所に加えて、組み上がった EPUB の CSS の書き換え（`sanitize_epub_css!`）があり、四か所だった。
 
 - **D-1 Vivliostyle の `@layer`**: Vivliostyle core はページの処理（`@page`・ページの余白の箱・名前付きの文字列）を独自のカスケードで行う。`@layer` がそこでも効くか、`@import url(...) layer(...)` と `@font-face` が層の中で動くかを確かめる。
 - **D-2 EPUB リーダーの `@layer`**: Apple Books・Kobo・Google Play Books で効くか。KFX は解さないことが分かっている。層を平坦にした CSS を生成するなら、何で生成するか（Ruby で書く、lightningcss などの Node の道具を使う）。
