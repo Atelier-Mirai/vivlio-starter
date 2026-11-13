@@ -17,7 +17,8 @@
 | 固定レイアウトの EPUB を KPF にできるか | **できない**（4 版とも Mobi になる）。Enhanced Typesetting はリフロー型だけの機能で、固定レイアウトの本は EPUB のまま KDP へ出す | 変換の記録・KDP のヘルプ |
 | 動画を含む EPUB を KPF にできるか | **できない**（エラー。Mobi になる） | 変換の記録 |
 | Apple Books は `@layer` を仕様どおりに扱うか | **扱う**（4 項目すべて） | Books の画面 |
-| Apple Books は EPUB の動画を再生するか | **する**（ポスター画像と再生ボタンが出て、再生できた） | Books の画面 |
+| Apple Books は EPUB の動画を再生するか | **する**（H.264・HEVC とも。ポスター画像と再生ボタンが出て、再生できた） | Books の画面 |
+| EPUB の大きさの上限 | Kobo 100 MB・KDP 650 MB・Apple Books と Google Play Books 2 GB（§5.2） | 各ストアのヘルプ |
 | Kobo・Google Play Books の `@layer` の対応 | **未確認**（公開された資料が見つからない・手元に無い） | Web の調べ |
 
 ---
@@ -119,10 +120,30 @@ KDP は、リフロー型と固定レイアウトのどちらの本も受け付�
 - Kindle Previewer の変換は **エラー**を記録した:「audio/video タグは、現在タイプセッティングの改善でサポートされていません。」（推奨の修正は「音声/動画タグを削除」）。出力は Mobi で、Enhanced Typesetting は Not Supported
 - Kindle 向けには `<video>` を取り除き、決まった代わりの表示（ポスター画像と、動画へのリンク）に差し替える必要がある。§5 の「pdf と kindle は動画のサムネイル」の方針と合う
 - Apple Books は、リフロー型・固定レイアウトとも HTML5 の `<video>` で動画を入れられる。ポスター画像を付けるよう求めている（[Apple Books Asset Guide](https://help.apple.com/itc/booksassetguide/en.lproj/itcd08fcb646.html)）
-- macOS の Books で同じ `<video>` を開くと、ポスター画像の上に再生ボタンが出て、押すと再生された（2026-11-13。MP4・H.264）
+- macOS の Books で `<video>` を開くと、ポスター画像の上に再生ボタンが出て、押すと再生された（2026-11-13。MP4・H.264）。再生の確認には、1 秒ごとに背景の色と数字（1〜6）が変わり白い丸が動く 6 秒の動画を使い、再生を始めて約 1 秒後に「2」、約 4 秒後に「5」が出ることを画面で確かめた。最初に使った macOS の資産の動画は冒頭が白く、再生しているかを画面で判定できなかった。試験の動画は AVFoundation の `AVAssetWriter` で書き出した（ffmpeg が無くても作れる）
 - Kobo は、動画入りの本（ePub3AV）を iOS と Android のアプリでだけ扱う。電子ペーパーの端末とデスクトップのアプリは対象外（[Kobo のヘルプ](https://help.kobo.com/hc/en-us/articles/360017763713-File-formats-your-Kobo-eReader-and-Kobo-Books-app-support)）
 
 クリーン EPUB にも、再生できない読者のための代わりの表示（`<video>` の中身）が要る。
+
+### 5.1 動画の形式
+
+- **EPUB の規格は動画の形式を定めていない**。EPUB 3.3 の中核メディア型（core media types）は画像・音声・書体などで、動画は入っていない。EPUB Reading Systems 3.3 は、H.264 と VP8 の少なくとも一方に対応することを勧めるだけで、対応は義務ではない（[EPUB Reading Systems 3.3](https://www.w3.org/TR/epub-rs-33/)）。どの形式が再生できるかは、リーダーごとに決まる
+- **Apple Books は H.264 と HEVC（H.265）を受け付ける**。どちらも MPEG-4 のコンテナに入れる。HEVC は 2019-10-28 の Asset Guide 5.2.11 で加わった。再生できない環境に向けた代わりの動画（fallback）は扱わない（[Apple Books Asset Guide](https://help.apple.com/itc/booksassetguide/en.lproj/itcd08fcb646.html)）
+- **macOS の Books で HEVC の再生を確かめた**（2026-11-13）。§5 と同じ数を数える動画を `AVVideoCodecType.hevc` で書き出し（中身の識別子は `hvc1`）、再生を始めて約 1 秒後に「2」、約 4 秒後に「5」が出た。同じ動画で、H.264 は 62,350 バイト、HEVC は 43,021 バイト（約 31% 小さい）。単色の 6 秒の動画なので、実際の映像での圧縮率の目安にはならない
+- Kobo の対応する形式は公開の資料で確かめられなかった。Kindle は動画を扱わない（§5）。複数のリーダーに出すなら H.264 が無難で、HEVC は Apple Books だけに出す本で選べる
+
+### 5.2 EPUB のファイルの大きさの上限
+
+| 出し先 | 上限 | 出典 |
+|---|---|---|
+| Apple Books | パッケージ全体で 2 GB。推奨は 500 MB 以下 | [Apple Books Asset Guide](https://help.apple.com/itc/booksassetguide/en.lproj/itcd08fcb646.html) |
+| Google Play Books | 1 ファイル 2 GB 未満（表紙の画像を含む） | [Google Play ブックス パートナー センター](https://support.google.com/books/partner/answer/3424254) |
+| KDP | 650 MB。大きいほど変換に時間がかかり、失敗することもある | [KDP ヘルプ](https://kdp.amazon.com/help?topicId=200735140) |
+| Kobo Writing Life | 100 MB（画像を含む）。画像は 1 枚 3 MB 以下を推奨 | [Kobo Writing Life ヘルプ](https://kobowritinglife.zendesk.com/hc/en-us/articles/360058975512) |
+| 技術書典の電子版 | 公開の資料が見つからなかった | |
+
+- いちばん厳しいのは Kobo の 100 MB。動く絵本を複数のストアに出すなら、動画の量はこれに合わせて決める
+- KDP は、70% のロイヤリティを選ぶと、ファイルの大きさに応じた配信のコストが差し引かれる（米国は 1 MB あたり 0.15 ドルとする二次資料がある。公式の値は未確認）。Kindle には動画を入れないので、絵本の画像の大きさが効く
 
 ---
 
