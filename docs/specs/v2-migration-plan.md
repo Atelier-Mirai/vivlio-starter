@@ -369,11 +369,11 @@ S11 の確かめに使う本を、テストの素材（`test/vivlio_starter/fixt
 
 作ったもの・仕様と違えたこと・確かめた結果は `css-layer-restructure-spec.md` §10.4。ここには、確かめ方（§3）について分かったことを書く。
 
-- **ページの種類が読む規則を変えたら、計算値を全文書で比べる。** S2-3 の比べ方（同じ HTML に前後の CSS を当て、Chromium で全要素と `::before`・`::after` の計算値を取る）を、PDF 用 HTML（層ありの入口と平らにした CSS）・EPUB・Kindle 用 EPUB の全文書に広げた。前の版の CSS は `HEAD` の worktree の `EntryWriter` と `Flattener` で作る。使い捨てのスクリプトで行った。
+- **ページの種類が読む規則を変えたら、計算値を全文書で比べる。** S2-3 の比べ方（同じ HTML に前後の CSS を当て、Chromium で全要素と `::before`・`::after` の計算値を取る）を、PDF 用 HTML（層ありの入口と平らにした CSS）・EPUB・Kindle 用 EPUB の全文書に広げた。前の版の CSS は、そのリビジョンの `EntryWriter` と `Flattener` で作る。道具にした（`scripts/css_computed_diff.rb`。Chromium の部分は `scripts/css_computed_styles.mjs`）。
   - 計算値は `document.fonts.ready` を待ってから取る。待たないと、同じ CSS どうしでも、書体の読み込みの途中で組まれた要素の高さが違う。
   - 疑似要素は `content` が `none` でも項目を残す。前後で `content` の有無が変わると、要素の並びがずれて突き合わせられなくなる。
   - 背景画像の `url()` は、前と後の CSS を置いた場所の名前が入るので、置き場の部分をそろえてから比べる。
-- **本書に無い記法は、章の HTML を前書きに付け替えて確かめる。** 前書きに当たる規則が変わったので、本書の章・付録の HTML の body のクラスを `preface` に付け替え、前後の CSS を当てて比べた。囲み・見出し・図など、本書の前書きに無い記法でどう変わるかが、ビルドせずに一覧になる。
+- **本書に無い記法は、章の HTML を前書きに付け替えて確かめる。** 前書きに当たる規則が変わったので、本書の章・付録の HTML の body のクラスを `preface` に付け替え、前後の CSS を当てて比べた（`css_computed_diff.rb --as preface`）。囲み・見出し・図など、本書の前書きに無い記法でどう変わるかが、ビルドせずに一覧になる。
 - **Chromium は Vivliostyle だけのプロパティを計算しない。** `text-spacing`・`margin-break`・`string-set` は計算値に出ないので、新しく当たる規則を CSS の文字列で拾って読む。S2-4 では、見出しの `text-spacing: no-autospace` が前書きの h1〜h3 に当たるのを見つけ、打ち消した。
-- **Kindle の中間生成物で差 0 でも、`:is()` の規則は画面で確かめる。** 変換の前処理は KFX の描画が捨てる規則を映さない。S2-4 で、`:is()` を含む打ち消しの規則に別の打ち消しをまとめかけた（KFX では両方消える）。前書き・後書きの 9 画面を、前後の KPF で撮って比べた。Kindle Previewer の窓の番号と位置は、JXA で `ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(...)))` と取る（`$.CFBridgingRelease` を使うと osascript が落ちた）。
-- **Kindle の中間生成物は、S2-3 の記録（`check/s2-3-b1/kindle-record/`）と比べる。** S2-4 の記録は `check/s2-4-b1/kindle-record/`（一回分）。`style` 属性は宣言の単位で比べ、並び順だけの違いを外す。
+- **Kindle の中間生成物で差 0 でも、`:is()` の規則は画面で確かめる。** 変換の前処理は KFX の描画が捨てる規則を映さない。S2-4 で、`:is()` を含む打ち消しの規則に別の打ち消しをまとめかけた（KFX では両方消える）。前書き・後書きの 9 画面を、前後の KPF で撮って比べた。Kindle Previewer の窓の番号と位置は、基準の `tools/kindle_window.rb` で取る（JXA で `$.CFBridgingRelease` を使うと osascript が落ちたので、`ObjC.castRefToObject` で包む）。
+- **Kindle の中間生成物は、S2-3 の記録（`check/s2-3-b1/kindle-record/`）と比べる。** S2-4 の記録は `check/s2-4-b1/kindle-record/`（一回分）。比べるのは `scripts/kindle_record_diff.rb`（S1 からの使い捨てのスクリプトを道具にした）。`style` 属性は宣言の単位で比べ、並び順だけの違いを外す。
