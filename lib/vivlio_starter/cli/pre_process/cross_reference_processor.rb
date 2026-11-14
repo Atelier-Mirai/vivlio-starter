@@ -684,14 +684,19 @@ module VivlioStarter
           #   （生成物の参照は asset_prefix を持たず、無いと図の文字が Type 3 になる）。
           # - ラスター: 切り抜いた SVG（PDF 用）とラスター（EPUB 用・data-vs-raster）。
           # 切り抜かない・切り抜けないときは元の画像のまま出す（警告は ImageTrimmer / ShowcaseTransformer が出す）。
+          #
+          # 代替テキストは逃がしてから属性へ入れる。原稿の代替テキストには画面の文言を写した `"` が
+          # 入ることがあり（「Your repository "…/practice" was deleted.」）、素のまま入れると属性が
+          # そこで切れ、残りが別の属性になる。EPUB では XHTML として読めなくなる（EPUBCheck の致命）。
           def img_tag(img)
+            alt = CGI.escapeHTML(img[:alt])
             case img[:framed] && framed_sources(img)
             in { svg:, source: }
-              %(<img src="#{svg}" data-vs-source="#{source}" alt="#{img[:alt]}">)
+              %(<img src="#{svg}" data-vs-source="#{source}" alt="#{alt}">)
             in { svg:, raster: }
-              %(<img class="vs-cropped" src="#{svg}" data-vs-raster="#{raster}" alt="#{img[:alt]}">)
+              %(<img class="vs-cropped" src="#{svg}" data-vs-raster="#{raster}" alt="#{alt}">)
             else
-              %(<img src="#{img[:src]}" alt="#{img[:alt]}">)
+              %(<img src="#{img[:src]}" alt="#{alt}">)
             end
           end
 
