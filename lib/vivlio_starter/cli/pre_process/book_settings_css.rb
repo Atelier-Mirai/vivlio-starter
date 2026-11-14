@@ -725,7 +725,7 @@ module VivlioStarter
           # 付録色がテーマ色と同一なら付録専用の上書きは不要。
           lines = base_kindle_accent_rules(acc, colbg) << h4_marker_kindle_rule(cfg, acc)
           lines += appendix_kindle_accent_rules(apx) unless apx == acc
-          # 前書き/後書き（preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
+          # 前書き/後書き（parts/preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
           lines += preface_kindle_accent_rules(preface_accent_hex6(theme_cfg, acc))
 
           <<~CSS.chomp
@@ -919,8 +919,8 @@ module VivlioStarter
             .map { "#{prefix} .#{it} .vs-adm-label" }.join(', ') + " { color: #{color}; }"
         end
 
-        # 前書き（body.preface）/ 後書き（body.postface。postface.css が preface.css を import）の
-        # accent 規則。preface.css は h1 下線・h2/引用の左罫・リンク色を var(--color-preface-accent) で
+        # 前書き（body.preface）/ 後書き（body.postface。前書きと同じ parts/preface.css を読む）の
+        # accent 規則。parts/preface.css は h1 下線・h2/引用の左罫・リンク色を var(--color-preface-accent) で
         # 塗るが KFX で全滅する（h1 下線だけ静的 #4f46e5 フォールバックがあるがテーマ非追従）。
         # book-settings.css は全ページ共通のため body.preface / body.postface で必ずスコープする
         # （裸の h1/h2 規則を出すと本文章へ波及する）。論理プロパティは避け物理で書く。

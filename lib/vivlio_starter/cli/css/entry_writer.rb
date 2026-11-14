@@ -16,7 +16,7 @@
 # 層:
 #   `reset → base → tokens → parts → pages → theme → utilities → settings → target`。
 #   後の層が前の層に勝ち、層の外（書体の定義と custom.css）はどの層にも勝つ（§2.1）。
-#   ファイルの配置は §3.1（段階 S2-2 で分けた。前書き・後書きをそろえるのは S2-4）。
+#   ファイルの配置は §3.1（段階 S2-2 で分け、S2-4 で本文のページの部品をそろえた）。
 # ================================================================
 
 require 'fileutils'
@@ -41,38 +41,38 @@ module VivlioStarter
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
                        'tokens' => %w[tokens.css] }.freeze
 
-        # 本文のページ（章・付録・前書き・後書き）がみな読む部品。順は 1.x の @import の順を保つ
-        # （1.x の prism・code・table・layout-utils・components の順）
-        BODY_PARTS = %w[parts/prism.css parts/code.css parts/table.css
+        # 本文のページ（章・付録・前書き・後書き）がみな読む部品（css-layer-restructure-spec.md §3.3）。
+        # 順は 1.x の章の @import の順を保つ（見出し 2 種 → prism・code・table・layout-utils・
+        # components → chapter-common）。見出しの 2 種は body の vs-header-* のクラスで選ぶので、
+        # どちらのクラスも付かない前書き・後書きには当たらない
+        BODY_PARTS = %w[parts/simple-header.css parts/image-header.css
+                        parts/prism.css parts/code.css parts/table.css
                         parts/layout.css parts/sideimage.css parts/side-by-side.css
                         parts/book-card.css parts/footnote.css parts/math.css parts/epub-reflow.css
-                        parts/talk.css parts/reference.css].freeze
-        # 章と付録だけが読む部品（1.x の chapter-common.css）。前書き・後書きにそろえるのは S2-4
-        CHAPTER_ONLY_PARTS = %w[parts/heading.css parts/prose.css parts/list.css
-                                parts/figure.css parts/box.css].freeze
-        CHAPTER_PARTS = [*%w[parts/simple-header.css parts/image-header.css], *BODY_PARTS,
-                         *CHAPTER_ONLY_PARTS].freeze
-        APPENDIX_PARTS = CHAPTER_PARTS - %w[parts/image-header.css]
-        PREFACE_PARTS = BODY_PARTS
+                        parts/talk.css parts/reference.css
+                        parts/heading.css parts/prose.css parts/list.css
+                        parts/figure.css parts/box.css].freeze
+        # 前書き・後書きは、部品の最後に前書きの見た目を読む。部品の記法の規則と詳細度で
+        # 競わせるため、pages 層でなく parts 層に置く（parts/preface.css の冒頭の説明）
+        PREFACE_PARTS = [*BODY_PARTS, 'parts/preface.css'].freeze
 
         # 著者が原稿で明示する指定。改ページ記法は、記法を書けるページの種類にだけ配る
-        # （utilities/pagebreak.css の冒頭の説明）。前書き・後書きは 1.x で spacing.css を
-        # 読んでいない（そろえるのは S2-4）
-        CHAPTER_UTILITIES = %w[utilities/align.css utilities/gap.css
-                               utilities/spacing.css utilities/pagebreak.css utilities/replace-list.css].freeze
-        PREFACE_UTILITIES = %w[utilities/align.css utilities/gap.css
-                               utilities/pagebreak.css utilities/replace-list.css].freeze
+        # （utilities/pagebreak.css の冒頭の説明）
+        BODY_UTILITIES = %w[utilities/align.css utilities/gap.css
+                            utilities/spacing.css utilities/pagebreak.css utilities/replace-list.css].freeze
 
-        # 種類ごとの、層 → stylesheets/ のファイル。FOUNDATION と book-settings.css は全種類に足す
+        # 種類ごとの、層 → stylesheets/ のファイル。FOUNDATION と book-settings.css は全種類に足す。
+        # 本文のページの違いは、pages/ のページの設定（章の扉絵・付録の色・前書きのノンブル）と
+        # 前書き・後書きの parts/preface.css だけ
         IMPORTS = {
-          'chapter' => { 'parts' => CHAPTER_PARTS, 'pages' => %w[pages/chapter.css],
-                         'utilities' => CHAPTER_UTILITIES },
-          'appendix' => { 'parts' => APPENDIX_PARTS, 'pages' => %w[pages/appendix.css],
-                          'utilities' => CHAPTER_UTILITIES },
+          'chapter' => { 'parts' => BODY_PARTS, 'pages' => %w[pages/chapter.css],
+                         'utilities' => BODY_UTILITIES },
+          'appendix' => { 'parts' => BODY_PARTS, 'pages' => %w[pages/appendix.css],
+                          'utilities' => BODY_UTILITIES },
           'preface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[pages/preface.css],
-                         'utilities' => PREFACE_UTILITIES },
+                         'utilities' => BODY_UTILITIES },
           'postface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[pages/preface.css pages/postface.css],
-                          'utilities' => PREFACE_UTILITIES },
+                          'utilities' => BODY_UTILITIES },
           'toc' => { 'pages' => %w[pages/toc.css pages/whole-toc.css] },
           'index' => { 'pages' => %w[pages/index.css] },
           'glossary' => { 'pages' => %w[pages/glossary.css] },

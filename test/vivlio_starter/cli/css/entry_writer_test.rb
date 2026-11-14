@@ -50,6 +50,36 @@ module VivlioStarter
                           ../../stylesheets/pages/index.css book-settings.css ../../stylesheets/custom.css], imports
         end
 
+        # 本文のページ（章・付録・前書き・後書き）は同じ部品と著者の指定を読む。前書き・後書きは
+        # 部品の最後に前書きの見た目を足し、違いはそれと pages/ のファイルだけ
+        # （css-layer-restructure-spec.md §3.3）
+        def test_should_give_every_body_page_the_same_parts_and_utilities
+          layered = %w[chapter appendix preface postface].to_h do |kind|
+            imports = EntryWriter.render(kind).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/)
+            [kind, imports.group_by(&:last).transform_values { it.map(&:first) }]
+          end
+          chapter = layered.fetch('chapter')
+
+          assert_equal chapter['parts'], layered.fetch('appendix')['parts']
+          %w[preface postface].each do |kind|
+            assert_equal [*chapter['parts'], '../../stylesheets/parts/preface.css'], layered.fetch(kind)['parts'],
+                         "#{kind} は章の部品の後に parts/preface.css を読む"
+          end
+          layered.each_value { assert_equal chapter['utilities'], it['utilities'] }
+        end
+
+        # 扉絵を敷く @page :nth(1) は body のクラスで絞れないので、章だけが読むファイルに置く
+        def test_should_keep_the_frontispiece_page_rule_out_of_non_chapter_pages
+          frontispiece = /@page :nth\(1\) \{[^}]*--frontispiece-image/
+          files = EntryWriter::IMPORTS.select { |kind, _| kind != 'chapter' }.values
+                                      .flat_map(&:values).flatten.uniq
+                                      .concat(EntryWriter::FOUNDATION.values.flatten)
+          holders = files.select { File.read(File.join(STYLESHEETS, it)).match?(frontispiece) }
+
+          assert_empty holders
+          assert_match frontispiece, File.read(File.join(STYLESHEETS, 'pages/chapter.css'))
+        end
+
         # 原稿の種類の名前の揺れを吸収し、知らない種類は本文の章の入口を使う
         def test_should_map_kinds_and_stylesheet_names_to_entries
           assert_equal '.cache/vs/entry-part-title.css', EntryWriter.path_for(:part_title)
