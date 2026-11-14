@@ -304,3 +304,37 @@ S11 の確かめに使う本を、テストの素材（`test/vivlio_starter/fixt
 | 3 | KDP が固定レイアウトの EPUB を受け付けるか（`v2-architecture-spec.md` §9 の 1） | S9 の入口 | 受け付けない場合の判断を、S9 の最初にユーザーに仰ぐ |
 | 4 | S7（公式テーマの取り込み）の入口の実験で、組めなかった場合の範囲 | S7 の入口 | `theme-contract-spec.md` §9 の S7 |
 | 5 | 1.x の保守の期間の間に、1.x へ入れる修正の基準（不具合のうち、どこまでを直すか） | 2.0 の公開の時点 | 「不具合の修正と依存の更新」とだけ決めた |
+
+---
+
+## 8. 実装記録
+
+### 8.1 S0 基準と道具（2026-11-14）
+
+#### 作ったもの
+
+- `scripts/build_copy.rb`: 本を写して組む。`--book`（写す本）・`--vs`（`bin/vs` を走らせるリポジトリ）・`--targets`・`--set KEY=VALUE`（何度でも）・`--no-clean`・`--collect`（出力を写す先）・`--kindle-record`、`--` の後は `vs build` へ渡す（巻の指定など）。`close_existing_windows: false` を必ず当て、何もしない `open` と `osascript` を `PATH` の先頭に置き、`caffeinate -i` の下で走らせる。
+- `scripts/pdf_pixel_diff.rb`: 二つの PDF を `pdftoppm`（100dpi）で画像にし、`magick compare -metric AE` で全ページを比べる。許容は 0 画素。終了コードは 0（一致）・1（違う）・2（比べられない）。
+- `scripts/epub_diff.rb`: 二つの EPUB を展開し、ファイルの一覧・テキストの差・画像と書体のハッシュを比べる。`--epubcheck` で新しい EPUB に EPUBCheck を掛ける。
+- 基準は `../vivlio-starter-v2-baseline/`。組んだコミット・道具の版・各基準の中身・画面の撮り方は、そこの `VERSIONS.md` に書いた。
+
+#### 計画と違えたこと
+
+1. **基準のコミット。** `016dc888`（`v2` を切った時点）では、同じコミットを二度組むと Kindle 用 EPUB の画像の大きさが変わった。EPUB・Kindle の枝が、PDF の枝が画像を測り終える前に割合を読んでいたためで、1.x の不具合として master で直し（`6f8e1670`）、`v2` へマージした。基準はこのコミットで組んだ。直すと、新しい本の最初のビルドでも画像が割合どおりに縮むので、本書の EPUB は 27.5MB から 14.1MB になる。
+2. **B4 の本。** 分冊の仕様の確かめに使った 3 巻の本は残っていなかった。代わりに book_ai_web_starter（上下 2 巻）のコミット `7fd7316` を `git archive` で写し、上巻を組んだ。
+3. **本書の `images/`。** ルートの `images/` は git で追跡されていない（`.git/info/exclude`）。追跡されているのは雛形の写し `lib/project_scaffold/images/` だけで、中身は同じである。`build_copy.rb` は、本に `images/` が無ければ雛形の写しを使う。
+4. **Kindle の記録。** `vs build` は KPF への変換を一時のディレクトリで行い、記録を消す。`build_copy.rb --kindle-record` は、残した Kindle 用 EPUB をもう一度変換し、変換の記録（`Summary_Log.csv`・`Logs/`）と、走行中の中間生成物（`preprocessed/*.xhtml`）を写し取る。
+5. **EPUB の「無視する差」。** 二度組んで見つかった差を足した。
+   - 生成した画像の名前（`images/_epub_assets/<16 桁>`）は、元の画像の絶対パスと更新日時から作られ、写しのディレクトリごとに変わる。名前を中身のハッシュに置き換えてから比べる。中身が変われば名前も変わるので、画像の違いは「なくなった・増えた」として数えられる。
+   - OPF の manifest の `item` の順（名前の順に並ぶので、置き換えると崩れる）。読む順は spine が決めるので、並べ直して比べる。
+6. **Kindle の中間生成物の比べ方。** `preprocessed/` のファイル名には変換ごとに変わるハッシュ（`0_1_<1〜16 桁>_`）が付く。比べるときは、ファイル名のハッシュと画像の名前を外して突き合わせる。S0 では手で比べた。S3 で小段階ごとに比べるので、そこで道具にする。
+
+#### 確かめた結果
+
+- 条件 1: B1〜B5 の出力と、道具の版の記録が、基準のディレクトリにある。B1 には Kindle の変換の記録（Enhanced Typesetting: Supported・変換: Success・エラー 0・品質の問題 0）と、Kindle Previewer・Apple Books の画面を 10 か所ずつ残した。
+- 条件 2: `6f8e1670` で B1 を二度組んだ。
+  - 閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページは 0。
+  - EPUB・Kindle 用 EPUB とも、違いは 0 件（無視する差は上の 5）。EPUBCheck は両方ともエラー・警告 0。
+  - Kindle の変換の記録は二度とも同じ（`Logs/*.csv` は注意 1 件だけ。W14016「カバーが指定されていません」）。中間生成物 `preprocessed/*.xhtml` は 36 件すべて、ファイル名のハッシュと画像の名前を外すと一致した。
+- 条件 3: `--color-text` を `#000` から `#333` に変えた写しで、`pdf_pixel_diff.rb` が 59 ページの差を報告した（終了コード 1）。
+- 1.x の不具合を 2 件見つけた（直していない）。B4 の EPUB が EPUBCheck で致命 1・エラー 1 になる。画像の代替テキストの `"` が属性を壊す件と、奥付の見出しの `id` に空白が入る件である。

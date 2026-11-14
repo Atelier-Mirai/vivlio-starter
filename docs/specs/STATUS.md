@@ -17,7 +17,7 @@
 | `v2-architecture-spec.md` | 2.0 の構造。本の種類（`book.type`＝軸の既定値の組）・パイプラインの五つの層と契約 HTML・出力先の宣言（`OutputTarget`）と `epub_builder.rb` の分割・設定の持ち方・記法の型の追加 | 設計済み・実装待ち（段階 S4・S5・S8〜S10） |
 | `theme-contract-spec.md` | テーマの契約。vs が保証する HTML・`theme.yml`・公開する変数（`--book-*`）・公式テーマの取り込み・テーマの置き場と `vs theme:*` | 設計済み・実装待ち（段階 S1・S6・S7） |
 | `css-layer-restructure-spec.md` | CSS を `@layer` で作り直す。層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成・Kindle の規則の集約 | 設計済み・実装待ち（段階 S2・S3） |
-| `v2-migration-plan.md` | 2.0 の段階 S0〜S11 の順序・共通の確かめ方（基準と比較の道具）・既存の本の移行（`vs upgrade`）・1.x との並行 | 計画済み・着手待ち（段階 S0・S11） |
+| `v2-migration-plan.md` | 2.0 の段階 S0〜S11 の順序・共通の確かめ方（基準と比較の道具）・既存の本の移行（`vs upgrade`）・1.x との並行 | 実装中（S0 は 2026-11-14 に完了・実装記録は §8。残りは S11） |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
