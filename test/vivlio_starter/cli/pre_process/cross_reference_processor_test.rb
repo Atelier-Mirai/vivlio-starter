@@ -358,3 +358,18 @@ class CrossReferenceShowcaseCaptionTest < Minitest::Test
     assert_equal content, XR.transform_captioned_blocks(content, '11-install.md', {})
   end
 end
+
+# 代替テキストに `"` や `<`・`&` があっても、属性が途中で切れない
+# （画面の文言を写した代替テキストで、EPUB が XHTML として読めなくなった）
+class CrossReferenceImageAltTest < Minitest::Test
+  XR = VivlioStarter::CLI::PreProcessCommands::CrossReferenceProcessor
+
+  def test_should_escape_quotes_in_the_alt_text
+    alt = '「Your repository "Mirai/practice" was deleted.」と <b> & 表示される'
+    html = XR.transform_captioned_blocks("本文\n\n![#{alt}](a.webp)\n", '11-install.md', {})
+
+    img = Nokogiri::HTML.fragment(html).at_css('img')
+    assert_equal alt, img['alt']
+    assert_equal %w[alt src], img.attribute_nodes.map(&:name).sort, '属性は src と alt だけのはず'
+  end
+end

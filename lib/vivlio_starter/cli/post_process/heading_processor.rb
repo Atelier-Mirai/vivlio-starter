@@ -191,10 +191,15 @@ module VivlioStarter
         end
 
         # h1 に id を設定
+        #
+        # id を持たない h1（奥付・扉など、生の HTML で書いた見出し）には見出しの文字を使う。
+        # id は空白を含めないので、空白の並びは `-` に置き換える。書名に空白があると
+        # （「AIと学ぶモダンWeb入門 上巻」）EPUB が EPUBCheck の RSC-005 になっていた。
+        # 後段（目次など）はこの属性を読み直すので、ここで決めた値がそのまま参照に使われる。
         def set_h1_id(heading, text)
           return false unless heading['id'].to_s.strip.empty?
 
-          heading['id'] = text
+          heading['id'] = text.strip.gsub(/\s+/, '-')
           true
         end
 
