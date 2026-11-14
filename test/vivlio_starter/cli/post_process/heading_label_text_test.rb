@@ -82,6 +82,18 @@ module VivlioStarter
           assert_equal '著者の題', title_after_markers(html)
         end
 
+        # id の無い h1（奥付の書名など）は見出しの文字を id にする。id は空白を含めないので
+        # `-` に置き換える（「AIと学ぶモダンWeb入門 上巻」で EPUB が EPUBCheck の RSC-005 になった）
+        def test_should_replace_spaces_in_the_id_made_from_the_heading
+          Dir.mktmpdir('vs-heading-id') do |dir|
+            path = File.join(dir, '_colophon.html')
+            File.write(path, '<html><body><h1 class="book-title">AIと学ぶ モダンWeb入門  上巻</h1></body></html>')
+            Common.stub(:log_info, nil) { HeadingProcessor.inject_heading_markers!([path], max_level: 1) }
+
+            assert_equal 'AIと学ぶ-モダンWeb入門-上巻', Nokogiri::HTML(File.read(path)).at_css('h1')['id']
+          end
+        end
+
         private
 
         def title_after_markers(html)
