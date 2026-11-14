@@ -371,9 +371,9 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | S2-1 入口と層 | `Css::EntryWriter`・`@font-face` を `fonts.css` へ・今のファイルを**分けずに**、1 ファイルを 1 つの層へ入れる（`base.css`→`base`、`theme.css`→`tokens`、`page-settings.css`→`base`、部品のファイル→`parts`、`{種類}.css` の固有の規則→`pages`、`spacing.css`・`pagebreak.css`・`replace-list.css`→`utilities`、`book-settings.css`→`settings`）。`frontmatter_generator.rb` の `link` を入口の 1 枚にする | 本書の PDF の全ページの画素が S0 の基準と一致する。一致しないページは、層の位置で勝ち負けが変わった規則が原因なので、規則を正しい層へ移して解く |
 | S2-2 ファイルの分割 | §3.1 の配置（`targets/` と `themes/` を除く）。`chapter-common.css` を部品ごとに分ける。実測の記録を `vivliostyle-css-pitfalls-notes.md` へ移す | 画素が一致する。どのファイルも 400 行を目安に収まる |
 | S2-3 `!important` を無くす | §2.4 の表 | 画素が一致する。`css_layer_test.rb` の `!important` の検査が通る |
-| S2-4 前書き・後書きをそろえる | §3.3。巻末脚注の節の規則を parts 層へ移す（下の注） | 前書きと後書きのページを含め、画素が一致する。字間・段落・引用の規則が 1 か所にある |
+| S2-4 前書き・後書きをそろえる | §3.3。巻末脚注の節の規則を消す（下の注） | 前書きと後書きのページを含め、画素が一致する。字間・段落・引用の規則が 1 か所にある |
 
-- **S2-4 の巻末脚注の節（2026-11-14 に決定）。** S2-1 で、`section.footnotes` の規則（1.x の `page-settings.css`、今は `base/elements.css`）が base 層に入った。1.x では `section.footnotes li p { text-indent: 0 }` が詳細度で `p { text-indent: 1em }` に勝っていたが、今は parts 層の `p` が勝つ。本書の HTML にはこの節が無いので出力は変わらないが、節が残る本では脚注の段落に字下げが付く。S2-4 で、この規則を脚注の部品（`parts/footnote.css`）へ移し、1.x の勝ち負けに戻す。
+- **S2-4 の巻末脚注の節（2026-11-14 に決定）。** `base/elements.css` の末尾の `section.footnotes` の 6 規則（1.x の `page-settings.css` から写したもの）を消す。後処理の `FootnoteConverter` が、章の HTML のすべてで巻末の節から脚注を取り出してページ脚注に変え、節そのものを消すので、組み上がった HTML に節は残らない（本書の HTML 43 枚・B4 の EPUB とも 0 件）。1.x でも当たる場面の無い規則だった。S2-1 で base 層に入ったため、`section.footnotes li p { text-indent: 0 }` は parts 層の `p { text-indent: 1em }` に負ける形になったが、当たらないので出力は変わらない。脚注の段落を字下げしない決まりは、紙面に出るページ脚注（`parts/footnote.css` の `.page-footnote { text-indent: 0 }`）が受け持つ。確かめは、`css_cascade_diff.rb` で、なくなった規則がこの 6 つだけであることと、PDF の画素と Kindle の中間生成物が変わらないこと。
 
 - S2 の間、EPUB と Kindle は「入口の `@import` を解いて、今と同じ順に並べた CSS」を読ませる（S3 の `Flattener` の読み込みと並べ替えを、先に作って使う）。S2-1 の時点で `Css::Stylesheet` と `Css::Flattener` の 1・2 が要る。
 - 確かめ方: 小段階ごとに、本書の写しを `targets: pdf, print_pdf, epub, kindle` で組み、S0 の基準と比べる。PDF は全ページの画素。EPUB と Kindle は S3 まで「Kindle Previewer の画面で、章扉・囲み・コード・索引・前書きの 5 か所を見比べて同じ」とする。
