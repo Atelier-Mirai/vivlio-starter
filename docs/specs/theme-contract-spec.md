@@ -539,7 +539,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 #### 仕様と違えたこと（2026-11-14 ユーザー確認）
 
 1. **奥付の `role`。** 奥付は `body` の直下に h1・p・dl が並ぶだけで、§2.3 の「奥付の最上位の要素」が無かった。`create.rb` の雛形の中身を `<section role="doc-colophon">` で包んだ。EPUB の差は `role` の追加だけでなく、要素 1 つの追加になる。Kindle はこの section を `div`（余白 0）に変える。
-2. **`simple` の本の EPUB。** h2 を常に包むと、components.css の `body.vs-epub .section-topic`（上下の余白 1.8em・0.6em）が、`simple` の本の章にも当たる。`image` の本の付録は以前からこの規則で組まれているので、そろうものとして受け入れた。§9 の完了の条件 3 は `simple` の PDF だけを見る。実測では、Kindle の計算済みの値は前後で変わらなかった（`article` の余白は 0 のまま、h2 の上下の余白も同じ）。クリーンな EPUB の画面での差は確かめていない。
+2. **`simple` の本の EPUB。** h2 を常に包むと、components.css の `body.vs-epub .section-topic`（上下の余白 1.8em・0.6em）が、`simple` の本の章にも当たる。`image` の本の付録は以前からこの規則で組まれているので、そろうものとして受け入れた。§9 の完了の条件 3 は `simple` の PDF だけを見る。実測では、Kindle の計算済みの値は前後で変わらなかった（`article` の余白は 0 のまま、h2 の上下の余白も同じ）。Apple Books の画面も、前後で 10 か所とも画素まで一致した（節見出しの空きは変わらない）。
 3. **(b) の置き場。** 見本帳を組むと 80 秒ほどかかるので、`html_contract_test.rb`（`rake test`）ではなく、記法網羅のテスト（`test:notation`・`test:release`）に足した。見本帳は `test/vivlio_starter/fixtures/notation/` で、そのテストが 1 度だけ組んだ HTML を共用する。
 4. **表の作り。** 水準に「保証」「内部」のほかに「テーマ」（`vs-header-image`・`vs-header-simple`。§2.2 の「そのテーマの中でだけ意味を持つ」）を置き、付く段（`:contract`・`:target`）を足した。`:target` は、契約 HTML には無く、出力先の変換（PDF・EPUB・Kindle の写し）が付けるクラス（`vs-code-line`・`vs-adm-label`・`vs-image-heading-epub` など）である。CSS が選んでいるものは保証、選んでいない目印は内部とした。
 5. **保証と内部の線引き。** §2.1 は「CSS が参照していない 23 種」を内部の例に挙げるが、そのうち `level1`〜`level4`・`vs-h-marker`・`subsection-title`・`vs-emoji` は §2.3・§2.4 が保証として名前を挙げているので、保証にした。残る 16 種（`index-term`・`talk-c-*`・`footnote-ref`・`cross-ref-list`・`toc-label` など）を内部とした。
@@ -552,5 +552,5 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 条件 | 結果 |
 | :--- | :--- |
 | 1. クラスがすべて表で分類されている | 本書の生成物のクラス 147 種（Prism を除く。`v2-inventory-report.md` §2.2 の 146 種との差 1 は数え方による）と、CSS が選ぶクラス 238 種が、すべて表にある。記法網羅の見本帳・分冊の本（全巻目次つき）・本書の PDF と EPUB の写しでも、表に無いクラスは 0 |
-| 2. 本書の四つの出力先 | 閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページ 0。EPUB・Kindle 用 EPUB とも、テキストの差 35 件はすべて `role` の追加（章 20・付録 6・部扉 5・前書き・後書き・索引・奥付 各 1）と奥付の section だけ（S1 の変更をほどいて XHTML を比べると差 0）。EPUBCheck は両方ともエラー・警告 0。Kindle は変換の記録が基準と同じ（Supported・Success・エラー 0・注意は W14016 の 1 件）、中間生成物 36 件の計算済みの値は、奥付に足した div を除いて一致。Kindle Previewer の画面は 10 か所とも基準と画素まで一致（差 0 画素）。ただし奥付の Location が 10480 から 10484 へずれた（それより前の 9 か所は同じ Location）。クリーンな EPUB の画面（Apple Books）は見比べていない |
+| 2. 本書の四つの出力先 | 閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページ 0。EPUB・Kindle 用 EPUB とも、テキストの差 35 件はすべて `role` の追加（章 20・付録 6・部扉 5・前書き・後書き・索引・奥付 各 1）と奥付の section だけ（S1 の変更をほどいて XHTML を比べると差 0）。EPUBCheck は両方ともエラー・警告 0。Kindle は変換の記録が基準と同じ（Supported・Success・エラー 0・注意は W14016 の 1 件）、中間生成物 36 件の計算済みの値は、奥付に足した div を除いて一致。Kindle Previewer の画面は 10 か所とも基準と画素まで一致（差 0 画素）。ただし奥付の Location が 10480 から 10484 へずれた（それより前の 9 か所は同じ Location）。Apple Books の画面も 10 か所とも基準と画素まで一致 |
 | 3. `simple` の PDF | 279 ページとも、違うページ 0 |
