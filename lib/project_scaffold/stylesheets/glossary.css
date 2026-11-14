@@ -12,9 +12,6 @@
  * ================================================================ */
 
 @charset "utf-8";
-@import url("base.css");
-@import url("theme.css");
-@import url("page-settings.css");
 
 /* 用語集は必ず右ページ（奇数ページ）始まり */
 body {

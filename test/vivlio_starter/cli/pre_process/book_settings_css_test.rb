@@ -445,10 +445,26 @@ class BookSettingsCssPageTest < Minitest::Test
   # verso には legacy page-break-before の対応値が無いので併記しない
   def test_should_switch_chapter_pagebreak_to_verso
     css = BSC.chapter_pagebreak_rule({ chapter_pagebreak: 'verso' })
+    rule = css[/^body,.*?\}/m]
 
-    BSC::CHAPTER_PAGEBREAK_SELECTORS.each { assert_includes css, it }
-    assert_includes css, 'break-before: verso;'
-    refute_includes css, 'page-break-before:'
+    BSC::CHAPTER_PAGEBREAK_SELECTORS.each { assert_includes rule, it }
+    assert_includes rule, 'break-before: verso;'
+    refute_includes rule, 'page-break-before:'
+  end
+
+  # 本扉・権利ページ・奥付は改丁から外す。打ち消しは settings 層の中で改丁の規則より後に置く
+  # （ページの CSS の打ち消しは pages 層なので、詳細度が高くても settings 層に負ける）
+  def test_should_exempt_spine_tail_pages_from_chapter_pagebreak
+    %w[verso any].each do |value|
+      css = BSC.chapter_pagebreak_rule({ chapter_pagebreak: value })
+      exempt = css[/^body\.titlepage,.*?\}/m]
+
+      refute_nil exempt, value
+      assert_includes exempt, 'body.legalpage'
+      assert_includes exempt, 'body.colophon'
+      assert_includes exempt, 'break-before: auto;'
+      assert css.index('break-before: auto;') > css.index("break-before: #{value == 'any' ? 'page' : 'verso'};")
+    end
   end
 
   # 大文字・前後の空白は受け付ける（YAML の書き方の揺れを吸収する）
@@ -616,7 +632,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     enabled  = Common::CONFIG.with(page: Common::CONFIG.page.with(section_pagebreak: true))
 
     assert_includes BSC.render(disabled), 'body.vs-header-simple h2'
-    refute_includes BSC.render(enabled), 'break-before: auto;'
+    refute_includes BSC.render(enabled), 'page.section_pagebreak: false'
   end
 
   # Google Fonts の書体を初めて使うビルドでも、取得した太字で強調を組む。

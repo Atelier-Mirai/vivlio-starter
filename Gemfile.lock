@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     vivlio-starter (1.0.0)
+      crass (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (>= 4.12)
       natto (~> 1.2)
@@ -25,6 +26,7 @@ GEM
       fiber-annotation
       fiber-local (~> 1.1)
       json
+    crass (1.0.8)
     drb (2.2.3)
     ffi (1.17.4-arm64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
@@ -123,6 +125,7 @@ CHECKSUMS
   bundler (4.0.11) sha256=5bcec0fb78302e48d02ee46f10ee6e6942be647ba5b44a6d1ddfda9a240ce785
   chunky_png (1.4.0) sha256=89d5b31b55c0cf4da3cf89a2b4ebc3178d8abe8cbaf116a1dba95668502fdcfe
   console (1.38.0) sha256=35b82f59130e95e9be6b832d9e539c8b3988fc192e4a8e9a86ab4922f44ad5de
+  crass (1.0.8) sha256=7a0145c7a2c59f8e7923b3a69ce819c444823a00a5127d805298fea13be24efe
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   ffi (1.17.4-arm64-darwin) sha256=19071aaf1419251b0a46852abf960e77330a3b334d13a4ab51d58b31a937001b
   ffi (1.17.4-x86_64-linux-gnu) sha256=9d3db14c2eae074b382fa9c083fe95aec6e0a1451da249eab096c34002bc752d

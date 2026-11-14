@@ -9,7 +9,7 @@
 #
 # 検証方法:
 #   一時プロジェクトの stylesheets/fonts/ に同梱の Noto をリンクで置き、Kindle 消費者 dir
-#   相当の HTML と book-settings.css を書き換えさせる。同梱書体が無い環境では skip する。
+#   相当の HTML と、平らにした CSS（styles/chapter.css）を書き換えさせる。同梱書体が無い環境では skip する。
 # ================================================================
 
 require 'test_helper'
@@ -72,12 +72,12 @@ module VivlioStarter
       def test_should_write_fonts_and_css_for_body_and_headings
         with_kindle_dir("<html><body><p>禰\u{E0100}</p></body></html>") do |dir, path|
           Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
-          css = File.read(File.join(dir, 'book-settings.css'))
+          css = File.read(File.join(dir, 'styles', 'chapter.css'))
 
           assert_equal %w[vs-variant-1-bold.ttf vs-variant-1-heading-bold.ttf vs-variant-1-heading.ttf vs-variant-1.ttf],
                        Dir.children(File.join(dir, 'fonts')).sort
           assert_includes css, 'body { color: black; }', '既存の規則は残す'
-          assert_includes css, '@font-face { font-family: "vs-variant-1"; font-weight: 700; src: url("fonts/vs-variant-1-bold.ttf"); }'
+          assert_includes css, '@font-face { font-family: "vs-variant-1"; font-weight: 700; src: url("../fonts/vs-variant-1-bold.ttf"); }'
           assert_includes css, '.vs-variant-1 { font-family: "vs-variant-1"; }'
           assert_includes css, 'h3 .vs-variant-1'
           assert_includes css, 'font-family: "vs-variant-1-heading", "vs-variant-1";'
@@ -101,11 +101,11 @@ module VivlioStarter
         html = "<html><body><p>禰と邉</p></body></html>"
 
         with_kindle_dir(html) do |dir, path|
-          css_before = File.read(File.join(dir, 'book-settings.css'))
+          css_before = File.read(File.join(dir, 'styles', 'chapter.css'))
           Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
 
           assert_equal html, File.read(path, encoding: 'utf-8')
-          assert_equal css_before, File.read(File.join(dir, 'book-settings.css'))
+          assert_equal css_before, File.read(File.join(dir, 'styles', 'chapter.css'))
           refute Dir.exist?(File.join(dir, 'fonts'))
         end
       end
@@ -184,7 +184,8 @@ module VivlioStarter
 
             dir = File.join(root, 'kindle')
             FileUtils.mkdir_p(dir)
-            File.write(File.join(dir, 'book-settings.css'), "body { color: black; }\n")
+            FileUtils.mkdir_p(File.join(dir, 'styles'))
+            File.write(File.join(dir, 'styles', 'chapter.css'), "body { color: black; }\n")
             path = File.join(dir, '11-sample.html')
             File.write(path, html, encoding: 'utf-8')
             yield dir, path

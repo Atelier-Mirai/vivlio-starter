@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **設計済み・実装待ち**
+> ステータス: **実装中**（S2-1 は 2026-11-14 に完了・実装記録は §10）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -398,3 +398,51 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | 1 | `transparent` との `color-mix()`（前書きの見出しの背景）を、KFX が解する形で書けるか | S3-3 | 書けなければ落とす。今の Kindle は、この背景を `targets` の規則で単色に置き換えているので、結果は今と同じになる見込み |
 | 2 | Kindle 用に、論理方向のプロパティを物理方向へ書き直す処理を `LiteralResolver` に持たせるか | S8 | 2.0 では `targets/kindle.css` に手で書く。縦書きの Kindle で論理方向が正しく解されるかを S8 で確かめ、崩れるなら生成で書き直す |
 | 3 | 章の frontmatter で著者が足した CSS（層の外になり、`custom.css` と同じ強さになる） | S2-1 | 今より強くなる。使っている本は少ないと見て、移行の手引きに 1 行書く |
+
+---
+
+## 10. 実装記録
+
+### 10.1 S2-1 入口と層（2026-11-14）
+
+#### 作ったもの
+
+- `lib/vivlio_starter/cli/css/`: `stylesheet.rb`（crass を包み、`@import`・`@layer` の宣言と囲み・それ以外の規則の 4 種類の項目にする）・`flattener.rb`（§4.2 の 1・2）・`entry_writer.rb`（§2.3）。`vivlio-starter.gemspec` に `crass ~> 1.0` を足した（入ったのは 1.0.8）。
+- 入口は 11 種類（`chapter`・`appendix`・`preface`・`postface`・`toc`・`index`・`glossary`・`colophon`・`titlepage`・`legalpage`・`part-title`）。`EntryWriter::IMPORTS` は、1.x の `{種類}.css` の `@import` の顔ぶれと順をそのまま写した。前書き・後書きは `spacing.css` を読まず、付録は `image-header.css` を読まない（S2-4 でそろえる）。
+- 入口を書くのは `Build::ImageOptimizer.prepare_theme_images!` の最初。`book-settings.css` の生成は `theme:` 節が無い本では飛ばされるが、入口は HTML が読む唯一の CSS なので、`theme:` 節の有無に関わらず書く。
+- `stylesheets/`: 種類ごとの CSS と `chapter-common.css` から `@import` を外した。`page-settings.css` の `@font-face` と Google Fonts の `@import` を `fonts.css` へ移した。
+- HTML の `link` は入口の 1 枚になった（`FrontmatterGenerator`・`TocDocumentBuilder`・索引と用語集の `UnifiedPageBuilder`）。frontmatter の `stylesheet:` が種類の CSS の名前（全巻目次の `toc.css`）なら、その種類の入口を読む。種類の CSS でない名前は、入口の後に層の外で足す。
+
+#### 仕様と違えたこと
+
+1. **予備の書体の面を `book-fonts.css` へ分けた。** `book-settings.css` は、本の書体にも HackGen にも無い字のための `@font-face`（改善案 #127）を含む。そのまま settings 層で読むと、§2.2 の「`@font-face` を層に入れない」に反する。`BookSettingsCss.render_fonts` が `.cache/vs/book-fonts.css` へ書き、入口が `fonts.css` の直後に層の外で読む。同じ書体名の面は後の面が優先されるので、HackGen の面（`fonts.css`）の後に置く順は 1.x と同じである。
+2. **`bundle_book_settings_for_epub!` を S2-1 で置き換えた。** §4.2 では S3-1 で無くす予定だった。S2-1 で HTML が `book-settings.css` を直接読まなくなり、働く場所が無くなったためである。代わりの `bundle_flat_css_for_epub!` は、入口を平らにした 1 枚を消費者 dir の `styles/<種類>.css` に書き、`link` を付け替える。`url()` は、`stylesheets/` の中のものを `../stylesheets/…`、`.cache/vs/` の中のもの（`theme-images/`）を `../theme-images/…` へ引き直す。Kindle の異体字の 1 字書体の規則（`apply_variant_glyph_fonts_for_kindle!`）は、`book-settings.css` の写しではなく `styles/` の全部の CSS へ足す。`stylesheets/` の CSS の写しは、今までどおりパッケージに入る（使われないが、外すのは S3-1 で行う）。
+3. **改丁の打ち消しを `book-settings.css` の側へ移した。** `page.chapter_pagebreak` が `verso`・`any` のとき、`book-settings.css` は素の `body` に `break-before` を出す。1.x では、本扉・権利ページ・奥付の CSS が `body.titlepage { break-before: auto; }` などで打ち消していた（詳細度で勝つ）。層に入れると、settings 層の素の `body` が、詳細度に関係なく pages 層の打ち消しに勝つ。これは §4.3 の「層を外すと結果が変わる」と同じ形の、層を付けたことによる勝ち負けの逆転である。打ち消しを `BookSettingsCss.chapter_pagebreak_css` へ移し（`CHAPTER_PAGEBREAK_EXEMPT_SELECTORS`）、同じ層の中で改丁の規則より後に置いた。ページの CSS の側の打ち消しは消した。B1〜B3 は `any`・`recto` で、`verso` は通らないので、`verso` の写しを 1.x（基準のソース）と S2-1 で組んで比べた（下の結果）。
+
+#### 確かめた結果
+
+写しの本は、作業ツリーをそのまま写した（作業ツリーの `images/` を雛形の写し `lib/project_scaffold/images/` で埋め、素材が基準のソースと差 0 になるようにした）。出力は `../vivlio-starter-v2-baseline/check/s2-1-*/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| B1 の閲覧用 PDF・印刷用 PDF | 283 ページ・281 ページとも、違うページ 0 |
+| B2（`theme.style: simple`） | 279 ページ、違うページ 0 |
+| B3（節で改ページ・章は右の面・`b5_standard`） | 450 ページ、違うページ 0 |
+| B4（book_ai_web_starter の上巻）の PDF | 317 ページ、違うページ 0。本の `stylesheets/*.css` は雛形と同じ中身だったので、写しの CSS を作業ツリーのものに差し替えて組んだ（手を入れていない雛形の本に `vs upgrade` を掛けたのと同じ形） |
+| `chapter_pagebreak: verso` の写し | 基準のソースの `bin/vs` で組んだ同じ写しと比べ、304 ページ、違うページ 0 |
+| EPUBCheck | B1 の EPUB・Kindle 用 EPUB、B4 の EPUB の 3 つとも、エラー・警告 0 |
+| EPUB の中の CSS | `styles/` の 8 枚（本書の EPUB が使う種類）に `@layer`・`@import` が無い |
+| Kindle の変換の記録 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0。注意は S1 と同じ W14016 の 1 件だけ |
+| Kindle の中間生成物 | 36 ファイル・26,335 要素。変換が書いた `style` 属性（Kindle が表示に使う値）は、画像の幅と高さを除いて S1 と全部一致。`computedstyle` は、位置と箱の大きさを除いた値が全部一致し、位置と大きさは 9,198 要素で違う（下の注） |
+| Kindle Previewer の画面 | §3.2 の 10 か所すべてで、S1 の画面と画素まで一致（差 0） |
+| 単章のビルド（`vs build 21`）・`vs preflight` | どちらも通る（🔴 0）。preflight の後に入口が 11 枚ある |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,298 件・4,298 件・7 件とも失敗 0（`rake test` のスキップ 1 は基準と同じ）。rubocop の違反 0 |
+
+**注（Kindle の `computedstyle` の位置と大きさ）。** 変換の前処理が組んで測った位置と大きさが、平らにした CSS で変わる。たとえば `94-further-inspiration` の book-card の画像は、S1 では `body.vs-kindle .book-card img` の `max-height: 13em` が効いて高さ 208px、S2-1 では縦横比どおりの 290px になる。一方、同じ XHTML と CSS を Chromium 155 で組むと、S1 と S2-1 のどちらも 182px で同じになる（CSS の勝ち負けは変わっていない）。前処理の書いた `style` 属性にはどちらにも `max-height` が無い。
+
+この違いが表示に出るかは、位置と大きさの差が大きかった章の画面を、S1 と S2-1 の KPF で同じ Location に移動して撮って比べた。21 章（1300・1450・1600）・42 章（6500〜6800 の 6 か所。前処理の測った章の高さは 6977px → 9846px）・付録 E の book-card（9325・9330）・付録 F（9400〜9980 の 15 か所。book-card の 9930・9950 を含む）の計 26 か所で、画素まで一致した（差 0）。26 枚は互いに別の画面で、着いた場所は画面で確かめた。前処理が測る値のこの違いは、Kindle の表示には出ていない。S3 では `computedstyle` を比べるので、そこで原因（前処理が 1 枚の大きな CSS をどう扱うか）を確かめる。
+
+**確かめ方について分かったこと。**
+
+- `build_copy.rb --kindle-record` は、前の記録を消さずに同じ置き場へ書いていた。中間生成物の名前には変換ごとのハッシュが付くので、二回分が混ざる。記録を取る前に置き場を消すよう直した。
+- Kindle の中間生成物の比べ方（使い捨てのスクリプト）: ファイル名の `0_1_<16 進>_<16 進>-` を外して突き合わせ、要素の出現の順に `computedstyle` と `style` 属性を並べて比べる。`computedstyle` は位置（`top` など）と箱の大きさを外した比べと、外さない比べの両方を行う。S0 と S1 の記録で、奥付の要素が 1 つ増えた差（17 要素）を拾うことを確かめた。S3 で道具にする。

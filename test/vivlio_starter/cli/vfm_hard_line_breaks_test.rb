@@ -41,7 +41,7 @@ module VivlioStarter
         # Act
         generator = Object.new
         generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
-        base = generator.send(:build_base_frontmatter, 'chapter.css')
+        base = generator.send(:build_base_frontmatter, [Css::EntryWriter.path_for('chapter')])
 
         # Assert
         assert_equal({ 'hardLineBreaks' => true }, base['vfm'])
@@ -198,7 +198,7 @@ module VivlioStarter
         # Act
         generator = Object.new
         generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
-        base = generator.send(:build_base_frontmatter, 'chapter.css')
+        base = generator.send(:build_base_frontmatter, [Css::EntryWriter.path_for('chapter')])
 
         # Assert
         assert_equal true, base['vfm']['hardLineBreaks']

@@ -571,6 +571,34 @@ module VivlioStarter
         refute_includes staged, Common::ASSET_PREFIX, 'asset_prefix は残らないべき'
       end
 
+      # 入口の CSS を平らにして styles/ へ置き、link をその 1 枚へ付け替える（css-layer-restructure-spec.md §4.2）。
+      # url() はパッケージの中の位置（stylesheets/ はそのまま、.cache/vs/ の中はルート直下）へ引き直す
+      def test_bundle_flat_css_for_epub_writes_one_flat_file_per_entry
+        FileUtils.mkdir_p('stylesheets')
+        File.write('stylesheets/parts.css', %(.box { background: url("images/box.webp"); }\n))
+        FileUtils.mkdir_p(Common::CACHE_DIR)
+        File.write(File.join(Common::CACHE_DIR, 'book-settings.css'),
+                   %(:root { --bg: url("theme-images/bundled/a.webp"); }\n))
+        File.write(Css::EntryWriter.path_for('chapter'), <<~CSS)
+          @layer parts, settings;
+          @import url("book-settings.css") layer(settings);
+          @import url("../../stylesheets/parts.css") layer(parts);
+        CSS
+        dir = 'pkg-epub'
+        FileUtils.mkdir_p(dir)
+        html = File.join(dir, '01-intro.html')
+        File.write(html, %(<html><head><link rel="stylesheet" href=".cache/vs/entry-chapter.css"></head></html>))
+
+        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir)
+
+        assert_includes File.read(html), 'href="styles/chapter.css"'
+        flat = File.read(File.join(dir, 'styles', 'chapter.css'))
+        assert flat.index('.box') < flat.index(':root'), 'settings 層は parts 層の後に並ぶ'
+        assert_includes flat, 'url("../stylesheets/images/box.webp")'
+        assert_includes flat, 'url("../theme-images/bundled/a.webp")'
+        refute_match(/@layer|@import/, flat)
+      end
+
       private
 
       # テスト用の HTML ファイルを作成する

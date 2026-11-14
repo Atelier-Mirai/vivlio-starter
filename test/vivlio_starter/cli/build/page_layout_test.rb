@@ -21,6 +21,7 @@ require 'fileutils'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/build'
 require 'vivlio_starter/cli/pre_process/css_updater'
+require 'vivlio_starter/cli/pre_process/book_settings_css'
 
 module VivlioStarter
   module CLI
@@ -130,14 +131,14 @@ module VivlioStarter
 
       # 生成 CSS（book-settings.css）は page.chapter_pagebreak: verso のとき裸の body へ
       # break-before: verso を出す。打ち消さないと前付・奥付の前に白紙が挟まり、
-      # 結合時の切り出し位置がずれる。
+      # 結合時の切り出し位置がずれる。book-settings.css は settings 層で読まれ、ページの CSS
+      # （pages 層）の打ち消しには詳細度が高くても勝つので、打ち消しは生成 CSS の側に置く。
       def test_front_and_back_matter_cancel_the_generated_pagebreak
-        { 'titlepage.css' => 'titlepage', 'legalpage.css' => 'legalpage',
-          'colophon.css' => 'colophon' }.each do |file, klass|
-          css = read_css(file)
+        css = PreProcessCommands::BookSettingsCss.chapter_pagebreak_rule({ chapter_pagebreak: 'verso' })
 
-          assert_match(/body\.#{klass}\s*\{[^}]*break-before:\s*auto/m, css,
-                       "#{file} が body.#{klass} で break-before を打ち消していること")
+        %w[titlepage legalpage colophon].each do |klass|
+          assert_match(/body\.#{klass}[^{]*\{[^}]*break-before:\s*auto/m, css,
+                       "生成 CSS が body.#{klass} で break-before を打ち消していること")
         end
       end
 

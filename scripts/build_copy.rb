@@ -195,6 +195,8 @@ if options[:kindle_record]
   record = File.join(options[:collect], 'kindle-record')
   conversion = File.join(record, 'conversion')
   snap = File.join(record, 'intermediate')
+  # 前の記録を残すと、中間生成物（名前に変換ごとのハッシュが付く）が二回分混ざって比べられなくなる
+  FileUtils.rm_rf(record)
   FileUtils.mkdir_p([conversion, snap])
   puts "[build_copy] Kindle 用の EPUB をもう一度変換し、記録を #{record} に残します"
   pid = spawn('caffeinate', '-i', 'kindlepreviewer', kindle_epub, '--convert', '--output', conversion,

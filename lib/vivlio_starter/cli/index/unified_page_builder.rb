@@ -21,7 +21,7 @@ require 'yaml'
 require 'fileutils'
 require 'cgi'
 require_relative '../common'
-require_relative '../pre_process/book_settings_css'
+require_relative '../css/entry_writer'
 require_relative '../token_resolver'
 
 module VivlioStarter
@@ -172,13 +172,11 @@ module VivlioStarter
           Common.log_info("索引データを読み込み: #{@index_data.size} 件の用語、#{link_count} 件のリンク")
         end
 
-        # 生成物 book-settings.css への link。索引・用語集は章 HTML と違って
-        # FrontmatterGenerator を通らないため、ここで自前に並べる必要がある。
-        # {種別}.css の**後段**に置くことで book.yml 由来の設定値がテーマ CSS に
-        # カスケードで勝つ（章 HTML と同じ順序・P3）。これが無いと索引・用語集だけが
-        # 判型もテーマ色も book.yml を見ずに組まれる（chapter-pagebreak-spec.md §6 実装記録）。
-        def book_settings_link
-          href = "#{Common.asset_prefix}#{PreProcessCommands::BookSettingsCss.output_path}"
+        # ページの種類の入口の CSS への link。索引・用語集は章 HTML と違って
+        # FrontmatterGenerator を通らないため、ここで自前に並べる。入口が book-settings.css も
+        # settings 層で読むので、索引・用語集も book.yml を見て組まれる（css-layer-restructure-spec.md §2.3）。
+        def stylesheet_link(kind)
+          href = "#{Common.asset_prefix}#{Css::EntryWriter.path_for(kind)}"
           %(<link rel="stylesheet" href="#{href}">)
         end
 
@@ -193,8 +191,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>索引</title>
-              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/index.css">
-              #{book_settings_link}
+              #{stylesheet_link('index')}
             </head>
             <body class="index-page">
               <section class="index" role="doc-index">
@@ -505,8 +502,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>#{title}</title>
-              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/glossary.css">
-              #{book_settings_link}
+              #{stylesheet_link('glossary')}
             </head>
             <body class="glossary-page">
               <section class="glossarypage" role="doc-glossary">

@@ -20,9 +20,11 @@
 #   そのまま流用する。変わるのは「差し込み方」だけ。
 #
 # 出力先とカスケード:
-#   章 HTML の link 順は [theme.css, {種別}.css, book-settings.css, custom.css]。
-#   book-settings.css は {種別}.css（→ page-settings.css / theme.css を @import）の
-#   後に読み込まれるため、同名変数の再宣言が既存 CSS 値に勝つ。
+#   ページの入口の CSS（Css::EntryWriter）が book-settings.css を settings 層で読む。
+#   settings 層は vs の CSS の層（base・tokens・parts・pages・utilities）より上なので、
+#   同名変数の再宣言が既存 CSS 値に勝つ（css-layer-restructure-spec.md §2.1）。
+#   予備の書体の @font-face だけは book-fonts.css へ分けて書き、入口が層の外で読む
+#   （@font-face を層に入れない。同 §2.2）。
 #
 # 画像 URL の基準:
 #   生成ファイルは `.cache/vs/` 直下に置かれるため、stylesheets/ 基準の相対
@@ -52,6 +54,9 @@ module VivlioStarter
         # 生成ファイルのパス（.cache/vs/book-settings.css）。
         def output_path = File.join(Common::CACHE_DIR, 'book-settings.css')
 
+        # 予備の書体の @font-face を書くファイル（.cache/vs/book-fonts.css）。入口が層の外で読む。
+        def fonts_output_path = File.join(Common::CACHE_DIR, 'book-fonts.css')
+
         # `.cache/vs/` から `stylesheets/` への相対プレフィックス。
         # 生成ファイルは 2 階層深いため、stylesheets/ 基準の相対 URL をこの接頭辞で組み替える。
         CACHE_TO_STYLESHEETS = '../../stylesheets/'
@@ -74,6 +79,7 @@ module VivlioStarter
           path = output_path
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, css, encoding: 'utf-8')
+          File.write(fonts_output_path, render_fonts, encoding: 'utf-8')
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path
@@ -111,7 +117,6 @@ module VivlioStarter
             #{chapter_lead_size_rules(settings)}
             #{section_lead_width_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
-            #{fallback_font_rules(image_prefix:)}
             #{kindle_accent_rules(cfg)}
             #{kindle_custom_color_rules(cfg)}
             #{talk_class_rules(registry)}
@@ -142,6 +147,10 @@ module VivlioStarter
           rules.concat(emphasis_fallback_rules) unless FontManager.bold_available?(typo.dig(:body, :font))
           rules.join("\n")
         end
+
+        # book-fonts.css の全文（予備の書体の面）。book-settings.css と同じ .cache/vs/ に置くので、
+        # 書体のファイルへの相対も同じ接頭辞で組み替える。
+        def render_fonts = "#{header_comment}\n#{fallback_font_rules(image_prefix: CACHE_TO_STYLESHEETS)}\n"
 
         # 本の書体にも HackGen にも無い字（⟹・⌃・ₙ など）を、DejaVu で組む（改善案 #127 段階 2）。
         #
@@ -565,6 +574,9 @@ module VivlioStarter
           '.part-title'               # part-title.css
         ].freeze
 
+        # 素の body の改丁から外すページ（スパインの末尾に相乗りし、改ページが要らない）
+        CHAPTER_PAGEBREAK_EXEMPT_SELECTORS = %w[body.titlepage body.legalpage body.colophon].freeze
+
         # page.chapter_pagebreak が取りうる値。@pagebreak 記法（裸 / :recto / :verso）と
         # ちょうど 1 対 1 に対応させてある（裸の @pagebreak ＝ any）。
         CHAPTER_PAGEBREAK_VALUES = %w[recto verso any].freeze
@@ -602,6 +614,13 @@ module VivlioStarter
                局所の明示指定が本設定より優先される。 */
             #{CHAPTER_PAGEBREAK_SELECTORS.join(",\n")} {
               #{declarations.join("\n  ")}
+            }
+            /* 本扉・権利ページ・奥付は本文のスパインの末尾に相乗りするページで、白紙を挟むと結合時の
+               切り出し位置がずれる（front-back-matter-single-render-spec.md §3.3）。上の素の body の規則から外す。
+               打ち消しをページの CSS（pages 層）に置くと settings 層のこの規則に負けるので、同じ層の後に置く。 */
+            #{CHAPTER_PAGEBREAK_EXEMPT_SELECTORS.join(",\n")} {
+              break-before: auto;
+              page-break-before: auto;
             }
           CSS
         end

@@ -15,7 +15,8 @@
 | `table.css` | 表のスタイル |
 | `components.css` | コラム・注意書きなどのコンポーネント |
 | `replace-list.css` | post_process の組み込み置換ルールで付与される隠れクラス（`.aokome` `.akakome` 等）のスタイル |
-| `page-settings.css` | ページの枠組み（`@page`）と同梱書体の定義。判型の値は `config/book.yml` の `page` で決まります |
+| `page-settings.css` | ページの枠組み（`@page`）。判型の値は `config/book.yml` の `page` で決まります |
+| `fonts.css` | 同梱書体の定義（`@font-face`） |
 | `simple-header.css` | 画像なしの章ヘッダー（`theme.style: simple` と付録） |
 | `image-header.css` | 画像ありの章ヘッダー（`theme.style: image`） |
 | `prism.css` | コードの色分け（Prism） |
@@ -36,7 +37,7 @@
 ## カスタマイズ
 
 テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme` セクションで行ってください。
-**著者独自のスタイルは `custom.css` に書いてください。** 最後に読み込まれるので、他のどの CSS よりも優先されます。
+**著者独自のスタイルは `custom.css` に書いてください。** ほかの CSS は層（`@layer`）に入れて読み込まれ、`custom.css` だけが層の外に置かれるので、詳細度に関係なく、他のどの CSS よりも優先されます。
 
 ## fonts/ と images/ と twemoji/
 

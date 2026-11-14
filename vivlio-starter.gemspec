@@ -34,6 +34,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'samovar', '~> 2.1'
   # @qr:URL の QR コード生成（pure Ruby・MIT。ネイティブ拡張なし）
   spec.add_dependency 'rqrcode', '~> 3.2'
+  # CSS の読み取り（層を外した平らな CSS の生成。純 Ruby・MIT・依存なし。css-layer-restructure-spec.md §4.1）
+  spec.add_dependency 'crass', '~> 1.0'
   # 書体ファイルの解析（SVG への書体の埋め込み・異体字・外字・字の送りの計測）
   spec.add_dependency 'ttfunk', '~> 1.8'
 

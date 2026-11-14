@@ -1,9 +1,5 @@
 @charset "utf-8";
 
-@import url("base.css");
-@import url("theme.css");
-@import url("page-settings.css");
-
 /*
   プロパティ並び順ガイドライン
   --------------------------------------------------
@@ -43,14 +39,6 @@
   @bottom-left   { content: none; }
 
   @bottom-right  { content: none; }
-}
-
-/* 生成 CSS（book-settings.css）が page.chapter_pagebreak: verso のとき裸の body へ
-   break-before: verso を出す。打ち消さないと権利ページの前に白紙が挟まり、
-   結合時の切り出し位置がずれる（同 §3.3）。 */
-body.legalpage {
-  break-before: auto;
-  page-break-before: auto; /* Kindle KFX 向け legacy 併記 */
 }
 
 /* ルート（body）に適用 */

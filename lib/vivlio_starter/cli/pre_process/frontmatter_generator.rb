@@ -32,6 +32,7 @@ require_relative 'css_updater'
 require_relative 'book_settings_css'
 require_relative 'theme_image_resolver'
 require_relative 'book_setting_warning'
+require_relative '../css/entry_writer'
 
 module VivlioStarter
   module CLI
@@ -161,33 +162,27 @@ module VivlioStarter
         # CSS 設定の反映は BookSettingsCss 生成器（'prepare theme images' ステップ）が
         # 一括で担うため、章ごとの CSS 書換はここでは行わない（P3・調査報告 §7.3-3）。
         def generate_frontmatter(file_type, _chapter_num = nil, existing_frontmatter = {})
-          chapter_css = resolve_chapter_css(file_type, existing_frontmatter)
-          new_frontmatter = build_base_frontmatter(chapter_css)
+          new_frontmatter = build_base_frontmatter(resolve_stylesheet_hrefs(file_type, existing_frontmatter))
           merge_frontmatter(existing_frontmatter, new_frontmatter)
         end
 
-        # ファイルタイプに応じたCSS名を解決
-        def resolve_chapter_css(file_type, existing_frontmatter)
-          return existing_frontmatter['stylesheet'] if existing_frontmatter['stylesheet']
-          return 'chapter.css' if file_type == 'chapter'
-          return 'part-title.css' if file_type == 'part_title'
-
-          "#{file_type}.css"
+        # ページが読む CSS の href（作業ディレクトリからの相対）。
+        # 読むのは種類ごとの入口の 1 枚で、層の付け方は入口が持つ（css-layer-restructure-spec.md §2.3）。
+        # frontmatter の `stylesheet:` が種類の CSS（全巻目次の `toc.css` など）ならその種類の入口を読む。
+        # 種類の CSS でない名前は、ページの種類の入口の後に、そのファイルを層の外で足す。
+        def resolve_stylesheet_hrefs(file_type, existing_frontmatter)
+          named = existing_frontmatter['stylesheet']
+          named_kind = named && Css::EntryWriter.kind_for_stylesheet(named)
+          hrefs = [Css::EntryWriter.path_for(named_kind || file_type)]
+          hrefs << File.join(Common.stylesheets_dir, named) if named && !named_kind
+          hrefs
         end
 
         # フロントマターのベース構造を構築
-        # link 順は [theme.css, {種別}.css, book-settings.css, custom.css]。
-        # book-settings.css（生成物・.cache/vs/ 配下）を {種別}.css の後段へ置くことで
-        # book.yml 由来の設定値が既存テーマ CSS にカスケードで勝つ（P3）。
         # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）。
-        def build_base_frontmatter(chapter_css)
+        def build_base_frontmatter(stylesheet_hrefs)
           prefix = Common.asset_prefix
-          hrefs = [
-            "#{prefix}stylesheets/theme.css",
-            "#{prefix}stylesheets/#{chapter_css}",
-            "#{prefix}#{BookSettingsCss.output_path}",
-            "#{prefix}stylesheets/custom.css"
-          ]
+          hrefs = stylesheet_hrefs.map { "#{prefix}#{it}" }
           lang = (Common::CONFIG.book.language || 'ja').to_s.strip
           lang = 'ja' if lang.empty?
 

@@ -1,0 +1,100 @@
+/* =========================================================================
+   書体の定義（@font-face）
+   -------------------------------------------------------------------------
+   入口の CSS（Css::EntryWriter）が層を付けずに読む。@font-face は要素に当たる
+   規則ではなく層に入れる利益が無いうえ、層の中での Vivliostyle の扱いを
+   確かめていないため、層の外に置く（css-layer-restructure-spec.md §2.2）。
+   book.yml から決まる面（予備の書体）は .cache/vs/book-fonts.css が足す。
+========================================================================== */
+
+@charset "utf-8";
+
+/* FontManager が自動生成する（存在しない場合は空ファイル） */
+@import url("fonts/google-fonts.css");
+
+/* バンドル済みフォント定義 */
+/* 本文（明朝体）: Noto Serif JP 静的 TTF
+   Chromium が CFF ベースの OTF や可変フォント（Variable Font）を
+   Type 3 として埋め込む問題を回避するため、TrueType アウトラインの
+   静的 TTF を使用する（Google Fonts の配信物。源ノ明朝の OTF は CFF なので使わない）。
+   Noto は異体字セレクタ（「禰」の示偏とネ偏など）の表を持つため、字形を
+   書き分けた原稿がそのとおりに組まれる。 */
+@font-face {
+  font-family: "Noto Serif JP";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/Noto_Serif_JP/NotoSerifJP-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Serif JP";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Noto_Serif_JP/NotoSerifJP-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* 見出し・UI（ゴシック体）: Noto Sans JP 静的 TTF */
+@font-face {
+  font-family: "Noto Sans JP";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/Noto_Sans_JP/NotoSansJP-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Noto_Sans_JP/NotoSansJP-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* コラム用（丸ゴシック）: Zen Maru Gothic Regular */
+@font-face {
+  font-family: "Zen Maru Gothic";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* コラム用（丸ゴシック太字）: Zen Maru Gothic Bold */
+@font-face {
+  font-family: "Zen Maru Gothic";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Zen_Maru_Gothic/ZenMaruGothic-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* コード用（等幅）＋記号フォールバック: HackGen35 Console NF Regular
+   Nerd Fonts 版を採用し、本文・見出しの書体に無い記号（⁵ 等）の同梱フォールバックも兼ねる。
+   フォールバック先が Regular/Bold の両字面を持たないと bold 文脈で faux-bold 合成が
+   起き Chromium が Type 3 化するため、Regular/Bold を必ず両方宣言する。 */
+@font-face {
+  font-family: "HackGen35 Console NF";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/hackgen35/HackGen35ConsoleNF-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* コード用（等幅太字）＋記号フォールバック: HackGen35 Console NF Bold */
+@font-face {
+  font-family: "HackGen35 Console NF";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/hackgen35/HackGen35ConsoleNF-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* キーボードアイコン用フォント
+   原本は OTF(CFF)。Chrome 149 は CFF アウトラインを Type 3 で埋め込むため、
+   OTF→TTF(glyf) へ変換した同梱 TTF を使う（変換の旨は LICENSE 参照）。 */
+@font-face {
+  font-family: keyfont;
+  src:         url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf") format("truetype");
+}

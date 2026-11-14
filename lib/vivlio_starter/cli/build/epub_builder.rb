@@ -35,6 +35,8 @@ require_relative '../post_process/html_parser'
 require_relative '../pre_process/frontmatter_generator'
 require_relative '../pre_process/generated_asset_cache'
 require_relative '../pre_process/book_settings_css'
+require_relative '../css/entry_writer'
+require_relative '../css/flattener'
 
 module VivlioStarter
   module CLI
@@ -47,10 +49,12 @@ module VivlioStarter
         EPUB_ENTRIES_FILE = 'entries.epub.js'
         # EPUB デフォルト出力ファイル名
         EPUB_OUTPUT_FILE  = 'output.epub'
-        # EPUB へ同梱する book-settings.css の配置先（消費者 dir 直下）。
-        # 生成物の正規の置き場は .cache/vs/ だが、EPUB パッケージルート（= 消費者 dir）の
-        # 外にあるため、dir 直下へ url() を組み替えた変種をコピーして同梱する（§7.2 → P4 §5.4）。
-        EPUB_BOOK_SETTINGS_FILE = 'book-settings.css'
+        # 平らにした CSS の置き場（消費者 dir からの相対）。ページの種類ごとに 1 枚
+        # （css-layer-restructure-spec.md §4.2）。
+        EPUB_STYLES_DIR = 'styles'
+
+        # ステージした HTML の、入口の CSS への link（asset_prefix を剥がした後の作業ディレクトリ相対）
+        ENTRY_HREF_PATTERN = %r{href="#{Regexp.escape(Common::CACHE_DIR)}/entry-([a-z-]+)\.css"}
 
         # EPUB で除外する特殊ページ
         # 目次は EPUB リーダーが自動生成するため不要
@@ -354,8 +358,8 @@ module VivlioStarter
           # EPUB リフロー文脈の目印 vs-epub を全 body に付与（クリーン・Kindle 共通）。
           # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
           mark_body_for_epub!(chapter_htmls)
-          # 生成物 book-settings.css を消費者 dir 直下へ同梱（パッケージルート内へ・§7.2 → P4 §5.4）
-          bundle_book_settings_for_epub!(chapter_htmls, base_dir)
+          # 入口の CSS を平らにして消費者 dir の styles/ へ置き、link を付け替える（KFX は @layer を捨てる）
+          bundle_flat_css_for_epub!(chapter_htmls, base_dir)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
           strip_inline_footnote_ids_for_epub!(chapter_htmls)
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
@@ -1199,51 +1203,53 @@ end
           v[/\Aurl\(\s*["']?(.*?)["']?\s*\)\z/i, 1].to_s
         end
 
-        # 生成物 book-settings.css を EPUB へ同梱する（調査報告 §7.2 → P4 §5.4）。
-        # 正規の置き場 .cache/vs/ はパッケージルート（= 消費者 dir）の外のため、link を
-        # そのままにすると RSC-007（参照切れ）になる。消費者 dir 直下へ変種をコピーし、
-        # 章 HTML の link href をその相対（book-settings.css）へ書き換える。dir 直下 CSS からは
-        # 画像相対が stylesheets/ 基準へ変わるため url() も組み替える。Kindle の webp url() 除去や
-        # マージンボックス除去は sanitize_epub_css! が同梱後の CSS へ自動適用する。
+        # 入口の CSS を平らにして EPUB へ同梱する（css-layer-restructure-spec.md §4.2・§8 の S2）。
+        #
+        # KFX は `@layer` の囲みを中身ごと捨てるので、層の付いた入口をそのまま渡せない。
+        # 入口の `@import` を解いて層の順に並べた 1 枚（Css::Flattener）を、ページの種類ごとに
+        # 消費者 dir の styles/ へ書き、章 HTML の link をその 1 枚へ付け替える。
+        # 入口と book-settings.css の置き場 .cache/vs/ はパッケージルートの外なので、
+        # 付け替えないと RSC-007（参照切れ）になる。Kindle の webp url() 除去やマージンボックス除去は
+        # sanitize_epub_css! が同梱後の CSS へ適用する。
         #
         # @param html_files [Array<String>] 章 HTML パスの配列
-        # @param base_dir [String] 消費者 dir（変種 CSS の配置先）
+        # @param base_dir [String] 消費者 dir（平らな CSS の置き場）
         # @return [Array<String>] そのままの配列
-        def bundle_book_settings_for_epub!(html_files, base_dir)
-          source = PreProcessCommands::BookSettingsCss.output_path
-          # ステージ済み HTML の link href は asset_prefix 剥がし後の cwd 相対（= source と同値）
-          src_href = source
-
-          unless File.exist?(source)
-            Common.log_warn("[EPUB] #{source} が見つかりません。book-settings.css の link を除去します。")
-            strip_book_settings_link!(html_files, src_href)
-            return html_files
-          end
-
-          # .cache/vs/ 基準（../../stylesheets/）→ パッケージルート基準（stylesheets/）へ url() を組替
-          css = File.read(source, encoding: 'utf-8').gsub('../../stylesheets/', 'stylesheets/')
-          File.write(File.join(base_dir, EPUB_BOOK_SETTINGS_FILE), css, encoding: 'utf-8')
-
-          rewrote = html_files.count do |path|
+        def bundle_flat_css_for_epub!(html_files, base_dir)
+          written = {}
+          html_files.each do |path|
             html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(src_href, EPUB_BOOK_SETTINGS_FILE)
-            next false if updated == html
-
-            File.write(path, updated, encoding: 'utf-8')
-            true
+            updated = html.gsub(ENTRY_HREF_PATTERN) do
+              name = Regexp.last_match(1)
+              written[name] ||= write_flat_css!(name, base_dir)
+              %(href="#{EPUB_STYLES_DIR}/#{name}.css")
+            end
+            File.write(path, updated, encoding: 'utf-8') unless updated == html
           end
-          Common.log_success("[EPUB] book-settings.css を同梱しました（#{rewrote} エントリの link を書換）")
+          Common.log_success("[EPUB] 平らにした CSS を同梱しました（#{written.keys.sort.join(', ')}）")
           html_files
         end
 
-        # book-settings.css が無い異常時に、参照切れを避けるため link 要素を除去する。
-        def strip_book_settings_link!(html_files, href)
-          pattern = /[ \t]*<link\b[^>]*href="#{Regexp.escape(href)}"[^>]*>\s*\n?/
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(pattern, '')
-            File.write(path, updated, encoding: 'utf-8') unless updated == html
-          end
+        # 1 種類の入口を平らにして消費者 dir の styles/ へ書く。
+        # @return [String] 書いたパス
+        def write_flat_css!(name, base_dir)
+          entry = Css::EntryWriter.path_for(name)
+          Common.log_warn("[EPUB] #{entry} が見つかりません。#{name} のページは CSS なしで組まれます。") unless File.exist?(entry)
+
+          dest = File.join(base_dir, EPUB_STYLES_DIR, "#{name}.css")
+          FileUtils.mkdir_p(File.dirname(dest))
+          File.write(dest, Css::Flattener.flatten(entry, rebase: method(:epub_package_url)), encoding: 'utf-8')
+          dest
+        end
+
+        # 平らな CSS（styles/ の中）から見た、パッケージの中の url。
+        # パッケージには作業ディレクトリの stylesheets/ がそのままの階層で写り（localize_assets!）、
+        # 生成キャッシュ .cache/vs/ の中のもの（theme-images/）はパッケージのルート直下に写る
+        # （localize_theme_variant_images!）。
+        # @param absolute [String] url() が指すファイルの絶対パス
+        def epub_package_url(absolute)
+          relative = absolute.delete_prefix("#{Dir.pwd}/").delete_prefix("#{Common::CACHE_DIR}/")
+          "../#{relative}"
         end
 
         # テーマ画像の url(...) 値を実ファイルパスへ解決する。
@@ -3227,7 +3233,7 @@ end
         # （アンカーの一致と読み上げを壊さないため）。組が無い本では書体を読みもしない。
         #
         # @param html_files [Array<String>] Kindle 消費者 dir の HTML
-        # @param base_dir [String] Kindle 消費者 dir（book-settings.css の置き場）
+        # @param base_dir [String] Kindle 消費者 dir（平らにした CSS を styles/ に持つ）
         # @return [Array<String>] そのままの配列
         def apply_variant_glyph_fonts_for_kindle!(html_files, base_dir)
           # --- Phase: 原稿に出た組を集める ---
@@ -3239,9 +3245,10 @@ end
           end
           return html_files if occurrences.empty?
 
-          css_path = File.join(base_dir, EPUB_BOOK_SETTINGS_FILE)
-          unless File.exist?(css_path)
-            Common.log_warn("[Kindle] #{css_path} が無いため、異体字の書体を当てられません")
+          # 規則は、平らにした CSS（ページの種類ごとに 1 枚）のすべてへ足す
+          css_paths = Dir.glob(File.join(base_dir, EPUB_STYLES_DIR, '*.css'))
+          if css_paths.empty?
+            Common.log_warn("[Kindle] #{File.join(base_dir, EPUB_STYLES_DIR)} に CSS が無いため、異体字の書体を当てられません")
             return html_files
           end
 
@@ -3256,8 +3263,10 @@ end
           # --- Phase: 書体と CSS を書き出す ---
           slots = VariantGlyphFont.assign(replaced)
           rules = write_variant_glyph_fonts!(slots, sources, base_dir)
-          File.write(css_path, "\n/* 異体字の 1 字書体（kindle-ivs-font-spec.md） */\n#{rules.join("\n")}\n",
-                     mode: 'a', encoding: 'utf-8')
+          css_paths.each do |css_path|
+            File.write(css_path, "\n/* 異体字の 1 字書体（kindle-ivs-font-spec.md） */\n#{rules.join("\n")}\n",
+                       mode: 'a', encoding: 'utf-8')
+          end
 
           # --- Phase: 本文の字を親字＋span へ置き換える ---
           slot_of = slots.each_with_index.flat_map { |pairs, i| pairs.map { [it, i + 1] } }.to_h
@@ -3352,7 +3361,8 @@ end
           file = "#{family}#{'-bold' if face.weight == 700}.ttf"
           internal_name = "VS Variant Glyphs #{family.delete_prefix(VARIANT_FAMILY_PREFIX).tr('-', ' ')}"
           File.binwrite(File.join(dir, file), VariantGlyphFont.encode(face.path, glyphs, family: internal_name))
-          %(@font-face { font-family: "#{family}"; font-weight: #{face.weight}; src: url("#{VARIANT_FONT_DIR}/#{file}"); })
+          # 規則を書く CSS は styles/ の中にあるので、消費者 dir の fonts/ へは一段上がる
+          %(@font-face { font-family: "#{family}"; font-weight: #{face.weight}; src: url("../#{VARIANT_FONT_DIR}/#{file}"); })
         end
 
         # テキストノード 1 つの中の、書体を割り振った組を親字＋span へ置き換える。
