@@ -192,6 +192,36 @@ module VivlioStarter
         assert_latch_open 'PDF 枝が落ちてもラッチを解放するべき'
       end
 
+      # EPUB / Kindle 枝は、PDF 枝が画像を測り終えるまで割合を読まない（DerivedImage のラッチ）。
+      # 回転テーブルのラッチと同じく、どう終わっても必ず解放する。
+      def test_should_release_the_measurement_latch_even_without_a_shrink_step
+        build = pipeline(pdf: [noop('pdf')], epub: [noop('epub')])
+
+        capture_io { build.run }
+
+        assert_measurement_latch_open '測定の段が無い構成でもラッチを解放するべき'
+      end
+
+      # 解放は**測り終えた瞬間**。縮小版への差し替えと dedup は PDF 枝の中の話で、待たせる理由が無い。
+      def test_should_release_the_measurement_latch_as_soon_as_measuring_finishes
+        Build::DerivedImage.arm!(true)
+        build = pipeline(pdf: [noop('pdf')], epub: [noop('epub')])
+
+        Build::DerivedImage.stub(:measure!, 0) do
+          capture_io { build.send(:run_shrink_oversized_images) }
+        end
+
+        assert_measurement_latch_open '測り終えた時点で解放するべき'
+      end
+
+      def test_should_release_the_measurement_latch_when_the_pdf_branch_fails
+        build = pipeline(pdf: [['pdf', -> { raise 'PDF 枝が落ちた' }]], epub: [noop('epub')])
+
+        assert_raises(RuntimeError) { capture_io { build.run } }
+
+        assert_measurement_latch_open 'PDF 枝が落ちてもラッチを解放するべき'
+      end
+
       private
 
       # 解放済みなら待たずに戻る。戻らなければテストごと固まるため、別スレッドで測る。
@@ -201,6 +231,14 @@ module VivlioStarter
         refute_nil opened, message
       ensure
         Build::RotateTableImages.arm!(false)
+      end
+
+      def assert_measurement_latch_open(message)
+        opened = Thread.new { Build::DerivedImage.wait_until_measured! }.join(5)
+
+        refute_nil opened, message
+      ensure
+        Build::DerivedImage.arm!(false)
       end
 
       def noop(label) = [label, -> {}]

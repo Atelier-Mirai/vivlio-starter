@@ -195,9 +195,12 @@ module VivlioStarter
         # 「組んでから測る」ができないが、相対幅は組版系によらないからである——版面の半分に
         # 並べた見本は EPUB でも画面の半分を占める。測っていなければ画面幅そのもの（＝安全側）。
         #
+        # 読むのは EPUB / Kindle 枝だけなので、ここで PDF 枝の測定を待つ（wait_until_measured!）。
+        #
         # @param viewport_px [Integer] そのターゲットの画面幅
         # @return [Integer] 要る画素数（画面幅を超えない）
         def viewport_target(width, height, viewport_px)
+          wait_until_measured!
           ratio = metrics.dig("#{width}x#{height}", 'ratio')
           return viewport_px unless ratio&.positive?
 
@@ -238,6 +241,39 @@ module VivlioStarter
         # プロセス内キャッシュを捨てる（テスト用）。
         def reset_cache!
           @metrics = nil
+        end
+
+        # =============================================================
+        # 枝をまたぐラッチ
+        # =============================================================
+        # PDF 枝が測り終えるまで、EPUB / Kindle 枝が割合を読むのを待たせる。
+        #
+        # 枝は同じプロセスのスレッドで並行に走り、`measure!` は走行中に `@metrics` を
+        # 差し替える。待たずに読むと、測る前に変換した画像は画面幅のまま、測った後の
+        # 画像は割合で縮む——**同じ本を二度組んで結果が変わる**（実測: 丸数字の画像が
+        # 128px と 32px に分かれた）。逐次のビルド（VIVLIO_BUILD_PARALLEL=0）は測った後に
+        # EPUB 枝が走るので、待てば並行でも逐次と同じ結果になる。
+        #
+        # 形は `RotateTableImages` のラッチと同じ。arm! されていなければ待たない。
+
+        # @param enabled [Boolean] PDF 枝が測定を担うか
+        def arm!(enabled)
+          @gate = enabled ? Queue.new : nil
+        end
+
+        # 待っている枝を解放する。PDF 枝が例外で落ちても必ず呼ぶこと（デッドロック防止）。
+        def release! = @gate&.close
+
+        # 待った時間は、待ったときだけ報告する。読む箇所ごとに呼ばれるので、
+        # 解放済みなら黙って戻る。
+        def wait_until_measured!
+          return if @gate.nil? || @gate.closed?
+
+          Common.log_info('[shrink] 本文 PDF の測定を待っています…')
+          started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          @gate.pop
+          waited = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+          Common.log_info(format('[shrink] 本文 PDF の測定を %.2f 秒待ちました', waited))
         end
 
         # 素材のパス構造を派生側にも残す。ハッシュ名にすると、PDF が大きいときに

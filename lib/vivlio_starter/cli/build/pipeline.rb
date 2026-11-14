@@ -76,6 +76,8 @@ module VivlioStarter
           # 回転テーブルの画像を PDF 枝が用意する構成でだけ、Kindle 枝を待たせる。
           # 待つ相手がいないビルドで永久に待たないよう、ここで明示的に宣言する。
           Build::RotateTableImages.arm!(mode == :full && rotate_table_images?)
+          # 画像の測定も同じ。測るのは shrink oversized images の段（t.any_pdf?）だけである。
+          Build::DerivedImage.arm!(mode == :full && targets.any_pdf?)
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           run_phase(:shared)
           fork_branches? ? run_branches_in_parallel : run_branches_sequentially
@@ -137,6 +139,7 @@ module VivlioStarter
           run_phase(:pdf)
         ensure
           Build::RotateTableImages.release!
+          Build::DerivedImage.release!
         end
 
         # 臨界経路である PDF 枝をメインスレッドで走らせ、EPUB 枝を子スレッドへ出す。
@@ -472,9 +475,16 @@ module VivlioStarter
         # 差し替え先は pdf/ の HTML なので、直後の dedup が浄化後に再レンダするとき
         # 縮小版で組まれる。索引を使わず dedup が走らない本では**次回のビルド**から効く
         # ——測定結果は .cache/vs/derived/ に残り、ステージングがそれを読むためである。
+        #
+        # 測り終えたら、割合を読む EPUB / Kindle 枝をすぐ解放する（DerivedImage のラッチ）。
+        # 縮小版への差し替えは PDF 枝の中の話なので、待たせる理由が無い。
         def run_shrink_oversized_images
           sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
-          measured = Build::DerivedImage.measure!(sections_pdf)
+          begin
+            measured = Build::DerivedImage.measure!(sections_pdf)
+          ensure
+            Build::DerivedImage.release!
+          end
           if measured.zero?
             Common.log_info('[shrink] 実効解像度を測れませんでした（本文 PDF が未生成）')
             return

@@ -227,6 +227,33 @@ module VivlioStarter
         end
       end
 
+      # 並行の枝では、PDF 枝が測り終えるまで割合を読ませない。待たずに読むと、
+      # 測る前と後で同じ本の画像の大きさが変わる（同じ本を二度組んで結果が違った）
+      def test_should_wait_for_the_measurement_before_reading_the_ratio
+        in_temp_project do
+          Derived.arm!(true)
+          reader = Thread.new { Derived.viewport_target(2048, 2048, 1024) }
+
+          assert_nil reader.join(0.2), '測り終える前は待ち続けるべき'
+
+          write_metrics('2048x2048' => { 'px' => 1073, 'ratio' => 0.458 })
+          Derived.release!
+
+          assert_equal 469, reader.join(5)&.value, '測った割合で縮めるべき'
+        ensure
+          Derived.arm!(false)
+        end
+      end
+
+      # 待つ相手がいないビルド（PDF を組まない）では待たない
+      def test_should_not_wait_when_the_measurement_latch_is_not_armed
+        in_temp_project do
+          Derived.arm!(false)
+
+          refute_nil Thread.new { Derived.viewport_target(999, 999, 2048) }.join(5), '待たずに戻るべき'
+        end
+      end
+
       # 素材は読むだけ。著者の images/ を書き換えてはならない（§6-9）
       def test_should_never_modify_source_images
         in_temp_project do
