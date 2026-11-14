@@ -29,7 +29,7 @@
 
 /* 画面ではインライン脚注本文は非表示（行を維持するためにDOMは残す） */
 .page-footnote-inline {
-  display: none !important;
+  display: none;
 }
 
 /* ---------------------------------------------------------------
@@ -68,7 +68,7 @@ body.vs-epub .vs-fn-num {
   /* 段落内のインライン脚注本文は印刷でも非表示 */
   span.page-footnote,
   .page-footnote-inline {
-    display: none !important;
+    display: none;
   }
 
   /* ブロック文脈の脚注はページ脚注へ */
@@ -98,7 +98,7 @@ body.vs-epub .vs-fn-num {
      錨にすれば、脚注は参照のある行に紐づき、必ず同一ページに揃う。
      --------------------------------------------------------------- */
   span.page-footnote.page-footnote-inline {
-    display: inline !important;
+    display: inline;
     float: footnote;
     font-size: 0.85em;
     line-height: 1.4;
@@ -118,8 +118,11 @@ body.vs-epub .vs-fn-num {
      DOM に残すのは後処理（sideimage 変換・出現順の再番号付け）が aside を
      辿るため。span を持たない aside（append_unused_footnotes_to_body! が
      本文末尾へ足す sideimage 由来のもの）にはこの属性が付かないので、
-     そちらは従来どおり aside 自身が float:footnote で描かれる。 */
-  aside.page-footnote[data-footnote-anchored] {
-    display: none !important;
+     そちらは従来どおり aside 自身が float:footnote で描かれる。
+     選択子の先頭の body は、上の `body.vs-epub aside.page-footnote` の display: block と
+     詳細度をそろえ、後に置いたこちらを勝たせるためのもの（EPUB を印刷の媒体で組んだときも
+     控えを描かない。css-layer-restructure-spec.md §2.4） */
+  body aside.page-footnote[data-footnote-anchored] {
+    display: none;
   }
 }

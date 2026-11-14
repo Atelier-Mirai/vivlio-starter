@@ -314,8 +314,10 @@ def walk(nodes, context, piece, piece_index, decls, opaque, seen)
   end
 end
 
+# 鍵に !important を含めないのは、!important を外した宣言を前後で同じ宣言として突き合わせ、
+# 外したことで勝ち負けが変わる組を数えるためである（S2-3）
 def add_decl(decls, seen, context, selector, prop, piece, order)
-  base = [context, selector, prop[:name].downcase, prop[:value].gsub(/\s+/, ' '), prop[:important]]
+  base = [context, selector, prop[:name].downcase, prop[:value].gsub(/\s+/, ' ')]
   key = [*base, seen[base] += 1]
   decls << Decl.new(key:, selector:, subject: subject_of(selector), specificity: specificity(selector),
                     longhands: longhands(prop[:name]), property: prop[:name].downcase, value: base[3],

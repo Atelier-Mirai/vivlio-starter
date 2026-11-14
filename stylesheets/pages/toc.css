@@ -170,7 +170,7 @@ li.toc-chapter-appendix {
 /* li 自体の ::after は使わない（ページ番号は .toc-title::after に付ける） */
 .toc-chapter-appendix::after,
 .toc-chapter-no-number::after {
-  content: none !important;
+  content: none;
 }
 
 /* ========================================================= */

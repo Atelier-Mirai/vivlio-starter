@@ -539,10 +539,13 @@ module VivlioStarter
         # ——body.vs-epub（クリーン・Kindle 共通マーカー）を除外して PDF に限定する。
         # section.level2:first-of-type は section.level1 直下の最初の節。h1 と
         # .chapter-lead は section 要素でないので :first-of-type の数に入らない。
+        # `@pagebreak:recto` の直後で記法の側の改ページに一本化した h2（vs-break-merged）は除く。
+        # 一本化の規則は utilities 層にあり、settings 層のこの規則には負けるので、選ぶ対象の側で
+        # 外す（css-layer-restructure-spec.md §2.4）。
         def chapter_frontispiece_guard_rule
           <<~CSS.chomp
             /* 章扉は全面の扉絵で成立するページなので、最初の節だけは次ページから始める。 */
-            body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2 {
+            body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2:not(.vs-break-merged) {
               break-before: page;
               page-break-before: always;
             }

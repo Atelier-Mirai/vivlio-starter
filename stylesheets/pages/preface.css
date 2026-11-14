@@ -220,22 +220,3 @@ blockquote p + p {
 table {
   text-align: start;
 }
-
-/* テキスト整列ユーティリティ（章の utilities/align-chapter.css と同じ） */
-.text-right,
-.text-right p {
-  text-align: right !important;
-  text-indent: 0 !important;
-}
-
-.text-center,
-.text-center p {
-  text-align: center !important;
-  text-indent: 0 !important;
-}
-
-.text-left,
-.text-left p {
-  text-align: left !important;
-  text-indent: 0 !important;
-}

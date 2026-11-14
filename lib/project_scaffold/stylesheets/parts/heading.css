@@ -158,12 +158,3 @@ section:has(hr:last-child) + section > h3:first-child {
 .section-lead p {
   text-indent: 1em;
 }
-
-/* PageBreakNormalizer が付与する合流クラス。@pagebreak:recto 直後の h2 は
-   recto 側の改ページに一本化する（page-break-control-spec §2.1-4）。
-   h2 の改ページ元セレクタ（image-header / simple-header）はスタイル別かつ
-   高特異度のため !important で一括無効化する（唯一のユーティリティ用途に限定）。 */
-h2.vs-break-merged {
-  break-before: auto !important;
-  page-break-before: auto !important;
-}

@@ -266,6 +266,6 @@ body.vs-header-image .section-topic h2 .section-number {
    parts/heading.css の .section-lead は負の上マージンを持つため打ち消しが必要。 */
 body.vs-header-image .section-topic .section-lead {
   text-indent: 1em;
-  margin-block-start: 0 !important;
-  margin-block-end: 0 !important;
+  margin-block-start: 0;
+  margin-block-end: 0;
 }

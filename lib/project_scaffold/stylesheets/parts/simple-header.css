@@ -152,10 +152,10 @@ body.vs-header-simple h2 {
   border-block: 1px solid var(--heading-accent);
 }
 
-/* 節リードとの間隔を確保 */
-body.vs-header-simple h2 + .section-lead,
-body.vs-header-simple h2 + * + .section-lead,
-body.vs-header-simple h2 ~ .section-lead {
+/* 節リードとの間隔を確保（PDF 用。EPUB の余白は parts/epub-reflow.css が持つ） */
+body.vs-header-simple:not(.vs-epub) h2 + .section-lead,
+body.vs-header-simple:not(.vs-epub) h2 + * + .section-lead,
+body.vs-header-simple:not(.vs-epub) h2 ~ .section-lead {
   margin-block-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
 }
 

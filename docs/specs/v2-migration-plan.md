@@ -356,3 +356,11 @@ S11 の確かめに使う本を、テストの素材（`test/vivlio_starter/fixt
 - **規則の勝ち負けの比べ方。** CSS のファイルを分けたり規則を層の間で移したりする段階（S2-2〜S2-4）では、PDF の画素の比較に加えて `scripts/css_cascade_diff.rb` を走らせる。分ける前（既定は `HEAD`）と後の入口を平らにし、ページの種類ごとに規則の増減と、勝つ側が入れ替わった宣言の組を数える。`--html` に組み上がった HTML（`--no-clean` で残る `.cache/vs/build/pdf/`）と EPUB を渡すと、両方の選択子に当たる要素がある組だけが残る。S2-2 では、この道具が挙げた 11 組が、PDF で 8 ページの差になっていた（直す前に組んだ PDF で確かめた）。道具は差を見つけられ、画素の比較より先に原因の規則を名指しできる。
 - **`rake test:layout` は `config/book.yml` を書き換えながら走る。** 走らせている間に `ruby scripts/copy_to_scaffold.rb` を走らせると、書き換え中の `book.yml`（判型や出力先の値）が雛形へ写る。雛形の同期は、`rake test:layout` が終わってから行う。
 - **S2-1 の Kindle の記録。** `check/s2-1-kindle/kindle-record/` には二回分の変換が混ざっている（S2-1 で直した不具合の前に取った記録）。比べるときは、ファイル名のハッシュを外したうえで、更新日時の新しい方を使う。S2-2 の記録（`check/s2-2-b1/kindle-record/`）は一回分だけで、以後の比べる相手にできる。
+
+### 8.4 S2-3 `!important` を無くす（2026-11-14）
+
+作ったもの・仕様と違えたこと・確かめた結果は `css-layer-restructure-spec.md` §10.3。ここには、確かめ方（§3）について分かったことを書く。
+
+- **`css_cascade_diff.rb` は、選択子を書き換えた規則を比べない。** 道具は前後の宣言を「文脈・選択子・プロパティ・値」の鍵で突き合わせるので、選択子を書き換えた規則は「なくなった規則」と「増えた規則」になり、勝ち負けの比べから外れる。S2-3 では節リードの選択子を絞ったので、その分を別の方法で確かめた。同じ XHTML（組み上がった EPUB を展開したもの）に、前の版と後の版の入口を平らにした CSS を当て、Chromium で全要素と `::before`・`::after` の計算値を取り、要素ごとに比べる（画面と印刷の両方の媒体）。使い捨てのスクリプトで行い、比べ方が差を拾うことは、simple と image の見出しで節リードの余白の計算値が違うことで確かめた。S3 で、Kindle の中間生成物の比べと合わせて道具にする。
+- **本書で使っていない記法は、写しの原稿に書き足して前後で組む。** `@pagebreak:recto` の直後の節（`vs-break-merged`）は本書に無いので、12 章の最初の二つの節の前に書き足した写しを、前の版（`HEAD` の worktree の `bin/vs` と `stylesheets/`）と後の版で、`page.section_pagebreak` の `false`・`true` の両方で単章で組み、画素で比べた。`build_copy.rb --book` に worktree を渡すと、worktree の `stylesheets/` が写しに入る（`images/` は雛形の写しが使われる）。
+- **Kindle の中間生成物は、S2-2 の記録（`check/s2-2-b1/kindle-record/`）と比べる。** S2-3 の記録は `check/s2-3-b1/kindle-record/`（一回分）。

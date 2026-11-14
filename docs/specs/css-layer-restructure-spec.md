@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **実装中**（S2-1・S2-2 は 2026-11-14 に完了・実装記録は §10）
+> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14 に完了・実装記録は §10）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -505,3 +505,47 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | Kindle の中間生成物 | 36 ファイル・27,263 要素で、`computedstyle` は位置と大きさも含めて S2-1 と全部一致。`style` 属性は 1 要素（22 章の `.column.text-right`）で宣言の並び順だけが違い、値は同じ |
 | Kindle Previewer の画面 | §3.2 の 10 か所（§8 の 5 か所を含む）すべてで、S2-1 の画面と画素まで一致（差 0）。10 枚は互いに別の画面 |
 | `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,298 件・4,298 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-1 と同じ）。rubocop の違反 0 |
+
+### 10.3 S2-3 `!important` を無くす（2026-11-14）
+
+#### 作ったもの
+
+- `stylesheets/` の `!important` 18 か所を全部外した（`stylesheets/` の中は 0 か所。コメントにも残していない）。外しただけでは勝ち負けが変わる組を `scripts/css_cascade_diff.rb` で洗い、次のように解いた。
+
+  | 場所（S2-2 の後の名前） | 外すと何に負けるか | 直し方 |
+  | :--- | :--- | :--- |
+  | `parts/heading.css` の `h2.vs-break-merged`（2 か所） | 本書には無い形。`page.section_pagebreak: false` の image の本で、章の最初の節の直前に `@pagebreak:recto` を書くと、settings 層の章扉の保護（`body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2`）が勝ち、改ページが二重になる | 規則を `utilities/pagebreak.css` へ移した（parts 層の h2 の改ページには層で勝つ）。settings 層に勝てない分は、章扉の保護の選択子に `:not(.vs-break-merged)` を足して、取り合わないようにした（`BookSettingsCss#chapter_frontispiece_guard_rule`） |
+  | `pages/preface.css` の `.text-*`（6 か所） | utilities 層の `.align-*`・`.text-*` の `text-align` に負ける（同じ要素に両方を付けたとき） | 章の `utilities/align-chapter.css` と中身が同じだったので、二つを `utilities/align.css` の末尾の 1 組にまとめ、`align-chapter.css` を消した。前書き・後書きも同じ組を読む（§2.4 の「本文のページで共通の指定にする」）。`.align-*` の `text-align` より後に置く順は、章で 1.x から効いていた順と同じ |
+  | `parts/footnote.css` の `display`（4 か所） | 実際に取り合うのは、印刷の媒体での控えの aside の非表示（`aside.page-footnote[data-footnote-anchored]`）と `body.vs-epub aside.page-footnote { display: block }` の 1 組だけ（EPUB を印刷の媒体で組んだときに控えが出る）。ほかの 3 か所は、同じ要素に当たる相手が詳細度か順で既に負けている | 控えの非表示の選択子の先頭に `body` を足して詳細度をそろえ、後に置いた側が勝つようにした |
+  | `parts/epub-reflow.css` の節リード（1 か所）と `parts/image-header.css` の節リード（2 か所） | 1.x では両方に `!important` があり、詳細度で image の側（上下 0）が勝っていた。EPUB の側（上下 0.3em・1em）が効いていたのは simple の見出しのときだけで、simple の見出しの PDF 用の余白（`parts/simple-header.css`）に `!important` で勝っていた。外すと、simple の見出しの EPUB で PDF 用の余白が勝つ | 今の結果を選ぶ対象で明示した。EPUB の上下の余白は `body.vs-epub:not(.vs-header-image) .section-lead` に、simple の見出しの PDF 用の余白は `body.vs-header-simple:not(.vs-epub) …` にし、どの組も同じ要素で取り合わないようにした。image の側は詳細度で今のまま見出しの部品の負の余白に勝つ |
+  | `pages/toc.css` の `content: none`（1 か所） | 取り合う相手が無い（li の `::after` に値を入れる規則は無く、目次の番号は `.toc-title::after`） | 外すだけ |
+
+- `test/vivlio_starter/cli/css/css_layer_test.rb`: `stylesheets/`（`custom.css` を除く）と `themes/` の CSS の、コメントの外に `!important` が無いことを確かめる。検査が空振りしないことのテストも置いた。
+- `scripts/css_cascade_diff.rb`: 宣言を突き合わせる鍵から `!important` を外した。`!important` を外した宣言を前後で同じ宣言として扱い、外したことで勝ち負けが変わる組を数えるためである。
+
+#### 仕様と違えたこと
+
+1. **§2.4 の表の「`utilities` 層へ移す」だけでは足りない箇所があった。** `h2.vs-break-merged` が勝つべき相手には、settings 層（`book-settings.css`）の章扉の保護が含まれる。utilities 層は settings 層の下なので、settings 層の側の選択子を絞った。S2-1 の改丁の打ち消し（§10.1 の 3）と同じく、下の層の打ち消しが上の層の規則に負ける形である。
+2. **節リードは「勝つ側を上の層に置く」ではなく、選ぶ対象を絞って取り合わないようにした。** EPUB の規則のコメントは「image-header の上下 0 に勝つため」としていたが、1.x の実際の出力では image の側が勝っていた。S2 は見た目を変えない段階なので、実際の出力（image の見出しの EPUB では節リードの上下が 0）を保った。EPUB の規則は S3-2 で target 層（parts と theme の上）へ移るので、層の位置に頼ると、そこで image の見出しの EPUB の見た目が変わる。選ぶ対象で明示しておけば、S3-2・S6 で規則が別の層へ移っても結果が変わらない。image の見出しの EPUB でも節リードを見出しに近づけるか（コメントの元の意図）は、見た目を変える判断なので、S2 の後に決める。
+3. **`align-chapter.css` を S2-3 で無くした。** S2-2 では S2-4 で `align.css` へまとめる予定だった（§10.2 の 1）。前書きの `!important` を utilities 層で解くには、前書きも同じ規則を読む必要があり、まとめるのが最も簡単だったため、S2-3 で行った。前書き・後書きが `spacing.css` を読まない差は S2-4 に残る。
+4. **`book-settings.css` の `!important` 1 か所は残した。** `BookSettingsCss#h4_marker_kindle_rule` が、Kindle の h4 の印を、Techbook の `<style>` の `!important` に勝たせるために `!important` で書き出す。生成物で `stylesheets/` の外なので、§2.4 の 18 か所に入っていない。S3-3 でこのメソッドごと無くす（§4.4 の「今の仕組みとの入れ替え」）。
+
+#### 確かめた結果
+
+写しの本は作業ツリーをそのまま写した。比べる相手は S2-2 の出力（`../vivlio-starter-v2-baseline/runs/s2-2-*/`・`check/s2-2-b1/`）。S2-3 の出力は `runs/s2-3-*/`・`check/s2-3-*/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 1. 勝ち負けの入れ替わり（`css_cascade_diff.rb`。`HEAD`＝S2-2 と比べる） | 本書の PDF 用 HTML・EPUB・Kindle 用 EPUB、B2 の PDF 用 HTML・EPUB、B4 の EPUB の計 214 文書で、両方の選択子に当たる要素がある組は 0。当たる要素の無い組が 221 あり、読んで確かめた。別の要素どうしの組（li の `::after` と `.toc-title::after`、脚注の span と aside など）か、著者の指定（`.aki`・`.aki2`）が部品に勝つようになった組（§2.1 の utilities 層の狙いのとおり）である。`vs-break-merged` と章扉の保護の組は、道具が読む `book-settings.css` が古い選択子のもの |
+| 2. EPUB の計算値（§8.4 の比べ方） | B1 の EPUB（37 文書・24,408 要素）・Kindle 用 EPUB（36・26,283）・B2 の EPUB（37・24,988）・B4 の EPUB（26・32,595）に、S2-2 と S2-3 の平らな CSS を当てた。画面と印刷の両方の媒体で、違う要素 0 |
+| B1 の閲覧用 PDF・印刷用 PDF | 283 ページ・281 ページとも、違うページ 0 |
+| B2（`theme.style: simple`） | 279 ページ、違うページ 0 |
+| B3（節で改ページ・章は右の面・`b5_standard`） | 450 ページ、違うページ 0 |
+| B4（book_ai_web_starter の上巻）の PDF | 317 ページ、違うページ 0（本の CSS を作業ツリーのものに差し替えて組んだ） |
+| `@pagebreak:recto` の直後の節（本書に無い形） | 12 章の最初の二つの節の前に書き足した写しを、S2-2 と S2-3 で単章で組んだ。`section_pagebreak: false`（印 1 件・9 ページ）・`true`（印 2 件・10 ページ）とも、違うページ 0 |
+| 単章のビルド（`vs build 21`）・`vs preflight` | どちらも 🔴 0。単章の PDF は S2-2 と 15 ページとも違うページ 0。preflight の後に入口が 11 枚ある |
+| EPUBCheck | B1 の EPUB・Kindle 用 EPUB、B4 の EPUB の 3 つとも、エラー・警告 0 |
+| Kindle の変換の記録 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| Kindle の中間生成物 | 36 ファイル・27,263 要素で、`computedstyle`（26,335 要素）は位置と大きさも含めて S2-2 と全部一致。`style` 属性も全部一致。同じ比べ方で S1 と比べると既知の 9,198 要素の差が出るので、比べ方は差を拾う |
+| Kindle Previewer の画面 | 撮っていない。変換が組んだ計算値と `style` 属性が全要素で S2-2 と一致したので、画面の差は出ないと判断した |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,300 件・4,300 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-2 と同じ。増えた 2 件は `css_layer_test.rb`）。rubocop の違反 0 |

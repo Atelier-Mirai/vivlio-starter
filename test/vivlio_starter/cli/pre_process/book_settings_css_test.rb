@@ -404,8 +404,8 @@ class BookSettingsCssPageTest < Minitest::Test
   def test_should_keep_chapter_frontispiece_page_dedicated_when_disabled
     css = BSC.section_pagebreak_rule({ section_pagebreak: false })
 
-    assert_includes css,
-                    'body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2'
+    assert_includes css, 'body.vs-header-image:not(.vs-epub) section.level2:first-of-type > ' \
+                         '.section-topic h2:not(.vs-break-merged)'
     assert_includes css, 'break-before: page;'
     assert_includes css, 'page-break-before: always;'
   end

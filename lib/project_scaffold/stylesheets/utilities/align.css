@@ -14,22 +14,6 @@
   text-align: right;
 }
 
-/* テキスト整列（幅を変えずに text-align のみ適用）
-   ブロック記法: :::{.text-right} ... :::
-   インライン記法: 段落末尾に {.text-right} を付与
-   text-center / text-left も対称に用意（使い方は同じ） */
-.text-right {
-  text-align: right;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-left {
-  text-align: left;
-}
-
 /* 図版・画像以外のブロックは余白で位置合わせする */
 .align-left:not(:is(figure, img, svg)) {
   margin-inline-start: 0;
@@ -106,4 +90,29 @@
 
 .align-bottom {
   align-items: end;
+}
+
+/* テキスト整列（幅を変えずに text-align のみ適用）
+   ブロック記法: :::{.text-right} ... :::
+   インライン記法: 段落末尾に {.text-right} を付与
+   text-center / text-left も対称に用意（使い方は同じ）
+   囲みの中の段落にも届けるため `p` も選び、段落の字下げを外す。
+   `.align-*` の text-align と同じ要素に付いたときは、こちらが勝つよう、ファイルの最後に置く
+   （本文のページの段落の規則より上の utilities 層なので、詳細度に頼らず勝つ）。 */
+.text-right,
+.text-right p {
+  text-align: right;
+  text-indent: 0;
+}
+
+.text-center,
+.text-center p {
+  text-align: center;
+  text-indent: 0;
+}
+
+.text-left,
+.text-left p {
+  text-align: left;
+  text-indent: 0;
 }

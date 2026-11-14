@@ -56,9 +56,9 @@ module VivlioStarter
         PREFACE_PARTS = BODY_PARTS
 
         # 著者が原稿で明示する指定。改ページ記法は、記法を書けるページの種類にだけ配る
-        # （utilities/pagebreak.css の冒頭の説明）。前書き・後書きは 1.x で spacing.css と
-        # chapter-common.css の位置の指定（utilities/align-chapter.css）を読んでいない
-        CHAPTER_UTILITIES = %w[utilities/align.css utilities/align-chapter.css utilities/gap.css
+        # （utilities/pagebreak.css の冒頭の説明）。前書き・後書きは 1.x で spacing.css を
+        # 読んでいない（そろえるのは S2-4）
+        CHAPTER_UTILITIES = %w[utilities/align.css utilities/gap.css
                                utilities/spacing.css utilities/pagebreak.css utilities/replace-list.css].freeze
         PREFACE_UTILITIES = %w[utilities/align.css utilities/gap.css
                                utilities/pagebreak.css utilities/replace-list.css].freeze
