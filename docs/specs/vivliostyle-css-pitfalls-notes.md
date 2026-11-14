@@ -3,7 +3,9 @@
 > 作成日: 2026-07-12
 > ステータス: **知見メモ（恒久参照）**
 > 対象: PDF（Vivliostyle）とリフロー EPUB（クリーン/Kindle）のレイアウト実装で 2026-07-12 に実測特定した「CSS は正しいのに効かない」型の落とし穴、その原因・修正・切り分け手順。
-> 関連: `kindle-css-compatibility-notes.md`（KFX 側の癖はあちらが正典。本メモは **Vivliostyle エンジンと両フレーバ共通基盤**の癖を扱う）, `epub-code-line-numbers-spec.md`, `stylesheets/image-header.css`, `stylesheets/components.css`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `lib/vivlio_starter/cli/build/heading_image_composer.rb`, `lib/vivlio_starter/cli/masking.rb`
+> 関連: `kindle-css-compatibility-notes.md`（KFX 側の癖はあちらが正典。本メモは **Vivliostyle エンジンと両フレーバ共通基盤**の癖を扱う）, `epub-code-line-numbers-spec.md`, `stylesheets/parts/image-header.css`, `stylesheets/parts/epub-reflow.css`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `lib/vivlio_starter/cli/build/heading_image_composer.rb`, `lib/vivlio_starter/cli/masking.rb`
+
+> 2.0 の S2-2（2026-11-14）で `stylesheets/` のファイルを分けた。各論の本文の 1.x のファイル名（`chapter-common.css`・`components.css`・`layout-utils.css`・`base.css`）は当時のまま残し、早見表の修正先は今のファイル名にした。CSS のコメントにあった実測の記録は §2.19〜§2.23 へ移した。
 
 ---
 
@@ -19,22 +21,26 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 
 | 症状 | 真因 | 修正先 | 詳細 |
 |---|---|---|---|
-| PDF の扉背景が左上へ偏る（サイズは正しい） | Vivliostyle が `background-position` の **calc() 内 var() を宣言ごと破棄** → 初期値 0 0 | image-header.css＋book-settings 生成 | §2.1 |
-| 見出しがどう直しても折り返さない | `base.css` の見出し共通 **`word-break: keep-all`** が CJK 文字間の折返しを全面禁止 | image-header.css（節題限定で解除） | §2.2 |
-| Kindle でコード行番号が 2 列表示 | **Kindle の body は `vs-epub` と `vs-kindle` を両方持つ** → クリーン用 CSS カウンタが Kindle にも当たる | code.css（`:not(.vs-kindle)`） | §2.3 |
-| EPUB で扉絵が幅狭／節絵が後続を覆いページで割れる | **PDF 用 `body.vs-header-image …` の特異度が EPUB リセットに勝つ**（150px グリッド行・inline-size clamp が EPUB にも適用） | components.css（`body.vs-epub` 重ね） | §2.4 |
+| PDF の扉背景が左上へ偏る（サイズは正しい） | Vivliostyle が `background-position` の **calc() 内 var() を宣言ごと破棄** → 初期値 0 0 | parts/image-header.css＋book-settings 生成 | §2.1 |
+| 見出しがどう直しても折り返さない | `base.css` の見出し共通 **`word-break: keep-all`** が CJK 文字間の折返しを全面禁止 | parts/image-header.css（節題限定で解除） | §2.2 |
+| Kindle でコード行番号が 2 列表示 | **Kindle の body は `vs-epub` と `vs-kindle` を両方持つ** → クリーン用 CSS カウンタが Kindle にも当たる | parts/code.css（`:not(.vs-kindle)`） | §2.3 |
+| EPUB で扉絵が幅狭／節絵が後続を覆いページで割れる | **PDF 用 `body.vs-header-image …` の特異度が EPUB リセットに勝つ**（150px グリッド行・inline-size clamp が EPUB にも適用） | parts/epub-reflow.css（`body.vs-epub` 重ね） | §2.4 |
 | EPUB で SVG 見出し画像がレイアウト箱からはみ出す | **svg ルートに width/height 属性（intrinsic size）が無い**とリーダーが縦横比を誤る | heading_image_composer.rb | §2.5 |
 | 手書き book-card が全ターゲットで崩れる（`**` 生残り） | **Masking がフェンス終端の改行ごと退避** → 閉じ `:::` がプレースホルダと同一行に癒着 → コンテナ変換が閉じを見失う | masking.rb | §2.6 |
-| flex 内のテキストが縮まず箱を突き抜ける | flex アイテムの **`min-width: auto`** ＋ inline-flex の**匿名 flex アイテム**は `min-inline-size: 0` を外から与えても縮まない | image-header.css（タイトルをブロック化） | §2.7 |
+| flex 内のテキストが縮まず箱を突き抜ける | flex アイテムの **`min-width: auto`** ＋ inline-flex の**匿名 flex アイテム**は `min-inline-size: 0` を外から与えても縮まない | parts/image-header.css（タイトルをブロック化） | §2.7 |
 | 太字を持たない書体を指定すると、リスト番号だけ Type 3 になる | **`font-synthesis-weight` が `::before` / `::after` の生成ボックスへ継承されない**（継承プロパティなのに届かない） | book_settings_css.rb（疑似要素まで明示） | §2.8 |
-| 章見出し・本文の一部の語だけが斜体になる（全章ビルドのみ） | **UA 既定の `dfn { font-style: italic }`**。打ち消しを索引ページ専用の index.css に書いており、その要素が現れる本文・目次へ届いていなかった | base.css（全ページが読む） | §2.9 |
-| 収まるはずのコードブロックが丸ごと次ページへ送られ、前のページに大きな空き | Prism の既定の **`pre { overflow: auto }`**。スクロールする箱は Vivliostyle がページの途中から分けない（版面より高いときだけ、次のページの頭から分ける） | prism.css（`overflow: visible`） | §2.11 |
-| 写真グリッドが、前のページに収まる高さでも次ページへ送られる | **`display: grid` の囲み**を Vivliostyle が途中から置かない（flex なら置く） | layout-utils.css（`.pictures` を flex に） | §2.12 |
-| ファイル名付きのコードだけが、版面に収まらないと丸ごと次ページへ送られる | ファイル名付きのコードは **`<figure>` に包まれ、図版用の `figure { break-inside: avoid }`** が掛かる | code.css（コードの figure は `break-inside: auto`） | §2.13 |
-| 二段組（`.text-2dan`）の箇条書きが左の段にだけ入り、右の段が空く | **`.text-2dan > * { break-inside: avoid }` がリスト全体に掛かり**、リストが段をまたげない | layout-utils.css（リストは auto・`li` を avoid） | §2.14 |
-| 囲み（`.output` など）が、入る空きがあるのに次の見出しや段落ごと次ページへ送られる | **囲みの最後の子の `break-after: avoid` が囲みの外へ伝わる**（表示例の中の見本の見出し） | chapter-common.css（`.output` の中の見出しは `auto`） | §2.15 |
-| flex の中の画像が中央にそろわず、間が `gap` より広く空く | **全体の `figure` の規則の `margin-inline-end: auto`** が行の余りを吸う（コンテナ側の `margin: 0` より特異度が高い） | layout-utils.css（`.pictures` の figure の余白を打ち消す） | §2.16 |
+| 章見出し・本文の一部の語だけが斜体になる（全章ビルドのみ） | **UA 既定の `dfn { font-style: italic }`**。打ち消しを索引ページ専用の index.css に書いており、その要素が現れる本文・目次へ届いていなかった | base/elements.css（全ページが読む） | §2.9 |
+| 収まるはずのコードブロックが丸ごと次ページへ送られ、前のページに大きな空き | Prism の既定の **`pre { overflow: auto }`**。スクロールする箱は Vivliostyle がページの途中から分けない（版面より高いときだけ、次のページの頭から分ける） | parts/prism.css（`overflow: visible`） | §2.11 |
+| 写真グリッドが、前のページに収まる高さでも次ページへ送られる | **`display: grid` の囲み**を Vivliostyle が途中から置かない（flex なら置く） | parts/layout.css（`.pictures` を flex に） | §2.12 |
+| ファイル名付きのコードだけが、版面に収まらないと丸ごと次ページへ送られる | ファイル名付きのコードは **`<figure>` に包まれ、図版用の `figure { break-inside: avoid }`** が掛かる | parts/code.css（コードの figure は `break-inside: auto`） | §2.13 |
+| 二段組（`.text-2dan`）の箇条書きが左の段にだけ入り、右の段が空く | **`.text-2dan > * { break-inside: avoid }` がリスト全体に掛かり**、リストが段をまたげない | parts/layout.css（リストは auto・`li` を avoid） | §2.14 |
+| 囲み（`.output` など）が、入る空きがあるのに次の見出しや段落ごと次ページへ送られる | **囲みの最後の子の `break-after: avoid` が囲みの外へ伝わる**（表示例の中の見本の見出し） | parts/box.css（`.output` の中の見出しは `auto`） | §2.15 |
+| flex の中の画像が中央にそろわず、間が `gap` より広く空く | **全体の `figure` の規則の `margin-inline-end: auto`** が行の余りを吸う（コンテナ側の `margin: 0` より特異度が高い） | parts/layout.css（`.pictures` の figure の余白を打ち消す） | §2.16 |
 | 長さが同じはずの `calc(32em)` に書き換えただけで、両端揃えの字の位置がわずかにずれる（改行は同じ） | **`calc()` の中の `em`** が素の `em` と別の経路で解かれ、箱の幅が約 1/16 px 違う | book_settings_css.rb（必要なときだけリテラルを書き出す） | §2.18 |
+| 索引の段の最後が大きく空く | **段より高い塊に `break-inside: avoid`** を掛け、塊が丸ごと次の段・次のページへ送られた | pages/index.css（節は流し込み、見出しだけ `break-after: avoid`） | §2.19 |
+| 表のキャプションだけがページ末尾に残る | Vivliostyle は**段落を後ろの表と一緒に送らない**（見出しは送る） | parts/table.css（キャプションに `break-after: avoid`） | §2.20・§2.21 |
+| 脚注が参照の次のページに出る・脚注の番号が二重に並ぶ | **`float: footnote` の錨は脚注の要素を置いた位置**／`::footnote-call`・`::footnote-marker` が自動で付く | parts/footnote.css（参照の直後の span を錨に・自動の番号を消す） | §2.22 |
+| EPUBCheck が RSC-020 で落ちる・CSS の背景の SVG が壊れる | **`data:` の SVG の生の `<` と空白** | parts/list.css（パーセント符号化） | §2.23 |
 
 ---
 
@@ -178,6 +184,34 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
   `var()` を外しても、`calc()` で包んでも中が `px` なら変わらない。違うのは **`calc()` の中に `em` があるときだけ**。左端は 0.0234pt（CSS の 1/32 px）右へ動いた。節リードは `margin-inline: auto` で中央に置くので、箱が約 1/16 px 狭くなり、左右が半分ずつ寄ったことになる。両端揃えの行は余りの空きを字の間に配り直すので、箱の幅がわずかに変わると行の中の字が少しずつ動き、字の縁のにじみの色が変わる。
 - **原因（推定）**: 長さを解く経路の違い。Vivliostyle はスタイルシートを自分で読んでカスケードを計算してから Chromium に組ませる。素の `em` は Vivliostyle が px の数値に直し（`448px` と同じ結果になる）、`em` を含む `calc()` は Chromium が要素の文字サイズで解く。Chromium は長さを 1/64 px 単位で持つので、pt から px への換算と丸めの差が出る、という見立て。Vivliostyle のソースは確かめていない。
 - **対処**: CSS には素の `32em` を残し、字間を広げたときだけ BookSettingsCss が book-settings.css にリテラルの幅を書き出す（`section_lead_width_rule`。`0.05em` なら `body .section-lead { inline-size: 33.6em; }`）。字間 `0em` では何も出さないので、変更前と全ページの画素が一致した。**既定の紙面を変えたくない既存の宣言に、数式の上で等しいからといって `calc()` や `var()` を足さない。** 必要な場合だけリテラルを書き出す（§3 のリテラル焼き込みと同じ考え方）。確かめるときは、変更前と後を全ページの画素で比べる（§4 の 3）。
+
+### 2.19 段より高い塊に `break-inside: avoid` を掛けると、塊が丸ごと押し出される
+
+- **症状**: 索引の五十音の節（`.index-section`）に `break-inside: avoid`（と `avoid-column`）を掛けていたころ、索引 8 ページのうち 4 ページで、最終段の 6 割が空いた。
+- **原因**: 1 行ぶんの項目は段の高さを容易に超える。分けられない塊が段に入りきらないと、塊は丸ごと次の段へ送られ、段が尽きれば次のページへ送られる。
+- **修正**: 節は流し込み、見出しの孤立だけを `break-after: avoid` で防ぐ（`pages/index.css`）。表のキャプションを包む `div`（`.cross-ref-table`・`.cross-ref-list`）に `break-inside: avoid` を掛けないのも同じ理由（`parts/table.css`）。**中身の高さが版面を超えうる塊には、分けない指定を掛けず、前後の孤立だけを防ぐ。**
+
+### 2.20 Vivliostyle は、見出しを次の内容と一緒に送る（`break-after: avoid` が無くても）
+
+- **実測**（2026-08-10）: 本文の `h2`〜`h6` に `break-after: avoid` を足す前と後で、PDF は変わらなかった。「見出しは収まるが続く 1 行が収まらない」高さを、B5 の判型で埋め草（spacer）を 176〜196mm の 1mm 刻みで変えて探しても、見出しだけがページ末尾に残る組み合わせは無かった。
+- **扱い**: 宣言は EPUB と Kindle のために置く（組むのは読み手の側のエンジンなので、同じ保証が無い）。KFX は modern な `break-*` を解さないので `page-break-after` を併記する（`parts/heading.css`）。
+
+### 2.21 Vivliostyle は、段落（`<p>`）を後ろの表と一緒には送らない
+
+- **実測**（2026-08-10）: B5 で「キャプションは収まるが、表の 1 行目は収まらない」高さに組むと、キャプション（`p.table-caption`）だけがページ末尾に残った。見出しと違い（§2.20）、段落は次の内容と結びつけられない。
+- **修正**: `.table-caption`・`.code-caption` に `break-after: avoid`（と `page-break-after: avoid`）。Re:VIEW Starter の `caption_needspace` に当たる（`parts/table.css`）。`figcaption` は `figure` の `break-inside: avoid` に含まれるので要らない。
+
+### 2.22 `float: footnote` の錨は、脚注の要素を置いた位置になる
+
+- **症状**: 段落の直後に置いた `aside.page-footnote` を `float: footnote` にすると、段落がページ末尾に掛かったとき、2 つ目以降の脚注が次のページへ送られた（参照は p.83・脚注の本体は p.84）。参照の形式とインラインの形式を入れ替えても、同じ位置の 2 つ目が送られた。
+- **原因**: 錨は脚注の要素の位置（段落の末尾）で、参照の位置ではない。
+- **修正**: 参照の直後に置いた `span#fnN` を `float: footnote` にする（`parts/footnote.css`・`footnote-same-page-anchoring-spec.md`）。入りきらないときは参照のある行ごと次のページへ送られるので、参照と脚注は必ず同じページに揃う。
+- **番号の二重**: Vivliostyle は `float: footnote` の要素に `::footnote-call` と `::footnote-marker` を自動で付ける。本文の参照番号（`<a class="footnote-ref"><sup>N</sup></a>`）と脚注の番号（`::before`）を自前で描くなら、両方を `content: none` にする。消さないと「11」「22」と二重に並ぶ。
+
+### 2.23 `data:` の SVG は、パーセント符号化しないと EPUB で壊れる
+
+- **実測**（2026-08-23）: タスクリストの鉤の背景画像（`data:image/svg+xml,…`）に生の `<` を書くと、EPUBCheck が RSC-020（URL として不正）で落とした。生の空白は途中で詰められ、`viewBox='0 0 16 16'` が `001616` に潰れて SVG が壊れた。
+- **修正**: `<`・`>`・空白を `%3C`・`%3E`・`%20` に符号化する。`;utf8` は標準でない（正しくは `;charset=utf-8`）ので書かない（`parts/list.css`）。
 
 ---
 

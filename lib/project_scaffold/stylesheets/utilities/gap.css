@@ -1,0 +1,18 @@
+@charset "utf-8";
+
+/* 横並びの間隔（.gap-s・.gap-m・.gap-l）。utilities 層。本文のページが読む */
+
+/* 横並びの間隔（.img-text 系・.sideimage-*・.image-group・.pictures に併記する）。
+   ファイルの最後に置く。各コンテナの gap と同じ特異度なので、後ろに書いたほうが効く。
+   以前は .image-group と .sideimage-* より前にあり、この二つでは効かなかった */
+.gap-s {
+  gap: 0.5rem;
+}
+
+.gap-m {
+  gap: 1rem;
+}
+
+.gap-l {
+  gap: 1.5rem;
+}

@@ -141,7 +141,7 @@ module VivlioStarter
         end
 
         # 「1 行の文字数」を正の整数へ正規化する。未設定・空欄・解釈不能は nil
-        # （呼び出し側が theme.css の既定を生かす。P3 の「書かない条件では宣言しない」）。
+        # （呼び出し側が tokens.css の既定を生かす。P3 の「書かない条件では宣言しない」）。
         # @return [Integer, nil]
         def normalize_char_count(value, label:)
           return nil if value.nil?

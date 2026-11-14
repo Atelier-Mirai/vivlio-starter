@@ -1,0 +1,89 @@
+@charset "utf-8";
+
+/* 要素の基本（画像・見出しの折り返し・段落の最終行・dfn・巻末脚注の節）。base 層。どのページも読む */
+
+/* 画像がページ幅を超過しないようにする */
+img {
+    max-inline-size: 100%;
+    block-size: auto;
+}
+
+/* 見出しが区切りの良いところで折り返すようにする */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    text-wrap: balance;   /* 対応ブラウザでは行長をちょうど良く分割 */
+    line-break: strict;   /* 日本語の行分割規則を厳しめに適用 */
+    word-break: keep-all; /* 単語を分割しない */
+}
+
+/* 段落の最終行が 1〜2 字だけにならないようにする（対応ブラウザのみ） */
+p,
+li,
+dt,
+dd,
+th,
+td,
+figcaption,
+blockquote {
+    text-wrap: pretty;
+}
+
+/* 行の中に画像（インライン数式など）がある要素では pretty を使わない。Vivliostyle で
+   組むと最終行まで両端揃えになり、「ま　す　。」と行いっぱいに広がる。
+   クラスは後処理の PostProcess.mark_inline_image_blocks! が付ける */
+.vs-inline-image {
+    text-wrap: wrap;
+}
+
+/* 索引語の初出を包む <dfn>（IndexMatchScanner が付与する透明なアンカー）。
+   ブラウザ既定の font-style: italic をここで打ち消す。和文には斜体の字形が
+   無いので合成斜体になり、章見出しの「ワークフロー」だけが傾く・Type 3
+   フォントの混入源にもなる——本文・見出し・目次のどこに現れても地の文と
+   同じ姿でなければならない。
+   どのページの入口もこのファイルを読むため、
+   打ち消しはここに置く。索引ページ専用の index.css に書いても本文へは届かない。 */
+dfn {
+    font-style: inherit;
+    font-weight: inherit;
+}
+
+/* =====================================================================
+   脚注（全体共通）
+   - 本文より一回り小さく
+   - 行間と余白の最適化
+   - 返りリンク（↩）の装飾と間隔
+===================================================================== */
+section.footnotes {
+  font-size: 0.9em;
+  line-height: 1.6;           /* 行間やや広め */
+  margin-block-start: 12pt;   /* 本文からの余白 */
+}
+
+section.footnotes hr.pagebreak {
+  margin-block: 8pt 10pt;     /* 罫線前後の余白を抑える */
+}
+
+section.footnotes ol {
+  margin: 0;                  /* 余白を詰める */
+  padding-inline-start: 1.4em;/* 番号と本文の間隔 */
+  list-style: none;           /* 番号は aside.page-footnote::before で表示するため非表示 */
+  list-style-position: outside;
+}
+
+section.footnotes li {
+  margin-block: 4pt;          /* 各脚注間の余白 */
+}
+
+section.footnotes li p {
+  margin: 0;                  /* 段落の上下余白なし */
+  text-indent: 0;             /* 脚注の先頭は字下げしない */
+}
+
+section.footnotes a.footnote-back {
+  margin-inline-start: 0.4em; /* ↩ と本文の間隔 */
+  border: none;               /* 下線装飾は不要 */
+}

@@ -2,42 +2,32 @@
 
 書籍のレイアウトとデザインを定義する CSS ファイルを配置するディレクトリです。
 
-## ファイル一覧
+## 読み込まれ方
 
-| ファイル | 役割 |
-|----------|------|
-| `custom.css` | 著者独自のスタイル（下の「カスタマイズ」を参照） |
-| `theme.css` | テーマ色や見出しの寸法などの CSS 変数（`custom.css` で上書きできる変数の一覧） |
-| `base.css` | 全要素の初期化と、画像・見出しの基本設定 |
-| `chapter.css` | 章ページのスタイル |
-| `chapter-common.css` | 章共通スタイル |
-| `code.css` | コードブロックのスタイル |
-| `table.css` | 表のスタイル |
-| `components.css` | コラム・注意書きなどのコンポーネント |
-| `replace-list.css` | post_process の組み込み置換ルールで付与される隠れクラス（`.aokome` `.akakome` 等）のスタイル |
-| `page-settings.css` | ページの枠組み（`@page`）。判型の値は `config/book.yml` の `page` で決まります |
-| `fonts.css` | 同梱書体の定義（`@font-face`） |
-| `simple-header.css` | 画像なしの章ヘッダー（`theme.style: simple` と付録） |
-| `image-header.css` | 画像ありの章ヘッダー（`theme.style: image`） |
-| `prism.css` | コードの色分け（Prism） |
-| `spacing.css` | 余白のユーティリティ（`{.aki}` など） |
-| `layout-utils.css` | 写真グリッドなどのレイアウトのユーティリティ |
-| `pagebreak.css` | 改ページ記法（`---`・`@pagebreak`） |
-| `toc.css` | 目次のスタイル |
-| `preface.css` | 前書きページのスタイル |
-| `postface.css` | 後書きページのスタイル |
-| `appendix.css` | 付録ページのスタイル |
-| `colophon.css` | 奥付のスタイル |
-| `titlepage.css` | タイトルページのスタイル |
-| `legalpage.css` | 免責・商標ページのスタイル |
-| `part-title.css` | 部扉のスタイル |
-| `index.css` | 索引ページのスタイル |
-| `glossary.css` | 用語集ページのスタイル |
+各ページは、ページの種類ごとに生成される入口の CSS（`.cache/vs/entry-<種類>.css`）を 1 枚だけ読みます。入口は、このディレクトリの CSS を層（`@layer`）に分けて読み込みます。後の層が前の層に勝ち、層の外に置いた CSS は、どの層にも勝ちます。
+
+| 層 | 置き場 | 中身 |
+|----|--------|------|
+| `reset` | `base/reset.css` | 全要素の初期化 |
+| `base` | `base/elements.css`・`base/page.css` | 要素の基本と、ページの枠組み（`@page`）。判型の値は `config/book.yml` の `page` で決まります |
+| `tokens` | `tokens.css` | テーマ色や見出しの寸法などの CSS 変数（`custom.css` で上書きできる変数の一覧） |
+| `parts` | `parts/` | 見出し・段落・リスト・図版・囲み・コード・表・会話・脚注・並べ方などの部品 |
+| `pages` | `pages/` | 目次・索引・用語集・奥付・扉・権利ページ・部扉と、ページの種類ごとの規則（章・付録・前書き・後書き） |
+| `utilities` | `utilities/` | 原稿で指定する位置・余白・改ページ・横並びの間隔と、置換の規則が付けるクラス |
+| `settings` | （生成物） | `config/book.yml` から生成する規則 |
+| （層の外） | `fonts.css`・`custom.css` | 同梱書体の定義（`@font-face`）と、著者独自のスタイル |
 
 ## カスタマイズ
 
 テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme` セクションで行ってください。
-**著者独自のスタイルは `custom.css` に書いてください。** ほかの CSS は層（`@layer`）に入れて読み込まれ、`custom.css` だけが層の外に置かれるので、詳細度に関係なく、他のどの CSS よりも優先されます。
+**著者独自のスタイルは `custom.css` に書いてください。** `custom.css` は層の外に置かれるので、詳細度に関係なく、他のどの CSS よりも優先されます。
+
+ほかの CSS は `vs upgrade` で新しい雛形へ更新されます。直接編集すると、雛形が変わるたびに手元の変更との突き合わせが必要になります。
+
+## 書き方の約束（雛形の CSS）
+
+- 規則の中のプロパティは、配置（`display`・`position`・`float`・`break-*`）→ 大きさ（`width`・`inline-size`）→ 余白（`margin`→`padding`）→ 文字（`font-*`・`line-height`・`text-*`）→ 揃え（`text-align`・`align-*`）→ 見た目（`color`・`background`・`border`）→ カウンタと内容（`counter-*`・`string-set`・`content`）の順に書きます。
+- 余白や大きさは、論理プロパティ（`margin-inline` など）を優先します。
 
 ## fonts/ と images/ と twemoji/
 

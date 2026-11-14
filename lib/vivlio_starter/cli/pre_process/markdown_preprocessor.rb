@@ -73,7 +73,7 @@ module VivlioStarter
         # 画像の属性ブロック `![…](…){…}`。1 = 画像、2 = 属性の中身
         IMAGE_WITH_ATTRIBUTES = /(!\[[^\]]*\]\([^)]*\))\{([^{}\n]*)\}/
 
-        # 画像の枠 `border=on` / `border=off` の読み替え先（stylesheets/chapter-common.css）。
+        # 画像の枠 `border=on` / `border=off` の読み替え先（stylesheets/parts/figure.css）。
         # 著者が書くのは値つきの属性で、クラス名は内部のもの（vs- を付けて区別する）。
         BORDER_CLASSES = { 'on' => '.vs-bordered', 'off' => '.vs-borderless' }.freeze
         BORDER_ATTRIBUTE = /(?<!\S)border=(\S+)/

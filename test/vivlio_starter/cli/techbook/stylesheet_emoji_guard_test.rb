@@ -41,7 +41,7 @@ module VivlioStarter
         # 打ち消し済みの既知の在処。ファイル名 => 絵文字の配列。
         KNOWN_EMOJI_IN_CSS = {
           # Techbook::Processor#inject_css の body.preface/postface h3::before が画像化する
-          'preface.css' => ['📚']
+          'pages/preface.css' => ['📚']
         }.freeze
 
         def test_should_not_introduce_unguarded_emoji_in_css_content

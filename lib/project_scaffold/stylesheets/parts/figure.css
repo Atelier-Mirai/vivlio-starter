@@ -1,0 +1,181 @@
+@charset "utf-8";
+
+/* 図版・キャプション・画像の枠・図解注釈・mermaid 図。parts 層。章・付録が読む */
+
+/* -------------------------------------------------------------
+   図版
+   ------------------------------------------------------------- */
+/* 図版全般。図版は <figure> 要素として生成される（cross_reference_processor）。
+   かつての `.figure` クラスセレクタ（:is(.figure, figure)）はどこからも生成されない
+   死に符号だったため廃止した。テキスト枠には .diagram を使う。 */
+figure {
+  display: block;
+  position: relative;
+  margin-block: 4mm;
+}
+
+/* デフォルト（および align-left）: 左寄せ。幅は style="width: .." で制御 */
+figure:not(.align-center):not(.align-right) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+/* 中央寄せ: figure 自体を中央に配置 */
+figure.align-center {
+  margin-inline: auto;
+}
+
+/* 右寄せ: figure 自体を右端に配置 */
+figure.align-right {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* KFX は margin-inline の auto を 0 に解く。物理プロパティで書き直す。 */
+body.vs-kindle figure.align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+body.vs-kindle figure.align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* 配置指定付き図版の上下余白。parts/layout.css の .align-* の既定（margin-block: 0.5em・特異度 0,1,0）が
+   要素セレクタ figure（0,0,1）に勝つため、図版の 4mm はクラス付き（0,1,1）で明示して保つ。 */
+figure:is(.align-left, .align-center, .align-right) {
+  margin-block: 4mm;
+}
+
+/* width スタイルを持たない align-center / align-right 図版は
+     コンテンツ幅に縮むようにし、auto マージンで正しく配置できるようにする */
+figure.align-center:not([style*="width"]),
+figure.align-right:not([style*="width"]) {
+  inline-size: fit-content;
+}
+
+/* width 指定のない align-right 図版内の画像だけを右寄せする */
+figure.align-right:not([style*="width"]) > img {
+  display: block;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* 図版で width スタイルを持つ場合は画像を枠いっぱいに広げる */
+figure[style*="width"] > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* figcaption 全般のスタイル（ゴシック体＋太字） */
+figcaption {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-block-start: 0.25lh;
+}
+
+figure :is(img, svg) {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+/* crop で切り抜いた画像（改善案.md #54）。PDF では前処理が作った SVG を参照するため、
+   後段の img[src$=".svg"] { border: none } に既定の枠を消されないよう、クラスで付け直す。
+   border=off（下の figure.vs-borderless、同じ特異度で後ろに置く）はこれより優先される。 */
+figure img.vs-cropped {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+figure p {
+  text-indent: 0;
+}
+
+/* 画像の枠の有無（`![](x.webp){border=on}` / `{border=off}`）。前処理が属性を
+   下のクラスへ読み替える（クラスは内部のもので、著者は書かない）。
+   単独の画像は、キャプションの有無によらず VFM が figure で包むので、上の規則で
+   既定で枠が付く。border=off はその枠を外す（ロゴ・透過画像など、枠が邪魔な図版）。
+   border=on は figure に包まれない画像（文中に置いた画像）にも枠を引く
+   （Re:VIEW の `//image[…][…][border=on]` の受け先）。
+   クラスは、キャプション付きなら figure に、それ以外なら img に載るので両方を見る。 */
+img.vs-bordered,
+figure.vs-bordered :is(img, svg) {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+img.vs-borderless,
+figure.vs-borderless :is(img, svg) {
+  border: none;
+}
+
+/* 図解注釈（:::{.showcase}）。中身は前処理が焼いた合成画像 1 枚なので、
+   置き場と分割禁止だけを面倒みる。枠・引き出し記号・丸数字はすべて画像の中に
+   入っており、PDF・EPUB・Kindle が同じ生成物を共有する（explanatory-diagram-spec §6.2）。
+   ゆえに body.vs-kindle 用の劣化対策は不要。 */
+figure.vs-showcase {
+  margin-block: 1em;
+  text-align: center;
+  break-inside: avoid;
+}
+
+figure.vs-showcase img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* mermaid 図（```mermaid）。中身は前処理が mmdc で焼いた画像 1 枚（PDF=ベクタ SVG /
+   EPUB・Kindle=対のラスター）なので、置き場と分割禁止だけを面倒みる。
+   SVG は intrinsic size を持つため（useMaxWidth:false で出力）、max-width で版面に収める
+   （vivliostyle-css-pitfalls-notes: SVG intrinsic size）。showcase と同じく劣化対策は不要。 */
+figure.vs-mermaid {
+  margin-block: 1em;
+  text-align: center;
+  break-inside: avoid;
+}
+
+figure.vs-mermaid img.vs-mermaid {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 図中文字（図内注釈リスト） */
+figure ul {
+  position: absolute;
+  font-size: 11Q;
+  max-inline-size: 14em;
+  inline-size: fit-content;
+  inset-inline-end: 0;
+  list-style: none;
+  margin: 0;
+}
+
+figure li {
+  font-size: 11Q;
+  line-height: 16Q;
+  border: solid 0.25mm var(--color-danger);
+  background: var(--color-overlay);
+  margin-bottom: 2mm;
+  padding: 0 0.5mm;
+}
+
+/* -------------------------------------------------------------
+   画像
+   ------------------------------------------------------------- */
+/* 枠はここでは付けない。単独の画像は figure の規則で付き、文中に置いた画像は
+   border=on のときだけ付く（上の .vs-bordered）。ここで全 img に付けると、文中の
+   アイコンや表の中の画像にまで枠が出る */
+img {
+  max-inline-size: 100%;
+}
+
+/* SVG の図には既定の枠を付けない */
+img[src$=".svg"] {
+  border: none;
+}
+
+p > img {
+  vertical-align: text-bottom;
+}

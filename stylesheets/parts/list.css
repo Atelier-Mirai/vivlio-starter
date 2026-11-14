@@ -1,0 +1,170 @@
+@charset "utf-8";
+
+/* リスト・タスクリスト・番号の形・定義リスト。parts 層。章・付録が読む */
+
+/* -------------------------------------------------------------
+   リスト
+   ------------------------------------------------------------- */
+ul,
+ol {
+  margin-block: 0.5lh;
+  margin-inline: 0 2em;
+  padding-inline-start: 2em;
+  font-weight: 700;
+}
+
+li :is(ul, ol) {
+  margin-block: 0; /* 入れ子時は上下余白なし */
+}
+
+/* 番号なし箇条書き — レベル別マーカー（和文組版: ● ○ ・）。
+   第3レベルの中黒は list-style-type の標準値に無いため文字列指定（CSS Lists 3）。
+   nested-list-notation-spec.md §5.3 */
+ul { list-style-type: disc; }            /* ● */
+ul ul { list-style-type: circle; }       /* ○ */
+ul ul ul { list-style-type: "・"; }      /* ・ */
+
+/* タスクリスト（GFM）。VFM は <input type="checkbox" disabled> を出す。
+   紙面にフォーム部品は要らないので、入力欄の見た目を消して枠を自前で描く。
+
+   **☑ ☐ の文字を使わない。** 同梱の本文書体 7 種のいずれにも無く（HackGen だけが
+   持つ）、使うとコード書体か OS 書体へ落ちて Type 3 混入の経路になる
+   （type3-font-embedding-notes.md §8）。字形に頼らず border で描けば、
+   書体にも文字サイズにも左右されない。
+
+   鉤は :checked の背景画像（インライン SVG）で描く。読めない環境でも
+   background-color の塗りつぶしが残るので「済み」は伝わる。
+   Kindle は appearance を解さないため、EpubBuilder が □ / ■ の文字へ差し替える。
+   markdown-notation-collision-spec.md §4 */
+ul.contains-task-list {
+  list-style: none;
+  padding-inline-start: 1.4em;
+}
+
+li.task-list-item > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  inline-size: 0.78em;
+  block-size: 0.78em;
+  margin-inline: -1.15em 0.35em;
+  vertical-align: -0.02em;
+  border: 0.09em solid currentColor;
+  border-radius: 0.12em;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.62em 0.62em;
+}
+
+/* 番号付きのタスクリスト（`1. [ ] …`）は番号を残す。上の負のマージンで枠を
+   マーカーの位置へ引き出すと、枠が番号に重なる。 */
+ol > li.task-list-item > input[type="checkbox"] {
+  margin-inline: 0 0.35em;
+}
+
+/* 鉤の SVG は**パーセント符号化する**。生の `<` と空白は EPUBCheck のエラーと SVG の破損に
+   なる（vivliostyle-css-pitfalls-notes.md §2.23）。 */
+li.task-list-item > input[type="checkbox"]:checked {
+  background-color: currentColor;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Cpath%20d='M3%208.5l3.2%203.2L13%205'%20fill='none'%20stroke='white'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Kindle は実体の文字（□ / ■）へ差し替わる。字面が本文へ溶けないよう少しだけ空ける */
+span.vs-task-mark {
+  margin-inline-end: 0.3em;
+}
+
+/* fancy list（Pandoc fancy_lists 互換・前処理が ol へクラス付与）
+   nested-list-notation-spec.md §5.1 */
+ol.vs-list-lower-alpha { list-style-type: lower-alpha; }
+ol.vs-list-upper-alpha { list-style-type: upper-alpha; }
+ol.vs-list-lower-roman { list-style-type: lower-roman; }
+ol.vs-list-upper-roman { list-style-type: upper-roman; }
+
+/* 括弧付きマーカーは list-style-type で表現できないため自前描画。
+   カウンタ開始値は前処理が ol の style="counter-reset: vs-fancy N" で与える */
+ol[class*="-paren"] { list-style: none; }
+ol[class*="-paren"] > li { counter-increment: vs-fancy; }
+ol.vs-list-lower-alpha-paren  > li::before { content: counter(vs-fancy, lower-alpha) ") "; }
+ol.vs-list-upper-alpha-paren  > li::before { content: counter(vs-fancy, upper-alpha) ") "; }
+ol.vs-list-lower-roman-paren  > li::before { content: counter(vs-fancy, lower-roman) ") "; }
+ol.vs-list-upper-roman-paren  > li::before { content: counter(vs-fancy, upper-roman) ") "; }
+ol.vs-list-decimal-paren2     > li::before { content: "(" counter(vs-fancy) ") "; }
+ol.vs-list-lower-alpha-paren2 > li::before { content: "(" counter(vs-fancy, lower-alpha) ") "; }
+ol.vs-list-upper-alpha-paren2 > li::before { content: "(" counter(vs-fancy, upper-alpha) ") "; }
+ol.vs-list-lower-roman-paren2 > li::before { content: "(" counter(vs-fancy, lower-roman) ") "; }
+ol.vs-list-upper-roman-paren2 > li::before { content: "(" counter(vs-fancy, upper-roman) ") "; }
+
+/* 空行を挟んだ項目（中身が <p> で包まれる）でも、番号を本文の 1 行目に並べる（改善案.md #59）。
+   ::before は行内の文字なので、後ろにブロックの <p> が来ると番号だけが 1 行を占める。
+   float で段落の 1 行目の横へ置く。詰めた項目（<p> なし）の見た目は変わらない。
+   float の中では末尾の空白が消えるので、番号と本文の間は margin であける。 */
+ol[class*="-paren"] > li::before {
+  float: inline-start;
+  margin-inline-end: 0.3em;
+}
+
+/* 段落の字下げ（p の text-indent: 1em）が番号の後ろに空きを作るので、最初の段落だけ外す */
+ol[class*="-paren"] > li > p:first-child {
+  text-indent: 0;
+}
+
+/* :::{.outline-list} — ネスト番号リストを 1. / 1.1 / 1.2 の複合番号で表示
+   （counters() のネスト連結は Vivliostyle ネイティブサポート・§5.2） */
+.outline-list ol { list-style: none; counter-reset: vs-outline; }
+.outline-list ol > li { counter-increment: vs-outline; }
+.outline-list ol > li::before { content: counters(vs-outline, ".") ". "; font-weight: 700; }
+
+/* -------------------------------------------------------------
+   定義リスト（用語 / : 説明 → <dl class="def-list">）
+   用語＝太字の独立行、説明＝字下げ、エントリ間に 1/4 行のアキ。
+   ------------------------------------------------------------- */
+.def-list {
+  margin-block: 0.5lh;
+  margin-inline: 0;
+}
+
+.def-list dt {
+  margin-block-start: 0.25lh; /* エントリ間（前の説明との間）に 1/4 行アキ */
+  font-weight: 700;
+}
+
+.def-list dt:first-child {
+  margin-block-start: 0;
+}
+
+.def-list dd {
+  margin-block: 0;
+  margin-inline-start: 1.5em; /* 説明は字下げ */
+}
+
+.def-list dd + dd {
+  margin-block-start: 0.25lh; /* 同一用語に複数の説明があるとき、説明（dd）間に 1/4 行アキ */
+}
+
+/* =============================================================
+   Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
+   番号は EpubBuilder が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
+   ネイティブマーカーとの二重表示を防ぐため list-style を消す。Previewer 4 は ::before の
+   content も本文へ差し込むので、それも止める（`(1) (1) 項目` になる）。
+   :is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
+   ============================================================= */
+body.vs-kindle ol.vs-fancy-list,
+body.vs-kindle .outline-list ol {
+  list-style: none;
+  padding-inline-start: 1em;
+}
+body.vs-kindle ol.vs-fancy-list > li::before,
+body.vs-kindle .outline-list ol > li::before {
+  content: none;
+}
+body.vs-kindle .vs-li-marker {
+  font-weight: 700;
+}
+
+/* ul 第3レベル: KFX は文字列 list-style-type（"・"）を解さない見込みのため
+   ネイティブ値 square（■）へ優雅に劣化させる。●○は disc/circle がそのまま効く */
+body.vs-kindle ul ul ul {
+  list-style-type: square;
+}

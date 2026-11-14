@@ -197,7 +197,7 @@ module VivlioStarter
 
         # 同梱書体の置き場。**slug と一致するとは限らない。**
         #
-        # `HackGen35 Console NF` は `fonts/hackgen35/` に置かれている——page-settings.css の
+        # `HackGen35 Console NF` は `fonts/hackgen35/` に置かれている——fonts.css の
         # @font-face が実ファイルを直に指しているだけで、Google Fonts 側の slug 規則には
         # 従っていないためである。slug で引けなければ中身のファイル名から引き当てる。
         # ここを外すとコード書体だけサブセットを作れず、等幅で組んだ図が OS フォントへ
@@ -272,7 +272,7 @@ module VivlioStarter
         DEFAULT_CODE_FONT = 'HackGen35 Console NF'
 
         # 本の書体に無い字を補う予備の書体。上から順に探す（改善案 #127）。
-        # HackGen は page-settings.css の本文・見出しの並び（`--font-body`・`--font-header`）で
+        # HackGen は base/page.css の本文・見出しの並び（`--font-body`・`--font-header`）で
         # 本の書体の次に置いている書体。DejaVu は HackGen にも無い字（⟹・⌃・ₙ など）の受け皿で、
         # 本文の HTML へは book-settings.css が HackGen と同じ書体名の面として足す（BookSettingsCss）。
         # Mono を先にするのは、字幅が HackGen の半角と同じ 0.6 字で、コードの桁がずれないため

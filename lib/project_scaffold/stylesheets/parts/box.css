@@ -1,0 +1,376 @@
+@charset "utf-8";
+
+/* 囲み（コラム・ヒント・メモ・注記・注意・補足・出力例・テキストの図・端末）。parts 層。章・付録が読む */
+
+/* -------------------------------------------------------------
+   囲みブロック（コラム・ヒント・メモ・注記・注意）
+   -------------------------------------------------------------
+   ページを跨いで分割させない。ラベル（::before）は top: -6mm の絶対配置で
+   箱の上辺に貼り付くため、分割されると 2 枚目にラベルの無い枠だけが残り
+   「何の囲みか分からない箱」になる（pdf_memo.png 実測）。
+   入りきらないときは次ページへ送る。1 ページに収まらない長さの囲みは
+   avoid を守れず分割されるが、それは分割せざるを得ないケース。 */
+.column,
+.tip,
+.memo,
+.note,
+.notice {
+  break-inside: avoid;
+}
+
+.column {
+  margin-block: 8mm 6mm;
+  padding: 4mm;
+  padding-inline: 6mm;
+  padding-block-start: 6mm;
+  border: solid 0.2mm var(--color-column-border);
+  border-radius: 6px;
+  background: var(--color-column-bg);
+  position: relative;
+  /* 地の文・箇条書き・引用は book.yml の typography.column.font で組む。
+     見出し・ラベル（::before）・コードは、それぞれの書体を指定しているので変わらない */
+  font-family: var(--font-column);
+}
+.column::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: var(--color-column-border);
+  color: white;
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: var(--font-header);
+  border-radius: 4px 0 4px 0;
+  content: "COLUMN";
+}
+
+.column h5 {
+  margin-top: 0;
+  font-size: 14Q;
+  color: var(--color-mark);
+}
+
+.tip {
+  margin-block: 8mm 6mm;
+  padding: 4mm;
+  padding-inline: 6mm;
+  padding-block-start: 6mm;
+  border-radius: 6px;
+  border: solid 0.2mm var(--theme-accent);
+  background: white;
+  position: relative;
+}
+.tip::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: white;
+  color: var(--theme-accent);
+  border: solid 0.2mm var(--theme-accent);
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: var(--font-header);
+  border-radius: 4px 0 4px 0;
+  content: "TIP";
+}
+
+.tip p {
+  text-indent: 0;
+}
+
+/* メモブロック（@div:memo ... @divend） */
+.memo {
+  margin-block: 8mm 6mm;
+  padding: 4mm;
+  padding-inline: 6mm;
+  padding-block-start: 6mm;
+  border: solid 0.2mm var(--color-column-border);
+  background: white;
+  border-radius: 6px;
+  position: relative;
+}
+.memo::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: var(--color-column-border);
+  color: white;
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: var(--font-header);
+  border-radius: 4px 0 4px 0;
+  content: "MEMO";
+}
+
+.note {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding-block: 3mm;
+  padding-inline: 0;
+  /* アクセントカラーの二重線で挟んだデザイン */
+  border-block-start: double 1mm var(--color-mark);
+  border-block-end: double 1mm var(--color-mark);
+}
+
+.note p {
+  text-indent: 0;
+}
+
+.notice {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding: 3mm 4mm;
+  border-radius: 4px;
+  border: solid 0.2mm var(--color-border-weak);
+  border-inline-start-width: 1mm;
+  border-inline-start-color: var(--color-mark);
+  background: var(--color-overlay);
+}
+
+.notice p {
+  text-indent: 0;
+}
+
+/* 補足（:::{.small} で囲む／単一段落なら段落末に {.small}）。
+   本文より一段小さく組み、左右を内側へ寄せて「本筋から外れた添え書き」に見せる。
+   枠もラベルも付かないので、.memo や .notice ほど目立たせたくない補足に使う。
+
+   出典・参考資料（:::{.references}／段落末に {.references}）も同じ組み方にする。
+   見た目は .small と変わらず、原稿で「ここは出典」と読めるように名前だけを分けた。
+   見出しの言葉（参考資料・出典・写真提供…）は本ごとに違うので、::before で
+   ラベルを付けず、著者が **参考資料** のように書く。
+
+   line-height を指定しないのは意図的。行送りは --base-line-height（絶対値）が
+   版面の行グリッドを作っており、ここで変えるとこの部分だけ行位置がずれて
+   隣ページと小口が揃わなくなる。文字だけ小さくすれば行数は保たれる。 */
+.small,
+.references {
+  font-size: 0.88em;
+}
+
+/* 余白はブロックのときだけ。`<span class="small">` のようにインラインへ当たると
+   margin-inline が文中に隙間を作ってしまうので、div / p に限る
+   （Re:VIEW からの取り込みで @<small>{…} が文中に来る）。
+
+   上下 1 行分あけて本文から切り離す。lh（行送り）の整数倍にするのは
+   行グリッドを保つため——mm や em で半端に空けると以降の行位置がずれる。 */
+div.small,
+p.small,
+div.references,
+p.references {
+  margin-block: 1lh;
+  margin-inline: 2em;
+}
+
+/* 囲みの中の補足は、文字だけ小さくする。上下 1 行・左右 2 字の余白は、本文から
+   切り離すためのもので、囲みの中では padding がその役を受け持つ。残すと padding に
+   余白が足され、囲みの内側だけが大きく空いて見える（31 章の .notice で実測）。 */
+.column p.small, .column div.small, .column p.references, .column div.references,
+.tip p.small, .tip div.small, .tip p.references, .tip div.references,
+.memo p.small, .memo div.small, .memo p.references, .memo div.references,
+.note p.small, .note div.small, .note p.references, .note div.references,
+.notice p.small, .notice div.small, .notice p.references, .notice div.references {
+  margin-block: 0;
+  margin-inline: 0;
+}
+
+/* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。
+   p.small（段落末 {.small}）と div.small 内の段落の両方に効かせる。 */
+.small,
+.small p,
+.references,
+.references p {
+  text-indent: 0;
+}
+
+/* 実行例・出力結果（:::{.output}）／テキストの図・アスキーアート（:::{.diagram}）。
+   どちらもシンプルな全幅の細い囲み枠。中の <pre> は行番号を付けない（prism_lines が
+   .output/.terminal/.diagram 配下の <pre> を除外する）。diagram は output のエイリアスだが、
+   Kindle ではラベル注入の対象外（図に【OUTPUT】ラベルは付けない）。
+   ※ .figure という名前は図版（figure 要素）と紛れるため使わない
+   （経緯: figure-class-name-collision-report.md）。 */
+.output,
+.diagram {
+  margin-block: 3mm;
+  padding: 2.5mm 3mm;
+  border: solid 0.2mm var(--color-border-weak);
+  border-radius: 3px;
+}
+
+.output p,
+.diagram p {
+  text-indent: 0;
+}
+
+/* 枠の内側の空きは padding で取る。最初の子の上の余白と最後の子の下の余白が padding に
+   重なると、中身によって空きが変わる（図なら 4mm、.image-group なら 0.5 行が上乗せされる）。
+   特異度 (0,2,0) で、figure の margin-block (0,1,1) や .image-group の margin-block (0,1,0) に勝つ */
+.output > :first-child {
+  margin-block-start: 0;
+}
+
+.output > :last-child {
+  margin-block-end: 0;
+}
+
+/* 表示例の中の見出しは見本なので、本の見出しの「直後で改ページしない」を外す。
+   囲みの最後の見出しの break-after: avoid は囲みの外へ伝わり、囲みが次の見出しや段落と
+   一かたまりになって、入る空きがあっても次のページへ送られる */
+.output :is(h2, h3, h4, h5, h6) {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/* .output の中身は Markdown のまま。桁揃えが要る逐語出力はコードフェンスで囲む運用なので、
+   その <pre> が .output の枠と二重枠にならないよう地色・枠線を落とす。
+   特異度 (0,2,1) で code.css の pre[class*="language-"] (0,1,1) に読み込み順によらず勝つ。 */
+.output pre[class*="language-"] {
+  margin: 0;
+  background: none;
+  border: none;
+  /* 長い行は枠内で折り返す（.terminal・.diagram と同じ）。折り返さないと、はみ出した分が
+     切り落とされる（vivliostyle-css-pitfalls-notes.md §2.10）。連続空白は桁揃えのため pre-wrap で保つ */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+
+/* prism.css は <pre> だけでなく中の <code> にも white-space: pre と word-wrap: normal を
+   指定する。<pre> を折り返しにしても <code> が折り返さないので、ここで親に従わせる。
+   行番号付きのコードブロックは figure と行ブロックで組まれ、この規則の対象ではない。
+   特異度 (0,2,2) で prism.css の code[class*="language-"] (0,1,1) に勝つ */
+.output pre[class*="language-"] > code {
+  white-space: inherit;
+  overflow-wrap: inherit;
+}
+
+/* .diagram の中身はインデントで描いた図（class なしの <pre>）が主。code.css の pre 既定
+   （地色・枠線・上下マージン）を打ち消し、枠は親の .diagram に任せて二重枠を防ぐ。
+   桁揃えのため連続空白は pre-wrap で必ず保つ。 */
+.diagram pre {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  white-space: pre-wrap;
+}
+
+/* ターミナル入力（:::{.terminal}）。黒地・白文字・等幅で「端末への入力」を示す。
+   中身は前処理でリテラル化され <div class="terminal"><pre>…</pre></div> になる。 */
+.terminal {
+  margin-block: 3mm;
+  padding: 2.5mm 3mm;
+  border-radius: 3px;
+  /* テーマ非依存。Kindle(KFX) も var() なしの具体色なら反映される */
+  background: #1a1a1a;
+  color: #f5f5f5;
+  font-family: var(--font-code), monospace;
+  /* 長いコマンドは枠内で折り返す */
+  overflow-wrap: anywhere;
+}
+
+/* 端末の逐語転写。code.css の pre 既定（白地・枠線・上下マージン）を打ち消し、
+   枠は親の .terminal に任せる。連続空白は桁揃えのため pre-wrap で必ず保つ。 */
+.terminal pre {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-code), monospace;
+  background: none;
+  border: none;
+  color: inherit;
+}
+
+/* =============================================================
+   Kindle 専用 コラム・注記枠ラベル（tip / memo / column / notice / note）（epub-kindle-target-split-spec.md §1-5）
+   Kindle(KFX) は ::before(position:absolute) のラベル帯・var() を解さない。そこで Kindle
+   ビルド（body.vs-kindle）でのみ ::before ラベルを抑止し、EpubBuilder が先頭注入する実体
+   ラベル <p class="vs-adm-label"> を枠上に通常表示する。枠線は var() 不可のため具体色で描く。
+   notice / note は PDF では枠タブを持たない（左/上下アクセント線）が、Kindle では var() 線が
+   消えてしまうため、tip/memo/column と同じ「具体色の囲み枠＋ラベル」へ劣化させる。
+   クリーン EPUB（Kobo/Apple Books・vs-kindle 無し）は上の ::before 角タブ・themed 枠のまま。
+   ============================================================= */
+/* Kindle KFX は :is() を解さずルールごと破棄するため、明示セレクタへ展開する。 */
+body.vs-kindle .tip::before,
+body.vs-kindle .memo::before,
+body.vs-kindle .column::before {
+  content: none;
+}
+body.vs-kindle .tip,
+body.vs-kindle .memo,
+body.vs-kindle .column,
+body.vs-kindle .notice,
+body.vs-kindle .note {
+  /* ::before 角タブ用に空けていた上余白（6mm）を詰め、注入ラベル上の空行を解消する */
+  padding-block-start: 4mm;
+  /* Kindle は var() 不可。base の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
+  border: 1px solid #888;
+  /* 枠どうしが一体化して見えないよう、上下に明確な余白を確保する。Kindle は mm 余白が
+     詰まりがちなので em で指定（隣接枠の margin 相殺後も視認できる間隔を残す）。 */
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+/* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
+   テキストが枠線に触れないよう左右と下の余白を補う。 */
+body.vs-kindle .note {
+  padding-inline: 4mm;
+  padding-block-end: 3mm;
+}
+/* .output / .terminal の Kindle 劣化（§5 と同方針）。PDF・クリーン EPUB ではラベルなしの
+   素枠だが、Kindle では EpubBuilder が先頭注入する実体ラベル <p class="vs-adm-label">
+   （【OUTPUT】/【TERMINAL】）を見せ、枠線・地色を具体色で描く。注入ラベル用に上余白を確保する。 */
+body.vs-kindle .output {
+  padding-block-start: 4mm;
+  /* .output の枠線は var() のため Kindle で消える。具体色で描き直す。 */
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+/* .diagram（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
+   ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
+body.vs-kindle .diagram {
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+body.vs-kindle .terminal {
+  padding-block-start: 4mm;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  /* var() を含む base の font 宣言が Kindle で破棄されても等幅を保証する。
+     地色 #1a1a1a・文字色 #f5f5f5 は具体色なので Kindle でもそのまま効く。 */
+  font-family: monospace;
+}
+/* 端末ラベルは黒地に沈まないよう白で見せる（既定の vs-adm-label 色 #444 を上書き）。 */
+body.vs-kindle .terminal .vs-adm-label {
+  color: #f5f5f5;
+}
+/* 中身の <pre> も var() 不可・具体色で。code.css の pre 既定色（黒文字）に負けないよう明示する。 */
+body.vs-kindle .terminal pre {
+  font-family: monospace;
+  color: #f5f5f5;
+}
+
+/* =============================================================
+   Kindle 専用 会話文（.talk）劣化（talk-display-options-spec.md §2.5）
+   Kindle(KFX) は flex・::before/::after・var()・丸抜き画像を解さない。吹き出しを CSS で
+   近似するのではなく、EpubBuilder が DOM を inline 形式（名前＋区切り＋発話の 1 段落）へ
+   組み替え、容器のクラスを talk-style-inline に差し替える。以降は parts/talk.css の
+   inline 用ルールがそのまま効くため、ここに Kindle 専用の体裁は要らない。
+   話者色だけは var() が効かないので、生成 CSS（book-settings.css）が
+   body.vs-kindle .talk-c-<key> の .talk-name / .talk-sep / strong にリテラル色を焼く。
+   クリーン EPUB（vs-kindle 無し）は parts/talk.css の吹き出し表示のまま。
+   ============================================================= */
+body.vs-kindle .vs-adm-label {
+  margin: 0 0 0.4em;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #444;
+}

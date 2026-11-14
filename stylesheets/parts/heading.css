@@ -1,0 +1,169 @@
+@charset "utf-8";
+
+/* 見出しの構造（章の始まり・柱の名前付きの文字列・h3〜h6・章と節のリード）。parts 層。章・付録が読む */
+
+/* 各章・付録は必ず右ページ（奇数ページ）始まり */
+body {
+  break-before: recto;
+}
+
+/* マーカー変数（book.ymlのtheme.markersで自動更新） */
+:root {
+  --h3-marker: "♣";
+  --h4-marker: "♦";
+}
+
+/* -------------------------------------------------------------
+   見出し
+   ------------------------------------------------------------- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+}
+
+/* 見出しだけがページ末尾に取り残されるのを防ぐ。PDF では Vivliostyle が見出しを次の内容と
+   一緒に送るので結果は変わらず、EPUB / Kindle のために置く（vivliostyle-css-pitfalls-notes.md
+   §2.20）。KFX は modern な break-* を解さないので legacy を併記する。
+   h1 は章扉（扉絵＋改ページ）で別に成り立っているので対象外。 */
+h2,
+h3,
+h4,
+h5,
+h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* 章タイトルをページ柱用の named string にセット */
+h1 .chapter-number {
+  string-set: chapter-number content(text);
+}
+
+/* 柱の章題は、見出しの題の文字（data-chapter-title。HeadingProcessor が作る）から取る。
+   題の span の文字には、用語集の印 † が入る（章扉の見出しでは用語集へのリンクとして残す）。
+   柱は毎ページ繰り返すだけで用語を引く所ではないので、印の無い文字を使う。
+   data 属性が無い見出し（HeadingProcessor を通らない HTML）は今までどおり span から取る */
+h1:not([data-chapter-title]) .chapter-title {
+  string-set: chapter-title content(text);
+}
+
+h1[data-chapter-title] {
+  string-set: chapter-title attr(data-chapter-title);
+}
+
+/* 見出し末尾の泣き別れ防止（HeadingProcessor が章題・節題の末尾 2 文字を括る）。
+   この 2 文字は分割できないので、折返しが 1 文字ぶん手前へ移り 2 文字以上で落ちる。
+   WORD JOINER（U+2060）は Vivliostyle が無視するため CSS で表現している。 */
+.vs-nobr {
+  white-space: nowrap;
+}
+
+/* 項見出し（h3） */
+h3 {
+  margin-break: auto;
+  block-size: 10mm;
+  margin-block: 1rlh 0.5rlh;
+  padding-block: 2mm;
+  padding-inline-start: 0;
+  font-size: 18Q;
+  line-height: 22Q;
+  clear: both;
+}
+
+h3::before {
+  content: none;
+}
+
+.subsection-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: auto;
+  margin-inline-end: 1.5mm;
+  font-size: 5mm;
+  color: var(--color-mark);
+}
+
+/* 目見出し（h4）。上の段落に付いて見えないよう、上に半行あける。囲み枠（.output・
+   .memo など）の下余白とは相殺するので、枠の直後では間がほとんど増えない */
+h4 {
+  margin-block-start: 0.5rlh;
+  font-size: var(--base-font-size);
+}
+
+h4::before {
+  content: var(--h4-marker, "◆");
+  color: var(--color-mark);
+  font-size: 4mm;
+  margin-inline-end: 1mm;
+}
+
+/* 号見出し（h5） */
+h5 {
+  margin-block-end: 2mm;
+  font-size: var(--base-font-size);
+}
+
+/* 補助見出し（h6） */
+h6 {
+  margin-block-end: 2mm;
+  font-size: var(--base-font-size);
+}
+
+/* 改ページ直後の h3 マージン抑制 */
+hr + h3,
+hr + section > h3:first-child,
+section:has(hr:last-child) + section > h3:first-child {
+  margin-break: discard;
+}
+
+/* -------------------------------------------------------------
+   リード文
+   ------------------------------------------------------------- */
+
+/* 章リード */
+.chapter-lead {
+  margin-block: 0.5rlh;
+  margin-inline: auto;
+  font-weight: 500;
+  font-size: larger;
+  line-height: 1.7;
+  text-align: justify;
+  text-indent: 1em;
+}
+
+.chapter-lead p {
+  text-indent: 1em;
+}
+
+/* 節リード */
+.section-lead {
+  display: block;
+  /* 字間 0 なら 1 行 32 字。字間（letter_spacing）を広げたときだけ、book-settings.css が 32 字と
+     字間のぶんの幅で上書きする（BookSettingsCss.section_lead_width_rule）。詰めたときは 32em の
+     まま字数を増やす。版面より広くはしない */
+  inline-size: 32em;
+  max-inline-size: 100%;
+  margin-block: -15mm 1.5rlh; /* 上へずらして配置 */
+  margin-inline: auto;
+  font-weight: 700;
+  text-indent: 1em;
+}
+
+.section-lead p {
+  text-indent: 1em;
+}
+
+/* PageBreakNormalizer が付与する合流クラス。@pagebreak:recto 直後の h2 は
+   recto 側の改ページに一本化する（page-break-control-spec §2.1-4）。
+   h2 の改ページ元セレクタ（image-header / simple-header）はスタイル別かつ
+   高特異度のため !important で一括無効化する（唯一のユーティリティ用途に限定）。 */
+h2.vs-break-merged {
+  break-before: auto !important;
+  page-break-before: auto !important;
+}

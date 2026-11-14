@@ -16,7 +16,7 @@
 # 層:
 #   `reset → base → tokens → parts → pages → theme → utilities → settings → target`。
 #   後の層が前の層に勝ち、層の外（書体の定義と custom.css）はどの層にも勝つ（§2.1）。
-#   段階 S2-1 では今のファイルを分けずに、1 ファイルを 1 つの層へ入れる（§8）。
+#   ファイルの配置は §3.1（段階 S2-2 で分けた。前書き・後書きをそろえるのは S2-4）。
 # ================================================================
 
 require 'fileutils'
@@ -38,33 +38,48 @@ module VivlioStarter
         BOOK_FONTS = 'book-fonts.css'
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
-        FOUNDATION = { 'base' => %w[base.css page-settings.css], 'tokens' => %w[theme.css] }.freeze
+        FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
+                       'tokens' => %w[tokens.css] }.freeze
 
-        # 本文のページ（章・付録・前書き・後書き）の部品。順は 1.x の @import の順を保つ
-        CHAPTER_PARTS = %w[simple-header.css image-header.css prism.css code.css table.css
-                           layout-utils.css components.css chapter-common.css].freeze
-        APPENDIX_PARTS = CHAPTER_PARTS - %w[image-header.css]
-        PREFACE_PARTS = %w[prism.css code.css table.css layout-utils.css components.css].freeze
+        # 本文のページ（章・付録・前書き・後書き）がみな読む部品。順は 1.x の @import の順を保つ
+        # （1.x の prism・code・table・layout-utils・components の順）
+        BODY_PARTS = %w[parts/prism.css parts/code.css parts/table.css
+                        parts/layout.css parts/sideimage.css parts/side-by-side.css
+                        parts/book-card.css parts/footnote.css parts/math.css parts/epub-reflow.css
+                        parts/talk.css parts/reference.css].freeze
+        # 章と付録だけが読む部品（1.x の chapter-common.css）。前書き・後書きにそろえるのは S2-4
+        CHAPTER_ONLY_PARTS = %w[parts/heading.css parts/prose.css parts/list.css
+                                parts/figure.css parts/box.css].freeze
+        CHAPTER_PARTS = [*%w[parts/simple-header.css parts/image-header.css], *BODY_PARTS,
+                         *CHAPTER_ONLY_PARTS].freeze
+        APPENDIX_PARTS = CHAPTER_PARTS - %w[parts/image-header.css]
+        PREFACE_PARTS = BODY_PARTS
 
         # 著者が原稿で明示する指定。改ページ記法は、記法を書けるページの種類にだけ配る
-        # （pagebreak.css の冒頭の説明）。前書き・後書きは 1.x で spacing.css を読んでいない
-        CHAPTER_UTILITIES = %w[spacing.css pagebreak.css replace-list.css].freeze
-        PREFACE_UTILITIES = %w[pagebreak.css replace-list.css].freeze
+        # （utilities/pagebreak.css の冒頭の説明）。前書き・後書きは 1.x で spacing.css と
+        # chapter-common.css の位置の指定（utilities/align-chapter.css）を読んでいない
+        CHAPTER_UTILITIES = %w[utilities/align.css utilities/align-chapter.css utilities/gap.css
+                               utilities/spacing.css utilities/pagebreak.css utilities/replace-list.css].freeze
+        PREFACE_UTILITIES = %w[utilities/align.css utilities/gap.css
+                               utilities/pagebreak.css utilities/replace-list.css].freeze
 
         # 種類ごとの、層 → stylesheets/ のファイル。FOUNDATION と book-settings.css は全種類に足す
         IMPORTS = {
-          'chapter' => { 'parts' => CHAPTER_PARTS, 'pages' => %w[chapter.css], 'utilities' => CHAPTER_UTILITIES },
-          'appendix' => { 'parts' => APPENDIX_PARTS, 'pages' => %w[appendix.css], 'utilities' => CHAPTER_UTILITIES },
-          'preface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[preface.css], 'utilities' => PREFACE_UTILITIES },
-          'postface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[preface.css postface.css],
+          'chapter' => { 'parts' => CHAPTER_PARTS, 'pages' => %w[pages/chapter.css],
+                         'utilities' => CHAPTER_UTILITIES },
+          'appendix' => { 'parts' => APPENDIX_PARTS, 'pages' => %w[pages/appendix.css],
+                          'utilities' => CHAPTER_UTILITIES },
+          'preface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[pages/preface.css],
+                         'utilities' => PREFACE_UTILITIES },
+          'postface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[pages/preface.css pages/postface.css],
                           'utilities' => PREFACE_UTILITIES },
-          'toc' => { 'pages' => %w[toc.css] },
-          'index' => { 'pages' => %w[index.css] },
-          'glossary' => { 'pages' => %w[glossary.css] },
-          'colophon' => { 'pages' => %w[colophon.css] },
-          'titlepage' => { 'pages' => %w[titlepage.css] },
-          'legalpage' => { 'pages' => %w[legalpage.css] },
-          'part-title' => { 'pages' => %w[part-title.css] }
+          'toc' => { 'pages' => %w[pages/toc.css pages/whole-toc.css] },
+          'index' => { 'pages' => %w[pages/index.css] },
+          'glossary' => { 'pages' => %w[pages/glossary.css] },
+          'colophon' => { 'pages' => %w[pages/colophon.css] },
+          'titlepage' => { 'pages' => %w[pages/titlepage.css] },
+          'legalpage' => { 'pages' => %w[pages/legalpage.css] },
+          'part-title' => { 'pages' => %w[pages/part-title.css] }
         }.freeze
 
         # 原稿の種類（Entry#kind・file_type）と入口の名前が違うもの

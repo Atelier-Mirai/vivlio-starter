@@ -1,0 +1,26 @@
+@charset "utf-8";
+
+/* ページ番号の参照（@pageref・@chapref）と見出しのアンカー。parts 層。本文のページが読む */
+
+/* =====================================================================
+   相互参照（@pageref・@chapref のページ番号と見出しのアンカー）
+   - 前書き・後書きからも章を参照するので、本文・付録だけが読む
+     部品（parts/heading.css など）ではなく、本文のページがみな読むここに置く
+   ===================================================================== */
+
+/* @pageref・@chapref のページ番号（PDF のみ）。EPUB リーダーは target-counter を解釈できず
+   content 宣言ごと破棄・Kindle は ::after 自体を無視するため、リフローでは自動的に
+   「タイトルのみのリンク」へ劣化する（at-directive-tier1-spec §1.1）。 */
+a.pageref::after {
+  content: "（p." target-counter(attr(href url), page) "）";
+}
+
+/* 前付け（00-preface）はローマ数字のノンブルなので、参照もローマ数字で出す（索引と同じ） */
+a.pageref.frontmatter::after {
+  content: "（p." target-counter(attr(href url), page, lower-roman) "）";
+}
+
+/* 見出しラベル（`## タイトル @id`）と章題（暗黙の章ラベル）が残すアンカー。紙面には何も出さない。 */
+.vs-sec-anchor {
+  display: inline;
+}

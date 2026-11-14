@@ -124,7 +124,7 @@ module VivlioStarter
           assert_path_exists File.join(workspace, 'config/page_presets.yml')
           assert_path_exists File.join(workspace, 'package.json')
           assert Dir.exist?(File.join(workspace, 'stylesheets')), 'stylesheets が参照できるはずです'
-          assert_path_exists File.join(workspace, 'stylesheets/chapter.css')
+          assert_path_exists File.join(workspace, 'stylesheets/tokens.css')
           assert_equal "CHAPTERS:\n  - 10-myawesome\n", File.read(File.join(workspace, 'config/catalog.yml'))
           refute_path_exists File.join(workspace, 'config/book.yml'), 'book.yml は置かないはずです'
         end
@@ -144,7 +144,7 @@ module VivlioStarter
           skip '実体側に google-fonts.css が無い環境' unless File.file?(File.join(source, 'fonts/google-fonts.css'))
 
           refute File.symlink?(File.join(workspace, 'stylesheets')), 'stylesheets 直下は実体ディレクトリのはずです'
-          assert File.symlink?(File.join(workspace, 'stylesheets/chapter.css')), 'CSS は参照で持ち込むはずです'
+          assert File.symlink?(File.join(workspace, 'stylesheets/tokens.css')), 'CSS は参照で持ち込むはずです'
           refute File.symlink?(bundle), 'google-fonts.css は実体コピーのはずです'
 
           before = File.read(File.join(source, 'fonts/google-fonts.css'), encoding: 'utf-8')

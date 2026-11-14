@@ -80,7 +80,7 @@ module VivlioStarter
         KEPT_FACE_PATTERN = /font-family:\s*["']?(?:keyfont\b|vs-variant-)/i
 
         # fonts/ 配下を参照する @import を検出する正規表現。
-        # page-settings.css は FontManager 生成の `@import url("fonts/google-fonts.css")`
+        # fonts.css は FontManager 生成の `@import url("fonts/google-fonts.css")`
         # を持つ。非埋め込みで fonts/ を除外すると参照切れ（RSC-007）になるため、
         # @font-face とあわせて EPUB 内 CSS から除去する。
         FONT_IMPORT_PATTERN = /@import\s+url\(\s*["']?fonts\/[^"')]+["']?\s*\)\s*;?/
@@ -101,7 +101,7 @@ module VivlioStarter
 
         # `url("data:…")` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
         # Kindle Previewer は同梱 CSS の data URI を `W14224: 無効な datauri` として拾う。
-        # 本書で唯一これに当たるのはチェックボックスの鉤（`chapter-common.css`）だが、
+        # 本書で唯一これに当たるのはチェックボックスの鉤（`parts/list.css`）だが、
         # **Kindle ではそもそも実体の文字（□ / ■）へ差し替わるので描画されない**。
         # 警告だけが残るので、Kindle 向けの CSS からは宣言ごと落とす。
         # 境界の取り方は WEBP_URL_PATTERN と同じ（宣言を跨がず、url は 1 つに限定）。
@@ -644,7 +644,7 @@ end
 
         # EPUB にフォント実体を埋め込むかどうか。
         # 既定は false（非埋め込み = リーダーのフォントに委ねる）。技術書では
-        # 明朝/ゴシック/等幅の generic フォールバック（page-settings.css の --font-*）で
+        # 明朝/ゴシック/等幅の generic フォールバック（base/page.css の --font-*）で
         # 十分なため、サイズ最適化を優先する。
         #
         # NOTE: v2.0 で小説等の執筆に対応する際、book.yml の設定
@@ -919,7 +919,7 @@ end
         # XHTML では同一文書内の id 重複が ERROR になるため、EPUB 経路でのみ
         # span 側の id を除去して aside 側に一意化する。
         # 残す側を aside にするのは、EPUB で読者に見えるのが aside だから
-        # （components.css の `.page-footnote-inline { display: none }` と
+        # （parts/footnote.css の `.page-footnote-inline { display: none }` と
         # `body.vs-epub aside.page-footnote { display: block }`）。索引・用語集の
         # リンク先も、読者が実際に読む側に着地させる。
         # ================================================================
@@ -1072,7 +1072,7 @@ end
         end
 
         # 見出しの寸法。合成画像側の字面・折返しをこれで決める。
-        # 既定値は PDF 側（BookSettingsCss::DEFAULT_*_CHARS ＝ theme.css の既定）と共有する
+        # 既定値は PDF 側（BookSettingsCss::DEFAULT_*_CHARS ＝ tokens.css の既定）と共有する
         # ——別々に持つと同じ原稿の扉・節絵が PDF と EPUB で違う字数に組まれる（§5-2）。
         # 節題だけは、字数でなく章題との大きさの比を PDF にそろえる（epub_ornament_chars）。
         # @return [Hash]
@@ -1161,17 +1161,17 @@ end
         # 扉絵・節絵の実画像パスと節番号色を取得する。
         # PDF と同一画像を単一の参照元から使う（二重解決を避ける・§B-4）。
         #
-        # P3 以降、theme.css は読み取り専用のテーマ資産となり book.yml の設定は
-        # book-settings.css へ書き出されるため、theme.css の正規表現読みでは設定変更を
+        # P3 以降、tokens.css は読み取り専用のテーマ資産となり book.yml の設定は
+        # book-settings.css へ書き出されるため、tokens.css の正規表現読みでは設定変更を
         # 拾えず既定値に化ける（調査報告 §7.1）。そこで生成器と同じ参照元
         # （parse_theme_settings の計算値）を直接使う。節番号色（--section-number-color）は
         # in-place 版でも書換対象外で常に var(--theme-accent) だったため、book.yml で選ばれた
-        # theme accent を、パレット定義（theme.css の --accent-* は P3 でも不変）で具体色へ解決する。
+        # theme accent を、パレット定義（tokens.css の --accent-* は P3 でも不変）で具体色へ解決する。
         #
         # @return [Hash, nil] { frontispiece:, ornament:, number_color: }。解決不能時は nil
         def read_theme_heading_assets
           settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
-          theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
+          theme_css_path = File.join(Common::STYLESHEETS_DIR, 'tokens.css')
           palette_css = File.exist?(theme_css_path) ? File.read(theme_css_path, encoding: 'utf-8') : ''
 
           {
@@ -1271,9 +1271,9 @@ end
         end
 
         # CSS 色値を具体色へ解決する。var(--theme-accent) → var(--accent-yellow) → #f0a000 の
-        # 連鎖を theme.css 内の定義から辿る。解決できなければ既定のダークを返す。
+        # 連鎖を tokens.css 内の定義から辿る。解決できなければ既定のダークを返す。
         #
-        # @param css [String] theme.css 全文
+        # @param css [String] tokens.css 全文
         # @param value [String, nil] --section-number-color の値
         # @return [String] 具体的な CSS 色
         def resolve_css_color(css, value, depth = 0)
@@ -1441,7 +1441,7 @@ end
         end
 
         # 節絵を入れた h2 の親 article.section-topic に EPUB 用クラスを付け、
-        # PDF 用の固定寸法グリッド（150px 行など）を components.css で解除できるようにする。
+        # PDF 用の固定寸法グリッド（150px 行など）を parts/epub-reflow.css で解除できるようにする。
         def mark_section_topic_for_epub!(h2)
           article = h2.parent
           add_class(article, 'vs-section-topic-epub') if article && article['class'].to_s.split.include?('section-topic')
@@ -2000,7 +2000,7 @@ end
         # Kindle のリフローは CSS Grid / position:absolute / ex 単位を解さないため、
         # PDF 向け CSS のままだと画像・数式・コード行番号が崩れる。EPUB 経路でのみ
         # 是正する。CSS で済むもの（book-card / img-text の画像上限）は body.vs-kindle
-        # ガードの CSS（components.css / layout-utils.css / code.css）に置き、ここでは
+        # ガードの CSS（parts/book-card.css / parts/layout.css / parts/code.css）に置き、ここでは
         # マークアップ変更が要る 3 件（body マーカー付与・数式 ex→em・コードのテーブル化）を
         # 行う。PDF 完成後の共有 HTML を書き換えるため PDF へ副作用はない。
         # ================================================================
@@ -2164,7 +2164,7 @@ end
         # 左右に並べる囲み（side-by-side）の中の図を、PDF と同じ大きさに抑える（両フレーバ）。
         #
         # EPUB・Kindle は side-by-side を上下に積む（画面の幅が分からず、狭い画面では左右とも
-        # 読めなくなる・layout-utils.css）。積むと中の図が本文の幅いっぱいに広がり、PDF では
+        # 読めなくなる・parts/side-by-side.css）。積むと中の図が本文の幅いっぱいに広がり、PDF では
         # 片側に収まっていた mermaid の図がタブレットの画面を占めていた。図の幅を、書かれた幅
         # （{width=60%} など。無ければ 100%）に片側の割合を掛けた値にして、中央に置く。
         # Kindle は外部 CSS の画像の大きさを無視するので inline で付け、中央寄せは
@@ -2678,7 +2678,7 @@ end
         # リフローにはページ下部が無いので、PDF が脚注領域へ降ろしている aside は
         # 参照した段落の直後にそのまま残る。素のままだと番号も区切りも無く、本文と
         # 地続きの文字列にしか見えない（どこからが脚注か読者に分からない）。
-        # 番号を実体で置き、CSS 側（components.css の body.vs-epub 規則）で
+        # 番号を実体で置き、CSS 側（parts/footnote.css の body.vs-epub 規則）で
         # 一回り小さい注記ブロックとして見せる。
         #
         # ::before ではなく実テキストにするのは Kindle(KFX) が擬似要素を解さないため。

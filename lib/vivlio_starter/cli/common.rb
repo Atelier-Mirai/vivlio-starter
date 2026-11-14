@@ -1016,7 +1016,7 @@ module VivlioStarter
 
       # 直接ビルドの版面。page の版面キー（size/margin_* 等）は既定値スキーマに無く
       # page_presets.yml 由来のため、ここでプリセットを 1 つ解決して埋める。
-      # プリセットが読めない環境でも組版自体は page-settings.css の既定で成立する。
+      # プリセットが読めない環境でも組版自体は base/page.css の既定で成立する。
       def direct_page_settings
         apply_page_preset({ page: { use: DIRECT_PAGE_PRESET } })[:page]
       rescue StandardError => e

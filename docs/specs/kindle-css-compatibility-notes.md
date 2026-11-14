@@ -101,16 +101,16 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 
 | 症状（Kindle） | 原因 | 対処 |
 |:---|:---|:---|
-| TIP/MEMO/COLUMN の枠線が出ず「TIP」ラベルが重複 | `:is()` でルール破棄＋`::before` ラベルが効かない | `body.vs-kindle` で明示セレクタ展開・`::before` 抑止・実体ラベル注入・具体色枠線（`chapter-common.css`） |
-| 節（節絵）がページ途中から始まる | modern `break-before` 非対応 | `article.vs-section-topic-epub` に `page-break-before: always` 併記（`components.css`） |
+| TIP/MEMO/COLUMN の枠線が出ず「TIP」ラベルが重複 | `:is()` でルール破棄＋`::before` ラベルが効かない | `body.vs-kindle` で明示セレクタ展開・`::before` 抑止・実体ラベル注入・具体色枠線（`parts/box.css`） |
+| 節（節絵）がページ途中から始まる | modern `break-before` 非対応 | `article.vs-section-topic-epub` に `page-break-before: always` 併記（`parts/epub-reflow.css`） |
 | 付録（simple スタイル）の見出しが素テキスト化 | `var()`/`grid`/`clamp()`/`::before` 多用 | `simple-header.css` に `body.vs-kindle` 具体値フォールバック（SVG 画像化を試したが却下・2026-07-20 revert）。枠色は下記のテーマ色リテラル焼き込みでテーマ追従化 |
 | 本文アクセント（strong 太字・強調下線・見出しマーカー・コラム/注記枠）がテーマ色にならない | すべて `var(--theme-accent)`/`color-mix()` 依存。KFX で解決されず、strong 等は**黒**、枠は静的フォールバックの**グレー #888**、付録見出しは**くすんだ金 #b8860b** に劣化 | **テーマ色をリテラル hex へ解決し、最後に読まれる `book-settings.css` に `body.vs-kindle` 規則として焼き込む**（`ThemeColor`＋`BookSettingsCss#kindle_accent_rules`）。静的フォールバックを後勝ちで上書き。`theme.color` に追従（`kindle-theme-color-literalize-spec.md`） |
 | 用語集・後書き・索引の h1 下線が消える | テーマ装飾が var()/擬似要素依存 | `glossary.css`/`index.css`/`preface.css` に具体色の下線フォールバック |
-| 回り込みの画像に余白が無く、上限も効かない | `layout-utils.css` の `body.vs-kindle` の 7 規則が `:is()` を使っていて、丸ごと捨てられていた | 明示セレクタへ展開。`epub_kindle_layout_test` が `stylesheets/` の実物を調べて再発を防ぐ |
+| 回り込みの画像に余白が無く、上限も効かない | `layout-utils.css`（今の `parts/layout.css`）の `body.vs-kindle` の 7 規則が `:is()` を使っていて、丸ごと捨てられていた | 明示セレクタへ展開。`epub_kindle_layout_test` が `stylesheets/` の実物を調べて再発を防ぐ |
 | 本文 → 画像の順の `.sideimage-right` で、画像が本文の下へ落ちる | float は後ろの本文にしか回り込まない | `constrain_layout_images_for_epub!` が画像を先頭へ動かす |
 | h3 の `♣`・h4 の `♦` が消えて字下げだけ残る | Techbook が印を WebP の背景で描き、Kindle には WebP も `var()` も届かない。h4 は `content: "" !important` で空にされている | h3 は `restore_h3_markers_for_kindle!` が文字へ戻す。h4 は `book-settings.css` に文字を `!important` で焼く |
 | 表の `--cover` や `.aki` のセルが左へずれる | KFX は等幅の字が `-` や `.` で始まるセルの 1 行目をずらす。`padding`・`text-indent`・`white-space` は効かない | `align_code_cells_for_kindle!` がコードで始まるセルの頭にゼロ幅の空白を添える |
-| book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
+| book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`parts/book-card.css`） |
 | 写真の横並び（`.pictures`・`.image-group`）が 1 枚ずつ全幅になり、1 ページに 1 枚ずつ並ぶ | flex・grid 非対応。1 行の表に組み替えると、写真がページの高さまで広がって同じく 1 ページに 1 枚になる。`inline-block` の箱に幅の % を付けると横に並ぶが、**行の左の箱がおよそ 1 字分狭く組まれる**（2 枚で左が右の 86〜91%。字下げなし・先頭の幅 0 の箱・負の左余白でも直らない）。幅を img に付けると Tablet ではそろうが Phone では守られず縦に並ぶ | 1 行の写真を 1 枚の画像に合成して差し替える（`compose_pictures_for_kindle!`・1 行 2 枚まで・`.image-group` は列の比のまま）。どの行も同じ幅のキャンバスに焼き、本文の幅いっぱいに表示する |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
 | 数式が極大表示／表内数式が崩れる／フォント変更に非追従 | 画像を本文フォント相対にできない KFX の本質的制約 | **単純式は `textify_simple_math_for_kindle!`（`MathTextRenderer`）で HTML テキスト化**し 100% 追従させる（Kindle 限定・`convert_math_units_for_epub!` の直前）。テキスト化不可の複雑式のみ従来の px フォールバックで巨大化を防ぐ（`kindle-inline-math-textify-spec.md`） |
@@ -219,7 +219,7 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 - `lib/vivlio_starter/cli/build/epub_builder.rb` — フレーバ分離・WebP 処理・マーカー・KPF 変換の実装本体。
 - `lib/vivlio_starter/cli/build/heading_image_composer.rb` — 見出し合成画像（`compose`=SVG / `render`=JPEG）。
 - `lib/vivlio_starter/cli/build/pipeline.rb` — スナップショット方式（方式B）とステップ登録。
-- `stylesheets/chapter-common.css` / `components.css` / `simple-header.css` / `glossary.css` / `index.css` / `preface.css` / `code.css` — `body.vs-kindle` / `body.vs-epub` フォールバック。
+- `stylesheets/parts/`（`box.css`・`list.css`・`prose.css`・`figure.css`・`book-card.css`・`math.css`・`epub-reflow.css`・`footnote.css`・`layout.css`・`side-by-side.css`・`sideimage.css`・`simple-header.css`・`code.css`・`table.css`・`talk.css`）/ `pages/`（`glossary.css`・`index.css`・`preface.css`・`colophon.css`） — `body.vs-kindle` / `body.vs-epub` フォールバック。
 - `epub-kindle-target-split-spec.md` — ターゲット分離の全体設計。
 - `kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（実装したが却下）。
 - `epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合（実装済み）。

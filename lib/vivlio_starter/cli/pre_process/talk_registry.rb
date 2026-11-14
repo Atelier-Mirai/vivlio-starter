@@ -91,7 +91,7 @@ module VivlioStarter
         DEFAULT_DISPLAY = TalkDisplay.new(style: :chat, name: true, avatar: :on, separator: '：',
                                           avatar_size: nil).freeze
 
-        # avatar_size を省略したときの直径。CSS（components.css の var() の既定）と同じ値で、
+        # avatar_size を省略したときの直径。CSS（parts/talk.css の var() の既定）と同じ値で、
         # 警告文で「既定の 12mm」と示すためだけに持つ。
         DEFAULT_AVATAR_SIZE_MM = 12
 

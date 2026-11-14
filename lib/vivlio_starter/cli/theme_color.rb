@@ -7,17 +7,17 @@ module VivlioStarter
     # ================================================================
     # テーマ・アクセント色の解決（色名/hex → リテラル hex）と混色。
     # ================================================================
-    # パレットの正典は stylesheets/theme.css の --accent-*。色名はビルドしているプロジェクトの
-    # theme.css から引き、PALETTE は theme.css が無いときと、そこに無い色名の代わりに使う
-    # （改善案 #79。既存の本の theme.css は作ったときの写しなので、gem 側の値で焼くと
-    # PDF と Kindle で色が食い違う。著者が theme.css の値を変えた場合も同じ）。
+    # パレットの正典は stylesheets/tokens.css の --accent-*。色名はビルドしているプロジェクトの
+    # tokens.css から引き、PALETTE は tokens.css が無いときと、そこに無い色名の代わりに使う
+    # （改善案 #79。既存の本の tokens.css は作ったときの写しなので、gem 側の値で焼くと
+    # PDF と Kindle で色が食い違う。著者が tokens.css の値を変えた場合も同じ）。
     # 2 つの用途で共用する:
     #   - Kindle 用リテラル焼き込み（KFX は var()/color-mix 非対応のため、book-settings.css に
     #     テーマ色を具体色で焼く。kindle-theme-color-literalize-spec.md）。
     #   - techbook の画像化アセットの色決定（Techbook::Processor#theme_color_hex）。
     # ================================================================
     module ThemeColor
-      # theme.css の --accent-* と一致させること（12 色。theme_color_test の test_palette_matches_theme_css が確かめる）。
+      # tokens.css の --accent-* と一致させること（12 色。theme_color_test の test_palette_matches_theme_css が確かめる）。
       PALETTE = {
         'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
         'magenta' => '#e11d74', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',
@@ -31,10 +31,10 @@ module VivlioStarter
       # パレット不明・空・不正値のフォールバック（DEFAULT_NAME の hex）。
       DEFAULT = PALETTE.fetch(DEFAULT_NAME)
 
-      # ビルドしているプロジェクトの theme.css（作業ディレクトリからの相対パス）
-      THEME_CSS = File.join('stylesheets', 'theme.css')
+      # ビルドしているプロジェクトの tokens.css（作業ディレクトリからの相対パス）
+      THEME_CSS = File.join('stylesheets', 'tokens.css')
 
-      # theme.css の色の宣言。コメントアウトした旧パレットは先に取り除いてから読む
+      # tokens.css の色の宣言。コメントアウトした旧パレットは先に取り除いてから読む
       ACCENT_DECLARATION = /--accent-([a-z]+):\s*(\#(?:\h{8}|\h{6}|\h{3}))\s*;/
 
       module_function
@@ -52,9 +52,9 @@ module VivlioStarter
         palette[raw]
       end
 
-      # 色名 → hex の表。theme.css の宣言を PALETTE に重ねる。ビルド中は章ごとに何度も
+      # 色名 → hex の表。tokens.css の宣言を PALETTE に重ねる。ビルド中は章ごとに何度も
       # 呼ばれるので、ファイルの更新時刻が変わらない限り読み直さない。
-      # @param theme_css [String] theme.css のパス
+      # @param theme_css [String] tokens.css のパス
       # @return [Hash{String => String}]
       def palette(theme_css = THEME_CSS)
         return PALETTE unless File.file?(theme_css)

@@ -70,41 +70,41 @@ module VivlioStarter
       STYLESHEETS_DIR = 'stylesheets'
 
       def test_toc_css_has_break_before_recto
-        css = read_css('toc.css')
+        css = read_css('pages/toc.css')
         assert_match(/break-before:\s*recto/, css,
-                     'toc.css に break-before: recto が含まれていること')
+                     'pages/toc.css に break-before: recto が含まれていること')
       end
 
-      def test_chapter_common_css_has_break_before_recto
-        css = read_css('chapter-common.css')
+      def test_heading_css_has_break_before_recto
+        css = read_css('parts/heading.css')
         assert_match(/break-before:\s*recto/, css,
-                     'chapter-common.css に break-before: recto が含まれていること')
+                     'parts/heading.css に break-before: recto が含まれていること')
       end
 
       def test_glossary_css_has_break_before_recto
-        css = read_css('glossary.css')
+        css = read_css('pages/glossary.css')
         assert_match(/break-before:\s*recto/, css,
-                     'glossary.css に break-before: recto が含まれていること')
+                     'pages/glossary.css に break-before: recto が含まれていること')
       end
 
       def test_index_css_has_break_before_recto
-        css = read_css('index.css')
+        css = read_css('pages/index.css')
         assert_match(/break-before:\s*recto/, css,
-                     'index.css に break-before: recto が含まれていること')
+                     'pages/index.css に break-before: recto が含まれていること')
       end
 
       def test_postface_css_has_break_before_recto
-        css = read_css('postface.css')
+        css = read_css('pages/postface.css')
         assert_match(/break-before:\s*recto/, css,
-                     'postface.css に break-before: recto が含まれていること')
+                     'pages/postface.css に break-before: recto が含まれていること')
       end
 
       # 前付・奥付は本文スパインの末尾に相乗りするため、単独ドキュメントだった頃に
       # @page :nth(1) が消していた柱を、名前付きページ側で明示的に消す必要がある。
       # 消し忘れると直前の章のタイトルが string() に残ったまま出る。
       def test_front_and_back_matter_named_pages_suppress_running_head
-        { 'titlepage.css' => 'titlepage', 'legalpage.css' => 'legalpage',
-          'colophon.css' => 'colophon' }.each do |file, page_name|
+        { 'pages/titlepage.css' => 'titlepage', 'pages/legalpage.css' => 'legalpage',
+          'pages/colophon.css' => 'colophon' }.each do |file, page_name|
           block = named_page_block(read_css(file), page_name)
 
           assert_match(/@top-right\s*\{\s*content:\s*none;?\s*\}/m, block,
@@ -116,12 +116,12 @@ module VivlioStarter
       # ページ数次第で表裏が変わるため、名前付きページ側で綴じ側を固定する。
       # 本扉＝右ページ（ノドが左）、権利ページと奥付＝左ページ（ノドが右）。
       def test_front_and_back_matter_named_pages_pin_the_gutter
-        title = named_page_block(read_css('titlepage.css'), 'titlepage')
+        title = named_page_block(read_css('pages/titlepage.css'), 'titlepage')
 
         assert_match(/margin-left:\s*var\(--page-margin-inner\)/, title, '本扉のノドは左であること')
         assert_match(/margin-right:\s*var\(--page-margin-outer\)/, title, '本扉の小口は右であること')
 
-        { 'legalpage.css' => 'legalpage', 'colophon.css' => 'colophon' }.each do |file, page_name|
+        { 'pages/legalpage.css' => 'legalpage', 'pages/colophon.css' => 'colophon' }.each do |file, page_name|
           block = named_page_block(read_css(file), page_name)
 
           assert_match(/margin-left:\s*var\(--page-margin-outer\)/, block, "#{file} の小口は左であること")
@@ -170,9 +170,9 @@ module VivlioStarter
     # ================================================================
     class CssImageOverflowTest < Minitest::Test
       def test_base_css_has_image_max_inline_size
-        css = File.read('stylesheets/base.css', encoding: 'utf-8')
+        css = File.read('stylesheets/base/elements.css', encoding: 'utf-8')
         assert_match(/img\s*\{[^}]*max-inline-size:\s*100%/m, css,
-                     'base.css に img { max-inline-size: 100% } が含まれていること')
+                     'base/elements.css に img { max-inline-size: 100% } が含まれていること')
       end
     end
 

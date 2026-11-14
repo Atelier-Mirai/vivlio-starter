@@ -1,0 +1,12 @@
+@charset "utf-8";
+
+/* 全要素の初期化（reset 層）。どのページも読む */
+
+/* 全ての要素に対して共通の初期化 */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}

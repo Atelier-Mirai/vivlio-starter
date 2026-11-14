@@ -677,7 +677,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   STYLESHEETS = File.expand_path('../../../../stylesheets', __dir__)
 
   def test_should_mirror_selectors_that_actually_break_before_a_section
-    sources = Dir.glob(File.join(STYLESHEETS, '*.css')).map { File.read(it) }.join("\n")
+    sources = Dir.glob(File.join(STYLESHEETS, '**', '*.css')).map { File.read(it) }.join("\n")
 
     BSC::SECTION_PAGEBREAK_SELECTORS.each do |selector|
       assert_includes sources, selector,
@@ -687,10 +687,10 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   end
 
   # 章の改丁も同じ理由でセレクタの実在を固定する（chapter-pagebreak-spec.md §4-2）。
-  # break-before: recto を持つのは 7 ファイルだが、chapter-common / glossary / index /
-  # postface はいずれも素の body なので、相異なるセレクタは 5 つで足りる。
+  # break-before: recto を持つのは 7 ファイルだが、parts/heading / pages/glossary / pages/index /
+  # pages/postface はいずれも素の body なので、相異なるセレクタは 5 つで足りる。
   def test_should_mirror_selectors_that_actually_start_on_a_recto_page
-    recto_sources = Dir.glob(File.join(STYLESHEETS, '*.css'))
+    recto_sources = Dir.glob(File.join(STYLESHEETS, '**', '*.css'))
                        .map { File.read(it) }
                        .select { it.include?('break-before: recto') }
 
@@ -705,7 +705,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   # そこだけ効かず白紙が残る（全巻目次の body.whole_toc で実際に起きた）。
   # 原稿の @pagebreak:recto（.vs-break-recto）は本設定より優先するので一覧に入れない
   def test_should_relax_every_rule_that_starts_on_a_recto_page
-    recto_selectors = Dir.glob(File.join(STYLESHEETS, '*.css')).flat_map do |path|
+    recto_selectors = Dir.glob(File.join(STYLESHEETS, '**', '*.css')).flat_map do |path|
       css = File.read(path).gsub(%r{/\*.*?\*/}m, '')
       css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
         # 直前の @import など（; で終わる文）はセレクタではないので落とす
@@ -734,7 +734,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   # Ruby 側で再現している（clamp() を calc() の中で掛けると Vivliostyle が宣言ごと落とすため
   # 生成時に解いてリテラルで焼く）。CSS 側だけ変えると換算が黙ってずれるので前提を固定する。
   def test_should_pin_chapter_title_metrics_that_the_char_conversion_reproduces
-    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+    css = File.read(File.join(STYLESHEETS, 'parts', 'image-header.css'))
 
     assert_match(/font-size:\s*clamp\(34Q,\s*calc\(var\(--paper-scale\)\s*\*\s*48Q\),\s*50Q\)/, css,
                  '.chapter-title の font-size clamp が変わりました。' \
@@ -747,7 +747,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   # 節題のフォントサイズは「版面幅 − 左右の飾り避け」を文字数で割って決める。
   # 飾り避け（padding-inline）が変わると 1 行の字数がずれるので、CSS 側の値を固定する。
   def test_should_pin_ornament_padding_that_the_font_size_conversion_assumes
-    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+    css = File.read(File.join(STYLESHEETS, 'parts', 'image-header.css'))
 
     assert_match(/padding-inline:\s*clamp\(11mm,[^;]*16mm\)\s*clamp\(12mm,[^;]*18mm\)/m, css,
                  '節絵の飾り避け（padding-inline）が変わりました。' \
@@ -786,7 +786,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   # 見出しの前後の余白は「前 ≫ 後」でなければ、前節の末尾と次節の見出しが 1 つの塊に見える
   # （近接の原則・heading-metrics-spec §4）。数値ではなく比の向きを固定する。
   def test_should_keep_section_topic_margin_before_larger_than_after
-    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+    css = File.read(File.join(STYLESHEETS, 'parts', 'image-header.css'))
     block = css[/body\.vs-header-image \.section-topic \{(.+?)\}/m, 1]
 
     refute_nil block, '.section-topic のルールが見つかりません'

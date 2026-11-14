@@ -156,7 +156,7 @@ module VivlioStarter
         #
         # HackGen と同じ書体名の面を足し、unicode-range を HackGen に無い字に絞る。同じ名前の面が重なる
         # 字は後の面が優先されるので、HackGen を並びに含む本文・見出し・コラム・コード・ノンブルの
-        # すべてで、HackGen の次に DejaVu が探される。雛形の page-settings.css の並びを書き換えないので、
+        # すべてで、HackGen の次に DejaVu が探される。雛形の base/page.css の並びを書き換えないので、
         # vs upgrade で CSS を上げなくても効く（書体のファイルは雛形と一緒に届く）。
         # 書体のファイルが無いプロジェクトでは何も出さない。EPUB は @font-face を取り除く（EpubBuilder）。
         def fallback_font_rules(image_prefix:)
@@ -202,7 +202,7 @@ module VivlioStarter
         # 条件付き宣言のセマンティクスを in-place 版と一致させる（調査報告 §7.3-2）:
         #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
         #   - image スタイル : 画像 2 変数＋edge_inset を宣言
-        #   - 見出しの寸法は文字数指定がある時だけ宣言（theme.css の既定が生きる）
+        #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
         def theme_declarations(settings, image_prefix:, page_cfg: {})
           lines = [
             "--theme-accent: #{settings[:theme_accent_value]};",
@@ -247,7 +247,7 @@ module VivlioStarter
           end
 
           # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率と字間で決まる。字数が
-          # 未指定でも倍率や字間を変えたなら、theme.css の既定幅（既定の字数 × 1.2 倍）のままでは
+          # 未指定でも倍率や字間を変えたなら、tokens.css の既定幅（既定の字数 × 1.2 倍）のままでは
           # 字数が合わなくなるので、既定の字数で幅を出し直す。
           lead_size = settings[:frontispiece_lead_size_value] || DEFAULT_LEAD_SIZE
           default_width = lead_size == DEFAULT_LEAD_SIZE && !letter_spaced?(page_cfg)
@@ -265,13 +265,13 @@ module VivlioStarter
           lines
         end
 
-        # theme.css が持つ既定の文字数（未指定時の値と一致させる）。
+        # tokens.css が持つ既定の文字数（未指定時の値と一致させる）。
         # EpubBuilder も同じ既定でリード幅比を導くため公開している（§5-1）。
         DEFAULT_HEADING_CHARS = 8
         DEFAULT_LEAD_CHARS = 20
         DEFAULT_ORNAMENT_HEADING_CHARS = 14
 
-        # 章リードの倍率の既定（chapter-common.css の `font-size: larger` と同じ 1.2 倍）。
+        # 章リードの倍率の既定（parts/heading.css の `font-size: larger` と同じ 1.2 倍）。
         DEFAULT_LEAD_SIZE = ConfigKeys::KEYS[%i[theme lead_size]].default
 
         # 章題 1 字の送り（mm）。image-header.css の .chapter-title の
@@ -308,7 +308,7 @@ module VivlioStarter
         def letter_spaced?(page_cfg) = !letter_spacing_mm(page_cfg, 1.0).zero?
 
         # 章リードの文字の大きさ（chapter-lead-size-spec.md §6.2）。既定の 1.2 倍のままなら
-        # 何も出さず、chapter-common.css の `larger` に任せる。
+        # 何も出さず、parts/heading.css の `larger` に任せる。
         #
         # 本全体（simple の章・付録も）と、image の章扉の 2 本に分ける。付録の body には image の
         # 本でも vs-header-simple が付くので、2 本目は付録に当たらない。
@@ -328,19 +328,19 @@ module VivlioStarter
           ['/* 章リードの文字の大きさ（theme.lead_size / theme.frontispiece.lead_size） */', *rules].join("\n")
         end
 
-        # 節リードの幅（chapter-common.css の .section-lead の inline-size: 32em）。字数で決めた幅ではなく、
+        # 節リードの幅（parts/heading.css の .section-lead の inline-size: 32em）。字数で決めた幅ではなく、
         # 版面より一回り狭く見せるための見た目の幅で、字間 0 なら 1 行 32 字になる
         SECTION_LEAD_CHARS = 32
 
         # 節リードの幅は max(32em, 32 字と字間のぶん)。字間を広げたときだけ書き出し、
-        # 32 字が入らなくならないよう幅を広げる（版面より広くはしない: chapter-common.css の
+        # 32 字が入らなくならないよう幅を広げる（版面より広くはしない: parts/heading.css の
         # max-inline-size）。字間を詰めたときは 32em のまま、詰めたぶん多くの字を入れる——
         # 32 字に合わせて縮めると、本文が版面いっぱいに組まれる横で節リードだけが細くなる。
         #
-        # 字間 0 以下では何も出さず、chapter-common.css の 32em に任せる。CSS 側で
+        # 字間 0 以下では何も出さず、parts/heading.css の 32em に任せる。CSS 側で
         # calc(32em + 32 * var(--letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
         # わずかにずれた（vivliostyle-css-pitfalls-notes.md §2.18）。
-        # EPUB・Kindle は components.css の inline-size: auto が勝つ（特異度 0,2,1）。
+        # EPUB・Kindle は parts/epub-reflow.css の inline-size: auto が勝つ（特異度 0,2,1）。
         def section_lead_width_rule(page_cfg)
           return '' unless letter_spacing_mm(page_cfg, 1.0).positive?
 
@@ -455,7 +455,7 @@ module VivlioStarter
 
         # h4 の印は ::before の var() なので、Kindle では消える。Previewer 4 は ::before の
         # content を本文へ差し込むので、文字そのものを焼く（kindle-css-compatibility-notes.md §2.2）。
-        # 本文と付録に限るのは、用語集の h4 など chapter-common.css の外には印が無いため。
+        # 本文と付録に限るのは、用語集の h4 など parts/heading.css の外には印が無いため。
         # !important は Techbook の <style> が content を '' !important で空にしているのに勝つため。
         def h4_marker_kindle_rule(cfg, color)
           _h3, h4 = heading_markers(cfg)
@@ -464,7 +464,7 @@ module VivlioStarter
         end
 
         # page-settings 系 22 変数（旧 update_page_settings_css 相当）。
-        # nil/空値は宣言しない（page-settings.css の既定がカスケードで生きる）。
+        # nil/空値は宣言しない（base/page.css の既定がカスケードで生きる）。
         def page_declarations(page_cfg)
           CssUpdater.build_css_variable_mappings(page_cfg).filter_map do |name, val, kind|
             next if val.nil? || val.to_s.strip.empty?
@@ -506,7 +506,7 @@ module VivlioStarter
           'body.vs-header-image .section-topic h2',  # image-header.css（PDF / EPUB）
           'body.vs-header-simple h2',                # simple-header.css（PDF / EPUB）
           'body.vs-header-simple.vs-kindle h2',      # simple-header.css の Kindle 用（legacy 併記）
-          'article.vs-section-topic-epub'            # components.css（EPUB の節絵 article）
+          'article.vs-section-topic-epub'            # parts/epub-reflow.css（EPUB の節絵 article）
         ].freeze
 
         # page.section_pagebreak: false のときだけ打ち消し規則を出す。
@@ -567,7 +567,7 @@ module VivlioStarter
         # 打ち消しは「元セレクタをそのまま複製」する必要がある——book-settings.css は
         # 後段読込なので同特異度なら後勝ちできるが、ずれると特異度負けして効かない。
         CHAPTER_PAGEBREAK_SELECTORS = [
-          'body',                     # chapter-common.css / glossary.css / index.css / postface.css
+          'body',                     # parts/heading.css / pages/glossary.css / pages/index.css / pages/postface.css
           'body.toc',                 # toc.css
           'body.whole_toc',           # toc.css（分冊の全巻目次）
           'body.vs-header-simple h1', # simple-header.css
@@ -802,7 +802,7 @@ module VivlioStarter
         # CSS の色の値を、Kindle が解せるリテラルにする。読めなければ nil。
         # 色名（red）と rgb() はそのまま渡す（ThemeColor.resolve は色名をテーマのパレットで引くので
         # 使わない。custom.css の red は CSS の red であってテーマの赤ではない）。
-        # var() は custom.css と theme.css の :root を辿り、--theme-accent は book.yml のテーマ色、
+        # var() は custom.css と tokens.css の :root を辿り、--theme-accent は book.yml のテーマ色、
         # --accent-<色名> はパレットで解く。color-mix(in srgb, 色 N%, white) は混色を計算する。
         def kindle_literal_color(value, variables, accent, depth = 0)
           v = value.to_s.strip
@@ -822,7 +822,7 @@ module VivlioStarter
           end
         end
 
-        # var() が指す変数の値。--theme-accent は book.yml のテーマ色（theme.css の値は既定の緑のまま）
+        # var() が指す変数の値。--theme-accent は book.yml のテーマ色（tokens.css の値は既定の緑のまま）
         def variable_value(name, fallback, variables, accent)
           return accent if name == '--theme-accent'
 
@@ -938,14 +938,14 @@ module VivlioStarter
         # 会話文キャラクター色（characters-dialogue-spec.md §2.3-2 / §2.4-2）
         # ================================================================
         # talk.yml の各話者色を book-settings.css へ焼き込む。ソース CSS
-        # （components.css）は色を var(--talk-c-<key>) 経由で参照するのみで、色自体は
+        # （parts/talk.css）は色を var(--talk-c-<key>) 経由で参照するのみで、色自体は
         # 生成側が持つ（P3「生成 1 枚がカスケードで勝つ」方式）。色未指定・不在なら何も出さない。
 
         # :root に置く --talk-c-<key> の宣言行。色を明示した話者のみ（未指定はテーマ色を使う）。
         # display.avatar_size があれば、アバターの直径 --talk-icon-size と、名前を積む列の幅
         # --talk-speaker-size（直径＋TALK_SPEAKER_EXTRA_MM）も置く（talk-avatar-initial-spec.md §7.3）。
         # 列の幅を CSS の calc(var() + 2mm) にしないのは、Vivliostyle が calc と var の組み合わせを
-        # 宣言ごと捨てることがあるため。無ければ出さず、components.css の var() の既定に任せる。
+        # 宣言ごと捨てることがあるため。無ければ出さず、parts/talk.css の var() の既定に任せる。
         def talk_variable_declarations(registry)
           colors = registry.with_color.map do |char|
             "--talk-c-#{char.key}: #{CssUpdater.normalize_color_value(char.color)};"
@@ -962,7 +962,7 @@ module VivlioStarter
            "--talk-speaker-size: #{format_mm(size + TALK_SPEAKER_EXTRA_MM)};"]
         end
 
-        # 名前を積む列をアバターより広くする幅。components.css の既定（12mm と 14mm）の差と同じ。
+        # 名前を積む列をアバターより広くする幅。parts/talk.css の既定（12mm と 14mm）の差と同じ。
         TALK_SPEAKER_EXTRA_MM = 2
 
         # .talk-c-<key> の --talk-accent 差し替えと、Kindle 用リテラル色。

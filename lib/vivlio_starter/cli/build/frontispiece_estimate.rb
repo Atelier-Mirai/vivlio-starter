@@ -41,7 +41,7 @@ module VivlioStarter
           def overflow = lines - fitted
         end
 
-        # page-settings.css の widows・orphans
+        # base/page.css の widows・orphans
         WIDOWS = 2
         ORPHANS = 2
 
@@ -50,7 +50,7 @@ module VivlioStarter
                            :text_width, :heading_offset, :heading_width, :lead_width, :letter_spacing, :fonts,
                            :title_font)
 
-        # theme.css の既定（book.yml に書いていないとき）
+        # tokens.css の既定（book.yml に書いていないとき）
         DEFAULT_HEADING_WIDTH_MM = 103.7
         DEFAULT_LEAD_WIDTH_MM = 88.9
 
@@ -152,7 +152,7 @@ module VivlioStarter
         end
 
         # リードの幅（mm）。BookSettingsCss が CSS に書く値と同じく、小数 2 桁に丸める
-        # （heading_metric_declarations）。字数も倍率も既定で字間が無ければ theme.css の既定の幅
+        # （heading_metric_declarations）。字数も倍率も既定で字間が無ければ tokens.css の既定の幅
         def lead_width_mm(page_cfg, size, chars)
           bsc = PreProcessCommands::BookSettingsCss
           chars ||= bsc::DEFAULT_LEAD_CHARS unless size == bsc::DEFAULT_LEAD_SIZE && !bsc.letter_spaced?(page_cfg)

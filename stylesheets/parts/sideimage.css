@@ -1,0 +1,120 @@
+@charset "utf-8";
+
+/* 並べ方（サイドイメージ・画像の横並び）。parts 層。本文のページが読む */
+
+/* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
+.sideimage-right,
+.sideimage-left,
+.sideimage {
+  display: grid;
+  grid-template-rows: auto;
+  gap: 1rem;
+  align-items: start;
+  margin-block: 0.5lh;
+}
+
+/* sideimage-right: 列1=テキスト(3fr)、列2=画像(2fr) */
+.sideimage-right {
+  grid-template-columns:
+    minmax(0, var(--sideimage-text-fr, 3fr))
+    minmax(0, var(--sideimage-img-fr,  2fr));
+}
+
+/* sideimage-left / sideimage: 列1=画像(2fr)、列2=テキスト(3fr) */
+.sideimage-left,
+.sideimage {
+  grid-template-columns:
+    minmax(0, var(--sideimage-img-fr,  2fr))
+    minmax(0, var(--sideimage-text-fr, 3fr));
+}
+
+/* sideimage-* コンテナ直下の要素は常に 1 行目に配置する */
+.sideimage-right>*,
+.sideimage-left>*,
+.sideimage>* {
+  grid-row: 1;
+}
+
+/* sideimage-right: テキスト左・画像右 */
+.sideimage-right>figure {
+  grid-column: 2;
+}
+
+.sideimage-right> :not(figure) {
+  grid-column: 1;
+}
+
+/* sideimage-left / sideimage: 画像左・テキスト右 */
+.sideimage-left>figure,
+.sideimage>figure {
+  grid-column: 1;
+}
+
+.sideimage-left> :not(figure),
+.sideimage> :not(figure) {
+  grid-column: 2;
+}
+
+/* サイドイメージ内の画像サイズ
+   - 列幅を超えないようにしつつ、{width=30%} などの個別指定は尊重する */
+.sideimage-right img,
+.sideimage-left img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+/* 画像を横並びにするコンテナ（CSS Grid 版）
+   使用例（VFM コンテナ）:
+   :::{.image-group}
+   ![alt](a.webp)
+   ![alt](b.webp)
+   :::
+
+   比率指定（先頭画像の幅を指定）:
+   :::{.image-group}
+   ![alt](small.webp){width=30%}
+   ![alt](large.webp)
+   :::
+   ※ post_process で width=30% を検出し、
+     --image-group-col1: 0.3fr; --image-group-col2: 0.7fr; に変換
+*/
+.image-group {
+  display: grid;
+  grid-template-columns:
+    minmax(0, var(--image-group-col1, 1fr))
+    minmax(0, var(--image-group-col2, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin-block: 0.5lh;
+}
+
+.image-group img {
+  inline-size: 100%;
+  block-size: auto;
+  object-fit: contain;
+}
+
+/* 中の図の上下の余白を消す（.pictures・.img-text 系と同じ）。消さないと、本文の図の既定
+   （parts/figure.css の figure { margin-block: 4mm }）が、.image-group 自身の余白に重なる。
+   23 章の表示例では上下が約 1cm 空き、ページの下に入る高さの囲みが次のページへ送られた */
+.image-group figure {
+  margin: 0;
+}
+
+/* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
+body.vs-kindle .sideimage,
+body.vs-kindle .sideimage-left,
+body.vs-kindle .sideimage-right {
+  display: block;
+  page-break-inside: avoid;
+}
+body.vs-kindle .sideimage > img,
+body.vs-kindle .sideimage > figure,
+body.vs-kindle .sideimage-left > img,
+body.vs-kindle .sideimage-left > figure {
+  margin: 0 1em 0.5em 0;
+}
+body.vs-kindle .sideimage-right > img,
+body.vs-kindle .sideimage-right > figure {
+  margin: 0 0 0.5em 1em;
+}

@@ -902,7 +902,7 @@ module VivlioStarter
           def japanese_char?(char) = !char.nil? && !char.ascii_only?
 
           # @pageref:id / @chapref:ch-slug → ページ番号つきリンク。ページ番号自体は CSS の
-          # target-counter が組版時に注入するため（chapter-common.css の a.pageref::after）、
+          # target-counter が組版時に注入するため（parts/reference.css の a.pageref::after）、
           # ここでは class="pageref" を付けたリンクを置くだけでよい。EPUB/Kindle は target-counter を
           # 解さず宣言ごと破棄するので、自動的にタイトルのみのリンクへ劣化する。
           #

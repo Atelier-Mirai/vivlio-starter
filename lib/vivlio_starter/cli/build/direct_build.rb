@@ -80,7 +80,7 @@ module VivlioStarter
         TRAILING_PAGEBREAKS = /(?:^[ \t]*(?:---)?[ \t]*\r?\n)+\z/
 
         # stylesheets 配下で唯一ビルドが書き込む生成物（FontManager が更新し
-        # page-settings.css が @import する）。ワークスペース側の実体コピーへ逃がす対象。
+        # fonts.css が @import する）。ワークスペース側の実体コピーへ逃がす対象。
         FONTS_DIR = 'fonts'
         GOOGLE_FONTS_DIR = 'google'
         GOOGLE_FONTS_BUNDLE = 'google-fonts.css'
@@ -292,7 +292,7 @@ module VivlioStarter
 
         # stylesheets は参照のみ張る（実体は fonts / twemoji を含み 90MB 超あり、毎回コピーしては
         # 「軽量経路」たり得ない）。ただし丸ごと 1 本の symlink にすると、BookSettingsCss 経由で
-        # 呼ばれる FontManager が毎ビルド書き直す fonts/google-fonts.css（page-settings.css が
+        # 呼ばれる FontManager が毎ビルド書き直す fonts/google-fonts.css（fonts.css が
         # @import する生成物）が**リンク先の実体**——著者のプロジェクトや gem 同梱の scaffold——へ
         # 書き込まれてしまう（書込み不可の場所なら無関係な 🟡 が出る）。
         # そこで stylesheets/ と stylesheets/fonts/ だけ実体ディレクトリにし、直下の各エントリへ

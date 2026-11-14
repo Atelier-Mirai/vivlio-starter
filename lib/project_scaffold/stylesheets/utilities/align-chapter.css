@@ -1,0 +1,27 @@
+@charset "utf-8";
+
+/* 章・付録だけが読む位置の指定（text-* の段落）。utilities 層。
+   1.x の chapter-common.css にあった規則で、前書き・後書きは読んでいない（前書きは
+   pages/preface.css が同じ指定を持つ）。utilities/align.css へまとめるのは S2-4
+   （css-layer-restructure-spec.md §3.3）。 */
+
+/* 右寄せユーティリティ */
+.text-right,
+.text-right p {
+  text-align: right;
+  text-indent: 0;
+}
+
+/* 中央寄せユーティリティ */
+.text-center,
+.text-center p {
+  text-align: center;
+  text-indent: 0;
+}
+
+/* 左寄せユーティリティ */
+.text-left,
+.text-left p {
+  text-align: left;
+  text-indent: 0;
+}

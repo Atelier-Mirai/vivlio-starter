@@ -30,10 +30,10 @@ module VivlioStarter
           assert_includes lines, '@layer reset, base, tokens, parts, pages, theme, utilities, settings, target;'
           assert_includes lines, '@import url("../../stylesheets/fonts.css");'
           assert_includes lines, '@import url("book-fonts.css");'
-          assert_includes lines, '@import url("../../stylesheets/theme.css") layer(tokens);'
-          assert_includes lines, '@import url("../../stylesheets/chapter-common.css") layer(parts);'
-          assert_includes lines, '@import url("../../stylesheets/chapter.css") layer(pages);'
-          assert_includes lines, '@import url("../../stylesheets/pagebreak.css") layer(utilities);'
+          assert_includes lines, '@import url("../../stylesheets/tokens.css") layer(tokens);'
+          assert_includes lines, '@import url("../../stylesheets/parts/box.css") layer(parts);'
+          assert_includes lines, '@import url("../../stylesheets/pages/chapter.css") layer(pages);'
+          assert_includes lines, '@import url("../../stylesheets/utilities/pagebreak.css") layer(utilities);'
           assert_includes lines, '@import url("book-settings.css") layer(settings);'
           assert_equal '@import url("../../stylesheets/custom.css");', lines.last, 'custom.css は最後に、層の外で読む'
           assert lines.index { it.start_with?('@layer') } < lines.index { it.start_with?('@import') },
@@ -44,9 +44,10 @@ module VivlioStarter
         def test_should_give_generated_pages_only_the_foundation_and_their_own_css
           imports = EntryWriter.render('index').scan(/@import url\("([^"]+)"\)/).flatten
 
-          assert_equal %w[../../stylesheets/fonts.css book-fonts.css ../../stylesheets/base.css
-                          ../../stylesheets/page-settings.css ../../stylesheets/theme.css
-                          ../../stylesheets/index.css book-settings.css ../../stylesheets/custom.css], imports
+          assert_equal %w[../../stylesheets/fonts.css book-fonts.css
+                          ../../stylesheets/base/reset.css ../../stylesheets/base/elements.css
+                          ../../stylesheets/base/page.css ../../stylesheets/tokens.css
+                          ../../stylesheets/pages/index.css book-settings.css ../../stylesheets/custom.css], imports
         end
 
         # 原稿の種類の名前の揺れを吸収し、知らない種類は本文の章の入口を使う

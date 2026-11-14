@@ -39,7 +39,7 @@ module VivlioStarter
       # 著者データ領域の中にある同梱素材。著者が編集する前提のファイルではないので雛形が管理し、
       # 新しく足した表紙のデザイン（covers/bundled/floral.svg など）も vs upgrade で既存の本へ届ける。
       # 著者が手を入れていれば、他の雛形ファイルと同じく三者比較で確認を求める。
-      # 扉絵・装飾画像の stylesheets/images/bundled/ とテーマ色の stylesheets/theme.css は
+      # 扉絵・装飾画像の stylesheets/images/bundled/ とテーマ色の stylesheets/tokens.css は
       # 著者データ領域の外にあるので、ここに書かなくても届く。
       SCAFFOLD_MANAGED_DIRS = %w[covers/bundled/ covers/templates/].freeze
 

@@ -38,7 +38,7 @@ module VivlioStarter
       GOOGLE_FONTS_ENDPOINT = 'https://fonts.googleapis.com/css2'
 
       # 標準搭載フォント（ダウンロード不要）
-      # page-settings.css の @font-face で静的 TTF が定義されているファミリ名
+      # fonts.css の @font-face で静的 TTF が定義されているファミリ名
       STANDARD_FONT_FAMILIES = Set.new([
                                          'Noto Serif JP',
                                          'Noto Sans JP',
@@ -82,7 +82,7 @@ module VivlioStarter
 
       # フォルダに書体のファイルがあり、google-fonts.css にその書体の @font-face があるとき取得済みとみなす。
       # ファイルだけでは組版に効かない。10/12 より前の雛形は fonts/google/ に TTF だけを配っていた
-      # （@font-face は page-settings.css 側）ので、同梱をやめた後もフォルダが残ると取得を飛ばし、
+      # （@font-face は fonts.css 側）ので、同梱をやめた後もフォルダが残ると取得を飛ばし、
       # 指定した書体が黙ってフォールバックの書体で組まれていた
       def google_font_installed?(name)
         dir = File.join(google_fonts_dir, slug_for(name))

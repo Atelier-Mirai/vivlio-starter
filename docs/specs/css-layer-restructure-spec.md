@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **実装中**（S2-1 は 2026-11-14 に完了・実装記録は §10）
+> ステータス: **実装中**（S2-1・S2-2 は 2026-11-14 に完了・実装記録は §10）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -371,7 +371,9 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | S2-1 入口と層 | `Css::EntryWriter`・`@font-face` を `fonts.css` へ・今のファイルを**分けずに**、1 ファイルを 1 つの層へ入れる（`base.css`→`base`、`theme.css`→`tokens`、`page-settings.css`→`base`、部品のファイル→`parts`、`{種類}.css` の固有の規則→`pages`、`spacing.css`・`pagebreak.css`・`replace-list.css`→`utilities`、`book-settings.css`→`settings`）。`frontmatter_generator.rb` の `link` を入口の 1 枚にする | 本書の PDF の全ページの画素が S0 の基準と一致する。一致しないページは、層の位置で勝ち負けが変わった規則が原因なので、規則を正しい層へ移して解く |
 | S2-2 ファイルの分割 | §3.1 の配置（`targets/` と `themes/` を除く）。`chapter-common.css` を部品ごとに分ける。実測の記録を `vivliostyle-css-pitfalls-notes.md` へ移す | 画素が一致する。どのファイルも 400 行を目安に収まる |
 | S2-3 `!important` を無くす | §2.4 の表 | 画素が一致する。`css_layer_test.rb` の `!important` の検査が通る |
-| S2-4 前書き・後書きをそろえる | §3.3 | 前書きと後書きのページを含め、画素が一致する。字間・段落・引用の規則が 1 か所にある |
+| S2-4 前書き・後書きをそろえる | §3.3。巻末脚注の節の規則を parts 層へ移す（下の注） | 前書きと後書きのページを含め、画素が一致する。字間・段落・引用の規則が 1 か所にある |
+
+- **S2-4 の巻末脚注の節（2026-11-14 に決定）。** S2-1 で、`section.footnotes` の規則（1.x の `page-settings.css`、今は `base/elements.css`）が base 層に入った。1.x では `section.footnotes li p { text-indent: 0 }` が詳細度で `p { text-indent: 1em }` に勝っていたが、今は parts 層の `p` が勝つ。本書の HTML にはこの節が無いので出力は変わらないが、節が残る本では脚注の段落に字下げが付く。S2-4 で、この規則を脚注の部品（`parts/footnote.css`）へ移し、1.x の勝ち負けに戻す。
 
 - S2 の間、EPUB と Kindle は「入口の `@import` を解いて、今と同じ順に並べた CSS」を読ませる（S3 の `Flattener` の読み込みと並べ替えを、先に作って使う）。S2-1 の時点で `Css::Stylesheet` と `Css::Flattener` の 1・2 が要る。
 - 確かめ方: 小段階ごとに、本書の写しを `targets: pdf, print_pdf, epub, kindle` で組み、S0 の基準と比べる。PDF は全ページの画素。EPUB と Kindle は S3 まで「Kindle Previewer の画面で、章扉・囲み・コード・索引・前書きの 5 か所を見比べて同じ」とする。
@@ -446,3 +448,60 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 
 - `build_copy.rb --kindle-record` は、前の記録を消さずに同じ置き場へ書いていた。中間生成物の名前には変換ごとのハッシュが付くので、二回分が混ざる。記録を取る前に置き場を消すよう直した。
 - Kindle の中間生成物の比べ方（使い捨てのスクリプト）: ファイル名の `0_1_<16 進>_<16 進>-` を外して突き合わせ、要素の出現の順に `computedstyle` と `style` 属性を並べて比べる。`computedstyle` は位置（`top` など）と箱の大きさを外した比べと、外さない比べの両方を行う。S0 と S1 の記録で、奥付の要素が 1 つ増えた差（17 要素）を拾うことを確かめた。S3 で道具にする。
+
+### 10.2 S2-2 ファイルの分割（2026-11-14）
+
+#### 作ったもの
+
+- `stylesheets/` を §3.1 の配置に分けた（`targets/`・`themes/`・`tokens-legacy.css` を除く）。規則の文字列は変えずに、元のファイルの行の範囲を写した。どのファイルも 400 行以下（最長は `parts/box.css` の 376 行）。
+
+  | 元のファイル | 分けた先 |
+  | :--- | :--- |
+  | `base.css` | `base/reset.css`・`base/elements.css` |
+  | `page-settings.css` | `base/page.css`（巻末脚注の節の規則だけ `base/elements.css`） |
+  | `theme.css` | `tokens.css` |
+  | `chapter-common.css` | `parts/heading.css`・`prose.css`・`list.css`・`figure.css`・`box.css`、`utilities/align-chapter.css` |
+  | `components.css` | `parts/book-card.css`・`footnote.css`・`math.css`・`epub-reflow.css`・`talk.css`・`reference.css` |
+  | `layout-utils.css` | `parts/layout.css`・`sideimage.css`・`side-by-side.css`、`utilities/align.css`・`gap.css` |
+  | `toc.css` | `pages/toc.css`・`pages/whole-toc.css` |
+  | `prism.css`・`code.css`・`table.css`・`simple-header.css`・`image-header.css` | `parts/` へそのまま |
+  | `spacing.css`・`pagebreak.css`・`replace-list.css` | `utilities/` へそのまま |
+  | 種類ごとの CSS（`chapter`・`appendix`・`preface`・`postface`）と本文以外のページの CSS | `pages/` へそのまま |
+
+- `EntryWriter::IMPORTS` を新しい配置にした。各ページの種類が読む規則の集合と、層の中の並びは S2-1 と同じにした（下の「確かめた結果」の 1）。
+- `scripts/css_cascade_diff.rb`: 二つの版（既定は `HEAD` と作業ツリー）の入口を平らにし、ページの種類ごとに (1) 規則の増減、(2) 層を移った規則、(3) 勝ち負けの入れ替わり（同じ要素に当たりうる二つの宣言で、勝つ側が前後で変わった組）を数える。`--html` に組み上がった HTML・EPUB を渡すと、(3) を「両方の選択子に当たる要素がある組」に絞る（§4.3 (2) の絞り込みと同じ考え方）。PDF の画素では確かめられない Kindle・EPUB の規則と、本書で使っていない記法の規則を確かめるために作った。S2-3・S2-4 でも使い、S3-1 の `InversionCheck` の下書きにする。
+- CSS のコメントにあったエンジンの癖の実測の記録（6 件）を `vivliostyle-css-pitfalls-notes.md` §2.19〜§2.23 へ移し、CSS には理由と節の番号を残した。同メモの早見表の修正先は今のファイル名にした。
+- Ruby の側でファイル名を読んでいた 2 か所（`ThemeColor::THEME_CSS`・`EpubBuilder#read_theme_heading_assets`）を `tokens.css` にした。コメントとテストの中の古いファイル名も直した。`stylesheets/_README.md` を層の説明に書き直した。
+
+#### 仕様と違えたこと
+
+着手の前にユーザーに確かめ、1〜3 の扱いに決めた（2026-11-14）。
+
+1. **読むページの種類が違う規則は、一つのファイルにまとめなかった。** §3.1 の「←」は、読むページの種類が違うファイルを合わせる形になっている（`chapter-common.css` は章と付録だけ、`components.css`・`layout-utils.css` は前書き・後書きも、`chapter.css` は章だけが読む）。そのまま合わせると、前書き・後書き・付録に今は当たっていない規則が当たる。S2-2 では読む規則の集合を変えず、出どころごとにファイルを分けた。そのため、`parts/` は「本文のページがみな読む」ものと「章・付録だけが読む」もの（`heading`・`prose`・`list`・`figure`・`box`）に分かれ、`utilities/align-chapter.css`（章・付録だけが読む `.text-*` の段落の規則）ができた。合わせるのは S2-4 で行う。
+   - 実物の置き場も §3.1 と違った。囲み（`.column`・`.tip`・`.output` など）は `components.css` ではなく `chapter-common.css` にあり、`box.css` はそこから作った。脚注は `components.css`（`.page-footnote`）と `page-settings.css`（`section.footnotes`）にあった。`chapter-common.css` には会話（`talk`）と脚注の規則が無かった。
+   - 参考書籍のカード・数式・EPUB のリフローの直しは §3.1 の表に無いので、`parts/book-card.css`・`math.css`・`epub-reflow.css` にした。`epub-reflow.css` の中身（`body.vs-epub` の規則と EPUB だけに出るマークアップの規則）は S3-2 で `targets/epub.css` へ移る。
+2. **ページの種類ごとの CSS は無くさず、`pages/` へ移した。** `chapter.css`・`appendix.css`・`preface.css`・`postface.css` は、素の選択子（`:root`・`body`・`h1`・`p`）で書かれ、そのページの種類でしか読めない。前書き・後書きの規則は S2-4、付録の色（`:root` の変数）と用語集の印（`.glossary-link`）は S6 で、テーマか部品へ移す。`simple-header.css`・`image-header.css` は §3.1 の表に無い（S6 でテーマへ移る）ので、`parts/` に置いた。
+3. **位置の指定のうち、`utilities` 層へ移したのは位置そのものの規則だけにした。** `.align-left`・`.align-center`・`.align-right` の既定（`display: block`・`margin-block: 0.5em`・`text-align: inherit` の 1 規則）は `parts/layout.css` に残した。最初はこの規則も `utilities/align.css` へ移したが、`css_cascade_diff.rb --html` が、本書で実際に当たる入れ替わりを 11 組挙げた（`.column.align-right` の上下 8mm・6mm と、`.output` の最初と最後の子の余白 0 が、既定の 0.5em に負ける）。このとき組んだ PDF は、基準と 8 ページ違った。既定の余白は著者が書いた位置ではなく、囲みの余白に負けるのが正しいので、parts 層に戻した。既定に勝つための図版の 4mm（`figure:is(.align-*)`）も、`parts/figure.css` の元の位置に戻した。
+   - `utilities` へ移したのは、左右の位置揃え（`.align-*` の `text-align`・`margin-inline`・回り込み）・`.text-*`・`.clear-*`・グリッドの中の位置（`.align-top` など）・横並びの間隔（`.gap-*`）の 25 規則。
+   - 横並びの間隔（`.gap-s`・`.gap-m`・`.gap-l`）は、§3.1 の表に無い `utilities/gap.css` にした。1.x では「ファイルの最後に置けば、同じ詳細度のコンテナの `gap` に勝つ」で効かせていた。層に入れると、置く位置に頼らずに勝つ。`layout.css` を 400 行に収めるために並べ方を 3 つのファイルに分けたので、最後に置くことができなくなったためでもある。
+4. **`tokens-legacy.css` は作らなかった。** 今の名前を新しい名前の別名にするファイル（§7.2）で、変数の名前を変える S6 で作る。
+
+#### 確かめた結果
+
+写しの本は作業ツリーをそのまま写した。出力は `../vivlio-starter-v2-baseline/check/s2-2-*/`・`runs/s2-2-*/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 1. 規則の集合（`css_cascade_diff.rb`。`HEAD`＝S2-1 と比べる） | 11 種類の入口のどれも、規則の数が同じで、なくなった規則・増えた規則とも 0。層を移った規則は 25（すべて parts → utilities） |
+| 2. 勝ち負けの入れ替わり（同） | 本書の PDF 用 HTML（43 枚）・EPUB・Kindle 用 EPUB と B4 の EPUB の計 138 文書で、両方の選択子に当たる要素がある組は 0。当たる要素の無い組が 460 あり、ほとんどは utilities へ移した位置の指定（`.text-*`・`:is(img, svg).align-*` の回り込み・`.gap-*` など）が、同じ要素に付いたときに部品の規則に勝つようになったもの（§2.1 の utilities 層の狙いのとおり）。残りの 4 組は、同じ要素に付かないクラスの組か、値が同じ意味の組（`bold` と `700` など） |
+| B1 の閲覧用 PDF・印刷用 PDF | 283 ページ・281 ページとも、違うページ 0 |
+| B2（`theme.style: simple`） | 279 ページ、違うページ 0 |
+| B3（節で改ページ・章は右の面・`b5_standard`） | 450 ページ、違うページ 0 |
+| B4（book_ai_web_starter の上巻）の PDF | 317 ページ、違うページ 0（S2-1 と同じく、本の CSS を作業ツリーのものに差し替えて組んだ） |
+| 単章のビルド（`vs build 21`）・`vs preflight` | どちらも 🔴 0。単章の PDF は S2-1 と 15 ページとも違うページ 0。preflight の後に入口が 11 枚ある |
+| EPUB（S2-1 と比べる） | B1 の EPUB・Kindle 用 EPUB・B4 の EPUB とも、XHTML の差 0。違うのは、パッケージに入る `stylesheets/` の写しのファイルの名前（使われないファイル。外すのは S3-1）と、平らにした `styles/*.css` の規則の並び（規則の集合は同じ）、OPF の manifest のその分だけ |
+| EPUBCheck | B1 の EPUB・Kindle 用 EPUB、B4 の EPUB の 3 つとも、エラー・警告 0 |
+| Kindle の変換の記録 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0。注意は S2-1 と同じ W14016 の 1 件だけ |
+| Kindle の中間生成物 | 36 ファイル・27,263 要素で、`computedstyle` は位置と大きさも含めて S2-1 と全部一致。`style` 属性は 1 要素（22 章の `.column.text-right`）で宣言の並び順だけが違い、値は同じ |
+| Kindle Previewer の画面 | §3.2 の 10 か所（§8 の 5 か所を含む）すべてで、S2-1 の画面と画素まで一致（差 0）。10 枚は互いに別の画面 |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,298 件・4,298 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-1 と同じ）。rubocop の違反 0 |

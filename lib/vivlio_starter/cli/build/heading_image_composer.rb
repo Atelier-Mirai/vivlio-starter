@@ -67,7 +67,7 @@ module VivlioStarter
         #     （chapter-lead-size-spec.md §2.2.1）。
         LAYOUT_VERSION = 5
 
-        # 文字数指定の既定。theme.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
+        # 文字数指定の既定。tokens.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
         # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
         DEFAULT_METRICS = { heading_chars: 8, ornament_chars: 14 }.freeze
 

@@ -316,16 +316,16 @@ module VivlioStarter
         assert_equal '説明の .aki', cells[2], '文字で始まるセルには足さない'
       end
 
-      # KFX は :is() を含む規則を丸ごと捨て、var() の宣言も落とす。layout-utils.css の 7 規則が
+      # KFX は :is() を含む規則を丸ごと捨て、var() の宣言も落とす。並べ方の CSS（1.x の layout-utils.css）の 7 規則が
       # これで効いておらず、画像が枠の下へはみ出していた（kindle-css-compatibility-notes.md §2）。
       def test_should_not_use_is_or_var_in_kindle_rules
         root = File.expand_path('../../../..', __dir__)
-        offenders = Dir[File.join(root, 'stylesheets/*.css')].flat_map do |path|
+        offenders = Dir[File.join(root, 'stylesheets/**/*.css')].flat_map do |path|
           css = File.read(path, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
           css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
             next unless selector.include?('vs-kindle')
 
-            "#{File.basename(path)}: #{selector.strip}" if selector.include?(':is(') || body.include?('var(')
+            "#{path.delete_prefix("#{root}/")}: #{selector.strip}" if selector.include?(':is(') || body.include?('var(')
           end
         end
 
@@ -335,7 +335,7 @@ module VivlioStarter
       # 本文と表を並べる :::{.text-table}・:::{.table-text} は、EPUB（画面幅が分からない）と
       # Kindle（flex を解さない）で上下に積む（text-table-spec.md §4・§13）
       def test_should_stack_text_table_for_epub_and_kindle
-        css = File.read(File.expand_path('../../../../stylesheets/layout-utils.css', __dir__), encoding: 'utf-8')
+        css = File.read(File.expand_path('../../../../stylesheets/parts/side-by-side.css', __dir__), encoding: 'utf-8')
 
         selectors = %w[text-table table-text].flat_map { |klass| %w[epub kindle].map { "body\\.vs-#{it} \\.#{klass}" } }
         assert_match(/#{selectors.join(',\s*')} \{\s*display: block;/, css)
@@ -343,7 +343,7 @@ module VivlioStarter
 
       # Previewer 4 は ::before の content を本文へ差し込むので、実体マーカーと二重にならないよう止める
       def test_should_suppress_generated_list_markers_for_kindle
-        css = File.read(File.expand_path('../../../../stylesheets/chapter-common.css', __dir__), encoding: 'utf-8')
+        css = File.read(File.expand_path('../../../../stylesheets/parts/list.css', __dir__), encoding: 'utf-8')
 
         assert_match(/body\.vs-kindle ol\.vs-fancy-list > li::before,\s*body\.vs-kindle \.outline-list ol > li::before \{\s*content: none;/, css)
       end
