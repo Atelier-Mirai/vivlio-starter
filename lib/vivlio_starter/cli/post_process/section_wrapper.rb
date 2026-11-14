@@ -10,8 +10,13 @@ module VivlioStarter
       # Module: SectionWrapper
       # ----------------------------------------------------------------
       # 【役割】
-      # - theme.style: image のとき、section.level2 内の h2 を
-      #   <article class="section-topic"> でラップ
+      # - section.level2 内の h2 を <article class="section-topic"> でラップ
+      #
+      # 【テーマと設定に依らず常に包む理由】
+      # - article.section-topic は契約 HTML の保証の部品（theme-contract-spec.md §2.3・§2.6）。
+      #   包むかどうかが theme.style で変わると、テーマの CSS は両方の形を前提に書くことになる。
+      # - simple の見た目は変わらない。vs-header-simple の規則は h2 と section-lead だけを選び、
+      #   両者の隣り合いは article の中でも保たれる（image の本の付録は以前から包まれていた）
       #
       # 【処理内容】
       # - <section class="level2"> の直下にある <h2> を検出
@@ -21,12 +26,10 @@ module VivlioStarter
       module SectionWrapper
         module_function
 
-        # theme.style が image の場合に、章セクションの見出しをラップ
+        # 章セクションの見出しをラップ
         # @param html [String] HTML文字列
         # @return [String] 変換後のHTML文字列
-        def wrap_h2_with_article_if_image_style!(html)
-          return html unless Common::CONFIG.theme.style == 'image'
-
+        def wrap_h2_with_article!(html)
           doc = HtmlParser.parse_html_document(html)
           transformed = wrap_sections_with_article!(doc)
           transformed ? HtmlParser.render_html_document(doc) : html

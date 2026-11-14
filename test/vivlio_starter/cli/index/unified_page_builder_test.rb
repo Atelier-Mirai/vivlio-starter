@@ -51,6 +51,7 @@ module VivlioStarter
           assert_includes html, '<!DOCTYPE html>'
           assert_includes html, '<title>索引</title>'
           assert_includes html, 'class="index-page"'
+          assert_includes html, '<section class="index" role="doc-index">', '契約 HTML の role（theme-contract-spec.md §2.3）'
           assert_includes html, 'CSS'
         end
 

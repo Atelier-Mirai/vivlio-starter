@@ -210,6 +210,9 @@ module VivlioStarter
 
           assert File.exist?(File.join(Common::CACHE_DIR, '_colophon.md')),
                  '_colophon.md は .cache/vs/ に生成されるべき'
+          colophon = File.read(File.join(Common::CACHE_DIR, '_colophon.md'))
+          assert_match %r{\A<section role="doc-colophon">.*</section>\s*\z}m, colophon,
+                       '奥付の中身は role="doc-colophon" の section で包む（theme-contract-spec.md §2.3）'
           refute File.exist?(File.join(Common::CONTENTS_DIR, '_colophon.md')),
                  '_colophon.md は contents/ に生成されてはならない'
         end

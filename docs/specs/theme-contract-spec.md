@@ -103,9 +103,9 @@ S1 で、保証するクラスの全数の表を `lib/vivlio_starter/cli/html_co
 | 前書き | `doc-preface` | `section.level1` |
 | 後書き | `doc-afterword` | `section.level1` |
 | 付録 | `doc-appendix` | `section.level1` |
-| 部扉 | `doc-part` | 部扉の最上位の要素 |
-| 奥付 | `doc-colophon` | 奥付の最上位の要素 |
-| 索引 | `doc-index` | 索引の最上位の要素 |
+| 部扉 | `doc-part` | `section.level1` |
+| 奥付 | `doc-colophon` | 奥付の中身を包む `section`（S1 で足した。§11.1） |
+| 索引 | `doc-index` | `section.index` |
 | 目次 | `doc-toc`（今もある） | `nav` |
 | 用語集 | `doc-glossary`（今もある） | `section` |
 | 扉・権利ページ | 付けない | |
@@ -521,3 +521,36 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 2 | 対応表（`bridge.css`）に載せる変数の一覧 | S7 の入口の実験 | 15 種ほどを見込む |
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | S8 の仕様 | 2.0 では `theme-bunko` だけを確かめる |
+
+---
+
+## 11. 実装記録
+
+### 11.1 S1 契約 HTML を書き出す（2026-11-14）
+
+#### 作ったもの
+
+- `lib/vivlio_starter/cli/html_contract.rb`: 契約 HTML の表。クラス 241 種（保証 223・テーマ 2・内部 16）を §2.2〜§2.5 の分類（`CATEGORIES`）に分け、名前の形で決まる 2 種（`language-*` は保証・`talk-c-*` は内部）・Prism のトークン・ページの種類の `role`（`PAGE_ROLES`）・保証する属性を置いた。CSS と HTML からクラスを拾う手続き（`css_classes`・`unclassified_classes`）も同じファイルにあり、テストと確かめの両方がこれを使う。
+- `lib/vivlio_starter/cli/post_process/role_injector.rb`: 章・前書き・後書き・付録・部扉の `body > section.level1` に `role` を付ける。値は `PAGE_ROLES` から読む。索引（`section.index`）は `index/unified_page_builder.rb` が、奥付は `create.rb` が自分で付ける。
+- `SectionWrapper` は `theme.style` を読まなくなり、h2 を常に `article.section-topic` で包む。
+- `scripts/html_contract_doc.rb`: 表から一覧を Markdown で書き出す（`--out FILE`）。
+- テスト: `test/vivlio_starter/html_contract_test.rb`（(a)・`role`・包み）と、`notation_coverage_test.rb` の `test_built_pages_use_only_classes_in_the_html_contract`（(b)）。
+
+#### 仕様と違えたこと（2026-11-14 ユーザー確認）
+
+1. **奥付の `role`。** 奥付は `body` の直下に h1・p・dl が並ぶだけで、§2.3 の「奥付の最上位の要素」が無かった。`create.rb` の雛形の中身を `<section role="doc-colophon">` で包んだ。EPUB の差は `role` の追加だけでなく、要素 1 つの追加になる。Kindle はこの section を `div`（余白 0）に変える。
+2. **`simple` の本の EPUB。** h2 を常に包むと、components.css の `body.vs-epub .section-topic`（上下の余白 1.8em・0.6em）が、`simple` の本の章にも当たる。`image` の本の付録は以前からこの規則で組まれているので、そろうものとして受け入れた。§9 の完了の条件 3 は `simple` の PDF だけを見る。実測では、Kindle の計算済みの値は前後で変わらなかった（`article` の余白は 0 のまま、h2 の上下の余白も同じ）。クリーンな EPUB の画面での差は確かめていない。
+3. **(b) の置き場。** 見本帳を組むと 80 秒ほどかかるので、`html_contract_test.rb`（`rake test`）ではなく、記法網羅のテスト（`test:notation`・`test:release`）に足した。見本帳は `test/vivlio_starter/fixtures/notation/` で、そのテストが 1 度だけ組んだ HTML を共用する。
+4. **表の作り。** 水準に「保証」「内部」のほかに「テーマ」（`vs-header-image`・`vs-header-simple`。§2.2 の「そのテーマの中でだけ意味を持つ」）を置き、付く段（`:contract`・`:target`）を足した。`:target` は、契約 HTML には無く、出力先の変換（PDF・EPUB・Kindle の写し）が付けるクラス（`vs-code-line`・`vs-adm-label`・`vs-image-heading-epub` など）である。CSS が選んでいるものは保証、選んでいない目印は内部とした。
+5. **保証と内部の線引き。** §2.1 は「CSS が参照していない 23 種」を内部の例に挙げるが、そのうち `level1`〜`level4`・`vs-h-marker`・`subsection-title`・`vs-emoji` は §2.3・§2.4 が保証として名前を挙げているので、保証にした。残る 16 種（`index-term`・`talk-c-*`・`footnote-ref`・`cross-ref-list`・`toc-label` など）を内部とした。
+6. **全巻目次。** `body` のクラスは `whole_toc`（`TokenResolver` の `kind` をそのまま付ける。下線を含む）で、toc.css も `body.whole_toc` を選んでいる。分冊の本の上巻に `whole_toc: true` を書いた写しで組んで確かめた。§2.3 の表に全巻目次の `role` が無いので、付けていない。同じ写しで、本書に出ない 5 種（`whole-toc`・`whole-toc-preface`・`whole-toc-postface`・`cross-ref-other-volume`・`index-other-volume`）を見つけて保証に足した。
+7. **`aria-labelledby`。** §2.3 の例の HTML にあるが、表に無く、VFM も出力しないので付けていない。
+8. **§2.5 の部品**（`tcy`・`sesame`・`vs-video`）は、まだ生成されないが、表に「2.0 で足す部品」として置いた。`vs-vertical`・`vs-fixed` も同じく表にだけある（`BookTraits` が無いので付かない）。
+
+#### 確かめた結果
+
+| 条件 | 結果 |
+| :--- | :--- |
+| 1. クラスがすべて表で分類されている | 本書の生成物のクラス 147 種（Prism を除く。`v2-inventory-report.md` §2.2 の 146 種との差 1 は数え方による）と、CSS が選ぶクラス 238 種が、すべて表にある。記法網羅の見本帳・分冊の本（全巻目次つき）・本書の PDF と EPUB の写しでも、表に無いクラスは 0 |
+| 2. 本書の四つの出力先 | 閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページ 0。EPUB・Kindle 用 EPUB とも、テキストの差 35 件はすべて `role` の追加（章 20・付録 6・部扉 5・前書き・後書き・索引・奥付 各 1）と奥付の section だけ（S1 の変更をほどいて XHTML を比べると差 0）。EPUBCheck は両方ともエラー・警告 0。Kindle は変換の記録が基準と同じ（Supported・Success・エラー 0・注意は W14016 の 1 件）、中間生成物 36 件の計算済みの値は、奥付に足した div を除いて一致。Kindle Previewer の画面は見比べていない |
+| 3. `simple` の PDF | 279 ページとも、違うページ 0 |

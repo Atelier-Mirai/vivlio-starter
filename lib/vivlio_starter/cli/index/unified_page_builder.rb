@@ -197,7 +197,7 @@ module VivlioStarter
               #{book_settings_link}
             </head>
             <body class="index-page">
-              <section class="index">
+              <section class="index" role="doc-index">
                 <h1>索引</h1>
                 #{generate_index_sections(groups)}
               </section>

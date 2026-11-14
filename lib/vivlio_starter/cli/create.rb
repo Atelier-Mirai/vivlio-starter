@@ -161,7 +161,11 @@ module VivlioStarter
         subtitle_class = "subtitle subtitle--#{subtitle_style}"
         current_wareki = "令和#{kanji_year(Time.now.year - 2018)}年"
 
+        # 中身を role="doc-colophon" の section で包む。role を付ける最上位の要素が要るため
+        # （theme-contract-spec.md §2.3）。body に padding があるので、包んでも h1 の上の空きは変わらない
         content = <<~MD
+          <section role="doc-colophon">
+
           <h1 class="book-title">#{title}</h1>
           #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
@@ -184,6 +188,8 @@ module VivlioStarter
                   (Powered by Vivlio Starter)
               </small>
           </p>
+
+          </section>
         MD
 
         # 常に上書き再生成する（book.yml 変更を確実に反映するため）

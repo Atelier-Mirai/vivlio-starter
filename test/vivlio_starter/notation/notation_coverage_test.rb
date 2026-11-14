@@ -23,6 +23,8 @@ require "fileutils"
 require "tmpdir"
 require "yaml"
 require "rbconfig"
+require "nokogiri"
+require "vivlio_starter/cli/html_contract"
 
 class NotationCoverageTest < Minitest::Test
   REPO_ROOT   = File.expand_path("../../..", __dir__)
@@ -209,6 +211,27 @@ class NotationCoverageTest < Minitest::Test
     assert_match(/index-term|<dfn/, entry, "定義リストの中で索引が拾われていません")
     assert_includes entry, "<strong>", "定義リストの中で強調が効いていません"
     assert_includes entry, "<code>", "定義リストの中でインラインコードが効いていません"
+  end
+
+  # ---------------------------------------------------------------------------
+  # 契約 HTML（theme-contract-spec.md §9 の S1 の (b)）
+  #
+  # 組んだページの HTML に出るクラスは、契約 HTML の表（HtmlContract）の「保証」か
+  # 「内部」のどちらかにある。表に無いクラスが出たら、テーマが選んでよいかを決めて表に
+  # 足す。見本帳を組むのはここだけなので、(a) と分けてここに置く（html_contract_test.rb）。
+  # ---------------------------------------------------------------------------
+  def test_built_pages_use_only_classes_in_the_html_contract
+    pages = Dir[File.join(self.class.project_dir, ".cache", "vs", "build", "html", "*.html")]
+    refute_empty pages, "組んだページの HTML が見つかりません"
+
+    unknown = pages.flat_map do |path|
+      doc = Nokogiri::HTML5(File.read(path, encoding: "utf-8"))
+      VivlioStarter::CLI::HtmlContract.unclassified_classes(doc).map { "#{File.basename(path)}: .#{it}" }
+    end
+
+    assert_empty unknown,
+                 "契約 HTML の表に無いクラスが出ました。lib/vivlio_starter/cli/html_contract.rb に分類を足してください:\n" \
+                 "#{unknown.join("\n")}"
   end
 
   private

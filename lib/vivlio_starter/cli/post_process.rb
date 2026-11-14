@@ -13,7 +13,8 @@
 #    - <body> タグにファイルタイプクラスを付与
 #    - ~~~vs-terminal フェンスを <div class="terminal"><pre> へ復元
 #    - 組み込み置換ルール（ReplacementRules）を適用
-#    - h2を<article.section-topic>でラップ（theme.style=imageの場合）
+#    - h2を<article.section-topic>でラップ（テーマに依らず常に）
+#    - ページの最上位の section.level1 に role 属性を付与（RoleInjector）
 #    - 章末脚注→ページ脚注変換
 #    - Prism.js行番号付与
 #    - 見出しマーカー/番号スパンの付与
@@ -24,6 +25,7 @@
 # - TerminalBlockConverter: ~~~vs-terminal フェンス → 端末枠（<div.terminal><pre>）
 # - ReplacementRules: 組み込み置換ルール適用（HtmlReplacer エンジン経由）
 # - SectionWrapper: h2を<article.section-topic>でラップ
+# - RoleInjector: section.level1 にページの種類の role を付与（契約 HTML・HtmlContract::PAGE_ROLES）
 # - FootnoteConverter: 章末脚注→ページ脚注変換
 # - HeadingProcessor: 見出しマーカー/番号スパンの付与（後で作成）
 # - PageBreakNormalizer: 改ページマーカー直後の h2 による二重改ページの正規化
@@ -40,6 +42,7 @@ require_relative 'post_process/html_replacer'
 require_relative 'post_process/replacement_rules'
 require_relative 'post_process/page_break_normalizer'
 require_relative 'post_process/section_wrapper'
+require_relative 'post_process/role_injector'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
 require_relative 'post_process/terminal_block_converter'
@@ -83,10 +86,10 @@ module VivlioStarter
 
           begin
             content_before = File.read(html_file, encoding: 'utf-8')
-            content_after  = SectionWrapper.wrap_h2_with_article_if_image_style!(content_before)
+            content_after  = SectionWrapper.wrap_h2_with_article!(content_before)
             if content_after != content_before
               File.write(html_file, content_after, encoding: 'utf-8')
-              Common.log_success("#{html_file}: h2を<article.section-topic>でラップ（theme.style=image）")
+              Common.log_success("#{html_file}: h2を<article.section-topic>でラップ")
               result2 = ReplacementRules.apply_builtin!(html_file)
               if result2[:changed]
                 Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
@@ -94,6 +97,12 @@ module VivlioStarter
             end
           rescue StandardError => e
             Common.log_error("#{html_file}: section-topicラップ中にエラー: #{e.message}")
+          end
+
+          begin
+            RoleInjector.inject!(html_file, entry)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: role 属性の付与中にエラー: #{e.message}")
           end
 
           begin
