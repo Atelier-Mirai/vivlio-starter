@@ -96,9 +96,6 @@ module VivlioStarter
           EpubCommands.execute_epub({}, target_name, config_path:,
                                                      output_path: File.join(dir, Build::EpubBuilder::EPUB_OUTPUT_FILE))
 
-          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去・webp url() は kindle のみ） ---
-          Build::EpubBuilder.sanitize_epub_css!(target_name, flavor:) if File.exist?(target_name)
-
           # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
           Build::EpubBuilder.sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
 

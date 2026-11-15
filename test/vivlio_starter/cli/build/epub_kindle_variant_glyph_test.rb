@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   Build::EpubBuilder.apply_variant_glyph_fonts_for_kindle!（kindle-ivs-font-spec.md §2・§4）
-#   と、それが書いた @font-face を sanitize_epub_css! が残すこと。
+#   （書いた @font-face を平らな CSS のフィルタが残すことは css/target_filter_test.rb）。
 #
 # 検証方法:
 #   一時プロジェクトの stylesheets/fonts/ に同梱の Noto をリンクで置き、Kindle 消費者 dir
@@ -126,24 +126,6 @@ module VivlioStarter
         end
       end
 
-      # 非埋め込みのサニタイズは、異体字の書体の @font-face を残す。消すと実体だけ残り親字に戻る。
-      def test_should_keep_variant_font_faces_through_css_sanitizing
-        css = <<~CSS
-          @font-face { font-family: "Noto Serif JP"; src: url("fonts/NotoSerifJP-Regular.ttf"); }
-          @font-face { font-family: "vs-variant-1"; font-weight: 400; src: url("fonts/vs-variant-1.ttf"); }
-          .vs-variant-1 { font-family: "vs-variant-1"; }
-        CSS
-
-        Dir.mktmpdir('vs-variant-sanitize') do |dir|
-          epub = build_epub(dir, 'EPUB/book-settings.css' => css)
-          Builder.sanitize_epub_css!(epub, flavor: :kindle)
-          result = read_from_epub(epub, 'EPUB/book-settings.css')
-
-          refute_includes result, 'Noto Serif JP', '同梱しない書体の @font-face は従来どおり消す'
-          assert_includes result, 'font-family: "vs-variant-1"; font-weight: 400'
-        end
-      end
-
       # クリーン EPUB は異体字セレクタのまま運ぶ（Apple Books などは OS の書体で正しく出る）。
       def test_should_not_touch_the_clean_epub
         Dir.mktmpdir('vs-variant-clean') do |dir|
@@ -193,21 +175,6 @@ module VivlioStarter
         end
       ensure
         Common.install_configuration!(original_config)
-      end
-
-      def build_epub(dir, files)
-        staging = File.join(dir, 'staging')
-        files.each do |rel, content|
-          FileUtils.mkdir_p(File.join(staging, File.dirname(rel)))
-          File.write(File.join(staging, rel), content)
-        end
-        epub = File.join(dir, 'book.epub')
-        system('zip', '-qr', epub, '.', chdir: staging)
-        epub
-      end
-
-      def read_from_epub(epub, member)
-        IO.popen(['unzip', '-p', epub, member], &:read).force_encoding('UTF-8')
       end
     end
   end

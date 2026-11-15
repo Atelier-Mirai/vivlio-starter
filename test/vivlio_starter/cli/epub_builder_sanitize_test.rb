@@ -8,16 +8,15 @@
 #   （epub-pipeline-fix-spec.md の Fix-1〜4 / §4.1 EPF-01〜05）
 #
 # 検証内容:
-#   - EPF-01: 生成後 EPUB の CSS から @page マージンボックスを除去（size: は残す）
-#   - EPF-02: マージンボックス除去が通常ルール（margin-bottom 等）を壊さない
 #   - EPF-03: 段落内脚注 span の id のみ除去（aside の id / data-footnote-number は残す）
 #   - EPF-04: 絵文字 <img> に width/height 属性が無く style に寸法が入る
 #   - EPF-05: generate_epub_config! が entryContext と dir 内 output を出力する（P4 段階 4）
-#   - EPF-06: @footnote at-rule もサニタイズで除去される（Fix-5）
 #   - EPF-07: テーブルの align 属性が style の text-align へ変換される（Fix-6）
 #   - EPF-08: content.opf の数字始まり id/idref に接頭辞が付く（Fix-7）
-#   - EPF-09: フォント非埋め込み時に @font-face 除去・fonts/ 除外（P2 サイズ最適化）
-#   - EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持
+#   - EPF-09: フォント非埋め込み時に fonts/ を除外（P2 サイズ最適化）
+#   - EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/ を保持
+#   EPUB の中の CSS から落とすもの（EPF-01・02・06・09 の @font-face・data URI）は、
+#   平らな CSS を作る段の確かめ（css/target_filter_test.rb）へ移した。
 #   - EPF-11: 絵文字 img のプレーン復元・囲み数字維持・twemoji 直下除外（Fix-8）
 # ================================================================
 
@@ -41,29 +40,6 @@ module VivlioStarter
       def teardown
         Dir.chdir(@original_dir)
         FileUtils.rm_rf(@test_dir)
-      end
-
-      # --- EPF-01: マージンボックス除去（size: は残る） ---
-      def test_should_strip_margin_box_but_keep_page_size
-        css = "@page { size: A5; @bottom-center { content: counter(page); } }\n"
-        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
-
-        Build::EpubBuilder.sanitize_epub_css!(epub)
-
-        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        refute_includes result, '@bottom-center', 'マージンボックスは除去されるべき'
-        assert_includes result, 'size: A5', '@page の size: は残すべき'
-      end
-
-      # --- EPF-02: 通常ルールを壊さない ---
-      def test_should_not_break_normal_rules_with_bottom_in_property_name
-        css = ".foo { margin-bottom: 1em; }\n.bar { padding-top: 2px; }\n"
-        epub = build_epub_with_css('EPUB/stylesheets/components.css' => css)
-
-        Build::EpubBuilder.sanitize_epub_css!(epub)
-
-        result = read_css_from_epub(epub, 'EPUB/stylesheets/components.css')
-        assert_equal css, result, 'マージンボックス以外の通常ルールは不変であるべき'
       end
 
       # --- EPF-03: 脚注 span の id のみ除去 ---
@@ -130,22 +106,6 @@ module VivlioStarter
         assert_includes content, "entryContext: '#{dir}'", 'entryContext は消費者 dir を指すべき'
         assert_includes content, "'#{dir}/output.epub'", 'output は消費者 dir 内を指すべき'
         refute_includes content, 'copyAsset:', 'copyAsset ブロックは出力しない（選択はローカライズが担う）'
-      end
-
-      # --- EPF-06: @footnote at-rule の除去（Fix-5。通常ルールは残す） ---
-      def test_should_strip_footnote_at_rule_but_keep_normal_rules
-        css = <<~CSS
-          @page { size: A5; @footnote { list-style: none; padding-inline-start: 0; margin: 0; } }
-          .note { list-style: none; }
-        CSS
-        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
-
-        Build::EpubBuilder.sanitize_epub_css!(epub)
-
-        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        refute_includes result, '@footnote', '@footnote at-rule は除去されるべき'
-        assert_includes result, 'size: A5', '@page の size: は残すべき'
-        assert_includes result, '.note { list-style: none; }', '通常ルールは残すべき'
       end
 
       # --- EPF-07: align 属性の style 変換（Fix-6。属性順の前後両対応） ---
@@ -228,26 +188,6 @@ module VivlioStarter
         assert_includes result, '<p><a href="00-preface.xhtml">本文中の自己リンク</a></p>'
       end
 
-      # --- EPF-09: フォント非埋め込み時に @font-face と fonts/ への @import を除去（既定）。
-      #     ただし keyfont（kbd キーキャップ描画・実体同梱）だけは保持する ---
-      def test_should_strip_font_face_when_not_embedding_fonts
-        css = <<~CSS
-          @import url("fonts/google-fonts.css");
-          @font-face { font-family: "Noto Serif JP"; src: url("fonts/NotoSerifJP-Regular.ttf"); }
-          @font-face { font-family: keyfont; src: url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf") format("truetype"); }
-          body { font-family: var(--font-main-text); }
-        CSS
-        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
-
-        Build::EpubBuilder.sanitize_epub_css!(epub)
-
-        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        refute_includes result, 'Noto Serif JP', '非埋め込み時 @font-face は除去されるべき'
-        refute_includes result, 'fonts/google-fonts.css', 'fonts/ への @import も除去されるべき（RSC-007 回避）'
-        assert_includes result, 'font-family: keyfont', 'keyfont の @font-face は保持されるべき（実体同梱）'
-        assert_includes result, 'font-family: var(--font-main-text)', '通常の font-family 宣言は残すべき'
-      end
-
       # --- EPF-09b: 非埋め込み時はローカライズが fonts/ をコピーしない（keyfont TTF を除く） ---
       def test_should_exclude_fonts_dir_when_not_embedding
         create_stylesheet_fixture
@@ -255,7 +195,8 @@ module VivlioStarter
 
         Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
 
-        assert File.exist?(File.join(dir, 'stylesheets/theme.css')), 'CSS はローカライズされるべき'
+        refute File.exist?(File.join(dir, 'stylesheets/theme.css')),
+               'CSS は運ばない（styles/ の平らな CSS だけを読む・css-layer-restructure-spec.md §4.2）'
         refute File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
                '非埋め込み時 fonts/ はローカライズしないべき'
         assert File.exist?(File.join(dir, 'stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.ttf')),
@@ -266,21 +207,15 @@ module VivlioStarter
 
       # --- EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持 ---
       def test_should_keep_fonts_when_embedding_enabled
-        css = %(@font-face { font-family: "X"; src: url("fonts/x.ttf"); }\n)
-        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
         create_stylesheet_fixture
         dir = '.cache/vs/build/epub'
 
         Build::EpubBuilder.stub(:embed_fonts?, true) do
-          Build::EpubBuilder.sanitize_epub_css!(epub)
           Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
 
           assert File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
                  '埋め込み時は fonts/ もローカライズすべき'
         end
-
-        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        assert_includes result, '@font-face', '埋め込み時 @font-face は保持されるべき'
       end
 
       # --- EPF-11: 絵文字 img をプレーン絵文字へ復元・囲み数字は維持（Fix-8） ---
@@ -381,25 +316,6 @@ module VivlioStarter
         assert_includes result, '--vs-plain-color: #333', 'webp を含まない宣言は残る'
       end
 
-      # Kindle 向け CSS からは data URI の宣言を落とす。Kindle はチェックボックスを
-      # 実体の文字（□ / ■）へ差し替えるので描画されず、`W14224` の警告だけが残る。
-      def test_should_strip_data_uri_declarations_only_for_kindle
-        css = <<~CSS
-          li.task-list-item > input[type="checkbox"]:checked {
-            background-color: currentColor;
-            background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E");
-          }
-          .keep { color: #333; }
-        CSS
-
-        kindle = css.gsub(Build::EpubBuilder::DATA_URI_DECL_PATTERN, '')
-
-        refute_includes kindle, 'data:', 'data URI が残っている'
-        refute_includes kindle, 'background-image', '宣言ごと落とす'
-        assert_includes kindle, 'background-color: currentColor', '同じ規則の他の宣言は残る'
-        assert_includes kindle, '.keep { color: #333; }', '無関係な規則は残る'
-      end
-
       private
 
       # ローカライズ検証用の stylesheets/ ソースツリーを作る。
@@ -427,7 +343,7 @@ module VivlioStarter
       end
 
       # EPUB 構造を模した zip を作成して .epub パスを返す。
-      # sanitize_epub_css! は unzip/zip による実差し替えを行うため、
+      # content.opf などの手術は unzip/zip による実差し替えを行うため、
       # 実バイナリでの往復を検証する統合テストとする。
       def build_epub_with_css(css_files)
         css_files.each do |rel_path, content|

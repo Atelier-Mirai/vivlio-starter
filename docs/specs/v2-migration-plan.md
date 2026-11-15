@@ -377,3 +377,12 @@ S11 の確かめに使う本を、テストの素材（`test/vivlio_starter/fixt
 - **Chromium は Vivliostyle だけのプロパティを計算しない。** `text-spacing`・`margin-break`・`string-set` は計算値に出ないので、新しく当たる規則を CSS の文字列で拾って読む。S2-4 では、見出しの `text-spacing: no-autospace` が前書きの h1〜h3 に当たるのを見つけ、打ち消した。
 - **Kindle の中間生成物で差 0 でも、`:is()` の規則は画面で確かめる。** 変換の前処理は KFX の描画が捨てる規則を映さない。S2-4 で、`:is()` を含む打ち消しの規則に別の打ち消しをまとめかけた（KFX では両方消える）。前書き・後書きの 9 画面を、前後の KPF で撮って比べた。Kindle Previewer の窓の番号と位置は、基準の `tools/kindle_window.rb` で取る（JXA で `$.CFBridgingRelease` を使うと osascript が落ちたので、`ObjC.castRefToObject` で包む）。
 - **Kindle の中間生成物は、S2-3 の記録（`check/s2-3-b1/kindle-record/`）と比べる。** S2-4 の記録は `check/s2-4-b1/kindle-record/`（一回分）。比べるのは `scripts/kindle_record_diff.rb`（S1 からの使い捨てのスクリプトを道具にした）。`style` 属性は宣言の単位で比べ、並び順だけの違いを外す。
+
+### 8.6 S3-1 平らな CSS（2026-11-15）
+
+作ったもの・仕様と違えたこと・確かめた結果は `css-layer-restructure-spec.md` §10.5。ここには、確かめ方（§3）について分かったことを書く。
+
+- **EPUB の CSS は、規則の単位で比べる。** CSS をどこで書き換えるかを変えた段階（組み上がった EPUB を開いて後片付けする → 生成の段で落とす）では、出力の CSS の空白とコメントが変わる。crass で規則に分け、コメントと空白を外した文字列の多重集合と並びを比べた。差 0 なら、表示は前の段階と同じと言える。比べ方が差を拾うことは、クリーン EPUB と Kindle 用 EPUB（WebP と data URI の宣言が違う）で確かめた。
+- **層を外したときの検査は、組み上がった HTML で絞った数を見る。** 静的に挙がる組の数は判定の広さで 8 にも 842 にもなるが、本書と B4 の HTML で両方の選択子に当たる要素がある組は 4 組だった。どちらの数で判断するかで、問題の大きさの見え方が変わる（`v2-flat-cascade-consultation.md` §2）。
+- **`VS_CSS_FORM=flat` の確かめは、入口のファイルの中身も見る。** 環境変数が届かないと層ありのまま組まれ、画素は当然一致する。組んだ写しの `.cache/vs/entry-*.css` に `@layer`・`@import` が無いことを確かめてから比べた。
+- **zsh では `set -- $変数` で語が分かれない。** 確かめのシェルの一行で使うと、`cd` に失敗した `find` がホームディレクトリを走査した。比べの使い捨ての処理は Ruby で書く（CLAUDE.md の決まりのとおり）。

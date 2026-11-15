@@ -82,6 +82,11 @@ module VivlioStarter
           'part-title' => { 'pages' => %w[pages/part-title.css] }
         }.freeze
 
+        # 出力先ごとの target 層（css-layer-restructure-spec.md §4.2 の 4・§5）。PDF は読まない。
+        # Kindle の body にも vs-epub が付くので、Kindle は EPUB の規則も読む。
+        # 入口のファイル（PDF が読む）には書かず、平らな CSS を作るときだけ足す（Bundle）
+        TARGET_IMPORTS = { epub: %w[targets/epub.css], kindle: %w[targets/epub.css targets/kindle.css] }.freeze
+
         # 原稿の種類（Entry#kind・file_type）と入口の名前が違うもの
         KIND_ALIASES = { 'part_title' => 'part-title', 'whole_toc' => 'toc',
                          'indexpage' => 'index', 'glossarypage' => 'glossary' }.freeze
@@ -118,13 +123,17 @@ module VivlioStarter
         end
 
         # 入口の CSS の全文（副作用なし）
-        def render(kind)
+        # @param target [Symbol, nil] :epub・:kindle なら target 層に出力先の CSS を足す
+        def render(kind, target: nil)
           name = entry_name(kind)
           layered = FOUNDATION.merge(IMPORTS.fetch(name)) { |_, a, b| a + b }
           lines = LAYERS.flat_map do |layer|
             (layered[layer] || []).map { %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(#{layer});) }
           end
           lines << %(@import url("#{BOOK_SETTINGS}") layer(settings);)
+          TARGET_IMPORTS.fetch(target, []).each do
+            lines << %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(target);)
+          end
 
           <<~CSS
             @charset "utf-8";

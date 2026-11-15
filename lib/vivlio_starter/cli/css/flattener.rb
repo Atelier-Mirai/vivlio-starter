@@ -5,7 +5,8 @@
 # ================================================================
 # 責務:
 #   入口の CSS の `@import` を解き、層の順に並べた 1 枚の CSS にする
-#   （css-layer-restructure-spec.md §4.2 の 1・2）。
+#   （css-layer-restructure-spec.md §4.2 の 1・2）。出力先のフィルタ（TargetFilter）を
+#   挟めるよう、規則の列（pieces）と、列を 1 枚の CSS にする段（render）を分けてある。
 #
 # なぜ要るか:
 #   KFX は `@layer` の囲みを中身ごと捨てる（v2-feasibility-notes.md）。EPUB と Kindle には、
@@ -17,7 +18,11 @@
 #   出現の順を保つ」と、同じ詳細度の規則どうしの勝ち負けは層ありと同じになる。
 #   下位の層（`theme.base`）は親の層の中で宣言の順に並び、親の層に直に書いた規則は
 #   下位の層より後に置く（下位の層に勝つ）。
-#   詳細度が違う規則の取り合いは並べ方では保てない。その検査は §4.3（S3）で行う。
+#   詳細度が違う規則の取り合いは並べ方では保てない。その検査は InversionCheck（§4.3）が行う。
+#
+# 入れ子の規則:
+#   crass は CSS の入れ子（`&`）を読めない。読めない規則は nested の印を付けて列に残し、
+#   render は出力しない。どの規則を落としたかは呼び出し側（Bundle）が著者に知らせる。
 #
 # url() の引き直し:
 #   規則の中の相対の url() は、その規則を書いたファイルの位置から解いた絶対パスを
@@ -33,8 +38,9 @@ module VivlioStarter
     module Css
       # 層を外した 1 枚の CSS を作る
       module Flattener
-        # 平らにした規則 1 つ。layer は層の名前の列（層の外なら空の列）、source は書かれたファイル
-        Piece = Data.define(:layer, :text, :source)
+        # 平らにした規則 1 つ。layer は層の名前の列（層の外なら空の列）、source は書かれたファイル、
+        # nested は入れ子（読めない宣言）を含むか
+        Piece = Data.define(:layer, :text, :source, :nested)
 
         # 層の外の規則と、層に直に書いた規則の並びの位置（どの下位の層よりも後）
         DIRECT = Float::INFINITY
@@ -51,18 +57,32 @@ module VivlioStarter
         # @param entry_path [String] 入口の CSS
         # @param rebase [#call] 絶対パスを受け、出力の位置から見た url の文字列を返す
         # @return [String]
-        def flatten(entry_path, rebase:)
-          body = pieces(entry_path, rebase:).chunk_while { |a, b| a.source == b.source && a.layer == b.layer }
-                                            .map { "#{source_comment(it.first)}\n#{it.map(&:text).join("\n")}" }
+        def flatten(entry_path, rebase:) = render(pieces(entry_path, rebase:))
+
+        # 規則の列を 1 枚の CSS にする。入れ子の規則は出力しない
+        # @param pieces [Array<Piece>]
+        # @return [String]
+        def render(pieces)
+          body = pieces.reject(&:nested)
+                       .chunk_while { |a, b| a.source == b.source && a.layer == b.layer }
+                       .map { "#{source_comment(it.first)}\n#{it.map(&:text).join("\n")}" }
           ["@charset \"utf-8\";\n", *body].join("\n") << "\n"
         end
 
         # 入口から読んだ規則を、層の順に並べた列。
+        # @param css [String, nil] 入口の中身。渡せば entry_path のファイルは読まず、
+        #   entry_path は @import を解く基準の位置にだけ使う（出力先ごとに層を足した入口を、
+        #   ファイルに書かずに平らにするため）
         # @return [Array<Piece>]
-        def pieces(entry_path, rebase:)
+        def pieces(entry_path, rebase:, css: nil)
           order = {}
           collected = []
-          collect(File.expand_path(entry_path), [], order, collected, rebase, [])
+          path = File.expand_path(entry_path)
+          if css
+            walk(Stylesheet.parse(css), path, [], order, collected, rebase, [path])
+          else
+            collect(path, [], order, collected, rebase, [])
+          end
           collected.each_with_index
                    .sort_by { |(piece, index)| [sort_key(piece.layer, order), index] }
                    .map(&:first)
@@ -98,8 +118,9 @@ module VivlioStarter
               layered = context + name.to_s.split('.')
               declare(layered, order)
               walk(inner, path, layered, order, collected, rebase, visiting)
-            in Stylesheet::Rule[text:]
-              collected << Piece.new(layer: context, text: rebase_urls(text, File.dirname(path), rebase), source: path)
+            in Stylesheet::Rule[text:, nested:]
+              collected << Piece.new(layer: context, text: rebase_urls(text, File.dirname(path), rebase),
+                                     source: path, nested:)
             end
           end
         end

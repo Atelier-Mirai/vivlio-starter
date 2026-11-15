@@ -15,6 +15,10 @@
 #   - LayerBlock     `@layer a { ... }`（中身も同じ 4 種類の列）
 #   - Rule           それ以外の規則（style rule・@font-face・@page・@media など）
 #
+# CSS の入れ子（`&`）は crass では読めず、入れ子の規則は宣言の位置の :error になる。
+# vs とテーマの CSS では入れ子を使わない決まり（theme-contract-spec.md §3.5）なので、
+# 読めない規則には nested の印を付け、平らにする側が落として知らせる。
+#
 # `@charset` とコメントは捨てる。平らにした CSS は 1 枚に 1 つの `@charset` を
 # 先頭に置けば足り、コメントは出力の大きさを増やすだけだからである。
 # ================================================================
@@ -32,8 +36,8 @@ module VivlioStarter
         LayerStatement = Data.define(:names)
         # @layer a { ... } — items は中身の項目の列
         LayerBlock = Data.define(:name, :items)
-        # それ以外の規則。text は書かれたとおりの文字列
-        Rule = Data.define(:text)
+        # それ以外の規則。text は書かれたとおりの文字列。nested は入れ子（読めない宣言）を含むか
+        Rule = Data.define(:text, :nested)
 
         module_function
 
@@ -51,9 +55,20 @@ module VivlioStarter
             in { node: :at_rule, name: /\Alayer\z/i, prelude:, block: Array => block }
               LayerBlock.new(name: layer_names(prelude).first, items: items_of(Crass::Parser.parse_rules(block)))
             in { node: :at_rule, name: /\Alayer\z/i, prelude: } then LayerStatement.new(names: layer_names(prelude))
-            in { node: :at_rule | :style_rule } then Rule.new(text: Crass::Parser.stringify([node]).strip)
+            in { node: :at_rule | :style_rule }
+              Rule.new(text: Crass::Parser.stringify([node]).strip, nested: nested?(node))
             else nil # 空白・コメント・読めなかった字句
             end
+          end
+        end
+
+        # 規則が入れ子（crass の :error）を含むか。@media・@supports の中も見る
+        def nested?(node)
+          case node
+          in { node: :style_rule, children: } then children.any? { it[:node] == :error }
+          in { node: :at_rule, name: /\A(?:media|supports)\z/i, block: Array => block }
+            Crass::Parser.parse_rules(block).any? { nested?(it) }
+          else false
           end
         end
 

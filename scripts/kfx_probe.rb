@@ -94,6 +94,24 @@ FEATURES = {
     '<div class="t-band"><p>BAND-PROBE ラベルに背景色を付けた場合です。</p></div>',
     nil
   ],
+  # 詳細度で勝ち負けが決まるか（対照）。後に書いた詳細度の高い規則が勝つ → 赤
+  'spec-control' => [
+    '.t-ctl { color: #0a7d3c; } div p.t-ctl { color: #c2185b; }',
+    '<div><p class="t-ctl">SPEC-CONTROL-PROBE 詳細度の対照</p></div>',
+    ['t-ctl', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
+  # クラスを重ねて詳細度を上げた規則が、後に書いた規則に勝つか（平らな CSS で層の順を保つ案）→ 緑
+  'spec-repeat' => [
+    '.t-rep.t-rep.t-rep { color: #0a7d3c; } div p.t-rep { color: #c2185b; }',
+    '<div><p class="t-rep">SPEC-REPEAT-PROBE クラスの重ね</p></div>',
+    ['t-rep', /color:\s*rgb\(10,\s*125,\s*60\)/]
+  ],
+  # 当たらないクラスの :not() を重ねて詳細度を上げた規則が勝つか → 緑
+  'spec-not' => [
+    'p.t-not:not(.t-n1):not(.t-n2) { color: #0a7d3c; } div div p.t-not { color: #c2185b; }',
+    '<div><div><p class="t-not">SPEC-NOT-PROBE :not() の重ね</p></div></div>',
+    ['t-not', /color:\s*rgb\(10,\s*125,\s*60\)/]
+  ],
   'webp' => [
     '.t-webp img { width: 40%; }',
     '<p class="t-webp">WEBP-PROBE <img src="probe.webp" alt="webp"/></p>',

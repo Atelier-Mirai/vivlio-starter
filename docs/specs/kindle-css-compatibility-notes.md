@@ -90,7 +90,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
    - パターンは `INLINE_WEBP_DECL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i`。
    - **教訓**: カスタムプロパティ名は `[\w-]+` で**丸ごと**拾うこと。`[a-zA-Z-]+` だと `--h3-marker` の `-marker` だけ消えて `--h3` 断片が残り、別の CSS エラー（CSS-008）を誘発した。
    - **教訓**: 正規表現リテラルは `%r{...}` ではなく `/.../` を使う。宣言値の `[^;{}]` に含まれる `{}` が `%r{}` の区切りと衝突する。
-3. **同梱からの除外**（`build_copy_asset_excludes_config(flavor:)` / `sanitize_epub_css!(flavor:)`）: Kindle フレーバのときのみ `images/**/*.webp`・`stylesheets/**/*.webp` を除外し、CSS の WebP `url()` も除去する。
+3. **同梱からの除外**（`localized_stylesheet?(rel, flavor)` / `Css::TargetFilter`）: Kindle フレーバのときのみ `images/**/*.webp`・`stylesheets/**/*.webp` を除外し、CSS の WebP `url()` を含む宣言も除去する。2.0 の S3-1 からは、組み上がった EPUB を開いて書き換えるのでなく、平らな CSS を作る段で落とす（`css-layer-restructure-spec.md` §4.2 の 4）。
    - **教訓**: これは**フレーバ依存**にすること。当初 WebP を常時除外したらクリーン EPUB（WebP 同梱が正）で参照切れが起きた。クリーン EPUB は WebP を**残す**。
 
 ---

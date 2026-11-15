@@ -47,10 +47,20 @@ module VivlioStarter
           Common.log_action('[Step 2] frontispiece / ornament の準備を開始します…')
 
           # ページの種類ごとの入口の CSS（.cache/vs/entry-*.css）を書き出す。HTML が読む CSS は
-          # これだけなので、theme 設定の有無に関わらず、全モードで先に書く（css-layer-restructure-spec.md §2.3）。
+          # これだけなので、theme 設定の有無に関わらず、全モードで書く（css-layer-restructure-spec.md §2.3）。
           require_relative '../css/entry_writer'
           Css::EntryWriter.write_all!
 
+          prepare_theme_assets!
+
+          # 確かめ用の VS_CSS_FORM=flat なら、PDF の入口を平らにした CSS で置き換える（§4.3 の (1)）。
+          # 平らにすると book-settings.css の中身が入るので、それを生成した後に行う
+          require_relative '../css/bundle'
+          Css::Bundle.write_pdf_entries!
+        end
+
+        # book-settings.css の生成と、frontispiece / ornament の画像の準備
+        def prepare_theme_assets!
           cfg = Common::CONFIG
           theme_cfg = cfg[:theme]
           unless theme_cfg

@@ -572,31 +572,49 @@ module VivlioStarter
       end
 
       # 入口の CSS を平らにして styles/ へ置き、link をその 1 枚へ付け替える（css-layer-restructure-spec.md §4.2）。
-      # url() はパッケージの中の位置（stylesheets/ はそのまま、.cache/vs/ の中はルート直下）へ引き直す
+      # url() はパッケージの中の位置（stylesheets/ はそのまま、.cache/vs/ の中はルート直下）へ引き直す。
+      # 入口の中身は EntryWriter.render から作る（入口のファイルは PDF が読むもので、確かめ用に
+      # 平らな CSS で上書きされることがある・Css::Bundle.write_pdf_entries!）
       def test_bundle_flat_css_for_epub_writes_one_flat_file_per_entry
-        FileUtils.mkdir_p('stylesheets')
-        File.write('stylesheets/parts.css', %(.box { background: url("images/box.webp"); }\n))
+        FileUtils.mkdir_p('stylesheets/parts')
+        File.write('stylesheets/parts/box.css', %(.box { background: url("../images/box.webp"); }\n))
+        File.write('stylesheets/custom.css', %(@page { @top-left { content: "柱"; } }\n))
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(File.join(Common::CACHE_DIR, 'book-settings.css'),
                    %(:root { --bg: url("theme-images/bundled/a.webp"); }\n))
-        File.write(Css::EntryWriter.path_for('chapter'), <<~CSS)
-          @layer parts, settings;
-          @import url("book-settings.css") layer(settings);
-          @import url("../../stylesheets/parts.css") layer(parts);
-        CSS
         dir = 'pkg-epub'
         FileUtils.mkdir_p(dir)
         html = File.join(dir, '01-intro.html')
         File.write(html, %(<html><head><link rel="stylesheet" href=".cache/vs/entry-chapter.css"></head></html>))
 
-        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir)
+        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir, flavor: :epub)
 
         assert_includes File.read(html), 'href="styles/chapter.css"'
         flat = File.read(File.join(dir, 'styles', 'chapter.css'))
         assert flat.index('.box') < flat.index(':root'), 'settings 層は parts 層の後に並ぶ'
         assert_includes flat, 'url("../stylesheets/images/box.webp")'
         assert_includes flat, 'url("../theme-images/bundled/a.webp")'
+        refute_includes flat, '@top-left', '余白の箱は EPUB の CSS から落とす'
         refute_match(/@layer|@import/, flat)
+      end
+
+      # 章の frontmatter が足した CSS（層の外）も、styles/ の下へ写して link を付け替える。
+      # パッケージには stylesheets/ の CSS を運ばないので、付け替えないと参照が切れる
+      def test_bundle_flat_css_for_epub_copies_stylesheet_added_by_frontmatter
+        FileUtils.mkdir_p('stylesheets/extra')
+        File.write('stylesheets/extra/wide.css', %(.wide { background: url("../images/w.webp"); }\n))
+        dir = 'pkg-kindle'
+        FileUtils.mkdir_p(dir)
+        html = File.join(dir, '01-intro.html')
+        File.write(html, '<html><head><link rel="stylesheet" href=".cache/vs/entry-chapter.css">' \
+                         '<link rel="stylesheet" href="stylesheets/extra/wide.css"></head></html>')
+
+        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir, flavor: :kindle)
+
+        assert_includes File.read(html), 'href="styles/stylesheets/extra/wide.css"'
+        extra = File.read(File.join(dir, 'styles', 'stylesheets', 'extra', 'wide.css'))
+        assert_includes extra, '.wide'
+        refute_includes extra, 'w.webp', 'Kindle は WebP を指す宣言を落とす'
       end
 
       private

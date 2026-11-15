@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4 は 2026-11-15 に完了・実装記録は §10。残りは S3）
+> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1 は 2026-11-15 に完了・実装記録は §10。残りは S3-2・S3-3）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -592,3 +592,46 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | Kindle の中間生成物 | 36 ファイル・26,335 要素で、`computedstyle` は位置と大きさも含めて S2-3 と全部一致。`style` 属性（変換が書き出した指定）は前書き 41・後書き 13 要素で違い、どれも計算値が前と同じになる指定だった（段落の `text-align: justify`・箇条書きと索引語の `font-weight: normal`・章リードの `text-indent: 0`・幅を指定した図の `margin-right: auto`・切り抜いた画像の `border: none`。残りは宣言の並び順だけ） |
 | Kindle Previewer の画面 | 中間生成物は KFX の描画が捨てる規則を映さないので（`kindle-css-compatibility-notes.md` §2）、前書き（Location 2・30・60・90・120・140）と後書き（9960・9975・9985）の 9 か所を S2-3 と S2-4 の KPF で撮って比べた。9 か所とも画素まで一致（差 0）。9 枚は互いに別の画面。撮った画面は `check/s2-4-b1/screens/` |
 | `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,302 件・4,302 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-3 と同じ。増えた 2 件は `entry_writer_test.rb`）。rubocop の違反 0 |
+
+### 10.5 S3-1 `flat`（2026-11-15）
+
+#### 作ったもの
+
+- `lib/vivlio_starter/cli/css/`:
+  - `selector.rb`（選択子の詳細度と選ぶ対象・Nokogiri で数えるための書き換え）・`cascade.rb`（宣言をロングハンドへ展開した列と、層ありと平らのそれぞれの強さ）。S2 の確かめの道具 `scripts/css_cascade_diff.rb` の中にあった処理を移した。道具はこの二つを使うようにし、書き換えの前後で、S2-2 のコミットと比べた出力（6,295 行）が一致することを確かめた。
+  - `target_filter.rb`（§4.2 の 4）: EPUB と Kindle で `@page` の余白の箱と `@footnote` を落とし、書体を埋め込まないときは `@font-face` を落とす（keyfont と異体字の 1 字書体の面は残す）。Kindle では、さらに WebP の `url()` と data URI を含む宣言を落とす。
+  - `inversion_check.rb`（§4.3 の (2)）: 層ありと平らとで勝つ側が入れ替わる宣言の組を挙げ、組み上がった HTML で「両方の選択子に当たる要素がある組」に絞る。
+  - `bundle.rb`: 入口（`EntryWriter.render`・出力先の target 層つき）→ `Flattener.pieces` → 入れ子の規則の知らせ → `TargetFilter` → `InversionCheck`（`--log=debug` のときだけ）→ `Flattener.render` の順に呼び、EPUB と Kindle の消費者 dir の `styles/` へ書く。`VS_CSS_FORM=flat` のときは、PDF の入口のファイル（`.cache/vs/entry-*.css`）を平らな CSS で置き換える（余白の箱は落とさない）。
+- `Flattener`（§4.2 の 3）: 規則の列（`pieces`）と 1 枚の CSS にする段（`render`）を分け、入口の中身を文字列で渡せるようにした。入れ子（`&`）の規則は crass が宣言の位置の `:error` として返すので、`Stylesheet::Rule#nested` の印を付けて列に残し、`render` は出力しない。`Bundle` が 🟡 で、ファイル名と選択子と、入れ子を開いた書き方を示す（種類をまたいで一度だけ）。今の同梱の CSS と生成物には、読めない規則は 0 件。
+- `EntryWriter::TARGET_IMPORTS`: EPUB の束は `targets/epub.css`、Kindle の束は `targets/epub.css` と `targets/kindle.css` を target 層で読む。PDF の入口のファイルには書かない。`targets/` は S3-2 で作るので、今は読むファイルが無く、何も入らない。
+- `EpubBuilder`: `sanitize_epub_css!`（組み上がった EPUB を開いて CSS を書き換える）と、それだけが使っていた定数・`drop_unresolvable_font_imports!`・`strip_unbundled_font_faces` を消した。`bundle_flat_css_for_epub!` は `Css::Bundle.write_epub!` を呼ぶ形にし、章の frontmatter の `stylesheet:` が足した CSS（層の外）も、同じフィルタを掛けて `styles/stylesheets/…` へ写して `link` を付け替える。パッケージには `stylesheets/` の CSS を運ばない（`localized_stylesheet?`）。
+- `ImageOptimizer.prepare_theme_images!`: 入口を書き、`book-settings.css` などを生成した後で `Css::Bundle.write_pdf_entries!` を呼ぶ（`VS_CSS_FORM=flat` のときだけ働く）。生成の本体は `prepare_theme_assets!` に分けた。
+- テスト: `css/target_filter_test.rb`（1.x の `sanitize_epub_css!` のテストが確かめていた 5 点を移した）・`css/bundle_test.rb`・`css_layer_test.rb` に層を外したときの検査と、検査が空振りしないことのテスト・`flattener_test.rb` に文字列から読む口と入れ子の 2 件。`epub_builder_sanitize_test.rb` と `epub_kindle_variant_glyph_test.rb` から、消した処理を呼ぶ 6 件を外した。
+- `scripts/kfx_probe.rb`: 詳細度を測る 3 項目（`spec-control`・`spec-repeat`・`spec-not`）を足した（`v2-flat-cascade-consultation.md` §2.3）。
+
+#### 仕様と違えたこと
+
+1. **`InversionCheck` の判定は §4.3 (c) のとおりにしたが、(c) は実際に起きる組を見落とす。** (c) は「同じクラスを含むか、どちらもクラスを持たず同じ要素名」で、片方だけがクラスを持つ組（`.part-title` と `body`）を挙げない。片方がクラスを持たない組まで広げると、静的には 842 組になり、ほとんどは著者の指定（utilities 層）と詳細度の高い部品の組である。組み上がった HTML（本書の PDF 用 HTML・EPUB・Kindle 用 EPUB、B4 の EPUB）で絞ると 4 組で、utilities 層の組は 0 だった。そのうち部扉と目次の `break-before: recto`（pages 層）が、層ありの PDF では S2-1 から settings 層の `body { page-break-before: always }` に負けている（画素は変わっていない）。判定の広さと、平らな CSS で層の順を保つかは、設計の問いとして `v2-flat-cascade-consultation.md` で Fable に相談している。S3-1 は EPUB と Kindle の見た目を変えないので、答えを待たずに完了とした。
+2. **同梱の CSS の静的な検査は、許可の表つきにした。** (c) で静的に挙がる 8 組（3 種類）は、用語集の印とコードの中の要素・`body` とコードの中の要素・表の題の段落と `.text-*` の組で、どれも実際の本では起きないか、1.x の EPUB と同じ結果になる。理由を書いて `css_layer_test.rb` の `ALLOWED_INVERSIONS` に載せた。`book-settings.css` は本の設定から生成されるので、テストの対象に含めない（ビルドの `--log=debug` が出す）。
+3. **入口の中身は、ファイルでなく `EntryWriter.render` から作る。** `VS_CSS_FORM=flat` で PDF の入口のファイルを上書きしても、EPUB の束が影響を受けないようにするためである。
+4. **frontmatter が足した CSS も平らにして写す。** §4.2 に無い。パッケージに `stylesheets/` の CSS を運ばなくしたので、写さないと参照が切れる。
+
+#### 確かめた結果
+
+写しの本は作業ツリーをそのまま写した。比べる相手は S2-4 の出力（`../vivlio-starter-v2-baseline/check/s2-4-b1/`・`runs/s2-4-b4/`）。S3-1 の出力は `runs/s3-1-*/`・`check/s3-1-*/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| (a) `VS_CSS_FORM=flat` の PDF と層ありの PDF | B1 の閲覧用 PDF 283 ページ、違うページ 0。入口のファイルに `@layer`・`@import` が無いこと（平らな CSS が読まれたこと）を確かめた |
+| 層ありの PDF（S2-4 と比べる） | B1 の閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページ 0 |
+| (b) `InversionCheck` | 同梱の CSS の静的な検査は、許可の表の外の組 0。B1 の EPUB と Kindle 用 EPUB の HTML で絞った組は、Kindle だけの 2 種類（`body.vs-kindle strong` の色と `p:has(…) strong`・付録の `h2` の改ページ）。どちらも Kindle が S2 の前から平らな CSS で表示している勝ち負けで、S3-2 で target 層へ移すと層でも同じ側が勝つ |
+| (c) EPUBCheck | B1 の EPUB・Kindle 用 EPUB とも、エラー・警告 0 |
+| (d) EPUB の中の CSS | `styles/` の 8 枚だけで、`@layer`・`@import` が無い。`stylesheets/` の CSS の写し（43 枚）は入らなくなった |
+| EPUB の CSS（S2-4 と比べる） | B1 の EPUB・Kindle 用 EPUB とも、8 枚の全部で規則の集合と並びが同じ（コメントと空白を外し、規則の単位で比べた）。S2-4 は組み上がった後に後片付けした CSS、S3-1 は生成の段で落とした CSS で、結果は同じになった。比べ方が差を拾うことは、クリーン EPUB と Kindle 用 EPUB の差（WebP と data URI の宣言の 2 規則）で確かめた |
+| EPUB の XHTML と OPF（S2-4 と比べる） | XHTML は全部同じ（生成した画像の名前を除く）。OPF は、`stylesheets/` の CSS 43 枚の項目が無くなったことと、更新の日時だけが違う |
+| Kindle の変換の記録 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| Kindle の中間生成物 | 36 ファイル・26,335 要素で、`computedstyle`・`style` 属性とも S2-4 と差 0 |
+| Apple Books・Kindle Previewer の画面 | 撮っていない。EPUB の CSS と XHTML が S2-4 と規則の単位で同じで、Kindle の中間生成物も差 0 のため |
+| B4（book_ai_web_starter の上巻）の EPUB | EPUBCheck のエラー・警告 0。CSS は `styles/` の 7 枚だけで、`@layer`・`@import` が無く、S2-4 と規則の単位で差 0。ビルドの 🟡 は S2-4 と同じ（原稿の画像の余白と索引の候補） |
+| 単章のビルド（`vs build 21`）・`vs preflight` | どちらも 🔴 0。単章の PDF は S2-4 と 15 ページとも違うページ 0。preflight の後に入口が 11 枚ある |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,310 件・4,310 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-4 と同じ。足した 14 件・外した 6 件で、定義した数と実行された数が合う）。rubocop の違反 0 |

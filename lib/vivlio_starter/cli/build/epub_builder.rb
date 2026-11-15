@@ -36,7 +36,8 @@ require_relative '../pre_process/frontmatter_generator'
 require_relative '../pre_process/generated_asset_cache'
 require_relative '../pre_process/book_settings_css'
 require_relative '../css/entry_writer'
-require_relative '../css/flattener'
+require_relative '../css/bundle'
+require_relative '../css/target_filter'
 
 module VivlioStarter
   module CLI
@@ -56,6 +57,10 @@ module VivlioStarter
         # ステージした HTML の、入口の CSS への link（asset_prefix を剥がした後の作業ディレクトリ相対）
         ENTRY_HREF_PATTERN = %r{href="#{Regexp.escape(Common::CACHE_DIR)}/entry-([a-z-]+)\.css"}
 
+        # 章の frontmatter の `stylesheet:` が足した CSS への link（FrontmatterGenerator が
+        # 入口の後に層の外で足す）。中身は Css::Bundle.write_epub_extra! が styles/ の下へ写す
+        EXTRA_STYLESHEET_HREF_PATTERN = %r{href="(#{Regexp.escape(Common::STYLESHEETS_DIR)}/[^"]+\.css)"}
+
         # EPUB で除外する特殊ページ
         # 目次は EPUB リーダーが自動生成するため不要
         EXCLUDED_BASENAMES = %w[_toc].freeze
@@ -63,50 +68,9 @@ module VivlioStarter
         # 題を持たない HTML の、目次に出す題。奥付は <title> が無く、そのままではファイル名が出る。
         EPUB_ENTRY_TITLES = { '_colophon' => '奥付' }.freeze
 
-        # @page マージンボックス（@bottom-center 等）と @footnote at-rule を検出する正規表現。
-        # epubcheck はこれらの構文そのものを CSS-008 ERROR として拒否する
-        # （@footnote は Vivliostyle が float: footnote 要素を収めるマージン at-rule）。
-        # いずれも 1 段ネスト（`@bottom-center { content: ...; }`）を前提に非貪欲で本体を捕捉する。
-        # `margin-bottom` 等のプロパティ名（先頭 @ 無し）には誤マッチしない。
-        MARGIN_BOX_PATTERN = /@(?:(?:top|bottom|left|right)-[a-z-]+|footnote)\s*\{[^{}]*\}/
-
-        # @font-face ブロックを検出する正規表現（1 段ネスト前提）。
-        # フォント非埋め込み時、EPUB から fonts/ を除外すると src の参照が切れて
-        # RSC-007 になるため、EPUB パッケージ内 CSS から @font-face ごと除去する。
-        FONT_FACE_PATTERN = /@font-face\s*\{[^{}]*\}/
-
-        # 非埋め込みでも保持する @font-face。keyfont（keyfont_asset? で実体も同梱される）と、
-        # Kindle の異体字の 1 字書体（apply_variant_glyph_fonts_for_kindle! が消費者 dir へ書く）。
-        KEPT_FACE_PATTERN = /font-family:\s*["']?(?:keyfont\b|vs-variant-)/i
-
-        # fonts/ 配下を参照する @import を検出する正規表現。
-        # fonts.css は FontManager 生成の `@import url("fonts/google-fonts.css")`
-        # を持つ。非埋め込みで fonts/ を除外すると参照切れ（RSC-007）になるため、
-        # @font-face とあわせて EPUB 内 CSS から除去する。
-        FONT_IMPORT_PATTERN = /@import\s+url\(\s*["']?fonts\/[^"')]+["']?\s*\)\s*;?/
-
-        # インライン <style> 内の `--xxx: url(...webp)...;` 宣言を 1 つ検出する正規表現。
-        # WEBP_URL_PATTERN の `[a-zA-Z-]+` はカスタムプロパティ名の数字（例 --h3-marker）で
-        # 途中切れし `--h3` 断片を残して CSS-008 を生むため、プロパティ名を `[\w-]+`（数字込み）で
-        # 丸ごと拾う専用パターンを用いる（strip_webp_inline_styles_for_kindle! で使用）。
-        INLINE_WEBP_DECL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
-
-        # `url(....webp)` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
-        # WebP は Kindle の EPUB へ同梱しない（localize_assets! が除外）ため、CSS の
-        # `background-image: url(...webp)` や `--frontispiece-image: url(...webp)` が参照切れ
-        # （RSC-007 / Kindle W14010）になる。これらの背景はリフロー EPUB で元々描画されない
-        # （扉絵/節絵は合成画像へ置換済み）ので、宣言ごと EPUB 内 CSS から除去する。
-        # `[^;{}]*` で宣言境界を跨がず、`url(...)` 内は `[^)]*` で 1 つの url に限定する。
-        WEBP_URL_PATTERN = /[a-zA-Z-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
-
-        # `url("data:…")` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
-        # Kindle Previewer は同梱 CSS の data URI を `W14224: 無効な datauri` として拾う。
-        # 本書で唯一これに当たるのはチェックボックスの鉤（`parts/list.css`）だが、
-        # **Kindle ではそもそも実体の文字（□ / ■）へ差し替わるので描画されない**。
-        # 警告だけが残るので、Kindle 向けの CSS からは宣言ごと落とす。
-        # 境界の取り方は WEBP_URL_PATTERN と同じ（宣言を跨がず、url は 1 つに限定）。
-        # `%r{…}` は使わない——`[^;}]` の `}` が区切りとして閉じてしまい、正規表現が途中で切れる。
-        DATA_URI_DECL_PATTERN = /[a-zA-Z-]+\s*:\s*[^;{}]*url\(["']?data:[^)]*\)[^;}]*;?/i
+        # インライン <style> 内の `--xxx: url(...webp)...;` 宣言を 1 つ検出する正規表現
+        # （strip_webp_inline_styles_for_kindle! で使用）。平らな CSS から落とす宣言と同じ形
+        INLINE_WEBP_DECL_PATTERN = Css::TargetFilter::WEBP_URL_PATTERN
 
         # techbook の絵文字画像 <img class="... vs-emoji ...">  を検出する正規表現。
         # 絵文字画像化（twemoji SVG 差し替え）は Chromium が PDF で絵文字を Type 3 化する
@@ -148,8 +112,9 @@ module VivlioStarter
         # そのままパッケージ内容の選択になる。旧 copyAsset.excludes の知識はここへ移した）。
         # - images/**: _epub_assets/ と headings/ は除外（消費者 dir 内へ直接生成されるため、
         #   ルートの stale な残骸を拾わない）。kindle は WebP も除外（transcode 済み・非対応）。
-        # - stylesheets/**: twemoji 直下 svg（絵文字マスター・プレーン復元で未参照）と
-        #   フォント実体（非埋め込み時）を除外。kindle は WebP も除外（CSS 参照は sanitize が除去）。
+        # - stylesheets/**: CSS は運ばない（styles/ の平らな CSS だけを読む・bundle_flat_css_for_epub!）。
+        #   twemoji 直下（絵文字マスター・プレーン復元で未参照）とフォント実体（非埋め込み時）も除外。
+        #   kindle は WebP も除外（CSS の参照は Css::TargetFilter が宣言ごと落とす）。
         # - theme-images/**: 生成バリアント webp（生成キャッシュ）のうち book-settings.css が
         #   参照する分を同梱（:epub のみ・移設仕様 §3.2）。
         # - カバー画像: embed 有効時のみ dir/covers/ へコピー（cover は entryContext 基準で解決）。
@@ -164,36 +129,9 @@ module VivlioStarter
             localized_image?(it, flavor)
           end
           copy_asset_tree!(Common.stylesheets_dir, dir, flavor:) { localized_stylesheet?(it, flavor) }
-          drop_unresolvable_font_imports!(dir)
           localize_theme_variant_images!(dir, flavor)
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
-        end
-
-        # 運ばなかった fonts/ を指す @import を、ローカライズ後の CSS から外す。
-        #
-        # **Vivliostyle へ渡す前に外す必要がある。** 同じ除去を EPUB 内の CSS に対しても
-        # sanitize_epub_css! が行うが、あちらが走るのは vivliostyle build の**後**である。
-        # 11.0.2 までは解決できない @import を黙って無視していたので後片付けで足りていたが、
-        # 11.3.3 は build の時点で解決を試み、失敗すると EPUB 生成ごと止める（実測）。
-        #
-        #   ERROR Failed to resolve the CSS imports: …/stylesheets/page-settings.css
-        #   Could not resolve the CSS import: fonts/google-fonts.css
-        #
-        # フォントを埋め込む設定なら fonts/ ごと運んでいるので、外す必要はない。
-        #
-        # @param dir [String] ローカライズ先ディレクトリ
-        def drop_unresolvable_font_imports!(dir)
-          return if embed_fonts?
-
-          Dir.glob(File.join(dir, 'stylesheets', '**', '*.css')).each do |css|
-            source = File.read(css)
-            stripped = source.gsub(FONT_IMPORT_PATTERN, '')
-            next if stripped == source
-
-            File.write(css, stripped)
-            Common.log_debug("[EPUB] 参照切れの @import を外しました: #{css}")
-          end
         end
 
         # 生成バリアント webp（.cache/vs/theme-images/）を dir/theme-images/ へ同梱する。
@@ -202,7 +140,7 @@ module VivlioStarter
         # 分だけを選択コピーする（キャッシュに溜まった他テーマの変種を運ばない）。
         # url は CSS 位置からの相対のため組替不要（cache 内でもパッケージ内でも
         # 'theme-images/…' のまま解決する・移設仕様 §3.2）。
-        # kindle は WebP 非対応で url() ごと sanitize_epub_css! が除去するためスキップする。
+        # kindle は WebP 非対応で、url() を含む宣言ごと Css::TargetFilter が落とすためスキップする。
         def localize_theme_variant_images!(dir, flavor)
           return if flavor == :kindle
 
@@ -301,6 +239,7 @@ module VivlioStarter
         # 未参照のままクリーン EPUB へ同梱され続けていた（Kindle は WebP 除外で偶然弾けていた）。クリーン EPUB（:epub）は
         # WebP を高画質のまま同梱維持する ── EPUB 3.3 では image/webp がコアメディアタイプ（§4）。
         def localized_stylesheet?(rel, flavor)
+          return false if rel.end_with?('.css')
           return false if rel.match?(%r{\Atwemoji/[^/]+\z})
           return keyfont_asset?(rel) if rel.start_with?('fonts/') && !embed_fonts?
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
@@ -310,7 +249,7 @@ module VivlioStarter
 
         # フォント非埋め込みの既定でも同梱する keyfont 資産（kbd キーキャップ描画用 TTF・約 90KB）。
         # 本文フォントと違いリーダー側に代替が存在せず、非同梱だと 〘Ctrl〙 が素の等幅文字へ
-        # 落ちるため、この 1 書体だけ実体を運ぶ（sanitize_epub_css! も対の @font-face を保持する）。
+        # 落ちるため、この 1 書体だけ実体を運ぶ（Css::TargetFilter も対の @font-face を残す）。
         # OTF は PDF の Type 3 回避で TTF へ変換する前の原本なので運ばない（ライセンス表記は
         # gem 同梱の stylesheets/fonts/Keyboard_font/LICENSE* を正とする）。
         def keyfont_asset?(rel)
@@ -359,7 +298,7 @@ module VivlioStarter
           # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
           mark_body_for_epub!(chapter_htmls)
           # 入口の CSS を平らにして消費者 dir の styles/ へ置き、link を付け替える（KFX は @layer を捨てる）
-          bundle_flat_css_for_epub!(chapter_htmls, base_dir)
+          bundle_flat_css_for_epub!(chapter_htmls, base_dir, flavor:)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
           strip_inline_footnote_ids_for_epub!(chapter_htmls)
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
@@ -1203,53 +1142,40 @@ end
           v[/\Aurl\(\s*["']?(.*?)["']?\s*\)\z/i, 1].to_s
         end
 
-        # 入口の CSS を平らにして EPUB へ同梱する（css-layer-restructure-spec.md §4.2・§8 の S2）。
+        # 入口の CSS を平らにして EPUB へ同梱する（css-layer-restructure-spec.md §4.2）。
         #
         # KFX は `@layer` の囲みを中身ごと捨てるので、層の付いた入口をそのまま渡せない。
-        # 入口の `@import` を解いて層の順に並べた 1 枚（Css::Flattener）を、ページの種類ごとに
+        # ページの種類ごとに、入口を平らにして出力先のフィルタを掛けた 1 枚（Css::Bundle）を
         # 消費者 dir の styles/ へ書き、章 HTML の link をその 1 枚へ付け替える。
         # 入口と book-settings.css の置き場 .cache/vs/ はパッケージルートの外なので、
-        # 付け替えないと RSC-007（参照切れ）になる。Kindle の webp url() 除去やマージンボックス除去は
-        # sanitize_epub_css! が同梱後の CSS へ適用する。
+        # 付け替えないと RSC-007（参照切れ）になる。
+        # 章の frontmatter が足した CSS（stylesheets/ の中・層の外）も、同じフィルタを掛けて
+        # styles/ の下へ写す。パッケージには stylesheets/ の CSS を運ばないためである。
         #
         # @param html_files [Array<String>] 章 HTML パスの配列
         # @param base_dir [String] 消費者 dir（平らな CSS の置き場）
+        # @param flavor [Symbol] :epub / :kindle（出力先のフィルタを選ぶ）
         # @return [Array<String>] そのままの配列
-        def bundle_flat_css_for_epub!(html_files, base_dir)
-          written = {}
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(ENTRY_HREF_PATTERN) do
-              name = Regexp.last_match(1)
-              written[name] ||= write_flat_css!(name, base_dir)
-              %(href="#{EPUB_STYLES_DIR}/#{name}.css")
+        def bundle_flat_css_for_epub!(html_files, base_dir, flavor:)
+          htmls = html_files.to_h { [it, File.read(it, encoding: 'utf-8')] }
+          html_by_kind = Hash.new { |hash, key| hash[key] = [] }
+          htmls.each { |path, html| html.scan(ENTRY_HREF_PATTERN).flatten.uniq.each { html_by_kind[it] << path } }
+
+          styles_dir = File.join(base_dir, EPUB_STYLES_DIR)
+          Css::Bundle.write_epub!(html_by_kind, target: flavor, styles_dir:, embed_fonts: embed_fonts?)
+          extras = {}
+          htmls.each do |path, html|
+            updated = html.gsub(ENTRY_HREF_PATTERN) { %(href="#{EPUB_STYLES_DIR}/#{Regexp.last_match(1)}.css") }
+            updated = updated.gsub(EXTRA_STYLESHEET_HREF_PATTERN) do
+              source = Regexp.last_match(1)
+              extras[source] ||= Css::Bundle.write_epub_extra!(source, target: flavor, styles_dir:,
+                                                                      embed_fonts: embed_fonts?)
+              %(href="#{EPUB_STYLES_DIR}/#{source}")
             end
             File.write(path, updated, encoding: 'utf-8') unless updated == html
           end
-          Common.log_success("[EPUB] 平らにした CSS を同梱しました（#{written.keys.sort.join(', ')}）")
+          Common.log_success("[EPUB] 平らにした CSS を同梱しました（#{[*html_by_kind.keys.sort, *extras.keys].join(', ')}）")
           html_files
-        end
-
-        # 1 種類の入口を平らにして消費者 dir の styles/ へ書く。
-        # @return [String] 書いたパス
-        def write_flat_css!(name, base_dir)
-          entry = Css::EntryWriter.path_for(name)
-          Common.log_warn("[EPUB] #{entry} が見つかりません。#{name} のページは CSS なしで組まれます。") unless File.exist?(entry)
-
-          dest = File.join(base_dir, EPUB_STYLES_DIR, "#{name}.css")
-          FileUtils.mkdir_p(File.dirname(dest))
-          File.write(dest, Css::Flattener.flatten(entry, rebase: method(:epub_package_url)), encoding: 'utf-8')
-          dest
-        end
-
-        # 平らな CSS（styles/ の中）から見た、パッケージの中の url。
-        # パッケージには作業ディレクトリの stylesheets/ がそのままの階層で写り（localize_assets!）、
-        # 生成キャッシュ .cache/vs/ の中のもの（theme-images/）はパッケージのルート直下に写る
-        # （localize_theme_variant_images!）。
-        # @param absolute [String] url() が指すファイルの絶対パス
-        def epub_package_url(absolute)
-          relative = absolute.delete_prefix("#{Dir.pwd}/").delete_prefix("#{Common::CACHE_DIR}/")
-          "../#{relative}"
         end
 
         # テーマ画像の url(...) 値を実ファイルパスへ解決する。
@@ -2049,7 +1975,7 @@ end
         # Techbook が PDF の Type3 対策で head に注入する :root{ --h3-marker: url(...webp) } 等は、
         # Kindle では WebP を同梱しない（localize_assets! が除外）ため参照切れになる。
         # Kindle は var() も解さずこのマーカーを描画しないので、宣言ごと除去して無害化する。
-        # sanitize_epub_css! は EPUB 内の .css ファイルが対象でインライン <style> は拾わないため、
+        # Css::TargetFilter は平らな CSS のファイルだけを扱い、インライン <style> は拾わないため、
         # ここで章 HTML の <style> ブロックを処理する。
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
@@ -3218,7 +3144,7 @@ end
         VariantFace = Data.define(:name, :weight, :path, :variants)
 
         # 書体を置く消費者 dir 内の場所と、CSS 上のファミリ名の接頭辞。
-        # 接頭辞は sanitize_epub_css! が @font-face を残す目印も兼ねる（KEPT_FACE_PATTERN）。
+        # 接頭辞は Css::TargetFilter が @font-face を残す目印も兼ねる（KEPT_FACE_PATTERN）。
         VARIANT_FONT_DIR = 'fonts'
         VARIANT_FAMILY_PREFIX = 'vs-variant-'
 
@@ -3413,58 +3339,6 @@ end
           Common.log_warn('      字形が要るなら、その字だけ画像にするか、この異体を持つ書体を typography.body.font に指定してください。')
         end
 
-        # ================================================================
-        # EPUB 用 CSS サニタイズ
-        # ================================================================
-        # PDF 用 CSS（ノンブル・柱の @page マージンボックス）をソースから消すと
-        # PDF が壊れるため、生成後の EPUB パッケージ内 CSS でのみマージンボックスを
-        # 物理的に除去して epubcheck の CSS-008 ERROR を解消する。
-        # stabilize_epub_identifier! と同型の unzip → 修正 → zip 差し替え方式
-        # （mimetype 無圧縮制約に触れず、追加依存も不要）。
-        # ================================================================
-
-        # 生成後 EPUB 内の CSS をサニタイズする。
-        # - @page マージンボックス / @footnote（CSS-008）は常に除去する。
-        # - `url(...webp)` を含む宣言は **kindle のみ**除去する（kindle は WebP 全除外による参照切れ回避。
-        #   クリーン EPUB は WebP を同梱維持するため CSS の webp url() も残す・§4。WEBP_URL_PATTERN）。
-        # - フォント非埋め込み時は @font-face も除去する（fonts/ 不同梱による RSC-007 回避）。
-        #
-        # @param epub_path [String] 対象 EPUB ファイルパス
-        # @param flavor [Symbol] :epub（WebP 維持）/ :kindle（webp url() 除去）
-        # @return [void]
-        def sanitize_epub_css!(epub_path, flavor: :epub)
-          abs_epub = File.expand_path(epub_path)
-          patterns = [MARGIN_BOX_PATTERN]
-          patterns += [WEBP_URL_PATTERN, DATA_URI_DECL_PATTERN] if flavor == :kindle
-          patterns << FONT_IMPORT_PATTERN unless embed_fonts?
-
-          Dir.mktmpdir('vs-epub-css') do |tmpdir|
-            # unzip のグロブは '*' がパス区切りも跨ぐため EPUB/*.css で全 CSS を取り出す
-            system('unzip', '-o', abs_epub, 'EPUB/*.css', '-d', tmpdir,
-                   out: File::NULL, err: File::NULL)
-
-            changed = Dir.glob(File.join(tmpdir, 'EPUB/**/*.css')).filter_map do |path|
-              css = File.read(path, encoding: 'UTF-8')
-              sanitized = patterns.inject(css) { |acc, pat| acc.gsub(pat, '') }
-              sanitized = strip_unbundled_font_faces(sanitized) unless embed_fonts?
-              next if sanitized == css
-
-              File.write(path, sanitized)
-              path.delete_prefix("#{tmpdir}/")
-            end
-
-            if changed.empty?
-              Common.log_info('[EPUB] CSS に除去対象（マージンボックス/@font-face）はありませんでした')
-              return
-            end
-
-            zip_into(abs_epub, changed, from: tmpdir)
-            Common.log_info("[EPUB] CSS をサニタイズしました（#{changed.size} ファイル）")
-          end
-        rescue StandardError => e
-          Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")
-        end
-
         # 展開先の tmpdir を基準に、指定したメンバーだけを EPUB へ差し替える。
         #
         # `Dir.chdir` は**プロセス全体**の cwd を動かすため使わない。EPUB 枝と PDF 枝を
@@ -3473,13 +3347,6 @@ end
         # 子プロセスの cwd だけを変える spawn の `chdir:` なら親は動かない。
         def zip_into(archive, members, from:)
           system('zip', '-q', archive, *members, chdir: from, out: File::NULL, err: File::NULL)
-        end
-
-        # 非埋め込み時の @font-face 除去。実体を同梱する書体——keyfont（kbd キーキャップ描画）と
-        # Kindle の異体字の 1 字書体——だけは対の @font-face を保持し、他はすべて除去する。
-        # 異体字の書体の規則まで消すと、実体だけ残って置き換えた字が親字の形に戻る。
-        def strip_unbundled_font_faces(css)
-          css.gsub(FONT_FACE_PATTERN) { |block| block.match?(KEPT_FACE_PATTERN) ? block : '' }
         end
 
         # ================================================================

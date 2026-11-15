@@ -136,6 +136,37 @@ module VivlioStarter
           end
         end
 
+        # 入口の中身を文字列で渡せる。@import は entry_path の位置から解く（ファイルは読まない）
+        def test_should_read_entry_from_given_css_relative_to_entry_path
+          files = { 'cache/entry.css' => '.on-disk { color: red; }', 'parts.css' => '.part { color: blue; }' }
+
+          with_files(files) do
+            css = %(@layer parts;\n@import url("../parts.css") layer(parts);\n)
+            pieces = Flattener.pieces('cache/entry.css', rebase: ->(path) { path }, css:)
+
+            assert_equal ['.part { color: blue; }'], pieces.map(&:text)
+          end
+        end
+
+        # 入れ子の規則（crass が読めない）は印を付けて列に残し、render は出力しない
+        def test_should_mark_nested_rules_and_leave_them_out_of_the_output
+          files = { 'entry.css' => <<~CSS }
+            .box { color: red; & p { color: blue; } }
+            @media print { .print { color: gray; & span { color: black; } } }
+            .plain { color: green; }
+          CSS
+
+          with_files(files) do
+            pieces = Flattener.pieces('entry.css', rebase: ->(path) { path })
+            css = Flattener.render(pieces)
+
+            assert_equal [true, true, false], pieces.map(&:nested)
+            refute_includes css, '.box'
+            refute_includes css, '.print'
+            assert_includes css, '.plain { color: green; }'
+          end
+        end
+
         private
 
         def with_files(files)
