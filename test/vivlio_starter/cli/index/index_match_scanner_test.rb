@@ -280,6 +280,22 @@ module VivlioStarter
           assert_includes tagged, '`[!]`', 'インラインコードの内容は保持される'
         end
 
+        # 角かっこのキー（〘[〙・〘]〙）を一行に並べても、間の `[〙・〘]` を索引の語にしない（改善案 #133）。
+        # 語にすると <dfn> に置き換わり、二つのキーの字が消える
+        def test_scan_skips_brackets_inside_keycaps
+          File.write('15-keycap.md', <<~MD)
+            # Test
+
+            〘⌘〙 + 〘[〙・〘]〙 で字下げを変える。[本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('15-keycap.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          assert_equal ['本文用語'], term_names
+          assert_includes File.read('15-keycap.md'), '〘⌘〙 + 〘[〙・〘]〙', 'キーの記法は残る'
+        end
+
         # ````（4連）で ``` を入れ子にしたコード例の中の [!] は索引語化しない。
         # フェンス長を見ないと内側 ``` で閉じたと誤判定し、コード本文を地の文として
         # 索引スキャンしてしまう（コメント強調 [!] が誤索引化される）回帰を防ぐ。

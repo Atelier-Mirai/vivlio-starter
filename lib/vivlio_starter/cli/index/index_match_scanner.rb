@@ -459,6 +459,8 @@ def process_line(line, file_basename)
   # 見える（index-html-code-protection-spec.md §1）。
   mask.protect!(Masking::HTML_INLINE_CODE)
   mask.protect!(Masking::INLINE_CODE_SPAN)
+  # キーの記法の中の角かっこ（〘[〙・〘]〙）は印ではない（改善案 #133）
+  mask.protect!(Masking::KEYCAP)
   # 数式の中のブラケット（`$$5\,[\Omega]$$` の単位）は印ではない（改善案.md #115）。
   # 数式の SVG 化が使える環境では、ここへ来る前に <img> になっている
   MathDelimiters::ALL.each { mask.protect!(it) }
@@ -670,6 +672,8 @@ end
           # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
           # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。
           mask.protect!(Masking::INLINE_CODE_SPAN)
+          # キーの名前（〘Esc〙）。語のタグが入るとキーの絵が分かれる（改善案 #133）
+          mask.protect!(Masking::KEYCAP)
           # 素のまま残った数式（SVG 化が使えない環境）。語のタグが式へ入ると組めない（改善案.md #115）
           MathDelimiters::ALL.each { mask.protect!(it) }
         end
