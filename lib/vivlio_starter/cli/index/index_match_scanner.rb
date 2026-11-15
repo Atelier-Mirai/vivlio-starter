@@ -253,6 +253,8 @@ module VivlioStarter
           # ここで一度だけ集める（markdown-notation-collision-spec.md §3）。
           @link_labels = IndexMarkup.link_labels(Masking.strip_code(content))
           @current_chapter = file_basename
+          # 実行結果の囲み（:::{.output} など）の行。印 [用語] を読まない（改善案 #136）
+          @machine_lines = IndexMarkup.machine_data_lines(content)
           narrow_terms_to_chapter(content)
 
           lines = content.lines
@@ -465,7 +467,11 @@ def process_line(line, file_basename)
   # 数式の SVG 化が使える環境では、ここへ来る前に <img> になっている
   MathDelimiters::ALL.each { mask.protect!(it) }
 
+  # 実行結果の囲みの中の [arm64-darwin27] は印ではない（改善案 #136）。辞書の語を当てる 2・3 は行う
+  literal = @machine_lines&.include?(@current_lineno)
   mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
+    next match[0] if literal
+
     term_text, yomi_raw = extract_term_and_yomi(match[1])
 
     # 他の記法が自分の構文として持つブラケット（参照リンク・タスクリスト）は

@@ -233,6 +233,31 @@ module VivlioStarter
         CGI.escapeHTML(term.to_s)
       end
 
+      # --- 機械の出力の囲みの中のブラケット -----------------------------------
+      #
+      # `:::{.output}`・`:::{.terminal}`・`:::{.showcase}` の中は、プログラムが出した文字列か
+      # 組み上がりの見本で、著者が本の索引に載せる語ではない。実行結果の `[arm64-darwin27]` を
+      # 印と読むと、角かっこが消えて索引にも載る（改善案 #136）。囲みの判定は lint が校正から
+      # 外す範囲（Lint::NotationGuard::MACHINE_DATA_CONTAINERS）と同じにし、答えを一つにする。
+
+      # 機械の出力の囲みに属する行番号（1 始まり）。照合する本文そのものに当てる
+      # （Masking.protect_code はコードブロックを目印 1 つに畳むので、原文とは行がずれる）。
+      # NotationGuard は前処理の変換器を読み込むので、読み込みの循環を避けて呼ぶときに読む。
+      # @param text [String]
+      # @return [Set<Integer>]
+      def machine_data_lines(text)
+        require_relative 'lint/notation_guard'
+        Lint::NotationGuard.machine_data_lines(text.to_s)
+      end
+
+      # 照合が機械の出力の囲みの中か。
+      # @param text [String] 照合した本文
+      # @param offset [Integer] 照合の先頭の位置
+      # @param lines [Set<Integer>] machine_data_lines の戻り
+      def in_machine_data?(text, offset, lines)
+        lines.include?(text[0...offset].count("\n") + 1)
+      end
+
       # --- 数式の中のブラケット ---------------------------------------------
       #
       # 数式は単位を角かっこで囲む（`$$R = 5\,[\Omega]$$`）し、`\[…\]` は区切りそのものが

@@ -1179,6 +1179,8 @@ module VivlioStarter
           content_without_code, = IndexMarkup.protect_math(content_without_code)
           chapter_name = File.basename(chapter_path, '.*')
           labels = IndexMarkup.link_labels(content_without_code)
+          # 実行結果の囲み（:::{.output} など）の中の [arm64-darwin27] は印ではない（改善案 #136）
+          machine = IndexMarkup.machine_data_lines(content_without_code)
 
           # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）。
           # 綴りの定義元は IndexMarkup（インライン脚注 ^[A|B] を除外する）。
@@ -1188,6 +1190,7 @@ module VivlioStarter
             next if IndexMarkup.other_notation?(::Regexp.last_match, labels)
 
             lineno = content_without_code[0...::Regexp.last_match.begin(0)].count("\n") + 1
+            next if machine.include?(lineno)
             context = extract_surrounding_context(content, term)
             terms << {
               'term' => term.strip,
@@ -1210,6 +1213,8 @@ module VivlioStarter
             line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).map { [::Regexp.last_match, lineno] }
           end
           matches.each do |match, lineno|
+            next if machine.include?(lineno)
+
             term = match[1]
             next if IndexMarkup.skip_term?(term)
             next if IndexMarkup.other_notation?(match, labels)

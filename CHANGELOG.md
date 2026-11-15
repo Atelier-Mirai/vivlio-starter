@@ -17,6 +17,12 @@
 
 ## unreleased
 
+### Added
+- `vs lint` に `accidental-index-term` を足した。`[arm64-darwin27]` のように、索引の印と読まれる角かっこを指摘する。
+
+### Fixed
+- `:::{.output}`・`:::{.terminal}` の中の `[arm64-darwin27]` が索引の印と読まれ、角かっこが消えていたのを直した。
+
 ## [1.0.1] - 2026-11-15
 
 ### Added

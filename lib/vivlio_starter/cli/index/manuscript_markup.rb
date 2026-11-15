@@ -41,7 +41,10 @@ module VivlioStarter
             # コードを空行にして行数を保つ（行番号を著者に見せるため）
             text, = IndexMarkup.protect_math(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
             labels = IndexMarkup.link_labels(text)
+            machine = IndexMarkup.machine_data_lines(text) # 実行結果の囲みの中は印ではない（改善案 #136）
             text.each_line.with_index(1).flat_map do |line, lineno|
+              next [] if machine.include?(lineno)
+
               line.to_enum(:scan, IndexMarkup::TERM_PATTERN).filter_map do
                 "#{File.basename(path, '.md')}:#{lineno}" if markup_of?(::Regexp.last_match, term, labels)
               end
@@ -57,9 +60,12 @@ module VivlioStarter
             protected_text, spans = Masking.protect_code(original)
             protected_text, maths = IndexMarkup.protect_math(protected_text)
             labels = IndexMarkup.link_labels(protected_text)
+            machine = IndexMarkup.machine_data_lines(protected_text) # 実行結果の囲みの中は触らない（改善案 #136）
             count = 0
             # タスクリストの見分けは行頭からの並びを見るので、行ごとに置き換える
-            rewritten = protected_text.each_line.map do |line|
+            rewritten = protected_text.each_line.with_index(1).map do |line, lineno|
+              next line if machine.include?(lineno)
+
               line.gsub(IndexMarkup::TERM_PATTERN) do
                 match = ::Regexp.last_match
                 next match[0] unless markup_of?(match, term, labels)

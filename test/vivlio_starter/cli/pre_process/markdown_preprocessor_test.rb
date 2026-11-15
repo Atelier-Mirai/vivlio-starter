@@ -55,6 +55,13 @@ module VivlioStarter
           assert_equal '標準入出力について。', strip('[標準入出力|ひょうじゅん]について。')
         end
 
+        # 実行結果の囲みの中の角かっこは印ではないので、索引が無効でも外さない（改善案 #136）
+        def test_should_keep_brackets_inside_output_block
+          source = "[Ruby]は言語です。\n\n:::{.output}\nruby 4.0.9 +PRISM [arm64-darwin27]\n:::\n"
+
+          assert_equal "Rubyは言語です。\n\n:::{.output}\nruby 4.0.9 +PRISM [arm64-darwin27]\n:::\n", strip(source)
+        end
+
         # タグの形をした語を素通しすると生 HTML として VFM に渡り、本物の見出しになる
         def test_should_escape_tag_shaped_term_when_expanding
           assert_equal '&lt;h1&gt;は、見出しタグです。', strip('[<h1>]は、見出しタグです。')
