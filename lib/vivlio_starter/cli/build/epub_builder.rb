@@ -298,7 +298,7 @@ module VivlioStarter
           # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
           mark_body_for_epub!(chapter_htmls)
           # 入口の CSS を平らにして消費者 dir の styles/ へ置き、link を付け替える（KFX は @layer を捨てる）
-          bundle_flat_css_for_epub!(chapter_htmls, base_dir, flavor:)
+          sheets = bundle_flat_css_for_epub!(chapter_htmls, base_dir, flavor:)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
           strip_inline_footnote_ids_for_epub!(chapter_htmls)
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
@@ -360,13 +360,17 @@ module VivlioStarter
             # 回転テーブルを PDF ページの画像へ差し替える（KFX は transform も
             # position:absolute も解さない）。PDF 枝の成果物を待つ点だけが他と違う。
             replace_rotate_tables_for_kindle!(chapter_htmls)
-            # 異体字セレクタ付きの字を 1 字書体で出す（KFX はセレクタを読まない）。
-            # ほかの書き換えでテキストノードが動き終わった後に置く。
-            apply_variant_glyph_fonts_for_kindle!(chapter_htmls, base_dir)
           end
 
-          # 層を外すと勝ち負けが変わる組を --log=debug で一覧にする。書き換えが全部終わった DOM で見る
-          report_flat_css_inversions!(chapter_htmls, flavor:)
+          # --- Phase: 平らな CSS の仕上げ（書き換えが全部終わった DOM で、要素ごとに判定する）---
+          # custom.css の宣言を、平らな CSS でも PDF と同じに勝たせる。判定の後に CSS を書き直すので、
+          # 異体字の規則を CSS の末尾へ足すより前に置く
+          sheets = prioritize_author_css_for_epub!(chapter_htmls, sheets, flavor:)
+          # 異体字セレクタ付きの字を 1 字書体で出す（KFX はセレクタを読まない）。
+          # ほかの書き換えでテキストノードが動き終わった後に置く。
+          apply_variant_glyph_fonts_for_kindle!(chapter_htmls, base_dir) if flavor == :kindle
+          # 層を外すと勝ち負けが変わる組を --log=debug で一覧にする
+          report_flat_css_inversions!(chapter_htmls, sheets, flavor:)
 
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ・flavor: #{flavor}）")
@@ -1158,14 +1162,15 @@ end
         # @param html_files [Array<String>] 章 HTML パスの配列
         # @param base_dir [String] 消費者 dir（平らな CSS の置き場）
         # @param flavor [Symbol] :epub / :kindle（出力先のフィルタを選ぶ）
-        # @return [Array<String>] そのままの配列
+        # @return [Hash{String => Css::Bundle::Sheet}] 付け替えた link の href → 書いた CSS
+        #   （HTML の書き換えの後の判定 prioritize_author_css_for_epub! に渡す）
         def bundle_flat_css_for_epub!(html_files, base_dir, flavor:)
           htmls = html_files.to_h { [it, File.read(it, encoding: 'utf-8')] }
           html_by_kind = Hash.new { |hash, key| hash[key] = [] }
           htmls.each { |path, html| html.scan(ENTRY_HREF_PATTERN).flatten.uniq.each { html_by_kind[it] << path } }
 
           styles_dir = File.join(base_dir, EPUB_STYLES_DIR)
-          Css::Bundle.write_epub!(html_by_kind, target: flavor, styles_dir:, embed_fonts: embed_fonts?)
+          written = Css::Bundle.write_epub!(html_by_kind, target: flavor, styles_dir:, embed_fonts: embed_fonts?)
           extras = {}
           htmls.each do |path, html|
             updated = html.gsub(ENTRY_HREF_PATTERN) { %(href="#{EPUB_STYLES_DIR}/#{Regexp.last_match(1)}.css") }
@@ -1178,24 +1183,35 @@ end
             File.write(path, updated, encoding: 'utf-8') unless updated == html
           end
           Common.log_success("[EPUB] 平らにした CSS を同梱しました（#{[*html_by_kind.keys.sort, *extras.keys].join(', ')}）")
-          html_files
+          written.to_h { |kind, sheet| ["#{EPUB_STYLES_DIR}/#{kind}.css", sheet] }
+                 .merge(extras.to_h { |source, sheet| ["#{EPUB_STYLES_DIR}/#{source}", sheet] })
         end
 
-        # 付け替えた後の、平らな CSS への link（bundle_flat_css_for_epub! が書く）
-        STYLES_HREF_PATTERN = %r{href="#{EPUB_STYLES_DIR}/([a-z-]+)\.css"}
+        # 付け替えた後の、平らな CSS への link（bundle_flat_css_for_epub! が書く。章が足した CSS を含む）
+        STYLES_HREF_PATTERN = %r{href="(#{EPUB_STYLES_DIR}/[^"]+\.css)"}
+
+        # custom.css などの層の外の宣言のうち、平らな CSS で vs の規則に負けるものに !important を付ける
+        # （css-layer-restructure-spec.md §7.1）。要素ごとの判定なので、HTML の書き換え（vs-kindle の印・
+        # Kindle の style 属性など）が全部終わった後に呼ぶ
+        # @param sheets [Hash{String => Css::Bundle::Sheet}] bundle_flat_css_for_epub! の戻り値
+        # @return [Hash{String => Css::Bundle::Sheet}] 付けた後の CSS
+        def prioritize_author_css_for_epub!(html_files, sheets, flavor:)
+          Css::Bundle.prioritize_author_css!(sheets, linked_styles(html_files), target: flavor)
+        end
+
+        # HTML ごとの、読む平らな CSS の href（link の順）
+        def linked_styles(html_files)
+          html_files.to_h { [it, File.read(it, encoding: 'utf-8').scan(STYLES_HREF_PATTERN).flatten.uniq] }
+        end
 
         # 層を外すと勝ち負けが変わる組を --log=debug で一覧にする（css-layer-restructure-spec.md §4.3）。
         # HTML の書き換え（vs-kindle の印・合成画像・コードの行ブロックなど）が全部終わった後の DOM で
         # 判定する。平らにする段（bundle_flat_css_for_epub!）ではまだ印が付いておらず、Kindle の規則が
         # どの要素にも当たらない
-        def report_flat_css_inversions!(html_files, flavor:)
+        def report_flat_css_inversions!(html_files, sheets, flavor:)
           return unless Common.current_log_level >= Common::LEVELS['debug']
 
-          html_by_kind = Hash.new { |hash, key| hash[key] = [] }
-          html_files.each do |path|
-            File.read(path, encoding: 'utf-8').scan(STYLES_HREF_PATTERN).flatten.uniq.each { html_by_kind[it] << path }
-          end
-          Css::Bundle.report_epub_inversions!(html_by_kind, target: flavor, embed_fonts: embed_fonts?)
+          Css::Bundle.report_epub_inversions!(sheets, linked_styles(html_files), target: flavor)
         end
 
         # テーマ画像の url(...) 値を実ファイルパスへ解決する。

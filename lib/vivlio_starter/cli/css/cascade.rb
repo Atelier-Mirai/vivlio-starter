@@ -29,8 +29,11 @@ module VivlioStarter
         #   key      同じ宣言を別の版の列と突き合わせる鍵（@media の文脈・選択子・名前・値・出現の回数）
         #   rank     層の位置（EntryWriter::LAYERS の添字。層の外は UNLAYERED）
         #   order    平らにした列の中の位置 [規則の位置, 規則の中の宣言の位置]
+        #   pos      規則の文字列（Piece#text）の中で、宣言の値が終わる位置。平らな CSS で宣言に
+        #            !important を足す（AuthorPriority）ときの差し込み位置。選択子の並びを分けた宣言どうしは
+        #            同じ位置を持つ
         Decl = Data.define(:key, :selector, :subject, :specificity, :longhands, :property, :value,
-                           :important, :rank, :order, :source)
+                           :important, :rank, :order, :source, :pos)
 
         # 層の外の位置（どの層よりも強い）
         UNLAYERED = EntryWriter::LAYERS.size
@@ -154,8 +157,19 @@ module VivlioStarter
           Decl.new(key: [*base, seen[base] += 1], selector:, subject: Selector.subject_of(selector),
                    specificity: Selector.specificity(selector), longhands: longhands(prop[:name]),
                    property: prop[:name].downcase, value: base[3], important: prop[:important],
-                   rank: layer_rank(piece.layer), order:, source: piece.source)
+                   rank: layer_rank(piece.layer), order:, source: piece.source, pos: value_end(prop))
         end
+
+        # 宣言の値の終わり（!important と後ろの空白を除く）。crass の字句の位置は、@media の中を
+        # 読み直しても、元の文字列の中の位置のまま
+        def value_end(prop)
+          tokens = prop[:tokens].reject { it[:node] == :whitespace || it[:node] == :comment }
+          tokens = tokens[0...-2] if prop[:important] && tokens.size >= 2
+          tokens.empty? ? nil : token_end(tokens.last)
+        end
+
+        # 字句の終わりの位置。関数（calc(…)）と括弧の塊は位置を持たないので、中の最後の字句で求める
+        def token_end(token) = token[:raw] ? token[:pos] + token[:raw].length : token_end(token[:tokens].last)
       end
     end
   end

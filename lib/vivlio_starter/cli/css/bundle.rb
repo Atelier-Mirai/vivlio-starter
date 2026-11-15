@@ -12,8 +12,11 @@
 #       → TargetFilter（出力先が扱えない規則を落とす）
 #       → LiteralResolver（Kindle だけ。var()・calc()・color-mix()・:is() を解く）
 #       → Flattener.render
-#   InversionCheck（--log=debug のときだけ）は、HTML の書き換えが終わった後に
-#   report_epub_inversions! が同じ規則の列で行う。
+#   書いた規則の列は Sheet として返す。HTML の書き換えが終わった後に、同じ列で次の二つを行う。
+#     prioritize_author_css!   custom.css などの層の外の宣言を、平らな CSS でも勝たせる（AuthorPriority・§7.1）
+#     report_epub_inversions!  層を外すと勝ち負けが変わる組の一覧（InversionCheck・--log=debug のときだけ）
+#   どちらも要素ごとの判定なので、vs-kindle の印・合成画像・コードの行ブロックなどが入った後の
+#   HTML でないと、Kindle の規則が当たらない。
 #
 # 三つの形（§4.2）:
 #   layered       pdf・print_pdf。入口をそのまま読み、ここでは何も作らない
@@ -34,12 +37,19 @@ require_relative 'target_filter'
 require_relative 'cascade'
 require_relative 'inversion_check'
 require_relative 'literal_resolver'
+require_relative 'author_priority'
 
 module VivlioStarter
   module CLI
     module Css
       # 平らな CSS の生成と書き出し
       module Bundle
+        # 書き出した平らな CSS 1 枚。pieces は書いた規則の列（HTML の書き換えの後の判定に使う）
+        Sheet = Data.define(:dest, :pieces)
+
+        # 著者に見せる出力先の名前
+        TARGET_LABELS = { epub: 'EPUB', kindle: 'Kindle' }.freeze
+
         # 確かめのために PDF の CSS の形を選ぶ環境変数
         FORM_ENV = 'VS_CSS_FORM'
 
@@ -78,7 +88,7 @@ module VivlioStarter
         # @param target [Symbol] :epub / :kindle
         # @param styles_dir [String] 平らな CSS の置き場（消費者 dir の styles/）
         # @param embed_fonts [Boolean] EPUB に書体の実体を入れるか
-        # @return [Hash{String => String}] 入口の名前 → 書いたパス
+        # @return [Hash{String => Sheet}] 入口の名前 → 書いた CSS
         def write_epub!(html_by_kind, target:, styles_dir:, embed_fonts:)
           reported = {}
           html_by_kind.to_h do |kind, html_files|
@@ -88,33 +98,59 @@ module VivlioStarter
             pieces = literalize(pieces, target:, scope: kindle_scope(html_files), reported:) if target == :kindle
             FileUtils.mkdir_p(styles_dir)
             File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
-            [kind, dest]
+            [kind, Sheet.new(dest:, pieces:)]
           end
+        end
+
+        # 層の外の宣言（custom.css・章が足した CSS）のうち、平らな CSS で vs の規則に負けるものに
+        # !important を付けて、その CSS を書き直す（css-layer-restructure-spec.md §7.1）。
+        # 付けられなかった宣言は、場所を示して 🟡 で知らせる（vs の選択子は見せない・§4.5）。
+        # HTML の書き換えが全部終わった後に呼ぶ（Kindle の規則は vs-kindle の印が付いてから当たる）。
+        # @param sheets [Hash{String => Sheet}] HTML の link の href → 書いた CSS
+        # @param html_sheets [Hash{String => Array<String>}] HTML のパス → 読む CSS の href（link の順）
+        # @return [Hash{String => Sheet}] 付けた後の CSS（付けなかったものはそのまま）
+        def prioritize_author_css!(sheets, html_sheets, target:)
+          pieces = sheets.transform_values(&:pieces)
+          return sheets unless pieces.each_value.any? { |list| list.any? { AuthorPriority.author_piece?(it) } }
+
+          require 'nokogiri'
+          documents = html_sheets.map do |path, keys|
+            AuthorPriority::Document.new(doc: Nokogiri::HTML5(File.read(path, encoding: 'utf-8'), max_errors: 0),
+                                         path:, sheets: keys)
+          end
+          result = AuthorPriority.apply(pieces, documents)
+          result.promoted.each do |key, count|
+            File.write(sheets.fetch(key).dest, Flattener.render(result.sheets.fetch(key)), encoding: 'utf-8')
+            Common.log_debug("[css] #{target}: #{key} の層の外の宣言 #{count} に !important を付けました（§7.1）")
+          end
+          # 付けた宣言に当たる要素の style 属性にも !important を付けた HTML（style 属性が勝つのを保つ）
+          result.restyled.each do |document|
+            File.write(document.path, document.doc.to_html(encoding: 'UTF-8'), encoding: 'utf-8')
+            Common.log_debug("[css] #{target}: #{File.basename(document.path)} の style 属性に !important を付けました（§7.1）")
+          end
+          warn_unresolved_author_css(result.unresolved, target)
+          sheets.to_h { |key, sheet| [key, sheet.with(pieces: result.sheets.fetch(key))] }
         end
 
         # --log=debug のとき、EPUB・Kindle の HTML で要素ごとの判定（InversionCheck.inversions）を行い、
         # 層を外すと勝ち負けが変わる組と、層の中の !important を一覧にする。
-        # HTML の書き換え（vs-kindle の印・合成画像・コードの行ブロックなど）が全部終わった後に呼ぶ。
-        # 平らな CSS を書く段（write_epub!）では、HTML にまだ印が付いておらず、Kindle の規則が当たらない
-        # @param html_by_kind [Hash{String => Array<String>}] 入口の名前 → その入口を読む HTML
-        def report_epub_inversions!(html_by_kind, target:, embed_fonts:)
+        # HTML の書き換え（vs-kindle の印・合成画像・コードの行ブロックなど）が全部終わった後に、
+        # 書いた CSS の規則の列（prioritize_author_css! の後のもの）で判定する
+        # @param sheets [Hash{String => Sheet}] HTML の link の href → 書いた CSS
+        # @param html_sheets [Hash{String => Array<String>}] HTML のパス → 読む CSS の href
+        def report_epub_inversions!(sheets, html_sheets, target:)
           return unless Common.current_log_level >= Common::LEVELS['debug']
 
-          html_by_kind.each do |kind, html_files|
-            pieces = Flattener.pieces(EntryWriter.path_for(kind), rebase: ->(path) { path },
-                                                                  css: EntryWriter.render(kind, target:))
-            pieces = TargetFilter.apply(pieces, target:, embed_fonts:)
-            if target == :kindle
-              pieces = LiteralResolver.resolve(pieces.reject(&:nested), scope: kindle_scope(html_files)).pieces
-            end
-            report_inversions(kind, target, pieces, html_files)
+          sheets.each do |key, sheet|
+            html_files = html_sheets.select { |_, keys| keys.include?(key) }.keys
+            report_inversions(File.basename(key, '.css'), target, sheet.pieces, html_files) unless html_files.empty?
           end
         end
 
         # frontmatter の `stylesheet:` で章が足した CSS（入口の後に層の外で読む）を、
         # 同じフィルタを掛けて styles/ の下へ書く。
         # @param source [String] 作業ディレクトリからの相対（stylesheets/…）
-        # @return [String] 書いたパス
+        # @return [Sheet] 書いた CSS
         def write_epub_extra!(source, target:, styles_dir:, embed_fonts:)
           dest = File.join(styles_dir, source)
           rebase = package_rebase(dest, File.dirname(styles_dir))
@@ -128,7 +164,7 @@ module VivlioStarter
           end
           FileUtils.mkdir_p(File.dirname(dest))
           File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
-          dest
+          Sheet.new(dest:, pieces:)
         end
 
         # 入口を平らにし、出力先のフィルタを掛けた規則の列。
@@ -229,6 +265,47 @@ module VivlioStarter
           Common.log_debug("[css] #{kind}（#{target}）: 層を外すと勝ち負けが変わる組 #{pairs.size}")
           pairs.each { Common.log_debug("[css]   #{InversionCheck.describe(it)}") }
           unreadable.each { Common.log_debug("[css]   判定できない選択子（当たらないものとして扱った）: #{it}") }
+        end
+
+        # !important を付けられなかった層の外の宣言を、場所と直し方を添えて知らせる。
+        # 同じ宣言は、ページの種類をまたいで一度だけ知らせる
+        def warn_unresolved_author_css(unresolved, target)
+          label = TARGET_LABELS.fetch(target, target.to_s)
+          reported = {}
+          unresolved.each do |item|
+            decl = item.decl
+            rule = "#{decl.selector} { #{decl.property}: #{decl.value} }"
+            next if reported[[decl.source, rule]]
+
+            reported[[decl.source, rule]] = true
+            place = "#{page_name(item.path)} の <#{item.element.name}#{%( class="#{item.element['class']}") if item.element['class']}>"
+            detail = case item
+                     in { rival: { rank: Cascade::UNLAYERED } => rival }
+                       ["📍 #{place} には、#{relative(rival.source)} の「#{rival.selector} { #{rival.property}: " \
+                        "#{rival.value} !important }」も当たります",
+                        '→ 二つの選択子が同じ要素に当たらないよう、どちらかを絞ってください']
+                     else
+                       ["📍 #{place}",
+                        "→ この要素の #{decl.property} は #{label} では変えられません。PDF だけの指定として残すか、削除してください"]
+                     end
+            Common.log_warn("#{relative(decl.source)}#{line_label(decl)}の「#{rule}」は #{label} では効きません", detail:)
+          end
+        end
+
+        # 規則の書かれた行（「（12 行目）」）。注記の中の書き方の例には当てない。見つからなければ空
+        def line_label(decl)
+          return '' unless File.file?(decl.source)
+
+          text = File.read(decl.source, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m) { it.gsub(/[^\n]/, ' ') }
+          pattern = /(?:\A|[\s,}])#{Regexp.escape(decl.selector).gsub('\\ ', '\\s+')}\s*[,{]/
+          index = text =~ pattern
+          index ? "（#{text[0..index].count("\n") + 1} 行目）" : ''
+        end
+
+        # HTML の名前を、著者が書いた原稿の名前にする（原稿の無いページは HTML の名前のまま）
+        def page_name(path)
+          source = File.join(Common::CONTENTS_DIR, "#{File.basename(path, '.html')}.md")
+          File.file?(source) ? source : File.basename(path)
         end
 
         def relative(path) = path.delete_prefix("#{Dir.pwd}/")

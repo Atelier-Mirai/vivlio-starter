@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1・S3-2・S3-3a は 2026-11-15 に完了・実装記録は §10。残りは S3-3b）
+> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1・S3-2・S3-3a・S3-3b は 2026-11-15 に完了・実装記録は §10。残りは S3-4）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -347,7 +347,7 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 ### 7.1 `custom.css`
 
 - 層の外に置くので、`custom.css` の規則は、詳細度に関係なく vs とテーマのどの規則にも勝つ。1.x では、詳細度の高い vs の規則には `custom.css` が負けることがあった。2.0 では負けなくなる。
-- EPUB と Kindle が読む平らな CSS でも同じに勝たせる。平らな CSS で vs の規則に負ける `custom.css` の宣言にだけ、生成が `!important` を付ける（著者の `custom.css` は書き換えない。層の中に `!important` は無いので、付けた宣言は必ず勝つ）。付けた結果、`custom.css` の宣言どうしの勝ち負けが変わる要素があれば、層ありで勝つ側にも付け、全部の要素でそろうまで繰り返す。著者が自分で `!important` を付けた宣言と取り合う場合と、`style` 属性で同じプロパティを指定している要素にも当たる場合は付けず、「EPUB と Kindle では効かない」と場所だけを 🟡 で知らせる。S3-3 で入れる（`v2-flat-cascade-consultation.md` §5.7）。
+- EPUB と Kindle が読む平らな CSS でも同じに勝たせる。平らな CSS で vs の規則に負ける `custom.css` の宣言にだけ、生成が `!important` を付ける（著者の `custom.css` は書き換えない。層の中に `!important` は無いので、付けた宣言は必ず勝つ）。付けた結果、`custom.css` の宣言どうしの勝ち負けが変わる要素があれば、層ありで勝つ側にも付け、全部の要素でそろうまで繰り返す。著者が自分で `!important` を付けた宣言（と vs の `!important`）と取り合う場合は付けず、「EPUB（Kindle）では効かない」と場所だけを 🟡 で知らせる。付ける宣言が、`style` 属性で同じプロパティを指定している要素にも当たる場合は、その要素の `style` 属性の同じプロパティにも `!important` を付ける（`style` 属性が勝つという PDF の勝ち負けを保つ。2026-11-15 ユーザー決定。§10.9 の「仕様と違えたこと」の 1）。S3-3b で入れた（`v2-flat-cascade-consultation.md` §5.7）。
 - 1.x で「効かないので `!important` を付けた」規則は、付けたままでも同じに働く。
 - 逆に、1.x で詳細度が足りずに効いていなかった規則が、2.0 で効くようになる。`custom.css` に、効いていない規則を残している本では、見た目が変わる。`v2-migration-plan.md` §5 の移行の手順で、移行の前後の PDF を比べて確かめる。
 
@@ -757,3 +757,40 @@ S3-3a の出力（`check/s3-3a-b1/`）と比べた。出力は `runs/apx-b1`・`
 | PDF の画素 | 閲覧用 283 ページのうち 20 ページ（印刷用も同じ 20 ページ）が違い、どれも付録 C〜F のページ。目で見て、強調とコラムの枠・タブ・地がテーマ色から付録の色に変わっただけで、組み方は同じ |
 | Kindle の中間生成物 | `computedstyle` の差 0。`style` の差 61 件は、付録の 3 ファイル（92・93・95）の `strong` の色と囲みの枠・地の色が緑から付録の色（cyan）に変わったものだけ |
 | `rake test`・`rake test:standard`・`rake test:layout` | 4,325 件・4,325 件・7 件とも失敗 0（件数は S3-3a と同じ）。rubocop の違反 0。雛形を同期した |
+
+### 10.9 S3-3b `custom.css` を平らな CSS でも勝たせる（2026-11-15）
+
+§7.1 と `v2-flat-cascade-consultation.md` §5.7 の生成。S3-3 の完了の条件の (f)。
+
+#### 作ったもの
+
+- `lib/vivlio_starter/cli/css/author_priority.rb`（`Css::AuthorPriority`）: 組み上がった HTML の要素ごとに、層の外の宣言（`custom.css`・章の frontmatter が足した CSS）が当たる要素・ロングハンド・媒体・疑似要素の組で、当たる宣言の全部から層ありで勝つ宣言と平らな CSS で勝つ宣言を求める（§4.3 の要素ごとの判定と同じ比べ方。`InversionCheck` の `matched`・`in_media?`・`meaning` を使う）。層ありで勝つのが層の外の宣言で、平らな CSS では負けるとき、その宣言に `!important` を付ける。付けた結果、層の外の宣言どうしの勝ち負けが変わる要素があれば層ありで勝つ側にも付け、変わらなくなるまで繰り返す。付けた宣言が `!important` の宣言（著者が付けたもの・vs の h4 の印）に勝ってしまうときは付けるのをやめ、付けられない宣言として返す。読む CSS の組（章が足した CSS を読む章は、本文の束と足した CSS の 2 枚）ごとに判定し、付ける場所は「CSS の鍵・規則の位置・値の終わりの位置」で指す。
+- `Css::Cascade::Decl#pos`: 規則の文字列の中で、宣言の値が終わる位置。crass の字句の位置は `@media` の中を読み直しても元の文字列の中の位置のままなので、そこへ ` !important` を差し込む。関数（`calc(…)`）は字句の位置を持たないので、中の最後の字句で求める。
+- `Css::Bundle`: `write_epub!`・`write_epub_extra!` は、書いたパスと規則の列（`Sheet`）を返す。`prioritize_author_css!` が、その列と書き換えの終わった HTML で `AuthorPriority` を呼び、付けた CSS だけを書き直す。層の外の宣言が無ければ何もしない。付けられなかった宣言は 🟡 で、`custom.css` の行・原稿の場所・取り合う著者の `!important` の宣言を示す（vs の選択子は見せない）。`report_epub_inversions!` は、組み直さずに同じ列（付けた後のもの）で判定する。
+- `EpubBuilder`: `bundle_flat_css_for_epub!` が `Sheet` の表（`styles/…` の href ごと）を返し、HTML の書き換え（Kindle 専用のものを含む）が全部終わった後で `prioritize_author_css_for_epub!` を呼ぶ。Kindle の異体字の 1 字書体（平らな CSS の末尾へ規則を足す）は、その後へ移した。`STYLES_HREF_PATTERN` は章が足した CSS の href も拾う。
+- テスト: `css/author_priority_test.rb`（6 件: 負ける宣言にだけ付ける・custom.css が無いか負けなければ変えない・custom.css どうしの繰り返し・著者の `!important` と取り合うものは付けない・style 属性にも付ける・疑似要素と章が足した CSS）。`bundle_test.rb` に 4 件（書き直す・負けなければ書き直さない・🟡 の文言と場所・style 属性を直した HTML を書き直す）を足し、要素ごとの判定のテストを `Sheet` で呼ぶ形に直した。
+
+#### 仕様と違えたこと
+
+1. **`style` 属性に当たる宣言も付け、要素の `style` 属性の同じプロパティにも `!important` を付ける（2026-11-15 ユーザー決定）。** §5.7 は「付ける宣言が `style` 属性で同じプロパティを指定している要素にも当たるときは、付けずに 🟡」としていた。確かめ (f) で、Kindle の写真の並び（`book-card`・`img-text`・`sideimage-right`）を vs が表に組み替えるときに付ける `style="width: 100%…"` に `table { inline-size: 80% }` が当たり、章の束では、ふつうの表（`.long-table` の 3 個）にも付かなくなった。この表は PDF にも原稿にも無いので、🟡 の直し方は著者に打てない。`style` 属性の `!important` は CSS のどの `!important` にも勝つので、`style` 属性が勝つという PDF の勝ち負けをそのまま保てる。HTML の書き換えは EPUB と Kindle 用の HTML だけで、PDF には響かない。
+2. **付けられない場合の 🟡 は、出力先ごとに出す。** §5.7 は「EPUB と Kindle では効かない」の一文としていた。EPUB と Kindle は別の枝で組み、片方だけで起きる（vs の h4 の印は Kindle だけ）ので、「Kindle では効きません」のように出力先の名前を出す。
+
+#### 確かめた結果
+
+比べる相手は S3-3a の後の出力（`../vivlio-starter-v2-baseline/check/apx-b1/`）。S3-3b の出力は `runs/s3-3b-*`・`check/s3-3b-*`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| `custom.css` が空の本（B1）の EPUB・Kindle 用 EPUB | `styles/` の CSS 8 枚とも、どちらも同一。XHTML の違いは OPF の日時と合成画像の名前のハッシュだけ |
+| B1 の PDF の画素 | 閲覧用 283 ページ・印刷用 281 ページとも、違うページ 0 |
+| B1 の Kindle の中間生成物 | 26,335 要素で、`computedstyle`・`style` とも差 0 |
+| B1 のビルド | 🔴 0・🟡 0 |
+| (f) `custom.css` に `h2 { margin-block-start: 2em; }` と `table { inline-size: 80%; }` を書いた写し（付録は簡素な見出し・`.long-table` は 7 ファイルにある）・EPUB | 組み上がった HTML に Chromium を当て（PDF は層ありの入口を print で、EPUB は平らな CSS を screen で）、EPUB に入るページの h2 175 個がすべて `margin-top` = 字の大きさの 2 倍で PDF と同じ。表 130 個のうち 127 個が親の内側の幅の 80% で PDF と同じ。残る 3 個は `.text-table` の表で、勝つ宣言はどちらも 80% だが、PDF は表を横並びの片側（中身で幅の決まる flex の列）に置くので Chromium では % が循環して幅 0 になる（EPUB は上下に積む）。`custom.css` が空の B1 では、表 41 個が PDF と食い違っていた |
+| (f) Kindle の中間生成物 | h2 177 個の `style` がすべて `margin-top:2em`。表 136 個のうち 130 個が `width:80%`、6 個は vs が組み替えた写真の並びの表で `width:100%`（`style` 属性の値のまま） |
+| (f) のビルド（`--log=debug`） | 🔴 0・🟡 0。EPUB・Kindle とも、要素ごとの判定で残る組は全部の種類で 0（直す前は Kindle の章の束に `.long-table table` の 1 組）。`!important` を付けたのは章・付録・索引の束で 5 か所（Kindle も 5 か所）と、Kindle の 2 ファイルの `style` 属性 |
+| (f) の Kindle の変換 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| (f) の EPUBCheck | EPUB・Kindle 用 EPUB とも、エラー・警告 0 |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,335 件・4,335 件・7 件とも失敗 0（`rake test` のスキップ 1 は S3-3a と同じ。足した 10 件で、4,325 から定義した数と実行された数が合う）。rubocop の違反 0 |
+| Kindle Previewer の画面 | 撮っていない。中間生成物の `style` に、付けた値（80%・2em）と `style` 属性の値（100%）がそのまま出ているため |
+| 単章のビルド・`vs preflight` | 走らせていない。変えたのは EPUB と Kindle の枝だけで、単章のビルドと preflight は通らない |
+| 雛形の同期 | 不要（`stylesheets/` を変えていない） |

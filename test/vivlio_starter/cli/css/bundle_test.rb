@@ -31,7 +31,7 @@ module VivlioStarter
 
             written = Bundle.write_epub!({ 'chapter' => [] }, target: :kindle, styles_dir: 'pkg/styles',
                                                               embed_fonts: false)
-            css = File.read(written.fetch('chapter'))
+            css = File.read(written.fetch('chapter').dest)
 
             assert_includes css, 'url("../stylesheets/images/box.png")'
             assert css.index('.box {') < css.index('body.vs-kindle .box'), 'target 層は部品の後'
@@ -46,7 +46,7 @@ module VivlioStarter
             written = Bundle.write_epub!({ 'chapter' => [] }, target: :epub, styles_dir: 'pkg/styles',
                                                               embed_fonts: false)
 
-            refute_includes File.read(written.fetch('chapter')), 'vs-kindle'
+            refute_includes File.read(written.fetch('chapter').dest), 'vs-kindle'
           end
         end
 
@@ -79,8 +79,8 @@ module VivlioStarter
               written = Bundle.write_epub!({ 'chapter' => [], 'appendix' => [] }, target: :epub,
                                                                                   styles_dir: 'pkg/styles', embed_fonts: false)
 
-              refute_includes File.read(written.fetch('chapter')), '.box'
-              assert_includes File.read(written.fetch('chapter')), '.ok { color: green; }'
+              refute_includes File.read(written.fetch('chapter').dest), '.box'
+              assert_includes File.read(written.fetch('chapter').dest), '.ok { color: green; }'
             end
 
             assert_equal 1, warnings.size, '種類をまたいで一度だけ知らせる'
@@ -96,19 +96,103 @@ module VivlioStarter
             write('stylesheets/parts/box.css', %(div.box p { text-align: center; }\n))
             write('stylesheets/targets/kindle.css', %(.vs-kindle p { text-align: right; }\n))
             write('chapter.html', '<html><body class="vs-epub vs-kindle"><div class="box"><p>本文</p></div></body></html>')
+            sheets = Bundle.write_epub!({ 'chapter' => ['chapter.html'] }, target: :kindle, styles_dir: 'pkg/styles',
+                                                                           embed_fonts: false)
+                           .transform_keys { "styles/#{it}.css" }
+            html_sheets = { 'chapter.html' => ['styles/chapter.css'] }
             messages = []
 
             Common.stub(:log_debug, ->(message, **) { messages << message }) do
-              Bundle.report_epub_inversions!({ 'chapter' => ['chapter.html'] }, target: :kindle, embed_fonts: false)
+              Bundle.report_epub_inversions!(sheets, html_sheets, target: :kindle)
               assert_empty messages, 'debug でなければ何もしない'
 
               Common.stub(:current_log_level, Common::LEVELS['debug']) do
-                Bundle.report_epub_inversions!({ 'chapter' => ['chapter.html'] }, target: :kindle, embed_fonts: false)
+                Bundle.report_epub_inversions!(sheets, html_sheets, target: :kindle)
               end
             end
 
             assert_includes messages, '[css] chapter（kindle）: 層を外すと勝ち負けが変わる組 1'
             assert(messages.any? { it.include?('.vs-kindle p { text-align: right }') && it.include?('div.box p') })
+          end
+        end
+
+        # custom.css の宣言が平らな CSS で vs の規則に負けるときだけ、書いた CSS を !important 付きで書き直す
+        # （css-layer-restructure-spec.md §7.1）。負けない本では CSS を書き直さない
+        def test_should_rewrite_flat_css_so_that_custom_css_wins
+          with_project do
+            write('stylesheets/parts/heading.css', %(body.simple h2 { margin-top: 0; }\n))
+            write('stylesheets/custom.css', %(/* h2 { color: red; } は例 */\n\nh2 {\n  margin-top: 2em;\n}\n))
+            write('chapter.html', '<html><body class="simple"><h2>見出し</h2></body></html>')
+            sheets = Bundle.write_epub!({ 'chapter' => ['chapter.html'] }, target: :epub, styles_dir: 'pkg/styles',
+                                                                           embed_fonts: false)
+                           .transform_keys { "styles/#{it}.css" }
+
+            updated = Bundle.prioritize_author_css!(sheets, { 'chapter.html' => ['styles/chapter.css'] }, target: :epub)
+
+            assert_includes File.read('pkg/styles/chapter.css'), 'margin-top: 2em !important;'
+            assert_includes updated.fetch('styles/chapter.css').pieces.last.text, '2em !important'
+          end
+        end
+
+        def test_should_keep_flat_css_when_custom_css_does_not_lose
+          with_project do
+            write('stylesheets/parts/heading.css', %(h2 { margin-top: 0; }\n))
+            write('stylesheets/custom.css', %(h2 { margin-top: 2em; }\n))
+            write('chapter.html', '<html><body class="simple"><h2>見出し</h2></body></html>')
+            sheets = Bundle.write_epub!({ 'chapter' => ['chapter.html'] }, target: :epub, styles_dir: 'pkg/styles',
+                                                                           embed_fonts: false)
+                           .transform_keys { "styles/#{it}.css" }
+            before = File.read('pkg/styles/chapter.css')
+
+            Bundle.prioritize_author_css!(sheets, { 'chapter.html' => ['styles/chapter.css'] }, target: :epub)
+
+            assert_equal before, File.read('pkg/styles/chapter.css')
+          end
+        end
+
+        # 付けられない宣言は、custom.css の行と、取り合う原稿の要素を示して知らせる。vs の選択子は見せない
+        def test_should_warn_about_custom_css_that_cannot_win_with_its_place
+          with_project do
+            write('stylesheets/parts/heading.css', %(body.s h2.t { color: green; }\n))
+            write('stylesheets/custom.css', %(/* h2.t { color: red } は例 */\n.x h2 { color: blue !important; }\n) +
+                                            %(h2.t { color: red; }\n))
+            write('contents/10-intro.md', "# 序章\n")
+            write('10-intro.html', '<html><body class="s"><h2 class="t">一</h2>' \
+                                   '<div class="x"><h2 class="t">二</h2></div></body></html>')
+            sheets = Bundle.write_epub!({ 'chapter' => ['10-intro.html'] }, target: :kindle, styles_dir: 'pkg/styles',
+                                                                            embed_fonts: false)
+                           .transform_keys { "styles/#{it}.css" }
+            warnings = []
+
+            Common.stub(:log_warn, ->(message, detail: []) { warnings << [message, detail] }) do
+              Bundle.prioritize_author_css!(sheets, { '10-intro.html' => ['styles/chapter.css'] }, target: :kindle)
+            end
+
+            assert_equal 1, warnings.size
+            message, detail = warnings.first
+            assert_equal 'stylesheets/custom.css（3 行目）の「h2.t { color: red }」は Kindle では効きません', message
+            assert_includes detail.first, 'contents/10-intro.md の <h2 class="t">'
+            assert_includes detail.first, '「.x h2 { color: blue !important }」'
+            refute(detail.any? { it.include?('body.s') }, 'vs の選択子は見せない')
+            refute_includes File.read('pkg/styles/chapter.css'), 'color: red !important'
+          end
+        end
+
+        # style 属性に !important を付けた HTML は書き直す（style 属性が PDF と同じく勝つ）
+        def test_should_rewrite_html_whose_style_attribute_is_kept_winning
+          with_project do
+            write('stylesheets/parts/figure.css', %(.figure img { width: 100%; }\n))
+            write('stylesheets/custom.css', %(img { width: 50%; }\n))
+            write('10-intro.html', '<html><body><div class="figure"><img src="a.png"></div>' \
+                                   '<img src="b.png" style="width: 10px"></body></html>')
+            sheets = Bundle.write_epub!({ 'chapter' => ['10-intro.html'] }, target: :kindle, styles_dir: 'pkg/styles',
+                                                                            embed_fonts: false)
+                           .transform_keys { "styles/#{it}.css" }
+
+            Bundle.prioritize_author_css!(sheets, { '10-intro.html' => ['styles/chapter.css'] }, target: :kindle)
+
+            assert_includes File.read('pkg/styles/chapter.css'), 'width: 50% !important;'
+            assert_includes File.read('10-intro.html'), 'style="width: 10px !important;"'
           end
         end
 
