@@ -327,10 +327,15 @@ body.vs-kindle .note {
   margin-bottom: 1.5em;
 }
 
-/* 枠の色。custom.css でこれらの変数を変えると、Kindle の枠にも届く。
-   値は 1.x の Kindle と同じにしてある。付録の .note・.notice はテーマ色のまま（PDF は付録の色） */
+/* 枠の色。PDF の部品（parts/box.css）と同じ変数で塗る。custom.css でこれらの変数を変えると、
+   Kindle の枠にも届く。付録の束では pages/appendix.css が変数を付録の色にする（改善案 #132） */
 body.vs-kindle .tip {
   border-color: var(--theme-accent);
+}
+
+/* .tip は --theme-accent を直に読むので、付録の色は pages/appendix.css の .tip と同じく別に当てる */
+body.appendix.vs-kindle .tip {
+  border-color: var(--appendix-accent-color);
 }
 
 body.vs-kindle .memo,
@@ -346,11 +351,6 @@ body.vs-kindle .column {
 body.vs-kindle .note,
 body.vs-kindle .notice {
   border-color: var(--color-mark);
-}
-
-body.appendix.vs-kindle .note,
-body.appendix.vs-kindle .notice {
-  border-color: var(--theme-accent);
 }
 
 /* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
@@ -416,10 +416,13 @@ body.vs-kindle .vs-adm-label {
   color: #444;
 }
 
-/* 囲みのラベルの色。枠と同じ変数で塗る。付録は、1.x の Kindle と同じく全部を付録の色にする
-   （PDF の付録の .tip・.memo・.column のタブはテーマ色） */
+/* 囲みのラベルの色。PDF の角のタブと同じ変数で塗る（.note・.notice は PDF にタブが無いので線の色） */
 body.vs-kindle .tip .vs-adm-label {
   color: var(--theme-accent);
+}
+
+body.appendix.vs-kindle .tip .vs-adm-label {
+  color: var(--appendix-accent-color);
 }
 
 body.vs-kindle .memo .vs-adm-label,
@@ -428,9 +431,6 @@ body.vs-kindle .column .vs-adm-label {
 }
 
 body.vs-kindle .note .vs-adm-label,
-body.vs-kindle .notice .vs-adm-label,
-body.appendix.vs-kindle .tip .vs-adm-label,
-body.appendix.vs-kindle .memo .vs-adm-label,
-body.appendix.vs-kindle .column .vs-adm-label {
+body.vs-kindle .notice .vs-adm-label {
   color: var(--color-mark);
 }

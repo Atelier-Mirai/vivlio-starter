@@ -401,7 +401,7 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | S3-2 規則の集約 | §5 の移動（`targets/epub.css`・`targets/kindle.css`）。§4.3 の要素ごとの判定 | (a) `stylesheets/`（`targets/` を除く）と同梱のテーマに `vs-kindle`・`vs-epub` が無い。(b) PDF の画素が一致する。(c) Kindle 用の EPUB の中の CSS で、`body.vs-kindle` の規則の数と中身が、移動の前と同じ（規則を選択子で並べて差分を取る）。(d) B1・B4 の EPUB と Kindle 用 EPUB で、`--log=debug` の要素ごとの判定の報告が 0 組か、理由つきで記録されている |
 | S3-3 `flat_literal` | `LiteralResolver`。`BookSettingsCss` の `kindle_*` の 8 メソッドと `custom.css` の色の書き出しを無くす（`book-settings-kindle.css` も無くなる）。§5 のリテラルの直書きを変数に戻す。§7.1 の `custom.css` を平らな CSS でも勝たせる生成 | (a) Kindle 用の EPUB の中の CSS に `var(`・`calc(`・`color-mix(`・`:is(`・`:where(`・`:has(`・`@layer` が無い。(b) KPF の変換で Enhanced Typesetting が Supported・エラー 0。(c) Kindle Previewer の変換の中間生成物（`preprocessed/*.xhtml` の `computedstyle`。`kindle-css-compatibility-notes.md` §2.1 の 3）を、変更の前後で比べ、色と寸法の値が同じ。(d) `theme.color` を別の色に変えた写しで、Kindle の囲み・見出し・前書きの色が追従する。(e) `custom.css` で色の変数を変えた写しで、Kindle に色が届く。(f) `custom.css` に `h2 { margin-block-start: 2em; }` と `table { inline-size: 80%; }` を書いた写し（簡素な見出し・`.long-table` を含む）で、EPUB の計算値と Kindle の中間生成物が PDF と同じ値になる。`custom.css` が空の本で、平らな CSS が変わらない |
 
-- **S3-4 Kindle に部品の値を届ける（2026-11-15 に足した段）。** `RESOLVED_LAYERS` を部品の層まで広げ、PDF 向けの値（本文の pt・mm の余白・字下げ）は `targets/kindle*.css` で打ち消すか em へ書き直す。層ごと・部品ごとに広げ、Kindle Previewer の画面で確かめる。完了の条件は、広げた層の `var()` などの宣言が Kindle に届き、画面で崩れが無いこと。S6 でテーマへ寸法を移す前に済ませる（§4.4 の「解く層」）。
+- **S3-4 Kindle に部品の値を届ける（2026-11-15 に足した段）。** `RESOLVED_LAYERS` を部品の層まで広げ、PDF 向けの値（本文の pt・mm の余白・字下げ）は `targets/kindle*.css` で打ち消すか em へ書き直す。層ごと・部品ごとに広げ、Kindle Previewer の画面で確かめる。完了の条件は、広げた層の `var()` などの宣言が Kindle に届き、画面で崩れが無いこと。S6 でテーマへ寸法を移す前に済ませる（§4.4 の「解く層」）。部品の層を解くと、S3-3a で Kindle に届かなくなった custom.css の 3 色（`--color-link`・`.column h5` の `--color-mark`・`.diagram` の枠の `--color-border-weak`。§10.7 の「仕様と違えたこと」の 6）も届く。その 3 色が届くことを S3-4 の完了の条件に含める。
 - **S3-3 は二つの段に分けた（2026-11-15）。** S3-3a は `LiteralResolver` と `BookSettingsCss` の Kindle 用の生成の撤去・リテラルの直書きの変数への書き直し（完了の条件の (a)〜(e)）。S3-3b は §7.1 の `custom.css` を平らな CSS でも勝たせる生成（(f)）。S3-3a は CSS を書き出す段で完結するが、S3-3b は HTML の書き換えが終わった後の要素ごとの判定を使うので、ビルドの流れの組み替えが要る。確かめの基準も違い（S3-3a は中間生成物が前と同じ、S3-3b は `custom.css` を書いた写しで PDF と同じ値）、一つの段にすると差が出たときに原因を切り分けられないため、分けた。
 - (a) の `VS_CSS_FORM=flat_literal` での PDF の比較は、参考にとどめる。`calc()` の中の `em` をリテラルにすると、箱の幅が約 1/16 px 変わる箇所がある（`vivliostyle-css-pitfalls-notes.md` §2.18）ので、画素は一致しない。比べるなら、行の位置（`pdftotext -bbox` の行の座標が 0.05pt 以内）で比べる。
 - S3 の完了のときに、`.claude/CLAUDE.md` の「Kindle degradation convention」と `notation-implementation-guide.md` §3 を直し、`kindle-css-compatibility-notes.md` §5.1 に、規則の置き場が変わったことを書く。
@@ -712,8 +712,8 @@ S3-3 は二つの段に分けた（§8 の注）。S3-3a は §4.4 のリテラ�
 2. **変数の定義は、値を解いて残した。** §4.4 は定義の扱いを決めていない。はじめは出力しなかったが、Techbook が HTML に差し込む `<style>` の `pre { font-family: var(--font-code) … !important }` が解けなくなり、Chromium で組むとコードが明朝になった。定義は KFX が読まないので害が無い。
 3. **話者の色は、settings 層の規則で `:root` の変数を読ませた。** `--talk-accent` は話者の要素の上で定義する変数で、§4.4 の決まりでは解けない（宣言を落とす）。1.x は `talk_kindle_rules` が Kindle だけに焼いていた。`.talk-name` などの色は PDF でも `--talk-accent`（＝`--talk-c-<key>`）なので、同じ値の規則を全出力に書いた（PDF・クリーン EPUB の計算値は差 0）。
 4. **`targets/kindle.css` に `!important` を 1 か所残した。** h4 の印。Techbook の `<style>` の `content: "" !important` に勝つためで、1.x の `book-settings-kindle.css` と同じ。target 層は PDF の束に入らず平らな CSS でだけ読まれるので、層の中の `!important` の逆転は起きない。`css_layer_test.rb` の許可の表に理由つきで載せた。
-5. **Kindle の色は 1.x と同じ値を保った。PDF と食い違う箇所が残る。** 付録の `.note`・`.notice` の枠は Kindle ではテーマ色（PDF は付録の色）、付録の `.tip`・`.memo`・`.column` のラベルは Kindle では付録の色（PDF のタブはテーマ色）。そろえるかは未決（見た目の変更なので、作りの入れ替えと分けた）。
-6. **custom.css の色のうち 3 つが Kindle に届かなくなった。** 1.x の `kindle_custom_color_rules` は、custom.css で変えたときだけ `body.vs-kindle a`（`--color-link`）・`.column h5`（`--color-mark`）・`.diagram` の枠（`--color-border-weak`）の規則を書いていた。2.0 では部品の層を解かないので、これらは届かない。Kindle の規則を足して届けると、custom.css を書いていない本でも Kindle の既定の見た目が変わる（リンクが黒・`.column h5` がテーマ色・`.diagram` の枠が #888 から #ddd）。S3-4 で部品の層を解くと届く。それまでの扱いは未決。
+5. **Kindle の色は 1.x と同じ値を保った。PDF と食い違う箇所が残る。** 付録の `.note`・`.notice` の枠は Kindle ではテーマ色（PDF は付録の色）、付録の `.tip`・`.memo`・`.column` のラベルは Kindle では付録の色（PDF のタブはテーマ色）。見た目の変更なので、作りの入れ替えと分けた。**（2026-11-15 追記）ユーザーの判断で、PDF でも Kindle でも、付録のページはテーマ色で塗るものを全部、付録の色（`theme.appendix_color`。無ければテーマ色）で塗ることにした。1.x の不具合として改善案 #132 に書き、S3-3a の後のコミットで直した**（`pages/appendix.css` の割り当てを広げ、`book-settings.css` が `--color-strong`・`--color-em-underline` を書き直すのをやめた。PDF の付録のページの画素が変わる）。
+6. **custom.css の色のうち 3 つが Kindle に届かなくなった。** 1.x の `kindle_custom_color_rules` は、custom.css で変えたときだけ `body.vs-kindle a`（`--color-link`）・`.column h5`（`--color-mark`）・`.diagram` の枠（`--color-border-weak`）の規則を書いていた。2.0 では部品の層を解かないので、これらは届かない。Kindle の規則を足して届けると、custom.css を書いていない本でも Kindle の既定の見た目が変わる（リンクが黒・`.column h5` がテーマ色・`.diagram` の枠が #888 から #ddd）。S3-4 で部品の層を解くと届く。**（2026-11-15 ユーザーの判断）S3-4 で届ける**（S3-4 の注）。
 7. **§9 の論点 1（`transparent` との混色）は落とすことにした**（§9 の表）。
 
 #### 確かめた結果
@@ -736,3 +736,24 @@ S3-3 は二つの段に分けた（§8 の注）。S3-3a は §4.4 のリテラ�
 | 雛形の同期 | `ruby scripts/copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/` へ写した（`test:layout` の後） |
 
 - **`css_computed_diff.rb` は S3-2 から、どの HTML も章の CSS で組んでいた。** S3-2 で `flat/` のファイル名に出力先を付けた（`kindle-chapter.css`）とき、ページの種類の一覧をファイル名から作る処理を直さなかった。S3-2 の計算値の比べ（§10.6）は、章以外のページを章の CSS で比べたものになる。S3-2 の Kindle の中間生成物の比べ（差 0）と規則の単位の比べは、この道具を使っていないので影響しない。今回の比べは直した後の道具で行った。
+
+### 10.8 付録の色をそろえる（2026-11-15・改善案 #132）
+
+S3-3a の確かめで、付録のページの塗り分けが PDF と Kindle の両方で混ざっていることが分かった（§10.7 の「仕様と違えたこと」の 5）。ユーザーの判断で、付録のページはテーマ色で塗るものを全部、付録の色（`theme.appendix_color`。無ければテーマ色）で塗る。1.x の不具合として改善案 #132 に書いた。
+
+#### 作ったもの
+
+- `pages/appendix.css`: `:root` で、`--heading-accent`・`--color-mark` に加えて `--color-strong`・`--color-em-underline`・`--color-column-border`・`--color-column-bg` を付録の色にする。`--theme-accent` を直に読む `.tip` の枠とタブ、会話の既定の色（`.talk` の `--talk-accent`）は、部品と同じ選択子で付録の色にする（pages 層なので、層ありでも平らでも勝つ）。
+- `BookSettingsCss#theme_declarations`: `--color-strong`・`--color-em-underline` を書かない。`tokens.css` の既定と同じ値を settings 層で書き直していたため、付録の割り当てを打ち消していた。テーマの指定も打ち消すことになる。
+- `targets/kindle.css`: 付録の `.note`・`.notice` をテーマ色に戻す規則と、付録のラベルを付録の色にする規則を消し、`.tip` の枠とラベルを付録の色にする規則（`body.appendix.vs-kindle .tip`）だけを足した。ほかは同じ変数で書いてあるので、付録の束で付録の色に解ける。
+- テスト: `literal_resolver_test.rb` の付録の 1 件を、付録の強調・囲みの枠・地・ラベルが付録の色になり、章は変わらないことを確かめる形にした。`book_settings_css_test.rb` は、強調の色を書かず `tokens.css` の既定に任せることを確かめる形にした。
+
+#### 確かめた結果
+
+S3-3a の出力（`check/s3-3a-b1/`）と比べた。出力は `runs/apx-b1`・`check/apx-b1`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| PDF の画素 | 閲覧用 283 ページのうち 20 ページ（印刷用も同じ 20 ページ）が違い、どれも付録 C〜F のページ。目で見て、強調とコラムの枠・タブ・地がテーマ色から付録の色に変わっただけで、組み方は同じ |
+| Kindle の中間生成物 | `computedstyle` の差 0。`style` の差 61 件は、付録の 3 ファイル（92・93・95）の `strong` の色と囲みの枠・地の色が緑から付録の色（cyan）に変わったものだけ |
+| `rake test`・`rake test:standard`・`rake test:layout` | 4,325 件・4,325 件・7 件とも失敗 0（件数は S3-3a と同じ）。rubocop の違反 0。雛形を同期した |

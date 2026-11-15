@@ -270,14 +270,24 @@ module VivlioStarter
           assert_equal '#f0a000', value_of(css, 'body.chapter.vs-kindle h4::before', 'color')
         end
 
-        # 付録は付録の色（red = #dc2626）。囲みの枠は 1.x の Kindle と同じくテーマ色のまま
-        def test_should_bring_appendix_color_to_appendix_headings
+        # 付録のページは、テーマ色で塗るものを全部、付録の色（red = #dc2626）で塗る（改善案 #132）。
+        # 章（テーマ色 yellow = #f0a000）は変わらない
+        def test_should_bring_appendix_color_to_every_accent_in_appendix
           css, = kindle_css('appendix')
 
           assert_equal '2px solid #dc2626', value_of(css, 'body.vs-header-simple.vs-kindle h1', 'border')
           assert_equal '#dc2626', value_of(css, 'body.vs-kindle .subsection-marker', 'color')
-          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .note .vs-adm-label', 'color')
-          assert_equal '#f0a000', value_of(css, 'body.appendix.vs-kindle .note', 'border-color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle strong', 'color')
+          assert_equal '#dc2626', value_of(css, 'body.appendix.vs-kindle .tip', 'border-color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo', 'border-color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .note', 'border-color')
+          assert_equal '#fadede', value_of(css, 'body.vs-kindle .column', 'background')
+          assert_equal '#dc2626', value_of(css, 'body.appendix.vs-kindle .tip .vs-adm-label', 'color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo .vs-adm-label', 'color')
+
+          chapter, = kindle_css('chapter')
+          assert_equal '#f0a000', value_of(chapter, 'body.vs-kindle .memo', 'border-color')
+          assert_equal '#f0a000', value_of(chapter, 'body.vs-kindle strong', 'color')
         end
 
         def test_should_bring_preface_color_to_preface_lines

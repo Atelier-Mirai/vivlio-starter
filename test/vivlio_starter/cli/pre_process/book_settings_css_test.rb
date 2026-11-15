@@ -135,7 +135,9 @@ class BookSettingsCssThemeTest < Minitest::Test
   end
 
   # theme accent と強調色は常に宣言される
-  def test_should_always_declare_accent_and_strong_colors
+  # 強調の色は tokens.css の既定（var(--theme-accent)）に任せ、settings 層で書き直さない。
+  # 書き直すと、付録の色の割り当て（pages/appendix.css・改善案 #132）を打ち消す
+  def test_should_declare_accent_but_leave_strong_colors_to_tokens
     settings = {
       theme_accent_value: '#123456', theme_style: 'simple',
       ornament_path: nil, frontispiece_path: nil,
@@ -145,8 +147,10 @@ class BookSettingsCssThemeTest < Minitest::Test
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
     assert_includes lines, '--theme-accent: #123456;'
-    assert_includes lines, '--color-strong: var(--theme-accent);'
-    assert_includes lines, '--color-em-underline: var(--theme-accent);'
+    refute(lines.any? { it.start_with?('--color-strong:', '--color-em-underline:') })
+    tokens = File.read(File.expand_path('../../../../stylesheets/tokens.css', __dir__))
+    assert_match(/--color-strong:\s*var\(--theme-accent\);/, tokens)
+    assert_match(/--color-em-underline:\s*var\(--theme-accent\);/, tokens)
   end
 end
 
@@ -527,7 +531,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   # 両 style で必ず宣言される公開変数（--frontispiece-image / --section-bg-image は
   # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-edge-inset は除く。
   THEME_VARS_COMMON = %w[
-    --theme-accent --color-strong --color-em-underline
+    --theme-accent
     --frontispiece-image --section-bg-image
     --color-preface-accent --h3-marker --h4-marker
   ].freeze

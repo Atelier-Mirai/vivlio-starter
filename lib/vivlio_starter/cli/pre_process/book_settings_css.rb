@@ -204,12 +204,11 @@ module VivlioStarter
         #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
         #   - image スタイル : 画像 2 変数＋edge_inset を宣言
         #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
+        #   - 強調の色（--color-strong・--color-em-underline）は書かない。tokens.css の既定が
+        #     var(--theme-accent) で、ここ（settings 層）で書き直すと、付録の色の割り当て
+        #     （pages/appendix.css・改善案 #132）やテーマの指定を打ち消すため
         def theme_declarations(settings, image_prefix:, page_cfg: {})
-          lines = [
-            "--theme-accent: #{settings[:theme_accent_value]};",
-            '--color-strong: var(--theme-accent);',
-            '--color-em-underline: var(--theme-accent);'
-          ]
+          lines = ["--theme-accent: #{settings[:theme_accent_value]};"]
 
           if settings[:theme_style] == 'simple'
             lines << '--section-bg-image: none;'
