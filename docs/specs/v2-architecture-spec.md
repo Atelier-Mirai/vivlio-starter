@@ -24,7 +24,7 @@
 | :--- | :--- | :--- |
 | 中心の問い | 本の種類は `book.type` の 1 語で書く。実体は独立した軸の既定値の組で、コードは種類を読まず軸の値を読む（2026-11-13 ユーザー了承） | §2 |
 | A-1 段の入れ替え | 段の表（`full_mode_step_table`）は残し、実行条件を `BuildPlan`（出力先・軸・機能）から決める。中間表現は新設せず、`html/` の HTML を「契約 HTML」として文書化する | §3 |
-| A-2 出力先の抽象 | 出力先を `OutputTarget`（HTML の変換の並び・CSS の形・素材の方針・梱包）として宣言する。`epub_builder.rb` はこの単位で分割する | §4 |
+| A-2 出力先の抽象 | 出力先を `OutputTarget`（HTML の変換の並び・CSS の形・本全体の段の並び・素材の方針・梱包）として宣言する。`epub_builder.rb` はこの単位で分割する | §4 |
 | A-3 Kindle 向けの劣化 | 四か所を、Kindle の出力先の宣言（変換の並び）と、CSS の生成（`css-layer-restructure-spec.md`）の二つにまとめる | §4.4 |
 | A-4 設定の持ち方 | `Common::CONFIG` の形は変えない。既定値の解決に「種類の既定値」の段を一つ足す。`theme:` 節は「テーマ名＋そのテーマのオプション」にする。`book.yml` は分けない | §5 |
 | A-5 技術書専用の機能 | 機能ごとに既存のキーか新しいキーで切り替え、種類の既定値で初期値を与える | §6 |
@@ -257,33 +257,39 @@ OutputTarget = Data.define(
   :branch,      # :pdf / :epub（どちらの枝で走るか）
   :workspace,   # 出力先の HTML と CSS を置くディレクトリ
   :body_classes,# body に足すクラス（['vs-epub'] など）
-  :transforms,  # 契約 HTML に当てる変換の並び（§4.3）
+  :transforms,  # 1 ページの契約 HTML だけを見て書き換える段の並び（§4.3）
   :css_form,    # :layered / :flat / :flat_literal（css-layer-restructure-spec.md §4）
+  :finalizers,  # 本の全部のページと CSS を見る段の並び（変換の後・梱包の前。§4.3）
   :assets,      # 素材の方針（使える画像の形式・SVG を同梱できるか・動画の扱い）
   :packager     # 梱包の方法
 )
 ```
 
 - 出力先は「HTML の変換規則と CSS の束」に、素材の方針と梱包の方法を加えた四つで表せる。brief の A-2 の問いへの答えは「表せる。ただし二つでは足りず、素材と梱包が要る」である。
-- `transforms`・`assets`・`packager` は `traits` によって変わる。宣言は `OutputTarget.for(id, traits)` で引き、リフローと固定レイアウトで別の値を返す。
+- **`finalizers` は S3 の後に足した（2026-11-15・`v2-post-s3-consultation.md` §5.5）。** S3 で、ページごとの変換の後に、本の全部のページと CSS を見て書き直す段が三つ入った（`custom.css` を平らな CSS でも勝たせる・異体字の 1 字書体・層を外すと勝ち負けが変わる組の報告）。
+  - `transforms` に入れない理由: 変換は「1 ページだけを見る」ことを決まりにする。この決まりがあるから、`runner.rb` は 1 ページを一度読んで一度書く形にでき、後でページごとに並べて走らせる余地も残る。本全体を見る段を混ぜると、決まりが崩れる。
+  - `css_form` に付けない理由: 三つのうち一つ（異体字の 1 字書体）は CSS の形と関係が無く、一つ（`custom.css` を勝たせる）は HTML も書き直す。
+- `transforms`・`finalizers`・`assets`・`packager` は `traits` によって変わる。宣言は `OutputTarget.for(id, traits)` で引き、リフローと固定レイアウトで別の値を返す。固定レイアウトの `finalizers` は S9 で決める。
 
 ### 4.2 四つの出力先
 
-| 出力先 | 変換の並び | CSS の形 | 画像 | 動画 | 梱包 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `pdf` | なし（Type 3 対策は L3 の段のまま） | 層あり | そのまま | サムネイルに動画へのリンク | Vivliostyle → 結合 → しおり |
-| `print_pdf` | `pdf` と同じ | 層あり | CMYK へ変換 | サムネイルと QR コード | `pdf` から導出するか、組み直す |
-| `epub`（リフロー） | 共通の 11 段 | 平ら | WebP | `<video>` と、再生できない読者向けの代わりの表示 | Vivliostyle の EPUB |
-| `kindle`（リフロー） | 共通の 11 段 ＋ Kindle の 18 段 | 平ら・リテラル | JPEG・PNG（SVG と WebP は同梱しない） | サムネイルに動画へのリンク | Vivliostyle の EPUB → KPF |
-| `epub`（固定） | 固定レイアウト用 | 平ら | JPEG・PNG・WebP | `<video>` | vs が梱包 |
-| `kindle`（固定） | 固定レイアウト用 ＋ 動画の置き換え | 平ら・リテラル | JPEG・PNG | サムネイルに動画へのリンク | vs が梱包。KPF にせず EPUB を出力する |
+| 出力先 | 変換の並び | CSS の形 | 本全体の段 | 画像 | 動画 | 梱包 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `pdf` | なし（Type 3 対策は L3 の段のまま） | 層あり | なし | そのまま | サムネイルに動画へのリンク | Vivliostyle → 結合 → しおり |
+| `print_pdf` | `pdf` と同じ | 層あり | なし | CMYK へ変換 | サムネイルと QR コード | `pdf` から導出するか、組み直す |
+| `epub`（リフロー） | 共通の 10 段 | 平ら | `AuthorPriority` → `InversionReport` | WebP | `<video>` と、再生できない読者向けの代わりの表示 | Vivliostyle の EPUB |
+| `kindle`（リフロー） | 共通の 10 段 ＋ Kindle の 17 段 | 平ら・リテラル | `AuthorPriority` → `VariantGlyphFonts` → `InversionReport` | JPEG・PNG（SVG と WebP は同梱しない） | サムネイルに動画へのリンク | Vivliostyle の EPUB → KPF |
+| `epub`（固定） | 固定レイアウト用 | 平ら | S9 で決める | JPEG・PNG・WebP | `<video>` | vs が梱包 |
+| `kindle`（固定） | 固定レイアウト用 ＋ 動画の置き換え | 平ら・リテラル | S9 で決める | JPEG・PNG | サムネイルに動画へのリンク | vs が梱包。KPF にせず EPUB を出力する |
 
+- 段の数は、S3 の完了の後（2026-11-16）に `EpubBuilder#prepare_entries` の呼び出しを数え直した値である。共通の 10 段は `mark_body`・`strip_inline_footnote_ids`・`rewrite_table_align`・`restore_plain_emoji`・`inject_heading_images`・`localize_showcase_images`・`shrink_side_by_side_figures`・`convert_code_blocks`・`decorate_footnotes`・`post_process_index_glossary`。Kindle の 17 段は `decorate_talk`・`transcode_webp_images`・`strip_webp_inline_styles`・`mark_body`（`vs-kindle`）・`restore_h3_markers`・`constrain_layout_images`・`compose_pictures`・`textify_simple_math`・`rasterize_display_math`・`convert_math_units`・`keep_cell_math_inline`・`align_code_cells`・`inject_code_line_numbers`・`decorate_admonitions`・`decorate_list_markers`・`layout_index_columns`・`replace_rotate_tables`。平らな CSS を書いて `link` を付け替える段（`bundle_flat_css_for_epub!`）は `css_form` の処理で、変換の数に入れない。
+- 本全体の段の順は、今の順のままである。`AuthorPriority` は CSS を書き直すので、異体字の規則を CSS の末尾へ足す `VariantGlyphFonts` より前に置く。`InversionReport` は、書き直した後の CSS を見る。
 - クリーン EPUB にも平らな CSS を渡す。Kobo と Google Play Books が `@layer` を解するかは確かめられていない（`v2-feasibility-notes.md` §6.2）が、層を外した CSS はどのリーダーでも同じに読まれるので、対応の有無を調べる必要も、著者に選ばせるキーも要らなくなる。層を外す仕組みは Kindle のために作るので、追加の実装は無い。
 - 固定レイアウトの `kindle` の出力ファイルは `<名前>-kindle.epub` とする。KDP へはこの EPUB を出す（`v2-feasibility-notes.md` §4.1）。KDP が受け付けて正しく表示するかは未確認で、S9 の入口で確かめる（§9）。
 
 ### 4.3 `epub_builder.rb` の分割
 
-`build/epub_builder.rb`（3,858 行・177 メソッド）を、`OutputTarget` の項目に沿って分ける。
+`build/epub_builder.rb`（3,771 行・176 メソッド。S3 の完了の後・2026-11-16 に数え直した）を、`OutputTarget` の項目に沿って分ける。
 
 ```
 lib/vivlio_starter/cli/build/
@@ -291,17 +297,32 @@ lib/vivlio_starter/cli/build/
   targets/pdf.rb print_pdf.rb epub.rb kindle.rb   各出力先の宣言
   transforms/
     runner.rb                      変換の並びを HTML に当てる
-    common/*.rb                    両フレーバ共通の 11 段（1 段 1 ファイル）
-    kindle/*.rb                    Kindle 専用の 18 段（1 段 1 ファイル）
+    common/*.rb                    両フレーバ共通の 10 段（1 段 1 ファイル）
+    kindle/*.rb                    Kindle 専用の 17 段（1 段 1 ファイル）
     fixed/*.rb                     固定レイアウト用（S9 で足す）
+  finalizers/
+    author_priority.rb             custom.css の宣言を、平らな CSS でも PDF と同じに勝たせる（CSS と style 属性）
+    variant_glyph_fonts.rb         異体字セレクタ付きの字を 1 字書体で出す（Kindle だけ）
+    inversion_report.rb            層を外すと勝ち負けが変わる組の報告（--log=debug のときだけ）
   epub/
     workspace.rb                   消費者のディレクトリ・素材の複製（localize）・参照の切れた画像の回収
+    stylesheets.rb                 平らな CSS を書き、HTML の link を付け替える（css_form。今の bundle_flat_css_for_epub!）
     images.rb                      WebP への変換・著者の SVG の派生・ラスター化
     config.rb                      EPUB 用の vivliostyle.config.js
     opf.rb                         content.opf の書き換え（id・識別子・綴じの向き）
     kpf.rb                         KPF への変換と記録の要約
     fixed_package.rb               固定レイアウトの EPUB の梱包（S9 で足す）
 ```
+
+**出力先の流れの順。** `EpubFlow` は、出力先の宣言から、次の順で流れを組む。
+
+1. ワークスペースと素材（`epub/workspace.rb`・`epub/images.rb`）。
+2. 平らな CSS を書いて `link` を付け替える（`css_form`。`epub/stylesheets.rb`）。
+3. `transforms`（1 ページずつ）。
+4. `finalizers`（本全体）。
+5. `packager`。
+
+2 が 3 の前にあるのは今と同じである。要素ごとの判定（`custom.css` を勝たせる・層を外すと変わる組の報告）は、Kindle の印（`vs-kindle`）と、EPUB 用に足す要素（合成画像の見出し・コードの行ブロックなど）が付いた後でなければ、Kindle の規則を見落とす（`css-layer-restructure-spec.md` §10.6 の「仕様と違えたこと」の 3）。判定が 3 の後であることは、4 に置くことで保証する。
 
 変換の 1 段は、次の形の関数モジュールにする。
 
@@ -315,24 +336,40 @@ module VivlioStarter::CLI::Build::Transforms::Kindle::TextifySimpleMath
 end
 ```
 
+本全体の段（`finalizers`）の 1 段は、次の形にする。どれも `Css::Bundle` などを呼ぶ薄い段である。
+
+```ruby
+module VivlioStarter::CLI::Build::Finalizers::AuthorPriority
+  module_function
+
+  # @param book [Finalizers::Book] ページのパスの並びと、平らな CSS の表（href → Css::Bundle::Sheet）
+  # @param ctx [Transforms::Context] 出力先・ワークスペース・traits
+  # @return [Finalizers::Book] CSS を書き直したら、表を差し替えた book を返す
+  def call(book, ctx) = ...
+end
+```
+
+- `finalizers` は、ページを書き終えたファイルから読み、書き直したページだけを書く。第二段階でも、全部のページの `doc` を持ち回す形にはしない。「一度だけ読み、一度だけ書く」は `transforms` の決まりとし、`finalizers` の書き直しはその外に置く。書き直しが起きるのは `custom.css` が負ける本だけで、本書（`custom.css` が空）では 0 ページである。
 - 名前は中身で付け、`_for_epub!`・`_for_kindle!` の接尾辞はやめる。どちらの出力先で走るかは、置いたディレクトリと出力先の宣言で分かる（今は名前から判別できない。`v2-inventory-report.md` §5）。
 - 分割は二段階で行う。(1) メソッドをファイルへ移すだけで、呼び出しの順と中身は変えない。(2) `runner.rb` が 1 ページの HTML を一度だけ読み、変換を順に当て、一度だけ書く形にする。(1) の完了の条件は「EPUB と Kindle の出力が分割の前とバイト単位で同じ」、(2) は「HTML の差が属性の順と空白だけ」とする（§8 の S4）。
 - 文字列の置換で書かれている段は、(1) ではそのまま移し、(2) で `doc` を受ける形に直す。直せない段（HTML として不正な途中の形を扱うもの）があれば、`runner.rb` に「ファイルを直接書き換える段」の種別を残す。
 
 ### 4.4 Kindle 向けの劣化を二つにまとめる
 
-今の四か所（`v2-inventory-report.md` §6）は、次の二つに収める。
+1.x の四か所（`v2-inventory-report.md` §6）は、次の二つに収める。CSS の側は S3 で済み、残りは S4 で行う（2026-11-16 に、S3 の結果に合わせて表を書き直した）。
 
-| 今の場所 | 行き先 |
-| :--- | :--- |
-| 静的な CSS の `body.vs-kindle`（10 ファイル・124 か所） | `stylesheets/targets/kindle.css` に集め、Kindle の CSS の束にだけ入れる（`css-layer-restructure-spec.md` §5） |
-| `BookSettingsCss` の `kindle_accent_rules`・`kindle_custom_color_rules`・`h4_marker_kindle_rule` | CSS の生成が `var()` と `color-mix()` をリテラルに解くので、個別に書き出す規則は要らなくなる。同じ結果になることを確かめてから消す（同 §4.4） |
-| `EpubBuilder` の Kindle 専用の 18 段 | `build/transforms/kindle/` と `build/targets/kindle.rb` の並び |
-| `sanitize_epub_css!`（組み上がった EPUB の CSS の書き換え） | CSS の生成が、EPUB に入れる前の CSS から `@page` の余白の箱と WebP の `url()` を落とす。組み上がった EPUB を開いて書き換える処理は消す |
+| 1.x の場所 | 行き先 | 状態 |
+| :--- | :--- | :--- |
+| 静的な CSS の `body.vs-kindle`（10 ファイル・124 か所） | `stylesheets/targets/` に集め、出力先の束にだけ入れる。本文のページの規則は `kindle.css`（EPUB と共通の規則は `epub.css`）、そのページの種類だけの規則は `kindle-preface.css`・`kindle-index.css`・`kindle-glossary.css`・`kindle-colophon.css`（`css-layer-restructure-spec.md` §5） | S3-2 で済み（82 規則） |
+| `BookSettingsCss` の `kindle_accent_rules`・`kindle_custom_color_rules`・`h4_marker_kindle_rule` | 消した。CSS の生成（`Css::LiteralResolver`）が、どの層の `var()`・`calc()`・`color-mix()`・`:is()` も値に解く。途中で置いた `book-settings-kindle.css` も無い（同 §4.4） | S3-3a・S3-4 で済み |
+| PDF 向けの本文の字の大きさ・行送り・書体（1.x では、KFX が `var()` の宣言を捨てることで Kindle に届かなかった） | `stylesheets/targets/kindle-tokens.css` が、`body.vs-kindle` で端末任せの値（`1em`・`normal`・総称の書体の名前）に置き換える（同 §4.4） | S3-4 で済み |
+| `sanitize_epub_css!`（組み上がった EPUB の CSS の書き換え） | 消した。CSS の生成（`Css::TargetFilter`）が、EPUB に入れる前の CSS から `@page` の余白の箱と WebP の `url()` を落とす | S3-1 で済み |
+| `EpubBuilder` の Kindle 専用の 17 段 | `build/transforms/kindle/` と `build/targets/kindle.rb` の並び | S4 |
+| `EpubBuilder` の本全体の段（`prioritize_author_css_for_epub!`・`apply_variant_glyph_fonts_for_kindle!`・`report_flat_css_inversions!`。S3 で入った） | `build/finalizers/` と、出力先の宣言の `finalizers` の並び（§4.1） | S4 |
 
-結果として、「Kindle で何を変えているか」は `build/targets/kindle.rb`（DOM の変換の並びと素材の方針）と `stylesheets/targets/kindle.css`（構造の劣化の規則）の二つを読めば分かる。色や寸法のリテラル化は、一般の仕組み（CSS の生成）になり、Kindle 専用の記述ではなくなる。
+結果として、「Kindle で何を変えているか」は `build/targets/kindle.rb`（DOM の変換の並び・本全体の段の並び・素材の方針）と、`targets/kindle-tokens.css` を含む `stylesheets/targets/kindle*.css`（端末任せにする値と、構造の劣化の規則）の二つを読めば分かる。色や寸法のリテラル化は、一般の仕組み（CSS の生成）になり、Kindle 専用の記述ではなくなった。
 
-Kindle の囲みの 3 点の型（`.claude/CLAUDE.md` の「Kindle degradation convention」）は、2 点になる。(1) ラベルの登録（`ADMONITION_LABELS`）と (3) テストは残り、(2) の「リテラルの色で `body.vs-kindle` の規則を書く」は「`targets/kindle.css` に構造の違いだけを書く。色は変数のままでよい」に変わる。S3 の完了時に `.claude/CLAUDE.md` と `notation-implementation-guide.md` §3 を直す。
+Kindle の囲みの 3 点の型（`.claude/CLAUDE.md` の「Kindle degradation convention」）は、(1) ラベルの登録（`ADMONITION_LABELS`）と (3) テストは残り、(2) の「リテラルの色で `body.vs-kindle` の規則を書く」は「`targets/kindle.css` に構造の違いだけを書く。色は変数のままでよい」に変わった（S3 の完了のときに、`.claude/CLAUDE.md` と `notation-implementation-guide.md` §3 を直した）。
 
 ### 4.5 出力先で形が変わる素材（動画）
 
@@ -506,11 +543,12 @@ theme:
 
 ### S4 出力先の宣言と `epub_builder.rb` の分割
 
-- 作るもの: §4.1 の `OutputTarget`、§4.3 のファイル構成、`EpubFlow` を出力先の宣言から流れを組む形にする。
+- 作るもの: §4.1 の `OutputTarget`（`finalizers` を含む）、§4.3 のファイル構成、`EpubFlow` を出力先の宣言から §4.3 の順で流れを組む形にする。
 - 完了の条件:
   1. `build/epub_builder.rb` が無くなり、どのファイルも 600 行を超えない。
   2. 変換の段の名前に `_for_epub!`・`_for_kindle!` が残っていない。
-  3. 本書の写しを四つの出力先で組み、S0 の基準と比べて、PDF は全ページの画素が一致、EPUB と Kindle 用の EPUB は中の HTML・CSS・OPF が §4.3 の (1) ではバイト単位で一致、(2) では属性の順と空白を除いて一致する。
+  3. 本書の写しを四つの出力先で組み、その時点の基準（r2。`v2-migration-plan.md` §3.2）と比べて、PDF は全ページの画素が一致、EPUB と Kindle 用の EPUB は中の HTML・CSS・OPF が §4.3 の (1) ではバイト単位で一致、(2) では属性の順と空白を除いて一致する。「属性の順」は属性どうしの順のことで、`style` 属性の値は中の宣言の順まで一致を求める。
+     - 本書（B1）は `custom.css` が空で、`finalizers` が何も書き直さない。そこで、`custom.css` に 2 行（`h2 { margin-block-start: 2em; }` と `table { inline-size: 80%; }`）を足した写し（`css-layer-restructure-spec.md` §8 の S3-3 の (f) の写し）も、分割の前後で組み、EPUB と Kindle 用の EPUB を同じ基準で比べる。分割の前後を同じ入力で比べるので、`style` 属性の `!important` は両側に同じに出る。
   4. `rake test:standard` が通る。
 - 確かめ方: `v2-migration-plan.md` §3 の比較（PDF の画素・EPUB の中身の差分）。Kindle は KPF の変換の記録（Enhanced Typesetting が Supported・エラー 0）も見る。
 

@@ -18,6 +18,9 @@
 | 公式テーマの変数の体系に合わせるか | 合わせない。取り込むだけにし、vs の公開する変数から公式テーマの変数へ値を渡す対応表を取り込みのときに作る | §6.3 |
 | 公式テーマとの接続（B-2 の三案） | 公式テーマは `theme` 層に入れ、vs の部品はその下の層に置く（案 2 に近い）。取り込みはビルドのときではなく、`vs theme:add` で本の中へ複製するときに行う（案 3 の「取り込むときに変換する」）。`kindle` は保証しない | §6 |
 | 標準のテーマ | 今の見た目を `standard` テーマとして切り出す。小説と絵本の既定のテーマは、Kindle で組める範囲の CSS で vs が書く（公式の `theme-bunko` を手本にする） | §4・§6.4 |
+| Kindle に届くテーマの値 | 本文の字の大きさ・行送り・書体は、Kindle では読者と端末が決める。テーマが渡せるのは、明朝・ゴシック・等幅の区別（総称の名前）と色。配色のテーマは `theme.yml` の `kindle_tokens:` で Kindle の値を変える（`v2-post-s3-consultation.md` §5.2） | §3.1・§3.5・§5.2 |
+| テーマの寸法と Kindle | 紙の寸法（`clamp()`・`min()`・`max()` を使う宣言）は Kindle に届かない。Kindle の寸法は、出力先の CSS に em で書く（同 §5.3） | §3.5 |
+| テーマの出力先の CSS | vs の `targets/` と同じ名前の決まり（`epub.css`・`epub-<種類>.css`・`kindle.css`・`kindle-<種類>.css`）を、テーマにも認める（同 §5.4） | §3.1 |
 | 置き場 | 本の `themes/<名前>/`。ビルドは gem や npm の中のテーマを直接は読まない | §7 |
 | 版の互換 | `theme.yml` の `contract:`（契約の版・整数）で示す。2.0 の契約は `1` | §3.1・§8 |
 | `vs upgrade` | 雛形から来たテーマだけを更新する。著者が入れたテーマと `custom.css` は触らない | §7.3 |
@@ -185,7 +188,10 @@ themes/<名前>/
   theme.yml          必須。テーマの宣言
   theme.css          組版のテーマの入口（配色のテーマには無い）
   *.css              theme.css から @import する部品（分け方は自由）
-  kindle.css         任意。Kindle だけに当てる構造の劣化
+  epub.css           任意。EPUB の枝（クリーン EPUB と Kindle）の、全部の種類に当てる規則
+  epub-<種類>.css    任意。同、その種類だけ
+  kindle.css         任意。Kindle の、全部の種類に当てる規則（構造の劣化・em で書いた寸法）
+  kindle-<種類>.css  任意。Kindle の、その種類だけ
   images/            任意。扉絵・節絵・飾りの画像
   fonts/             任意。同梱する書体
   README.md          任意。見本の画像・使い方
@@ -214,6 +220,10 @@ tokens:                      # 公開する変数の値（§5）。--book- を�
   color-accent: "#15803d"
   color-link: "#000"
 
+# kindle_tokens:             # 任意。Kindle だけで変える値。書き方は tokens: と同じ（下の「kindle_tokens:」）
+#   font-heading: serif      # 書体は総称の名前（serif・sans-serif・monospace）だけ
+#   color-link: "#222"
+
 options:                     # 著者が book.yml の theme: で変えられる項目（§3.3）
   color:
     type: color
@@ -231,13 +241,34 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 `theme.yml` の読み込みと検査は `lib/vivlio_starter/cli/theme/manifest.rb` に置く。知らないキーは 🟡 で知らせて無視する（後の版のテーマを前の版の vs で開いた場合に止めないため）。
 
+**出力先の CSS（`epub.css`・`kindle.css`）。** vs の `stylesheets/targets/` と同じ名前の決まりを、テーマにも認める（`v2-post-s3-consultation.md` §5.4）。テーマのディレクトリの直下に置き、どれも任意である。`theme.yml` には書かない（`styles:` は theme 層に入る CSS だけを並べる）。
+
+| ファイル | 読む束 |
+| :--- | :--- |
+| `epub.css` | クリーン EPUB と Kindle の、全部の種類 |
+| `epub-<種類>.css` | 同、その種類だけ |
+| `kindle.css` | Kindle の、全部の種類 |
+| `kindle-<種類>.css` | Kindle の、その種類だけ |
+
+- `<種類>` は入口の 11 種類の名前（`css-layer-restructure-spec.md` §2.3）。
+- `epub.css` が Kindle にも入るのは、vs の `targets/epub.css` と同じである（Kindle の `body` にも `vs-epub` が付く）。「EPUB の枝」は、クリーン EPUB と Kindle の両方を指す。
+- 種類をファイルで分けるのは、選択子にクラスを足して絞ると詳細度が上がり、平らな CSS では勝ち負けが変わりうるためである。奥付の `body.vs-kindle { … }` のように `body` そのものを選ぶ規則は、ファイルで分ける以外に絞りようが無い。
+- 入る層は target 層で、vs の `targets/` の後に読む。順は `css-layer-restructure-spec.md` §5 に書く。
+
+**`kindle_tokens:`。** CSS を持たない配色のテーマが、Kindle だけで値を変えるためのキーである（`v2-post-s3-consultation.md` §5.2）。
+
+- 書き方は `tokens:` と同じ（`--book-` を除いた名前）。vs が、target 層の `kindle-tokens.css` の直後に `body.vs-kindle { … }` として書き出す。
+- 使い道は、見出しを明朝にする（`font-heading: serif`）、リンクの色を Kindle で指定どおりに描かれる `#222` 以上にする（§5.2）、など。
+- 書ける値の範囲は §3.5 の「`body.vs-kindle` の変数の定義」による（書体は総称の名前だけ・本文の字の大きさと行送りは書かない）。
+- 組版のテーマは、`kindle_tokens:` の代わりに、`kindle.css` に `body.vs-kindle { … }` で書いてもよい。
+
 ### 3.2 二段のテーマ
 
 エディタのカラーテーマのように、値だけを差し替えるテーマを作れるようにする。形式は一つで、何を書くかで段が決まる。
 
 | 段 | 書くもの | 例 | Kindle |
 | :--- | :--- | :--- | :--- |
-| **配色のテーマ** | `theme.yml` の `extends:` と `tokens:` だけ。CSS を持たない | `standard` を土台に、12 色とは別の配色・書体の組を配る | 値は CSS の生成がリテラルに解くので、必ず通る |
+| **配色のテーマ** | `theme.yml` の `extends:` と `tokens:` だけ。CSS を持たない | `standard` を土台に、12 色とは別の配色・書体の組を配る | 色は必ず通る（CSS の生成がリテラルに解く）。書体は明朝・ゴシック・等幅の区別だけが届く。本文の字の大きさと行送りは届かない（§5.2 の Kindle の列） |
 | **組版のテーマ** | `styles:` の CSS・画像・書体 | 章扉の形・見出しの組み方・柱とノンブルの置き方を変える | テーマの CSS が §3.5 の範囲に収まっていれば通る |
 
 - `extends:` は 1 段だけとする（土台のテーマがさらに `extends:` を持つことは認めない）。読み込みの順は、土台の `tokens` → 土台の `styles` → 自分の `tokens` → 自分の `styles`。
@@ -277,7 +308,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 ### 3.5 Kindle で組むための CSS の範囲
 
-`supports.targets` に `kindle` を含めるテーマの CSS は、次の範囲で書く。範囲の外の書き方は、Kindle 用の CSS の生成が解けず、その宣言か規則を落として 🟡 で知らせる（`css-layer-restructure-spec.md` §4.5）。
+`supports.targets` に `kindle` を含めるテーマの CSS は、次の範囲で書く。範囲の外の書き方は、Kindle 用の CSS の生成が解けず、その宣言か規則を落とす。知らせるのは `vs theme:check` で、`vs build` はテーマの CSS で落ちた宣言を知らせない（著者には直せないため。`css-layer-restructure-spec.md` §4.5）。
 
 | 書き方 | 扱い |
 | :--- | :--- |
@@ -289,6 +320,18 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 層の中の `!important` | 使わない（`css-layer-restructure-spec.md` §2.4） |
 | 部品の見た目を変える規則 | 変数で変える。規則で変えるときは、部品の規則と同じ選択子で書く（EPUB と Kindle は層を外した平らな CSS を読み、詳細度で勝ち負けが決まるため。`css-layer-restructure-spec.md` §2.1・§4.3） |
 | `display: grid`・`flex`・疑似要素の位置指定 | 使ってよいが、Kindle では `block` になる。崩れる部品は `kindle.css` に代わりの組み方を書く（`kindle-css-compatibility-notes.md` §2） |
+| 紙の寸法（`clamp()`・`min()`・`max()` を使う宣言） | Kindle には届かない（生成が、紙の寸法という理由を付けて落とす）。Kindle での大きさと余白は、`kindle.css` に em で書く |
+
+- **紙の寸法が届かない理由。** 紙の寸法（mm と `--book-paper-scale`）は判型に対する比で決めた値で、判型の無い端末では基準が無い（`v2-post-s3-consultation.md` §5.3）。これは意図した書き方で、直す対象ではない。
+- mm や pt をそのまま書いた宣言（図の枠 0.5mm・引用の線 2mm など）は Kindle に届き、崩れていない。単位では検査しない。
+
+**`body.vs-kindle` の変数の定義。** Kindle の本文の字の大きさ・行送り・書体は、読者が端末で選ぶ値である。テーマは Kindle の本文の組み方を決めない（`v2-post-s3-consultation.md` §5.2）。テーマが PDF 用の字の大きさを Kindle に届けると、読者の設定と掛け合わさって意図しない大きさになる。この決まりにより、テーマを作る人は端末ごとの確かめを負わずに済む。
+
+- vs の `targets/kindle-tokens.css` が、`body.vs-kindle` で `--book-font-size` を `1em`、`--book-line-height` を `normal`、書体の変数を総称の名前に置き換える（§5.2 の Kindle の列）。
+- テーマが Kindle の値を変える道は、`theme.yml` の `kindle_tokens:`（§3.1）と、`kindle.css` の `body.vs-kindle { … }` の二つである。
+- どちらでも、書体の値は総称の名前（`serif`・`sans-serif`・`monospace`）だけとし、`--book-font-size`・`--book-line-height` は書かない。
+- `vs theme:check` が、それ以外の値を 🟡 で示す（「Kindle では読者が選ぶ値です」と示し、消すことを案内する）。ビルドは止めない。
+- 著者の `custom.css` の `body.vs-kindle { … }` は、何でも書ける。著者は自分の本と自分の端末で確かめられるので、知らせない。
 
 `vs theme:check <名前>`（§7.2）が、この範囲を検査して報告する。
 
@@ -306,6 +349,13 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `stylesheets/images/`（扉絵・節絵の花の画像） | `themes/standard/images/` |
 | `book.yml` の `theme:` 節のキー | `themes/standard/theme.yml` の `options:` と、`features:` の機能の宣言 |
 | `ThemeColor`（12 色の名前と値） | 12 色は `--book-accent-*` として vs の土台が持つ（§5.2）。テーマではなく、どのテーマからも使える色の名前とする |
+| `stylesheets/targets/` の規則のうち、劣化させる相手の部品がテーマへ移るもの（`image-header.css`・`simple-header.css`・扉絵と節絵） | `themes/standard/` の `epub.css`・`kindle.css`・`kindle-<種類>.css`（§3.1） |
+
+**`targets/` の規則の線引き（`v2-post-s3-consultation.md` §5.4）。**
+
+- vs の部品（囲み・コード・表・索引・用語集・奥付）の規則は、`stylesheets/targets/` に残す。テーマへ移すのは、上の表の最後の行の規則だけである。
+- 移すときは、選択子と宣言を変えない。クラスを足して絞ると詳細度が上がり、平らな CSS では勝ち負けが変わりうる（`v2-flat-cascade-consultation.md` §5.3 の 5）。
+- 移すと、vs の `targets/` の規則との前後が変わる（テーマの出力先の CSS は vs の `targets/` の後に読む）。詳細度が同じ組では勝つ側が入れ替わりうるので、移動の前後で EPUB の計算値と Kindle の中間生成物が差 0 であることを確かめる（§9 の S6 の条件 8）。
 
 種類ごとの既定のテーマ:
 
@@ -335,19 +385,21 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 1 行ずつの一覧は S6 で `stylesheets/tokens.css` に置き、そこを正典とする。分類と、今の名前からの対応を示す。
 
-| 分類 | 新しい名前 | 今の名前 | 値を入れる側 |
-| :--- | :--- | :--- | :--- |
-| テーマ色の 12 色 | `--book-accent-yellow` … `--book-accent-lime` | `--accent-*` | vs の土台 |
-| 本のテーマ色 | `--book-color-accent`・`--book-color-accent-preface`・`--book-color-accent-appendix` | `--theme-accent`・`--color-preface-accent`・`--appendix-accent-color` | `settings`（テーマのオプション） |
-| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ |
-| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title` | `settings`（`typography`） |
-| 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） |
-| 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` |
-| 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） |
-| 会話 | `--book-talk-accent`・`-bg`・`-icon-size`・`-speaker-size` | `--talk-*` | `settings`・テーマ |
+| 分類 | 新しい名前 | 今の名前 | 値を入れる側 | Kindle |
+| :--- | :--- | :--- | :--- | :--- |
+| テーマ色の 12 色 | `--book-accent-yellow` … `--book-accent-lime` | `--accent-*` | vs の土台 | 届く |
+| 本のテーマ色 | `--book-color-accent`・`--book-color-accent-preface`・`--book-color-accent-appendix` | `--theme-accent`・`--color-preface-accent`・`--appendix-accent-color` | `settings`（テーマのオプション） | 届く |
+| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ | 届く |
+| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title` | `settings`（`typography`） | 総称の名前に置き換わる（`kindle-tokens.css`） |
+| 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） | `--book-font-size`・`--book-line-height` は端末任せ（`1em`・`normal`）。残り（余白・`--book-letter-spacing`・`--book-paper-scale`）は届かない（Kindle に紙面が無い） |
+| 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` | 届かない（Kindle に紙面が無い） |
+| 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） | 届く |
+| 会話 | `--book-talk-accent`・`-bg`・`-icon-size`・`-speaker-size` | `--talk-*` | `settings`・テーマ | 届く |
 
 - 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする。
 - 使われていない変数（`--color-shadow`）は消す。
+- 「Kindle」の列は、テーマと `settings` が入れた値が Kindle に届くかを示す（`v2-post-s3-consultation.md` §5.2）。「届く」は、CSS の生成が値をリテラルに解いて Kindle 用の CSS に書くことを指す。書体と、版面の字の大きさ・行送りは、`targets/kindle-tokens.css` が `body.vs-kindle` で置き換える。Kindle だけで値を変える道は §3.5 に書く。
+- S6 で、`kindle-tokens.css` は `--book-*` の名前で書く。部品が読む名前が `--book-*` になるので、同じ名前で置き換えるのが変数の表の解き方（`body` に近い定義が勝つ）に合う。`vs upgrade` の名前の置き換え（`css-layer-restructure-spec.md` §7.2）は、選択子を問わず `custom.css` の全部の定義に当てる（`body.vs-kindle` の中の定義を含む）。
 - Kindle では、`--book-color-link` が `#111` 以下の黒に近い色だと、リンクは Kindle の青で描かれる（`#222` から指定どおり）。テーマの既定を決めるときの前提にする（`kindle-css-compatibility-notes.md` §2 の表）。
 - 今の名前は、2.0 の間は別名として読める（`css-layer-restructure-spec.md` §7.2）。1.x の `custom.css` に書いた `--color-link: #1a73e8;` は、書き換えなくても効く。
 
@@ -449,6 +501,18 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `vs theme:check [名前]` | `theme.yml` の検査・契約の版・§3.5 の範囲・契約 HTML に無いクラスを選んでいる規則の報告（`ContainerClassCheck` の逆向き）・層を外したときに結果が変わる規則の報告（`css-layer-restructure-spec.md` §4.3） |
 | `vs theme:new <名前> [--extends standard]` | 配色のテーマか組版のテーマの雛形を `themes/` に作る |
 
+`vs theme:check` の、Kindle に届かない宣言の報告（`v2-post-s3-consultation.md` §5.3 の 4）:
+
+| 宣言 | 報告 |
+| :--- | :--- |
+| 紙の寸法（`clamp()`・`min()`・`max()`）で落ちた宣言 | 場所を挙げずに、件数を 1 行で示す（💡）。意図した書き方で、直す対象ではない |
+| それ以外で落ちた宣言（深い要素の変数・`:has()`・単位の混ざる `calc()`・srgb 以外の混色） | ファイル名と行番号つきの 🟡 |
+| `kindle_tokens:` と `kindle.css` の `body.vs-kindle` に書いた、総称の名前でない書体・`--book-font-size`・`--book-line-height` | 🟡（§3.5） |
+
+- 見るのは、検査するテーマ自身のファイルの宣言だけである。`extends:` の先のテーマと vs の部品は含めない。
+- `vs build` は、テーマの CSS で落ちた宣言を知らせない（`--log=debug` だけ）。`custom.css` と章の CSS は、今のまま 🟡 で知らせる。
+- 同梱のテーマは `rake test` で確かめる。紙の寸法のほかに落ちる宣言を、理由つきの許可の表で持ち（今は会話の `--talk-accent` など 3 種類）、表に無い宣言が落ちたら失敗とする。
+
 - 配布の形は「テーマのディレクトリ」だけを決め、経路は限定しない。git のリポジトリ・zip・npm のどれで配っても、`vs theme:add` が本の中へ複製する。配る側は、ディレクトリを公開するだけでよい。
 - `vs theme:add` が外から取得するのは CSS・画像・書体・YAML だけで、スクリプトは実行しない（npm のパッケージは `npm pack` で取得し、`install` のスクリプトを走らせない）。
 - テーマの一覧の場所（探すための登録簿）は 2.0 では作らない。
@@ -496,7 +560,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 ### S6 テーマの仕組みと `standard` の切り出し
 
-- 作るもの: §3 の `theme.yml` の読み込みと検査、§3.3 のオプションの書き出し、§3.4 の機能の宣言、§4 の切り出し、§5 の変数の名前の変更と別名、§7.2 のコマンド、§7.3 の `vs upgrade` の扱い、§8 の版の検査。
+- 作るもの: §3 の `theme.yml` の読み込みと検査（`kindle_tokens:` の書き出しを含む）、§3.1 のテーマの出力先の CSS の読み込み、§3.3 のオプションの書き出し、§3.4 の機能の宣言、§4 の切り出し、§5 の変数の名前の変更と別名、§7.2 のコマンド、§7.3 の `vs upgrade` の扱い、§8 の版の検査。
+- 最初に入れるもの（寸法をテーマへ移す前）: `LiteralResolver` が `clamp()`・`min()`・`max()` を含む宣言を、理由（`:paper_dimension`）を付けて落とす（`css-layer-restructure-spec.md` §4.4）。
 - 完了の条件:
   1. `stylesheets/theme.css`・`simple-header.css`・`image-header.css`・`stylesheets/images/` が無くなり、`themes/standard/` にある。
   2. `BodyClassInjector` と `BookSettingsCss` に、`standard` テーマに固有の名前（`vs-header-image`・`--frontispiece-*` など）を直接書いた箇所が無い（`theme.yml` と機能の宣言から来る）。
@@ -504,7 +569,11 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
   4. 配色のテーマの見本（`themes/standard-mono/`。`extends: standard` と `tokens:` だけ）で本書を組み、色だけが変わる（PDF の文字の位置が `standard` と一致する。`pdftotext -bbox` の座標の比較）。Kindle でも色が変わる。
   5. 1.x の `custom.css`（今の名前の変数を使ったもの）を置いた写しで、色の変更が効く。
   6. `theme.name` に無い名前を書くと 🔴、`contract: 2` のテーマを置くと 🔴、`supports.writing_mode` に無い組方向で 🔴 になり、それぞれ次にすることを示す。
-- 確かめ方: 3 は `v2-migration-plan.md` §3。4〜6 はテストと、写しの本での実行。
+  7. `clamp()`・`min()`・`max()` の宣言を落とす変更の前後で、Kindle の中間生成物が差 0（今も Kindle に届いていないので、変わらないはずである）。Kindle 用の CSS に `clamp(`・`min(`・`max(` が残らない。
+  8. `targets/` の規則を `themes/standard/` へ移す前後で、EPUB の計算値（`css_computed_diff.rb`）と Kindle の中間生成物（`kindle_record_diff.rb`）が差 0。
+  9. 変数の名前を `--book-*` に変える前後で、Kindle の中間生成物が差 0（`kindle-tokens.css` を `--book-*` で書き直した後も、本文の字の大きさ・行送り・書体が端末任せのままである）。
+  10. 配色のテーマの見本に `kindle_tokens:`（見出しの書体を `serif` に）を書くと、Kindle の見出しだけが明朝になり、PDF と EPUB は変わらない。`kindle_tokens:` に `font-size` か、総称の名前でない書体を書いたテーマで、`vs theme:check` が 🟡 を出す。
+- 確かめ方: 3 は `v2-migration-plan.md` §3。4〜6・10 はテストと、写しの本での実行。7〜9 は、変更ごとに前後を組んで比べる。
 
 ### S7 公式テーマの取り込み
 
