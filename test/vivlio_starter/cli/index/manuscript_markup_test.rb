@@ -41,6 +41,27 @@ module VivlioStarter
           assert_includes text, "```markdown\n[セットアップ]\n```"
         end
 
+        # 実行結果の囲みの中の角かっこは印ではないので、探さず、外さない（改善案 #136）
+        def test_skips_markup_inside_output_block
+          File.write(@path, <<~MD)
+            # はじめに
+
+            ```sh
+            ruby -v
+            ```
+
+            :::{.output}
+            ruby 4.0.9 +PRISM [arm64-darwin27]
+            :::
+
+            地の文の[arm64-darwin27]です。
+          MD
+
+          assert_equal ['11-intro:11'], ManuscriptMarkup.places('arm64-darwin27', [@path])
+          assert_equal 1, ManuscriptMarkup.strip!('arm64-darwin27', [@path])
+          assert_includes File.read(@path), "+PRISM [arm64-darwin27]\n:::"
+        end
+
         # 回帰: 棄却した語の印を外すとき、数式の中のブラケットを外さない（改善案 #115）。
         # 以前は `$$5\,[\Omega]$$` が `$$5\,\Omega$$` に書き換わっていた
         def test_strip_keeps_brackets_inside_math

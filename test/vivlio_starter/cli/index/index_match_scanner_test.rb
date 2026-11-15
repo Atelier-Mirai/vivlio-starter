@@ -280,6 +280,41 @@ module VivlioStarter
           assert_includes tagged, '`[!]`', 'インラインコードの内容は保持される'
         end
 
+        # 角かっこのキー（〘[〙・〘]〙）を一行に並べても、間の `[〙・〘]` を索引の語にしない（改善案 #133）。
+        # 語にすると <dfn> に置き換わり、二つのキーの字が消える
+        def test_scan_skips_brackets_inside_keycaps
+          File.write('15-keycap.md', <<~MD)
+            # Test
+
+            〘⌘〙 + 〘[〙・〘]〙 で字下げを変える。[本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('15-keycap.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          assert_equal ['本文用語'], term_names
+          assert_includes File.read('15-keycap.md'), '〘⌘〙 + 〘[〙・〘]〙', 'キーの記法は残る'
+        end
+
+        # 実行結果の囲み（:::{.output}）の中の [arm64-darwin27] は印ではない（改善案 #136）。
+        # 印にすると角かっこが消え、索引にも載る。囲みの外の印は今までどおり拾う
+        def test_scan_skips_index_markup_inside_output_block
+          File.write('16-output.md', <<~MD)
+            # Test
+
+            :::{.output}
+            ruby 4.0.9 +PRISM [arm64-darwin27]
+            :::
+
+            [本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('16-output.md')
+
+          assert_equal ['本文用語'], @scanner.matches.map { it['term'] }
+          assert_includes File.read('16-output.md'), '+PRISM [arm64-darwin27]', '角かっこは残る'
+        end
+
         # ````（4連）で ``` を入れ子にしたコード例の中の [!] は索引語化しない。
         # フェンス長を見ないと内側 ``` で閉じたと誤判定し、コード本文を地の文として
         # 索引スキャンしてしまう（コメント強調 [!] が誤索引化される）回帰を防ぐ。

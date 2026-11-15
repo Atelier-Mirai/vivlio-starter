@@ -58,7 +58,12 @@ module VivlioStarter
             reason: '節の見出しは .section-topic の中にあり、.side-by-side の子にならない' },
           { upper: /\Abody\.vs-(?:epub|kindle) \.side-by-side > \*\z/, lower: /p:has\(> strong:only-child\):has\(\+ table\)\z/,
             reason: '表の題の段落を .side-by-side に直に置く形。EPUB では移す前と同じく :has() の規則が勝つ。' \
-                    'KFX は :has() の規則を捨てる' }
+                    'KFX は :has() の規則を捨てる' },
+          # 改善案 #135（1.0.1）の、囲みに .align-* を重ねたときに段落を囲みの組み方へ戻す規則
+          { upper: /\A\.text-(?:left|right|center) p\z/,
+            lower: /\A\.(?:column|memo|tip|note|notice)\.align-(?:center|right) > p\z/,
+            reason: '.align-* を重ねた囲みの段落が .text-* の中にもある形（囲みに .align-* と .text-* を両方付けるか、' \
+                    '.text-* の囲いの中に置く）。PDF は .text-* が勝ち、EPUB と Kindle は 1.0.1 と同じく囲みの組み方になる' }
         ].freeze
 
         def test_should_not_use_important_in_bundled_stylesheets

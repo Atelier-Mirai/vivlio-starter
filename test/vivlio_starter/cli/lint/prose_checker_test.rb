@@ -1304,4 +1304,38 @@ class TestProseChecker < Minitest::Test
     refute_includes PC::FIXABLE_RULES, 'accidental-emphasis'
     assert_empty check("A*探索とA*は\n", disabled_rules: ['accidental-emphasis']).select { it.rule == 'accidental-emphasis' }
   end
+
+  # --- accidental-index-term（改善案 #136） ---
+
+  def index_term_labels(body) = check(body).select { it.rule == 'accidental-index-term' }.map { [it.line, it.label] }
+
+  # 地の文の [arm64-darwin27] は索引の語の印と読まれる。直し方（囲み・文字参照）を添える
+  def test_should_report_machine_string_read_as_index_markup
+    labels = index_term_labels("Ruby の版を確かめます。\nruby 4.0.9 +PRISM [arm64-darwin27] と出ます。\n")
+
+    assert_equal 1, labels.size
+    assert_equal 2, labels.first.first
+    assert_includes labels.first.last, '`[arm64-darwin27]` は索引の語の印と読まれ'
+    assert_includes labels.first.last, '`&#91;arm64-darwin27&#93;`'
+    assert_includes labels.first.last, '索引に載せるなら `[arm64-darwin27|よみ]` と読みを添える'
+  end
+
+  # 実行結果の囲み・コード・コメント・読みを添えた印・ふつうの語の印・キーの記法は知らせない
+  def test_should_not_report_brackets_that_are_not_read_as_index_markup
+    body = <<~MD
+      :::{.output}
+      ruby 4.0.9 +PRISM [arm64-darwin27]
+      :::
+
+      コードの `[x86_64-linux]` と、<!-- メモ [arm64-darwin27] --> です。
+      [UTF-8|ゆーてぃーえふえいと] と [Ruby] と 〘⌘〙 + 〘[〙・〘]〙 です。
+    MD
+
+    assert_empty index_term_labels(body)
+  end
+
+  def test_accidental_index_term_can_be_disabled
+    assert_empty check("[arm64-darwin27] です。\n", disabled_rules: ['accidental-index-term'])
+      .select { it.rule == 'accidental-index-term' }
+  end
 end

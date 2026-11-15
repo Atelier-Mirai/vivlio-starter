@@ -131,6 +131,7 @@ vs lint 11-intro --fix   # 章を指定して直す
 | 長すぎる一文（既定 100 字） | `sentence-length` | — |
 | 長すぎる丸かっこの補足（既定 60 字） | `long-parenthetical` | — |
 | 英数字の直後の `*`・`_` による強調（`A*探索`） | `accidental-emphasis` | — |
+| 索引の印と読まれる角かっこ（`[arm64-darwin27]`） | `accidental-index-term` | — |
 | かっこの隣の空白 | `space-around-brackets` | — |
 | 4 スペースの字下げ（コードブロックにならない） | `indented-code-block` | — |
 | 直前の行に続く `---`（見出しになる） | `setext-heading` | — |

@@ -830,13 +830,16 @@ module VivlioStarter
           # 参照リンクのラベルは文書ごとに決まる（markdown-notation-collision-spec.md §3）。
           # 外さないと `[ref]: url` が `ref: url` に化けてリンク定義が静かに壊れる。
           labels = IndexMarkup.link_labels(protected_text)
+          machine = IndexMarkup.machine_data_lines(protected_text)
 
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
             match = ::Regexp.last_match
             inner = match[1]
-            # 脚注参照 [^id]・参照リンク・タスクリスト・単位の表記（「幅 [mm]」）はそのまま残す
+            # 脚注参照 [^id]・参照リンク・タスクリスト・単位の表記（「幅 [mm]」）・
+            # 実行結果の囲みの中（改善案 #136）はそのまま残す
             if IndexMarkup.skip_term?(inner) || IndexMarkup.other_notation?(match, labels) ||
-               IndexMarkup.short_ascii_term?(inner)
+               IndexMarkup.short_ascii_term?(inner) ||
+               IndexMarkup.in_machine_data?(protected_text, match.begin(0), machine)
               match[0]
             else
               IndexMarkup.plain_text(inner)

@@ -18,6 +18,7 @@
 #     - ja-no-weak-phrase    断定を避ける言い回し（「かもしれません」「思います」）
 #     - index-term-spacing   索引・用語集の辞書の語と空白だけ違う書き方。--fix できる（改善案 #102）
 #     - accidental-emphasis  英数字の直後の `*`・`_` が強調の記号と読まれ、次の記号までが強調になる箇所（改善案 #128）
+#     - accidental-index-term 実行結果の `[arm64-darwin27]` のような、索引の語の印と読まれる角かっこ（改善案 #136）
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -43,6 +44,7 @@ require 'yaml'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../math_delimiters'
+require_relative '../index_markup'
 require_relative '../index/term_pattern'
 require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
@@ -77,6 +79,7 @@ module VivlioStarter
         AFFIX_SPACING_RULE   = 'affix-spacing'
         HIRAGANA_SPACING_RULE = 'hiragana-spacing'
         ACCIDENTAL_EMPHASIS_RULE = 'accidental-emphasis'
+        ACCIDENTAL_INDEX_TERM_RULE = 'accidental-index-term'
 
         # --fix で直せるルール。どれも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE, INDEX_TERM_SPACING_RULE, AFFIX_SPACING_RULE,
@@ -252,6 +255,7 @@ module VivlioStarter
           findings.concat(multiple_chapter_heading_findings(text)) unless rules.include?(MULTIPLE_CHAPTER_HEADINGS_RULE)
           findings.concat(slash_findings(text, allowlist))     unless rules.include?(SLASH_RULE)
           findings.concat(accidental_emphasis_findings(text))  unless rules.include?(ACCIDENTAL_EMPHASIS_RULE)
+          findings.concat(accidental_index_term_findings(text)) unless rules.include?(ACCIDENTAL_INDEX_TERM_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
           findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
           unless rules.include?(LONG_PARENTHETICAL_RULE) || parenthetical_max == :off
@@ -431,6 +435,38 @@ module VivlioStarter
               Finding.new(line: start + raw[0, open].count("\n"), rule: ACCIDENTAL_EMPHASIS_RULE,
                           label: "「#{excerpt}」の `#{char}` が強調の記号と読まれ、間が強調になります" \
                                  "（字として書くなら `#{raw[open - 1]}\\#{char}`#{'、式なら `$…$`' if char == '_'}）")
+            end
+          end
+        end
+
+        # --- 索引の語の印と読まれる角かっこ -------------------------------------
+
+        # 実行結果や識別子の角かっこ。英字・数字に `-`・`_`・`/`・`:` が混じる綴りは、語ではなく
+        # 機械の文字列（`[arm64-darwin27]`・`[x86_64-linux]`・`[ruby-talk:00382]`）。
+        INDEX_TERM_LIKE_DATA = %r{\A(?=[^\s]*\d)(?=[^\s]*[-_/:])[\x21-\x7e]+\z}
+
+        # 地の文の `[…]` は索引の語の印 `[用語]` で、角かっこが消えて語が索引に載る（改善案 #136）。
+        # 読みの無い印で、中身が機械の文字列に見えるものを知らせる。`[UTF-8]` のように索引に
+        # 載せたい語にも当たるが、読みを添えた印（`[UTF-8|ゆーてぃーえふえいと]`）は知らせない。
+        # 実行結果の囲み（:::{.output}・:::{.terminal}）の中は印と読まないので、authored_prose_lines
+        # が除くまま知らせない。HTML コメントの中は組まれないので見ない。手元の本で当たったのは、実行結果の 4 件と、リンクの文字の
+        # `[[ruby-talk:00382] Re: …](URL)` の 2 件だけだった（2026-11-15）。
+        def accidental_index_term_findings(text)
+          labels = IndexMarkup.link_labels(text)
+          authored_prose_lines(blank_comment_blocks(text)).flat_map do |lineno, line|
+            visible = line.gsub(/<!--.*?-->/) { ' ' * it.length }.gsub(Masking::KEYCAP) { "\u0001" * it.length }
+            protected_line, = Masking.protect_code(visible)
+            protected_line, = IndexMarkup.protect_math(protected_line)
+            protected_line.to_enum(:scan, IndexMarkup::TERM_ONLY_PATTERN).filter_map do
+              match = ::Regexp.last_match
+              inner = match[1]
+              next if IndexMarkup.skip_term?(inner) || IndexMarkup.other_notation?(match, labels)
+              next unless inner.match?(INDEX_TERM_LIKE_DATA)
+
+              Finding.new(line: lineno, rule: ACCIDENTAL_INDEX_TERM_RULE,
+                          label: "`[#{inner}]` は索引の語の印と読まれ、角かっこが消えて索引に載ります" \
+                                 "（実行結果なら :::{.output} に入れる。地の文で角かっこを見せるなら " \
+                                 "`&#91;#{inner}&#93;`。索引に載せるなら `[#{inner}|よみ]` と読みを添える）")
             end
           end
         end

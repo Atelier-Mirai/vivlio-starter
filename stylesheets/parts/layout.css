@@ -285,3 +285,40 @@ figure.align-left {
 figure.align-center {
   clear: both;
 }
+
+/* -------------------------------------------------------------
+   .align-center・.align-right の中の段落（改善案 #135・1.0.1）
+   ------------------------------------------------------------- */
+/* 中の段落も、字を同じ側へそろえる。段落の text-align: justify と字下げ（parts/prose.css の p）が
+   .align-* からの継承を覆い、幅いっぱいの行の無い段落は箱の左に寄っていた。
+   .align-* そのもの（utilities/align.css）と違い、段落の組み方の規則なので parts 層に置く。
+   utilities 層に置くと、表の題の段落（parts/table.css）や囲みの段落に層で勝ち、詳細度で決まる
+   1.x・EPUB・Kindle と PDF の結果が食い違う */
+.align-center > p {
+  text-align: center;
+  text-indent: 0;
+}
+
+.align-right > p {
+  text-align: right;
+  text-indent: 0;
+}
+
+/* 囲み（.column など）に重ねたときは箱を寄せるだけにし、中の段落は囲みの組み方のままにする
+   （字下げは parts/box.css と同じく .column・.memo だけ） */
+.column.align-center > p,
+.column.align-right > p,
+.memo.align-center > p,
+.memo.align-right > p {
+  text-align: justify;
+  text-indent: 1em;
+}
+
+.tip.align-center > p,
+.tip.align-right > p,
+.note.align-center > p,
+.note.align-right > p,
+.notice.align-center > p,
+.notice.align-right > p {
+  text-align: justify;
+}
