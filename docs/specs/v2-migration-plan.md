@@ -39,7 +39,7 @@
 | **S0** | 基準を作る。比べる道具を作る | 本書 §3 | — | — |
 | **S1** | 契約 HTML を表にする。`role` 属性・`section-topic` を常に付ける | `theme-contract-spec.md` §2・§9 | S0 | PDF は同じ。HTML に `role` が増える |
 | **S2** | CSS を層に分ける（S2-1〜S2-4） | `css-layer-restructure-spec.md` §2・§3・§8 | S0 | 同じ |
-| **S3** | 平らな CSS の生成。Kindle と EPUB の規則を集める（S3-1〜S3-3） | `css-layer-restructure-spec.md` §4・§5・§8 | S2 | PDF は同じ。EPUB と Kindle は CSS の形が変わり、表示は同じ |
+| **S3** | 平らな CSS の生成。Kindle と EPUB の規則を集める（S3-1〜S3-4。S3-3 は a・b に分けた） | `css-layer-restructure-spec.md` §4・§5・§8 | S2 | PDF は同じ。EPUB と Kindle は CSS の形が変わり、表示は同じ |
 | **S4** | 出力先の宣言。`epub_builder.rb` の分割 | `v2-architecture-spec.md` §4・§8 | S3 | 同じ |
 | **S5** | 種類・軸・`BuildPlan`・設定のキー | `v2-architecture-spec.md` §2・§3・§5・§6・§8 | S0（S2〜S4 とは独立） | 同じ |
 | **S6** | テーマの仕組み。今の見た目を `standard` テーマに切り出す。変数の名前 | `theme-contract-spec.md` §3〜§5・§7〜§9 | S1・S3・S5 | 同じ |
@@ -394,3 +394,11 @@ S11 の確かめに使う本を、テストの素材（`test/vivlio_starter/fixt
 - **規則を別の層へ移したら、同じ選択子で覆っている規則を探す。** `stylesheets/` の Kindle の規則を target 層へ移すと、`book-settings.css`（settings 層）が同じ選択子で後から覆っていた規則が負けた。規則の文字列の比べ（移した規則の数と中身は前後で同じ）では見つからず、組み上がった HTML に前後の CSS を当てた計算値の比べで見つかった。層をまたぐ移動では、計算値の比べを先に走らせる。
 - **比べの道具も、ビルドと同じ CSS を作っているか確かめる。** `css_computed_diff.rb` は target 層なしで平らにしていた。S3-1 までは target 層が空だったので差が出なかったが、S3-2 の移動を比べると、EPUB と Kindle に移した規則が後の側に入らない。道具の CSS の作り方を `Css::Bundle` に合わせた。生成物の分け方を変えたときは、後の側にだけ新しいコードで生成した `book-settings*.css` を渡す（`--after-settings`）。
 - **検査が見ている HTML が、出力と同じ段のものか確かめる。** ビルドの層の検査は、HTML の書き換えの前に走っており、Kindle の規則を一つも見ていなかった（S3-1 から）。検査の報告が 0 でも、組み上がった HTML に同じ検査を当てて数と突き合わせる。
+
+### 8.8 S3-3a リテラル化（2026-11-15）
+
+作ったもの・仕様と違えたこと・確かめた結果は `css-layer-restructure-spec.md` §10.7。ここには、確かめ方（§3）について分かったことを書く。
+
+- **Kindle の見た目のモデルは、Chromium の計算値ではなく中間生成物である。** `css_computed_diff.rb` の Chromium は `var()` を解くので、Kindle で捨てられていた宣言も効いたものとして計算する。Kindle Previewer の前処理は `var()` を含む宣言を捨てるので、中間生成物の `computedstyle`・`style` が、Kindle に届いている宣言を映す。部品の層まで値に解いたとき、計算値の比べでは差が小さく見え（`:has()` などの数十要素）、中間生成物では 26,310 要素が変わった。Kindle に届く宣言を変える段では、中間生成物を先に比べる。
+- **比べの道具の判定の前提を、出力の見出しで確かめる。** `css_computed_diff.rb` は、出力の行に判定したページの種類（`（chapter・flat・screen）`）を出している。S3-2 から全部が `chapter` だったが、差 0 の報告では見出しを読まないので気づかなかった。差が出たときに、付録の差の原因を追って見つけた。
+- **確かめの写しの元は、CSS を直した後に作り直す。** custom.css を書き足した写しの元を、`targets/kindle.css` を直す前の写しから作っていたため、1 規則が欠けたまま組んだ。元を作業ツリーと `diff -r` で比べてから組む。

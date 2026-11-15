@@ -63,6 +63,8 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 
 **中間生成物だけで判断してはいけない。** ここが今回いちばん間違えやすかった点である。前処理は Chromium（同梱の phantomjs）でページを組むため、`calc(2mm + 2mm)` は `padding-left:15.118px` と正しく計算され、`linear-gradient()` も宣言のまま残る。**それでも KFX の描画側は両方とも捨てる。** 中間生成物は「変換器が値を保った」ことしか示さない。**最終判定は Previewer の画面で行うこと。**
 
+**ただし `var()` を含む宣言は、前処理の段で捨てられる**（2026-11-15・2.0 の S3-3a）。本書の `:root { font-size: var(--base-font-size); line-height: var(--base-line-height) }` は、中間生成物で本文が既定の 16px・行送り `normal` だった。同じ宣言を値に解いた CSS を渡すと、14px（10.5pt）・22.39px に変わった。つまり、`var()` の宣言が届いているかは中間生成物の `computedstyle` と `style` で分かる。部品の `var()` を値に解くと、Kindle の見た目が広く変わる（`css-layer-restructure-spec.md` §4.4 の「解く層」）。
+
 ### 2.2 `::before` は効くようになったが、置き換えは急がない
 
 **実体の印と `::before` を両方持つ要素は、`body.vs-kindle` で `content: none` にすること。** 止めないと二重に出る（2026-11-01 に `(1) (1) 項目` で実測）。差し込まれた内容は、中間生成物の `[amzn-isaddedcontent]` を集計すると本全体で洗い出せる。
@@ -131,9 +133,9 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 - **PDF には付かない**ため、`body.vs-epub` / `body.vs-kindle` の CSS は PDF 出力に一切影響しない。安全に追記できる。
 - CSS 編集時の原則:
   - クリーン EPUB/PDF 向けの装飾は従来どおり（`:is()`/`var()` 等を使ってよい）。
-  - Kindle 向け調整は **`body.vs-kindle` セレクタ配下に、§2 の禁止機能を避けた具体値で**追記する。
+  - Kindle 向け調整は **`body.vs-kindle` セレクタ配下に**追記する。`var()`・`calc()`（単位のそろったもの）・`color-mix(in srgb …)`・`:is()`・`:where()` は、2.0 の S3-3 から Kindle 用の CSS を作るときに `Css::LiteralResolver` が値と並べた選択子に解くので、書いてよい。解けないもの（要素の上で定義した変数・単位の混ざった `calc()`・`:has()`）は宣言や選択子ごと落ちる。`display: grid` など §2 のほかの機能は今までどおり避ける。
 - **置き場（2.0 の S3-2 から）**: `body.vs-epub`・`body.vs-kindle` の規則は `stylesheets/targets/` に置き、target 層（settings 層の上）で読む。本文のページの規則は `targets/epub.css`・`targets/kindle.css`、前書き・索引・用語集・奥付だけの規則は `targets/kindle-{preface,index,glossary,colophon}.css`。ファイルの中は、移す前の部品の名前の見出し（`/* --- parts/box.css --- */`）で区切る。どのページの種類がどれを読むかは `Css::EntryWriter::TARGET_IMPORTS`。PDF は target 層を読まない（`css-layer-restructure-spec.md` §5）。
-- **テーマ色は「静的 CSS」でなく「生成 CSS」でリテラル化する**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` フォールバックに固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。`BookSettingsCss#kindle_accent_rules` が、Kindle の束の target 層の最後に読まれる生成 CSS `book-settings-kindle.css` へ**テーマ色を `ThemeColor` でリテラル hex 解決**して `body.vs-kindle` 規則を焼き、静的フォールバックを後勝ちで上書きする。KFX 非対応の `color-mix()` は `ThemeColor.mix_with_white` で事前計算する（`kindle-theme-color-literalize-spec.md`）。
+- **テーマ色は変数で書く（2.0 の S3-3 から）**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` の規則に固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。1.x は `BookSettingsCss#kindle_accent_rules` がテーマ色をリテラルにした規則を後から書いて上書きしていた。2.0 では `targets/kindle*.css` の規則を部品と同じ変数（`--heading-accent`・`--color-mark` など）で書き、Kindle 用の平らな CSS を作るときに `Css::LiteralResolver` がページの種類ごとの変数の表で値に解く（付録は付録の色になる）。`color-mix(in srgb …)` も計算する。custom.css の `:root` で変えた色も、平らな CSS の後ろで定義が勝つので、そのまま届く。
 
 ### 5.2 「CSS で無理なら画像」戦略
 

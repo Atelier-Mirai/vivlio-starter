@@ -29,6 +29,13 @@ module VivlioStarter
         ROOT = File.expand_path('../../../..', __dir__)
         AUTHOR_FILES = %w[stylesheets/custom.css].freeze
 
+        # 層の中でも使ってよい !important（ファイルと、その行に当てる正規表現と理由）。
+        # target 層は PDF の束に入らず平らな CSS でだけ読まれるので、層の順の逆転は起きない
+        ALLOWED_IMPORTANT = [
+          { file: 'stylesheets/targets/kindle.css', line: /content: var\(--h4-marker/,
+            reason: 'Kindle の h4 の印。Techbook が HTML の <style> で content を "" !important にしているのに勝つ' }
+        ].freeze
+
         # 層を外すと勝ち負けが変わるが、直さない組（css-layer-restructure-spec.md §4.3 の許可の表）。
         # upper は層ありで勝つ規則の選択子、lower は平らな CSS で勝つ規則の選択子に当てる。
         ALLOWED_INVERSIONS = [
@@ -59,7 +66,9 @@ module VivlioStarter
           refute_empty files, 'stylesheets/ の CSS が見つからない'
 
           offenders = files.flat_map do |path|
-            important_lines(File.read(path, encoding: 'utf-8')).map { "#{relative(path)}:#{it}" }
+            lines = File.readlines(path, encoding: 'utf-8')
+            important_lines(lines.join).reject { |number| allowed_important?(relative(path), lines[number - 1]) }
+                                       .map { "#{relative(path)}:#{it}" }
           end
           assert_empty offenders, "層の中では !important を使わない（css-layer-restructure-spec.md §2.4）:\n" \
                                   "#{offenders.join("\n")}"
@@ -98,7 +107,11 @@ module VivlioStarter
                 pieces = Bundle.flat_pieces(kind, target:, dest: File.join(tmp, 'styles', "#{kind}.css"),
                                                   package_root: tmp, embed_fonts: false)
                 bundled = pieces.reject do
-                  it.source.end_with?(EntryWriter::BOOK_SETTINGS, EntryWriter::BOOK_SETTINGS_KINDLE, 'custom.css')
+                  it.source.end_with?(EntryWriter::BOOK_SETTINGS, 'custom.css')
+                end
+                # Kindle が読むのはリテラル化した CSS（:has() の規則は落ちている）
+                if target == :kindle
+                  bundled = LiteralResolver.resolve(bundled.reject(&:nested), scope: Bundle.kindle_scope([])).pieces
                 end
                 InversionCheck.pairs(bundled).each do |pair|
                   next if allowed?(pair)
@@ -156,6 +169,10 @@ module VivlioStarter
         end
 
         private
+
+        def allowed_important?(file, line)
+          ALLOWED_IMPORTANT.any? { it[:file] == file && line.match?(it[:line]) }
+        end
 
         def allowed?(pair)
           ALLOWED_INVERSIONS.any? { pair.upper.selector.match?(it[:upper]) && pair.lower.selector.match?(it[:lower]) }

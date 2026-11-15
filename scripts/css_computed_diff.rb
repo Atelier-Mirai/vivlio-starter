@@ -32,6 +32,8 @@
 # 前提:
 #   book-settings.css・book-fonts.css・theme-images/ は、HTML を組んだ写しの本の .cache/vs/ のものを
 #   前後の両方に使う（book.yml から生成する規則は比べる対象ではないため）。
+#   Kindle の HTML には、ビルドと同じく Css::LiteralResolver でリテラル化した CSS を当てる（その版に
+#   LiteralResolver があるときだけ。S3-3 より前の版は var() のまま当てる）。
 #   Chromium は ~/.cache/puppeteer/chrome/ の最も新しい版を使う（環境変数 VS_CHROME で指定できる）。
 #   Chromium は text-spacing・margin-break・string-set など Vivliostyle だけのプロパティを計算しない。
 #   これらは計算値に出ないので、CSS の文字列で別に確かめる（v2-migration-plan.md §8.5）。
@@ -74,7 +76,9 @@ end
 # 別のプロセスで描くのは、前と後でコード（IMPORTS・Flattener）が違うためである。
 # workspace の .cache/vs/ と stylesheets/ の並びは本と同じにし、入口の相対パスがそのまま解けるようにする
 # settings は book-settings*.css の置き場（既定は book_cache。--after-settings で後の側だけ差し替える）
-def prepare_css(source, workspace, book_cache, settings = book_cache)
+# kindle_htmls は Kindle の HTML。source に Css::LiteralResolver があれば、Kindle の束をビルドと同じく
+# リテラル化する（変数の表の範囲は Css::Bundle.kindle_scope で、その種類の HTML から作る）
+def prepare_css(source, workspace, book_cache, kindle_htmls, settings = book_cache)
   cache = File.join(workspace, '.cache', 'vs')
   FileUtils.mkdir_p([cache, File.join(workspace, 'flat')])
   File.symlink(File.join(source, 'stylesheets'), File.join(workspace, 'stylesheets'))
@@ -88,19 +92,33 @@ def prepare_css(source, workspace, book_cache, settings = book_cache)
     w = VivlioStarter::CLI::Css::EntryWriter
     f = VivlioStarter::CLI::Css::Flattener
     workspace = ARGV.fetch(0)
+    kindle_htmls = JSON.parse(ARGV.fetch(1))
+    literal = File.file?('lib/vivlio_starter/cli/css/literal_resolver.rb')
+    require 'vivlio_starter/cli/css/bundle' if literal
+    aliases = { 'index-page' => 'index', 'glossary-page' => 'glossary' }
+    kind_of = lambda do |html|
+      classes = File.read(html)[/<body\b[^>]*\bclass="([^"]*)"/, 1].to_s.split.map { aliases.fetch(it, it) }
+      classes.find { w::IMPORTS.key?(it) } || 'chapter'
+    end
     rebase = ->(abs) { "file://\#{abs}" }
     w::IMPORTS.each_key do |kind|
       entry = File.join(workspace, '.cache', 'vs', "entry-\#{kind}.css")
       File.write(entry, w.render(kind))
       # EPUB と Kindle は、出力先の target 層を足した入口から平らにする（Css::Bundle と同じ）
       { 'pdf' => nil, 'epub' => :epub, 'kindle' => :kindle }.each do |flavor, target|
-        css = f.render(f.pieces(entry, rebase:, css: w.render(kind, target:)))
+        pieces = f.pieces(entry, rebase:, css: w.render(kind, target:))
+        if literal && target == :kindle
+          scope = VivlioStarter::CLI::Css::Bundle.kindle_scope(kindle_htmls.select { kind_of.call(it) == kind })
+          pieces = VivlioStarter::CLI::Css::LiteralResolver.resolve(pieces.reject(&:nested), scope:).pieces
+        end
+        css = f.render(pieces)
         File.write(File.join(workspace, 'flat', "\#{flavor}-\#{kind}.css"), css)
       end
     end
   RUBY
-  _, err, status = Open3.capture3('ruby', '-Ilib', '-rvivlio_starter/cli/css/entry_writer',
-                                  '-rvivlio_starter/cli/css/flattener', '-e', script, workspace, chdir: source)
+  _, err, status = Open3.capture3('ruby', '-Ilib', '-rjson', '-rvivlio_starter/cli/css/entry_writer',
+                                  '-rvivlio_starter/cli/css/flattener', '-e', script, workspace,
+                                  JSON.generate(kindle_htmls), chdir: source)
   abort("CSS を用意できません（#{source}）: #{err}") unless status.success?
 end
 
@@ -240,9 +258,12 @@ Dir.mktmpdir('css-computed-diff') do |tmp|
   FileUtils.mkdir_p(source)
   checkout(options[:before], source)
   workspaces = { before: File.join(tmp, 'before'), after: File.join(tmp, 'after') }
-  prepare_css(source, workspaces[:before], book_caches.first)
-  prepare_css(options[:after], workspaces[:after], book_caches.first, options[:after_settings] || book_caches.first)
-  kinds = Dir[File.join(workspaces[:after], 'flat', '*.css')].map { File.basename(it, '.css') }
+  kindle_htmls = htmls.select { File.basename(File.dirname(it)) == 'kindle' }
+  prepare_css(source, workspaces[:before], book_caches.first, kindle_htmls)
+  prepare_css(options[:after], workspaces[:after], book_caches.first, kindle_htmls,
+              options[:after_settings] || book_caches.first)
+  # flat/ のファイルは「出力先-種類.css」。種類の名前は pdf の分から取る
+  kinds = Dir[File.join(workspaces[:after], 'flat', 'pdf-*.css')].map { File.basename(it, '.css').delete_prefix('pdf-') }
 
   # --- Phase: 組んで計算値を取る ---
   pairs = build_pairs(htmls, options, kinds, tmp)

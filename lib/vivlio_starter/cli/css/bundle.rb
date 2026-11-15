@@ -10,6 +10,7 @@
 #       → Flattener.pieces（読み込み・並べ替え）
 #       → 入れ子の規則を知らせる
 #       → TargetFilter（出力先が扱えない規則を落とす）
+#       → LiteralResolver（Kindle だけ。var()・calc()・color-mix()・:is() を解く）
 #       → Flattener.render
 #   InversionCheck（--log=debug のときだけ）は、HTML の書き換えが終わった後に
 #   report_epub_inversions! が同じ規則の列で行う。
@@ -17,7 +18,7 @@
 # 三つの形（§4.2）:
 #   layered       pdf・print_pdf。入口をそのまま読み、ここでは何も作らない
 #   flat          epub。下の write_epub! が消費者 dir の styles/ へ書く
-#   flat_literal  kindle。S3-3 でリテラル化の段を足す（今は flat と同じ処理に Kindle のフィルタ）
+#   flat_literal  kindle。flat に Kindle のフィルタと、リテラル化（LiteralResolver）を足す
 #
 # VS_CSS_FORM=flat（開発用・文書には載せない）:
 #   PDF にも平らな CSS を読ませる。層を外しても PDF の結果が変わらないことを、全ページの
@@ -32,6 +33,7 @@ require_relative 'flattener'
 require_relative 'target_filter'
 require_relative 'cascade'
 require_relative 'inversion_check'
+require_relative 'literal_resolver'
 
 module VivlioStarter
   module CLI
@@ -40,6 +42,17 @@ module VivlioStarter
       module Bundle
         # 確かめのために PDF の CSS の形を選ぶ環境変数
         FORM_ENV = 'VS_CSS_FORM'
+
+        # Kindle の出力先の変換（L4）が body に足すクラス。変数の表を作る範囲に入れる
+        KINDLE_BODY_CLASSES = %w[vs-epub vs-kindle].freeze
+
+        # 著者に知らせる、Kindle で解けなかった宣言の直し方（LiteralResolver::Dropped#reason ごと）
+        UNRESOLVED_ADVICE = {
+          variable: '→ 値を 4mm や #1a73e8 のように直接書くか、変数を :root で定義してください',
+          calc: '→ 単位をそろえるか、計算した値を直接書いてください（例: calc(100% - 2mm) → 95%）',
+          color_mix: '→ 混ぜた後の色を #1a73e8 のように直接書いてください',
+          has: '→ :has() を使わない選択子で書いてください'
+        }.freeze
 
         module_function
 
@@ -68,10 +81,11 @@ module VivlioStarter
         # @return [Hash{String => String}] 入口の名前 → 書いたパス
         def write_epub!(html_by_kind, target:, styles_dir:, embed_fonts:)
           reported = {}
-          html_by_kind.to_h do |kind, _html_files|
+          html_by_kind.to_h do |kind, html_files|
             dest = File.join(styles_dir, "#{kind}.css")
             pieces = flat_pieces(kind, target:, dest:, package_root: File.dirname(styles_dir), embed_fonts:,
                                        reported:)
+            pieces = literalize(pieces, target:, scope: kindle_scope(html_files), reported:) if target == :kindle
             FileUtils.mkdir_p(styles_dir)
             File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
             [kind, dest]
@@ -89,7 +103,11 @@ module VivlioStarter
           html_by_kind.each do |kind, html_files|
             pieces = Flattener.pieces(EntryWriter.path_for(kind), rebase: ->(path) { path },
                                                                   css: EntryWriter.render(kind, target:))
-            report_inversions(kind, target, TargetFilter.apply(pieces, target:, embed_fonts:), html_files)
+            pieces = TargetFilter.apply(pieces, target:, embed_fonts:)
+            if target == :kindle
+              pieces = LiteralResolver.resolve(pieces.reject(&:nested), scope: kindle_scope(html_files)).pieces
+            end
+            report_inversions(kind, target, pieces, html_files)
           end
         end
 
@@ -103,6 +121,11 @@ module VivlioStarter
           pieces = Flattener.pieces(source, rebase:)
           report_nested(pieces, {})
           pieces = TargetFilter.apply(pieces, target:, embed_fonts:)
+          if target == :kindle
+            # 章が足した CSS は単独では変数をほとんど定義しないので、本文の束の変数も表に入れて解く
+            base = flat_pieces('chapter', target:, dest:, embed_fonts:)
+            pieces = literalize(pieces, target:, scope: kindle_scope([]), reported: {}, base:, author: true)
+          end
           FileUtils.mkdir_p(File.dirname(dest))
           File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
           dest
@@ -118,6 +141,44 @@ module VivlioStarter
           pieces = Flattener.pieces(entry, rebase:, css: EntryWriter.render(kind, target: target == :pdf ? nil : target))
           report_nested(pieces, reported)
           TargetFilter.apply(pieces, target:, embed_fonts:)
+        end
+
+        # Kindle 用に var()・calc()・color-mix()・:is() を解く（css-layer-restructure-spec.md §4.4）。
+        # 解けずに落とした宣言は --log=debug で一覧にし、著者の CSS（custom.css・章が足した CSS）の
+        # ものだけを 🟡 で知らせる（§4.5）。同じものを種類ごとに何度も知らせない
+        # @param base [Array<Flattener::Piece>] 変数の表にだけ使う規則
+        # @param author [Boolean] pieces が全部著者の CSS か（章が足した CSS）
+        def literalize(pieces, target:, scope:, reported:, base: [], author: false)
+          result = LiteralResolver.resolve(pieces.reject(&:nested), scope:, base: base.reject(&:nested))
+          lower, unresolved = result.dropped.partition { it.reason == :lower_layer }
+          unless lower.empty?
+            Common.log_debug("[css] #{target}: 解かない層（部品など）の var() などを含む宣言と規則を #{lower.size} 落としました" \
+                             '（KFX と同じ。LiteralResolver::RESOLVED_LAYERS）')
+          end
+          unresolved.each do |dropped|
+            key = [:literal, dropped.source, dropped.selector, dropped.declaration]
+            next if reported[key]
+
+            reported[key] = true
+            what = dropped.declaration ? "#{dropped.selector} { #{dropped.declaration} }" : dropped.selector
+            Common.log_debug("[css] #{target}: 解けないので落とした（#{dropped.reason}）: #{what} — #{relative(dropped.source)}")
+            next unless author || File.basename(dropped.source) == 'custom.css'
+
+            Common.log_warn("#{relative(dropped.source)} の「#{what}」は Kindle では効きません",
+                            detail: [UNRESOLVED_ADVICE.fetch(dropped.reason)])
+          end
+          result.pieces
+        end
+
+        # Kindle の束の変数の表を作る範囲。body のクラスは、その種類を読む HTML に共通のもの
+        # （出力先の変換が後で足す vs-epub・vs-kindle を含める）。HTML の style 属性で定義された
+        # 変数（写真の列の数など）は要素ごとに値が違うので、解かない
+        def kindle_scope(html_files)
+          sources = html_files.map { File.read(it, encoding: 'utf-8') }
+          body_classes = sources.map { it[/<body\b[^>]*\bclass="([^"]*)"/, 1].to_s.split }
+          scoped = sources.flat_map { it.scan(/\sstyle="([^"]*)"/).flatten.flat_map { it.scan(/(--[\w-]+)\s*:/).flatten } }
+          LiteralResolver.scope_for(body_classes, target_classes: KINDLE_BODY_CLASSES, language: Common.book_language,
+                                                  scoped:)
         end
 
         # url() が指す作業ディレクトリの中のファイルを、パッケージの中の位置へ置き換えて、

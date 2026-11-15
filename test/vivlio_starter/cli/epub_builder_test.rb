@@ -602,7 +602,7 @@ module VivlioStarter
       # パッケージには stylesheets/ の CSS を運ばないので、付け替えないと参照が切れる
       def test_bundle_flat_css_for_epub_copies_stylesheet_added_by_frontmatter
         FileUtils.mkdir_p('stylesheets/extra')
-        File.write('stylesheets/extra/wide.css', %(.wide { background: url("../images/w.webp"); }\n))
+        File.write('stylesheets/extra/wide.css', %(.wide { color: red; background: url("../images/w.webp"); }\n))
         dir = 'pkg-kindle'
         FileUtils.mkdir_p(dir)
         html = File.join(dir, '01-intro.html')

@@ -25,8 +25,9 @@
 #   同名変数の再宣言が既存 CSS 値に勝つ（css-layer-restructure-spec.md §2.1）。
 #   予備の書体の @font-face だけは book-fonts.css へ分けて書き、入口が層の外で読む
 #   （@font-face を層に入れない。同 §2.2）。
-#   Kindle にだけ当てる規則（テーマ色のリテラルなど）は book-settings-kindle.css へ分けて書き、
-#   Kindle の束が target 層の最後で読む（render_kindle）。
+#   Kindle にだけ当てる規則は書かない。Kindle の規則は stylesheets/targets/kindle*.css が変数で書き、
+#   Kindle 用の平らな CSS を作るときに Css::LiteralResolver が値に解く（css-layer-restructure-spec.md §4.4）。
+#   ここで変数を定義すれば、テーマ色も設定も Kindle に届く。
 #
 # 画像 URL の基準:
 #   生成ファイルは `.cache/vs/` 直下に置かれるため、stylesheets/ 基準の相対
@@ -59,10 +60,6 @@ module VivlioStarter
         # 予備の書体の @font-face を書くファイル（.cache/vs/book-fonts.css）。入口が層の外で読む。
         def fonts_output_path = File.join(Common::CACHE_DIR, 'book-fonts.css')
 
-        # Kindle にだけ当てる設定の規則を書くファイル（.cache/vs/book-settings-kindle.css）。
-        # Kindle の束の target 層の最後で読む（render_kindle の説明）。
-        def kindle_output_path = File.join(Common::CACHE_DIR, 'book-settings-kindle.css')
-
         # `.cache/vs/` から `stylesheets/` への相対プレフィックス。
         # 生成ファイルは 2 階層深いため、stylesheets/ 基準の相対 URL をこの接頭辞で組み替える。
         CACHE_TO_STYLESHEETS = '../../stylesheets/'
@@ -86,7 +83,6 @@ module VivlioStarter
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, css, encoding: 'utf-8')
           File.write(fonts_output_path, render_fonts, encoding: 'utf-8')
-          File.write(kindle_output_path, render_kindle(cfg), encoding: 'utf-8')
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path
@@ -125,25 +121,6 @@ module VivlioStarter
             #{section_lead_width_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
             #{talk_class_rules(registry)}
-          CSS
-        end
-
-        # Kindle にだけ当てる設定の規則の全文（副作用なし・テスト対象）。
-        #
-        # なぜ book-settings.css から分けるか:
-        #   ここの規則は、stylesheets/targets/kindle*.css の Kindle の規則（KFX が var() を解さない
-        #   ためのリテラルの色・節の改ページ）を、同じ選択子で後から覆う。両方が settings 層以下に
-        #   あった間は並びの順で勝てたが、Kindle の規則は settings 層の上の target 層へ移った
-        #   （css-layer-restructure-spec.md §5）。覆う側も target 層の最後に置いて、勝ち負けを保つ。
-        #   Kindle の body にしか当たらないので、PDF とクリーン EPUB の束には入れない。
-        # @return [String]
-        def render_kindle(cfg = Common::CONFIG)
-          <<~CSS
-            #{header_comment}
-            #{section_pagebreak_kindle_rule(build_page_cfg(cfg))}
-            #{kindle_accent_rules(cfg)}
-            #{kindle_custom_color_rules(cfg)}
-            #{talk_kindle_rules(TalkRegistry.load)}
           CSS
         end
 
@@ -477,16 +454,6 @@ module VivlioStarter
           [h3.strip.empty? ? '♣' : h3, h4.strip.empty? ? '♦' : h4]
         end
 
-        # h4 の印は ::before の var() なので、Kindle では消える。Previewer 4 は ::before の
-        # content を本文へ差し込むので、文字そのものを焼く（kindle-css-compatibility-notes.md §2.2）。
-        # 本文と付録に限るのは、用語集の h4 など parts/heading.css の外には印が無いため。
-        # !important は Techbook の <style> が content を '' !important で空にしているのに勝つため。
-        def h4_marker_kindle_rule(cfg, color)
-          _h3, h4 = heading_markers(cfg)
-          selector_group(%w[body.chapter.vs-kindle body.appendix.vs-kindle], 'h4::before') +
-            %( { content: "#{escape_marker(h4)}" !important; color: #{color}; })
-        end
-
         # page-settings 系 22 変数（旧 update_page_settings_css 相当）。
         # nil/空値は宣言しない（base/page.css の既定がカスケードで生きる）。
         def page_declarations(page_cfg)
@@ -543,6 +510,8 @@ module VivlioStarter
         def section_pagebreak_rule(page_cfg)
           return '' unless section_pagebreak_disabled?(page_cfg)
 
+          # Kindle の簡素な節見出し（targets/kindle.css の body.vs-header-simple.vs-kindle h2）は、
+          # 下の選択子より詳細度が高いので、規則では打ち消せない。変数で値を渡す
           <<~CSS.chomp
             /* page.section_pagebreak: false — 節（h2）でページを改めない。
                Kindle KFX 向けの legacy page-break-before も併せて打ち消す。 */
@@ -550,22 +519,11 @@ module VivlioStarter
               break-before: auto;
               page-break-before: auto;
             }
-            #{chapter_frontispiece_guard_rule}
-          CSS
-        end
-
-        # Kindle の節見出しの改ページ（targets/kindle.css の `body.vs-header-simple.vs-kindle h2`・
-        # legacy 併記）の打ち消し。あちらは target 層にあるので、Kindle の束の最後で読む
-        # book-settings-kindle.css（render_kindle）に置く
-        def section_pagebreak_kindle_rule(page_cfg)
-          return '' unless section_pagebreak_disabled?(page_cfg)
-
-          <<~CSS.chomp
-            /* page.section_pagebreak: false — Kindle の節（h2）でもページを改めない。 */
-            body.vs-header-simple.vs-kindle h2 {
-              break-before: auto;
-              page-break-before: auto;
+            :root {
+              --section-break-before: auto;
+              --section-page-break-before: auto;
             }
+            #{chapter_frontispiece_guard_rule}
           CSS
         end
 
@@ -747,235 +705,6 @@ module VivlioStarter
         end
 
         # ================================================================
-        # Kindle 用テーマ色リテラル（kindle-theme-color-literalize-spec.md）
-        # ================================================================
-        # KFX は var()/color-mix()/calc() を解さないため、テーマ色で塗った本文アクセント
-        # （strong・下線・見出しマーカー・コラム/注記枠・付録見出し）が Kindle では黒/グレー/
-        # くすんだ金へ劣化する。ここへテーマ色をリテラル hex で焼いた body.vs-kindle 規則を出し、
-        # targets/kindle*.css の静的な #888/#b8860b フォールバックを後勝ちで上書きする
-        # （書き出す先は book-settings-kindle.css。Kindle の束の target 層の最後で読む）。
-        def kindle_accent_rules(cfg)
-          theme_cfg = cfg.theme
-          acc = ThemeColor.to_hex6(theme_cfg.color)
-          colbg = ThemeColor.mix_with_white(acc, 0.15)
-          apx = appendix_accent_hex6(theme_cfg, acc)
-
-          # 付録色がテーマ色と同一なら付録専用の上書きは不要。
-          lines = base_kindle_accent_rules(acc, colbg) << h4_marker_kindle_rule(cfg, acc)
-          lines += appendix_kindle_accent_rules(apx) unless apx == acc
-          # 前書き/後書き（parts/preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
-          lines += preface_kindle_accent_rules(preface_accent_hex6(theme_cfg, acc))
-
-          <<~CSS.chomp
-            /* Kindle 用テーマ色リテラル（KFX は var()/color-mix 非対応・最後に読まれ静的フォールバックを上書き） */
-            #{lines.join("\n")}
-          CSS
-        end
-
-        # ================================================================
-        # Kindle 用: custom.css で変えた色（45 章「custom.css で変えられる色」の表）
-        # ================================================================
-        CUSTOM_CSS = File.join('stylesheets', 'custom.css')
-
-        # custom.css の :root で上書きできる色と、Kindle で同じ箇所を塗る規則（%s に色が入る）。
-        # KFX は var() を解さないので、custom.css で変えた変数は Kindle に届かない。上書きされた
-        # 変数だけ値をリテラルにして body.vs-kindle の規則を書く。kindle_accent_rules と同じ
-        # セレクタを後に置くので、テーマ色より custom.css の色が勝つ。custom.css は層の外で
-        # 最後に読まれるので、著者が custom.css に書いた body.vs-kindle の規則はさらに勝つ。
-        #
-        # 表のうち次の 4 つは Kindle に対応する箇所が無いので対象外:
-        # --folio-color（ノンブルが無い）・--section-number-color（節番号は節絵の画像に描く）・
-        # --talk-bg（吹き出しを組まない）・--color-figure-border（図に枠を付けない）。
-        KINDLE_CUSTOM_COLOR_RULES = {
-          '--color-link' => ['body.vs-kindle a { color: %s; }'],
-          '--color-strong' => ['body.vs-kindle strong { color: %s; }'],
-          '--color-em-underline' => ['body.vs-kindle em { text-decoration-color: %s; }'],
-          '--color-column-bg' => ['body.vs-kindle .column { background: %s; }'],
-          # 先頭のラベルは、PDF の角のタブ（.column・.memo）と枠の線（.note・.notice）の代わりに
-          # Kindle だけに出すもの。同じ色にそろえる
-          '--color-column-border' => ['body.vs-kindle .column, body.vs-kindle .memo { border-color: %s; }',
-                                      'body.vs-kindle .column .vs-adm-label, body.vs-kindle .memo .vs-adm-label ' \
-                                      '{ color: %s; }'],
-          '--color-mark' => ['body.vs-kindle .subsection-marker, body.vs-kindle .column h5 { color: %s; }',
-                             'body.vs-kindle .note, body.vs-kindle .notice { border-color: %s; }',
-                             'body.vs-kindle .note .vs-adm-label, body.vs-kindle .notice .vs-adm-label { color: %s; }'],
-          '--color-border-weak' => ['body.vs-kindle .diagram { border-color: %s; }'],
-          '--heading-accent' => ['body.vs-header-simple.vs-kindle h1 { border-color: %s; }',
-                                 'body.vs-header-simple.vs-kindle h1 .chapter-number { color: %s; }',
-                                 'body.vs-header-simple.vs-kindle h2 { border-color: %s; border-left-color: %s; }',
-                                 'body.vs-header-simple.vs-kindle h2 .section-number { background: %s; }']
-        }.freeze
-
-        # custom.css の :root で変えた色を、Kindle 用のリテラルの規則にする。
-        # 色に直せない値（calc() など）は書き出さず、Kindle を組む本なら 🟡 で知らせる。
-        # @return [String] 規則（変えた色が無ければ空）
-        def kindle_custom_color_rules(cfg, custom_css: CUSTOM_CSS)
-          overrides = root_variables(custom_css).slice(*KINDLE_CUSTOM_COLOR_RULES.keys)
-          return '' if overrides.empty?
-
-          variables = root_variables(ThemeColor::THEME_CSS).merge(root_variables(custom_css))
-          accent = ThemeColor.to_hex6(cfg.theme.color)
-          lines = []
-          unresolved = []
-          overrides.each do |name, value|
-            color = kindle_literal_color(value, variables, accent)
-            next unresolved << [name, value] if color.nil?
-
-            lines.concat(KINDLE_CUSTOM_COLOR_RULES.fetch(name).map { format(it, *Array.new(it.scan('%s').size, color)) })
-            lines << h4_marker_kindle_rule(cfg, color) if name == '--color-mark'
-          end
-          warn_unconvertible_custom_colors(cfg, unresolved)
-          return '' if lines.empty?
-
-          "/* Kindle 用: custom.css で変えた色（KFX は var() 非対応） */\n#{lines.join("\n")}"
-        end
-
-        # CSS ファイルの :root { … } に書いた変数（後に書いたものが勝つ）。コメントは読まない。
-        # @return [Hash{String => String}] 変数名 → 値
-        def root_variables(path)
-          return {} unless File.file?(path)
-
-          css = File.read(path, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
-          css.scan(/:root\s*\{([^}]*)\}/).flat_map { it[0].scan(/(--[\w-]+)\s*:\s*([^;]+);/) }
-             .to_h { |name, value| [name, value.strip] }
-        end
-
-        # CSS の色の値を、Kindle が解せるリテラルにする。読めなければ nil。
-        # 色名（red）と rgb() はそのまま渡す（ThemeColor.resolve は色名をテーマのパレットで引くので
-        # 使わない。custom.css の red は CSS の red であってテーマの赤ではない）。
-        # var() は custom.css と tokens.css の :root を辿り、--theme-accent は book.yml のテーマ色、
-        # --accent-<色名> はパレットで解く。color-mix(in srgb, 色 N%, white) は混色を計算する。
-        def kindle_literal_color(value, variables, accent, depth = 0)
-          v = value.to_s.strip
-          return nil if v.empty? || depth > 8
-
-          case v
-          when /\A#(?:\h{3}|\h{6}|\h{8})\z/ then ThemeColor.normalize_hex6(v)
-          when /\A[a-z]+\z/i then v.downcase
-          when %r{\Argba?\(\s*[\d.\s,%/]+\)\z}i then v
-          when /\Avar\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)\z/
-            kindle_literal_color(variable_value(Regexp.last_match(1), Regexp.last_match(2), variables, accent),
-                                 variables, accent, depth + 1)
-          when /\Acolor-mix\(\s*in\s+srgb\s*,\s*(.+?)\s+([\d.]+)%\s*,\s*white\s*\)\z/i
-            ratio = Regexp.last_match(2).to_f / 100
-            base = ThemeColor.normalize_hex6(kindle_literal_color(Regexp.last_match(1), variables, accent, depth + 1))
-            base && ThemeColor.mix_with_white(base, ratio)
-          end
-        end
-
-        # var() が指す変数の値。--theme-accent は book.yml のテーマ色（tokens.css の値は既定の緑のまま）
-        def variable_value(name, fallback, variables, accent)
-          return accent if name == '--theme-accent'
-
-          variables[name] || ThemeColor.palette[name.delete_prefix('--accent-')] || fallback
-        end
-
-        # 色に直せなかった custom.css の値を、Kindle を組む本にだけ知らせる。
-        # book-settings.css は 1 回のビルドで何度か作るので、同じ値は 1 度だけ出す。
-        def warn_unconvertible_custom_colors(cfg, unresolved)
-          return if unresolved.empty? || !Build::Targets.resolve(cfg).kindle
-
-          @warned_custom_colors ||= Set.new
-          unresolved.each do |name, value|
-            next unless @warned_custom_colors.add?([name, value])
-
-            Common.log_warn("stylesheets/custom.css の #{name}（#{value}）は Kindle 用の色に直せません",
-                            detail: "Kindle では元の色で表示されます。同じ色にするときは、値を #1a73e8 のような色で書いてください")
-          end
-        end
-
-        # 付録アクセントのリテラル hex。appendix_color 未指定時はテーマ色へフォールバック
-        # （supplemental_color_declarations が --appendix-accent-color を fallback: accent で宣言する
-        # のと一致＝PDF/クリーン EPUB のカスケードと揃える）。
-        def appendix_accent_hex6(theme_cfg, theme_hex)
-          raw = theme_cfg.appendix_color
-          return theme_hex if raw.to_s.strip.empty?
-
-          ThemeColor.to_hex6(raw, fallback: theme_hex)
-        end
-
-        # 前書き/後書きアクセントのリテラル hex。付録と同じく、未指定時はテーマ色へフォールバック。
-        def preface_accent_hex6(theme_cfg, theme_hex)
-          raw = theme_cfg.preface_color
-          return theme_hex if raw.to_s.strip.empty?
-
-          ThemeColor.to_hex6(raw, fallback: theme_hex)
-        end
-
-        # 本文・見出しのアクセント規則（テーマ色 ACC / コラム地色 COLBG）。theme.style によらず共通。
-        def base_kindle_accent_rules(acc, colbg)
-          [
-            "body.vs-kindle strong { color: #{acc}; }",
-            "body.vs-kindle em { text-decoration-color: #{acc}; }",
-            "body.vs-kindle .subsection-marker { color: #{acc}; }",
-            "body.vs-kindle .column { border-color: #{acc}; background: #{colbg}; }",
-            "body.vs-kindle .tip { border-color: #{acc}; }",
-            "body.vs-kindle .memo { border-color: #{acc}; }",
-            "body.vs-kindle .note { border-color: #{acc}; }",
-            "body.vs-kindle .notice { border-color: #{acc}; }",
-            adm_label_rule('body.vs-kindle', acc),
-            "body.vs-header-simple.vs-kindle h1 { border-color: #{acc}; }",
-            "body.vs-header-simple.vs-kindle h1 .chapter-number { color: #{acc}; }",
-            "body.vs-header-simple.vs-kindle h2 { border-color: #{acc}; border-left-color: #{acc}; }",
-            "body.vs-header-simple.vs-kindle h2 .section-number { background: #{acc}; }"
-          ] + index_glossary_kindle_accent_rules(acc, colbg)
-        end
-
-        # 索引・用語集は章と別の HTML（UnifiedPageBuilder 生成）で body クラスも異なるため、
-        # 上の body.vs-kindle 規則では届かない罫線・見出し色を個別に literalize する。
-        def index_glossary_kindle_accent_rules(acc, colbg)
-          [
-            "body.vs-kindle .index h1 { border-bottom-color: #{acc}; }",
-            "body.vs-kindle .index-section h2 { color: #{acc}; border-bottom-color: #{acc}; }",
-            "body.colophon.vs-kindle .book-title { border-bottom-color: #{acc}; }",
-            "body.vs-kindle .glossary-title { border-bottom-color: #{acc}; }",
-            "body.vs-kindle .glossary-group-header { color: #{acc}; border-left-color: #{acc}; " \
-            "background: #{colbg}; }",
-            "body.vs-kindle .glossary-h4 { color: #{acc}; }"
-          ]
-        end
-
-        # 付録は appendix.css が --heading-accent / --color-mark を appendix-accent へ差し替えるため、
-        # 見出し・h3 マーカー・ラベルを APX で上書きする（strong/枠は theme-accent のままで base が担う）。
-        # .appendix が 1 つ多く特異度で勝つ。
-        def appendix_kindle_accent_rules(apx)
-          [
-            "body.appendix.vs-header-simple.vs-kindle h1 { border-color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h1 .chapter-number { color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h2 { border-color: #{apx}; border-left-color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h2 .section-number { background: #{apx}; }",
-            "body.appendix.vs-kindle .subsection-marker { color: #{apx}; }",
-            "body.appendix.vs-kindle h4::before { color: #{apx}; }",
-            adm_label_rule('body.appendix.vs-kindle', apx)
-          ]
-        end
-
-        # 実体ラベル【TIP】等（Kindle は ::before を content:none で抑止し vs-adm-label を注入・既定 #444）。
-        # .terminal は白ラベル override が特異度で勝つため、.output は PDF にラベル無しのため、含めない。
-        def adm_label_rule(prefix, color)
-          %w[tip memo column notice note]
-            .map { "#{prefix} .#{it} .vs-adm-label" }.join(', ') + " { color: #{color}; }"
-        end
-
-        # 前書き（body.preface）/ 後書き（body.postface。前書きと同じ parts/preface.css を読む）の
-        # accent 規則。parts/preface.css は h1 下線・h2/引用の左罫・リンク色を var(--color-preface-accent) で
-        # 塗るが KFX で全滅する（h1 下線だけ静的 #4f46e5 フォールバックがあるがテーマ非追従）。
-        # book-settings.css は全ページ共通のため body.preface / body.postface で必ずスコープする
-        # （裸の h1/h2 規則を出すと本文章へ波及する）。論理プロパティは避け物理で書く。
-        def preface_kindle_accent_rules(pref)
-          scopes = %w[body.preface.vs-kindle body.postface.vs-kindle]
-          [
-            selector_group(scopes, 'h1') + " { border-bottom-color: #{pref}; }",
-            selector_group(scopes, 'h2') + " { border-left: 3px solid #{pref}; }",
-            selector_group(scopes, 'blockquote') + " { border-left: 3px solid #{pref}; }",
-            selector_group(scopes, 'a') + " { color: #{pref}; border-bottom: 1px dotted #{pref}; }"
-          ]
-        end
-
-        # 複数スコープ × 要素をカンマ区切りのセレクタ群にする（"a b, c b"）。
-        def selector_group(scopes, element) = scopes.map { "#{it} #{element}" }.join(', ')
-
-        # ================================================================
         # 会話文キャラクター色（characters-dialogue-spec.md §2.3-2 / §2.4-2）
         # ================================================================
         # talk.yml の各話者色を book-settings.css へ焼き込む。ソース CSS
@@ -1007,13 +736,23 @@ module VivlioStarter
         TALK_SPEAKER_EXTRA_MM = 2
 
         # .talk-c-<key> の --talk-accent 差し替え。PDF/クリーン EPUB は var() 経由で色を当てる。
-        # Kindle 用のリテラル色は talk_kindle_rules（book-settings-kindle.css）が書く。
+        #
+        # 名前・区切り・発話の中の strong には、話者の色を :root の --talk-c-<key> で直接当てる。
+        # --talk-accent は話者の要素の上で定義する変数なので、Kindle 用の CSS では値に解けない
+        # （Css::LiteralResolver。要素ごとに値が違う変数は解かない）。:root の変数なら解ける。
+        # PDF とクリーン EPUB では parts/talk.css の var(--talk-accent) と同じ色になる。
+        # strong は targets/kindle.css などの `body.vs-kindle strong`（0,1,2）に勝つよう (0,2,1) にする。
         #
         # 話者の avatar_size は、同じ .talk-c-<key> に --talk-icon-size と --talk-speaker-size を
         # 置いて :root（display.avatar_size）の値を覆う（talk-avatar-initial-spec.md §7.3）。
-        # Kindle はアバターを出さないので、大きさにリテラルは要らない。
+        # Kindle はアバターを出さないので、大きさは解けなくてよい。
         def talk_class_rules(registry)
-          color_lines = registry.with_color.map { ".talk-c-#{it.key} { --talk-accent: var(--talk-c-#{it.key}); }" }
+          color_lines = registry.with_color.flat_map do |char|
+            key = char.key
+            [".talk-c-#{key} { --talk-accent: var(--talk-c-#{key}); }",
+             ".talk-c-#{key} .talk-name, .talk-c-#{key} .talk-sep, .talk-item.talk-c-#{key} strong " \
+             "{ color: var(--talk-c-#{key}); }"]
+          end
           size_lines = registry.with_avatar_size.map do |char|
             ".talk-c-#{char.key} { #{talk_size_declarations(char.avatar_size).join(' ')} }"
           end
@@ -1021,26 +760,6 @@ module VivlioStarter
             ("/* 会話文キャラクター色 */\n#{color_lines.join("\n")}" if color_lines.any?),
             ("/* 会話文キャラクターのアバターの直径 */\n#{size_lines.join("\n")}" if size_lines.any?)
           ].compact.join("\n")
-        end
-
-        # Kindle 用の話者のリテラル色。KFX は var() を解さないため、具体色（hex）で焼く
-        # （テーマ色名→hex は ThemeColor.to_hex6 で解決）。
-        #
-        # Kindle は会話文を inline 形式（名前＋区切り＋発話の 1 段落）へ組み替えるため
-        # （talk-display-options-spec.md §2.5）、焼くのは話者名・区切り・発話内 strong の 3 つ。
-        # 吹き出しの枠線は Kindle には存在しないのでリテラル化しない。
-        # `strong` は base_kindle_accent_rules の `body.vs-kindle strong`（テーマ色・特異度 0,1,2）
-        # に落ちてしまうため話者色で塗り直す。セレクタは (0,2,2) でその既定に勝つ。
-        def talk_kindle_rules(registry)
-          lines = registry.with_color.flat_map do |char|
-            hex = ThemeColor.to_hex6(char.color)
-            ["body.vs-kindle .talk-c-#{char.key} .talk-name { color: #{hex}; }",
-             "body.vs-kindle .talk-c-#{char.key} .talk-sep { color: #{hex}; }",
-             "body.vs-kindle .talk-c-#{char.key} strong { color: #{hex}; }"]
-          end
-          return '' if lines.empty?
-
-          "/* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */\n#{lines.join("\n")}"
         end
 
         # ================================================================

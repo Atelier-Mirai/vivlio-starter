@@ -36,9 +36,6 @@ module VivlioStarter
         # book.yml から生成する CSS（`.cache/vs/` に置かれる）
         BOOK_SETTINGS = 'book-settings.css'
         BOOK_FONTS = 'book-fonts.css'
-        # Kindle にだけ当てる設定の規則。Kindle の束の target 層の最後に置き、targets/kindle*.css を覆う
-        # （BookSettingsCss.render_kindle）。ページの種類に依らず読む（book-settings.css と同じ）
-        BOOK_SETTINGS_KINDLE = 'book-settings-kindle.css'
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
@@ -150,7 +147,6 @@ module VivlioStarter
           TARGET_IMPORTS.fetch(name, {}).fetch(target, []).each do
             lines << %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(target);)
           end
-          lines << %(@import url("#{BOOK_SETTINGS_KINDLE}") layer(target);) if target == :kindle
 
           <<~CSS
             @charset "utf-8";

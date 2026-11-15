@@ -1,0 +1,334 @@
+# frozen_string_literal: true
+
+# ================================================================
+# Test: css/literal_resolver_test.rb
+# ================================================================
+# テスト対象:
+#   Css::LiteralResolver（css-layer-restructure-spec.md §4.4）。Kindle 用の平らな CSS から
+#   var()・calc()・color-mix()・:is()・:where() を解き、:has() の選択子を落とす。
+#
+# 二つに分ける:
+#   LiteralResolverTest       小さな CSS で、解き方の決まり（変数の表の段・深い変数・計算・混色・選択子）
+#   LiteralResolverKindleTest 同梱の stylesheets/ から Kindle の束を組み、book.yml の色と custom.css の色が
+#                             Kindle の規則に値として届くこと。1.x の BookSettingsCss が Kindle 用に
+#                             焼いていた規則（kindle_accent_rules など。S3-3 で消した）の確かめを引き継ぐ
+# ================================================================
+
+require 'test_helper'
+require 'tmpdir'
+require 'vivlio_starter/cli/css/bundle'
+require 'vivlio_starter/cli/pre_process/book_settings_css'
+
+module VivlioStarter
+  module CLI
+    module Css
+      class LiteralResolverTest < Minitest::Test
+        # 章の body のクラスで解く
+        def resolve(css, body_classes: %w[chapter vs-epub vs-kindle], scoped: [], language: 'ja', layer: ['target'])
+          scope = LiteralResolver.scope_for([body_classes], target_classes: [], language:, scoped:)
+          piece = Flattener::Piece.new(layer: layer, text: css, source: 'test.css', nested: false)
+          LiteralResolver.resolve(Stylesheet.parse(css).map { piece.with(text: it.text) }, scope:)
+        end
+
+        def text_of(result) = result.pieces.map(&:text).join("\n")
+
+        def test_should_resolve_variables_with_body_definitions_over_root
+          result = resolve(<<~CSS)
+            :root { --accent: #111111; --mark: var(--accent); }
+            body.chapter { --accent: #222222; }
+            body.appendix { --accent: #333333; }
+            p { color: var(--accent); border-color: var(--mark); }
+          CSS
+          css = text_of(result)
+
+          assert_includes css, 'color: #222222;', 'body の定義が :root に勝つ。ほかの種類の body の定義は当たらない'
+          assert_includes css, 'border-color: #111111;', ':root の値の中の var() は :root の定義を読む（継承と同じ）'
+          assert_empty result.dropped
+        end
+
+        def test_should_follow_specificity_and_order_within_the_same_level
+          css = text_of(resolve(<<~CSS))
+            :root { --a: #111111; }
+            html { --a: #222222; }
+            :root { --b: #333333; }
+            :root { --b: #444444; }
+            p { color: var(--a); background: var(--b); }
+          CSS
+
+          assert_includes css, 'color: #111111;', ':root（0,1,0）は後に書いた html（0,0,1）に勝つ'
+          assert_includes css, 'background: #444444;', '同じ強さなら後に書いた定義'
+        end
+
+        # 要素ごとに値が違いうる変数（深い要素の上の定義・ページごとのクラス・HTML の style 属性）は解かず、
+        # 読む宣言を落とす。KFX も var() を含む宣言を捨てるので、Kindle の結果は今と同じ
+        def test_should_drop_declarations_that_read_scoped_variables
+          result = resolve(<<~CSS, scoped: %w[--cols])
+            :root { --talk-accent: #111111; }
+            .talk { --talk-accent: #222222; }
+            body.chapter-first { --first: 1px; }
+            .talk-name { color: var(--talk-accent); }
+            .first { margin: var(--first); }
+            .pictures { columns: var(--cols, 3); }
+            p { color: red; }
+          CSS
+
+          assert_equal %w[.talk-name .first .pictures], result.dropped.map(&:selector)
+          assert(result.dropped.all? { it.reason == :variable })
+          refute_match(/var\(/, text_of(result))
+          assert_includes text_of(result), "p {\n  color: red;\n}"
+        end
+
+        def test_should_use_fallback_only_for_undefined_variables
+          css = text_of(resolve(":root { --a: 2mm; }\np { margin: var(--a, 9mm); padding: var(--none, 3mm); }"))
+
+          assert_includes css, 'margin: 2mm;'
+          assert_includes css, 'padding: 3mm;'
+        end
+
+        # 変数の定義は値を解いて残す。HTML の中の <style> が var() で読むため
+        def test_should_keep_definitions_with_resolved_values
+          css = text_of(resolve(":root { --base: 4mm; --twice: calc(var(--base) * 2); --odd: calc(1mm + 2%); }"))
+
+          assert_includes css, '--base: 4mm;'
+          assert_includes css, '--twice: 8mm;'
+          refute_includes css, '--odd', '解けない定義は落とす'
+        end
+
+        def test_should_calculate_calc_with_consistent_units
+          result = resolve(<<~CSS)
+            :root { --paper-scale: 0.96; }
+            p {
+              margin: calc(var(--paper-scale) * 4mm);
+              width: calc(100% * 2 / 3);
+              text-indent: calc(-1 * clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm));
+              padding: clamp(1mm, calc(var(--paper-scale) * 2mm), 3mm);
+              left: calc(50% + 2mm);
+            }
+          CSS
+          css = text_of(result)
+
+          assert_includes css, 'margin: 3.84mm;'
+          assert_includes css, 'width: 66.666667%;'
+          assert_includes css, 'text-indent: -12.48mm;', 'calc() の中の clamp() は単位がそろえば計算する'
+          assert_includes css, 'padding: clamp(1mm, 1.92mm, 3mm);', 'calc() の外の clamp() は残す（KFX は今と同じく捨てる）'
+          assert_equal [['left: calc(50% + 2mm)', :calc]], result.dropped.map { [it.declaration, it.reason] }
+        end
+
+        def test_should_mix_srgb_colors_and_drop_the_others
+          result = resolve(<<~CSS)
+            :root { --theme-accent: #15803d; }
+            p {
+              background: color-mix(in srgb, var(--theme-accent) 15%, white);
+              color: color-mix(in srgb, red, blue);
+              border-color: color-mix(in oklab, red 50%, white);
+              outline-color: color-mix(in srgb, red 30%, transparent);
+            }
+          CSS
+          css = text_of(result)
+
+          assert_includes css, 'background: #dcece2;', '1.x の ThemeColor.mix_with_white と同じ値'
+          assert_includes css, 'color: #800080;'
+          assert_equal %i[color_mix color_mix], result.dropped.map(&:reason), 'srgb 以外と透明との混色は落とす'
+        end
+
+        def test_should_expand_is_and_drop_has_selectors
+          result = resolve(<<~CSS)
+            figure :is(img, svg) { margin: 0; }
+            .align-left:not(:is(figure, img)) { float: left; }
+            :where(h2, h3).title, p:has(+ table) { color: red; }
+            p:has(> strong) { color: blue; }
+          CSS
+          css = text_of(result)
+
+          assert_includes css, "figure img,\nfigure svg {"
+          assert_includes css, '.align-left:not(figure):not(img) {'
+          assert_includes css, "h2.title,\nh3.title {\n  color: red;\n}", ':has() の選択子だけを並びから外す'
+          refute_match(/:is\(|:where\(|:has\(/, css)
+          assert_equal ['p:has(+ table)', 'p:has(> strong)'], result.dropped.map(&:selector)
+        end
+
+        # 部品などの解かない層は、KFX と同じく var()・calc()・color-mix() を含む宣言と、:is()・:where()・:has() を
+        # 含む規則を落とす（Kindle の見た目を今のまま保つ）。変数の定義は解いて残し、表にも入れる。層の外は解く
+        def test_should_drop_unsupported_forms_in_lower_layers
+          result = resolve(<<~CSS, layer: ['parts'])
+            :root { --size: 10.5pt; --accent: #111111; }
+            :root { font-size: var(--size); color: red; padding: calc(2mm * 2); }
+            figure :is(img, svg) { margin: 0; }
+            p:has(+ table) { color: blue; }
+          CSS
+          css = text_of(result)
+
+          assert_includes css, "--size: 10.5pt;\n  --accent: #111111;", '定義は残す'
+          assert_includes css, "color: red;\n}"
+          refute_includes css, 'font-size'
+          refute_includes css, 'padding'
+          refute_includes css, 'figure'
+          refute_includes css, 'p:has'
+          assert(result.dropped.all? { it.reason == :lower_layer })
+          assert_includes text_of(resolve(':root { --size: 3mm; } p { margin: var(--size); }', layer: [])), 'margin: 3mm;',
+                          '層の外（custom.css）は解く'
+        end
+
+        # Kindle は画面の媒体なので、印刷の媒体の定義は表に入れない。値は同じ表で解く
+        def test_should_ignore_print_only_definitions
+          css = text_of(resolve(<<~CSS))
+            :root { --gap: 2mm; }
+            @media print { :root { --gap: 9mm; } p { margin: var(--gap); } }
+            p { padding: var(--gap); }
+          CSS
+
+          assert_includes css, 'padding: 2mm;'
+          assert_includes css, "@media print {\n:root {\n  --gap: 9mm;\n}\np {\n  margin: 2mm;\n}\n}", "定義は残すが、宣言は画面の表で解く"
+        end
+
+        def test_should_match_root_language_with_the_book_language
+          css = <<~CSS
+            :root { --q: "x"; }
+            :root:lang(ja) { --q: "「"; }
+            :root:lang(en) { --q: "“"; }
+            q::before { content: var(--q); }
+          CSS
+
+          assert_includes text_of(resolve(css, language: 'ja')), 'content: "「";'
+          assert_includes text_of(resolve(css, language: 'en-US')), 'content: "“";'
+        end
+
+        # @page と @font-face の中の宣言も解く。値に var() を含まない規則は書かれたままの値を保つ
+        def test_should_resolve_page_rules_and_keep_plain_values
+          css = text_of(resolve(":root { --w: 182mm; }\n@page { size: var(--w) 257mm; }\np::before { content: \"(1)\"; }"))
+
+          assert_includes css, "@page {\n  size: 182mm 257mm;\n}"
+          assert_includes css, 'content: "(1)";'
+        end
+      end
+
+      # 同梱の stylesheets/ から Kindle の束を組み、book.yml と custom.css の色が値で届くことを確かめる
+      class LiteralResolverKindleTest < Minitest::Test
+        ROOT = File.expand_path('../../../..', __dir__)
+        BSC = PreProcessCommands::BookSettingsCss
+
+        # 本の写し（stylesheets/ は custom.css 以外をリポジトリへの symlink にする）で、
+        # ページの種類 kind の Kindle 用の平らな CSS を組む。warnings は 🟡 の出力
+        # @return [Array(String, String)] CSS と標準出力
+        def kindle_css(kind, theme_color: 'yellow', appendix_color: 'red', preface_color: 'teal',
+                       section_pagebreak: true, custom: nil)
+          base = Common::CONFIG
+          cfg = base.with(theme: base.theme.with(color: theme_color, appendix_color:, preface_color:),
+                          page: base.page.with(section_pagebreak:))
+          settings = BSC.render(cfg)
+          Dir.mktmpdir('vs-literal') do |dir|
+            stylesheets = File.join(dir, 'stylesheets')
+            FileUtils.mkdir_p([stylesheets, File.join(dir, '.cache', 'vs')])
+            Dir.children(File.join(ROOT, 'stylesheets')).each do
+              File.symlink(File.join(ROOT, 'stylesheets', it), File.join(stylesheets, it)) unless it == 'custom.css'
+            end
+            File.write(File.join(stylesheets, 'custom.css'), custom.to_s)
+            File.write(File.join(dir, '.cache', 'vs', 'book-settings.css'), settings)
+            File.write(File.join(dir, '.cache', 'vs', 'book-fonts.css'), '')
+            html = File.join(dir, 'page.html')
+            header = kind == 'chapter' ? 'vs-header-simple' : ('vs-header-simple' if kind == 'appendix')
+            File.write(html, %(<html><body class="#{[kind, header].compact.join(' ')}"></body></html>))
+
+            Dir.chdir(dir) do
+              out, err = capture_io do
+                pieces = Bundle.flat_pieces(kind, target: :kindle, dest: File.join(dir, 'styles', "#{kind}.css"),
+                                                  package_root: dir, embed_fonts: false)
+                pieces = Bundle.literalize(pieces, target: :kindle, scope: Bundle.kindle_scope([html]), reported: {})
+                @css = Flattener.render(pieces)
+              end
+              return [@css, out + err]
+            end
+          end
+        end
+
+        # 規則の中の宣言の値（選択子の並びの先頭が selector の規則を探す）
+        def value_of(css, selector, property)
+          css.scan(/^#{Regexp.escape(selector)}[,\s][^{]*\{([^}]*)\}/).flatten
+             .filter_map { it[/^\s*#{Regexp.escape(property)}:\s*([^;]+);/, 1] }.last
+        end
+
+        def test_should_leave_no_function_that_kfx_drops
+          %w[chapter appendix preface colophon index glossary toc].each do |kind|
+            css, = kindle_css(kind)
+
+            %w[var( calc( color-mix( :is( :where( :has( @layer @import].each do |token|
+              refute_includes css, token, "#{kind} の Kindle 用の CSS に #{token} を残さない"
+            end
+          end
+        end
+
+        # テーマ色（yellow = #f0a000）が本文の強調・囲み・h4 の印に届く。h4 の印は Techbook の <style> に
+        # 勝つよう !important を保つ
+        def test_should_bring_theme_color_to_kindle_rules
+          css, = kindle_css('chapter')
+
+          assert_equal '#f0a000', value_of(css, 'body.vs-kindle strong', 'color')
+          assert_equal '#f0a000', value_of(css, 'body.vs-kindle .column', 'border-color')
+          assert_equal '#fdf1d9', value_of(css, 'body.vs-kindle .column', 'background'), 'コラムの地はテーマ色と白の混色'
+          assert_equal '2px solid #f0a000', value_of(css, 'body.vs-header-simple.vs-kindle h1', 'border')
+          assert_equal '"♦" !important', value_of(css, 'body.chapter.vs-kindle h4::before', 'content')
+          assert_equal '#f0a000', value_of(css, 'body.chapter.vs-kindle h4::before', 'color')
+        end
+
+        # 付録は付録の色（red = #dc2626）。囲みの枠は 1.x の Kindle と同じくテーマ色のまま
+        def test_should_bring_appendix_color_to_appendix_headings
+          css, = kindle_css('appendix')
+
+          assert_equal '2px solid #dc2626', value_of(css, 'body.vs-header-simple.vs-kindle h1', 'border')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .subsection-marker', 'color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .note .vs-adm-label', 'color')
+          assert_equal '#f0a000', value_of(css, 'body.appendix.vs-kindle .note', 'border-color')
+        end
+
+        def test_should_bring_preface_color_to_preface_lines
+          css, = kindle_css('preface')
+
+          assert_equal '3px solid #0d9488', value_of(css, 'body.vs-kindle h1', 'border-bottom')
+          assert_equal '#0d9488', value_of(css, 'body.preface.vs-kindle a', 'color')
+        end
+
+        def test_should_bring_theme_color_to_index_glossary_and_colophon
+          assert_equal '2px solid #f0a000', value_of(kindle_css('index').first, 'body.vs-kindle .index h1', 'border-bottom')
+          glossary, = kindle_css('glossary')
+          assert_equal '#fdf1d9', value_of(glossary, 'body.vs-kindle .glossary-group-header', 'background')
+          assert_equal '1px solid #f0a000', value_of(kindle_css('colophon').first, 'body.vs-kindle .book-title',
+                                                     'border-bottom')
+        end
+
+        def test_should_follow_section_pagebreak_setting
+          enabled, = kindle_css('chapter')
+          disabled, = kindle_css('chapter', section_pagebreak: false)
+
+          assert_equal 'always', value_of(enabled, 'body.vs-header-simple.vs-kindle h2', 'page-break-before')
+          assert_equal 'auto', value_of(disabled, 'body.vs-header-simple.vs-kindle h2', 'page-break-before')
+          assert_equal 'auto', value_of(disabled, 'body.vs-header-simple.vs-kindle h2', 'break-before')
+        end
+
+        # custom.css の :root で変えた色は、平らな CSS の後ろで定義が勝ち、Kindle の規則に値で届く
+        def test_should_bring_custom_css_colors_to_kindle
+          css, out = kindle_css('chapter', custom: <<~CUSTOM)
+            :root {
+              --color-strong: #1a73e8;
+              --color-column-border: var(--accent-red);
+              --color-column-bg: color-mix(in srgb, var(--accent-red) 20%, white);
+            }
+          CUSTOM
+
+          assert_equal '#1a73e8', value_of(css, 'body.vs-kindle strong', 'color')
+          assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo', 'border-color')
+          assert_equal '#f8d4d4', value_of(css, 'body.vs-kindle .column', 'background')
+          refute_includes out, 'Kindle では効きません'
+        end
+
+        # custom.css の解けない宣言は、場所と直し方を 🟡 で知らせる。vs の CSS で落とした宣言は知らせない
+        def test_should_warn_only_author_declarations_that_kindle_cannot_use
+          _, out = kindle_css('chapter', custom: "h2 { margin-block-start: calc(100% - 2mm); }\n")
+
+          assert_includes out, 'stylesheets/custom.css の「h2 { margin-block-start: calc(100% - 2mm) }」は Kindle では効きません'
+          assert_includes out, 'calc(100% - 2mm) → 95%'
+          refute_includes out, 'talk', 'vs の CSS の落とした宣言（会話の深い変数）は知らせない'
+        end
+      end
+    end
+  end
+end

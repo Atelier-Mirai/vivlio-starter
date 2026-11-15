@@ -139,8 +139,12 @@ module VivlioStarter
         # :not(:is(a, b)) は :not(a):not(b) に展開する。疑似要素と動的な疑似クラスは外す
         def nokogiri_selectors(selector)
           text = selector.gsub(STRIPPED_PSEUDO, '').gsub(/:root\b/, 'html').gsub(':checked', '[checked]')
-          expand_is(expand_not_is(text))
+          expand_matches(text)
         end
+
+        # :is()・:where() を選択子の並びに、:not(:is(a, b)) を :not(a):not(b) に展開する。
+        # KFX は :is() を含む規則を丸ごと捨てるので、Kindle 用の CSS でも使う（LiteralResolver）
+        def expand_matches(selector) = expand_is(expand_not_is(selector))
 
         # --- 以下は読み取りの下請け ---
 

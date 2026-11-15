@@ -6,11 +6,29 @@
 
 /* --- parts/preface.css --- */
 
-/* Kindle は var()/clamp() を解さず、h1 の下線（border-block-end）と余白が消える。
-   前書き/後書きの見出し下線をクリーン EPUB に合わせて具体色で再現する。
-   色は既定の preface_color=indigo（--accent-indigo: #4f46e5）。クリーン EPUB / PDF は parts/preface.css の var() 版のまま（§11）。 */
+/* Kindle は clamp() と論理方向の下線（border-block-end）を解さず、h1 の下線と余白が消える。
+   前書き/後書きの見出し下線をクリーン EPUB に合わせて物理方向で再現する。色は前書きの色
+   （book.yml の theme.preface_color）。 */
 body.vs-kindle h1 {
-  border-bottom: 3px solid #4f46e5;
+  border-bottom: 3px solid var(--color-preface-accent);
   padding-bottom: 0.4em;
   margin-bottom: 1em;
+}
+
+/* 前書き・後書きの線と字の色。parts/preface.css の線は論理方向のプロパティで書いてあり、
+   KFX が解すかを確かめていないので、物理方向で書き直す */
+body.preface.vs-kindle h2,
+body.postface.vs-kindle h2 {
+  border-left: 3px solid var(--color-preface-accent);
+}
+
+body.preface.vs-kindle blockquote,
+body.postface.vs-kindle blockquote {
+  border-left: 3px solid var(--color-preface-accent);
+}
+
+body.preface.vs-kindle a,
+body.postface.vs-kindle a {
+  color: var(--color-preface-accent);
+  border-bottom: 1px dotted var(--color-preface-accent);
 }

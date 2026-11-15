@@ -318,18 +318,24 @@ module VivlioStarter
 
       # KFX は :is() を含む規則を丸ごと捨て、var() の宣言も落とす。並べ方の CSS（1.x の layout-utils.css）の 7 規則が
       # これで効いておらず、画像が枠の下へはみ出していた（kindle-css-compatibility-notes.md §2）。
-      def test_should_not_use_is_or_var_in_kindle_rules
+      # 2.0 の S3-3 から、targets/ の Kindle の規則は var()・:is() を使ってよい。Kindle 用の CSS を作るときに
+      # Css::LiteralResolver が値と並べた選択子に解く。ただし解けない形（要素の上で定義した変数・単位の混ざった
+      # calc()・:has()）は宣言ごと落ち、Kindle では黙って効かない。targets/ の規則が全部解けることを確かめる
+      def test_should_resolve_every_kindle_rule_in_targets
         root = File.expand_path('../../../..', __dir__)
-        offenders = Dir[File.join(root, 'stylesheets/**/*.css')].flat_map do |path|
-          css = File.read(path, encoding: 'utf-8').gsub(%r{/\*.*?\*/}m, '')
-          css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
-            next unless selector.include?('vs-kindle')
-
-            "#{path.delete_prefix("#{root}/")}: #{selector.strip}" if selector.include?(':is(') || body.include?('var(')
+        offenders = Dir.mktmpdir('vs-kindle-targets') do |tmp|
+          Dir.chdir(root) do
+            Css::EntryWriter::IMPORTS.keys.flat_map do |kind|
+              pieces = Css::Bundle.flat_pieces(kind, target: :kindle, dest: File.join(tmp, 'styles', "#{kind}.css"),
+                                                     package_root: tmp, embed_fonts: false)
+              result = Css::LiteralResolver.resolve(pieces.reject(&:nested), scope: Css::Bundle.kindle_scope([]))
+              result.dropped.select { it.source.include?('/stylesheets/targets/') }
+                    .map { "#{kind}: #{it.selector} { #{it.declaration} }（#{it.reason}）" }
+            end
           end
         end
 
-        assert_empty offenders
+        assert_empty offenders.uniq
       end
 
       # 本文と表を並べる :::{.text-table}・:::{.table-text} は、EPUB（画面幅が分からない）と

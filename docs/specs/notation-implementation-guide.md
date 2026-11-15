@@ -49,7 +49,7 @@
 2. **クラスの許可は自動**: `ContainerClassCheck` は `stylesheets/**/*.css` のクラスセレクタを自動抽出して許可リストにする。**CSS にクラスを書けば警告は出ない**。前処理がブロックごと消費して CSS に痕跡が残らないクラス（showcase 型）だけ `PREPROCESSED_CLASSES` へ明示登録する（`cli/guards/container_class_check.rb`）。
 3. **Kindle 劣化対策 3 点セット**（枠＋ラベル付きの囲みボックスを作るとき。正典は CLAUDE.md）:
    - `EpubBuilder::ADMONITION_LABELS` に `'class' => '【LABEL】'` を追加（Kindle のみ実ラベル `<p class="vs-adm-label">` 注入）
-   - `targets/kindle.css`（Kindle の規則。`parts/box.css` の見出しの下）に `body.vs-kindle .class { … }` を**リテラル色**で追加（KFX は `::before` と `var()` を無視する）
+   - `targets/kindle.css`（Kindle の規則。`parts/box.css` の見出しの下）に `body.vs-kindle .class { … }` を追加し、構造の違い（全周の枠・ラベルの分の上余白）だけを書く。色は部品と同じ変数で書いてよい（Kindle 用の CSS を作るときに `Css::LiteralResolver` が値に解く。`css-layer-restructure-spec.md` §4.4）
    - `epub_kindle_layout_test` にラベルのアサーションを追加
 4. **CSS の落とし穴**は先に `vivliostyle-css-pitfalls-notes.md` を確認（`calc()+var()` 破棄・特異度・SVG intrinsic size 等）。
 

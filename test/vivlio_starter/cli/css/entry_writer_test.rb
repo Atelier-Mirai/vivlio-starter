@@ -117,8 +117,8 @@ module VivlioStarter
           end
         end
 
-        # 出力先の規則は target 層で、そのページの種類の分だけ読む。Kindle は EPUB の規則も読み、
-        # 最後に book.yml から生成した Kindle の規則を読む（BookSettingsCss.render_kindle）
+        # 出力先の規則は target 層で、そのページの種類の分だけ読む。Kindle は EPUB の規則も読む。
+        # book.yml から生成する Kindle だけの規則は無い（色は Css::LiteralResolver が変数から解く）
         def test_should_import_target_files_per_kind_and_target
           targets = lambda do |kind, target|
             EntryWriter.render(kind, target:).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
@@ -126,14 +126,14 @@ module VivlioStarter
 
           assert_empty targets.call('chapter', nil), 'PDF は target 層を読まない'
           assert_equal %w[../../stylesheets/targets/epub.css], targets.call('chapter', :epub)
+          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css],
+                       targets.call('appendix', :kindle)
           assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
-                          book-settings-kindle.css], targets.call('appendix', :kindle)
-          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
-                          ../../stylesheets/targets/kindle-preface.css book-settings-kindle.css],
+                          ../../stylesheets/targets/kindle-preface.css],
                        targets.call('postface', :kindle)
-          assert_equal %w[../../stylesheets/targets/kindle-colophon.css book-settings-kindle.css],
+          assert_equal %w[../../stylesheets/targets/kindle-colophon.css],
                        targets.call('colophon', :kindle), '奥付の Kindle の規則は奥付だけが読む'
-          assert_equal %w[book-settings-kindle.css], targets.call('toc', :kindle)
+          assert_empty targets.call('toc', :kindle)
           assert_empty targets.call('toc', :epub)
         end
 
