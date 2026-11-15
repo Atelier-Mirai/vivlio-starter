@@ -134,8 +134,9 @@ class BookSettingsCssThemeTest < Minitest::Test
     assert_empty warnings
   end
 
-  # theme accent と強調色は常に宣言される
-  def test_should_always_declare_accent_and_strong_colors
+  # テーマ色は常に宣言する。強調の色は theme.css の既定（var(--theme-accent)）に任せ、ここでは書き直さない。
+  # 書き直すと、後に読まれる book-settings.css が appendix.css の付録の色の割り当てを打ち消す（改善案 #132）
+  def test_should_declare_accent_but_leave_strong_colors_to_theme_css
     settings = {
       theme_accent_value: '#123456', theme_style: 'simple',
       ornament_path: nil, frontispiece_path: nil,
@@ -145,8 +146,8 @@ class BookSettingsCssThemeTest < Minitest::Test
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
     assert_includes lines, '--theme-accent: #123456;'
-    assert_includes lines, '--color-strong: var(--theme-accent);'
-    assert_includes lines, '--color-em-underline: var(--theme-accent);'
+    refute(lines.any? { it.start_with?('--color-strong:') }, '--color-strong は theme.css に任せる')
+    refute(lines.any? { it.start_with?('--color-em-underline:') }, '--color-em-underline は theme.css に任せる')
   end
 end
 
@@ -502,7 +503,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   # 両 style で必ず宣言される公開変数（--frontispiece-image / --section-bg-image は
   # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-edge-inset は除く。
   THEME_VARS_COMMON = %w[
-    --theme-accent --color-strong --color-em-underline
+    --theme-accent
     --frontispiece-image --section-bg-image
     --color-preface-accent --h3-marker --h4-marker
   ].freeze
@@ -574,6 +575,35 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     distinct = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
     assert_includes distinct, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #dc2626; }'
     assert_includes distinct, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文側は theme 色のまま'
+  end
+
+  # 付録のページは、テーマ色で塗るものを全部、付録の色（red = #dc2626）で塗る（改善案 #132）。
+  # PDF の appendix.css が差し替える変数と同じ範囲: 強調・下線・囲みの枠とラベル・コラムの地
+  def test_should_paint_every_accent_in_appendix_with_appendix_color
+    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
+
+    [
+      'body.appendix.vs-kindle strong { color: #dc2626; }',
+      'body.appendix.vs-kindle em { text-decoration-color: #dc2626; }',
+      'body.appendix.vs-kindle .tip { border-color: #dc2626; }',
+      'body.appendix.vs-kindle .tip .vs-adm-label { color: #dc2626; }',
+      'body.appendix.vs-kindle .column, body.appendix.vs-kindle .memo { border-color: #dc2626; }',
+      'body.appendix.vs-kindle .column { background: #fadede; }',
+      'body.appendix.vs-kindle .note, body.appendix.vs-kindle .notice { border-color: #dc2626; }',
+      'body.appendix.vs-kindle .memo .vs-adm-label { color: #dc2626; }'
+    ].each { assert_includes css, it }
+    assert_includes css, 'body.vs-kindle strong { color: #0186d8; }', '章の強調はテーマ色のまま'
+  end
+
+  # custom.css で変えた変数は、付録でも custom.css の色にする（PDF は custom.css の :root が付録でも勝つ）。
+  # 付録の規則は特異度が高いので、書くと custom.css の色を覆ってしまう
+  def test_should_leave_custom_css_variables_to_custom_color_in_appendix
+    rules = BSC.appendix_kindle_accent_rules('#dc2626', overridden: %w[--color-strong --color-column-bg])
+
+    refute(rules.any? { it.include?(' strong ') }, 'custom.css の --color-strong を覆わない')
+    refute(rules.any? { it.include?('.column { background') }, 'custom.css の --color-column-bg を覆わない')
+    assert_includes rules, 'body.appendix.vs-kindle em { text-decoration-color: #dc2626; }'
+    assert_includes rules, 'body.appendix.vs-kindle .tip { border-color: #dc2626; }'
   end
 
   # クリーン EPUB 非汚染: 生成した accent 規則はすべて body.vs-kindle 前置

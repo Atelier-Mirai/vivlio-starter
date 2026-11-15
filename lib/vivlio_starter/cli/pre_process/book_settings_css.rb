@@ -194,12 +194,11 @@ module VivlioStarter
         #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
         #   - image スタイル : 画像 2 変数＋edge_inset を宣言
         #   - 見出しの寸法は文字数指定がある時だけ宣言（theme.css の既定が生きる）
+        #   - 強調の色（--color-strong・--color-em-underline）は書かない。theme.css の既定が
+        #     var(--theme-accent) で、appendix.css より後に読まれるここで書き直すと、付録の色の
+        #     割り当て（改善案 #132）を打ち消すため
         def theme_declarations(settings, image_prefix:, page_cfg: {})
-          lines = [
-            "--theme-accent: #{settings[:theme_accent_value]};",
-            '--color-strong: var(--theme-accent);',
-            '--color-em-underline: var(--theme-accent);'
-          ]
+          lines = ["--theme-accent: #{settings[:theme_accent_value]};"]
 
           if settings[:theme_style] == 'simple'
             lines << '--section-bg-image: none;'
@@ -702,7 +701,9 @@ module VivlioStarter
 
           # 付録色がテーマ色と同一なら付録専用の上書きは不要。
           lines = base_kindle_accent_rules(acc, colbg) << h4_marker_kindle_rule(cfg, acc)
-          lines += appendix_kindle_accent_rules(apx) unless apx == acc
+          unless apx == acc
+            lines += appendix_kindle_accent_rules(apx, overridden: root_variables(CUSTOM_CSS).keys)
+          end
           # 前書き/後書き（preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
           lines += preface_kindle_accent_rules(preface_accent_hex6(theme_cfg, acc))
 
@@ -875,19 +876,37 @@ module VivlioStarter
           ]
         end
 
-        # 付録は appendix.css が --heading-accent / --color-mark を appendix-accent へ差し替えるため、
-        # 見出し・h3 マーカー・ラベルを APX で上書きする（strong/枠は theme-accent のままで base が担う）。
-        # .appendix が 1 つ多く特異度で勝つ。
-        def appendix_kindle_accent_rules(apx)
-          [
-            "body.appendix.vs-header-simple.vs-kindle h1 { border-color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h1 .chapter-number { color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h2 { border-color: #{apx}; border-left-color: #{apx}; }",
-            "body.appendix.vs-header-simple.vs-kindle h2 .section-number { background: #{apx}; }",
-            "body.appendix.vs-kindle .subsection-marker { color: #{apx}; }",
-            "body.appendix.vs-kindle h4::before { color: #{apx}; }",
-            adm_label_rule('body.appendix.vs-kindle', apx)
-          ]
+        # 付録のページは、テーマ色で塗るものを全部、付録の色 APX で塗る（改善案 #132）。appendix.css が
+        # テーマ色から決まる変数を付録の色へ差し替えるのと同じ範囲を、変数ごとに書く。.appendix が 1 つ
+        # 多く、base_kindle_accent_rules に特異度で勝つ。
+        # custom.css で変えた変数の規則は書かない。PDF では custom.css の :root が appendix.css より
+        # 後に読まれて付録でも勝つので、Kindle も kindle_custom_color_rules の色に任せてそろえる。
+        # .tip は --theme-accent を直に読む（appendix.css が別に塗る）ので、変数によらず書く。
+        def appendix_kindle_accent_rules(apx, overridden: [])
+          scope = 'body.appendix.vs-kindle'
+          by_variable = {
+            '--heading-accent' => [
+              "body.appendix.vs-header-simple.vs-kindle h1 { border-color: #{apx}; }",
+              "body.appendix.vs-header-simple.vs-kindle h1 .chapter-number { color: #{apx}; }",
+              "body.appendix.vs-header-simple.vs-kindle h2 { border-color: #{apx}; border-left-color: #{apx}; }",
+              "body.appendix.vs-header-simple.vs-kindle h2 .section-number { background: #{apx}; }"
+            ],
+            '--color-mark' => [
+              "#{scope} .subsection-marker { color: #{apx}; }",
+              "#{scope} h4::before { color: #{apx}; }",
+              "#{scope} .note, #{scope} .notice { border-color: #{apx}; }",
+              "#{scope} .note .vs-adm-label, #{scope} .notice .vs-adm-label { color: #{apx}; }"
+            ],
+            '--color-strong' => ["#{scope} strong { color: #{apx}; }"],
+            '--color-em-underline' => ["#{scope} em { text-decoration-color: #{apx}; }"],
+            '--color-column-border' => [
+              "#{scope} .column, #{scope} .memo { border-color: #{apx}; }",
+              "#{scope} .column .vs-adm-label, #{scope} .memo .vs-adm-label { color: #{apx}; }"
+            ],
+            '--color-column-bg' => ["#{scope} .column { background: #{ThemeColor.mix_with_white(apx, 0.15)}; }"]
+          }
+          tip = ["#{scope} .tip { border-color: #{apx}; }", "#{scope} .tip .vs-adm-label { color: #{apx}; }"]
+          tip + by_variable.except(*overridden).values.flatten
         end
 
         # 実体ラベル【TIP】等（Kindle は ::before を content:none で抑止し vs-adm-label を注入・既定 #444）。
