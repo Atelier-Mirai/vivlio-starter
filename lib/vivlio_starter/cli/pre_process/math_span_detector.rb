@@ -62,7 +62,8 @@ module VivlioStarter
 
         # --- 数式のしるし ------------------------------------------------------
         # 関数名は前後が英数字だと拾わない（`expression` の `exp` は関数ではない。
-        # これも仕様 §6.3 で踏んだ）。
+        # これも仕様 §6.3 で踏んだ）。前の `_` も拾わない（`add_log("log", "文字")` の `log(` は
+        # 識別子の一部で、関数名ではない・改善案 #134）。
         MATH_FUNCTIONS = %w[arcsin arccos arctan sinh cosh tanh sin cos tan sec csc cot
                             log ln exp det gcd lim].freeze
         # **強いしるし**——これがあれば、日本語を含んでいても式と見てよい。
@@ -74,7 +75,7 @@ module VivlioStarter
           | [√Σ∑∏∫≡≒≈≠≦≧≤≥] | [α-ωΑ-Ω]
           | (?<![\\[:alnum:]])[[:alnum:])\]]+\s*\^        # べき乗（`圧力^2` のように底が日本語でも拾う）
           | (?<=[[:alnum:])）])\s*\bmod\b\s*[[:alnum:](（]  # 両側に被演算子のある剰余
-          | (?<![\\[:alnum:]])(?:#{MATH_FUNCTIONS.join('|')})(?![[:alnum:]])\s*[(θ]
+          | (?<![\\[:alnum:]_])(?:#{MATH_FUNCTIONS.join('|')})(?![[:alnum:]])\s*[(θ]
         /x
 
         # **弱いしるし**——日本語と一緒だと式か地の文か決まらない。

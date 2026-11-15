@@ -63,6 +63,16 @@ class MathSpanDetectorTest < Minitest::Test
     assert D.math?('exp(x)')
   end
 
+  # 識別子の一部の関数名（`add_log(`）も関数名と見ない（改善案 #134）。表の中でも地の文でも同じ
+  def test_should_not_mistake_an_identifier_suffix_for_a_function_name
+    refute D.math?('add_log("log", "文字")')
+    refute D.math?('compute_sin(angle)')
+    assert D.math?('log(x)')
+
+    table = "| 書き方 | すること |\n| :--- | :--- |\n| `add_log(\"log\", \"文字\")` | 一行足す |\n"
+    assert_equal table, D.transform(table)
+  end
+
   # MD-03: 日本語を含む綴りは、**強いしるしがあるときだけ**式と見る。
   # `平文^e mod n` は変数名が日本語なだけの式なので組む。一方 `行計 × 列計 ÷ 総計` は
   # `×` しか手がかりが無く、式か地の文か機械には決められない（§3.4）。
