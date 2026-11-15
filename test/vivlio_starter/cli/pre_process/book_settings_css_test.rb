@@ -392,8 +392,8 @@ class BookSettingsCssPageTest < Minitest::Test
 
     assert_includes css, 'body.vs-header-image .section-topic h2'
     assert_includes css, 'body.vs-header-simple h2'
-    assert_includes css, 'body.vs-header-simple.vs-kindle h2'
     assert_includes css, 'article.vs-section-topic-epub'
+    refute_includes css, 'vs-kindle', 'Kindle の打ち消しは book-settings-kindle.css に書く'
     assert_includes css, 'break-before: auto;'
     # Kindle KFX 用の legacy 併記も打ち消す
     assert_includes css, 'page-break-before: auto;'
@@ -408,6 +408,15 @@ class BookSettingsCssPageTest < Minitest::Test
                          '.section-topic h2:not(.vs-break-merged)'
     assert_includes css, 'break-before: page;'
     assert_includes css, 'page-break-before: always;'
+  end
+
+  # Kindle の節見出しの改ページ（targets/kindle.css・target 層）は、target 層の最後で読む
+  # book-settings-kindle.css が同じ選択子で打ち消す
+  def test_should_emit_kindle_section_pagebreak_negation_when_disabled
+    css = BSC.section_pagebreak_kindle_rule({ section_pagebreak: false })
+
+    assert_includes css, "body.vs-header-simple.vs-kindle h2 {\n  break-before: auto;\n  page-break-before: auto;\n}"
+    assert_equal '', BSC.section_pagebreak_kindle_rule({ section_pagebreak: true })
   end
 
   # 既定（true）・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
@@ -543,7 +552,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   # Kindle 用テーマ色リテラル: body.vs-kindle 規則がリテラル hex で焼かれ、var()/color-mix を含まない
   def test_should_bake_kindle_accent_literals
     settings_yellow = build_config(theme_color: 'yellow')
-    css = BSC.render(settings_yellow)
+    css = BSC.render_kindle(settings_yellow)
 
     assert_includes css, 'body.vs-kindle strong { color: #f0a000; }'
     assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #f0a000; }'
@@ -557,7 +566,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
 
   # h4 の印は var() で消えるので、文字とテーマ色を Kindle 用に焼く
   def test_should_bake_h4_marker_for_kindle
-    css = BSC.render(build_config(theme_color: 'yellow'))
+    css = BSC.render_kindle(build_config(theme_color: 'yellow'))
 
     assert_includes css, 'body.chapter.vs-kindle h4::before, body.appendix.vs-kindle h4::before ' \
                          '{ content: "♦" !important; color: #f0a000; }'
@@ -565,7 +574,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
 
   # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば既定色は消える。
   def test_should_follow_theme_color_in_kindle_accent
-    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'blue'))
+    css = BSC.render_kindle(build_config(theme_color: 'blue', appendix_color: 'blue'))
 
     assert_includes css, 'body.vs-kindle strong { color: #0186d8; }'
     assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }'
@@ -575,36 +584,47 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   # 付録色未指定のときはテーマ色に従う（PDF の --appendix-accent-color と同じ・改善案 #73）。
   # テーマ色と同じなので、Kindle の付録専用の規則は出さない
   def test_should_default_unset_appendix_accent_to_theme_color
-    css = BSC.render(build_config(theme_color: 'blue', appendix_color: nil))
+    cfg = build_config(theme_color: 'blue', appendix_color: nil)
+    kindle = BSC.render_kindle(cfg)
 
-    assert_includes css, '--appendix-accent-color: var(--accent-blue);'
-    refute_includes css, 'body.appendix.vs-header-simple.vs-kindle h1', '付録は未指定ならテーマ色'
-    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文は theme 色'
+    assert_includes BSC.render(cfg), '--appendix-accent-color: var(--accent-blue);'
+    refute_includes kindle, 'body.appendix.vs-header-simple.vs-kindle h1', '付録は未指定ならテーマ色'
+    assert_includes kindle, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文は theme 色'
   end
 
   # appendix_color がテーマ色と異なるときだけ付録専用（body.appendix）規則を出す
   def test_should_emit_appendix_override_only_when_distinct
-    same = BSC.render(build_config(theme_color: 'yellow', appendix_color: 'yellow'))
+    same = BSC.render_kindle(build_config(theme_color: 'yellow', appendix_color: 'yellow'))
     refute_includes same, 'body.appendix.vs-header-simple.vs-kindle h1', '同色なら付録規則は出さない'
 
-    distinct = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
+    distinct = BSC.render_kindle(build_config(theme_color: 'blue', appendix_color: 'red'))
     assert_includes distinct, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #dc2626; }'
     assert_includes distinct, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }', '本文側は theme 色のまま'
   end
 
   # クリーン EPUB 非汚染: 生成した accent 規則はすべて body.vs-kindle 前置
   def test_should_scope_all_accent_rules_to_vs_kindle
-    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
+    css = BSC.render_kindle(build_config(theme_color: 'blue', appendix_color: 'red'))
 
     accent_rules = css.lines.select { it.match?(/\{[^}]*(?:border-color|text-decoration-color|section-number|chapter-number|\bcolor:)/) }
                       .grep_v(%r{/\*}).grep_v(/^\s*--/) # コメントと :root の変数宣言を除く
     refute_empty accent_rules
-    assert(accent_rules.all? { it.include?('vs-kindle') }, '裸の accent 規則を book-settings.css に出さない')
+    assert(accent_rules.all? { it.include?('vs-kindle') }, '裸の accent 規則を book-settings-kindle.css に出さない')
+  end
+
+  # Kindle にだけ当たる規則は book-settings.css（settings 層）に出さない。stylesheets/targets/ の
+  # Kindle の規則（target 層）に負けるため（css-layer-restructure-spec.md §5）
+  def test_should_keep_kindle_rules_out_of_settings_layer
+    cfg = build_config(theme_color: 'blue', appendix_color: 'red')
+    disabled = cfg.with(page: cfg.page.with(section_pagebreak: false))
+
+    refute_includes BSC.render(disabled), 'vs-kindle'
+    assert_includes BSC.render_kindle(disabled), 'body.vs-header-simple.vs-kindle h2 {'
   end
 
   # 前書き/後書きの accent も preface_color に追従してリテラル化される（body.preface/postface スコープ）
   def test_should_bake_preface_accent_following_preface_color
-    css = BSC.render(build_config(theme_color: 'yellow', preface_color: 'red'))
+    css = BSC.render_kindle(build_config(theme_color: 'yellow', preface_color: 'red'))
 
     assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #dc2626; }'
     assert_includes css, 'body.preface.vs-kindle a, body.postface.vs-kindle a { color: #dc2626; border-bottom: 1px dotted #dc2626; }'
@@ -619,7 +639,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
 
   # preface_color 未指定時はテーマ色へフォールバック（PDF の --color-preface-accent と同じ挙動）
   def test_should_default_unset_preface_accent_to_theme_color
-    css = BSC.render(build_config(theme_color: 'blue', preface_color: nil))
+    css = BSC.render_kindle(build_config(theme_color: 'blue', preface_color: nil))
 
     assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0186d8; }'
   end
@@ -847,7 +867,8 @@ class BookSettingsCssTalkTest < Minitest::Test
   # Kindle は inline 形式へ組み替わるため、話者名・区切り・強調の色をリテラルで焼く
   # （吹き出しの枠線は Kindle に存在しないのでリテラル化しない）。
   def test_should_emit_kindle_literals_for_inline_form
-    css = BSC.talk_class_rules(registry)
+    css = BSC.talk_kindle_rules(registry)
+    refute_includes BSC.talk_class_rules(registry), 'vs-kindle', 'Kindle の色は book-settings-kindle.css に書く'
 
     assert_includes css, 'body.vs-kindle .talk-c-sensei .talk-name { color: #4f46e5; }'
     assert_includes css, 'body.vs-kindle .talk-c-sensei .talk-sep { color: #4f46e5; }'
@@ -891,6 +912,7 @@ class BookSettingsCssTalkTest < Minitest::Test
 
     assert_empty BSC.talk_variable_declarations(empty)
     assert_equal '', BSC.talk_class_rules(empty)
+    assert_equal '', BSC.talk_kindle_rules(empty)
   end
 end
 

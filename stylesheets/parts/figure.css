@@ -31,16 +31,6 @@ figure.align-right {
   margin-inline-end: 0;
 }
 
-/* KFX は margin-inline の auto を 0 に解く。物理プロパティで書き直す。 */
-body.vs-kindle figure.align-center {
-  margin-left: auto;
-  margin-right: auto;
-}
-body.vs-kindle figure.align-right {
-  margin-left: auto;
-  margin-right: 0;
-}
-
 /* 配置指定付き図版の上下余白。parts/layout.css の .align-* の既定（margin-block: 0.5em・特異度 0,1,0）が
    要素セレクタ figure（0,0,1）に勝つため、図版の 4mm はクラス付き（0,1,1）で明示して保つ。 */
 figure:is(.align-left, .align-center, .align-right) {
@@ -114,7 +104,7 @@ figure.vs-borderless :is(img, svg) {
 /* 図解注釈（:::{.showcase}）。中身は前処理が焼いた合成画像 1 枚なので、
    置き場と分割禁止だけを面倒みる。枠・引き出し記号・丸数字はすべて画像の中に
    入っており、PDF・EPUB・Kindle が同じ生成物を共有する（explanatory-diagram-spec §6.2）。
-   ゆえに body.vs-kindle 用の劣化対策は不要。 */
+   ゆえに Kindle 用の劣化対策（targets/kindle.css）は不要。 */
 figure.vs-showcase {
   margin-block: 1em;
   text-align: center;

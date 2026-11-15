@@ -33,8 +33,3 @@ figure.vs-math-display > img {
   padding: 0;
   background: none;
 }
-
-/* 数式: ex→em は EpubBuilder が inline style を変換する。ここは万一 inline style が
-   無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */
-body.vs-kindle img.vs-math-inline { max-height: 1.8em; width: auto; }
-body.vs-kindle figure.vs-math-display img { max-width: 100%; height: auto; }

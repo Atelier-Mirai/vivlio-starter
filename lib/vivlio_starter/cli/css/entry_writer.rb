@@ -36,6 +36,9 @@ module VivlioStarter
         # book.yml から生成する CSS（`.cache/vs/` に置かれる）
         BOOK_SETTINGS = 'book-settings.css'
         BOOK_FONTS = 'book-fonts.css'
+        # Kindle にだけ当てる設定の規則。Kindle の束の target 層の最後に置き、targets/kindle*.css を覆う
+        # （BookSettingsCss.render_kindle）。ページの種類に依らず読む（book-settings.css と同じ）
+        BOOK_SETTINGS_KINDLE = 'book-settings-kindle.css'
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
@@ -84,8 +87,21 @@ module VivlioStarter
 
         # 出力先ごとの target 層（css-layer-restructure-spec.md §4.2 の 4・§5）。PDF は読まない。
         # Kindle の body にも vs-epub が付くので、Kindle は EPUB の規則も読む。
-        # 入口のファイル（PDF が読む）には書かず、平らな CSS を作るときだけ足す（Bundle）
-        TARGET_IMPORTS = { epub: %w[targets/epub.css], kindle: %w[targets/epub.css targets/kindle.css] }.freeze
+        # 入口のファイル（PDF が読む）には書かず、平らな CSS を作るときだけ足す（Bundle）。
+        #
+        # 種類ごとに分けるのは、移す前の規則が、そのページの種類が読むファイルにあったためである。
+        # 奥付の `body.vs-kindle { … }` や前書きの `body.vs-kindle h1` を 1 枚にまとめると、
+        # 本文のページにも当たる。中の規則は元のファイルの読み込みの順と、ファイルの中の順を保つ
+        BODY_TARGETS = { epub: %w[targets/epub.css], kindle: %w[targets/epub.css targets/kindle.css] }.freeze
+        PREFACE_TARGETS = { epub: BODY_TARGETS[:epub],
+                            kindle: [*BODY_TARGETS[:kindle], 'targets/kindle-preface.css'] }.freeze
+        TARGET_IMPORTS = {
+          'chapter' => BODY_TARGETS, 'appendix' => BODY_TARGETS,
+          'preface' => PREFACE_TARGETS, 'postface' => PREFACE_TARGETS,
+          'index' => { kindle: %w[targets/kindle-index.css] },
+          'glossary' => { kindle: %w[targets/kindle-glossary.css] },
+          'colophon' => { kindle: %w[targets/kindle-colophon.css] }
+        }.freeze
 
         # 原稿の種類（Entry#kind・file_type）と入口の名前が違うもの
         KIND_ALIASES = { 'part_title' => 'part-title', 'whole_toc' => 'toc',
@@ -131,9 +147,10 @@ module VivlioStarter
             (layered[layer] || []).map { %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(#{layer});) }
           end
           lines << %(@import url("#{BOOK_SETTINGS}") layer(settings);)
-          TARGET_IMPORTS.fetch(target, []).each do
+          TARGET_IMPORTS.fetch(name, {}).fetch(target, []).each do
             lines << %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(target);)
           end
+          lines << %(@import url("#{BOOK_SETTINGS_KINDLE}") layer(target);) if target == :kindle
 
           <<~CSS
             @charset "utf-8";

@@ -287,6 +287,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `:has()` | Kindle では解けない。使った規則は Kindle に届かない |
 | CSS の入れ子（`&`） | 使わない（2.0 の生成は入れ子を展開しない） |
 | 層の中の `!important` | 使わない（`css-layer-restructure-spec.md` §2.4） |
+| 部品の見た目を変える規則 | 変数で変える。規則で変えるときは、部品の規則と同じ選択子で書く（EPUB と Kindle は層を外した平らな CSS を読み、詳細度で勝ち負けが決まるため。`css-layer-restructure-spec.md` §2.1・§4.3） |
 | `display: grid`・`flex`・疑似要素の位置指定 | 使ってよいが、Kindle では `block` になる。崩れる部品は `kindle.css` に代わりの組み方を書く（`kindle-css-compatibility-notes.md` §2） |
 
 `vs theme:check <名前>`（§7.2）が、この範囲を検査して報告する。

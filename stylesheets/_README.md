@@ -15,6 +15,7 @@
 | `pages` | `pages/` | 目次・索引・用語集・奥付・扉・権利ページ・部扉と、本文のページの種類ごとの設定（章の扉絵・付録の色・前書きと後書きのノンブル） |
 | `utilities` | `utilities/` | 原稿で指定する位置・余白・改ページ・横並びの間隔と、置換の規則が付けるクラス |
 | `settings` | （生成物） | `config/book.yml` から生成する規則 |
+| `target` | `targets/` | EPUB と Kindle にだけ当てる規則（`body.vs-epub`・`body.vs-kindle`）。EPUB と Kindle の CSS にだけ入り、PDF は読みません |
 | （層の外） | `fonts.css`・`custom.css` | 同梱書体の定義（`@font-face`）と、著者独自のスタイル |
 
 ## カスタマイズ

@@ -80,7 +80,7 @@ Pipeline run by `MarkdownPreprocessor` per chapter: frontmatter generation, imag
 
 Applied to HTML after Vivliostyle: footnote conversion, heading processor, body class injection, section wrapping, HTML replacement.
 
-**Kindle degradation convention for `:::{.class}` boxes.** Kindle (KFX) ignores `::before` labels and `var()`. When adding a new boxed block notation, apply the established 3-part pattern: (1) add the label to `EpubBuilder::ADMONITION_LABELS` (`'class' => '【LABEL】'`) so a real `<p class="vs-adm-label">` is injected at the box top for Kindle only (PDF/clean EPUB stay label-less); (2) add `body.vs-kindle .class { ... }` in `stylesheets/parts/box.css` drawing the border/background in **literal colors** (not `var()`), with `padding-block-start` room for the label; (3) add a label assertion to `epub_kindle_layout_test`.
+**Kindle degradation convention for `:::{.class}` boxes.** Kindle (KFX) ignores `::before` labels and `var()`. When adding a new boxed block notation, apply the established 3-part pattern: (1) add the label to `EpubBuilder::ADMONITION_LABELS` (`'class' => '【LABEL】'`) so a real `<p class="vs-adm-label">` is injected at the box top for Kindle only (PDF/clean EPUB stay label-less); (2) add `body.vs-kindle .class { ... }` in `stylesheets/targets/kindle.css` (the `parts/box.css` section) drawing the border/background in **literal colors** (not `var()`), with `padding-block-start` room for the label; (3) add a label assertion to `epub_kindle_layout_test`.
 
 ### PDF low-level operations (providers)
 

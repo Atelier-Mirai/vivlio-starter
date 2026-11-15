@@ -145,18 +145,6 @@ th {
   hyphens: auto;
 }
 
-/* Kindle は clamp() を解さず padding の宣言ごと捨てるので、余白を具体値で書く。
-   余白が 0 のセルでは数式の画像が列の幅まで引き伸ばされる（keep_cell_math_inline_for_kindle!）。 */
-body.vs-kindle td {
-  padding: 0.15em 0.4em;
-}
-
-/* KFX は透過した画像を行の背景色で塗りつぶす。th だけに背景があると、
-   見出しの数式の周りが白く抜ける。 */
-body.vs-kindle thead tr {
-  background: #bbb;
-}
-
 th {
   background: #bbb;
   min-inline-size: 4em;
@@ -190,8 +178,8 @@ thead:not(:has(th:not(:empty))) {
 
 /* 見出しは折らない（PDF のみ）。列幅は内容から自動で配分されるので、本文の長い列に押されると
    短い見出しまで「解説／章」と 1〜2 字ずつ折れる。見出しが長い表は <br> で折り返す。
-   EPUB・Kindle は画面が狭く、列の多い表が画面からはみ出すので対象外 */
-body:not(.vs-epub) .long-table th {
+   EPUB・Kindle は画面が狭く、列の多い表が画面からはみ出すので、targets/epub.css で折り返しに戻す */
+.long-table th {
   white-space: nowrap;
 }
 

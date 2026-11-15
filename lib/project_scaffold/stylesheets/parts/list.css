@@ -142,29 +142,3 @@ ol[class*="-paren"] > li > p:first-child {
 .def-list dd + dd {
   margin-block-start: 0.25lh; /* 同一用語に複数の説明があるとき、説明（dd）間に 1/4 行アキ */
 }
-
-/* =============================================================
-   Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
-   番号は EpubBuilder が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
-   ネイティブマーカーとの二重表示を防ぐため list-style を消す。Previewer 4 は ::before の
-   content も本文へ差し込むので、それも止める（`(1) (1) 項目` になる）。
-   :is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
-   ============================================================= */
-body.vs-kindle ol.vs-fancy-list,
-body.vs-kindle .outline-list ol {
-  list-style: none;
-  padding-inline-start: 1em;
-}
-body.vs-kindle ol.vs-fancy-list > li::before,
-body.vs-kindle .outline-list ol > li::before {
-  content: none;
-}
-body.vs-kindle .vs-li-marker {
-  font-weight: 700;
-}
-
-/* ul 第3レベル: KFX は文字列 list-style-type（"・"）を解さない見込みのため
-   ネイティブ値 square（■）へ優雅に劣化させる。●○は disc/circle がそのまま効く */
-body.vs-kindle ul ul ul {
-  list-style-type: square;
-}

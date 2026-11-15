@@ -1,7 +1,7 @@
 # 平らな CSS で層の順が保てない組の扱い（Fable への相談）
 
 > 作成日: 2026-11-15
-> ステータス: **答え済み（§5）・仕様への反映待ち**（S3-2 で、決定を `css-layer-restructure-spec.md` と `theme-contract-spec.md` へ移し、この文書は archives へ送る）
+> ステータス: **答え済み（§5）・仕様へ反映済み**（2026-11-15・S3-2。決定は `css-layer-restructure-spec.md` §2.1・§4.3・§4.5・§5・§7.1 と `theme-contract-spec.md` §3.5 へ移した。§5.7 の生成は S3-3 で入れる）
 > 出自: S3-1（`css-layer-restructure-spec.md` §8）の実装中に見つかった設計の問い
 
 Fable のセッションに、次の「---」より下をそのまま渡す。

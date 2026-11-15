@@ -1,0 +1,361 @@
+@charset "utf-8";
+
+/* Kindle の本文のページ（章・付録・前書き・後書き）の規則。target 層。
+   Kindle（KFX）が解さない組み方を、解せる形に置き換える（kindle-css-compatibility-notes.md）。
+   どのページの種類がどれを読むかは Css::EntryWriter::TARGET_IMPORTS。中の規則は、移す前の
+   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5） */
+
+/* --- parts/simple-header.css --- */
+
+/* =============================================================
+   Kindle 専用フォールバック（付録など simple スタイルの章/節見出し）
+   -------------------------------------------------------------
+   Kindle KFX は var() / display:grid / clamp() / calc() / ::before(absolute) /
+   linear-gradient を解さず、parts/simple-header.css の装飾が崩れて素テキスト化する
+   （kindle_epub_debug.md）。body.vs-header-simple.vs-kindle 配下に
+   具体値のみの装飾を与え、付録の章/節見出しにも枠付きの装飾を施す。
+   画像版（vs-header-image）や PDF はこの規則の影響を受けない。
+   ============================================================= */
+body.vs-header-simple.vs-kindle h1::before,
+body.vs-header-simple.vs-kindle h1::after {
+  content: none;
+}
+
+body.vs-header-simple.vs-kindle h1 {
+  display: block;
+  overflow: visible;
+  border: 2px solid #b8860b;
+  border-radius: 4px;
+  background: #f4f1ea;
+  margin: 1em 0;
+  padding: 0.8em 0.6em;
+  text-align: center;
+  font-size: 1.6em;
+  line-height: 1.4;
+  page-break-before: always;
+  break-before: page;
+}
+
+body.vs-header-simple.vs-kindle h1 .chapter-number {
+  display: block;
+  margin-bottom: 0.3em;
+  font-size: 0.7em;
+  font-weight: 700;
+  color: #b8860b;
+}
+
+body.vs-header-simple.vs-kindle h2 {
+  display: block;
+  border: 1px solid #b8860b;
+  border-left: 4px solid #b8860b;
+  border-radius: 3px;
+  background: #f4f1ea;
+  margin: 1.2em 0 0.6em;
+  padding: 0.4em 0.6em;
+  font-size: 1.3em;
+  font-weight: 800;
+  page-break-before: always;
+  break-before: page;
+}
+
+body.vs-header-simple.vs-kindle h2 .section-number {
+  display: inline-block;
+  margin-right: 0.5em;
+  padding: 0 0.4em;
+  background: #b8860b;
+  border-radius: 2px;
+  color: #fff;
+  font-weight: 900;
+}
+
+/* --- parts/code.css --- */
+
+/* Kindle の行番号: 実テキスト span（nbsp 右詰め）。色だけ添える。 */
+body.vs-kindle .vs-code-ln {
+  color: #999;
+}
+
+/* --- parts/table.css --- */
+
+/* Kindle は clamp() を解さず padding の宣言ごと捨てるので、余白を具体値で書く。
+   余白が 0 のセルでは数式の画像が列の幅まで引き伸ばされる（keep_cell_math_inline_for_kindle!）。 */
+body.vs-kindle td {
+  padding: 0.15em 0.4em;
+}
+
+/* KFX は透過した画像を行の背景色で塗りつぶす。th だけに背景があると、
+   見出しの数式の周りが白く抜ける。 */
+body.vs-kindle thead tr {
+  background: #bbb;
+}
+
+/* --- parts/layout.css --- */
+
+/* =============================================================
+   EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2）
+   Kindle は CSS Grid を解さず、img-text 系の横画像が全幅化する。
+   body.vs-kindle のときだけ grid を解除し、画像に上限＋float で本文を回り込ませる。
+   KFX は :is() を含む規則を丸ごと捨てるので、セレクタはすべて並べて書く。
+   ============================================================= */
+body.vs-kindle .img-text,
+body.vs-kindle .text-img,
+body.vs-kindle .img-text2,
+body.vs-kindle .text2-img,
+body.vs-kindle .img-text3,
+body.vs-kindle .text3-img {
+  display: block;
+  /* float の画像だけが次のページへ送られると、本文と別れて囲み枠も閉じる */
+  page-break-inside: avoid;
+}
+
+body.vs-kindle .img-text > img,
+body.vs-kindle .img-text > figure,
+body.vs-kindle .text-img > img,
+body.vs-kindle .text-img > figure,
+body.vs-kindle .img-text2 > img,
+body.vs-kindle .img-text2 > figure,
+body.vs-kindle .text2-img > img,
+body.vs-kindle .text2-img > figure,
+body.vs-kindle .img-text3 > img,
+body.vs-kindle .img-text3 > figure,
+body.vs-kindle .text3-img > img,
+body.vs-kindle .text3-img > figure {
+  max-width: 45%;
+  max-height: 16em;
+  width: auto;
+  inline-size: auto;
+  block-size: auto;
+}
+
+body.vs-kindle .img-text > img,
+body.vs-kindle .img-text > figure,
+body.vs-kindle .img-text2 > img,
+body.vs-kindle .img-text2 > figure,
+body.vs-kindle .img-text3 > img,
+body.vs-kindle .img-text3 > figure {
+  float: left;
+  margin: 0 1em 0.5em 0;
+}
+
+body.vs-kindle .text-img > img,
+body.vs-kindle .text-img > figure,
+body.vs-kindle .text2-img > img,
+body.vs-kindle .text2-img > figure,
+body.vs-kindle .text3-img > img,
+body.vs-kindle .text3-img > figure {
+  float: right;
+  margin: 0 0 0.5em 1em;
+}
+
+/* --- parts/sideimage.css --- */
+
+/* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
+body.vs-kindle .sideimage,
+body.vs-kindle .sideimage-left,
+body.vs-kindle .sideimage-right {
+  display: block;
+  page-break-inside: avoid;
+}
+
+body.vs-kindle .sideimage > img,
+body.vs-kindle .sideimage > figure,
+body.vs-kindle .sideimage-left > img,
+body.vs-kindle .sideimage-left > figure {
+  margin: 0 1em 0.5em 0;
+}
+
+body.vs-kindle .sideimage-right > img,
+body.vs-kindle .sideimage-right > figure {
+  margin: 0 0 0.5em 1em;
+}
+
+/* --- parts/book-card.css --- */
+
+/* =============================================================
+   EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2・§3）
+   body.vs-kindle は EpubBuilder が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。
+   Kindle は CSS Grid を解さず、grid 前提の book-card 画像が全幅化するため、
+   単列フロー前提で画像に上限を課し、本文を回り込ませる。
+   ============================================================= */
+body.vs-kindle .book-card { display: block; page-break-inside: avoid; }
+
+body.vs-kindle .book-info { display: block; }
+
+body.vs-kindle .book-card img {
+  max-width: 38%;
+  max-height: 13em;
+  width: auto;
+  float: left;
+  margin: 0 1em 0.5em 0;
+}
+
+/* Kindle では .book-info が grid でなく row-gap が効かないので、書誌と説明の間を余白で空ける */
+body.vs-kindle .book-meta { margin-block: 0 0.8em; }
+
+/* --- parts/math.css --- */
+
+/* 数式: ex→em は EpubBuilder が inline style を変換する。ここは万一 inline style が
+   無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */
+body.vs-kindle img.vs-math-inline { max-height: 1.8em; width: auto; }
+
+body.vs-kindle figure.vs-math-display img { max-width: 100%; height: auto; }
+
+/* --- parts/epub-reflow.css --- */
+
+/* 差し替えた画像の水平中央寄せ。
+   **KFX では margin:auto が効かず、画像がページ左端に寄る**（実機確認・2026-08-01）。
+   `text-align: center` ＋ インライン画像という古い組み合わせが Kindle では最も確実で、
+   EPUB で画像を中央に置く定石でもある。画像を `display: block` にすると
+   `text-align` が効かなくなるため、display は既定（inline）のまま触らない。
+   クリーン EPUB の table は絶対配置（left:50% + translate）で中央に来るので、
+   この規則の影響を受けない——念のため vs-kindle に限定してある。 */
+body.vs-kindle .rotate-table {
+  text-align: center;
+}
+
+/* --- parts/prose.css --- */
+
+/* Kindle(KFX) は var() を含む宣言を丸ごと落とすため、具体値で書き直す（Kindle 劣化規約） */
+body.vs-kindle kbd {
+  font-family: keyfont, monospace;
+}
+
+/* --- parts/list.css --- */
+
+/* =============================================================
+   Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
+   番号は EpubBuilder が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
+   ネイティブマーカーとの二重表示を防ぐため list-style を消す。Previewer 4 は ::before の
+   content も本文へ差し込むので、それも止める（`(1) (1) 項目` になる）。
+   :is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
+   ============================================================= */
+body.vs-kindle ol.vs-fancy-list,
+body.vs-kindle .outline-list ol {
+  list-style: none;
+  padding-inline-start: 1em;
+}
+
+body.vs-kindle ol.vs-fancy-list > li::before,
+body.vs-kindle .outline-list ol > li::before {
+  content: none;
+}
+
+body.vs-kindle .vs-li-marker {
+  font-weight: 700;
+}
+
+/* ul 第3レベル: KFX は文字列 list-style-type（"・"）を解さない見込みのため
+   ネイティブ値 square（■）へ優雅に劣化させる。●○は disc/circle がそのまま効く */
+body.vs-kindle ul ul ul {
+  list-style-type: square;
+}
+
+/* --- parts/figure.css --- */
+
+/* KFX は margin-inline の auto を 0 に解く。物理プロパティで書き直す。 */
+body.vs-kindle figure.align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.vs-kindle figure.align-right {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* --- parts/box.css --- */
+
+/* =============================================================
+   Kindle 専用 コラム・注記枠ラベル（tip / memo / column / notice / note）（epub-kindle-target-split-spec.md §1-5）
+   Kindle(KFX) は ::before(position:absolute) のラベル帯・var() を解さない。そこで Kindle
+   ビルド（body.vs-kindle）でのみ ::before ラベルを抑止し、EpubBuilder が先頭注入する実体
+   ラベル <p class="vs-adm-label"> を枠上に通常表示する。枠線は var() 不可のため具体色で描く。
+   notice / note は PDF では枠タブを持たない（左/上下アクセント線）が、Kindle では var() 線が
+   消えてしまうため、tip/memo/column と同じ「具体色の囲み枠＋ラベル」へ劣化させる。
+   クリーン EPUB（Kobo/Apple Books・vs-kindle 無し）は parts/box.css の ::before 角タブ・themed 枠のまま。
+   ============================================================= */
+
+/* Kindle KFX は :is() を解さずルールごと破棄するため、明示セレクタへ展開する。 */
+body.vs-kindle .tip::before,
+body.vs-kindle .memo::before,
+body.vs-kindle .column::before {
+  content: none;
+}
+
+body.vs-kindle .tip,
+body.vs-kindle .memo,
+body.vs-kindle .column,
+body.vs-kindle .notice,
+body.vs-kindle .note {
+  /* ::before 角タブ用に空けていた上余白（6mm）を詰め、注入ラベル上の空行を解消する */
+  padding-block-start: 4mm;
+  /* Kindle は var() 不可。base の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
+  border: 1px solid #888;
+  /* 枠どうしが一体化して見えないよう、上下に明確な余白を確保する。Kindle は mm 余白が
+     詰まりがちなので em で指定（隣接枠の margin 相殺後も視認できる間隔を残す）。 */
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+/* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
+   テキストが枠線に触れないよう左右と下の余白を補う。 */
+body.vs-kindle .note {
+  padding-inline: 4mm;
+  padding-block-end: 3mm;
+}
+
+/* .output / .terminal の Kindle 劣化（§5 と同方針）。PDF・クリーン EPUB ではラベルなしの
+   素枠だが、Kindle では EpubBuilder が先頭注入する実体ラベル <p class="vs-adm-label">
+   （【OUTPUT】/【TERMINAL】）を見せ、枠線・地色を具体色で描く。注入ラベル用に上余白を確保する。 */
+body.vs-kindle .output {
+  padding-block-start: 4mm;
+  /* .output の枠線は var() のため Kindle で消える。具体色で描き直す。 */
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+/* .diagram（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
+   ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
+body.vs-kindle .diagram {
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+body.vs-kindle .terminal {
+  padding-block-start: 4mm;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  /* var() を含む base の font 宣言が Kindle で破棄されても等幅を保証する。
+     地色 #1a1a1a・文字色 #f5f5f5 は具体色なので Kindle でもそのまま効く。 */
+  font-family: monospace;
+}
+
+/* 端末ラベルは黒地に沈まないよう白で見せる（既定の vs-adm-label 色 #444 を上書き）。 */
+body.vs-kindle .terminal .vs-adm-label {
+  color: #f5f5f5;
+}
+
+/* 中身の <pre> も var() 不可・具体色で。code.css の pre 既定色（黒文字）に負けないよう明示する。 */
+body.vs-kindle .terminal pre {
+  font-family: monospace;
+  color: #f5f5f5;
+}
+
+/* =============================================================
+   Kindle 専用 会話文（.talk）劣化（talk-display-options-spec.md §2.5）
+   Kindle(KFX) は flex・::before/::after・var()・丸抜き画像を解さない。吹き出しを CSS で
+   近似するのではなく、EpubBuilder が DOM を inline 形式（名前＋区切り＋発話の 1 段落）へ
+   組み替え、容器のクラスを talk-style-inline に差し替える。以降は parts/talk.css の
+   inline 用ルールがそのまま効くため、ここに Kindle 専用の体裁は要らない。
+   話者色だけは var() が効かないので、生成 CSS（book-settings.css）が
+   body.vs-kindle .talk-c-<key> の .talk-name / .talk-sep / strong にリテラル色を焼く。
+   クリーン EPUB（vs-kindle 無し）は parts/talk.css の吹き出し表示のまま。
+   ============================================================= */
+body.vs-kindle .vs-adm-label {
+  margin: 0 0 0.4em;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #444;
+}

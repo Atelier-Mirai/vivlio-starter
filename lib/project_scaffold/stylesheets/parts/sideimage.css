@@ -100,21 +100,3 @@
 .image-group figure {
   margin: 0;
 }
-
-/* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
-body.vs-kindle .sideimage,
-body.vs-kindle .sideimage-left,
-body.vs-kindle .sideimage-right {
-  display: block;
-  page-break-inside: avoid;
-}
-body.vs-kindle .sideimage > img,
-body.vs-kindle .sideimage > figure,
-body.vs-kindle .sideimage-left > img,
-body.vs-kindle .sideimage-left > figure {
-  margin: 0 1em 0.5em 0;
-}
-body.vs-kindle .sideimage-right > img,
-body.vs-kindle .sideimage-right > figure {
-  margin: 0 0 0.5em 1em;
-}

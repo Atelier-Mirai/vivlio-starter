@@ -10,8 +10,9 @@
 #       → Flattener.pieces（読み込み・並べ替え）
 #       → 入れ子の規則を知らせる
 #       → TargetFilter（出力先が扱えない規則を落とす）
-#       → InversionCheck（--log=debug のときだけ）
 #       → Flattener.render
+#   InversionCheck（--log=debug のときだけ）は、HTML の書き換えが終わった後に
+#   report_epub_inversions! が同じ規則の列で行う。
 #
 # 三つの形（§4.2）:
 #   layered       pdf・print_pdf。入口をそのまま読み、ここでは何も作らない
@@ -61,21 +62,34 @@ module VivlioStarter
 
         # EPUB・Kindle の消費者 dir の styles/ へ、ページの種類ごとに平らな CSS を書く。
         # @param html_by_kind [Hash{String => Array<String>}] 入口の名前 → その入口を読む HTML
-        #   （--log=debug のとき、InversionCheck の組をこの HTML で絞る）
         # @param target [Symbol] :epub / :kindle
         # @param styles_dir [String] 平らな CSS の置き場（消費者 dir の styles/）
         # @param embed_fonts [Boolean] EPUB に書体の実体を入れるか
         # @return [Hash{String => String}] 入口の名前 → 書いたパス
         def write_epub!(html_by_kind, target:, styles_dir:, embed_fonts:)
           reported = {}
-          html_by_kind.to_h do |kind, html_files|
+          html_by_kind.to_h do |kind, _html_files|
             dest = File.join(styles_dir, "#{kind}.css")
             pieces = flat_pieces(kind, target:, dest:, package_root: File.dirname(styles_dir), embed_fonts:,
                                        reported:)
-            report_inversions(kind, target, pieces, html_files)
             FileUtils.mkdir_p(styles_dir)
             File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
             [kind, dest]
+          end
+        end
+
+        # --log=debug のとき、EPUB・Kindle の HTML で要素ごとの判定（InversionCheck.inversions）を行い、
+        # 層を外すと勝ち負けが変わる組と、層の中の !important を一覧にする。
+        # HTML の書き換え（vs-kindle の印・合成画像・コードの行ブロックなど）が全部終わった後に呼ぶ。
+        # 平らな CSS を書く段（write_epub!）では、HTML にまだ印が付いておらず、Kindle の規則が当たらない
+        # @param html_by_kind [Hash{String => Array<String>}] 入口の名前 → その入口を読む HTML
+        def report_epub_inversions!(html_by_kind, target:, embed_fonts:)
+          return unless Common.current_log_level >= Common::LEVELS['debug']
+
+          html_by_kind.each do |kind, html_files|
+            pieces = Flattener.pieces(EntryWriter.path_for(kind), rebase: ->(path) { path },
+                                                                  css: EntryWriter.render(kind, target:))
+            report_inversions(kind, target, TargetFilter.apply(pieces, target:, embed_fonts:), html_files)
           end
         end
 
@@ -139,12 +153,10 @@ module VivlioStarter
           end
         end
 
-        # 層を外すと勝ち負けが変わる組と、層の中の !important を --log=debug で一覧にする。
+        # 層を外すと勝ち負けが変わる組と、層の中の !important を一覧にする。
         # vs とテーマの CSS は css_layer_test.rb がテストで確かめるので、ビルドでは開発者向けの
-        # 情報にとどめる（§4.5）。組み上がった HTML を読むので、debug でなければ何もしない
+        # 情報にとどめる（§4.5）
         def report_inversions(kind, target, pieces, html_files)
-          return unless Common.current_log_level >= Common::LEVELS['debug']
-
           require 'nokogiri'
           decls, = Cascade.collect(pieces.reject(&:nested))
           decls.select { it.important && it.rank != Cascade::UNLAYERED }.each do |decl|
@@ -152,9 +164,10 @@ module VivlioStarter
           end
 
           documents = html_files.map { Nokogiri::HTML5(File.read(it, encoding: 'utf-8'), max_errors: 0) }
-          pairs = InversionCheck.present(InversionCheck.pairs(pieces.reject(&:nested)), documents)
+          pairs, unreadable = InversionCheck.inversions(pieces.reject(&:nested), documents)
           Common.log_debug("[css] #{kind}（#{target}）: 層を外すと勝ち負けが変わる組 #{pairs.size}")
           pairs.each { Common.log_debug("[css]   #{InversionCheck.describe(it)}") }
+          unreadable.each { Common.log_debug("[css]   判定できない選択子（当たらないものとして扱った）: #{it}") }
         end
 
         def relative(path) = path.delete_prefix("#{Dir.pwd}/")

@@ -365,6 +365,9 @@ module VivlioStarter
             apply_variant_glyph_fonts_for_kindle!(chapter_htmls, base_dir)
           end
 
+          # 層を外すと勝ち負けが変わる組を --log=debug で一覧にする。書き換えが全部終わった DOM で見る
+          report_flat_css_inversions!(chapter_htmls, flavor:)
+
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ・flavor: #{flavor}）")
           chapter_htmls
@@ -1178,6 +1181,23 @@ end
           html_files
         end
 
+        # 付け替えた後の、平らな CSS への link（bundle_flat_css_for_epub! が書く）
+        STYLES_HREF_PATTERN = %r{href="#{EPUB_STYLES_DIR}/([a-z-]+)\.css"}
+
+        # 層を外すと勝ち負けが変わる組を --log=debug で一覧にする（css-layer-restructure-spec.md §4.3）。
+        # HTML の書き換え（vs-kindle の印・合成画像・コードの行ブロックなど）が全部終わった後の DOM で
+        # 判定する。平らにする段（bundle_flat_css_for_epub!）ではまだ印が付いておらず、Kindle の規則が
+        # どの要素にも当たらない
+        def report_flat_css_inversions!(html_files, flavor:)
+          return unless Common.current_log_level >= Common::LEVELS['debug']
+
+          html_by_kind = Hash.new { |hash, key| hash[key] = [] }
+          html_files.each do |path|
+            File.read(path, encoding: 'utf-8').scan(STYLES_HREF_PATTERN).flatten.uniq.each { html_by_kind[it] << path }
+          end
+          Css::Bundle.report_epub_inversions!(html_by_kind, target: flavor, embed_fonts: embed_fonts?)
+        end
+
         # テーマ画像の url(...) 値を実ファイルパスへ解決する。
         # 生成バリアント（theme-images/…）は生成キャッシュ基準、それ以外（images/…）は
         # stylesheets/ 基準で解決する（返却 2 形・移設仕様 §3.1/§3.2）。
@@ -1926,7 +1946,7 @@ end
         # Kindle のリフローは CSS Grid / position:absolute / ex 単位を解さないため、
         # PDF 向け CSS のままだと画像・数式・コード行番号が崩れる。EPUB 経路でのみ
         # 是正する。CSS で済むもの（book-card / img-text の画像上限）は body.vs-kindle
-        # ガードの CSS（parts/book-card.css / parts/layout.css / parts/code.css）に置き、ここでは
+        # ガードの CSS（stylesheets/targets/kindle.css）に置き、ここでは
         # マークアップ変更が要る 3 件（body マーカー付与・数式 ex→em・コードのテーブル化）を
         # 行う。PDF 完成後の共有 HTML を書き換えるため PDF へ副作用はない。
         # ================================================================
@@ -2090,7 +2110,7 @@ end
         # 左右に並べる囲み（side-by-side）の中の図を、PDF と同じ大きさに抑える（両フレーバ）。
         #
         # EPUB・Kindle は side-by-side を上下に積む（画面の幅が分からず、狭い画面では左右とも
-        # 読めなくなる・parts/side-by-side.css）。積むと中の図が本文の幅いっぱいに広がり、PDF では
+        # 読めなくなる・stylesheets/targets/epub.css）。積むと中の図が本文の幅いっぱいに広がり、PDF では
         # 片側に収まっていた mermaid の図がタブレットの画面を占めていた。図の幅を、書かれた幅
         # （{width=60%} など。無ければ 100%）に片側の割合を掛けた値にして、中央に置く。
         # Kindle は外部 CSS の画像の大きさを無視するので inline で付け、中央寄せは
@@ -2604,7 +2624,7 @@ end
         # リフローにはページ下部が無いので、PDF が脚注領域へ降ろしている aside は
         # 参照した段落の直後にそのまま残る。素のままだと番号も区切りも無く、本文と
         # 地続きの文字列にしか見えない（どこからが脚注か読者に分からない）。
-        # 番号を実体で置き、CSS 側（parts/footnote.css の body.vs-epub 規則）で
+        # 番号を実体で置き、CSS 側（stylesheets/targets/epub.css の body.vs-epub 規則）で
         # 一回り小さい注記ブロックとして見せる。
         #
         # ::before ではなく実テキストにするのは Kindle(KFX) が擬似要素を解さないため。

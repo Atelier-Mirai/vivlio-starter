@@ -25,6 +25,8 @@
 #                       本書の前書きに無い記法で、前書きの CSS の変更の影響を見る）
 #     --ignore-layout   位置と箱の大きさ（width・top など）の差を数えない
 #     --top N           違いの一覧に出す行の数（既定は 80）
+#     --after-settings DIR  後の側にだけ使う book-settings*.css の置き場（book.yml から生成する CSS の
+#                       分け方を変えたときに、後の版のコードで生成したものを渡す）
 #   終了コード: 0 = 差が無い / 1 = 差がある / 2 = 比べられない
 #
 # 前提:
@@ -71,11 +73,14 @@ end
 # リポジトリ（source）の EntryWriter と Flattener で、全種類の入口と平らな CSS を workspace に書く。
 # 別のプロセスで描くのは、前と後でコード（IMPORTS・Flattener）が違うためである。
 # workspace の .cache/vs/ と stylesheets/ の並びは本と同じにし、入口の相対パスがそのまま解けるようにする
-def prepare_css(source, workspace, book_cache)
+# settings は book-settings*.css の置き場（既定は book_cache。--after-settings で後の側だけ差し替える）
+def prepare_css(source, workspace, book_cache, settings = book_cache)
   cache = File.join(workspace, '.cache', 'vs')
   FileUtils.mkdir_p([cache, File.join(workspace, 'flat')])
   File.symlink(File.join(source, 'stylesheets'), File.join(workspace, 'stylesheets'))
-  %w[book-settings.css book-fonts.css].each { FileUtils.cp(File.join(book_cache, it), cache) }
+  %w[book-settings.css book-fonts.css book-settings-kindle.css].each do
+    FileUtils.cp(File.join(settings, it), cache) if File.file?(File.join(settings, it))
+  end
   theme_images = File.join(book_cache, 'theme-images')
   File.symlink(theme_images, File.join(cache, 'theme-images')) if File.directory?(theme_images)
 
@@ -83,10 +88,15 @@ def prepare_css(source, workspace, book_cache)
     w = VivlioStarter::CLI::Css::EntryWriter
     f = VivlioStarter::CLI::Css::Flattener
     workspace = ARGV.fetch(0)
+    rebase = ->(abs) { "file://\#{abs}" }
     w::IMPORTS.each_key do |kind|
       entry = File.join(workspace, '.cache', 'vs', "entry-\#{kind}.css")
       File.write(entry, w.render(kind))
-      File.write(File.join(workspace, 'flat', "\#{kind}.css"), f.flatten(entry, rebase: ->(abs) { "file://\#{abs}" }))
+      # EPUB と Kindle は、出力先の target 層を足した入口から平らにする（Css::Bundle と同じ）
+      { 'pdf' => nil, 'epub' => :epub, 'kindle' => :kindle }.each do |flavor, target|
+        css = f.render(f.pieces(entry, rebase:, css: w.render(kind, target:)))
+        File.write(File.join(workspace, 'flat', "\#{flavor}-\#{kind}.css"), css)
+      end
     end
   RUBY
   _, err, status = Open3.capture3('ruby', '-Ilib', '-rvivlio_starter/cli/css/entry_writer',
@@ -98,7 +108,7 @@ def css_path(workspace, pair)
   if pair.form == 'layered'
     File.join(workspace, '.cache', 'vs', "entry-#{pair.kind}.css")
   else
-    File.join(workspace, 'flat', "#{pair.kind}.css")
+    File.join(workspace, 'flat', "#{pair.flavor}-#{pair.kind}.css")
   end
 end
 
@@ -212,6 +222,7 @@ OptionParser.new do |opts|
   opts.on('--as KIND') { options[:as] = it }
   opts.on('--ignore-layout') { options[:ignore_layout] = true }
   opts.on('--top N', Integer) { options[:top] = it }
+  opts.on('--after-settings DIR') { options[:after_settings] = File.expand_path(it) }
 end.parse!
 htmls = html_files(ARGV)
 if htmls.empty?
@@ -230,7 +241,7 @@ Dir.mktmpdir('css-computed-diff') do |tmp|
   checkout(options[:before], source)
   workspaces = { before: File.join(tmp, 'before'), after: File.join(tmp, 'after') }
   prepare_css(source, workspaces[:before], book_caches.first)
-  prepare_css(options[:after], workspaces[:after], book_caches.first)
+  prepare_css(options[:after], workspaces[:after], book_caches.first, options[:after_settings] || book_caches.first)
   kinds = Dir[File.join(workspaces[:after], 'flat', '*.css')].map { File.basename(it, '.css') }
 
   # --- Phase: 組んで計算値を取る ---

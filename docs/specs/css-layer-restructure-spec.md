@@ -1,7 +1,7 @@
 # スタイルシートの再編（層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成）
 
 > 作成日: 2026-11-14
-> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1 は 2026-11-15 に完了・実装記録は §10。残りは S3-2・S3-3）
+> ステータス: **実装中**（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1・S3-2 は 2026-11-15 に完了・実装記録は §10。残りは S3-3）
 > 対象: `stylesheets/` の 27 ファイル・約 6,200 行を、見た目を変えずに cascade layers（`@layer`）で作り直す。合わせて、EPUB と Kindle に渡す「層を外した CSS」をビルドのときに生成する
 > 出自: `PLANNED.md` の「Version 2.0 構想」にあった「スタイルシートの構造を整理し直す」の五案（層で優先順位を宣言する・Kindle 用の CSS を別に生成する・値を一か所に集める・ページの種類の差を body のクラスと値で出す・`chapter-common.css` を部品ごとに分ける）の具体化。本書を書いた時点で、同項目は `PLANNED.md` から外した。事実は `v2-inventory-report.md` §2.4・§3・§6 と `v2-feasibility-notes.md` §1・§2・§6
 > 組になる仕様書: `v2-architecture-spec.md`（出力先の `css_form`・Kindle 向けの劣化の集約）・`theme-contract-spec.md`（テーマの層・公開する変数）・`v2-migration-plan.md`（段階 S2・S3）
@@ -19,7 +19,8 @@
 | 平らな CSS を何で生成するか | Ruby で書く。CSS の読み取りには gem の `crass`（MIT・純 Ruby・依存なし）を使う。Node の道具は使わない | §4.1 |
 | 平らな CSS の形 | 三つ: `layered`（PDF）・`flat`（クリーン EPUB）・`flat_literal`（Kindle） | §4.2 |
 | 層を外しても結果が変わらないことの保証 | 平らにした CSS で PDF を組み、層ありの PDF と全ページの画素を比べる。加えて、結果が変わりうる規則の組を静的に検査する | §4.3 |
-| Kindle 用の規則 | `stylesheets/targets/kindle.css` に集める。色と寸法のリテラル化は生成が行う | §5 |
+| Kindle 用の規則 | `stylesheets/targets/` に集める（本文のページは `epub.css`・`kindle.css`、そのページの種類だけの規則は種類ごとの 1 枚）。色と寸法のリテラル化は生成が行う | §5 |
+| 平らな CSS で層の順が保てない組 | 層の順を詳細度に置き換える仕組みは入れない。テーマは変数か部品と同じ選択子で書く。`custom.css` は生成が勝たせる。検査は組み上がった HTML の要素ごとに勝つ宣言を比べる | §2.1・§4.3・§7.1 |
 | 縦書きに向けた物理方向の書き直し | 層に分ける段階では行わない。縦書きの小説の段階（S8）で、縦書きの本が読む部品だけを直す | §6 |
 | 1.x の `custom.css` | 書き換えなくても効く。層の外なので、今と同じく最優先になる | §7 |
 | 1.x の小さな版で出すか | 出さない。すべて `v2` ブランチで行う | §8 |
@@ -71,8 +72,8 @@
 
 順序の理由:
 
-- `theme` が `parts` と `pages` の上にあるのは、テーマが部品とページの見た目を変えられるようにするためである。層が上なら、詳細度が低い規則でも勝つ。テーマは詳細度を上げたり `!important` を使ったりせずに済む。
-- `utilities` が `theme` の上にあるのは、著者が原稿に書いた `{.text-right}` や `@pagebreak` が、テーマの `p { text-align: justify; }` のような規則に負けないようにするためである。
+- `theme` が `parts` と `pages` の上にあるのは、テーマが部品とページの見た目を変えられるようにするためである。層が上なら、詳細度が低い規則でも勝つ。テーマは詳細度を上げたり `!important` を使ったりせずに済む。ただし、これは層ありの CSS を読む PDF の話である。EPUB と Kindle は層を外した平らな CSS を読むので（§4）、詳細度が同じなら層の順で勝ち、低ければ負ける。部品の見た目を変えるテーマの規則は、**変数で変えるか、部品の規則と同じ選択子で書く**（平らな CSS で層の順を詳細度に置き換える仕組みは入れない。`v2-flat-cascade-consultation.md` §5.3）。
+- `utilities` が `theme` の上にあるのは、著者が原稿に書いた `{.text-right}` や `@pagebreak` が、テーマの `p { text-align: justify; }` のような規則に負けないようにするためである。EPUB と Kindle では詳細度で決まるのは theme と同じで、同梱の CSS では、組み上がった HTML で入れ替わる組が無いことを要素ごとの判定で確かめる（§4.3）。
 - `settings` が `theme` と `utilities` の上にあるのは、`book.yml` の設定（判型・テーマ色・見出しの番号）が、テーマの既定値より優先されるためである。
 - `target` が `settings` の上にあるのは、Kindle で使えない組み方を置き換える規則が、テーマや設定に負けると表示が崩れるためである。
 - `custom.css` を層の外に置くのは、1.x の「最後に読み込まれるので最優先」という約束を、著者が層を知らなくても保てるようにするためである（§7.1）。
@@ -167,8 +168,10 @@ stylesheets/
     pagebreak.css                                               ← pagebreak.css・chapter-common.css
     replace-list.css                                            ← replace-list.css
   targets/
-    epub.css                 body.vs-epub の規則（28 か所）
-    kindle.css               body.vs-kindle の規則（124 か所）
+    epub.css                 本文のページの body.vs-epub の規則（S3-2 で 21 規則＋2）
+    kindle.css               本文のページの body.vs-kindle の規則（38 規則）
+    kindle-preface.css       前書き・後書きだけの body.vs-kindle の規則（1）
+    kindle-index.css  kindle-glossary.css  kindle-colophon.css   そのページだけの規則（6・6・10）
 themes/standard/             theme-contract-spec.md §4
 ```
 
@@ -255,13 +258,13 @@ Ruby で書く。置き場は `lib/vivlio_starter/cli/css/`。
 
 開発用の環境変数 `VS_CSS_FORM=flat` を用意し、PDF の出力先に平らな CSS を読ませる（余白の箱を落とすフィルタは掛けない）。同じ本を `layered` と `flat` で組み、全ページの画素を比べる。一致すれば、PDF で使われる規則については、層を外しても結果が変わらないと言える。`VS_CSS_FORM` は確かめのためだけのもので、文書には載せない（`VIVLIO_BUILD_PARALLEL` と同じ扱い）。
 
-**(2) 静的な検査（`Css::InversionCheck`）**
+**(2) 検査（`Css::InversionCheck`）**
 
-PDF で使われない規則（`target` 層）と、本書で使っていない記法の規則は、(1) では確かめられない。そこで、結果が変わりうる規則の組を静的に挙げる。
+PDF で使われない規則（`target` 層）と、本書で使っていない記法の規則は、(1) では確かめられない。そこで二つの判定を持つ（`v2-flat-cascade-consultation.md` §5.4。S3-2 で入れた）。
 
-- 挙げる条件: 二つの宣言が、(a) 同じプロパティで、(b) 下の層の規則の詳細度が上の層の規則より高く、(c) 選ぶ対象が重なりうる。(c) は、選択子の最後の複合選択子（対象の要素を表す部分）が、同じクラスを含むか、どちらもクラスを持たず同じ要素名である、で判定する。
-- 絞り込み: ビルドのときは、挙がった組について、出力先の HTML に「両方の選択子に当たる要素」があるかを Nokogiri で調べ、ある組だけを報告する。疑似要素・疑似クラスは外して調べる。
-- 扱い: 同梱の CSS とテーマでは、`css_layer_test.rb` が組の数が 0 であることを確かめる（直せない組は、理由を書いた許可の表に載せる）。著者が入れたテーマでは、`vs theme:check` と `vs build` が 🟡 で、どの規則とどの規則かを示す。
+- **静的な判定（HTML なし）**: 結果が変わりうる規則の組を挙げる。二つの宣言が、(a) 同じプロパティで、(b) 下の層の規則の詳細度が上の層の規則より高く、(c) 選ぶ対象が重なりうる。(c) は、選択子の最後の複合選択子（対象の要素を表す部分）が、同じクラスを含むか、どちらもクラスを持たず同じ要素名である、で判定する。これは保証ではなく、vs の CSS を書き換えたときの早めの警報である。`css_layer_test.rb` が、許可の表（理由つき）の外に組が無いことを確かめる。(c) を広げると許可の表が読めない大きさ（842 組）になるので、広げない。
+- **要素ごとの判定（HTML あり）**: 組み上がった HTML の要素ごとに、当たる宣言の全部から、層ありで勝つ宣言と平らな CSS で勝つ宣言を求め、二つが違い、値の意味も違うものを挙げる。組で比べると、同じ要素に当たる第三の宣言（どちらの形でも勝つもの）を見ないので、誤って挙げる（`v2-flat-cascade-consultation.md` §5.2 の部扉の `break-before`）。候補は (c) のクラスの条件を外した広い組で絞る。媒体（screen・print）ごとに比べ、疑似要素は同じ疑似要素の宣言どうしで比べる。疑似要素・動的な疑似クラスは外して Nokogiri で当て、読めない選択子は当たらないものとして扱って一覧に出す。ビルドでは `--log=debug` のときだけ動き、段階の確かめでは B1・B4 の EPUB と Kindle 用 EPUB で 0 組（または理由つきの記録）であることを確かめる。
+- 扱い（S6 以降）: 著者が入れたテーマでは、`vs build` が要素ごとの判定で、層ありで勝つ側が theme 層の組を 🟡 で示す。`vs theme:check` は静的な判定で「起きうる組」を示し、確定は `vs build` が行うと書く。層の外（`custom.css`）の組は知らせず、生成で解く（§7.1）。
 - 直し方: 下の層の規則の詳細度を下げる、上の層の規則の選択子を下の層と同じ形にする、のどちらか。
 
 ### 4.4 リテラル化（`flat_literal`）
@@ -297,15 +300,18 @@ KFX は `var()`・`calc()`・`color-mix()` を解さず、`:is()` を含む規�
 | :--- | :--- |
 | vs の開発（同梱の CSS とテーマ） | テストで落とす（`css_layer_test.rb`）。ビルドでは `--log=debug` だけ |
 | テーマを作る人 | `vs theme:check` が 🟡 で、ファイル名と行番号、何が Kindle に届かないか、どう書き直すかを示す |
-| 著者（`custom.css`） | `vs build` で `targets` に `kindle` があるときだけ、Kindle に届かない宣言を 🟡 で示す（今の `warn_unconvertible_custom_colors` と同じ場面） |
+| 著者（`custom.css`） | `vs build` で `targets` に `kindle` があるときだけ、Kindle に届かない宣言を 🟡 で示す（今の `warn_unconvertible_custom_colors` と同じ場面）。平らな CSS で vs の規則に負ける宣言は知らせず、生成が解く（§7.1）。解けなかった宣言だけを、場所を示して 🟡 で知らせ、vs の選択子は見せない |
 
 ---
 
 ## 5. Kindle と EPUB の規則を集める
 
-- `body.vs-kindle` の規則（10 ファイル・124 か所）を `stylesheets/targets/kindle.css` へ、`body.vs-epub` の規則（4 ファイル・28 か所）を `stylesheets/targets/epub.css` へ移す。
-- 移すときは、選択子（`body.vs-kindle` の前置きを含む）と宣言を変えず、元のファイルの読み込みの順と、ファイルの中の順を保つ。これで、Kindle の束の中での結果が変わらない。
-- `targets/kindle.css` の中は、元の部品の名前の見出しで区切る（囲み・並べ方・コード・索引・用語集・奥付・前書き・見出し）。
+- `body.vs-kindle` の規則を `stylesheets/targets/kindle.css` へ、`body.vs-epub` の規則（`body.vs-epub` と `body.vs-kindle` を並べた規則を含む）を `stylesheets/targets/epub.css` へ移す。
+- **ページの種類ごとに分ける（S3-2 で決めた）。** 移す前の規則は、そのページの種類が読むファイルにあった。奥付の `body.vs-kindle { … }` や前書きの `body.vs-kindle h1` を 1 枚に集めると、本文のページにも当たる。そこで、本文のページ（章・付録・前書き・後書き）が読む部品の規則は `epub.css`・`kindle.css` に、前書きの部品（`parts/preface.css`）とページのファイル（`pages/index.css`・`glossary.css`・`colophon.css`）の規則は `kindle-preface.css`・`kindle-index.css`・`kindle-glossary.css`・`kindle-colophon.css` に置く。どの種類がどれを読むかは `Css::EntryWriter::TARGET_IMPORTS` の 1 枚の表に置く。
+- 移すときは、選択子（`body.vs-kindle` の前置きを含む）と宣言を変えず、元のファイルの読み込みの順と、ファイルの中の順を保つ。
+- **`book-settings.css` の Kindle の規則も target 層へ移す（S3-2 で決めた）。** `BookSettingsCss` の Kindle 用のリテラルの色（`kindle_accent_rules`・`kindle_custom_color_rules`・話者の色）と、`page.section_pagebreak: false` の Kindle の節見出しの打ち消しは、`stylesheets/` の Kindle の規則を同じ選択子で後から覆う作りである。Kindle の規則だけを target 層（settings 層の上）へ移すと、覆う側が負ける（本書の Kindle の囲みの枠がテーマ色から灰色になった）。覆う側を `.cache/vs/book-settings-kindle.css` に分けて生成し、Kindle の束の target 層の最後で読む。S3-3 でリテラル化が入ると、この生成物は無くなる。
+- **PDF だけに当てる規則（`body:not(.vs-epub)`）は、選ぶ対象を外して部品に残す。** target 層は PDF の束に入らないので、`:not(.vs-epub)` の規則は移せない。`parts/simple-header.css` の節リードの余白と `parts/table.css` の長い表の見出しの折り返しの 2 規則が該当する。`:not(.vs-epub)` を外し、EPUB と Kindle の値は `targets/epub.css` が target 層で決める（節リードは既にある規則が勝つ。見出しの折り返しは `white-space: normal` の規則を足した）。あわせて、`parts/footnote.css` の印刷の媒体で控えの脚注を描かない規則と同じものを `targets/epub.css` に足した（EPUB の脚注の `display: block` が target 層で勝つようになるため）。
+- `targets/kindle.css` の中は、元の部品の名前の見出し（`/* --- parts/box.css --- */`）で区切る。
 - 移した後、リテラルの色を直書きしている規則のうち、テーマ色から決まるもの（前書きの藍色の直書きなど）は、`var(--book-…)` に書き直す。リテラル化が解くので、テーマ色に追従するようになる（今は `BookSettingsCss` が後から上書きして追従させている）。この書き直しは S3-3 で行う。
 - `targets/epub.css` は、クリーン EPUB と Kindle の両方の束に入る（Kindle の `body` にも `vs-epub` が付くため。今と同じ）。
 - PDF の束には `target` 層を入れない。PDF が読む CSS から、出力先の規則が無くなる。
@@ -335,6 +341,7 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 ### 7.1 `custom.css`
 
 - 層の外に置くので、`custom.css` の規則は、詳細度に関係なく vs とテーマのどの規則にも勝つ。1.x では、詳細度の高い vs の規則には `custom.css` が負けることがあった。2.0 では負けなくなる。
+- EPUB と Kindle が読む平らな CSS でも同じに勝たせる。平らな CSS で vs の規則に負ける `custom.css` の宣言にだけ、生成が `!important` を付ける（著者の `custom.css` は書き換えない。層の中に `!important` は無いので、付けた宣言は必ず勝つ）。付けた結果、`custom.css` の宣言どうしの勝ち負けが変わる要素があれば、層ありで勝つ側にも付け、全部の要素でそろうまで繰り返す。著者が自分で `!important` を付けた宣言と取り合う場合と、`style` 属性で同じプロパティを指定している要素にも当たる場合は付けず、「EPUB と Kindle では効かない」と場所だけを 🟡 で知らせる。S3-3 で入れる（`v2-flat-cascade-consultation.md` §5.7）。
 - 1.x で「効かないので `!important` を付けた」規則は、付けたままでも同じに働く。
 - 逆に、1.x で詳細度が足りずに効いていなかった規則が、2.0 で効くようになる。`custom.css` に、効いていない規則を残している本では、見た目が変わる。`v2-migration-plan.md` §5 の移行の手順で、移行の前後の PDF を比べて確かめる。
 
@@ -385,8 +392,8 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | 小段階 | 作るもの | 完了の条件 |
 | :--- | :--- | :--- |
 | S3-1 `flat` | `Css::Flattener` の 3・`TargetFilter`・`InversionCheck`・`Bundle`・`VS_CSS_FORM`。`sanitize_epub_css!` と `bundle_book_settings_for_epub!` を無くす | (a) 本書を `VS_CSS_FORM=flat` で組んだ PDF の全ページの画素が、`layered` と一致する。(b) `InversionCheck` の報告が 0（または許可の表に理由つきで載っている）。(c) クリーン EPUB が EPUBCheck でエラー・警告とも 0 で、Apple Books の画面が S0 の基準と見比べて同じ。(d) EPUB の中の CSS に `@layer` と `@import` が無い |
-| S3-2 規則の集約 | §5 の移動（`targets/epub.css`・`targets/kindle.css`） | (a) `stylesheets/`（`targets/` を除く）と同梱のテーマに `vs-kindle`・`vs-epub` が無い。(b) PDF の画素が一致する。(c) Kindle 用の EPUB の中の CSS で、`body.vs-kindle` の規則の数と中身が、移動の前と同じ（規則を選択子で並べて差分を取る） |
-| S3-3 `flat_literal` | `LiteralResolver`。`BookSettingsCss` の `kindle_*` の 8 メソッドと `custom.css` の色の書き出しを無くす。§5 のリテラルの直書きを変数に戻す | (a) Kindle 用の EPUB の中の CSS に `var(`・`calc(`・`color-mix(`・`:is(`・`:where(`・`:has(`・`@layer` が無い。(b) KPF の変換で Enhanced Typesetting が Supported・エラー 0。(c) Kindle Previewer の変換の中間生成物（`preprocessed/*.xhtml` の `computedstyle`。`kindle-css-compatibility-notes.md` §2.1 の 3）を、変更の前後で比べ、色と寸法の値が同じ。(d) `theme.color` を別の色に変えた写しで、Kindle の囲み・見出し・前書きの色が追従する。(e) `custom.css` で色の変数を変えた写しで、Kindle に色が届く |
+| S3-2 規則の集約 | §5 の移動（`targets/epub.css`・`targets/kindle.css`）。§4.3 の要素ごとの判定 | (a) `stylesheets/`（`targets/` を除く）と同梱のテーマに `vs-kindle`・`vs-epub` が無い。(b) PDF の画素が一致する。(c) Kindle 用の EPUB の中の CSS で、`body.vs-kindle` の規則の数と中身が、移動の前と同じ（規則を選択子で並べて差分を取る）。(d) B1・B4 の EPUB と Kindle 用 EPUB で、`--log=debug` の要素ごとの判定の報告が 0 組か、理由つきで記録されている |
+| S3-3 `flat_literal` | `LiteralResolver`。`BookSettingsCss` の `kindle_*` の 8 メソッドと `custom.css` の色の書き出しを無くす（`book-settings-kindle.css` も無くなる）。§5 のリテラルの直書きを変数に戻す。§7.1 の `custom.css` を平らな CSS でも勝たせる生成 | (a) Kindle 用の EPUB の中の CSS に `var(`・`calc(`・`color-mix(`・`:is(`・`:where(`・`:has(`・`@layer` が無い。(b) KPF の変換で Enhanced Typesetting が Supported・エラー 0。(c) Kindle Previewer の変換の中間生成物（`preprocessed/*.xhtml` の `computedstyle`。`kindle-css-compatibility-notes.md` §2.1 の 3）を、変更の前後で比べ、色と寸法の値が同じ。(d) `theme.color` を別の色に変えた写しで、Kindle の囲み・見出し・前書きの色が追従する。(e) `custom.css` で色の変数を変えた写しで、Kindle に色が届く。(f) `custom.css` に `h2 { margin-block-start: 2em; }` と `table { inline-size: 80%; }` を書いた写し（簡素な見出し・`.long-table` を含む）で、EPUB の計算値と Kindle の中間生成物が PDF と同じ値になる。`custom.css` が空の本で、平らな CSS が変わらない |
 
 - (a) の `VS_CSS_FORM=flat_literal` での PDF の比較は、参考にとどめる。`calc()` の中の `em` をリテラルにすると、箱の幅が約 1/16 px 変わる箇所がある（`vivliostyle-css-pitfalls-notes.md` §2.18）ので、画素は一致しない。比べるなら、行の位置（`pdftotext -bbox` の行の座標が 0.05pt 以内）で比べる。
 - S3 の完了のときに、`.claude/CLAUDE.md` の「Kindle degradation convention」と `notation-implementation-guide.md` §3 を直し、`kindle-css-compatibility-notes.md` §5.1 に、規則の置き場が変わったことを書く。
@@ -611,7 +618,7 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 
 #### 仕様と違えたこと
 
-1. **`InversionCheck` の判定は §4.3 (c) のとおりにしたが、(c) は実際に起きる組を見落とす。** (c) は「同じクラスを含むか、どちらもクラスを持たず同じ要素名」で、片方だけがクラスを持つ組（`.part-title` と `body`）を挙げない。片方がクラスを持たない組まで広げると、静的には 842 組になり、ほとんどは著者の指定（utilities 層）と詳細度の高い部品の組である。組み上がった HTML（本書の PDF 用 HTML・EPUB・Kindle 用 EPUB、B4 の EPUB）で絞ると 4 組で、utilities 層の組は 0 だった。そのうち部扉と目次の `break-before: recto`（pages 層）が、層ありの PDF では S2-1 から settings 層の `body { page-break-before: always }` に負けている（画素は変わっていない）。判定の広さと、平らな CSS で層の順を保つかは、設計の問いとして `v2-flat-cascade-consultation.md` で Fable に相談している。S3-1 は EPUB と Kindle の見た目を変えないので、答えを待たずに完了とした。
+1. **`InversionCheck` の判定は §4.3 (c) のとおりにしたが、(c) は実際に起きる組を見落とす。** (c) は「同じクラスを含むか、どちらもクラスを持たず同じ要素名」で、片方だけがクラスを持つ組（`.part-title` と `body`）を挙げない。片方がクラスを持たない組まで広げると、静的には 842 組になり、ほとんどは著者の指定（utilities 層）と詳細度の高い部品の組である。組み上がった HTML（本書の PDF 用 HTML・EPUB・Kindle 用 EPUB、B4 の EPUB）で絞ると 4 組で、utilities 層の組は 0 だった。そのうち部扉と目次の `break-before: recto`（pages 層）が、層ありの PDF では S2-1 から settings 層の `body { page-break-before: always }` に負けている（画素は変わっていない）。判定の広さと、平らな CSS で層の順を保つかは、設計の問いとして `v2-flat-cascade-consultation.md` で Fable に相談している。S3-1 は EPUB と Kindle の見た目を変えないので、答えを待たずに完了とした。**（2026-11-15 訂正）部扉と目次の 2 組は誤検出だった。** 本書の `page.chapter_pagebreak: any` では、settings 層の規則の選択子の並びが `.part-title` と `body.toc` も含み（`CHAPTER_PAGEBREAK_SELECTORS`）、層ありでも平らでも同じ settings の宣言が勝つ。組で比べたので、この第三の宣言を見なかった。1.x と結果は同じで、「S2-1 から settings が勝っている」も誤り（`v2-flat-cascade-consultation.md` §5.2）。判定は S3-2 で要素ごとの比べに変えた（§4.3）。
 2. **同梱の CSS の静的な検査は、許可の表つきにした。** (c) で静的に挙がる 8 組（3 種類）は、用語集の印とコードの中の要素・`body` とコードの中の要素・表の題の段落と `.text-*` の組で、どれも実際の本では起きないか、1.x の EPUB と同じ結果になる。理由を書いて `css_layer_test.rb` の `ALLOWED_INVERSIONS` に載せた。`book-settings.css` は本の設定から生成されるので、テストの対象に含めない（ビルドの `--log=debug` が出す）。
 3. **入口の中身は、ファイルでなく `EntryWriter.render` から作る。** `VS_CSS_FORM=flat` で PDF の入口のファイルを上書きしても、EPUB の束が影響を受けないようにするためである。
 4. **frontmatter が足した CSS も平らにして写す。** §4.2 に無い。パッケージに `stylesheets/` の CSS を運ばなくしたので、写さないと参照が切れる。
@@ -635,3 +642,44 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | B4（book_ai_web_starter の上巻）の EPUB | EPUBCheck のエラー・警告 0。CSS は `styles/` の 7 枚だけで、`@layer`・`@import` が無く、S2-4 と規則の単位で差 0。ビルドの 🟡 は S2-4 と同じ（原稿の画像の余白と索引の候補） |
 | 単章のビルド（`vs build 21`）・`vs preflight` | どちらも 🔴 0。単章の PDF は S2-4 と 15 ページとも違うページ 0。preflight の後に入口が 11 枚ある |
 | `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,310 件・4,310 件・7 件とも失敗 0（`rake test` のスキップ 1 は S2-4 と同じ。足した 14 件・外した 6 件で、定義した数と実行された数が合う）。rubocop の違反 0 |
+
+### 10.6 S3-2 規則の集約（2026-11-15）
+
+#### 作ったもの
+
+- `stylesheets/targets/`: `stylesheets/` の `body.vs-epub`・`body.vs-kindle` の 82 規則を移した（`epub.css` 21・`kindle.css` 38・`kindle-preface.css` 1・`kindle-index.css` 6・`kindle-glossary.css` 6・`kindle-colophon.css` 10）。選択子と宣言は変えず、元のファイルの読み込みの順とファイルの中の順を保ち、元の部品の名前の見出しで区切った。規則の直前に付いていたコメントは一緒に移し、元の場所に取り残された見出しのコメント（囲みの Kindle 用ラベル）も移した。「上の」「このファイル」のような位置で指すコメントは、元のファイルの名前で指すように直した。
+- `EntryWriter::TARGET_IMPORTS`: ページの種類ごと・出力先ごとに、target 層で読むファイルの表にした。Kindle の束は、どの種類でも最後に `.cache/vs/book-settings-kindle.css` を読む。
+- `BookSettingsCss.render_kindle`: Kindle にだけ当てる設定の規則（テーマ色のリテラル・`custom.css` で変えた色・話者の色・`page.section_pagebreak: false` の Kindle の節見出しの打ち消し）を `book-settings.css` から分け、`book-settings-kindle.css` に書く（§5）。`book-settings.css` には `vs-kindle` が残らない。
+- PDF だけの 2 規則（`body:not(.vs-epub)`）は `:not()` を外して部品に残し、`targets/epub.css` に EPUB と Kindle の値（長い表の見出しの `white-space: normal`）と、印刷の媒体で控えの脚注を描かない規則を足した（§5）。
+- `InversionCheck.inversions`（§4.3 の要素ごとの判定）。`pairs` は静的な判定として残し、`wide:` で (c) のクラスの条件を外せるようにした。`present`（組で絞る判定）は消した。
+- ビルドの判定（`--log=debug`）を、HTML の書き換えが全部終わった後へ移した（`EpubBuilder#report_flat_css_inversions!` → `Css::Bundle.report_epub_inversions!`）。下の「仕様と違えたこと」の 3。
+- 文書: `.claude/CLAUDE.md` の「Kindle degradation convention」・`notation-implementation-guide.md` §3・`kindle-css-compatibility-notes.md`（§4 の表の置き場・§5.1 の置き場の説明）・`stylesheets/_README.md`（target 層の行）。`v2-flat-cascade-consultation.md` §5.5 の仕様の文の直しを §2.1・§4.3・§4.5・§7.1 と `theme-contract-spec.md` §3.5 に入れ、相談文は archives へ送った。
+- `scripts/css_computed_diff.rb`: EPUB と Kindle の HTML には、出力先の target 層を足した入口から平らにした CSS を当てる（それまでは target 層なしで、S3-1 以降の EPUB の CSS と違っていた）。`--after-settings DIR` で、後の側にだけ別の `book-settings*.css` を使える。
+- テスト: `css_layer_test.rb` に、`targets/` の外に出力先の規則が無いこと（S3-2 の (a)。空振りしないことも確かめた）と、要素ごとの判定の 2 件・静的な判定の許可の表に 5 行。`entry_writer_test.rb` に target の表の 2 件、`bundle_test.rb` に debug のときだけ判定を出す 1 件、`book_settings_css_test.rb` に Kindle の規則を分けた 2 件。既存のテストは、読むファイルとメソッドの名前（`render` → `render_kindle`・`talk_class_rules` → `talk_kindle_rules`）を付け替えた。
+
+#### 仕様と違えたこと
+
+1. **target のファイルを、ページの種類ごとに分けた。** §3.1 は `epub.css`・`kindle.css` の 2 枚だった。奥付の `body.vs-kindle { … }` や前書きの `body.vs-kindle h1` は、1 枚に集めると本文のページにも当たる（§5）。
+2. **`book-settings.css` の Kindle の規則も target 層へ移した。** §5 は `stylesheets/` の規則だけを移すと書いていた。移しただけでは、覆う側の生成の規則が settings 層に残って負け、計算値の比べで、Kindle の 21 文書・89 要素が変わった。囲みの枠（59 個）がテーマ色 `#15803d` から灰色 `#888` に、付録の節見出し（30 個）の `break-before` が `auto` から `page` になった。S3-3 のリテラル化までのつなぎで、そのときに消える。
+3. **ビルドの判定は、S3-1 から Kindle の規則を見ていなかった。** 判定は CSS を平らにする段で走っており、その時点の HTML には `vs-kindle` の印も、EPUB 用に足す要素（合成画像の見出し・コードの行ブロックなど）も無い。S3-1 の記録の「Kindle だけの 2 種類」は、ビルドではなく、組み上がった HTML に当てた別の道具で数えたものだった。判定を書き換えの後へ移した。
+4. **PDF だけの規則は移さず書き換えた。** §5 は「選択子を変えない」としていたが、target 層は PDF に入らないので、`:not(.vs-epub)` の規則は移せない（§5）。
+
+#### 確かめた結果
+
+写しの本は作業ツリーをそのまま写した（B4 は S3-1 の写しの CSS を作業ツリーのものに差し替えた）。比べる相手は S3-1 の出力（`../vivlio-starter-v2-baseline/check/s3-1-*/`・`runs/s3-1-*/`）。S3-2 の出力は `runs/s3-2-*/`・`check/s3-2-*/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| (a) `targets/` の外の出力先の規則 | `stylesheets/`（`targets/` を除く）の規則の選択子に `vs-kindle`・`vs-epub` は 0（テストで確かめる）。コメントの中の 4 か所も、ファイルの名前で指すように直した。同梱のテーマはまだ無い |
+| 計算値（`css_computed_diff.rb`。S3-1 の B1 の HTML に、`HEAD` と作業ツリーの CSS を当てる） | EPUB・Kindle 用 EPUB・PDF 用の 117 文書、312 組（媒体 2 × PDF は層ありと平らの 2 形）で、違う要素 0。上の 2 を直す前は、Kindle の 21 文書・89 要素で、囲みの枠の色と付録の節見出しの改ページが違っていた。B4 の EPUB（28 文書・56 組）も違う要素 0 |
+| (b) PDF の画素（S3-1 と比べる） | B1 の閲覧用 283 ページ・印刷用 281 ページとも、違うページ 0 |
+| (c) Kindle 用 EPUB の `body.vs-kindle` の規則 | 選択子を 1 つずつにほどいて「ファイル・@media・選択子・宣言」で比べ、前後とも 833 件で差 0。`vs-epub` の規則は、PDF だけの 2 規則の書き換えと、足した 2 規則の分だけ違う（意図したもの）。クリーン EPUB の CSS は、Kindle の規則が入らなくなり 3,518 件から 2,729 件になった |
+| (d) 要素ごとの判定（`--log=debug`） | B1 の EPUB と Kindle 用 EPUB、B4 の EPUB の全部の種類で 0 組（ビルドの判定は 3 を直した後に B4 で確かめた。B1 は直す前のビルドだったので、組み上がった HTML に同じ判定を当てた）。HTML に当てると Kindle の章で 1 組残る: `body.vs-kindle strong { color }`（`book-settings-kindle.css`）と `p:has(> strong:only-child):has(+ table) strong`（parts）。KFX は `:has()` の規則を捨てるので画面は設定の色で、S3-3 で Kindle の CSS から `:has()` の規則を落とすと消える（§4.4）。層の中の `!important` は `book-settings-kindle.css` の h4 の印の 1 規則（S3-3 で消える） |
+| EPUBCheck | B1 の EPUB・Kindle 用 EPUB、B4 の EPUB とも、エラー・警告 0 |
+| Kindle の変換 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| Kindle の中間生成物 | 36 ファイル・26,335 要素で、`computedstyle` は S3-1 と差 0。`style` 属性は 14 章の表の見出し 4 つに `white-space:normal` が増えた（足した規則が書き出された。計算値は前と同じ `normal`） |
+| B4 のビルド | 🟡 は S3-1 と同じ（原稿の画像の余白と索引の候補） |
+| 単章のビルド（`vs build 21`）・`vs preflight` | どちらも 🔴 0。単章の PDF は S3-1 と 15 ページとも違うページ 0。preflight の後に入口が 11 枚と `book-settings.css`・`book-settings-kindle.css` がある |
+| Apple Books・Kindle Previewer の画面 | 撮っていない。Kindle の中間生成物の `computedstyle` と、EPUB の計算値が S3-1 と差 0 のため |
+| `rake test`・`rake test:standard`・`rake test:layout`・rubocop | 4,317 件・4,317 件・7 件とも失敗 0（`rake test` のスキップ 1 は S3-1 と同じ。足した 7 件で、定義した数と実行された数が合う）。rubocop の違反 0 |
+| 雛形の同期 | `ruby scripts/copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/` へ写した（`targets/` を含む） |

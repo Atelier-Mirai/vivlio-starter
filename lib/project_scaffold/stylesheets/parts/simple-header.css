@@ -106,7 +106,6 @@ body.vs-header-simple h1 .chapter-title {
   display: block;
 }
 
-
 /* -------------------------------------------------------------
    節見出し
    ------------------------------------------------------------- */
@@ -152,10 +151,11 @@ body.vs-header-simple h2 {
   border-block: 1px solid var(--heading-accent);
 }
 
-/* 節リードとの間隔を確保（PDF 用。EPUB の余白は parts/epub-reflow.css が持つ） */
-body.vs-header-simple:not(.vs-epub) h2 + .section-lead,
-body.vs-header-simple:not(.vs-epub) h2 + * + .section-lead,
-body.vs-header-simple:not(.vs-epub) h2 ~ .section-lead {
+/* 節リードとの間隔を確保（PDF 用）。EPUB と Kindle の余白は targets/epub.css が持ち、target 層で勝つ
+   （平らな CSS でも、あちらの詳細度 [0,3,1] がこちらの [0,2,2] より高い） */
+body.vs-header-simple h2 + .section-lead,
+body.vs-header-simple h2 + * + .section-lead,
+body.vs-header-simple h2 ~ .section-lead {
   margin-block-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
 }
 
@@ -182,61 +182,4 @@ body.vs-header-simple h2 .section-number {
 body.vs-header-simple h2 .section-title {
   grid-area: title;
   color: var(--heading-text);
-}
-
-/* =============================================================
-   Kindle 専用フォールバック（付録など simple スタイルの章/節見出し）
-   -------------------------------------------------------------
-   Kindle KFX は var() / display:grid / clamp() / calc() / ::before(absolute) /
-   linear-gradient を解さず、上の simple-header 装飾が崩れて素テキスト化する
-   （kindle_epub_debug.md）。body.vs-header-simple.vs-kindle 配下に
-   具体値のみの装飾を与え、付録の章/節見出しにも枠付きの装飾を施す。
-   画像版（vs-header-image）や PDF はこの規則の影響を受けない。
-   ============================================================= */
-body.vs-header-simple.vs-kindle h1::before,
-body.vs-header-simple.vs-kindle h1::after {
-  content: none;
-}
-body.vs-header-simple.vs-kindle h1 {
-  display: block;
-  overflow: visible;
-  border: 2px solid #b8860b;
-  border-radius: 4px;
-  background: #f4f1ea;
-  margin: 1em 0;
-  padding: 0.8em 0.6em;
-  text-align: center;
-  font-size: 1.6em;
-  line-height: 1.4;
-  page-break-before: always;
-  break-before: page;
-}
-body.vs-header-simple.vs-kindle h1 .chapter-number {
-  display: block;
-  margin-bottom: 0.3em;
-  font-size: 0.7em;
-  font-weight: 700;
-  color: #b8860b;
-}
-body.vs-header-simple.vs-kindle h2 {
-  display: block;
-  border: 1px solid #b8860b;
-  border-left: 4px solid #b8860b;
-  border-radius: 3px;
-  background: #f4f1ea;
-  margin: 1.2em 0 0.6em;
-  padding: 0.4em 0.6em;
-  font-size: 1.3em;
-  font-weight: 800;
-  page-break-before: always;
-  break-before: page;
-}
-body.vs-header-simple.vs-kindle h2 .section-number {
-  display: inline-block;
-  margin-right: 0.5em;
-  padding: 0 0.4em;
-  background: #b8860b;
-  border-radius: 2px;
-  color: #fff;
-  font-weight: 900;
 }

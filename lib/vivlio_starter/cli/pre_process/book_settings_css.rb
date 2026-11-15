@@ -25,6 +25,8 @@
 #   同名変数の再宣言が既存 CSS 値に勝つ（css-layer-restructure-spec.md §2.1）。
 #   予備の書体の @font-face だけは book-fonts.css へ分けて書き、入口が層の外で読む
 #   （@font-face を層に入れない。同 §2.2）。
+#   Kindle にだけ当てる規則（テーマ色のリテラルなど）は book-settings-kindle.css へ分けて書き、
+#   Kindle の束が target 層の最後で読む（render_kindle）。
 #
 # 画像 URL の基準:
 #   生成ファイルは `.cache/vs/` 直下に置かれるため、stylesheets/ 基準の相対
@@ -57,6 +59,10 @@ module VivlioStarter
         # 予備の書体の @font-face を書くファイル（.cache/vs/book-fonts.css）。入口が層の外で読む。
         def fonts_output_path = File.join(Common::CACHE_DIR, 'book-fonts.css')
 
+        # Kindle にだけ当てる設定の規則を書くファイル（.cache/vs/book-settings-kindle.css）。
+        # Kindle の束の target 層の最後で読む（render_kindle の説明）。
+        def kindle_output_path = File.join(Common::CACHE_DIR, 'book-settings-kindle.css')
+
         # `.cache/vs/` から `stylesheets/` への相対プレフィックス。
         # 生成ファイルは 2 階層深いため、stylesheets/ 基準の相対 URL をこの接頭辞で組み替える。
         CACHE_TO_STYLESHEETS = '../../stylesheets/'
@@ -80,6 +86,7 @@ module VivlioStarter
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, css, encoding: 'utf-8')
           File.write(fonts_output_path, render_fonts, encoding: 'utf-8')
+          File.write(kindle_output_path, render_kindle(cfg), encoding: 'utf-8')
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path
@@ -117,9 +124,26 @@ module VivlioStarter
             #{chapter_lead_size_rules(settings)}
             #{section_lead_width_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
+            #{talk_class_rules(registry)}
+          CSS
+        end
+
+        # Kindle にだけ当てる設定の規則の全文（副作用なし・テスト対象）。
+        #
+        # なぜ book-settings.css から分けるか:
+        #   ここの規則は、stylesheets/targets/kindle*.css の Kindle の規則（KFX が var() を解さない
+        #   ためのリテラルの色・節の改ページ）を、同じ選択子で後から覆う。両方が settings 層以下に
+        #   あった間は並びの順で勝てたが、Kindle の規則は settings 層の上の target 層へ移った
+        #   （css-layer-restructure-spec.md §5）。覆う側も target 層の最後に置いて、勝ち負けを保つ。
+        #   Kindle の body にしか当たらないので、PDF とクリーン EPUB の束には入れない。
+        # @return [String]
+        def render_kindle(cfg = Common::CONFIG)
+          <<~CSS
+            #{header_comment}
+            #{section_pagebreak_kindle_rule(build_page_cfg(cfg))}
             #{kindle_accent_rules(cfg)}
             #{kindle_custom_color_rules(cfg)}
-            #{talk_class_rules(registry)}
+            #{talk_kindle_rules(TalkRegistry.load)}
           CSS
         end
 
@@ -340,7 +364,7 @@ module VivlioStarter
         # 字間 0 以下では何も出さず、parts/heading.css の 32em に任せる。CSS 側で
         # calc(32em + 32 * var(--letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
         # わずかにずれた（vivliostyle-css-pitfalls-notes.md §2.18）。
-        # EPUB・Kindle は parts/epub-reflow.css の inline-size: auto が勝つ（特異度 0,2,1）。
+        # EPUB・Kindle は targets/epub.css の inline-size: auto が勝つ（target 層・特異度 0,2,1）。
         def section_lead_width_rule(page_cfg)
           return '' unless letter_spacing_mm(page_cfg, 1.0).positive?
 
@@ -505,7 +529,6 @@ module VivlioStarter
         SECTION_PAGEBREAK_SELECTORS = [
           'body.vs-header-image .section-topic h2',  # image-header.css（PDF / EPUB）
           'body.vs-header-simple h2',                # simple-header.css（PDF / EPUB）
-          'body.vs-header-simple.vs-kindle h2',      # simple-header.css の Kindle 用（legacy 併記）
           'article.vs-section-topic-epub'            # parts/epub-reflow.css（EPUB の節絵 article）
         ].freeze
 
@@ -528,6 +551,21 @@ module VivlioStarter
               page-break-before: auto;
             }
             #{chapter_frontispiece_guard_rule}
+          CSS
+        end
+
+        # Kindle の節見出しの改ページ（targets/kindle.css の `body.vs-header-simple.vs-kindle h2`・
+        # legacy 併記）の打ち消し。あちらは target 層にあるので、Kindle の束の最後で読む
+        # book-settings-kindle.css（render_kindle）に置く
+        def section_pagebreak_kindle_rule(page_cfg)
+          return '' unless section_pagebreak_disabled?(page_cfg)
+
+          <<~CSS.chomp
+            /* page.section_pagebreak: false — Kindle の節（h2）でもページを改めない。 */
+            body.vs-header-simple.vs-kindle h2 {
+              break-before: auto;
+              page-break-before: auto;
+            }
           CSS
         end
 
@@ -713,9 +751,9 @@ module VivlioStarter
         # ================================================================
         # KFX は var()/color-mix()/calc() を解さないため、テーマ色で塗った本文アクセント
         # （strong・下線・見出しマーカー・コラム/注記枠・付録見出し）が Kindle では黒/グレー/
-        # くすんだ金へ劣化する。book-settings.css は最後に読まれるので、ここへテーマ色を
-        # リテラル hex で焼いた body.vs-kindle 規則を出せば、静的な #888/#b8860b フォールバックを
-        # 後勝ちで上書きできる。body.vs-kindle 前置のためクリーン EPUB では不発（無害）。
+        # くすんだ金へ劣化する。ここへテーマ色をリテラル hex で焼いた body.vs-kindle 規則を出し、
+        # targets/kindle*.css の静的な #888/#b8860b フォールバックを後勝ちで上書きする
+        # （書き出す先は book-settings-kindle.css。Kindle の束の target 層の最後で読む）。
         def kindle_accent_rules(cfg)
           theme_cfg = cfg.theme
           acc = ThemeColor.to_hex6(theme_cfg.color)
@@ -742,8 +780,8 @@ module VivlioStarter
         # custom.css の :root で上書きできる色と、Kindle で同じ箇所を塗る規則（%s に色が入る）。
         # KFX は var() を解さないので、custom.css で変えた変数は Kindle に届かない。上書きされた
         # 変数だけ値をリテラルにして body.vs-kindle の規則を書く。kindle_accent_rules と同じ
-        # セレクタを後に置くので、テーマ色より custom.css の色が勝つ。book-settings.css は
-        # custom.css より前に読まれるので、著者が custom.css に書いた body.vs-kindle の規則はさらに勝つ。
+        # セレクタを後に置くので、テーマ色より custom.css の色が勝つ。custom.css は層の外で
+        # 最後に読まれるので、著者が custom.css に書いた body.vs-kindle の規則はさらに勝つ。
         #
         # 表のうち次の 4 つは Kindle に対応する箇所が無いので対象外:
         # --folio-color（ノンブルが無い）・--section-number-color（節番号は節絵の画像に描く）・
@@ -968,40 +1006,41 @@ module VivlioStarter
         # 名前を積む列をアバターより広くする幅。parts/talk.css の既定（12mm と 14mm）の差と同じ。
         TALK_SPEAKER_EXTRA_MM = 2
 
-        # .talk-c-<key> の --talk-accent 差し替えと、Kindle 用リテラル色。
-        # PDF/クリーン EPUB は var() 経由で色を当て、Kindle は KFX が var() を解さないため
-        # 具体色（hex）で焼く（テーマ色名→hex は ThemeColor.to_hex6 で解決）。
+        # .talk-c-<key> の --talk-accent 差し替え。PDF/クリーン EPUB は var() 経由で色を当てる。
+        # Kindle 用のリテラル色は talk_kindle_rules（book-settings-kindle.css）が書く。
+        #
+        # 話者の avatar_size は、同じ .talk-c-<key> に --talk-icon-size と --talk-speaker-size を
+        # 置いて :root（display.avatar_size）の値を覆う（talk-avatar-initial-spec.md §7.3）。
+        # Kindle はアバターを出さないので、大きさにリテラルは要らない。
+        def talk_class_rules(registry)
+          color_lines = registry.with_color.map { ".talk-c-#{it.key} { --talk-accent: var(--talk-c-#{it.key}); }" }
+          size_lines = registry.with_avatar_size.map do |char|
+            ".talk-c-#{char.key} { #{talk_size_declarations(char.avatar_size).join(' ')} }"
+          end
+          [
+            ("/* 会話文キャラクター色 */\n#{color_lines.join("\n")}" if color_lines.any?),
+            ("/* 会話文キャラクターのアバターの直径 */\n#{size_lines.join("\n")}" if size_lines.any?)
+          ].compact.join("\n")
+        end
+
+        # Kindle 用の話者のリテラル色。KFX は var() を解さないため、具体色（hex）で焼く
+        # （テーマ色名→hex は ThemeColor.to_hex6 で解決）。
         #
         # Kindle は会話文を inline 形式（名前＋区切り＋発話の 1 段落）へ組み替えるため
         # （talk-display-options-spec.md §2.5）、焼くのは話者名・区切り・発話内 strong の 3 つ。
         # 吹き出しの枠線は Kindle には存在しないのでリテラル化しない。
         # `strong` は base_kindle_accent_rules の `body.vs-kindle strong`（テーマ色・特異度 0,1,2）
         # に落ちてしまうため話者色で塗り直す。セレクタは (0,2,2) でその既定に勝つ。
-        #
-        # 話者の avatar_size は、同じ .talk-c-<key> に --talk-icon-size と --talk-speaker-size を
-        # 置いて :root（display.avatar_size）の値を覆う（talk-avatar-initial-spec.md §7.3）。
-        # Kindle はアバターを出さないので、大きさにリテラルは要らない。
-        def talk_class_rules(registry)
-          colored = registry.with_color
-          sized = registry.with_avatar_size
-          return '' if colored.empty? && sized.empty?
-
-          color_lines = colored.flat_map do |char|
+        def talk_kindle_rules(registry)
+          lines = registry.with_color.flat_map do |char|
             hex = ThemeColor.to_hex6(char.color)
-            [
-              ".talk-c-#{char.key} { --talk-accent: var(--talk-c-#{char.key}); }",
-              "body.vs-kindle .talk-c-#{char.key} .talk-name { color: #{hex}; }",
-              "body.vs-kindle .talk-c-#{char.key} .talk-sep { color: #{hex}; }",
-              "body.vs-kindle .talk-c-#{char.key} strong { color: #{hex}; }"
-            ]
+            ["body.vs-kindle .talk-c-#{char.key} .talk-name { color: #{hex}; }",
+             "body.vs-kindle .talk-c-#{char.key} .talk-sep { color: #{hex}; }",
+             "body.vs-kindle .talk-c-#{char.key} strong { color: #{hex}; }"]
           end
-          size_lines = sized.map do |char|
-            ".talk-c-#{char.key} { #{talk_size_declarations(char.avatar_size).join(' ')} }"
-          end
-          [
-            ("/* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */\n#{color_lines.join("\n")}" if color_lines.any?),
-            ("/* 会話文キャラクターのアバターの直径 */\n#{size_lines.join("\n")}" if size_lines.any?)
-          ].compact.join("\n")
+          return '' if lines.empty?
+
+          "/* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */\n#{lines.join("\n")}"
         end
 
         # ================================================================

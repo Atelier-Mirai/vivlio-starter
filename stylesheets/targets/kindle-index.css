@@ -1,0 +1,44 @@
+@charset "utf-8";
+
+/* Kindle の索引のページの規則。target 層。
+   どのページの種類がどれを読むかは Css::EntryWriter::TARGET_IMPORTS。中の規則は、移す前の
+   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5） */
+
+/* --- pages/index.css --- */
+
+/* Kindle は var() を解さず border-bottom 宣言ごと無効化して下線が消えるため、具体色で再現（§11） */
+body.vs-kindle .index h1 {
+  border-bottom: 2px solid #333;
+}
+
+/* Kindle は段組みを解さないので、EpubBuilder が語を横に 2 つずつ並ぶ形へ組み替える
+   （layout_index_columns_for_kindle!）。表にしないのは、KFX の表は一度拡大しないと
+   リンクをたどれないため。語を主役にして、章の名前は小さく薄くする。 */
+body.vs-kindle .index-section {
+  margin-bottom: 0.7em;
+}
+
+body.vs-kindle .index-section h2 {
+  font-size: 1.05em;
+  margin: 0 0 0.2em;
+  padding-bottom: 0.1em;
+  border-bottom: 1px solid #333;
+}
+
+/* 既定の両端揃えだと、語が 1 つだけの最後の行で語の先頭がずれる */
+body.vs-kindle .vs-index-items {
+  text-align: left;
+  text-indent: 0;
+}
+
+body.vs-kindle .vs-index-item {
+  display: inline-block;
+  width: 49%;
+  vertical-align: top;
+  margin-bottom: 0.15em;
+}
+
+body.vs-kindle .vs-index-refs {
+  font-size: 0.8em;
+  color: #666;
+}

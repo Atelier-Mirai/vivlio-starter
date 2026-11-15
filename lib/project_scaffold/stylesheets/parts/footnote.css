@@ -32,34 +32,6 @@
   display: none;
 }
 
-/* ---------------------------------------------------------------
-   EPUB / Kindle の脚注
-   -----------------------------------------------------------------
-   リフローには「ページ下部」が無いので、PDF が脚注領域へ降ろしている aside は
-   参照した段落の直後にそのまま残る。素のままだと .page-footnote の
-   display:inline がそのまま効き、番号も区切りも無い本文と地続きの文字列に
-   見えてしまう（どこからが脚注か読者に分からない）。一回り小さい注記ブロック
-   として、左の罫で本文と切り分ける。
-   番号は EpubBuilder#decorate_footnotes_for_epub! が実テキスト
-   （span.vs-fn-num）で注入する —— Kindle(KFX) が ::before を解さないため。
-   Kindle 互換のため物理プロパティ・具体値のみで書く（論理プロパティ・var() 不可）。
-   --------------------------------------------------------------- */
-body.vs-epub aside.page-footnote {
-  display: block;
-  margin-top: 0.5em;
-  margin-bottom: 0.2em;
-  padding-left: 0.8em;
-  border-left: 2px solid #ccc;
-  font-size: 0.85em;
-  line-height: 1.5;
-  color: #555;
-}
-
-body.vs-epub .vs-fn-num {
-  font-weight: bold;
-  color: #333;
-}
-
 /* 印刷/PDF（Vivliostyle）では文脈に応じて切替:
    - span.page-footnote: インライン（段落を分断しない）
    - aside.page-footnote: ページ下部脚注
@@ -119,9 +91,8 @@ body.vs-epub .vs-fn-num {
      辿るため。span を持たない aside（append_unused_footnotes_to_body! が
      本文末尾へ足す sideimage 由来のもの）にはこの属性が付かないので、
      そちらは従来どおり aside 自身が float:footnote で描かれる。
-     選択子の先頭の body は、上の `body.vs-epub aside.page-footnote` の display: block と
-     詳細度をそろえ、後に置いたこちらを勝たせるためのもの（EPUB を印刷の媒体で組んだときも
-     控えを描かない。css-layer-restructure-spec.md §2.4） */
+     EPUB の脚注の display: block（targets/epub.css）は target 層で勝つので、
+     EPUB を印刷の媒体で組んだときの打ち消しは targets/epub.css が持つ */
   body aside.page-footnote[data-footnote-anchored] {
     display: none;
   }

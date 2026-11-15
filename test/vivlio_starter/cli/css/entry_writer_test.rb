@@ -111,10 +111,37 @@ module VivlioStarter
               css = Flattener.flatten(EntryWriter.path_for('chapter'), rebase: ->(path) { path })
 
               refute_match(/@import|@layer/, css)
-              assert_includes css, 'body.vs-kindle', 'Kindle の規則は S3 まで元のファイルのまま入る'
+              refute_match(/vs-kindle|vs-epub/, css, 'PDF の入口は target 層を読まない')
               assert_includes css, 'hr.pagebreak'
             end
           end
+        end
+
+        # 出力先の規則は target 層で、そのページの種類の分だけ読む。Kindle は EPUB の規則も読み、
+        # 最後に book.yml から生成した Kindle の規則を読む（BookSettingsCss.render_kindle）
+        def test_should_import_target_files_per_kind_and_target
+          targets = lambda do |kind, target|
+            EntryWriter.render(kind, target:).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
+          end
+
+          assert_empty targets.call('chapter', nil), 'PDF は target 層を読まない'
+          assert_equal %w[../../stylesheets/targets/epub.css], targets.call('chapter', :epub)
+          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
+                          book-settings-kindle.css], targets.call('appendix', :kindle)
+          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
+                          ../../stylesheets/targets/kindle-preface.css book-settings-kindle.css],
+                       targets.call('postface', :kindle)
+          assert_equal %w[../../stylesheets/targets/kindle-colophon.css book-settings-kindle.css],
+                       targets.call('colophon', :kindle), '奥付の Kindle の規則は奥付だけが読む'
+          assert_equal %w[book-settings-kindle.css], targets.call('toc', :kindle)
+          assert_empty targets.call('toc', :epub)
+        end
+
+        # target の表が指すファイルは、どれも stylesheets/targets/ にある
+        def test_should_point_target_imports_at_existing_files
+          files = EntryWriter::TARGET_IMPORTS.values.flat_map(&:values).flatten.uniq
+
+          files.each { assert File.file?(File.join(STYLESHEETS, it)), "#{it} が無い" }
         end
       end
     end

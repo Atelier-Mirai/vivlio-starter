@@ -89,6 +89,29 @@ module VivlioStarter
           end
         end
 
+        # --log=debug のとき、書き換え後の HTML で要素ごとの判定を行い、組を一覧にする。
+        # Kindle の規則（target 層）が body.vs-kindle の印の付いた HTML で当たること
+        def test_should_report_inversions_on_rewritten_html_only_in_debug
+          with_project do
+            write('stylesheets/parts/box.css', %(div.box p { text-align: center; }\n))
+            write('stylesheets/targets/kindle.css', %(.vs-kindle p { text-align: right; }\n))
+            write('chapter.html', '<html><body class="vs-epub vs-kindle"><div class="box"><p>本文</p></div></body></html>')
+            messages = []
+
+            Common.stub(:log_debug, ->(message, **) { messages << message }) do
+              Bundle.report_epub_inversions!({ 'chapter' => ['chapter.html'] }, target: :kindle, embed_fonts: false)
+              assert_empty messages, 'debug でなければ何もしない'
+
+              Common.stub(:current_log_level, Common::LEVELS['debug']) do
+                Bundle.report_epub_inversions!({ 'chapter' => ['chapter.html'] }, target: :kindle, embed_fonts: false)
+              end
+            end
+
+            assert_includes messages, '[css] chapter（kindle）: 層を外すと勝ち負けが変わる組 1'
+            assert(messages.any? { it.include?('.vs-kindle p { text-align: right }') && it.include?('div.box p') })
+          end
+        end
+
         private
 
         def with_project

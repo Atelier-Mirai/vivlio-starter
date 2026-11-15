@@ -1,0 +1,16 @@
+@charset "utf-8";
+
+/* Kindle の前書き・後書きの規則。target 層。
+   どのページの種類がどれを読むかは Css::EntryWriter::TARGET_IMPORTS。中の規則は、移す前の
+   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5） */
+
+/* --- parts/preface.css --- */
+
+/* Kindle は var()/clamp() を解さず、h1 の下線（border-block-end）と余白が消える。
+   前書き/後書きの見出し下線をクリーン EPUB に合わせて具体色で再現する。
+   色は既定の preface_color=indigo（--accent-indigo: #4f46e5）。クリーン EPUB / PDF は parts/preface.css の var() 版のまま（§11）。 */
+body.vs-kindle h1 {
+  border-bottom: 3px solid #4f46e5;
+  padding-bottom: 0.4em;
+  margin-bottom: 1em;
+}

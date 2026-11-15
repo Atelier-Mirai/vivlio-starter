@@ -133,8 +133,8 @@
 /* 発話内の強調は話者色に揃える（既定の strong 色＝テーマ色だと吹き出しの枠色とぶつかる）。
    主語を .talk-item にするのは chat（item > body > p）と inline（item > p）の
    両方へ届かせるため。特異度 (0,1,1) で parts/prose.css の `strong`（0,0,1）に勝つ。
-   Kindle は var() を解さずこの宣言ごと捨てるため、生成 CSS（book-settings.css）が
-   body.vs-kindle .talk-c-<key> strong にリテラル色を焼いて同じ見た目を担保する。 */
+   Kindle は var() を解さずこの宣言ごと捨てるため、生成 CSS（book-settings-kindle.css）が
+   話者ごとの strong にリテラル色を焼いて同じ見た目を担保する。 */
 .talk-item strong {
   color: var(--talk-accent);
 }
