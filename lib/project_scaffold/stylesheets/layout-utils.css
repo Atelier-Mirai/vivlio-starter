@@ -230,6 +230,38 @@
   text-align: right;
 }
 
+/* 中の段落も、字を同じ側へそろえる（改善案 #135）。段落の text-align: justify と字下げ
+   （chapter-common.css の p）が上の継承を覆い、幅いっぱいの行の無い段落は箱の左に寄っていた。
+   KFX は :is()・:not() を含む規則を丸ごと捨てるので、セレクタは並べて書く */
+.align-center > p {
+  text-align: center;
+  text-indent: 0;
+}
+
+.align-right > p {
+  text-align: right;
+  text-indent: 0;
+}
+
+/* 囲み（.column など）に重ねたときは箱を寄せるだけにし、中の段落は囲みの組み方のままにする
+   （字下げは chapter-common.css と同じく .column・.memo だけ） */
+.column.align-center > p,
+.column.align-right > p,
+.memo.align-center > p,
+.memo.align-right > p {
+  text-align: justify;
+  text-indent: 1em;
+}
+
+.tip.align-center > p,
+.tip.align-right > p,
+.note.align-center > p,
+.note.align-right > p,
+.notice.align-center > p,
+.notice.align-right > p {
+  text-align: justify;
+}
+
 /* テキスト整列（幅を変えずに text-align のみ適用）
    ブロック記法: :::{.text-right} ... :::
    インライン記法: 段落末尾に {.text-right} を付与
