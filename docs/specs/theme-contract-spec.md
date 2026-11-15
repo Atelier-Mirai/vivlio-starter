@@ -339,7 +339,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | :--- | :--- | :--- | :--- |
 | テーマ色の 12 色 | `--book-accent-yellow` … `--book-accent-lime` | `--accent-*` | vs の土台 |
 | 本のテーマ色 | `--book-color-accent`・`--book-color-accent-preface`・`--book-color-accent-appendix` | `--theme-accent`・`--color-preface-accent`・`--appendix-accent-color` | `settings`（テーマのオプション） |
-| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-column-bg`・`-column-border`・`-figure-border`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ |
+| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ |
 | 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title` | `settings`（`typography`） |
 | 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） |
 | 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` |
@@ -348,6 +348,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする。
 - 使われていない変数（`--color-shadow`）は消す。
+- Kindle では、`--book-color-link` が `#111` 以下の黒に近い色だと、リンクは Kindle の青で描かれる（`#222` から指定どおり）。テーマの既定を決めるときの前提にする（`kindle-css-compatibility-notes.md` §2 の表）。
 - 今の名前は、2.0 の間は別名として読める（`css-layer-restructure-spec.md` §7.2）。1.x の `custom.css` に書いた `--color-link: #1a73e8;` は、書き換えなくても効く。
 
 ### 5.3 変数の決まり

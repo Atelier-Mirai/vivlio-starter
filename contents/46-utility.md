@@ -169,9 +169,10 @@ CSS 変数やクラスの名前は、今後のバージョンで変わること�
 | `--color-em-underline` | テーマ色 | 強意（`*強意*`）の下線 |
 | `--color-column-bg` | テーマ色を淡くした色 | コラムの背景 |
 | `--color-column-border` | テーマ色 | コラム・メモの枠線 |
-| `--color-figure-border` | `#ccc` | 画像の枠線<br><span class="small">※ PDF・EPUB のみ</span> |
+| `--color-figure-border` | `#ccc` | 画像の枠線 |
 | `--color-mark` | テーマ色 | 小見出し（`###`・`####`）の記号、`.note` の上下の線、`.notice` の左の線 |
-| `--color-border-weak` | `#ddd` | 引用の左の線、`.notice`・`.diagram` の枠線 |
+| `--color-border-weak` | `#ddd` | 引用の左の線、`.notice` の枠線 |
+| `--color-output-border` | `--color-border-weak` と同じ | `.output`・`.diagram` の枠線 |
 | `--folio-color` | `#777` | ノンブル（ページ番号）<br><span class="small">※ PDF のみ</span> |
 | `--section-number-color` | テーマ色 | 節番号（`style: image` の本）<br><span class="small">※ PDF のみ</span> |
 | `--heading-accent` | テーマ色 | 章・節の見出しの枠線（`style: simple` の本） |

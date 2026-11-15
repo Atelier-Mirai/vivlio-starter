@@ -147,26 +147,21 @@ module VivlioStarter
           assert_equal ['p:has(+ table)', 'p:has(> strong)'], result.dropped.map(&:selector)
         end
 
-        # 部品などの解かない層は、KFX と同じく var()・calc()・color-mix() を含む宣言と、:is()・:where()・:has() を
-        # 含む規則を落とす（Kindle の見た目を今のまま保つ）。変数の定義は解いて残し、表にも入れる。層の外は解く
-        def test_should_drop_unsupported_forms_in_lower_layers
+        # どの層の規則も解く（css-layer-restructure-spec.md §4.4 の「解く層」）。部品の層の var()・calc() も
+        # 値になり、:is() は並べた選択子になり、:has() の選択子だけが落ちる
+        def test_should_resolve_rules_in_every_layer
           result = resolve(<<~CSS, layer: ['parts'])
             :root { --size: 10.5pt; --accent: #111111; }
-            :root { font-size: var(--size); color: red; padding: calc(2mm * 2); }
+            :root { font-size: var(--size); color: var(--accent); padding: calc(2mm * 2); }
             figure :is(img, svg) { margin: 0; }
             p:has(+ table) { color: blue; }
           CSS
           css = text_of(result)
 
-          assert_includes css, "--size: 10.5pt;\n  --accent: #111111;", '定義は残す'
-          assert_includes css, "color: red;\n}"
-          refute_includes css, 'font-size'
-          refute_includes css, 'padding'
-          refute_includes css, 'figure'
+          assert_includes css, "font-size: 10.5pt;\n  color: #111111;\n  padding: 4mm;"
+          assert_includes css, "figure img,\nfigure svg {"
           refute_includes css, 'p:has'
-          assert(result.dropped.all? { it.reason == :lower_layer })
-          assert_includes text_of(resolve(':root { --size: 3mm; } p { margin: var(--size); }', layer: [])), 'margin: 3mm;',
-                          '層の外（custom.css）は解く'
+          assert_equal [:has], result.dropped.map(&:reason)
         end
 
         # Kindle は画面の媒体なので、印刷の媒体の定義は表に入れない。値は同じ表で解く
@@ -264,7 +259,7 @@ module VivlioStarter
 
           assert_equal '#f0a000', value_of(css, 'body.vs-kindle strong', 'color')
           assert_equal '#f0a000', value_of(css, 'body.vs-kindle .column', 'border-color')
-          assert_equal '#fdf1d9', value_of(css, 'body.vs-kindle .column', 'background'), 'コラムの地はテーマ色と白の混色'
+          assert_equal '#fdf1d9', value_of(css, '.column', 'background'), 'コラムの地はテーマ色と白の混色（parts/box.css）'
           assert_equal '2px solid #f0a000', value_of(css, 'body.vs-header-simple.vs-kindle h1', 'border')
           assert_equal '"♦" !important', value_of(css, 'body.chapter.vs-kindle h4::before', 'content')
           assert_equal '#f0a000', value_of(css, 'body.chapter.vs-kindle h4::before', 'color')
@@ -281,7 +276,7 @@ module VivlioStarter
           assert_equal '#dc2626', value_of(css, 'body.appendix.vs-kindle .tip', 'border-color')
           assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo', 'border-color')
           assert_equal '#dc2626', value_of(css, 'body.vs-kindle .note', 'border-color')
-          assert_equal '#fadede', value_of(css, 'body.vs-kindle .column', 'background')
+          assert_equal '#fadede', value_of(css, '.column', 'background')
           assert_equal '#dc2626', value_of(css, 'body.appendix.vs-kindle .tip .vs-adm-label', 'color')
           assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo .vs-adm-label', 'color')
 
@@ -326,8 +321,61 @@ module VivlioStarter
 
           assert_equal '#1a73e8', value_of(css, 'body.vs-kindle strong', 'color')
           assert_equal '#dc2626', value_of(css, 'body.vs-kindle .memo', 'border-color')
-          assert_equal '#f8d4d4', value_of(css, 'body.vs-kindle .column', 'background')
+          assert_equal '#f8d4d4', value_of(css, '.column', 'background')
           refute_includes out, 'Kindle では効きません'
+        end
+
+        # 本文の字の大きさと行送りは、PDF の紙面の値でなく端末の既定にし、書体は総称の名前だけにする
+        # （targets/kindle-tokens.css）。custom.css の :root で PDF 用に変えた値も届かず、body.vs-kindle で
+        # 書いた値は届く
+        def test_should_keep_device_font_size_and_line_height_on_kindle
+          %w[chapter appendix preface postface index glossary colophon part-title].each do |kind|
+            css, = kindle_css(kind)
+
+            assert_equal '1em', value_of(css, ':root', 'font-size'), kind
+            assert_equal 'normal', value_of(css, ':root', 'line-height'), kind
+            assert_equal 'serif', value_of(css, ':root', 'font-family'), kind
+          end
+          chapter, = kindle_css('chapter')
+          assert_equal 'sans-serif', value_of(chapter, 'h1', 'font-family'), '見出しはゴシック'
+          assert_equal 'monospace, monospace', value_of(chapter, 'code', 'font-family')
+
+          pdf_only, = kindle_css('chapter', custom: ":root { --base-font-size: 12pt; }\n")
+          assert_equal '1em', value_of(pdf_only, ':root', 'font-size')
+          kindle_only, = kindle_css('chapter', custom: "body.vs-kindle { --base-font-size: 1.1em; }\n")
+          assert_equal '1.1em', value_of(kindle_only, ':root', 'font-size')
+        end
+
+        # 1.x の kindle_custom_color_rules が Kindle に焼いていた custom.css の色のうち、S3-3a で届かなく
+        # なった 3 つ（リンク・コラムの h5・テキストの図の枠）が、部品の規則と Kindle の規則から届く
+        def test_should_bring_custom_css_link_mark_and_diagram_colors_to_kindle
+          css, = kindle_css('chapter', custom: <<~CUSTOM)
+            :root {
+              --color-link: #1a73e8;
+              --color-mark: #7c3aed;
+              --color-border-weak: #aaaaaa;
+            }
+          CUSTOM
+
+          assert_equal '#1a73e8', value_of(css, 'a', 'color')
+          assert_equal '#7c3aed', value_of(css, '.column h5', 'color')
+          assert_equal '1px solid #aaaaaa', value_of(css, 'body.vs-kindle .diagram', 'border'),
+                       '--color-output-border の既定は --color-border-weak'
+
+          default, = kindle_css('chapter')
+          assert_equal '#000', value_of(default, 'a', 'color')
+          assert_equal '1px solid #ddd', value_of(default, 'body.vs-kindle .diagram', 'border')
+          assert_equal '1px solid #ddd', value_of(default, 'body.vs-kindle .output', 'border')
+        end
+
+        # 実行結果とテキストの図の枠は、custom.css の --color-output-border で PDF と Kindle の両方の色が変わる
+        def test_should_bring_output_border_color_to_kindle
+          css, = kindle_css('chapter', custom: ":root { --color-output-border: var(--theme-accent); }\n")
+
+          assert_includes css, ".output,\n.diagram {\n  margin-block: 3mm;\n  padding: 2.5mm 3mm;\n  border: solid 0.2mm #f0a000;",
+                          '部品の .output, .diagram の規則（PDF と同じ規則）'
+          assert_equal '1px solid #f0a000', value_of(css, 'body.vs-kindle .output', 'border')
+          assert_equal '1px solid #f0a000', value_of(css, 'body.vs-kindle .diagram', 'border')
         end
 
         # custom.css の解けない宣言は、場所と直し方を 🟡 で知らせる。vs の CSS で落とした宣言は知らせない

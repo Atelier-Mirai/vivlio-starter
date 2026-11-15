@@ -62,6 +62,7 @@
   --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
   --color-border:          #ccc;           /* 画像など汎用枠 */
   --color-border-weak:     #ddd;           /* 引用枠など */
+  --color-output-border:   var(--color-border-weak); /* 実行結果（.output）・テキストの図（.diagram）の枠 */
   --color-column-bg:       color-mix(in srgb, var(--theme-accent) 15%, white); /* コラム背景 */
   /* コラム背景 theme-accent を白と混ぜて薄くする */
   --color-column-border:   var(--theme-accent);           /* コラム枠 */

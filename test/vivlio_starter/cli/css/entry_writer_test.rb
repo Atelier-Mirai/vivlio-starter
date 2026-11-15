@@ -118,6 +118,7 @@ module VivlioStarter
         end
 
         # 出力先の規則は target 層で、そのページの種類の分だけ読む。Kindle は EPUB の規則も読む。
+        # Kindle は、どの種類も最初に本文の字の大きさと行送りのトークン（kindle-tokens.css）を読む。
         # book.yml から生成する Kindle だけの規則は無い（色は Css::LiteralResolver が変数から解く）
         def test_should_import_target_files_per_kind_and_target
           targets = lambda do |kind, target|
@@ -126,20 +127,22 @@ module VivlioStarter
 
           assert_empty targets.call('chapter', nil), 'PDF は target 層を読まない'
           assert_equal %w[../../stylesheets/targets/epub.css], targets.call('chapter', :epub)
-          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css],
+          assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
+                          ../../stylesheets/targets/kindle.css],
                        targets.call('appendix', :kindle)
-          assert_equal %w[../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
-                          ../../stylesheets/targets/kindle-preface.css],
+          assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
+                          ../../stylesheets/targets/kindle.css ../../stylesheets/targets/kindle-preface.css],
                        targets.call('postface', :kindle)
-          assert_equal %w[../../stylesheets/targets/kindle-colophon.css],
+          assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/kindle-colophon.css],
                        targets.call('colophon', :kindle), '奥付の Kindle の規則は奥付だけが読む'
-          assert_empty targets.call('toc', :kindle)
+          assert_equal %w[../../stylesheets/targets/kindle-tokens.css], targets.call('toc', :kindle)
           assert_empty targets.call('toc', :epub)
         end
 
         # target の表が指すファイルは、どれも stylesheets/targets/ にある
         def test_should_point_target_imports_at_existing_files
-          files = EntryWriter::TARGET_IMPORTS.values.flat_map(&:values).flatten.uniq
+          files = [*EntryWriter::TARGET_FOUNDATION.values, *EntryWriter::TARGET_IMPORTS.values.flat_map(&:values)]
+                  .flatten.uniq
 
           files.each { assert File.file?(File.join(STYLESHEETS, it)), "#{it} が無い" }
         end

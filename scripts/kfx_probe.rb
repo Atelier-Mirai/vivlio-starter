@@ -112,6 +112,30 @@ FEATURES = {
     '<div><div><p class="t-not">SPEC-NOT-PROBE :not() の重ね</p></div></div>',
     ['t-not', /color:\s*rgb\(10,\s*125,\s*60\)/]
   ],
+  # リンクの色をどう描くか。本の既定（--color-link: #000）が画面で青になるので、黒・黒に近い色・灰色・
+  # 色・親から継いだ色・本の外へのリンク・下線なしを並べ、どこから指定の色で描かれるかを見る。
+  # 段落ごとに色を変え、本文の色と同じ色のリンクが特別に扱われるかも見る（目視・下の「リンク」の一覧）
+  'link' => [
+    '.t-l000 { color: #000000; } .t-l111 { color: #111111; } .t-l222 { color: #222222; }' \
+    '.t-l333 { color: #333333; } .t-l666 { color: #666666; } .t-lblue { color: #1a73e8; }' \
+    '.t-lred { color: #c2185b; } .t-pred { color: #c2185b; } .t-pred a { color: inherit; }' \
+    '.t-p333 { color: #333333; } .t-p333 a { color: #333333; }' \
+    '.t-lnone { color: #000000; text-decoration: none; }',
+    '<p>LINK-PROBE 指定なし <a href="#t-link-target">既定のリンク</a></p>' \
+    '<p>#000 <a class="t-l000" href="#t-link-target">黒のリンク</a></p>' \
+    '<p>#111 <a class="t-l111" href="#t-link-target">黒に近いリンク</a></p>' \
+    '<p>#222 <a class="t-l222" href="#t-link-target">黒に近いリンク</a></p>' \
+    '<p>#333 <a class="t-l333" href="#t-link-target">濃い灰色のリンク</a></p>' \
+    '<p>#666 <a class="t-l666" href="#t-link-target">灰色のリンク</a></p>' \
+    '<p>#1a73e8 <a class="t-lblue" href="#t-link-target">青のリンク</a></p>' \
+    '<p>#c2185b <a class="t-lred" href="#t-link-target">赤のリンク</a></p>' \
+    '<p class="t-pred">段落が #c2185b <a href="#t-link-target">親から継いだリンク</a></p>' \
+    '<p class="t-p333">段落が #333 <a href="#t-link-target">段落と同じ色のリンク</a></p>' \
+    '<p>#000 下線なし <a class="t-lnone" href="#t-link-target">下線を消したリンク</a></p>' \
+    '<p>#000 外へ <a class="t-l000" href="https://example.com/">本の外へのリンク</a></p>' \
+    '<p id="t-link-target">LINK-TARGET リンクの行き先</p>',
+    nil
+  ],
   'webp' => [
     '.t-webp img { width: 40%; }',
     '<p class="t-webp">WEBP-PROBE <img src="probe.webp" alt="webp"/></p>',
@@ -288,6 +312,16 @@ def report(out, snap, features)
     klass, pattern = target
     tag = html[/<[a-z]+[^>]*class="#{Regexp.escape(klass)}"[^>]*>/]
     puts format('  %-10s %s', name, tag&.match?(pattern) ? '通った' : '落ちた')
+  end
+
+  # リンクの色は、変換が要素に書き出した style で読む（画面の色は --keep の KPF で見る）
+  links = html.scan(/<a\s[^>]*>[^<]*/).map do |tag|
+    "#{tag[/>(.*)\z/m, 1].strip}: #{tag[/\sstyle="([^"]*)"/, 1].to_s[/(?<![-\w])color:[^;]*/] || '色の指定なし'}"
+  end
+  unless links.empty?
+    puts
+    puts 'リンク（変換が書き出した色）'
+    links.each { puts "  #{_1}" }
   end
 
   # span のタグを取ってから属性を抜く。`style` は `amzn-selector` より前に出るため、

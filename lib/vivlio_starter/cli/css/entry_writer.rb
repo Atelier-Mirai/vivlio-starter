@@ -100,6 +100,10 @@ module VivlioStarter
           'colophon' => { kindle: %w[targets/kindle-colophon.css] }
         }.freeze
 
+        # どの種類の束も、target 層の最初に読む出力先の CSS。Kindle は、部品の層まで値に解くので
+        # （Css::LiteralResolver）、PDF 向けの本文の字の大きさと行送りのトークンを端末の既定へ置き換える
+        TARGET_FOUNDATION = { kindle: %w[targets/kindle-tokens.css] }.freeze
+
         # 原稿の種類（Entry#kind・file_type）と入口の名前が違うもの
         KIND_ALIASES = { 'part_title' => 'part-title', 'whole_toc' => 'toc',
                          'indexpage' => 'index', 'glossarypage' => 'glossary' }.freeze
@@ -144,7 +148,7 @@ module VivlioStarter
             (layered[layer] || []).map { %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(#{layer});) }
           end
           lines << %(@import url("#{BOOK_SETTINGS}") layer(settings);)
-          TARGET_IMPORTS.fetch(name, {}).fetch(target, []).each do
+          [*TARGET_FOUNDATION.fetch(target, []), *TARGET_IMPORTS.fetch(name, {}).fetch(target, [])].each do
             lines << %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(target);)
           end
 

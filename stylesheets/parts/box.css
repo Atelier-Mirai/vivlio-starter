@@ -199,7 +199,7 @@ p.references {
 .diagram {
   margin-block: 3mm;
   padding: 2.5mm 3mm;
-  border: solid 0.2mm var(--color-border-weak);
+  border: solid 0.2mm var(--color-output-border);
   border-radius: 3px;
 }
 

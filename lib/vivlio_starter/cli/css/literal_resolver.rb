@@ -13,14 +13,12 @@
 #     :has()       解けないので、その選択子を落とす
 #   変数の定義（--x: …）は、値を解いた形で残す（resolve_declarations の説明）。
 #
-# 解く層（RESOLVED_LAYERS。2026-11-15 ユーザー決定）:
-#   値に解くのは target 層（targets/kindle*.css）・settings 層（book-settings.css）・層の外（custom.css）の
-#   規則だけにする。それより下の層（部品・ページ・テーマなど）の var()・calc()・color-mix() を含む宣言と、
-#   :is()・:where()・:has() を含む規則は、今の KFX と同じく落とす。
-#   下の層の値は PDF 向け（本文 10.5pt・mm の余白など）で、全部を解くと Kindle の本文の字の大きさや
-#   行送りまで変わる（中間生成物で 26,335 要素のうち 26,310）。KFX も Kindle Previewer の前処理も
-#   var() を含む宣言を捨てていたので、下の層を落とせば Kindle の見た目は今と同じになる。
-#   どの値を Kindle に届けるかは、段階 S3-4 で層ごと・部品ごとに広げて決める（css-layer-restructure-spec.md §4.4）。
+# 解く層（css-layer-restructure-spec.md §4.4 の「解く層」）:
+#   どの層の規則も解く。部品の色・枠・書体の指定は、PDF と同じ変数で Kindle に届く。
+#   PDF 向けの本文の字の大きさと行送り（--base-font-size: 10.5pt など）は、Kindle の束が最初に読む
+#   targets/kindle-tokens.css が端末の既定に置き換える。見出しなどの紙の寸法は
+#   clamp(…mm, calc(var(--paper-scale) * …), …) の形で書いてあり、calc() の外の clamp() は解かないので、
+#   今までどおり Kindle には届かない（KFX も Kindle Previewer の前処理も clamp() を捨てる）。
 #
 # なぜ要るか:
 #   KFX は var()・calc()・color-mix() を含む宣言を捨て、:is() を含む規則を丸ごと捨てる
@@ -52,8 +50,8 @@ module VivlioStarter
     module Css
       # Kindle 用の平らな CSS のリテラル化
       module LiteralResolver
-        # 落とした宣言・選択子 1 つ。declaration は宣言（選択子や規則を落としたときは nil）、
-        # reason は :variable / :calc / :color_mix / :has、解かない層のものは :lower_layer
+        # 落とした宣言・選択子 1 つ。declaration は宣言（選択子を落としたときは nil）、
+        # reason は :variable / :calc / :color_mix / :has
         Dropped = Data.define(:source, :selector, :declaration, :reason)
 
         # 解いた結果。pieces は書き換えた規則の列、dropped は落としたもの
@@ -70,12 +68,6 @@ module VivlioStarter
         # body に付くクラスのうち、ページの種類で決まるもの（HtmlContract の分類）。
         # 位置（chapter-first）はページごとに付くので含めない
         PAGE_CATEGORIES = %i[page_kind writing_mode layout theme_option target].freeze
-
-        # 値に解く層（と層の外）。それより下の層は、KFX と同じく解けない書き方を落とす
-        RESOLVED_LAYERS = %w[settings target].freeze
-
-        # KFX が規則を丸ごと捨てる選択子（解かない層で、規則ごと落とす）
-        UNSUPPORTED_SELECTOR = /:(?:is|where|matches|has)\(/i
 
         # 値の中の var() を解く深さの上限（循環を止める）
         MAX_DEPTH = 16
@@ -111,22 +103,19 @@ module VivlioStarter
         # @param scope [Scope]
         # @param base [Array<Flattener::Piece>] 変数の表にだけ使う、pieces より前の規則
         #   （章の frontmatter が足した CSS を、本文の束の変数で解くため）
-        # @param layers [Array<String>] 値に解く層（層の外は常に解く）
         # @return [Result]
-        def resolve(pieces, scope:, base: [], layers: RESOLVED_LAYERS)
+        def resolve(pieces, scope:, base: [])
           table = variable_table([*base, *pieces], scope)
           dropped = []
           resolved = pieces.filter_map do |piece|
-            context = Context.new(table:, source: piece.source, dropped:,
-                                  resolve: piece.layer.empty? || layers.include?(piece.layer.first))
-            text = rewrite(Crass.parse(piece.text), context)
+            text = rewrite(Crass.parse(piece.text), Context.new(table:, source: piece.source, dropped:))
             piece.with(text:) unless text.empty?
           end
           Result.new(pieces: resolved, dropped:)
         end
 
-        # 書き換えの文脈。resolve は値に解く層の規則か（偽なら KFX と同じく落とす）
-        Context = Data.define(:table, :source, :dropped, :resolve)
+        # 書き換えの文脈
+        Context = Data.define(:table, :source, :dropped)
 
         # ================================================================
         # 変数の表
@@ -229,16 +218,9 @@ module VivlioStarter
           end.join("\n")
         end
 
-        # 選択子を展開し、宣言を解いた style rule の文字列。残る選択子か宣言が無ければ nil。
-        # 解かない層では、KFX と同じく :is() などを含む規則を丸ごと落とす
+        # 選択子を展開し、宣言を解いた style rule の文字列。残る選択子か宣言が無ければ nil
         def rewrite_style_rule(list, properties, context)
           original = list.gsub(/\s+/, ' ').strip
-          if !context.resolve && original.match?(UNSUPPORTED_SELECTOR)
-            context.dropped << Dropped.new(source: context.source, selector: original, declaration: nil,
-                                           reason: :lower_layer)
-            return nil
-          end
-
           selectors = Selector.split_top(list, ',').map { it.gsub(/\s+/, ' ') }.flat_map do |selector|
             if selector.match?(/:has\(/i)
               context.dropped << Dropped.new(source: context.source, selector:, declaration: nil, reason: :has)
@@ -257,15 +239,10 @@ module VivlioStarter
         # `pre { font-family: var(--font-code) !important }` など）が var() で読むので、消すと
         # Kindle Previewer の前処理（Chromium と同じ組み方）でそこが解けなくなる。
         # 解けない定義は知らせずに落とす（定義そのものは表示に出ない）
-        # 解かない層の宣言は、var()・calc()・color-mix() を含むなら落とす（定義は解いて残す）
         def resolve_declarations(properties, selector, context)
           properties.filter_map do |prop|
             custom = prop[:name].start_with?('--')
-            value, reason = if context.resolve || custom || !prop[:value].match?(LITERAL_FUNCTIONS)
-                              literal_value(prop[:value].strip, context.table)
-                            else
-                              [nil, :lower_layer]
-                            end
+            value, reason = literal_value(prop[:value].strip, context.table)
             next if value.nil? && custom
 
             if value.nil?

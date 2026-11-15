@@ -1,0 +1,28 @@
+@charset "utf-8";
+
+/* Kindle のどのページの種類も、target 層の最初に読むトークン（Css::EntryWriter::TARGET_FOUNDATION）。
+   Kindle 用の平らな CSS は、部品の層まで変数を値に解く（Css::LiteralResolver・
+   css-layer-restructure-spec.md §4.4）。次のトークンは PDF の紙面のための値なので、Kindle では
+   端末に任せる値に置き換える。
+
+   - 本文の字の大きさと行送り: book.yml の typography から book-settings.css が書く 10.5pt・16.8pt
+     などの代わりに、端末の既定にする。読者が端末で選ぶ字の大きさと行送りで組まれる。
+   - 書体: Kindle には書体を埋め込まないので、書体の名前は読む端末に無い。端末に入っている書体の
+     名前（Kindle Previewer は Mac に入れた HackGen を見出しの英字に使った）に左右されないよう、
+     明朝・ゴシック・等幅の区別だけを総称の名前で渡す。
+
+   body.vs-kindle で定義するのは、変数の表で :root の定義に勝たせるため（body に近い定義が勝つ）。
+   custom.css の :root で PDF 用に変えた値も、Kindle には届かない。Kindle の値を変えたいときは、
+   custom.css で body.vs-kindle の同じ変数を書く。 */
+body.vs-kindle {
+  --base-font-size: 1em;
+  --base-line-height: normal;
+
+  --font-main-text: serif;
+  --font-body: serif;
+  --font-title: sans-serif;
+  --font-header: sans-serif;
+  --font-column: sans-serif;
+  --font-code: monospace;
+  --font-folio: sans-serif;
+}

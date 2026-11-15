@@ -186,12 +186,7 @@ module VivlioStarter
         # @param author [Boolean] pieces が全部著者の CSS か（章が足した CSS）
         def literalize(pieces, target:, scope:, reported:, base: [], author: false)
           result = LiteralResolver.resolve(pieces.reject(&:nested), scope:, base: base.reject(&:nested))
-          lower, unresolved = result.dropped.partition { it.reason == :lower_layer }
-          unless lower.empty?
-            Common.log_debug("[css] #{target}: 解かない層（部品など）の var() などを含む宣言と規則を #{lower.size} 落としました" \
-                             '（KFX と同じ。LiteralResolver::RESOLVED_LAYERS）')
-          end
-          unresolved.each do |dropped|
+          result.dropped.each do |dropped|
             key = [:literal, dropped.source, dropped.selector, dropped.declaration]
             next if reported[key]
 

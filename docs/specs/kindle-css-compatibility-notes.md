@@ -49,6 +49,9 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | `@media (max-width: …)` | ❌ | Previewer の Phone でも Tablet と同じ規則のまま（`40em`・`600px` とも。2026-11-07） | 画面の幅で組み方を変えない。写真の横並びは端末によらず同じ枚数 |
 | `inline-block` の `min-width` | △ | 幅は守られるが、行に収まらなくても折り返さず画面からはみ出す（間に空白を置いても同じ） | 最小の幅で折り返させる組み方はしない |
 
+| リンク（`<a>`）の `color` | △ | 指定なしと、`#000`・`#111` の黒に近い色は、Kindle のリンクの青（`#0000ff` 前後）で描かれる。`#222` から先と、灰色・色・親から継いだ色は指定どおりに描かれる。本の中へのリンクも外へのリンクも同じ。中間生成物の `style` には、どの色も指定どおりに出る（2026-11-15・Previewer 4.0.4・Tablet） | 黒に近いリンクにしたいときは `#222` 以上で書く。vs の既定（`--color-link: #000`）は、Kindle では青のリンクになる |
+| リンクの `text-decoration: none` | ❌ | 下線が消えない。Kindle はリンクに必ず下線を引く（同上） | 下線の有無でリンクを見分ける組み方はしない |
+
 > ❌＝非対応（解されない）、△＝不安定（端末/状況で挙動が変わる）。
 
 ### 2.1 測り方と、間違えやすい観測点
@@ -63,7 +66,9 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 
 **中間生成物だけで判断してはいけない。** ここが今回いちばん間違えやすかった点である。前処理は Chromium（同梱の phantomjs）でページを組むため、`calc(2mm + 2mm)` は `padding-left:15.118px` と正しく計算され、`linear-gradient()` も宣言のまま残る。**それでも KFX の描画側は両方とも捨てる。** 中間生成物は「変換器が値を保った」ことしか示さない。**最終判定は Previewer の画面で行うこと。**
 
-**ただし `var()` を含む宣言は、前処理の段で捨てられる**（2026-11-15・2.0 の S3-3a）。本書の `:root { font-size: var(--base-font-size); line-height: var(--base-line-height) }` は、中間生成物で本文が既定の 16px・行送り `normal` だった。同じ宣言を値に解いた CSS を渡すと、14px（10.5pt）・22.39px に変わった。つまり、`var()` の宣言が届いているかは中間生成物の `computedstyle` と `style` で分かる。部品の `var()` を値に解くと、Kindle の見た目が広く変わる（`css-layer-restructure-spec.md` §4.4 の「解く層」）。
+**ただし `var()` を含む宣言は、前処理の段で捨てられる**（2026-11-15・2.0 の S3-3a）。本書の `:root { font-size: var(--base-font-size); line-height: var(--base-line-height) }` は、中間生成物で本文が既定の 16px・行送り `normal` だった。同じ宣言を値に解いた CSS を渡すと、14px（10.5pt）・22.39px に変わった。つまり、`var()` の宣言が届いているかは中間生成物の `computedstyle` と `style` で分かる。部品の `var()` を値に解くと、Kindle の見た目が広く変わる。S3-4 では本文の字の大きさと行送りだけを端末の既定に置き換えて全部の層を解き、変わったのは見出し・コード・コラムの書体、リンク・図の枠・引用の線の色などだった（`css-layer-restructure-spec.md` §4.4 の「解く層」・§10.10）。
+
+**Location は CSS で変わる。** 本文の文字が同じ EPUB でも、CSS を変えると同じ頁が別の Location に出る（S3-4 では第 1 章の扉が 130 から 148 に、`vs upgrade` の競合を説明する段落が 7789 から 8171 に動いた）。前後の画面は、同じ Location で撮って比べてはいけない。撮った頁を文字認識し、本文の中の位置から目的の頁へ寄せて撮る。
 
 ### 2.2 `::before` は効くようになったが、置き換えは急がない
 
@@ -136,6 +141,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
   - Kindle 向け調整は **`body.vs-kindle` セレクタ配下に**追記する。`var()`・`calc()`（単位のそろったもの）・`color-mix(in srgb …)`・`:is()`・`:where()` は、2.0 の S3-3 から Kindle 用の CSS を作るときに `Css::LiteralResolver` が値と並べた選択子に解くので、書いてよい。解けないもの（要素の上で定義した変数・単位の混ざった `calc()`・`:has()`）は宣言や選択子ごと落ちる。`display: grid` など §2 のほかの機能は今までどおり避ける。
 - **置き場（2.0 の S3-2 から）**: `body.vs-epub`・`body.vs-kindle` の規則は `stylesheets/targets/` に置き、target 層（settings 層の上）で読む。本文のページの規則は `targets/epub.css`・`targets/kindle.css`、前書き・索引・用語集・奥付だけの規則は `targets/kindle-{preface,index,glossary,colophon}.css`。ファイルの中は、移す前の部品の名前の見出し（`/* --- parts/box.css --- */`）で区切る。どのページの種類がどれを読むかは `Css::EntryWriter::TARGET_IMPORTS`。PDF は target 層を読まない（`css-layer-restructure-spec.md` §5）。
 - **テーマ色は変数で書く（2.0 の S3-3 から）**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` の規則に固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。1.x は `BookSettingsCss#kindle_accent_rules` がテーマ色をリテラルにした規則を後から書いて上書きしていた。2.0 では `targets/kindle*.css` の規則を部品と同じ変数（`--heading-accent`・`--color-mark` など）で書き、Kindle 用の平らな CSS を作るときに `Css::LiteralResolver` がページの種類ごとの変数の表で値に解く（付録は付録の色になる）。`color-mix(in srgb …)` も計算する。custom.css の `:root` で変えた色も、平らな CSS の後ろで定義が勝つので、そのまま届く。
+- **部品の値も届く（2.0 の S3-4 から）**: `Css::LiteralResolver` はどの層の規則も解くので、部品（`parts/*.css`）の `var()` で書いた色・枠・書体は、Kindle の規則に書き直さなくても届く。`targets/kindle*.css` には、Kindle で変えたいところだけを書く。本文の字の大きさと行送りは、Kindle のどの束も最初に読む `targets/kindle-tokens.css` が `body.vs-kindle` で端末の既定（`1em`・`normal`）に置き換える。見出しなどの紙の寸法は `calc()` の外の `clamp()` で書いてあり、解かずに残るので Kindle には届かない（`css-layer-restructure-spec.md` §4.4 の「解く層」）。
 
 ### 5.2 「CSS で無理なら画像」戦略
 
