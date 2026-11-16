@@ -186,8 +186,7 @@ S1 で、保証するクラスの全数の表を `lib/vivlio_starter/cli/html_co
 ```
 themes/<名前>/
   theme.yml          必須。テーマの宣言
-  theme.css          組版のテーマの入口（配色のテーマには無い）
-  *.css              theme.css から @import する部品（分け方は自由）
+  *.css              組版のテーマの CSS。styles: に並べた順に theme 層へ入る（配色のテーマには無い。分け方は自由）
   epub.css           任意。EPUB の枝（クリーン EPUB と Kindle）の、全部の種類に当てる規則
   epub-<種類>.css    任意。同、その種類だけ
   kindle.css         任意。Kindle の、全部の種類に当てる規則（構造の劣化・em で書いた寸法）
@@ -216,9 +215,8 @@ features:                    # 使う組み込みの機能（§3.4）
   - frontispiece
   - ornament
 
-tokens:                      # 公開する変数の値（§5）。--book- を除いた名前で書く
-  color-accent: "#15803d"
-  color-link: "#000"
+tokens: {}                   # 公開する変数の値（§5）。--book- を除いた名前で書く（例 color-accent: "#555"）。
+                             # standard は空。既定値は vs の stylesheets/tokens.css が持つ（§4）
 
 # kindle_tokens:             # 任意。Kindle だけで変える値。書き方は tokens: と同じ（下の「kindle_tokens:」）
 #   font-heading: serif      # 書体は総称の名前（serif・sans-serif・monospace）だけ
@@ -229,17 +227,30 @@ options:                     # 著者が book.yml の theme: で変えられる�
     type: color
     default: green
     token: color-accent
+  appendix_color:
+    type: color
+    default_from: color      # 書かなければ color に従う（§3.3）
+    token: color-accent-appendix
   style:
     type: enum
     values: [image, simple]
     default: image
-    body_class: { image: vs-header-image, simple: vs-header-simple }
+    body_class:              # ページの種類ごとに書ける（§3.3）
+      chapter:  { image: vs-header-image, simple: vs-header-simple }
+      appendix: vs-header-simple
 
 styles:                      # 読み込む CSS（順に theme 層へ入る）
-  - theme.css
+  - simple-header.css
+  - image-header.css
 ```
 
 `theme.yml` の読み込みと検査は `lib/vivlio_starter/cli/theme/manifest.rb` に置く。知らないキーは 🟡 で知らせて無視する（後の版のテーマを前の版の vs で開いた場合に止めないため）。
+
+**`tokens:` と `styles:` の入る層（`v2-s6-consultation.md` §4.2 の決め 2・12）。**
+
+- `tokens:` は tokens 層に入る。vs が `.cache/vs/theme-tokens.css` に `:root { … }` として書き出し、vs の `stylesheets/tokens.css` の後に読む。`extends:` があれば、土台の `tokens:` → 自分の `tokens:` の順に並べる。
+- theme 層に入れないのは、pages 層が `:root` で付録の色（`pages/appendix.css`）と前書きの色（`pages/preface.css`）を付け替えているためである。テーマの値が theme 層にあるとこの付け替えに勝ち、付録と前書きが本文の色になる。
+- theme 層に入るのは `styles:` の CSS だけである。`styles:` には CSS を直接並べる。入口の 1 枚から `@import` で読む形は取らない（層を付けた `@import` の中の `@import` を、平らな CSS の生成が解く必要が出て、確かめる対象が増える）。
 
 **出力先の CSS（`epub.css`・`kindle.css`）。** vs の `stylesheets/targets/` と同じ名前の決まりを、テーマにも認める（`v2-post-s3-consultation.md` §5.4）。テーマのディレクトリの直下に置き、どれも任意である。`theme.yml` には書かない（`styles:` は theme 層に入る CSS だけを並べる）。
 
@@ -271,9 +282,12 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | **配色のテーマ** | `theme.yml` の `extends:` と `tokens:` だけ。CSS を持たない | `standard` を土台に、12 色とは別の配色・書体の組を配る | 色は必ず通る（CSS の生成がリテラルに解く）。書体は明朝・ゴシック・等幅の区別だけが届く。本文の字の大きさと行送りは届かない（§5.2 の Kindle の列） |
 | **組版のテーマ** | `styles:` の CSS・画像・書体 | 章扉の形・見出しの組み方・柱とノンブルの置き方を変える | テーマの CSS が §3.5 の範囲に収まっていれば通る |
 
-- `extends:` は 1 段だけとする（土台のテーマがさらに `extends:` を持つことは認めない）。読み込みの順は、土台の `tokens` → 土台の `styles` → 自分の `tokens` → 自分の `styles`。
+- `extends:` は 1 段だけとする（土台のテーマがさらに `extends:` を持つことは認めない）。読み込みの順は、tokens 層で土台の `tokens:` → 自分の `tokens:`、theme 層で土台の `styles:` → 自分の `styles:` である（§3.1）。
 - 土台のテーマも本の `themes/` に無ければならない（§7）。`vs theme:add` は、`extends:` の先が無ければ一緒に入れるか、無いと知らせる。
 - 配色のテーマは壊れようが無い（組版に触れない）ので、配る側も使う側も負担が小さい。今の「`custom.css` で 12 色を変える」は、配色のテーマを自分の本だけで使っていることに当たる。`custom.css` はそのまま使える（§7.3）。
+- **配色のテーマの `tokens:` と、土台のオプション（`v2-s6-consultation.md` §4.2 の決め 4）。** 土台のオプション（`standard` の `color` など）の値は settings 層に書き出され、settings 層は tokens 層より上にある。`tokens:` に同じ変数を書くだけでは負けるので、選ばれたテーマの `tokens:` に、土台のオプションの `token:` と同じ名前があれば、その値をオプションの既定値として扱う（`v2-architecture-spec.md` §5.3 の 3）。settings 層には、解決した後の値を今と同じく必ず書く。
+  - `book.yml` に著者が書いた値は、テーマの値に勝つ（`css-layer-restructure-spec.md` §2.1）。雛形の `book.yml` は `color: green` を書いているので、配色のテーマの色で組むには、その行を空欄にする。
+  - `vs theme:add` は、`book.yml` に書く行を示すときに、テーマの値を覆っている `theme:` 節の行と、空欄にする書き方を一緒に示す（§7.2）。`vs build` は知らせない（著者が意図して書いた値と区別できないため）。
 
 ### 3.3 オプション
 
@@ -289,9 +303,16 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `image` | テーマの `images/` の中の名前か、本の画像のパス | `token:` の変数へ（`url()` として） |
 
 - 入れ子のオプション（`frontispiece.image` のように）は、`options:` の中を入れ子にして書く。
+- **`body_class:` は、ページの種類ごとに書ける（`v2-s6-consultation.md` §4.2 の決め 5）。** 値 → クラスの表（`{ image: vs-header-image, simple: vs-header-simple }`）は、全部の種類の `body` に付ける。入口の種類の名前（`css-layer-restructure-spec.md` §2.3）をキーにすると、その種類だけに付ける。種類の値に文字列を書くと、オプションの値に依らず付けるクラスになる（`standard` の付録は、値に依らず `vs-header-simple`。§3.1 の例）。
+- **`default_from:`（同 決め 6）。** 書かなければ別のオプションの値に従うオプションは、`default:` の代わりに `default_from: <オプションの名前>` を書く（`standard` の `preface_color`・`appendix_color` は `color` に、`frontispiece.lead_size` は `lead_size` に従う）。
+- **`options:` に置けるもの（同 決め 7）。** `token:` と `body_class:` だけで渡せるものに限る。vs のコード（Ruby）が値を読むものは、機能の宣言に置く（§3.4）。
 - 値は、ビルドのときに `settings` 層の CSS（今の `book-settings.css`）へ書き出す。どの変数へ渡るかは `token:` が決めるので、vs の側にテーマごとのコードは要らない。
 - `standard` テーマの `heading_chars`・`lead_chars`（字数から幅を求める）のように、計算が要るオプションは、`features:` の組み込みの機能の設定として扱う（§3.4）。テーマが自分で計算を持つことはできない（コードを持たないため）。
 - 値の検査（型・範囲・`values:`）は `theme.yml` の宣言から行い、外れたら 🟡 で、使える値を示す（`vs build` と `vs preflight` の両方）。
+- **宣言に無いキー（`v2-s6-consultation.md` §4.5 の 2）。** `book.yml` の `theme:` 節に、選ばれたテーマの `options:` にも、そのテーマが使う機能の宣言にも無いキーがあれば、🟡「このテーマには無い設定です」で知らせる（`vs build` と `vs preflight` で同じものを出す）。キーの名前・選ばれたテーマの名前・そのテーマで書けるキーの一覧を示し、綴りの近いキーがあれば直し方（「`colour` → `color`」）を添える。値は読まない。
+  - `ConfigKeys::RETIRED` にあるキーは、今の廃止の案内だけを出す（二重に知らせない）。
+  - 「前のテーマのオプションが残った」と「打ち間違い」は区別できないので、文面は一つにする。
+  - ほかの節の知らないキーの扱い（知らせずに読み飛ばす）は変えない。テーマを替えると、同じ `book.yml` のまま有効なキーの組が変わるのは `theme:` 節だけだからである。
 
 ### 3.4 組み込みの機能（`features:`）
 
@@ -304,6 +325,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - 機能を使うテーマは、その機能のオプションを自分の `options:` に並べずに使える（機能の側が宣言を持つ。`lib/vivlio_starter/cli/theme/features/<名前>.rb`）。
 - 機能を使わないテーマでは、その機能の段は走らず、オプションは `theme:` 節に書けない（書いてあれば §3.3 の「このテーマには無い設定」の 🟡）。
+- **扉絵の `@page :nth(1)` の規則は、vs の `stylesheets/pages/chapter.css` に置く（機能 `frontispiece` の骨格。`v2-s6-consultation.md` §4.2 の決め 3）。** テーマの `styles:` は全部の種類の入口に入り、`@page` は `body` のクラスで絞れない。テーマに置くと、付録・前書き・目次の最初のページにも扉絵が出る。テーマは変数（`--book-frontispiece-*`）で値を入れる。機能を使わないテーマのために、`stylesheets/tokens.css` に `--book-frontispiece-image: none;` の既定値を置く。
+- `standard` の今の 15 個のキーを「`options:`」「`frontispiece`」「`ornament`」に分けた表は、S6-7 の最初に作ってここに書く。どれにも入らないキー（Ruby が読むが、扉絵にも節絵にも属さないもの。`markers.*` と `lead_size` が候補）が出たら、実装を止めて相談する。3 つ目の機能を足すかは、その表を見て決める。
 - 2.0 で用意する機能はこの二つだけとする。小説と絵本のテーマが必要とする処理は、個別の仕様で、機能として足すかを決める。機能を足すのは vs の本体の変更で、テーマの側からは足せない。
 
 ### 3.5 Kindle で組むための CSS の範囲
@@ -341,19 +364,27 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 今の見た目を `themes/standard/` に切り出す。切り出しの前後で、本書の四つの出力先の出力が変わらないことを完了の条件とする（§9 の S6）。
 
-| 今の置き場 | 行き先 |
-| :--- | :--- |
-| `stylesheets/theme.css`（色と寸法の変数） | `themes/standard/theme.yml` の `tokens:` と、`themes/standard/theme.css` |
-| `simple-header.css`・`image-header.css` | `themes/standard/` |
-| 章・前書き・付録の本文の見た目（`chapter-common.css`・`preface.css`・`appendix.css` のうち、色・書体・余白・飾り） | `themes/standard/`。どの規則がテーマでどの規則が部品かの線引きは `css-layer-restructure-spec.md` §3 |
-| `stylesheets/images/`（扉絵・節絵の花の画像） | `themes/standard/images/` |
-| `book.yml` の `theme:` 節のキー | `themes/standard/theme.yml` の `options:` と、`features:` の機能の宣言 |
-| `ThemeColor`（12 色の名前と値） | 12 色は `--book-accent-*` として vs の土台が持つ（§5.2）。テーマではなく、どのテーマからも使える色の名前とする |
-| `stylesheets/targets/` の規則のうち、劣化させる相手の部品がテーマへ移るもの（`image-header.css`・`simple-header.css`・扉絵と節絵） | `themes/standard/` の `epub.css`・`kindle.css`・`kindle-<種類>.css`（§3.1） |
+| 今の置き場 | S6 の後 | 理由 |
+| :--- | :--- | :--- |
+| `stylesheets/parts/simple-header.css`・`parts/image-header.css` | `themes/standard/`（theme 層。`styles:` に今の順で並べる） | 見出しの組み方。選択子は `:root` の 1 規則を除いて全部 `vs-header-*` で絞ってあり、ほかの種類のページに当たらない |
+| `stylesheets/images/bundled/`（扉絵・節絵の 12 枚） | `themes/standard/images/` | |
+| `stylesheets/targets/epub.css`・`kindle.css` の、選択子が `vs-header-*` を含む規則 | `themes/standard/epub.css`・`kindle.css`（§3.1） | 劣化させる相手の部品がテーマへ移る（下の「`targets/` の規則の線引き」） |
+| `book.yml` の `theme:` 節のキー | `themes/standard/theme.yml` の `options:` と、`features:` の機能の宣言 | §3.3・§3.4 |
+| `stylesheets/tokens.css`（公開する変数の既定値） | 残す。`--book-*` の一覧の正典（§5.2） | `standard` の `tokens:` は空。テーマに依らない中立の既定値と `standard` の値を分けるのは、2 つ目の組版のテーマ（`bunko`・S8）が値を決めるとき |
+| `pages/chapter.css` の `@page :nth(1)`（扉絵） | 残す | §3.4 |
+| `pages/appendix.css`・`pages/preface.css` の `:root` の付け替え | 残す | 付録の色・前書きの色は公開する変数（`--book-color-accent-appendix`・`-preface`）で、どのテーマでも働く仕組みである |
+| `parts/heading.css`・`prose.css`・`box.css`・`preface.css` などの、色・書体・余白・飾りの規則 | 残す | 下の「部品に残す飾り」 |
+| `ThemeColor`（12 色の名前と値） | 12 色は `--book-accent-*` として vs の土台が持つ（§5.2） | テーマではなく、どのテーマからも使える色の名前とする |
+
+**部品に残す飾り（`v2-s6-consultation.md` §4.10）。** `css-layer-restructure-spec.md` §3.2 の線引き（消すと働かなくなるものは部品、飾りはテーマ）は決まりとして残すが、S6 で theme 層へ移すのは上の表の見出しの 2 枚だけとする。
+
+- 部品の色と書体は、すでに公開する変数を読んでいる。テーマは変数で変えられる。規則で変えたいテーマは theme 層に書けば、PDF では詳細度に関係なく勝つ。規則を移さなくても、テーマにできることは減らない。
+- 規則を parts 層から theme 層へ移すたびに、詳細度が同じ組で勝つ側が入れ替わりうる。組版のテーマが `standard` の 1 つしか無い時点では、どの規則が「どのテーマにも要る骨格」で、どれが「`standard` だけの飾り」かを確かめる相手が無い。「迷う規則は部品の側に置く」（同 §3.2）に合う。
+- 残した規則のうち、`bunko`（S8）を書くときに打ち消しが要ったものを、S8 の中で `standard` へ移す（§10 の論点 5）。前書きの見た目（`parts/preface.css`）が、いちばんの候補である。
 
 **`targets/` の規則の線引き（`v2-post-s3-consultation.md` §5.4）。**
 
-- vs の部品（囲み・コード・表・索引・用語集・奥付）の規則は、`stylesheets/targets/` に残す。テーマへ移すのは、上の表の最後の行の規則だけである。
+- vs の部品（囲み・コード・表・索引・用語集・奥付）の規則は、`stylesheets/targets/` に残す。テーマへ移すのは、上の表の 3 行目の規則（選択子が `vs-header-*` を含むもの）だけである。テーマの出力先の CSS は 11 種類の全部の束に入るが、vs の `targets/epub.css`・`kindle.css` は本文のページの 4 種類にしか入らない。素の `h1`・`h2` を選ぶ規則を移すと目次・索引・用語集の見出しにも当たるので、相手の部品がテーマへ移っていても vs の `targets/` に残す（`v2-s6-consultation.md` §4.2 の決め 11）。
 - 移すときは、選択子と宣言を変えない。クラスを足して絞ると詳細度が上がり、平らな CSS では勝ち負けが変わりうる（`v2-flat-cascade-consultation.md` §5.3 の 5）。
 - 移すと、vs の `targets/` の規則との前後が変わる（テーマの出力先の CSS は vs の `targets/` の後に読む）。詳細度が同じ組では勝つ側が入れ替わりうるので、移動の前後で EPUB の計算値と Kindle の中間生成物が差 0 であることを確かめる（§9 の S6 の条件 8）。
 
@@ -380,6 +411,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - vs の今の変数（99 種・接頭辞は `--color`・`--accent`・`--font`・`--frontispiece`・`--page`・`--folio`・`--talk` など）に `--vs-` で始まるものは無く、公式テーマとの衝突は今は無い（`v2-inventory-report.md` §7.3）。衝突が起きるのは、公開する変数に `--vs-` を付けた場合だけなので、付けない。
 - クラスの `vs-*`（`vs-epub`・`vs-h-marker` など）は今のまま使う。公式テーマに `.vs-*` のクラスは無い。
+- **S6 で名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** `--book-*` に変えるのは、§5.2 の公開する変数と、機能の変数（`--book-frontispiece-*`・`--book-ornament-*`）である。`standard` へ移る見出しの 2 枚の中だけの変数は `--standard-*` にする。vs の内部の変数（`base/page.css` の 24 個、`pages/titlepage.css`・`pages/colophon.css` の各 8 個など）は、2.0 では名前を変えない。`--_*` に変えて別名を置けば内部の変数でなくなり、置かなければ、その変数に値を入れていた 1.x の `custom.css` が警告なしに効かなくなるためである。`--_*` の決まりは、これから足す内部の変数に当てる。名前を変えた変数は例外なく対応の表（`css-layer-restructure-spec.md` §7.2）に載せる。
 
 ### 5.2 公開する変数の一覧（分類）
 
@@ -516,6 +548,18 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 配布の形は「テーマのディレクトリ」だけを決め、経路は限定しない。git のリポジトリ・zip・npm のどれで配っても、`vs theme:add` が本の中へ複製する。配る側は、ディレクトリを公開するだけでよい。
 - `vs theme:add` が外から取得するのは CSS・画像・書体・YAML だけで、スクリプトは実行しない（npm のパッケージは `npm pack` で取得し、`install` のスクリプトを走らせない）。
 - テーマの一覧の場所（探すための登録簿）は 2.0 では作らない。
+- **経路と段階（`v2-s6-consultation.md` §4.8）。** 同梱のテーマの名前・手元のディレクトリ・手元の zip は S6、git の URL と npm のパッケージ名は S7 で作る（git は S7 の入口の実験の結果に依らず作る）。ネットワークから取得する経路は、git と npm で同じ土台（一時ディレクトリへ取得する・取得したものを信用しない）を使う。
+- `book.yml` に書く行を示すときは、テーマの値を覆っている `theme:` 節の行と、空欄にする書き方も一緒に示す（§3.2）。
+
+**複製の決まり。** どの経路も、取得した後は同じ決まりを通る。
+
+1. テーマのディレクトリは、`theme.yml` のあるディレクトリとする（指定した場所の直下か、その下の 1 階層）。見つからなければ 🔴。
+2. 複製するのは、拡張子の許可の表にあるファイルだけとする（`.yml`・`.css`・画像の `.webp`・`.png`・`.jpg`・`.jpeg`・`.svg`・`.avif`・書体の `.ttf`・`.otf`・`.woff`・`.woff2`・`README.md`・`LICENSE*`）。それ以外は複製せず、複製しなかったファイルの一覧を示す。本の中に実行できるファイルが入らないので、「スクリプトを実行しない」が決まりではなく作りで成り立つ。
+3. シンボリックリンクは複製しない。zip は、中のパスが絶対パスか `..` を含む項目・シンボリックリンクの項目があれば、展開せずに 🔴 で止める。展開は一時ディレクトリで行う。
+4. 本の `themes/<名前>/` が既にあれば、置き換わるファイルの一覧を見せて確認を取る。「いいえ」なら何も変えない。
+5. `extends:` の先が本の `themes/` に無ければ、同梱のテーマなら一緒に入れ、そうでなければ無いと知らせる（§3.2）。
+
+`vs theme:check` は、テーマの CSS の中の外部の URL（`url(http…)`・`@import url(http…)`）も 🟡 で示す。組むたびにネットワークへ取りにいくテーマを、入れた時点で知らせるためである。
 
 ### 7.3 `vs upgrade` と著者のファイル
 
@@ -563,10 +607,10 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 作るもの: §3 の `theme.yml` の読み込みと検査（`kindle_tokens:` の書き出しを含む）、§3.1 のテーマの出力先の CSS の読み込み、§3.3 のオプションの書き出し、§3.4 の機能の宣言、§4 の切り出し、§5 の変数の名前の変更と別名、§7.2 のコマンド、§7.3 の `vs upgrade` の扱い、§8 の版の検査。
 - 最初に入れるもの（寸法をテーマへ移す前）: `LiteralResolver` が `clamp()`・`min()`・`max()` を含む宣言を、理由（`:paper_dimension`）を付けて落とす（`css-layer-restructure-spec.md` §4.4）。
 - 完了の条件:
-  1. `stylesheets/theme.css`・`simple-header.css`・`image-header.css`・`stylesheets/images/` が無くなり、`themes/standard/` にある。
+  1. `stylesheets/parts/simple-header.css`・`parts/image-header.css`・`stylesheets/images/bundled/` が無くなり、`themes/standard/` にある（§4 の表）。
   2. `BodyClassInjector` と `BookSettingsCss` に、`standard` テーマに固有の名前（`vs-header-image`・`--frontispiece-*` など）を直接書いた箇所が無い（`theme.yml` と機能の宣言から来る）。
-  3. 本書の四つの出力先の出力が、S0 の基準と比べて、PDF は全ページの画素が一致、Kindle は Kindle Previewer の画面が見比べて同じ。
-  4. 配色のテーマの見本（`themes/standard-mono/`。`extends: standard` と `tokens:` だけ）で本書を組み、色だけが変わる（PDF の文字の位置が `standard` と一致する。`pdftotext -bbox` の座標の比較）。Kindle でも色が変わる。
+  3. 本書の四つの出力先の出力が、その時点の基準（r2。`v2-migration-plan.md` §3.2）と比べて、PDF は全ページの画素が一致、EPUB は下の「EPUB の比べ」の表のとおり、Kindle は中間生成物が差 0 で Kindle Previewer の画面が見比べて同じ。
+  4. 配色のテーマの見本（`standard-mono`。`extends: standard` と `tokens:`・`kindle_tokens:` だけ。材料は `test/vivlio_starter/fixtures/themes/standard-mono/` に置き、写しの本の `themes/` へ複製して使う。同梱しない）で、`book.yml` の `theme.color`・`preface_color`・`appendix_color` を空欄にした本書を組み（§3.2）、色だけが変わる（PDF の文字の位置が `standard` と一致する。`pdftotext -bbox` の座標の比較）。Kindle でも色が変わる。
   5. 1.x の `custom.css`（今の名前の変数を使ったもの）を置いた写しで、色の変更が効く。
   6. `theme.name` に無い名前を書くと 🔴、`contract: 2` のテーマを置くと 🔴、`supports.writing_mode` に無い組方向で 🔴 になり、それぞれ次にすることを示す。
   7. `clamp()`・`min()`・`max()` の宣言を落とす変更の前後で、Kindle の中間生成物が差 0（今も Kindle に届いていないので、変わらないはずである）。Kindle 用の CSS に `clamp(`・`min(`・`max(` が残らない。
@@ -575,11 +619,62 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
   10. 配色のテーマの見本に `kindle_tokens:`（見出しの書体を `serif` に）を書くと、Kindle の見出しだけが明朝になり、PDF と EPUB は変わらない。`kindle_tokens:` に `font-size` か、総称の名前でない書体を書いたテーマで、`vs theme:check` が 🟡 を出す。
 - 確かめ方: 3 は `v2-migration-plan.md` §3。4〜6・10 はテストと、写しの本での実行。7〜9 は、変更ごとに前後を組んで比べる。
 
+#### S6 の小段階と、段階の中で決めること（2026-11-16）
+
+決定の経緯は `v2-s6-consultation.md` §4。S6 は十の小段階に分ける。どの小段階も、完了のコミットは「本書の出力が、その時点の基準（r2）と同じ」ものだけにする。EPUB と Kindle 用の CSS の字面は S6-2・S6-4・S6-6 で変わるので、「同じ」の中身は下の「EPUB の比べ」による。前後の比べの相手は、前の小段階の確かめの出力（基準のディレクトリの `r2/check/s6-<番号>/`）を使う。四つの出力先と B2〜B4 を組む全部の比べの時点は `v2-migration-plan.md` §3.6 に書く。
+
+| 小段階 | 作るもの | 確かめ |
+| :--- | :--- | :--- |
+| S6-1 紙の寸法の宣言を落とす | `LiteralResolver` が `clamp()`・`min()`・`max()` を含む宣言を、理由 `:paper_dimension` を付けて落とす。`css_layer_test.rb` の許可の表から紙の寸法を分ける | 完了の条件の 7（B1 の Kindle の中間生成物が差 0・Kindle 用の CSS に `clamp(`・`min(`・`max(` が無い）。クリーン EPUB の CSS は前後でバイト単位で同じ（リテラル化を通らないため） |
+| S6-2 変数の名前を `--book-*` へ | `stylesheets/tokens.css` を `--book-*` の 1 行ずつの一覧にする。`stylesheets/`・`templates/`・`lib/`（`BookSettingsCss`・`CssUpdater`・`techbook/processor.rb`・`inject_heading_images.rb` など）の名前の置き換え。`targets/kindle-tokens.css` を `--book-*` で書く。`Css::LegacyTokens`（対応の表）・`tokens-legacy.css`（読む向き）・settings 層の書き出し（値を入れる向き）・今の名前を使う `custom.css` への 💡。`--color-shadow` を消す | 完了の条件の 9。前の平らな CSS に対応の表の置き換えを当てたものが、後の平らな CSS と一致する（`tokens-legacy.css` の分と `--color-shadow` を除く）。EPUB の計算値が差 0。完了の条件の 5（今の名前を使った `custom.css` の写し）。その後、全部の比べ |
+| S6-3 テーマを読む仕組み | `theme.name`（`ConfigKeys`・雛形の `book.yml`）。`Theme::Manifest`（読み込み・検査・`extends:` の 1 段）・`Theme::Contract`（`contract:`・`requires_vs:`）。`EntryWriter` が `styles:` を theme 層に、`tokens:` を tokens 層に、テーマの出力先の CSS を target 層に入れる（順は `css-layer-restructure-spec.md` §5 の 1〜5）。`TraitCombinationCheck` の `supports:` の行。中身の無い `themes/standard/theme.yml`（`name`・`title`・`version`・`contract`・`supports` だけ）。`build_copy.rb`・`copy_to_scaffold.rb`・`scaffold.lock` に `themes/` を足す | 本書の入口の CSS（`.cache/vs/entry-*.css`）と契約 HTML が、前後でバイト単位で同じ。完了の条件の 6（材料のテーマで 🔴 の 3 通り）。`extends:` の読む順のテスト。単章のビルドと `vs preflight` |
+| S6-4 見出しの 2 枚を theme 層へ | `parts/simple-header.css`・`parts/image-header.css` を、置き場を変えずに parts 層から theme 層へ移す（`EntryWriter` の表だけを変える）。本文以外の種類（目次・索引など）の入口にも入る | B1 の `pdf`・`epub`・`kindle` と B2 の `pdf` を組む。PDF は全ページの画素が一致。EPUB の計算値と Kindle の中間生成物が差 0。`InversionCheck` の要素ごとの判定が B1・B4 の EPUB と Kindle 用 EPUB で 0 組 |
+| S6-5 `standard` へファイルと画像を移す | 2 枚を `themes/standard/` へ移し、`theme.yml` の `styles:` に今の順（`simple-header.css` → `image-header.css`）で並べる。`stylesheets/images/bundled/` を `themes/standard/images/` へ移す。画像の指定を探す順（`v2-migration-plan.md` §5.3 の 4）。`images/bundled` を書いた `lib/` の 10 ファイル | 入口の CSS の差が、2 枚の `@import` の行のパスだけ。B1 の EPUB と Kindle 用 EPUB が `epub_diff.rb` で違い 0 件（Kindle 用 EPUB が同じなので、変換はしない）。B1・B2 の PDF は全ページの画素が一致。`rake test:layout` |
+| S6-6 出力先の規則を `standard` へ | `targets/epub.css`・`targets/kindle.css` の規則のうち、選択子が `vs-header-image`・`vs-header-simple` を含むもの（今は 3 か所と 8 か所）を、選択子と宣言を変えずに `themes/standard/epub.css`・`kindle.css` へ移す | 完了の条件の 8（B1 の EPUB の計算値と Kindle の中間生成物が差 0）。EPUB の HTML はバイト単位で同じ。PDF は、入口の CSS が前後でバイト単位で同じであることだけを見る（target 層を読まないため） |
+| S6-7 オプションと機能の宣言 | `theme.yml` の `options:`、`Theme::Features::Frontispiece`・`Ornament` の宣言、`ConfigKeys::KEYS` から `theme.*`（`name` を除く）を外す、`Common.load_config` の 3（`v2-architecture-spec.md` §5.3）、`BookSettingsCss` が `token:` から書き出す、`BodyClassInjector` が `body_class:` から付ける、値の検査を宣言から行う（`ThemeValidator` の置き換え）、`HtmlContract` の `theme_option` を宣言から引く、`BuildPlan.features` に `frontispiece`・`ornament`、`theme:` 節の宣言に無いキーの 🟡（§3.3） | 完了の条件の 2。B1・B2・B3 の設定で、`Common::CONFIG` の書き出しと `.cache/vs/book-settings.css` が前後でバイト単位で同じ。契約 HTML がバイト単位で同じ。段の一覧が同じ。`theme.color` などに読めない値を書いた材料で、🟡 の文面が前後で同じ。その後、全部の比べと画面。`rake test:standard` |
+| S6-8 コマンド | `vs theme`・`vs theme:add`（§7.2 の S6 の経路）・`vs theme:check`・`vs theme:new` | `themes/standard/` に `vs theme:check` を掛けて 🟡 が 0 件。`vs theme:new x --extends standard` の出力が `vs theme:check` を通る。zip の検査（§7.2 の複製の決まりの 3）のテスト |
+| S6-9 `vs upgrade` | §7.3 の表（`scaffold.lock` に記録のあるテーマの更新・`vs theme:add` で入れた同梱のテーマの記録・著者のテーマの契約の版の 🟡）と、`custom.css` の今の名前の置き換え（`css-layer-restructure-spec.md` §7.2） | 写しの本での実行。`ToolUpgrader.run!` を差し替えて走らせる（道具の更新がマシンに効かないようにする）。置き換える行を全部見せ、「いいえ」で何も変わらないこと |
+| S6-10 配色のテーマと `kindle_tokens:` | `kindle_tokens:` の書き出し（target 層の 2 番目）。材料の `standard-mono`。S6 の完了の確かめ | 完了の条件の 4・10。全部の比べ。`rake test:layout`・`rake test:standard`・`rake test:release` |
+
+S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7）、`BookProfile` の `theme.name`（S8。`v2-architecture-spec.md` §2.2）、1.x の本の `stylesheets/` を 2.0 の配置へ移す手順（`v2-migration-plan.md` §5.3 の 2〜4・6・7。S11）、原稿の中の変数の名前（S11）、vs の内部の変数の改名（§5.1）、見出しの 2 枚のほかの規則を theme 層へ移すこと（§4）。
+
+仕様に書かれていなかったので、S6 では次のように決める（2〜5・8・11 は該当の節へ書いた）。
+
+1. **`standard` の切り出しは、層を移す小段階（S6-4）と、置き場を移す小段階（S6-5）に分ける。** 見出しの 2 枚は今 parts 層の最初に読まれている。theme 層へ移すと、PDF では parts・pages のどの規則にも詳細度に関係なく勝ち、平らな CSS では並びが pages の後になる。`parts/heading.css` は今 2 枚より後に読まれるので、詳細度が同じ組では今 `heading.css` が勝っている。この入れ替わりが S6 でいちばん差の出やすい箇所で、置き場の移動と同じコミットにすると、差の原因が層かパスかを分けられない。差が出たら、S3-2 と同じく選択子の形をそろえて直す。
+2. `tokens:` の書き出し先は tokens 層（§3.1）。
+3. 扉絵の `@page :nth(1)` は vs に残す（§3.4）。
+4. 配色のテーマの `tokens:` を、土台のオプションの既定値として重ねる（§3.2）。
+5. `body_class:` の種類ごとの形と `default_from:`（§3.3）。
+6. `options:` に置けるのは `token:` と `body_class:` で渡せるものだけ（§3.3・§3.4）。
+7. 名前を変える範囲（§5.1）。
+8. **原稿の中の変数の名前は、S6 では書き換えない。** `contents/46-utility.md`（`custom.css` の書き方の表）と `contents/23-figures.md` は今の名前を載せている。書き換えると本書の PDF が変わる。今の名前は別名で効くので、説明は誤りにならない。マニュアルの書き直しは S11 で行う（`v2-migration-plan.md` §4.3）。
+9. **`theme.name` は、雛形の `book.yml` に `name: standard` として書く。** 「載せると決めたキーは全部書く」（`config-key-criteria-guidelines.md` §1）による。本書の `book.yml` に 1 行増えるが、出力は変わらない。
+10. テーマの出力先の CSS へ移すのは、選択子が `vs-header-*` を含む規則だけ（§4）。
+11. **S5 の完了の条件の 4（`page.writing_mode: vertical` の最小の本）のテストは、`supports.writing_mode: [horizontal, vertical]` を書いた材料のテーマで組む。** `standard` は横書きだけなので、S6-3 から 🔴 で止まる（`v2-architecture-spec.md` §8 の S5 の決め 3）。
+12. **`themes/standard/theme.yml` の `tokens:` は、S6 の完了の時点で空でよい。** 公開する変数の既定値は `stylesheets/tokens.css` が正典である（§4・§5.2）。
+
+**EPUB の比べ（完了の条件の 3。`v2-s6-consultation.md` §4.4）。** 変更の種類ごとに、いちばん強い比べを当てる。
+
+| 比べるもの | 基準 |
+| :--- | :--- |
+| HTML（契約 HTML と EPUB の中の XHTML）・OPF | どの小段階でも、r2 とバイト単位で同じ（S4 で記録した属性の順の 2 件と、画像の名前を除く） |
+| CSS — 字面を変えない小段階（S6-1 のクリーン EPUB・S6-3・S6-5・S6-7） | 前の小段階とバイト単位で同じ（S6-5 は `url()` の中の画像の名前を除く） |
+| CSS — 名前を変える小段階（S6-2） | 前の CSS に対応の表の置き換えを当てたものと一致する。あわせて計算値（`css_computed_diff.rb`）が差 0 |
+| CSS — 読む順を変える小段階（S6-4・S6-6） | 計算値が差 0。`InversionCheck` の要素ごとの判定が 0 組 |
+| EPUBCheck | 毎回、致命・エラー・警告とも 0 |
+| Apple Books の画面 | S6-7 の後に 1 回、r2 の 10 か所と見比べる |
+
+- 計算値の比べでは、変数そのもの（`--` で始まるプロパティ）の行を除く。S6-2 で名前が変わるためである。変数の値が正しく届いているかは、変数を読む側のプロパティ（`color`・`font-family` など）の計算値で分かる。
+- Apple Books の画面を小段階ごとに見ないのは、計算値が差 0 で HTML がバイト単位で同じなら、表示が変わる経路は「同じ計算値を Apple Books が別に描く」だけで、S6 の変更はその経路に触れないためである。S6-7 の後の 1 回は、道具（`css_computed_diff.rb` は Chromium で計算する）が見ていない差が無いことの確かめである。
+
 ### S7 公式テーマの取り込み
 
 - 入口の実験（実装の前に行う）: 本書の章を 2 つ選び、`role` 属性の付いた契約 HTML に、`theme-bunko` と `theme-base` を §6.2 の形（`theme` 層・`bridge.css`）で当てて、Vivliostyle で PDF と EPUB を組む。確かめる点は次の四つ。(a) 縦書き・右綴じで組める。(b) 見出し・段落・ルビが `theme-bunko` の見た目になる。(c) vs の部品（脚注・囲み・図）が崩れない。(d) 判型が vs の `page.use` の値になる。結果を `v2-feasibility-notes.md` に追記する。
 - 実験で (a)〜(d) のどれかが成り立たない場合: 取り込みを「CSS を写すだけで、結果は保証しない」に下げ、`vs theme:add` の npm の経路は 2.0 に含めない、という判断をユーザーに仰ぐ。小説の既定のテーマは vs が書く（§6.4）ので、2.0 の小説の出力はこの実験の結果に左右されない。
-- 作るもの: `vs theme:add` の npm の経路、§6.2 の変換、§6.3 の `bridge.css` の生成。
+- 作るもの: `vs theme:add` の git の URL の経路（入口の実験の結果に依らず作る）と npm の経路、§6.2 の変換、§6.3 の `bridge.css` の生成。どちらの経路も、取得した後は §7.2 の複製の決まりを通る。
+- git の経路の確かめ方（`v2-s6-consultation.md` §4.8）:
+  - 取得は、一時ディレクトリへ `git -c core.hooksPath=/dev/null clone --depth 1 --no-recurse-submodules <URL>` で行う。その後は複製の決まりだけを通し、取得したディレクトリの中でコマンドを走らせない（`bundle`・`npm`・`rake`・`make` を呼ばない）。
+  - テストは、手元に作った材料のリポジトリ（`file://` の URL）で行う。材料には、`package.json`（`scripts.postinstall` が、決めた場所に印のファイルを作る）・`Rakefile`・`Makefile`・実行できる `.sh`・`.git/hooks/post-checkout` を入れる。`vs theme:add` の後で、(a) 本の `themes/<名前>/` に許可の表の拡張子のファイルしか無い、(b) 印のファイルができていない、(c) 一時ディレクトリが消えている、の三つを検査する。ネットワークは使わない。
 - 完了の条件: `vs theme:add @vivliostyle/theme-bunko` の後、`theme.name` を替えるだけで、小説の見本の本が `pdf`・`print_pdf`・`epub` で組める。`targets` に `kindle` があると、`v2-architecture-spec.md` §2.5 の検査が 🔴 で止め、対応するテーマを示す。
 
 ---
@@ -592,6 +687,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 2 | 対応表（`bridge.css`）に載せる変数の一覧 | S7 の入口の実験 | 15 種ほどを見込む |
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | S8 の仕様 | 2.0 では `theme-bunko` だけを確かめる |
+| 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8（`bunko` を書くとき） | S6 では見出しの 2 枚だけを移す。`bunko` で打ち消しが要った規則を移す。いちばんの候補は前書きの見た目（`parts/preface.css`） |
 
 ---
 

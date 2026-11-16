@@ -88,6 +88,7 @@ end
 - 値の解決の順は「`ConfigKeys` の既定値 → 種類の既定値 → `book.yml` に書いた値」とする（§5.3）。
 - `book.type` が無い `book.yml`（1.x の本）は `techbook` として読む。1.x の本は何も書き足さずに今と同じ値で組める。
 - 表の中身（判型の名前・テーマの名前）は、小説と絵本の個別の仕様で確定する。上の表は形を示すためのものである。
+- **`theme.name` の行は、そのテーマを同梱する段階で足す（`v2-s6-consultation.md` §4.6）。** `novel` の `bunko` は S8、`picture_book` の `picture` は S9 である。それまで `book.type: novel` の本は既定の `standard` で読まれ、`standard` が横書きだけに対応する（`supports.writing_mode: [horizontal]`）ので、S6 から S8 まで §2.5 の検査が 🔴 で止める。`book_profile_test.rb` に「`PROFILES` の `theme.name` の値が、どれも同梱のテーマにある」を足し、名前だけが先に入らないようにする。
 - テスト（`book_profile_test.rb`）で次を検査する。(1) 表のキーがすべて `ConfigKeys::KEYS` にある。(2) 種類ごとの雛形の `book.yml` に書かれた値が、その種類の解決後の既定値と一致する（`config_keys_test.rb` が今の雛形に対して行っている検査を、種類ごとに行う）。
 
 ### 2.3 コードは種類を読まない
@@ -135,7 +136,7 @@ end
 
 | 組み合わせ | 扱い |
 | :--- | :--- |
-| テーマが対応しない組方向・レイアウト（テーマの `supports:`・`theme-contract-spec.md` §3） | 🔴 で止める。対応するテーマの名前を示す |
+| テーマが対応しない組方向・レイアウト（テーマの `supports:`・`theme-contract-spec.md` §3） | 🔴 で止める。対応するテーマの名前を、本の `themes/` と同梱のテーマから探して示す。無ければ「縦書きに対応するテーマは、まだ同梱されていません」の形で示す（S8 まではこの文面になる。探す作りにしておけば、S8 で文面のコードを変えずに済む） |
 | `page.layout: fixed` と `index_glossary.enabled: true` | 🟡。固定レイアウトでは索引と用語集のページを作らない、と示す |
 | `page.layout: fixed` と `targets` の `kindle` | 警告はしない。KPF に変換せず EPUB を出力する、と出力の一覧に示す（§4.2） |
 | 動画のある本で `targets` が `print_pdf` を含む | 警告はしない。閲覧用 PDF からの導出をやめ、組み直す（§4.5） |
@@ -439,7 +440,19 @@ theme:
 
 - 今の `theme:` 節のキー（`color`・`preface_color`・`appendix_color`・`style`・`lead_size`・`frontispiece.*`・`ornament.*`・`markers.*`）は、そのまま `standard` テーマのオプションになる。1.x の `book.yml` の `theme:` 節は書き換えずに通る。
 - オプションの宣言と既定値はテーマの `theme.yml` が持つ（`theme-contract-spec.md` §3.3）。`ConfigKeys::KEYS` から `theme.*`（`name` を除く）を外し、`Common.load_config` が、選ばれたテーマの宣言を既定値の表に足す。
-- 選ばれたテーマが宣言していないキーが `theme:` 節にあれば、🟡 で知らせる（テーマを替えた後に前のテーマのオプションが残った場合。「このテーマには無い設定です」と、そのテーマのオプションの一覧を示す）。
+- **読む入口は 1 つにし、読む側の形は変えない（`v2-s6-consultation.md` §4.5 の 1）。** テーマの側（`Theme::Manifest` と機能の宣言）が、自分のオプションを `ConfigKeys::Spec` の形（`{ %i[theme color] => Spec[default: 'green'] }`）で返す。`ConfigKeys` に、`KEYS` とその表を重ねて返す入口を 1 つ置き（名前は実装で決める）、`default_schema` はこの入口を通る。読む側を分ける案は採らない。分けると、既定値の重ね合わせと `vs config` の案内が `theme:` 節だけ別の経路になり、`config-defaults-design-spec.md` が無くした「宣言が複数箇所にある」状態に戻る。
+
+  | 仕組み | S6 の後 |
+  | :--- | :--- |
+  | `Common.load_config` | 重ねた表を読む（§5.3 の 3）。`theme.name` を生の YAML から先に取り出し、テーマを読んでから全体を重ねる |
+  | `config_guide.rb` | 重ねた表を読む。今の形のまま |
+  | `upgrade.rb`・`scaffold_updates.rb`・`retired_key_remover.rb` | `ConfigKeys::RETIRED` を今のまま読む。`theme.yml` に廃止キーの宣言は作らない。同梱のテーマのオプションを廃止するときは、今と同じく `RETIRED` に書く |
+  | `ThemeValidator` | 宣言（`type`・`values`・`min`・`max`）からの検査に置き換える。扉絵・節絵の画像があるかの検査は、機能のコードに残す。`standard` での 🟡 の文面は、前後で同じにする |
+  | `config_keys_test.rb` | 重ねた表と照合する。`theme:` 節は、(a) 雛形の `book.yml` のキーの組が、`name` ＋ `standard` の `options:` ＋ `standard` が使う機能のオプションと一致する、(b) 書かれた値が既定値と一致する、の二つを検査する。種類ごとの雛形（S8）では、その種類の既定のテーマの宣言と照合する |
+  | `book_yml_consumption_test.rb` | `theme.*` のキーは、「`theme.yml` の `options:` に `token:` か `body_class:` つきで宣言されている」か「機能のコード（`theme/features/`）で読まれている」ことを検査する。`token:` で渡るキーは、`lib/` に名前が出なくなるためである |
+
+- 雛形の `book.yml` の `theme:` 節について、宣言と既定値の正典は `themes/standard/theme.yml` と機能の宣言である。著者が読む説明（コメント）と、キーを載せる場所は、今と同じく直下の `config/book.yml` である。
+- 選ばれたテーマが宣言していないキーが `theme:` 節にあれば、🟡 で知らせる（テーマを替えた後に前のテーマのオプションが残った場合。「このテーマには無い設定です」と、そのテーマのオプションの一覧を示す）。文面と、廃止キー・ほかの節との関係は `theme-contract-spec.md` §3.3。
 
 ### 5.3 値の解決の順
 
@@ -447,7 +460,7 @@ theme:
 
 1. `ConfigKeys` の既定値
 2. 種類の既定値（`BookProfile::PROFILES[book.type]`）
-3. テーマのオプションの既定値（`theme.*` だけ）
+3. テーマのオプションの既定値（`theme.*` だけ）。選ばれたテーマの `tokens:` に、土台のオプションの `token:` と同じ名前があれば、その値を既定値にする（配色のテーマ。`theme-contract-spec.md` §3.2）
 4. 判型のプリセット（今の `apply_page_preset`）
 5. `book.yml` に書いた値
 6. 巻ごとの上書き（今の分冊の仕組み）
@@ -586,7 +599,7 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 
 1. **`BookProfile::PROFILES` には、S5 の時点で `ConfigKeys::KEYS` にあるキーだけを書く。** §2.2 の表の `theme.name`（S6）と、まだ無い判型のプリセット（`page.use: a6_standard`。S8）は、その段階で足す。`book_profile_test.rb` の (1)「表のキーがすべて `ConfigKeys::KEYS` にある」を、最初から通る検査にするためである。(2) の雛形との照合は、種類ごとの雛形ができる S8 で足す。
 2. **`page.layout: fixed` は、S9 までは 🔴 で止める。** 固定レイアウトの経路が無いまま組むと、リフローの段がそのまま走って壊れた本ができる。`TraitCombinationCheck` に「固定レイアウトはまだ組めません」の行を置き、S9 で外す。`book.type: picture_book` も、この行で止まる。
-3. **`page.writing_mode: vertical` は止めない。** S5 で変わるのは綴じの向き（`readingProgression`）と隠しノンブルの左右だけで、本文は横組みのまま組まれる（完了の条件の 4）。本文の縦組みは S8 である。
+3. **`page.writing_mode: vertical` は止めない。** S5 で変わるのは綴じの向き（`readingProgression`）と隠しノンブルの左右だけで、本文は横組みのまま組まれる（完了の条件の 4）。本文の縦組みは S8 である。S6-3 からは、`standard` の `supports.writing_mode: [horizontal]` により §2.5 の `supports:` の検査が 🔴 で止めるので、S8 まで縦書きの本は組めない（`v2-s6-consultation.md` §4.6）。完了の条件の 4 のテストは、`supports.writing_mode: [horizontal, vertical]` を書いた材料のテーマで組む。
 4. **`lint.ruleset` の `novel` は、S5 では `minimal` と同じ中身で置く。** 小説の 4 規則は S8 で足す。名前だけ先に置くのは、`BookProfile` の `novel` の行が指す値を、S5 の時点で有効な値にするためである。
 5. **`notation.web_novel` は、キーと `BuildPlan.features.web_novel` だけを作る。** 読む段は S8 で足す。S5 の間は、`true` にしても何も変わらない。
 6. **`Guards::TraitCombinationCheck` のうち、テーマの `supports:` の行は S6 で足す。** S5 で置くのは、`page.layout: fixed` と `index_glossary.enabled: true` の 🟡 と、上の 2 の 🔴 である（2 が先に当たるので、🟡 が出るのは S9 からになる）。

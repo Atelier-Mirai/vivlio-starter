@@ -173,7 +173,11 @@ stylesheets/
     kindle.css               本文のページの body.vs-kindle の規則（38 規則）
     kindle-preface.css       前書き・後書きだけの body.vs-kindle の規則（1）
     kindle-index.css  kindle-glossary.css  kindle-colophon.css   そのページだけの規則（6・6・10）
-themes/standard/             theme-contract-spec.md §4
+themes/standard/             theme-contract-spec.md §4（S6 で作る）
+  theme.yml
+  simple-header.css  image-header.css   ← parts/ の見出しの 2 枚（theme 層）
+  epub.css  kindle.css                  ← targets/ の、選択子が vs-header-* を含む規則（target 層）
+  images/                               ← stylesheets/images/bundled/
 ```
 
 - `chapter.css`・`appendix.css`・`preface.css`・`postface.css` は無くなる。入口は生成物になり、中身（本文のページに固有の規則）は部品かテーマへ移る。
@@ -194,6 +198,7 @@ themes/standard/             theme-contract-spec.md §4
 
 - 部品の規則が色や書体を必要とするときは、公開する変数（`--book-*`）を読む。値はテーマが入れる。
 - 迷う規則は部品の側に置く。テーマは上の層なので、後から上書きできる。逆（テーマに置いた構造の規則を、別のテーマが持っていない）は、部品が働かなくなる。
+- **S6 で当てる範囲（`v2-s6-consultation.md` §4.10）。** S6 で theme 層へ移すのは、見出しの 2 枚（`parts/simple-header.css`・`parts/image-header.css`）だけとする。部品の色と書体はすでに公開する変数を読んでいて、テーマは変数で変えられる。ほかの飾りの規則（`parts/heading.css`・`prose.css`・`box.css`・`preface.css` などの色・書体・余白）は、組版のテーマが `standard` の 1 つしか無い間は、骨格か飾りかを確かめる相手が無いので部品に残す。`bunko`（S8）を書くときに打ち消しが要った規則を、S8 の中で `standard` へ移す。ファイルごとの表は `theme-contract-spec.md` §4。
 - この線引きを当てるのは、テーマを切り出す段階（S6）である。層に分ける段階（S2）では、今のファイルを部品ごとに分けるところまでを行い、色と飾りの規則も `parts` に置いたままにする。段階を分けるのは、画素の比較で差が出たときに、原因が「層の位置」か「規則の移動」かを切り分けられるようにするためである。
 
 ### 3.3 前書き・後書きを本文の部品にそろえる
@@ -378,6 +383,7 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 - 今の名前を `custom.css` で使っている本には、`vs build` と `vs preflight` が 💡 で、`vs upgrade` で新しい名前に直せることを知らせる（原稿の場所を指す指摘ではないので 💡。`terminal-output-notes.md`）。
 - `vs upgrade` は、`custom.css` の中の今の名前を新しい名前へ置き換える。置き換える行を全部見せてから確認を取り、いいえなら何も変えない。
 - 別名は 2.x の間は残す。対応の表は `lib/vivlio_starter/cli/css/legacy_tokens.rb` に 1 枚で置き、`tokens-legacy.css` と `settings` 層の書き出しと `vs upgrade` の置き換えが、同じ表を読む。
+- **名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** 変えるのは公開する変数・機能の変数・`standard` へ移る見出しの 2 枚の中だけの変数（`--standard-*`）で、vs の内部の変数は 2.0 では変えない（`theme-contract-spec.md` §5.1）。名前を変えた変数は例外なく対応の表に載せる。テストで、「r1 の雛形の CSS で定義されていた変数の名前が、どれも (a) 今も定義されている、(b) 対応の表にある、(c) 消した変数の表にある（`--color-shadow` など）、のどれかである」ことを検査する。
 
 ### 7.3 著者が直した雛形の CSS
 
