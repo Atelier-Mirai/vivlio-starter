@@ -568,6 +568,29 @@ theme:
   5. `index_glossary.enabled: false` の本で、`index scan and build` と `backlink dedup` が段の一覧に出ない。
 - 確かめ方: 1 は S0 との比較。4 は `pdftotext -bbox` でノンブルの座標を読む。5 は `--log=debug` の段の一覧。
 
+#### S5 の小段階と、段階の中で決めること（2026-11-16）
+
+S5 は五つの小段階に分ける。どの小段階も、完了のコミットは「`book.type` の無い本書が、その時点の基準（r2）と同じ出力になる」ものだけにする（`v2-migration-plan.md` §4.1）。小段階ごとの確かめは `rake test` と下の表の「確かめ」で行い、四つの出力先を組んで r2 と比べるのは、S5-4 の後と S5 の最後の 2 回とする。
+
+| 小段階 | 作るもの | 確かめ |
+| :--- | :--- | :--- |
+| S5-1 設定のキーと解決の順 | §5.1 のキー（`theme.name` を除く）を `ConfigKeys::KEYS` に足す。`BookProfile`（§2.2）。`Common.load_config` の解決の順（§5.3 の 1・2・4〜6）。`output.epub.layout`・`output.kindle.layout` の廃止の案内。`book_profile_test.rb`・`book_type_usage_test.rb` | 本書の `Common::CONFIG` を前後で書き出して比べ、足したキーのほかに差が無い |
+| S5-2 `BookTraits` と、横書き・左綴じの前提 | `BookTraits`・`Common.traits`（§2.4）。`vivliostyle_config_writer.rb` の `readingProgression` と `nombre_stamper.rb` の左右。`Guards::TraitCombinationCheck`（§2.5） | 完了の条件の 4（`page.writing_mode: vertical` の最小の本） |
+| S5-3 `BuildPlan` と段の表 | `build/plan.rb`（§3.2）。`full_mode_step_table` の条件の列を `plan` だけから決める。ハンドラの中で設定を見て戻る段を、条件の列へ移す（§3.3 の表のうち、今ある段の行） | 完了の条件の 3・5。本書の `--log=debug` の段の一覧が前後で同じ |
+| S5-4 前処理・後処理の並びを表にする | `MarkdownPreprocessor` の `STEPS`（§3.4）と、後処理の同じ形の表 | 本書の契約 HTML（`.cache/vs/build/html/` の全部の HTML）が、前後でバイト単位で同じ。その後、四つの出力先を組んで r2 と比べる |
+| S5-5 `lint.ruleset` と `metrics.use: none` | `Lint::RULESETS`（§6）と、`vs metrics` の `none` | 本書の `vs lint` の全部の指摘を前後で突き合わせ、差が無い（`technical` は今の一組）。`metrics.use: none` の本で、分量の判定の行だけが出ない |
+
+S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、`vs new --type` と種類ごとの雛形（§2.6。S8）、OPF の `page-progression-direction` と `@page` の左右（S8）、固定レイアウトの経路（§3.5。S9）、小説投稿サイトの記法の段と小説の lint の 4 規則（S8）。
+
+仕様に書かれていないので、S5 では次のように決める。
+
+1. **`BookProfile::PROFILES` には、S5 の時点で `ConfigKeys::KEYS` にあるキーだけを書く。** §2.2 の表の `theme.name`（S6）と、まだ無い判型のプリセット（`page.use: a6_standard`。S8）は、その段階で足す。`book_profile_test.rb` の (1)「表のキーがすべて `ConfigKeys::KEYS` にある」を、最初から通る検査にするためである。(2) の雛形との照合は、種類ごとの雛形ができる S8 で足す。
+2. **`page.layout: fixed` は、S9 までは 🔴 で止める。** 固定レイアウトの経路が無いまま組むと、リフローの段がそのまま走って壊れた本ができる。`TraitCombinationCheck` に「固定レイアウトはまだ組めません」の行を置き、S9 で外す。`book.type: picture_book` も、この行で止まる。
+3. **`page.writing_mode: vertical` は止めない。** S5 で変わるのは綴じの向き（`readingProgression`）と隠しノンブルの左右だけで、本文は横組みのまま組まれる（完了の条件の 4）。本文の縦組みは S8 である。
+4. **`lint.ruleset` の `novel` は、S5 では `minimal` と同じ中身で置く。** 小説の 4 規則は S8 で足す。名前だけ先に置くのは、`BookProfile` の `novel` の行が指す値を、S5 の時点で有効な値にするためである。
+5. **`notation.web_novel` は、キーと `BuildPlan.features.web_novel` だけを作る。** 読む段は S8 で足す。S5 の間は、`true` にしても何も変わらない。
+6. **`Guards::TraitCombinationCheck` のうち、テーマの `supports:` の行は S6 で足す。** S5 で置くのは、`page.layout: fixed` と `index_glossary.enabled: true` の 🟡 と、上の 2 の 🔴 である（2 が先に当たるので、🟡 が出るのは S9 からになる）。
+
 ### S8 縦書きの小説（本書に関わる部分）
 
 - 作るもの: §2.4 の表の残り（OPF・`@page`）、§7.1 の D 型・縦中横・投稿サイトの記法、`scaffolds/novel/`、`lint.ruleset: novel` の 4 規則。
