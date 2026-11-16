@@ -3,7 +3,7 @@
 > 作成日: 2026-07-12
 > ステータス: **検討メモ（見送り・RC 後に再検討）** — 調査済み・実装せず。着想と調査結果を将来のために記録する
 > 対象: `kindle.layout: fixed` — A5 でビルド済みの PDF をページ画像化し、固定レイアウト EPUB→KPF として Kindle へ届ける案
-> 関連: `config/book.yml`（`output.kindle.layout` — 現状 `reflowable` のみ・`fixed` は将来対応として予約済み）, `lib/vivlio_starter/cli/build/epub_builder.rb:352`（`validate_epub_layout_setting!`）, `lib/vivlio_starter/cli/pdf.rb:62`（`vs pdf:rasterize`）, `kindle-inline-math-textify-spec.md`（先行する軽量対策）, `kindle-css-compatibility-notes.md`
+> 関連: `config/book.yml`（`output.kindle.layout` — 現状 `reflowable` のみ・`fixed` は将来対応として予約済み）, `lib/vivlio_starter/cli/build/epub/config.rb`（`validate_epub_layout_setting!`）, `lib/vivlio_starter/cli/pdf.rb:62`（`vs pdf:rasterize`）, `kindle-inline-math-textify-spec.md`（先行する軽量対策）, `kindle-css-compatibility-notes.md`
 
 ## 0. 着想と動機
 
@@ -17,7 +17,7 @@ Kindle(KFX) の CSS 対応は極めて古く、`var()`/`::before`/grid/数式サ
 - **固定レイアウト EPUB→KPF**: 画像ベースの fixed-layout はマンガの標準パイプラインそのもので、e-ink Kindle 端末でも確実に動く（日本のマンガが実証済み）。EPUB 側は `rendition:layout: pre-paginated`＋`original-resolution` 等のメタデータと 1 ページ 1 画像の spine 構成。`kindlepreviewer` CLI での KPF 変換は現行機構を流用できる。
 - **論理目次**: fixed でも nav（目次）はページへのリンクとして機能する。既存の目次抽出（章→ページ対応）を流用可能。
 
-実装量は中程度（EpubBuilder に第 3 フレーバを足すイメージ）。技術リスクは低い。
+実装量は中程度（出力先の宣言 `build/targets/` に固定レイアウトの並びを足すイメージ。`v2-architecture-spec.md` §4.2）。技術リスクは低い。
 
 ## 2. しかし端末サイズが根本的に合わない（見送りの主因）
 
@@ -58,7 +58,7 @@ Amazon には教科書向けに Kindle Textbook Creator による **Print Replic
 ## 7. 着手時の実装スケッチ（将来のためのメモ）
 
 1. ラスタライズ仕様の決定: DPI（e-ink 実効解像度 300ppi 前後に対し 1236×1648px 級で十分か）、グレースケール化の可否（カラー端末増加とのトレードオフ）、JPEG 品質 vs 文字にじみ（文字主体なら PNG/高品質 JPEG の比較検証が必要）。
-2. `EpubBuilder` に fixed フレーバを追加: 1 頁 1 画像の XHTML＋`rendition:layout: pre-paginated`＋`original-resolution`。`validate_epub_layout_setting!` の警告を解除。
+2. 出力先の宣言に固定レイアウトの並びを追加: 1 頁 1 画像の XHTML＋`rendition:layout: pre-paginated`＋`original-resolution`。`validate_epub_layout_setting!` の警告を解除。
 3. 目次: 章開始ページへの nav リンク生成（既存の目次抽出を流用）。
 4. 検証: Kindle Previewer 3 で 6″/7″/10.2″ の各プレビュー＋ファイルサイズ実測（配信料試算を実数で更新）。
 5. ドキュメント: 「どういう本に向くか」（§6）を著者向けに明記。既定は reflowable のまま変えない。

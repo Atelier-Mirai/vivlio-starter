@@ -62,7 +62,7 @@ end
 def entries(dir) = Dir.glob('**/*', File::FNM_DOTMATCH, base: dir).select { File.file?(File.join(dir, it)) }.sort
 
 # 生成した画像の名前（images/_epub_assets/<16 桁>.jpg など）は、元の画像の絶対パスと更新日時から
-# 作られる（EpubBuilder）。写しのディレクトリが違えば、中身が同じでも名前が変わる。
+# 作られる（Build::Epub::Images・Transforms::Kindle::TranscodeWebpImages）。写しのディレクトリが違えば、中身が同じでも名前が変わる。
 # そこで、名前を中身のハッシュに置き換えてから比べる。中身が変われば名前も変わるので、
 # 画像の違いは「なくなった・増えた」として数えられる。
 GENERATED_ASSET = %r{/_epub_assets/[^/]+\z}

@@ -91,7 +91,7 @@ module VivlioStarter
           assert_includes css, 'body.postface h3::before {'
           assert_includes css, 'content: "" !important;'
           # url() は :root のカスタムプロパティ側に置く（--h3-marker / --subtitle-wave-image と同型）。
-          # Kindle の strip_webp_inline_styles_for_kindle! が :root の 1 行を落とせば無害化される。
+          # Kindle の Transforms::Kindle::StripWebpInlineStyles が :root の 1 行を落とせば無害化される。
           assert_includes css,
                           %(--preface-h3-marker-image: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-preface-h3.webp") !important;)
           assert_includes css, 'background-image: var(--preface-h3-marker-image) !important;'

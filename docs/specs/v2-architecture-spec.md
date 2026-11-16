@@ -276,7 +276,7 @@ OutputTarget = Data.define(
 | 出力先 | 変換の並び | CSS の形 | 本全体の段 | 画像 | 動画 | 梱包 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `pdf` | なし（Type 3 対策は L3 の段のまま） | 層あり | なし | そのまま | サムネイルに動画へのリンク | Vivliostyle → 結合 → しおり |
-| `print_pdf` | `pdf` と同じ | 層あり | なし | CMYK へ変換 | サムネイルと QR コード | `pdf` から導出するか、組み直す |
+| `print_pdf` | `pdf` と同じ | 層あり | なし | そのまま（本文の画像の CMYK への変換は未実装。表紙だけ変換する） | サムネイルと QR コード | `pdf` から導出するか、組み直す |
 | `epub`（リフロー） | 共通の 10 段 | 平ら | `AuthorPriority` → `InversionReport` | WebP | `<video>` と、再生できない読者向けの代わりの表示 | Vivliostyle の EPUB |
 | `kindle`（リフロー） | 共通の 10 段 ＋ Kindle の 17 段 | 平ら・リテラル | `AuthorPriority` → `VariantGlyphFonts` → `InversionReport` | JPEG・PNG（SVG と WebP は同梱しない） | サムネイルに動画へのリンク | Vivliostyle の EPUB → KPF |
 | `epub`（固定） | 固定レイアウト用 | 平ら | S9 で決める | JPEG・PNG・WebP | `<video>` | vs が梱包 |
@@ -296,20 +296,23 @@ lib/vivlio_starter/cli/build/
   output_target.rb                 型と登録表
   targets/pdf.rb print_pdf.rb epub.rb kindle.rb   各出力先の宣言
   transforms/
+    context.rb                     段へ渡す文脈（出力先とワークスペース）と名前空間
     runner.rb                      変換の並びを HTML に当てる
-    common/*.rb                    両フレーバ共通の 10 段（1 段 1 ファイル）
+    dom.rb                         段が共用する、要素の属性の小さな操作
+    shared/*.rb                    両フレーバ共通の 10 段（1 段 1 ファイル）
     kindle/*.rb                    Kindle 専用の 17 段（1 段 1 ファイル）
     fixed/*.rb                     固定レイアウト用（S9 で足す）
   finalizers/
+    book.rb                        本全体の段へ渡す「本」（ページの並びと平らな CSS の表）と名前空間
     author_priority.rb             custom.css の宣言を、平らな CSS でも PDF と同じに勝たせる（CSS と style 属性）
     variant_glyph_fonts.rb         異体字セレクタ付きの字を 1 字書体で出す（Kindle だけ）
     inversion_report.rb            層を外すと勝ち負けが変わる組の報告（--log=debug のときだけ）
   epub/
     workspace.rb                   消費者のディレクトリ・素材の複製（localize）・参照の切れた画像の回収
-    stylesheets.rb                 平らな CSS を書き、HTML の link を付け替える（css_form。今の bundle_flat_css_for_epub!）
+    stylesheets.rb                 平らな CSS を書き、HTML の link を付け替える（css_form）
     images.rb                      WebP への変換・著者の SVG の派生・ラスター化
-    config.rb                      EPUB 用の vivliostyle.config.js
-    opf.rb                         content.opf の書き換え（id・識別子・綴じの向き）
+    config.rb                      EPUB 用の entries.epub.js と vivliostyle.config.epub.js
+    opf.rb                         content.opf と nav の書き換え（id・識別子・綴じの向き）
     kpf.rb                         KPF への変換と記録の要約
     fixed_package.rb               固定レイアウトの EPUB の梱包（S9 で足す）
 ```
@@ -584,3 +587,50 @@ theme:
 | 3 | `output.pdf.techbook` の名前を変えるか | 決定済み（2026-11-14） | 変えない。働きは種類に依らず同じで、ほかの設定との衝突も無い |
 | 4 | 絵本の原稿の形（1 ファイルに複数ページか・1 ファイル 1 ページか）と、ページの中の文字の置き方の記法 | S9 の仕様 | §3.5 は L1 が「ページの並び」を返すことだけを決めた |
 | 5 | 小説の分量の基準を `vs metrics` に持つか | 2.0 の後 | `metrics.use: none` で判定を外す |
+
+## 10. 実装記録
+
+### 10.1 S4 の第一段階: メソッドをファイルへ移す（2026-11-16）
+
+§4.3 の (1)。`build/epub_builder.rb`（3,771 行・176 メソッド・定数 55 個）を無くし、§4.3 のファイルへ移した。メソッドの中身と呼び出しの順は変えていない。
+
+#### 作ったもの
+
+| ファイル | 中身 |
+| :--- | :--- |
+| `build/output_target.rb` | `OutputTarget`（§4.1 の 9 項目）・`OutputTarget::Assets`（画像の形式・SVG を同梱できるか）・登録表（`register`・`for`） |
+| `build/targets/pdf.rb`・`print_pdf.rb`・`epub.rb`・`kindle.rb` | 四つの出力先の宣言。1.x の `generate_epub_entries!` にあった「なぜこの順か」の注は、宣言の並びの各行へ移した |
+| `build/transforms/context.rb`・`runner.rb`・`dom.rb` | `Transforms::Context`（出力先とワークスペース）・`Transforms::Runner.apply!`・`Transforms::Dom`（`add_class`・`add_inline_style`・`mark_body!`） |
+| `build/transforms/shared/*.rb`（10 本）・`kindle/*.rb`（17 本） | 変換の段。1 段 1 モジュールで、入口は `call(html_files, ctx)`。その段だけが使う補助と定数も同じファイルに置いた |
+| `build/finalizers/book.rb`・`author_priority.rb`・`variant_glyph_fonts.rb`・`inversion_report.rb` | 本全体の段。入口は `call(book, ctx)` で、`Finalizers::Book`（ページの並びと平らな CSS の表）を受けて返す |
+| `build/epub/workspace.rb`・`stylesheets.rb`・`images.rb`・`config.rb`・`opf.rb`・`kpf.rb` | ワークスペースと素材・平らな CSS・画像の変換・entries と config・OPF・KPF |
+
+- `EpubFlow` は、出力先の宣言（`OutputTarget.for(:epub)`・`for(:kindle)`）を受けて流れを組む。HTML の書き換え（平らな CSS → `transforms` → `finalizers` → entries）は `EpubFlow.prepare_pages!(target, entries)` にまとめた（1.x の `generate_epub_entries!`）。
+- いちばん大きいファイルは `epub/workspace.rb` の 389 行で、どのファイルも 600 行を超えない。`_for_epub!`・`_for_kindle!` の付いた名前は `lib/` に残っていない（S4 の完了の条件の 1・2）。
+- 移すのは使い捨てのスクリプトで機械的に行った。メソッドと定数を 231 個のかたまりに分け、参照の表を作り、割り当て表のとおりにファイルへ書き出す。別のモジュールへ移ったメソッド・定数への参照には、モジュールの名前を前に付けた（`add_class(…)` → `Transforms::Dom.add_class(…)`）。字下げは変えていないので、差分はこの書き換えと入口の `def` の行だけである。
+
+#### 仕様と違えたこと
+
+1. **両方で走る段の名前空間は `Transforms::Shared`（`transforms/shared/`）にした。** §4.3 は `common/` としていた。`Transforms::Common` を作ると、`Build::Transforms` の下で書いた `Common.log_info` が `CLI::Common` でなく `Transforms::Common` を指す。ログと設定の窓口（`Common`）は、ほぼ全部の段が使う。
+2. **流れの順は今のままで、§4.3 の「出力先の流れの順」の 1 のうち素材の段は、変換の後に走る。** ワークスペースへ HTML を置く段（`stage_consumer_htmls!`）だけが最初で、素材の複製（`localize_assets!`）・著者の SVG の派生・WebP への変換・参照の切れた画像の回収は、変換と本全体の段の後である。回収は差し替えを全部終えた後でなければならず、派生と WebP への変換は複製の後でなければならない（`EpubFlow#build_target` の注）。第一段階は順を変えない決まりなので、動かしていない。
+3. **`MarkBody`（`vs-epub`）と平らな CSS の段の順だけ、入れ替えた。** 1.x は `mark_body_for_epub!` → `bundle_flat_css_for_epub!` の順だった。§4.3 の順（平らな CSS が 2、変換が 3）に合わせて、平らな CSS を先にした。平らな CSS の段は `link` の `href` を文字列の置換で付け替えるだけで、body のクラスを見ない。出力はバイト単位で同じだった（下の「確かめた結果」）。
+4. **`body_classes` は、変換の段（`Shared::MarkBody`・`Kindle::MarkBody`）が付けるクラスを宣言に写したものにした。** `vs-kindle` を付ける位置（`StripWebpInlineStyles` の後）を変えないためである。宣言と段の食い違いは `output_target_test.rb` が確かめる。
+5. **入稿用 PDF の `assets` は「そのまま」にした。** §4.2 は「CMYK へ変換」としていたが、本文の画像の CMYK への変換は実装されていない（`CmykConverter` を呼ぶのは表紙だけ）。宣言は今の振る舞いを書き、§4.2 の表を直した。
+6. **`OutputTarget.for` は `traits` を受けない。** §4.1 は `OutputTarget.for(id, traits)` としている。`BookTraits` は S5 で作るので、S5 で引数を足す。
+7. **`entries.epub.js` を書くメソッドは `epub/config.rb` に置いた。** §4.3 の一覧に entries の置き場は無い。`vivliostyle.config.epub.js` が読むファイルなので、config と同じモジュール（`Epub::Config`）にした。`excluded_basename?` だけは、回収（`Epub::Workspace`）も使うので `Epub::Workspace` にある（`Epub::Config` → `Epub::Workspace` の一方向にするため）。
+8. **`PostProcessIndexGlossary` は、ほかのページも読む。** 索引と用語集のページを書き換えるときに、全部のページの id と章の題を読む。「変換は 1 ページだけを見る」（§4.1）の例外で、扱いは第二段階で決める。
+
+#### 確かめた結果
+
+比べた結果は、基準のディレクトリの `r2/check/s4-1/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 本書（B1）を四つの出力先で組み、基準 r2 と比べる | 閲覧用 PDF 284 ページ・入稿用 PDF 282 ページとも、違うページ 0。EPUB（339 ファイル）・Kindle 用 EPUB（261 ファイル）とも違い 0 件。展開した HTML・CSS・OPF（EPUB 46 件・Kindle 45 件）はバイト単位で同じ（OPF の更新の日時と、写しごとに変わる画像の名前を除く） |
+| Kindle の変換 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0。中間生成物は 36 件 |
+| `custom.css` に 2 行を足した写し（`r2/src/custom-f/`）を、分割の前（`56570316`）と後のコードで組む | EPUB・Kindle 用 EPUB とも違い 0 件で、HTML・CSS・OPF はバイト単位で同じ。平らな CSS に `!important` が付いており、`AuthorPriority` が書き直す本での比べになっている |
+| `rake test` | 4,353 件・失敗 0（分割の前は 4,346 件。増えた 7 件は `output_target_test.rb`） |
+
+- テストの呼び出しは、移った先の名前へ付け替えた（期待値は変えていない）。変換の段を 1 つだけ当てるテストは、`test_helper.rb` の `apply_transform(段, html_files)` を通す。`Transforms::Runner.apply!` を呼ぶ補助で、第二段階で段の引数が `doc` に変わっても、テストの書き方は変わらない。
+- テストのファイルの名前（`epub_builder_test.rb`・`epub_builder_sanitize_test.rb`）は変えていない。
+- `stylesheets/` の CSS のコメントに `EpubBuilder` の名前が 7 ファイルに残っている。平らな CSS に写る字を変えないために、第一段階では触っていない。

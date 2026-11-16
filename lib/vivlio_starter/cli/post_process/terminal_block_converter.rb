@@ -8,7 +8,7 @@
 #   VFM 出力を、本来の端末枠 <div class="terminal"><pre>…</pre></div> へ戻す。
 #
 # なぜ div で包むのか:
-#   EpubBuilder::ADMONITION_LABELS の Kindle 用ラベル注入が doc.css("div.terminal")
+#   Transforms::Kindle::DecorateAdmonitions::ADMONITION_LABELS の Kindle 用ラベル注入が doc.css("div.terminal")
 #   に依存し、かつ <p class="vs-adm-label"> を <pre> の内側には置けない。div で
 #   包めばラベルは <pre> の兄弟として先頭に入り、既存の Kindle 経路がそのまま生きる。
 #

@@ -122,7 +122,7 @@ module VivlioStarter
         write_book_yml(book: { 'main_title' => 'T' })
 
         pdf_config  = Writer.config_content(entries_basename: 'entries.sections.js', output: 'x.pdf')
-        epub_config = Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: '.')
+        epub_config = Build::Epub::Config.generate_epub_config!(flavor: :epub, dir: '.')
 
         assert_includes pdf_config, "workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',"
         assert_includes File.read(epub_config), "workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_EPUB_DIR}',"
@@ -136,7 +136,7 @@ module VivlioStarter
         write_book_yml(book: { 'main_title' => 'T' })
 
         pdf_config  = Writer.config_content(entries_basename: 'entries.sections.js', output: 'x.pdf')
-        epub_config = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: '.'))
+        epub_config = File.read(Build::Epub::Config.generate_epub_config!(flavor: :epub, dir: '.'))
 
         assert_match(/copyAsset: \{ excludeFileExtensions: \['css', 'css\.map', 'png', 'jpg', .*'woff2'\] \},/, pdf_config)
         refute_includes epub_config, 'copyAsset'

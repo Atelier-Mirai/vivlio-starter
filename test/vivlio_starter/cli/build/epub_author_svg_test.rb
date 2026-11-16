@@ -4,7 +4,7 @@
 # Test: build/epub_author_svg_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder.stage_author_svg_for_epub!
+#   Build::Epub::Images.stage_author_svgs!
 #   （著者の SVG 図版を、書体を抱かせた派生へ差し替える・
 #     `type3-font-embedding-notes.md` §9.6）
 #
@@ -26,12 +26,11 @@ require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/pre_process'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubAuthorSvgTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       # 同梱書体の実体（サブセットを実際に作るために要る）。
@@ -70,7 +69,7 @@ module VivlioStarter
           write_svg('images/22-ext/coords.svg', FIGURE)
           html = stage_html('images/22-ext/coords.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
 
           staged = staged_src(File.read(html))
 
@@ -89,7 +88,7 @@ module VivlioStarter
           write_svg('images/22-ext/coords.svg', FIGURE)
           html = stage_html('images/22-ext/coords.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :kindle)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :kindle)
 
           staged = staged_src(File.read(html))
 
@@ -106,7 +105,7 @@ module VivlioStarter
           write_svg('images/22-ext/coords.svg', FIGURE)
           html = stage_html('images/22-ext/coords.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
 
           refute_path_exists 'epub/images/22-ext/coords.svg', 'パッケージに元 SVG が残っている'
           assert_equal FIGURE, File.read('images/22-ext/coords.svg'), '素材が書き換えられている'
@@ -120,7 +119,7 @@ module VivlioStarter
                     %(<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>))
           html = stage_html('images/22-ext/shapes.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
 
           assert_equal 'images/22-ext/shapes.svg', staged_src(File.read(html))
           assert_path_exists 'epub/images/22-ext/shapes.svg', 'パッケージから落としてはいけない'
@@ -134,7 +133,7 @@ module VivlioStarter
           write_svg('images/22-ext/logo.svg', SHAPES)
           html = stage_html('images/22-ext/logo.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :kindle)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :kindle)
 
           staged = staged_src(File.read(html))
 
@@ -150,9 +149,9 @@ module VivlioStarter
           write_svg('images/22-ext/coords.svg', FIGURE)
           html = stage_html('images/22-ext/coords.svg')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
           first = staged_src(File.read(html))
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
 
           assert_equal first, staged_src(File.read(html))
           assert_equal 1, Dir.glob('epub/images/_epub_assets/*').size
@@ -168,7 +167,7 @@ module VivlioStarter
           FileUtils.mkdir_p('epub')
           File.write(html, %(<html><body><img src="#{placeholder}" alt="t"></body></html>), encoding: 'utf-8')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :kindle)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :kindle)
 
           staged = staged_src(File.read(html))
           assert_match %r{\Aimages/_epub_assets/[0-9a-f]{16}\.(png|jpg)\z}, staged
@@ -185,7 +184,7 @@ module VivlioStarter
           FileUtils.mkdir_p('epub')
           File.write(html, %(<html><body><img src="#{placeholder}" alt="t"></body></html>), encoding: 'utf-8')
 
-          Builder.stage_author_svg_for_epub!([html], flavor: :epub)
+          Build::Epub::Images.stage_author_svgs!([html], flavor: :epub)
 
           assert_equal placeholder, staged_src(File.read(html))
         end

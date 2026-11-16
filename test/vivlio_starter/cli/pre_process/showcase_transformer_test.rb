@@ -111,7 +111,7 @@ class ShowcaseTransformerTest < Minitest::Test
       result = transform(block, tools: shot)
 
       assert_equal [:png], shot.formats
-      # ラスターの参照は data-vs-raster に明示される（EpubBuilder に拡張子を推測させない）
+      # ラスターの参照は data-vs-raster に明示される（LocalizeShowcaseImages に拡張子を推測させない）
       assert_match(%r{data-vs-raster="images/showcase/10-intro/[0-9a-f]{16}\.png"}, result)
       assert_equal 1, Dir.glob(File.join(showcase_dir, '*.png')).size
     end

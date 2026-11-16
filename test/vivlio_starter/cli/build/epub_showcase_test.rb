@@ -4,7 +4,7 @@
 # Test: build/epub_showcase_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder の図解注釈（showcase）ローカライズ
+#   Build::Transforms::Shared::LocalizeShowcaseImages の図解注釈（showcase）ローカライズ
 #   （explanatory-diagram-spec.md §7.9）
 #
 # 検証内容:
@@ -20,12 +20,11 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/common'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubShowcaseTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       def setup
@@ -45,7 +44,7 @@ module VivlioStarter
           make_showcase_assets('10-intro', 'ab12cd34ef567890', ext: 'png')
           write_html('10-intro.html', 'ab12cd34ef567890', ext: 'png')
 
-          Builder.localize_showcase_images!(['10-intro.html'])
+          apply_transform(Build::Transforms::Shared::LocalizeShowcaseImages, ['10-intro.html'])
           updated = File.read('10-intro.html')
 
           assert_includes updated, 'images/showcase/10-intro/ab12cd34ef567890.png'
@@ -62,7 +61,7 @@ module VivlioStarter
           make_showcase_assets('10-intro', 'ab12cd34ef567890', ext: 'jpg')
           write_html('10-intro.html', 'ab12cd34ef567890', ext: 'jpg')
 
-          Builder.localize_showcase_images!(['10-intro.html'])
+          apply_transform(Build::Transforms::Shared::LocalizeShowcaseImages, ['10-intro.html'])
           updated = File.read('10-intro.html')
 
           assert_includes updated, 'images/showcase/10-intro/ab12cd34ef567890.jpg'
@@ -75,7 +74,7 @@ module VivlioStarter
           make_showcase_assets('10-intro', 'ab12cd34ef567890', ext: nil)
           write_html('10-intro.html', 'ab12cd34ef567890', ext: 'png')
 
-          Builder.localize_showcase_images!(['10-intro.html'])
+          apply_transform(Build::Transforms::Shared::LocalizeShowcaseImages, ['10-intro.html'])
           updated = File.read('10-intro.html')
 
           assert_includes updated, 'ab12cd34ef567890.svg'
@@ -93,7 +92,7 @@ module VivlioStarter
           HTML
           File.write('10-intro.html', html, encoding: 'utf-8')
 
-          Builder.localize_showcase_images!(['10-intro.html'])
+          apply_transform(Build::Transforms::Shared::LocalizeShowcaseImages, ['10-intro.html'])
           updated = File.read('10-intro.html')
 
           assert_includes updated, 'images/math/10-intro/deadbeef.svg'
@@ -104,10 +103,10 @@ module VivlioStarter
       # 合成 SVG は元画像を base64 で内包しており Kindle が非対応。参照は PNG へ移るため
       # 未参照になり、両フレーバとも同梱しない。対の PNG と他の SVG は同梱を続ける。
       def test_should_exclude_showcase_svg_from_localized_assets
-        refute Builder.localized_image?('showcase/10-intro/ab12.svg', :epub)
-        refute Builder.localized_image?('showcase/10-intro/ab12.svg', :kindle)
-        assert Builder.localized_image?('showcase/10-intro/ab12.png', :epub)
-        assert Builder.localized_image?('math/10-intro/deadbeef.svg', :epub)
+        refute Build::Epub::Workspace.localized_image?('showcase/10-intro/ab12.svg', :epub)
+        refute Build::Epub::Workspace.localized_image?('showcase/10-intro/ab12.svg', :kindle)
+        assert Build::Epub::Workspace.localized_image?('showcase/10-intro/ab12.png', :epub)
+        assert Build::Epub::Workspace.localized_image?('math/10-intro/deadbeef.svg', :epub)
       end
 
       # mermaid 図も data-vs-raster に従い SVG → PNG へ差し替える（mermaid-diagram-spec §4.4）。
@@ -120,7 +119,7 @@ module VivlioStarter
                                        %(alt="graph LR"></figure></body></html>),
                      encoding: 'utf-8')
 
-          Builder.localize_showcase_images!(['10-intro.html'])
+          apply_transform(Build::Transforms::Shared::LocalizeShowcaseImages, ['10-intro.html'])
           updated = File.read('10-intro.html')
 
           assert_includes updated, 'images/mermaid/10-intro/beef1234beef5678.png'
@@ -132,9 +131,9 @@ module VivlioStarter
 
       # mermaid の SVG も EPUB へは同梱しない（参照は PNG へ移り未参照になる）。対の PNG は残す。
       def test_should_exclude_mermaid_svg_from_localized_assets
-        refute Builder.localized_image?('mermaid/10-intro/beef.svg', :epub)
-        refute Builder.localized_image?('mermaid/10-intro/beef.svg', :kindle)
-        assert Builder.localized_image?('mermaid/10-intro/beef.png', :epub)
+        refute Build::Epub::Workspace.localized_image?('mermaid/10-intro/beef.svg', :epub)
+        refute Build::Epub::Workspace.localized_image?('mermaid/10-intro/beef.svg', :kindle)
+        assert Build::Epub::Workspace.localized_image?('mermaid/10-intro/beef.png', :epub)
       end
 
       private

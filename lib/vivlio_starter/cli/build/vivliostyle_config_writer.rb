@@ -21,13 +21,13 @@
 #     → entries は config と同居させ './entries.<name>.js' で参照する。
 #   - PDF 消費者は entryContext を使わない（E1: dev サーバの 404 が SUCCESS で
 #     完走し様式欠落 PDF が黙って生まれるため、この経路は封じる）。
-#   - workspaceDir は PDF 枝の専用ディレクトリを指す。EPUB 枝（EpubBuilder）とは
+#   - workspaceDir は PDF 枝の専用ディレクトリを指す。EPUB 枝（Epub::Config）とは
 #     別の兄弟 dir で、枝を並列に走らせても踏み合わない
 #     （build-target-parallelization-spec.md §3.1）。
 #   - single-doc（-d）は生成 config と併用不可（E5）。パイプラインでは使わない。
 #
 # メタデータ解決（title/author/language/size）は本モジュールに集約し、
-# EPUB config（EpubBuilder.generate_epub_config!・P3-4 §2.6）と共用する。
+# EPUB config（Epub::Config.generate_epub_config!・P3-4 §2.6）と共用する。
 # かつて本モジュールが全文生成していたルートの vivliostyle.config.js は、
 # 手動フロー（vs entries → vs pdf）の実体消滅に伴い撤去した
 # （vivlioverso-manual-flow-removal-spec.md）。
@@ -93,8 +93,8 @@ module VivlioStarter
         end
 
         # config 全文を組み立てる。メタデータの解決（resolve_title/author/language・
-        # EpubBuilder.resolve_page_size）は EPUB config（P3-4 §2.6 で
-        # EpubBuilder.generate_epub_config! が本モジュールのリゾルバを呼ぶ）と共通。
+        # Epub::Config.resolve_page_size）は EPUB config（P3-4 §2.6 で
+        # Epub::Config.generate_epub_config! が本モジュールのリゾルバを呼ぶ）と共通。
         def config_content(entries_basename:, output:)
           # JS 単一引用符文字列向けエスケープ。ブロック形で返すことで gsub の置換文字列
           # 内バックリファレンス（\' = 後方一致）解釈を避け、\ と ' を確実に \ で退避する。
@@ -110,7 +110,7 @@ module VivlioStarter
               title: '#{esc.call(resolve_title)}',
               author: '#{esc.call(resolve_author)}',
               language: '#{esc.call(resolve_language)}',
-              size: '#{esc.call(EpubBuilder.resolve_page_size(Common::CONFIG))}',
+              size: '#{esc.call(Epub::Config.resolve_page_size(Common::CONFIG))}',
               readingProgression: 'ltr',
               workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',
               entry: entries,

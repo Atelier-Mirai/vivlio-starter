@@ -4,7 +4,7 @@
 # Test: epub_builder_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder（lib/vivlio_starter/cli/build/epub_builder.rb）
+#   Build::Epub の各モジュールと Build::Transforms の段（lib/vivlio_starter/cli/build/epub/・transforms/）
 #   EpubCommands（lib/vivlio_starter/cli/epub.rb）
 #
 # 検証内容:
@@ -23,7 +23,7 @@ require 'vivlio_starter/cli/epub'
 module VivlioStarter
   module CLI
     # ================================================================
-    # EpubBuilder のユニットテスト
+    # EPUB の枝（Build::Epub・Build::Transforms）のユニットテスト
     # ================================================================
     class EpubBuilderTest < Minitest::Test
       def setup
@@ -59,25 +59,25 @@ module VivlioStarter
 
       # 目次（_toc）が EPUB entries から除外されることを確認
       def test_excluded_basename_toc
-        assert Build::EpubBuilder.excluded_basename?('_toc.html'),
+        assert Build::Epub::Workspace.excluded_basename?('_toc.html'),
                '_toc.html は EPUB から除外されるべき'
       end
 
       # 通常の章は除外されないことを確認
       def test_excluded_basename_normal_chapter
-        refute Build::EpubBuilder.excluded_basename?('01-intro.html'),
+        refute Build::Epub::Workspace.excluded_basename?('01-intro.html'),
                '通常の章は除外されないべき'
       end
 
       # 奥付は除外されないことを確認
       def test_excluded_basename_colophon
-        refute Build::EpubBuilder.excluded_basename?('_colophon.html'),
+        refute Build::Epub::Workspace.excluded_basename?('_colophon.html'),
                '奥付は EPUB に含めるべき'
       end
 
       # 本文章（番号 1..89）の h1（扉絵）・h2（節絵）が合成画像 <img> へ置換され、
       # 見出しテキストが alt に格納されることを確認。render は librsvg/ImageMagick と実画像に
-      # 依存するため、ここではスタブして EpubBuilder の注入ロジックを検証する。
+      # 依存するため、ここではスタブして InjectHeadingImages の注入ロジックを検証する。
       def test_inject_heading_images_rewrites_chapter_and_section_headings
         File.write('10-spring.html', <<~HTML)
           <!DOCTYPE html><html><head><title>春</title></head><body>
@@ -98,7 +98,7 @@ module VivlioStarter
         context = heading_context(flavor: :kindle)
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::EpubBuilder.inject_heading_images_into_file!('10-spring.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('10-spring.html', context)
         end
 
         html = File.read('10-spring.html')
@@ -134,9 +134,9 @@ module VivlioStarter
 
         context = heading_context(flavor: :kindle)
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::EpubBuilder.inject_heading_images_into_file!('11-summer.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('11-summer.html', context)
           first = File.read('11-summer.html')
-          Build::EpubBuilder.inject_heading_images_into_file!('11-summer.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('11-summer.html', context)
           second = File.read('11-summer.html')
 
           assert_equal first, second, '2 回目の注入で HTML は変化しない'
@@ -158,7 +158,7 @@ module VivlioStarter
 
         context = heading_context(flavor: :kindle)
         Build::HeadingImageComposer.stub(:render, nil) do
-          Build::EpubBuilder.inject_heading_images_into_file!('12-autumn.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('12-autumn.html', context)
         end
 
         html = File.read('12-autumn.html')
@@ -179,7 +179,7 @@ module VivlioStarter
         warned = []
         Common.stub(:log_warn, ->(msg, **_) { warned << msg }) do
           Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-            Build::EpubBuilder.inject_heading_images_into_file!('13-winter.html', heading_context)
+            Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('13-winter.html', heading_context)
           end
         end
 
@@ -202,7 +202,7 @@ module VivlioStarter
         context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('94-sample.html', context)
         end
 
         html = File.read('94-sample.html')
@@ -220,7 +220,7 @@ module VivlioStarter
         context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::EpubBuilder.inject_heading_images_into_file!('00-preface.html', context)
+          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('00-preface.html', context)
         end
 
         html = File.read('00-preface.html')
@@ -232,11 +232,11 @@ module VivlioStarter
       # 節題は 1 行 18 字になる（chapter-lead-size-spec.md §2.2.1）。判型が読めないときは A4 相当
       def test_epub_ornament_chars_keeps_pdf_title_ratio
         PreProcessCommands::BookSettingsCss.stub(:build_page_cfg, {}) do
-          assert_in_delta 18.0, Build::EpubBuilder.epub_ornament_chars(10, 14), 0.01
+          assert_in_delta 18.0, Build::Transforms::Shared::InjectHeadingImages.epub_ornament_chars(10, 14), 0.01
           # 章題の字数が少ないと帯の章題は上限の大きさ（幅の 7.5%）で止まり、節題もそのぶん大きい
-          assert_in_delta 14.4, Build::EpubBuilder.epub_ornament_chars(8, 14), 0.01
+          assert_in_delta 14.4, Build::Transforms::Shared::InjectHeadingImages.epub_ornament_chars(8, 14), 0.01
           # 節題の字数を増やした著者の指定は、EPUB でも小さくなる向きに効く
-          assert_operator Build::EpubBuilder.epub_ornament_chars(10, 18), :>, 18.0
+          assert_operator Build::Transforms::Shared::InjectHeadingImages.epub_ornament_chars(10, 18), :>, 18.0
         end
       end
 
@@ -248,8 +248,8 @@ module VivlioStarter
           'x'
         end
         PreProcessCommands::ThemeImageResolver.stub(:resolve_ornament_path, resolver) do
-          Build::EpubBuilder.frontispiece_landscape_path({ theme_cfg: { frontispiece: { image: 'ume' } } })
-          Build::EpubBuilder.frontispiece_landscape_path({ theme_cfg: { frontispiece: 'suisen' } })
+          Build::Transforms::Shared::InjectHeadingImages.frontispiece_landscape_path({ theme_cfg: { frontispiece: { image: 'ume' } } })
+          Build::Transforms::Shared::InjectHeadingImages.frontispiece_landscape_path({ theme_cfg: { frontispiece: 'suisen' } })
         end
 
         assert_equal [['ume', { allow_generation: true }], ['suisen', { allow_generation: true }]], calls
@@ -264,7 +264,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['30-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['30-math.html'])
         html = File.read('30-math.html')
 
         # 単純式はテキスト span へ（img が消える）
@@ -284,7 +284,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['31-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['31-math.html'])
         html = File.read('31-math.html')
 
         assert_equal 2, html.scan('vs-math-text').size, '$…$ と \\(…\\) の両形式が span 化される'
@@ -301,7 +301,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['33-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['33-math.html'])
         html = File.read('33-math.html')
 
         assert_includes html, '<i>x</i><sup>2</sup>+<i>y</i><sup>2</sup>'
@@ -316,7 +316,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['34-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['34-math.html'])
 
         assert_includes File.read('34-math.html'), '<i>E</i>=<i>mc</i><sup>2</sup>'
       end
@@ -332,7 +332,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['35-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['35-math.html'])
         html = File.read('35-math.html')
 
         assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">x^(y^z)</span>'
@@ -348,7 +348,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['36-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['36-math.html'])
         html = File.read('36-math.html')
 
         assert_includes html, 'vs-math-inline', 'SVG のまま残る'
@@ -363,7 +363,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['37-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['37-math.html'])
         html = File.read('37-math.html')
 
         assert_includes html, '<i>x</i><sup>2</sup>+<i>y</i><sup>2</sup>'
@@ -380,7 +380,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['38-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['38-math.html'])
         html = File.read('38-math.html')
 
         # 単純な日本語入りの式は真の上付き付きの HTML になる
@@ -398,7 +398,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['39-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['39-math.html'])
         html = File.read('39-math.html')
 
         assert_includes html, 'a&lt;b &amp; vec c'
@@ -425,12 +425,12 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.rasterize_display_math_for_kindle!(['40-math.html'])
+        apply_transform(Build::Transforms::Kindle::RasterizeDisplayMath, ['40-math.html'])
         html = File.read('40-math.html')
 
         assert_includes html, "#{rel}/abc.png", 'src が PNG を指す'
         refute_includes html, 'abc.svg'
-        assert_includes html, 'width: 22.4ex', 'style は保つ（convert_math_units_for_epub! が px を足す）'
+        assert_includes html, 'width: 22.4ex', 'style は保つ（Transforms::Kindle::ConvertMathUnits が px を足す）'
         assert_path_exists File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel, 'abc.png')
       ensure
         FileUtils.rm_rf(File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel.to_s)) if rel
@@ -445,7 +445,7 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.rasterize_display_math_for_kindle!(['41-math.html'])
+        apply_transform(Build::Transforms::Kindle::RasterizeDisplayMath, ['41-math.html'])
 
         assert_includes File.read('41-math.html'), 'z.svg', 'インラインは触らない'
       end
@@ -458,9 +458,9 @@ module VivlioStarter
           </body></html>
         HTML
 
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['32-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['32-math.html'])
         first = File.read('32-math.html')
-        Build::EpubBuilder.textify_simple_math_for_kindle!(['32-math.html'])
+        apply_transform(Build::Transforms::Kindle::TextifySimpleMath, ['32-math.html'])
         second = File.read('32-math.html')
 
         assert_equal first, second
@@ -469,9 +469,9 @@ module VivlioStarter
       # EPUB entries.js が正しく書き出されることを確認
       def test_write_epub_entries_creates_file
         html_files = ['./01-intro.html', './02-basics.html']
-        Build::EpubBuilder.write_epub_entries(@base_dir, html_files)
+        Build::Epub::Config.write_epub_entries(@base_dir, html_files)
 
-        entries_path = File.join(@base_dir, Build::EpubBuilder::EPUB_ENTRIES_FILE)
+        entries_path = File.join(@base_dir, Build::Epub::Config::EPUB_ENTRIES_FILE)
         assert File.exist?(entries_path), 'entries.epub.js が生成されるべき'
 
         content = File.read(entries_path)
@@ -494,7 +494,7 @@ module VivlioStarter
         config = build_config_with_epub(epub_cfg, covers_dir: 'covers')
         Common.stub(:epub_embed?, true) do
           Common.stub(:cover_theme, 'light') do
-            line = Build::EpubBuilder.build_cover_config_line(config, esc)
+            line = Build::Epub::Config.build_cover_config_line(config, esc)
 
             assert_match(/cover:/, line, 'cover.embed: true の場合 cover 行が出力されるべき')
             assert_match(%r{covers/cover_light\.jpg}, line)
@@ -509,7 +509,7 @@ module VivlioStarter
 
         config = build_config_with_epub(epub_cfg)
         Common.stub(:epub_embed?, false) do
-          line = Build::EpubBuilder.build_cover_config_line(config, esc)
+          line = Build::Epub::Config.build_cover_config_line(config, esc)
 
           assert_match(/epub\.embed: false/, line, 'cover.embed: false の場合コメントになるべき')
         end
@@ -529,7 +529,7 @@ module VivlioStarter
 
         dir = 'pkg-epub'
         FileUtils.mkdir_p(dir)
-        Build::EpubBuilder.localize_theme_variant_images!(dir, :epub)
+        Build::Epub::Workspace.localize_theme_variant_images!(dir, :epub)
 
         assert_path_exists File.join(dir, 'theme-images', 'bundled', 'sakura_landscape.webp'),
                            'CSS が参照するバリアントは同梱されるべき'
@@ -549,7 +549,7 @@ module VivlioStarter
 
         dir = 'pkg-kindle'
         FileUtils.mkdir_p(dir)
-        Build::EpubBuilder.localize_theme_variant_images!(dir, :kindle)
+        Build::Epub::Workspace.localize_theme_variant_images!(dir, :kindle)
 
         refute_path_exists File.join(dir, 'theme-images'), 'kindle には theme-images を同梱しないべき'
       end
@@ -563,7 +563,7 @@ module VivlioStarter
           </head><body><img src="#{Common::ASSET_PREFIX}images/01/a.webp"></body></html>
         HTML
 
-        Build::EpubBuilder.stage_consumer_htmls!(Common::BUILD_EPUB_DIR)
+        Build::Epub::Workspace.stage_consumer_htmls!(Common::BUILD_EPUB_DIR)
 
         staged = File.read(File.join(Common::BUILD_EPUB_DIR, '01-intro.html'))
         assert_includes staged, 'href="stylesheets/theme.css"', 'CSS 参照はパッケージルート相対になるべき'
@@ -587,7 +587,7 @@ module VivlioStarter
         html = File.join(dir, '01-intro.html')
         File.write(html, %(<html><head><link rel="stylesheet" href=".cache/vs/entry-chapter.css"></head></html>))
 
-        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir, flavor: :epub)
+        Build::Epub::Stylesheets.bundle_flat!([html], dir, flavor: :epub)
 
         assert_includes File.read(html), 'href="styles/chapter.css"'
         flat = File.read(File.join(dir, 'styles', 'chapter.css'))
@@ -609,7 +609,7 @@ module VivlioStarter
         File.write(html, '<html><head><link rel="stylesheet" href=".cache/vs/entry-chapter.css">' \
                          '<link rel="stylesheet" href="stylesheets/extra/wide.css"></head></html>')
 
-        Build::EpubBuilder.bundle_flat_css_for_epub!([html], dir, flavor: :kindle)
+        Build::Epub::Stylesheets.bundle_flat!([html], dir, flavor: :kindle)
 
         assert_includes File.read(html), 'href="styles/stylesheets/extra/wide.css"'
         extra = File.read(File.join(dir, 'styles', 'stylesheets', 'extra', 'wide.css'))
@@ -673,7 +673,7 @@ module VivlioStarter
       def config_metadata(book:)
         File.write('config/book.yml', { 'book' => book }.to_yaml)
         Common.reload_configuration!(silent: true)
-        path = Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: @temp_dir)
+        path = Build::Epub::Config.generate_epub_config!(flavor: :epub, dir: @temp_dir)
         lines = File.readlines(path)
         %i[title author language].to_h do |key|
           line = lines.find { it =~ /^\s*#{key}:/ }

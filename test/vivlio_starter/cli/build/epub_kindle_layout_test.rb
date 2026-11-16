@@ -4,11 +4,11 @@
 # Test: build/epub_kindle_layout_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder の Kindle レイアウト是正（epub-kindle-layout-spec.md §6-1）
-#   - mark_body_for_kindle!        : body へ vs-kindle クラス付与
-#   - convert_math_units_for_epub! : inline/display 数式の ex→em 変換
-#   - convert_code_blocks_for_epub! : Prism 行番号 pre → 行ブロック化（F 案・両フレーバ共通）
-#   - inject_code_line_numbers_for_kindle! : 行番号の実テキスト注入（Kindle 限定）
+#   Build::Transforms::Kindle の Kindle レイアウト是正（epub-kindle-layout-spec.md §6-1）
+#   - Transforms::Kindle::MarkBody        : body へ vs-kindle クラス付与
+#   - Transforms::Kindle::ConvertMathUnits : inline/display 数式の ex→em 変換
+#   - Transforms::Shared::ConvertCodeBlocks : Prism 行番号 pre → 行ブロック化（F 案・両フレーバ共通）
+#   - Transforms::Kindle::InjectCodeLineNumbers : 行番号の実テキスト注入（Kindle 限定）
 # ================================================================
 
 require 'test_helper'
@@ -16,12 +16,11 @@ require 'tmpdir'
 require 'fileutils'
 require 'nokogiri'
 require 'vivlio_starter/cli/common'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubKindleLayoutTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       def setup
@@ -37,7 +36,7 @@ module VivlioStarter
       # body に vs-kindle クラスが付与される
       def test_should_mark_body_with_vs_epub
         doc = process('<html><body class="chapter"><p>本文</p></body></html>') do |files|
-          Builder.mark_body_for_kindle!(files)
+          apply_transform(Build::Transforms::Kindle::MarkBody, files)
         end
         assert_includes doc.at_css('body')['class'].split, 'vs-kindle'
         assert_includes doc.at_css('body')['class'].split, 'chapter', '既存クラスは保持される'
@@ -48,7 +47,7 @@ module VivlioStarter
         html = '<html><body><p>単位は' \
                '<img class="vs-math vs-math-inline" src="images/math/x.svg" ' \
                'style="vertical-align: -0.566ex; width: 1.2ex; height: 2.262ex;" alt="A"></p></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
 
         style = doc.at_css('img.vs-math-inline')['style']
         refute_includes style, 'ex', 'ex 単位が残ってはいけない'
@@ -62,7 +61,7 @@ module VivlioStarter
         html = '<html><body><table><tbody><tr><td>' \
                '<img class="vs-math vs-math-inline" src="images/math/a.svg" ' \
                'style="vertical-align: -0.2ex; width: 1.4ex; height: 1.4ex;" alt="A"></td></tr></tbody></table></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
 
         style = doc.at_css('td img.vs-math-inline')['style']
         # height 1.4ex は ×0.5 で 0.7em（<1.0em）なので factor=1.0/1.4 で等比拡大され height=1.0em
@@ -78,8 +77,8 @@ module VivlioStarter
                '<td><img class="vs-math vs-math-inline" src="b.png" alt="B"> 倍</td>' \
                '</tr></tbody></table></body></html>'
         doc = process(html) do |files|
-          Builder.keep_cell_math_inline_for_kindle!(files)
-          Builder.keep_cell_math_inline_for_kindle!(files) # 2 回通しても増えない
+          apply_transform(Build::Transforms::Kindle::KeepCellMathInline, files)
+          apply_transform(Build::Transforms::Kindle::KeepCellMathInline, files) # 2 回通しても増えない
         end
 
         cells = doc.css('td').map(&:text)
@@ -92,9 +91,9 @@ module VivlioStarter
         Dir.mktmpdir('vs-kindle-entries') do |dir|
           path = File.join(dir, '_colophon.html')
           File.write(path, '<html><body><h1 class="book-title">本</h1></body></html>')
-          Builder.write_epub_entries(dir, [path])
+          Build::Epub::Config.write_epub_entries(dir, [path])
 
-          assert_includes File.read(File.join(dir, Builder::EPUB_ENTRIES_FILE)), '"title": "奥付"'
+          assert_includes File.read(File.join(dir, Build::Epub::Config::EPUB_ENTRIES_FILE)), '"title": "奥付"'
         end
       end
 
@@ -111,9 +110,9 @@ module VivlioStarter
             File.write(path, "<html><head><title>#{h1[/>([^<]+)</, 1]}</title></head><body>#{h1}</body></html>")
             path
           end
-          Builder.write_epub_entries(dir, paths)
+          Build::Epub::Config.write_epub_entries(dir, paths)
 
-          entries = File.read(File.join(dir, Builder::EPUB_ENTRIES_FILE))
+          entries = File.read(File.join(dir, Build::Epub::Config::EPUB_ENTRIES_FILE))
           assert_includes entries, '"title": "第1章 執筆"'
           assert_includes entries, '"title": "付録 A 早見表"'
           assert_includes entries, '"title": "はじめに"'
@@ -136,7 +135,7 @@ module VivlioStarter
         doc = Dir.mktmpdir('vs-kindle-index') do |dir|
           path = File.join(dir, '_indexpage.html')
           File.write(path, html, encoding: 'utf-8')
-          Builder.layout_index_columns_for_kindle!([path])
+          apply_transform(Build::Transforms::Kindle::LayoutIndexColumns, [path])
           Nokogiri::HTML5(File.read(path, encoding: 'utf-8'))
         end
 
@@ -148,12 +147,12 @@ module VivlioStarter
 
       # 章の題から、索引へ並べる短い名前を取り出す
       def test_should_shorten_chapter_title_to_label
-        assert_equal '第7部', Builder.chapter_label('第7部　通信・システム編')
-        assert_equal '序章', Builder.chapter_label('序章　螺旋階段を昇るように')
-        assert_equal '第14章', Builder.chapter_label('第14章 ビルド')
-        assert_equal 'はじめに', Builder.chapter_label('はじめに')
-        assert_equal 'Vivlio S…', Builder.chapter_label('Vivlio Starter 入門')
-        assert_nil Builder.chapter_label('')
+        assert_equal '第7部', Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('第7部　通信・システム編')
+        assert_equal '序章', Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('序章　螺旋階段を昇るように')
+        assert_equal '第14章', Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('第14章 ビルド')
+        assert_equal 'はじめに', Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('はじめに')
+        assert_equal 'Vivlio S…', Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('Vivlio Starter 入門')
+        assert_nil Build::Transforms::Shared::PostProcessIndexGlossary.chapter_label('')
       end
 
 
@@ -162,7 +161,7 @@ module VivlioStarter
         html = '<html><body><p>' \
                '<img class="vs-math vs-math-inline" src="images/math/a.svg" ' \
                'style="height: 1.4ex; width: 1.4ex;" alt="A"></p></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
         assert_includes doc.at_css('img.vs-math-inline')['style'], 'height: 0.7em'
       end
 
@@ -170,7 +169,7 @@ module VivlioStarter
       def test_should_constrain_book_card_image_inline
         html = '<html><body><div class="book-card"><img src="images/_epub_assets/x.jpg" alt="">' \
                '<div class="book-info"><p>説明</p></div></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         style = doc.at_css('.book-card img')['style']
         assert_includes style, 'width: 40%'
@@ -207,7 +206,7 @@ module VivlioStarter
         doc, = compose(html, sizes)
 
         assert_equal 1, doc.css('.image-group img').size
-        layout = Builder.picture_row_layout(%w[meter kilogram].map { "#{@compose_dir}/images/_epub_assets/#{it}.jpg" },
+        layout = Build::Transforms::Kindle::ComposePictures.picture_row_layout(%w[meter kilogram].map { "#{@compose_dir}/images/_epub_assets/#{it}.jpg" },
                                             ratio: [0.4, 0.6])
         assert_equal [401, 602], layout[:cells].map { it[:width] }
         assert_equal (602 * 400 / 600.0).round, layout[:height], '上をそろえ、高さは高いほう'
@@ -221,7 +220,7 @@ module VivlioStarter
                '<figure class="vs-mermaid"><img src="images/m.png" alt=""></figure>' \
                '<figure class="vs-math vs-math-display"><img src="images/x.png" style="width: 8em" alt=""></figure>' \
                '</div></div><figure style="width: 60%"><img src="images/b.jpg" alt=""></figure></body></html>'
-        doc = process(html) { |files| Builder.shrink_side_by_side_figures_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ShrinkSideBySideFigures, files) }
 
         written, mermaid, math = doc.css('.side-by-side figure').map { it['style'].to_s }
         assert_equal 'width: 30.0%; max-width: 30.0%; margin-left: auto; margin-right: auto;', written
@@ -234,7 +233,7 @@ module VivlioStarter
       def test_should_leave_pictures_untouched_when_an_image_is_missing
         doc = process('<html><body><div class="pictures"><figure><img src="images/x.jpg" alt=""></figure>' \
                       '<figure><img src="images/y.jpg" alt=""></figure></div></body></html>') do |files|
-          Builder.compose_pictures_for_kindle!(files)
+          apply_transform(Build::Transforms::Kindle::ComposePictures, files)
         end
 
         assert_equal %w[images/x.jpg images/y.jpg], doc.css('.pictures img').map { it['src'] }
@@ -244,7 +243,7 @@ module VivlioStarter
       def test_should_constrain_sideimage_figure_inline
         html = '<html><body><div class="sideimage-right"><figure><img src="images/a.jpg" alt=""></figure>' \
                '<div class="sideimage-body"><p>本文</p></div></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         fig_style = doc.at_css('.sideimage-right figure')['style']
         assert_includes fig_style, 'width: 25%', 'sideimage は text3:image1（画像 1/4 = 25%）'
@@ -256,7 +255,7 @@ module VivlioStarter
       def test_should_move_image_before_text_so_float_wraps
         html = '<html><body><div class="sideimage-right"><div class="sideimage-body"><p>本文</p></div>' \
                '<figure><img src="images/a.jpg" alt=""></figure></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         assert_equal 'figure', doc.at_css('.sideimage-right').element_children.first.name
       end
@@ -265,7 +264,7 @@ module VivlioStarter
       def test_should_lay_out_boxed_image_in_table
         html = '<html><body><div class="output"><div class="book-card"><img src="images/a.jpg" alt="">' \
                '<div class="book-info"><p>説明</p></div></div></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         cells = doc.css('.book-card > table td')
         assert_equal 2, cells.size
@@ -281,7 +280,7 @@ module VivlioStarter
       def test_should_put_image_cell_last_for_right_layout
         html = '<html><body><div class="note"><div class="sideimage-right"><figure><img src="images/a.jpg" alt=""></figure>' \
                '<div class="sideimage-body"><p>本文</p></div></div></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         cells = doc.css('.sideimage-right > table td')
         assert_equal '本文', cells[0].text.strip
@@ -293,7 +292,7 @@ module VivlioStarter
       def test_should_keep_float_outside_framed_box
         html = '<html><body><div class="book-card"><img src="images/a.jpg" alt="">' \
                '<div class="book-info"><p>説明</p></div></div></body></html>'
-        doc = process(html) { |files| Builder.constrain_layout_images_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConstrainLayoutImages, files) }
 
         assert_nil doc.at_css('table')
         assert_includes doc.at_css('img')['style'], 'float: left'
@@ -305,8 +304,8 @@ module VivlioStarter
                '<td><code>--purge</code> / <code>-P</code></td><td>説明の <code>.aki</code></td>' \
                '</tr></tbody></table></body></html>'
         doc = process(html) do |files|
-          Builder.align_code_cells_for_kindle!(files)
-          Builder.align_code_cells_for_kindle!(files) # 2 回通しても増えない
+          apply_transform(Build::Transforms::Kindle::AlignCodeCells, files)
+          apply_transform(Build::Transforms::Kindle::AlignCodeCells, files) # 2 回通しても増えない
         end
 
         glue = [0x200B].pack('U')
@@ -358,7 +357,7 @@ module VivlioStarter
       def test_should_restore_h3_marker_only_when_empty
         html = '<html><body><h3><span class="subsection-marker"></span>空</h3>' \
                '<h3><span class="subsection-marker">★</span>残る</h3></body></html>'
-        doc = process(html) { |files| Builder.restore_h3_markers_for_kindle!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::RestoreH3Markers, files) }
 
         marker = Common::CONFIG.theme.markers.h3 || '♣'
         assert_equal [marker, '★'], doc.css('span.subsection-marker').map(&:text)
@@ -369,7 +368,7 @@ module VivlioStarter
         html = '<html><body><p>' \
                '<img class="vs-math vs-math-inline" src="images/math/a.svg" ' \
                'style="height: 1.4ex; width: 2.0ex;" alt="A"></p></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
 
         img = doc.at_css('img.vs-math-inline')
         # 表外は ×0.5 → height 0.7em / width 1.0em。px は em×16（端数四捨五入）
@@ -382,7 +381,7 @@ module VivlioStarter
         html = '<html><body><table><tbody><tr><td>' \
                '<img class="vs-math vs-math-inline" src="images/math/m.svg" ' \
                'style="height: 1.4ex; width: 1.4ex;" alt="m"></td></tr></tbody></table></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
 
         img = doc.at_css('td img.vs-math-inline')
         assert_equal '16', img['height'], '表内 floor 1.0em ×16 = 16px（本文相当）'
@@ -399,7 +398,7 @@ module VivlioStarter
                '<div class="output"><p>出力本文</p></div>' \
                '<div class="terminal"><pre>$ vs build</pre></div>' \
                '<div class="column"><h5>コラム見出し</h5><p>本文</p></div></body></html>'
-        doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateAdmonitions, files) }
 
         assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text
         assert_equal '【MEMO】', doc.at_css('.memo > .vs-adm-label')&.text
@@ -418,7 +417,7 @@ module VivlioStarter
       def test_should_not_double_inject_admonition_label
         html = '<html><body class="vs-kindle">' \
                '<div class="tip"><p class="vs-adm-label">【TIP】</p><p>本文</p></div></body></html>'
-        doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateAdmonitions, files) }
         assert_equal 1, doc.css('.tip .vs-adm-label').size
       end
 
@@ -432,7 +431,7 @@ module VivlioStarter
                '<span class="talk-name">山田先生</span></div>' \
                '<div class="talk-body"><p>やあ。</p></div>' \
                '</div></div></body></html>'
-        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateTalk, files) }
 
         assert_nil doc.at_css('img.talk-icon'), '丸アイコンは除去される'
         assert_nil doc.at_css('.talk-speaker'), '空になった話者列は除去される'
@@ -455,7 +454,7 @@ module VivlioStarter
                '<span class="talk-name talk-name-off">山田先生</span></div>' \
                '<div class="talk-body"><p>やあ。</p></div>' \
                '</div></div></body></html>'
-        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateTalk, files) }
 
         name = doc.at_css('.talk-name')
         refute_nil name
@@ -467,27 +466,27 @@ module VivlioStarter
       def test_should_exclude_talk_avatars_from_kindle_package
         %w[characters/haruka.webp characters/haruka.png
            talk-avatars/abc.webp talk-avatars/abc.png].each do |rel|
-          refute Builder.send(:localized_image?, rel, :kindle), "#{rel} は Kindle へ同梱しない"
-          assert Builder.send(:localized_image?, rel, :epub), "#{rel} はクリーン EPUB では同梱する"
+          refute Build::Epub::Workspace.send(:localized_image?, rel, :kindle), "#{rel} は Kindle へ同梱しない"
+          assert Build::Epub::Workspace.send(:localized_image?, rel, :epub), "#{rel} はクリーン EPUB では同梱する"
         end
-        assert Builder.send(:localized_image?, '10-intro/photo.png', :kindle), '通常の本文画像は同梱する'
+        assert Build::Epub::Workspace.send(:localized_image?, '10-intro/photo.png', :kindle), '通常の本文画像は同梱する'
       end
 
       # twemoji 直下の絵文字マスターは形式を問わず同梱しない（プレーン絵文字へ復元済みで未参照）
       def test_should_exclude_twemoji_masters_regardless_of_format
         %w[twemoji/1f600.webp twemoji/1f600.svg].each do |rel|
-          refute Builder.send(:localized_stylesheet?, rel, :epub), "#{rel} は未参照なので同梱しない"
-          refute Builder.send(:localized_stylesheet?, rel, :kindle)
+          refute Build::Epub::Workspace.send(:localized_stylesheet?, rel, :epub), "#{rel} は未参照なので同梱しない"
+          refute Build::Epub::Workspace.send(:localized_stylesheet?, rel, :kindle)
         end
         # vs-techbook/ の囲み数字は実際に参照されるので残す
         %w[twemoji/vs-techbook/circled-1.webp twemoji/vs-techbook/circled-1.svg].each do |rel|
-          assert Builder.send(:localized_stylesheet?, rel, :epub), "#{rel} は参照されるので同梱する"
+          assert Build::Epub::Workspace.send(:localized_stylesheet?, rel, :epub), "#{rel} は参照されるので同梱する"
         end
       end
 
       # Kindle 向け画像は長辺 1024px へ抑える（クリーン EPUB の 1600px には影響しない）
       def test_should_cap_kindle_image_edge
-        assert_equal 1024, Builder.const_get(:KINDLE_IMAGE_MAX_EDGE)
+        assert_equal 1024, Build::Epub::Workspace::KINDLE_IMAGE_MAX_EDGE
       end
 
       # 元から inline の原稿は名前を二重に動かさない（隠しクラスの除去のみ）
@@ -497,7 +496,7 @@ module VivlioStarter
                '<div class="talk-item talk-c-mirai">' \
                '<p><span class="talk-name">未來</span><span class="talk-sep">：</span>やあ。</p>' \
                '</div></div></body></html>'
-        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateTalk, files) }
 
         assert_equal '<p><span class="talk-name">未來</span><span class="talk-sep">：</span>やあ。</p>',
                      doc.at_css('.talk-item p').to_html
@@ -513,7 +512,7 @@ module VivlioStarter
           y = 2<span class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files) }
         rows = doc.css('div.vs-code-epub > div.vs-code-line')
         assert_equal 3, rows.size
         assert_equal "\u00A0", rows[1].at_css('code').text, %q{空行は nbsp で埋める}
@@ -523,7 +522,7 @@ module VivlioStarter
       def test_should_convert_display_math_ex_to_em
         html = '<html><body><figure class="vs-math vs-math-display">' \
                '<img src="images/math/d.svg" style="width: 10ex; height: 4ex;" alt="eq"></figure></body></html>'
-        doc = process(html) { |files| Builder.convert_math_units_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::ConvertMathUnits, files) }
 
         style = doc.at_css('figure.vs-math-display img')['style']
         assert_includes style, 'width: 5.0em'
@@ -539,7 +538,7 @@ module VivlioStarter
           end<span class="line-numbers-rows" aria-hidden="true"><span></span><span></span><span></span></span></code></pre>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files) }
 
         container = doc.at_css('div.vs-code-epub')
         refute_nil container, 'pre.line-numbers は div.vs-code-epub へ変換されるべき'
@@ -565,7 +564,7 @@ module VivlioStarter
           b = 2</code></pre>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files) }
 
         container = doc.at_css('div.vs-code-epub')
         assert_equal '22', container['data-start'], 'data-start は容器へ引き継がれるべき'
@@ -578,7 +577,7 @@ module VivlioStarter
       # 行番号テーブル化の対象にしてはならない（端末の逐語転写に行番号は付かない）。
       def test_should_not_tableize_terminal_pre_without_code
         html = '<html><body><div class="terminal"><pre class="line-numbers">$ vs build</pre></div></body></html>'
-        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files) }
 
         assert_empty doc.css('div.vs-code-epub')
         assert_equal '$ vs build', doc.at_css('div.terminal > pre').text
@@ -593,7 +592,7 @@ module VivlioStarter
           =end</span><span class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files) }
 
         rows = doc.css('div.vs-code-epub > div.vs-code-line')
         assert_equal 3, rows.size
@@ -614,8 +613,8 @@ module VivlioStarter
           </body></html>
         HTML
         doc = process(html) do |files|
-          Builder.convert_code_blocks_for_epub!(files)
-          Builder.inject_code_line_numbers_for_kindle!(files)
+          apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files)
+          apply_transform(Build::Transforms::Kindle::InjectCodeLineNumbers, files)
         end
 
         spans = doc.css('div.vs-code-epub > div.vs-code-line > span.vs-code-ln')
@@ -635,8 +634,8 @@ module VivlioStarter
           </body></html>
         HTML
         doc = process(html) do |files|
-          Builder.convert_code_blocks_for_epub!(files)
-          Builder.inject_code_line_numbers_for_kindle!(files)
+          apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files)
+          apply_transform(Build::Transforms::Kindle::InjectCodeLineNumbers, files)
         end
 
         assert_equal ["\u00A022 ", "\u00A023 "], doc.css('span.vs-code-ln').map(&:text),
@@ -651,16 +650,16 @@ module VivlioStarter
           </body></html>
         HTML
         doc = process(html) do |files|
-          Builder.convert_code_blocks_for_epub!(files)
-          Builder.inject_code_line_numbers_for_kindle!(files)
-          Builder.inject_code_line_numbers_for_kindle!(files)
+          apply_transform(Build::Transforms::Shared::ConvertCodeBlocks, files)
+          apply_transform(Build::Transforms::Kindle::InjectCodeLineNumbers, files)
+          apply_transform(Build::Transforms::Kindle::InjectCodeLineNumbers, files)
         end
 
         assert_equal 1, doc.css('span.vs-code-ln').size
       end
 
       # =================================================================
-      # decorate_list_markers_for_epub!（fancy list / outline-list の実体マーカー注入・
+      # Transforms::Kindle::DecorateListMarkers（fancy list / outline-list の実体マーカー注入・
       # nested-list-notation-spec.md §6.1）
       # =================================================================
 
@@ -673,7 +672,7 @@ module VivlioStarter
           <ol class="vs-fancy-list vs-list-decimal-paren2" style="counter-reset: vs-fancy 0"><li>一</li></ol>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files) }
 
         alpha = doc.css('ol.vs-list-lower-alpha > li > span.vs-li-marker').map(&:text)
         assert_equal ['a. ', 'b. '], alpha, 'ピリオド様式は「a. 」形式'
@@ -695,7 +694,7 @@ module VivlioStarter
           </ul>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files) }
 
         assert_empty doc.css('li.task-list-item input'), 'フォーム部品は残さない'
         assert_equal %w[■ □], doc.css('span.vs-task-mark').map(&:text),
@@ -710,7 +709,7 @@ module VivlioStarter
               style="counter-reset: vs-fancy 3"><li>四</li><li>五</li></ol>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files) }
 
         assert_equal ['(iv) ', '(v) '], doc.css('span.vs-li-marker').map(&:text),
                      'start="4" のローマ数字は iv 始まり'
@@ -726,7 +725,7 @@ module VivlioStarter
           </div>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files) }
 
         markers = doc.css('.outline-list span.vs-li-marker').map(&:text)
         assert_equal ['1. ', '1.1. ', '1.2. ', '2. ', '2.1. '], markers,
@@ -741,7 +740,7 @@ module VivlioStarter
           <ol class="vs-fancy-list vs-list-lower-alpha" type="a"><li><p>ルーズ項目</p></li></ol>
           </body></html>
         HTML
-        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files) }
 
         refute_nil doc.at_css('li > p > span.vs-li-marker'), 'マーカーは p の内側の先頭に入る'
         assert_equal 'a. ルーズ項目', doc.at_css('li > p').text
@@ -756,8 +755,8 @@ module VivlioStarter
           </body></html>
         HTML
         doc = process(html) do |files|
-          Builder.decorate_list_markers_for_epub!(files)
-          Builder.decorate_list_markers_for_epub!(files)
+          apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files)
+          apply_transform(Build::Transforms::Kindle::DecorateListMarkers, files)
         end
 
         assert_equal 2, doc.css('span.vs-li-marker').size, '2 回適用しても注入は各 li に 1 つ'
@@ -769,7 +768,7 @@ module VivlioStarter
                '<p><img class="vs-math vs-math-inline" src="a.svg" alt="$E=mc^2$" style="height: 1.2ex"></p>' \
                '<p><img class="vs-math vs-math-inline" src="b.svg" alt="$x^{y^z}$" style="height: 2ex"></p>' \
                '</body></html>'
-        doc = process(html) { |files| Builder.textify_simple_math_for_kindle!(files) }
+        doc = process(html) { |files| apply_transform(Build::Transforms::Kindle::TextifySimpleMath, files) }
 
         assert_equal 1, doc.css('span.vs-math-text').size, '単純式はテキスト span になる'
         assert_equal '<i>E</i>=<i>mc</i><sup>2</sup>', doc.at_css('span.vs-math-text').inner_html
@@ -791,7 +790,7 @@ module VivlioStarter
         sizes.each { |name, size| system('magick', '-size', size, 'xc:gray', File.join(dir, "images/_epub_assets/#{name}.jpg")) }
         path = File.join(dir, 'chapter.html')
         File.write(path, "<html><body>#{container_html}</body></html>", encoding: 'utf-8')
-        Builder.compose_pictures_for_kindle!([path])
+        apply_transform(Build::Transforms::Kindle::ComposePictures, [path])
         [Nokogiri::HTML5(File.read(path, encoding: 'utf-8')), dir]
       end
 

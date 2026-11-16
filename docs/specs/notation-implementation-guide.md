@@ -39,7 +39,7 @@
 | `MarkdownTransformer.convert_container_blocks` | `:::{.class}` → `<div class="class">` のコンテナ変換 | `cli/pre_process/markdown_transformer.rb` |
 | `Common.log_warn(msg, detail:)` | 著者向け警告の流儀（出現位置＋修正案。[[warning-messages-actionable]]） | `cli/common.rb` |
 | `ToolUpgrader::TOOLS` | 外部ツール（brew/npm/gem）の**正典**。doctor の `--fix` と `vs upgrade` が共用 | `cli/doctor/tool_upgrader.rb` |
-| `EpubBuilder` の `img[data-vs-raster]` localize | SVG→ラスター差し替えの共通経路。属性を付ければ**自動で**適用される | `cli/build/epub_builder.rb` |
+| `Transforms::Shared::LocalizeShowcaseImages` の `img[data-vs-raster]` localize | SVG→ラスター差し替えの共通経路。属性を付ければ**自動で**適用される | `cli/build/transforms/shared/localize_showcase_images.rb` |
 
 これらと同じ責務のコードを transformer 内に書き始めたら、それは基盤側に API を足すサイン（mermaid が独自フェンス解析を持っていた反省から `replace_top_level_fences` が生まれた）。
 
@@ -48,7 +48,7 @@
 1. **root の CSS を編集**する（`stylesheets/parts/box.css` 等）。`lib/project_scaffold/` は直接編集しない（同期で消える）。編集後 `ruby scripts/copy_to_scaffold.rb`。
 2. **クラスの許可は自動**: `ContainerClassCheck` は `stylesheets/**/*.css` のクラスセレクタを自動抽出して許可リストにする。**CSS にクラスを書けば警告は出ない**。前処理がブロックごと消費して CSS に痕跡が残らないクラス（showcase 型）だけ `PREPROCESSED_CLASSES` へ明示登録する（`cli/guards/container_class_check.rb`）。
 3. **Kindle 劣化対策 3 点セット**（枠＋ラベル付きの囲みボックスを作るとき。正典は CLAUDE.md）:
-   - `EpubBuilder::ADMONITION_LABELS` に `'class' => '【LABEL】'` を追加（Kindle のみ実ラベル `<p class="vs-adm-label">` 注入）
+   - `Transforms::Kindle::DecorateAdmonitions::ADMONITION_LABELS`（`cli/build/transforms/kindle/decorate_admonitions.rb`）に `'class' => '【LABEL】'` を追加（Kindle のみ実ラベル `<p class="vs-adm-label">` 注入）
    - `targets/kindle.css`（Kindle の規則。`parts/box.css` の見出しの下）に `body.vs-kindle .class { … }` を追加し、構造の違い（全周の枠・ラベルの分の上余白）だけを書く。色は部品と同じ変数で書いてよい（Kindle 用の CSS を作るときに `Css::LiteralResolver` が値に解く。`css-layer-restructure-spec.md` §4.4）
    - `epub_kindle_layout_test` にラベルのアサーションを追加
 4. **CSS の落とし穴**は先に `vivliostyle-css-pitfalls-notes.md` を確認（`calc()+var()` 破棄・特異度・SVG intrinsic size 等）。
@@ -136,8 +136,8 @@ Digest::SHA256.hexdigest(payload)[0, 16]
 </figure>
 ```
 
-- `data-vs-raster` を付ければ、`EpubBuilder` の localize（`img[data-vs-raster]` 一般化済み）が**自動で** EPUB/Kindle の src をラスターへ差し替える。個別の localize 実装は不要。
-- ただし `EpubBuilder::localized_image?` に **`foo/` サブディレクトリの SVG 除外**を追加する（未参照 SVG をパッケージへ同梱しない）。`MERMAID_REL_SUBDIR` の並びに定数を足す。
+- `data-vs-raster` を付ければ、`Transforms::Shared::LocalizeShowcaseImages`（`img[data-vs-raster]` 一般化済み）が**自動で** EPUB/Kindle の src をラスターへ差し替える。個別の localize 実装は不要。
+- ただし `Epub::Workspace.localized_image?`（`cli/build/epub/workspace.rb`）に **`foo/` サブディレクトリの SVG 除外**を追加する（未参照 SVG をパッケージへ同梱しない）。`MERMAID_REL_SUBDIR` の並びに定数を足す。
 - **参照パスは消費者 dir 相対（`asset_prefix` なし）**。ビルド生成物はワークスペース内実体のため（P4b §2.1）。著者画像（`asset_prefix` 付き）と参照形が違うのは正しい。
 - alt に意味のあるテキスト（元ソースの要約）を入れる。属性値は必ずエスケープ。
 
@@ -207,7 +207,7 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 [ ] キャッシュキー＝内容アドレス（スキーマ版プレフィックス付き）
 [ ] GeneratedAssetCache.fetch / materialize（自前のファイル存在チェックを書かない）
 [ ] figure.vs-X + img[data-vs-raster]（localize は自動）
-[ ] EpubBuilder::localized_image? に SVG 除外 subdir を追加
+[ ] Epub::Workspace.localized_image? に SVG 除外 subdir を追加
 [ ] doctor 4 箇所（checks×2・--fix/ラベル/DESC・ToolUpgrader::TOOLS）
 [ ] SVG 落とし穴（foreignObject / @font-face / intrinsic size）を確認
 【原稿】

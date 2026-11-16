@@ -3,7 +3,7 @@
 > 作成日: 2026-07-12
 > ステータス: **知見メモ（恒久参照）**
 > 対象: PDF（Vivliostyle）とリフロー EPUB（クリーン/Kindle）のレイアウト実装で 2026-07-12 に実測特定した「CSS は正しいのに効かない」型の落とし穴、その原因・修正・切り分け手順。
-> 関連: `kindle-css-compatibility-notes.md`（KFX 側の癖はあちらが正典。本メモは **Vivliostyle エンジンと両フレーバ共通基盤**の癖を扱う）, `epub-code-line-numbers-spec.md`, `stylesheets/parts/image-header.css`, `stylesheets/parts/epub-reflow.css`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `lib/vivlio_starter/cli/build/heading_image_composer.rb`, `lib/vivlio_starter/cli/masking.rb`
+> 関連: `kindle-css-compatibility-notes.md`（KFX 側の癖はあちらが正典。本メモは **Vivliostyle エンジンと両フレーバ共通基盤**の癖を扱う）, `epub-code-line-numbers-spec.md`, `stylesheets/parts/image-header.css`, `stylesheets/parts/epub-reflow.css`, `lib/vivlio_starter/cli/build/transforms/`, `lib/vivlio_starter/cli/build/heading_image_composer.rb`, `lib/vivlio_starter/cli/masking.rb`
 
 > 2.0 の S2-2（2026-11-14）で `stylesheets/` のファイルを分けた。各論の本文の 1.x のファイル名（`chapter-common.css`・`components.css`・`layout-utils.css`・`base.css`）は当時のまま残し、早見表の修正先は今のファイル名にした。CSS のコメントにあった実測の記録は §2.19〜§2.23 へ移した。
 
@@ -223,7 +223,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | **必要なときだけのリテラル書き出し** | `BookSettingsCss.section_lead_width_rule` | 既定では CSS の値を残し、設定が既定から外れたときだけ上書きを出す（既定の紙面を画素単位で保つ・§2.18） |
 | **扉絵の上下分割**（`FRONTISPIECE_SPLIT = 0.62`） | `HeadingImageComposer` + `inject_frontispiece_tail!` | EPUB で「見出し → リード文 → 裾飾り」の PDF と同じ読み順を再現。裾は文字なしで全章 1 枚を共用 |
 | **節絵の均一サイズ＋2 行折返し**（`ORNAMENT_FONT_RATIO = 0.14` / `ORNAMENT_MAX_LINES = 2`） | `HeadingImageComposer.ornament_layout` | 節題の長短でフォントが暴れない。表示幅は半角 0.55 換算、Latin 語は空白で折る（`split_by_display_width`） |
-| **keyfont の選択同梱** | `EpubBuilder.keyfont_asset?` + `strip_font_faces_except_keyfont` | フォント非埋め込み既定の中で、リーダーに代替が無い 1 書体だけ実体（TTF）＋対の @font-face を運ぶ |
+| **keyfont の選択同梱** | `Epub::Workspace.keyfont_asset?` + `strip_font_faces_except_keyfont` | フォント非埋め込み既定の中で、リーダーに代替が無い 1 書体だけ実体（TTF）＋対の @font-face を運ぶ |
 | **Kindle 実体注入 ＋ クリーン CSS カウンタ** | `inject_code_line_numbers_for_kindle!` + `body.vs-epub:not(.vs-kindle)` | 同一 DOM 構造で両フレーバの行番号を排他に出す（§2.3 とセット） |
 
 ---

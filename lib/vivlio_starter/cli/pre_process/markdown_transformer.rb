@@ -196,7 +196,7 @@ module VivlioStarter
         end
 
         # ブロック 1 つ分を <div class="talk"> … </div> へ。発話が 1 つも無ければ空文字。
-        # 区切り文字は data-talk-sep として容器に持たせる——Kindle 劣化（EpubBuilder）が
+        # 区切り文字は data-talk-sep として容器に持たせる——Kindle 劣化（Transforms::Kindle::DecorateTalk）が
         # talk.yml を読み直さずに inline 形式へ組み替えられるようにするため（§2.3）。
         def render_talk_block(body, registry:, source_filename:, spans:, options:, extra_classes:)
           utterances = parse_talk_utterances(body, source_filename:)
@@ -322,7 +322,7 @@ module VivlioStarter
         # src には asset_prefix を前置する。アバターは images/ 配下の**著者資産**であり、
         # ワークスペース内に実体を持つ生成物（数式 SVG・showcase・mermaid）とは違って
         # pdf/ ミラーへコピーされないため、prefix 無しの相対では PDF 側で解決できない
-        # （ImagePathNormalizer が通常画像へ付けるのと同じ規約）。EPUB では EpubBuilder が
+        # （ImagePathNormalizer が通常画像へ付けるのと同じ規約）。EPUB では Epub::Workspace が
         # prefix を剥がし、localize_assets! が images/ を同梱するのでそのまま解決する。
         def image_talk_avatar_tag(src)
           "<img class=\"talk-icon\" src=\"#{escape_html(src)}\" alt=\"\" />"

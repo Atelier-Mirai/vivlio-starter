@@ -10,7 +10,7 @@
 # 仕様書: epub_output_spec.md
 #
 # 依存:
-#   - Build::EpubBuilder: EPUB 用中間ファイル生成
+#   - Build::Epub::Config: EPUB 用中間ファイル生成
 #   - Common: 設定読み込み・ログ出力
 # ================================================================
 

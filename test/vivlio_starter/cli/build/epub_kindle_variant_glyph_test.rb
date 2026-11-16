@@ -4,7 +4,7 @@
 # Test: build/epub_kindle_variant_glyph_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder.apply_variant_glyph_fonts_for_kindle!（kindle-ivs-font-spec.md §2・§4）
+#   Build::Finalizers::VariantGlyphFonts.apply!（kindle-ivs-font-spec.md §2・§4）
 #   （書いた @font-face を平らな CSS のフィルタが残すことは css/target_filter_test.rb）。
 #
 # 検証方法:
@@ -23,7 +23,6 @@ require 'vivlio_starter/cli/epub'
 module VivlioStarter
   module CLI
     class EpubKindleVariantGlyphTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
 
       FONTS_ROOT = File.expand_path('../../../../stylesheets/fonts', __dir__)
@@ -56,7 +55,7 @@ module VivlioStarter
         HTML
 
         with_kindle_dir(html) do |dir, path|
-          Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
+          Build::Finalizers::VariantGlyphFonts.apply!([path], dir)
           doc = Nokogiri::HTML5(File.read(path, encoding: 'utf-8'))
 
           assert_equal %w[禰 禰], doc.css('span.vs-variant-1').map(&:text)
@@ -71,7 +70,7 @@ module VivlioStarter
       # 本文用と見出し用の書体を書き、見出しの中には見出し用（無ければ本文用）を当てる CSS を足す。
       def test_should_write_fonts_and_css_for_body_and_headings
         with_kindle_dir("<html><body><p>禰\u{E0100}</p></body></html>") do |dir, path|
-          Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
+          Build::Finalizers::VariantGlyphFonts.apply!([path], dir)
           css = File.read(File.join(dir, 'styles', 'chapter.css'))
 
           assert_equal %w[vs-variant-1-bold.ttf vs-variant-1-heading-bold.ttf vs-variant-1-heading.ttf vs-variant-1.ttf],
@@ -88,7 +87,7 @@ module VivlioStarter
       # 同じ親字の異体が 2 つ出たときだけ書体が 2 本に分かれる。
       def test_should_use_a_second_font_when_the_same_base_has_two_variants
         with_kindle_dir("<html><body><p>邉\u{E0101}と邉\u{E0102}と禰\u{E0100}</p></body></html>") do |dir, path|
-          Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
+          Build::Finalizers::VariantGlyphFonts.apply!([path], dir)
           doc = Nokogiri::HTML5(File.read(path, encoding: 'utf-8'))
 
           assert_equal %w[vs-variant-1 vs-variant-2 vs-variant-1], doc.css('p span').map { it['class'] }
@@ -102,7 +101,7 @@ module VivlioStarter
 
         with_kindle_dir(html) do |dir, path|
           css_before = File.read(File.join(dir, 'styles', 'chapter.css'))
-          Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
+          Build::Finalizers::VariantGlyphFonts.apply!([path], dir)
 
           assert_equal html, File.read(path, encoding: 'utf-8')
           assert_equal css_before, File.read(File.join(dir, 'styles', 'chapter.css'))
@@ -116,7 +115,7 @@ module VivlioStarter
         html = "<html><body><p>渡邉\u{E010F}さん</p><p>邉\u{E010F}</p><p>禰\u{E0101}</p></body></html>"
 
         with_kindle_dir(html) do |dir, path|
-          Builder.apply_variant_glyph_fonts_for_kindle!([path], dir)
+          Build::Finalizers::VariantGlyphFonts.apply!([path], dir)
 
           assert_equal 1, @warnings.count { it.include?('異体字の字形が書体にない') }
           assert(@warnings.any? { it.include?('U+9089 U+E010F') && it.include?('11-sample.html「渡邉') && it.include?('ほか 1 か所') })
@@ -132,9 +131,9 @@ module VivlioStarter
           path = File.join(dir, '11-sample.html')
           File.write(path, "<html><body><p>禰\u{E0100}</p></body></html>", encoding: 'utf-8')
 
-          Builder.stub(:collect_epub_htmls, ->(_base, _entries) { [path] }) do
-            Builder.stub(:inject_heading_images_for_epub!, ->(files, **) { files }) do
-              Builder.generate_epub_entries!(dir, [], flavor: :epub)
+          Build::Epub::Config.stub(:collect_epub_htmls, ->(_base, _entries) { [path] }) do
+            Build::Transforms::Shared::InjectHeadingImages.stub(:call, ->(files, _ctx) { files }) do
+              Build::EpubFlow.prepare_pages!(Build::OutputTarget.for(:epub), [], dir:)
             end
           end
 

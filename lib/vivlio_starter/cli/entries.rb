@@ -13,7 +13,7 @@ module VivlioStarter
     #
     # 利用者:
     #   - Build::VivliostyleConfigWriter（workspace の用途別 entries 生成）
-    #   - Build::EpubBuilder（EPUB 用 entries 生成）
+    #   - Build::Epub::Config（EPUB 用 entries 生成）
     #
     # かつての `vs entries`（ルート entries.js の手動生成コマンド）は
     # P4 のワークスペース分離で実体を失ったため撤去した

@@ -4,7 +4,7 @@
 # Test: build/epub_kindle_svg_sweep_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder.sweep_unreferenced_assets!
+#   Build::Epub::Workspace.sweep_unreferenced_assets!
 #   （EPUB パッケージから、参照の切れた画像を回収する）
 #
 # 検証内容:
@@ -28,12 +28,11 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/common'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubKindleSvgSweepTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       SVG = %(<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>)
@@ -58,7 +57,7 @@ module VivlioStarter
           write(dir, 'stylesheets/twemoji/vs-techbook/circled-1.svg', SVG)
           write(dir, 'chapter.html', %(<html><body><img src="images/logo.svg"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :kindle)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :kindle)
 
           assert_path_exists File.join(dir, 'images/logo.svg'), '参照されている SVG を落としてはいけない'
           refute_path_exists File.join(dir, 'images/math/97-sample/a1b2c3.svg'), '孤児が残っている'
@@ -73,7 +72,7 @@ module VivlioStarter
           write(dir, 'chapter.html', '<html><body></body></html>')
           write(dir, 'stylesheets/chapter.css', 'li { list-style-image: url("../images/bullet.svg"); }')
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :kindle)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :kindle)
 
           assert_path_exists File.join(dir, 'images/bullet.svg'), 'CSS からの参照を見落としている'
         end
@@ -85,7 +84,7 @@ module VivlioStarter
           write(dir, 'images/math/97-sample/a1b2c3.svg', SVG)
           write(dir, 'chapter.html', '<html><body></body></html>')
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :kindle)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :kindle)
 
           refute_path_exists File.join(dir, 'images/math/97-sample'), '空ディレクトリが残っている'
           refute_path_exists File.join(dir, 'images/math'), '入れ子の空ディレクトリが残っている'
@@ -100,7 +99,7 @@ module VivlioStarter
           write(dir, 'images/math/97-sample/a1b2c3.png', 'PNG')
           write(dir, 'chapter.html', %(<html><body><img src="images/math/97-sample/a1b2c3.png"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :kindle)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :kindle)
 
           refute_path_exists File.join(dir, 'images/math/97-sample/a1b2c3.svg'), '孤児が残っている'
           assert_path_exists File.join(dir, 'images/math/97-sample/a1b2c3.png'), 'PNG まで消している'
@@ -113,7 +112,7 @@ module VivlioStarter
           write(dir, 'images/logo.svg', SVG)
           write(dir, 'chapter.html', %(<html><body><img src="images/logo.svg"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :kindle)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :kindle)
 
           assert_equal 1, @warnings.size, "警告が出ていない: #{@warnings.inspect}"
           assert_includes @warnings.first, 'logo.svg'
@@ -130,7 +129,7 @@ module VivlioStarter
           write(dir, 'stylesheets/images/bundled/ume.webp', 'WEBP')
           write(dir, 'chapter.html', %(<html><body><img src="images/logo.svg"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :epub)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :epub)
 
           assert_path_exists File.join(dir, 'images/logo.svg'), '参照されている SVG はベクタのまま残す'
           refute_path_exists File.join(dir, 'images/math/97-sample/a1b2c3.svg'), '孤児の SVG が残っている'
@@ -146,7 +145,7 @@ module VivlioStarter
           write(dir, 'covers/cover_master.jpg', 'JPEG')
           write(dir, 'chapter.html', '<html><body></body></html>')
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :epub)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :epub)
 
           assert_path_exists File.join(dir, 'covers/cover_master.jpg')
         end
@@ -158,7 +157,7 @@ module VivlioStarter
           write(dir, 'images/21-intro/桜.webp', 'WEBP')
           write(dir, 'chapter.html', %(<html><body><img src="images/21-intro/%E6%A1%9C.webp"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :epub)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :epub)
 
           assert_path_exists File.join(dir, 'images/21-intro/桜.webp'), '符号化された参照を見落としている'
         end
@@ -171,7 +170,7 @@ module VivlioStarter
           write(dir, 'images/photo.png', 'PNG')
           write(dir, 'chapter.html', %(<html><body><img src="images/diagram.svg"></body></html>))
 
-          Builder.sweep_unreferenced_assets!(dir, flavor: :epub)
+          Build::Epub::Workspace.sweep_unreferenced_assets!(dir, flavor: :epub)
 
           assert_path_exists File.join(dir, 'images/photo.png'), 'SVG の中からの参照を見落としている'
         end

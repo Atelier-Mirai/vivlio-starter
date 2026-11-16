@@ -10,7 +10,7 @@
 > - **章扉からはみ出したリードを、組んだ PDF から見つけて 🟡 で知らせる。** 縮める字数と、収まる `lead_size`・`lead_chars` の目安を添える（§4）
 > - **飾りの絵との重なりは知らせない。** 扉絵ごとに飾りの位置が違い、どこまで許すかも著者によって違う（§5）
 > - **EPUB の章扉は、横長の扉絵に章番号と章題だけを焼き込む。** リードは焼き込まず、扉絵の次に本文の文字として、画面いっぱいの幅で流す。大きさは PDF と同じ `lead_size` に従う。節題は、章題に対する大きさの比を PDF にそろえる（§2.2.1・2026-10-28 に Kindle Previewer で 4 通りを見比べて決定）
-> 関連: `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（`chapter_lead_advance_mm`・`chapter_lead_size_rules`）, `stylesheets/chapter-common.css`・`stylesheets/image-header.css`（`.chapter-lead`）, `lib/vivlio_starter/cli/build/heading_image_composer.rb`（`frontispiece_svg`）, `lib/vivlio_starter/cli/build/epub_builder.rb`（`inject_frontispiece_headings!`・`epub_ornament_chars`）, `lib/vivlio_starter/cli/build/type3_font_check.rb`（組んだ PDF を調べる先例）, `heading-metrics-spec.md`（`lead_chars` の設計）, `epub-frontispiece-facsimile-spec.md`（リードを焼き込んでいた縦長の章扉。§2.2.1 で改めた）, `config-key-criteria-guidelines.md`
+> 関連: `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（`chapter_lead_advance_mm`・`chapter_lead_size_rules`）, `stylesheets/chapter-common.css`・`stylesheets/image-header.css`（`.chapter-lead`）, `lib/vivlio_starter/cli/build/heading_image_composer.rb`（`frontispiece_svg`）, `lib/vivlio_starter/cli/build/transforms/shared/inject_heading_images.rb`（`inject_frontispiece_headings!`・`epub_ornament_chars`）, `lib/vivlio_starter/cli/build/type3_font_check.rb`（組んだ PDF を調べる先例）, `heading-metrics-spec.md`（`lead_chars` の設計）, `epub-frontispiece-facsimile-spec.md`（リードを焼き込んでいた縦長の章扉。§2.2.1 で改めた）, `config-key-criteria-guidelines.md`
 
 ## 0. 背景
 
@@ -110,7 +110,7 @@ EPUB（クリーン・Kindle）の章扉は、横長の扉絵に章番号と章�
 
 - **扉絵**は `theme.frontispiece.image` の横長版（節絵と同じ 2.39:1。無ければ作る）。番号と章題の塊は、左上・右下の飾りの間（中央 60%）の上下中央に置く。1 行の字数は `heading_chars` で、PDF と同じ
 - **リード**は画面いっぱいの幅で流す（`body.vs-epub .chapter-lead { inline-size: auto }`。今までと同じ）。大きさは `lead_size` に従う。§6.2 の規則を EPUB にも出す。既定の 1.2 倍は `chapter-common.css` の `larger` で、Kindle でも効く
-- **節題の大きさ**は、章題に対する比を PDF にそろえる。帯の章題は、左右の飾りを避けるぶん PDF より小さい（画像の幅の 6%）。節題を book.yml の字数（14 字）のまま組むと、章題の 0.94 倍で、ほぼ同じ大きさに見えた。PDF（A4）では、節題は章題の 0.73 倍である（48Q と 35Q）。そこで EPUB の節題は、PDF の比になる字数へ置き換える（A4・章題 10 字・節題 14 字なら 18 字。`EpubBuilder#epub_ornament_chars`）。比は判型から毎回計算する。代わりに、EPUB の長い節題は、行の切れ目が PDF と変わる
+- **節題の大きさ**は、章題に対する比を PDF にそろえる。帯の章題は、左右の飾りを避けるぶん PDF より小さい（画像の幅の 6%）。節題を book.yml の字数（14 字）のまま組むと、章題の 0.94 倍で、ほぼ同じ大きさに見えた。PDF（A4）では、節題は章題の 0.73 倍である（48Q と 35Q）。そこで EPUB の節題は、PDF の比になる字数へ置き換える（A4・章題 10 字・節題 14 字なら 18 字。`Transforms::Shared::InjectHeadingImages.epub_ornament_chars`）。比は判型から毎回計算する。代わりに、EPUB の長い節題は、行の切れ目が PDF と変わる
 - リードの中の数式・索引のアンカーは、本文のものとしてそのまま扱われる。焼き込むために alt の文字を取り出す処理と、その警告は無くなった
 
 **経緯（2026-10-28・spiral-ruby の第7部を Kindle Previewer で確認）。** 合成画像の中の字は、端末の文字サイズの設定に従わず、画面に合わせて画像ごと縮む。この性質のため、リードを画像に入れる形はどれも崩れた。
@@ -265,8 +265,8 @@ PDF を作らない preflight でも、build と同じ 🟡 を出す（2026-10-
 ### 6.3 EPUB
 
 - `HeadingImageComposer#frontispiece_svg`: 横長の扉絵に、章番号と章題だけを焼き込む（§2.2.1）。リードの焼き込み（`lead_layout`・`lead_fits?`・字の下限 `LEAD_FONT_FLOOR`・8% ずつ縮める処理）は取り除く。`LAYOUT_VERSION` を 5 に上げ、`--no-clean` で縦長の古い画像を掴まないようにする
-- `EpubBuilder#inject_frontispiece_headings!`: リードを取り出さず、HTML に残す。扉絵の画像は `theme.frontispiece.image` の横長版（`frontispiece_landscape_path`。節絵と同じ `ThemeImageResolver.resolve_ornament_path` で探し、無ければ作る）
-- `EpubBuilder#epub_heading_metrics`: 節題の字数を `epub_ornament_chars` で置き換える（§2.2.1）。PDF の章題の大きさは `BookSettingsCss#chapter_title_font_q`、節題は `section_title_font_q` から取る
+- `Transforms::Shared::InjectHeadingImages.inject_frontispiece_headings!`: リードを取り出さず、HTML に残す。扉絵の画像は `theme.frontispiece.image` の横長版（`frontispiece_landscape_path`。節絵と同じ `ThemeImageResolver.resolve_ornament_path` で探し、無ければ作る）
+- `Transforms::Shared::InjectHeadingImages.epub_heading_metrics`: 節題の字数を `epub_ornament_chars` で置き換える（§2.2.1）。PDF の章題の大きさは `BookSettingsCss#chapter_title_font_q`、節題は `section_title_font_q` から取る
 - リードの大きさは §6.2 の規則で決まる（EPUB 専用の処理は無い）
 
 ### 6.4 はみ出しの検出
@@ -315,7 +315,7 @@ PDF を作らない preflight でも、build と同じ 🟡 を出す（2026-10-
 
 1. `book_settings_css_test`: 既定（1.2）で `--frontispiece-lead-width` が今と同じ値（回帰）。`theme.frontispiece.lead_size: 1.1`・`lead_chars: 28`・10.5pt で 114.09mm と `body.vs-header-image .chapter-lead { font-size: 1.1em; }`（EPUB 向けに `vs-epub` で除かない）、本全体の規則は 1.2em のまま。`theme.lead_size: 1.1` だけを書けば、2 つの規則と幅がすべて 1.1 倍に従う。`1.05` で `1.05em`（刻みが丸められない）。`1.2em` は `1.2` と同じ出力
 2. `frontmatter_generator_test`（または `parse_theme_settings` のテスト）: 2 つのキーそれぞれで、0.9 → 1.0 と 🟡、2.5 → 2.0 と 🟡、`12pt` → 書かなかった扱いと 🟡（倍率への直し方を含む）、`abc` → 書かなかった扱いと 🟡。`theme.frontispiece.lead_size` の空欄・行の削除 → `theme.lead_size` に従う（既定の 1.2 に化けない）。`theme.style: simple` でも `lead_size_value` が返る
-3. `epub_builder` のテスト: 章扉の画像の alt は章番号と章題だけで、リードは扉絵の後に本文の文字として残る（数式もそのまま・警告なし）。節題の字数が PDF の比から出る（A4・10 字・14 字で 18 字）。扉絵は `theme.frontispiece.image` の横長版を探す。`heading_image_composer` のテスト: 横長の扉絵の寸法・上下中央・中央 60% での折り返し（10 字指定で、ちょうど 10 字の章題が 1 行に収まる）
+3. `InjectHeadingImages` のテスト: 章扉の画像の alt は章番号と章題だけで、リードは扉絵の後に本文の文字として残る（数式もそのまま・警告なし）。節題の字数が PDF の比から出る（A4・10 字・14 字で 18 字）。扉絵は `theme.frontispiece.image` の横長版を探す。`heading_image_composer` のテスト: 横長の扉絵の寸法・上下中央・中央 60% での折り返し（10 字指定で、ちょうど 10 字の章題が 1 行に収まる）
 4. `chapter_lead_check_test`: Prawn で作った PDF（1 ページ目にリードの頭、2 ページ目に尾）で、送られた行数と案を出す。案の計算（倍率ごとに収まる最少の字数）は、行数と段落の字数を与えて単体で確かめる（版面を超える字数・1.0 を下回る倍率では出さない）。収まっている PDF・リードの無い章・文が一致しない章・`simple` の本では何も出さない。PDF は Prawn で作り、pdf-reader / pdftotext で読む（HexaPDF に頼らない）
 5. `font_metrics_test`: 同梱の Noto Serif JP の字の送り・x ハイト・kern（「す。」−0.08 字・「え、」＋0.06 字。hb-shape の値）。型 9 に包まれない PairPos（Zen Maru Gothic）
 6. `lead_layout_test`: §4.4 の折り方の規則を 1 つずつ（字下げ・行頭禁則・行末の約物の詰め・和欧間のアキのぶら下がり・ASCII の引用符・ハイフン・長い語のはみ出し・† の前で折れる・約物の並びの詰め・カーニング・コードと数式と † の幅・`（p.000）`・1/64 px の丸め）と、章題の行数（欧文の語の途中で折らない・長い文節は折れない）

@@ -124,7 +124,7 @@ class WorkspaceStructureTest < Minitest::Test
   #         pdf/ へミラー・epub/ へローカライズされる（P4b §2.1〜2.3）。
   #         kindle/ には SVG を置かない——Kindle Previewer は SVG が 1 枚でも残ると KPF を
   #         作れないので、ディスプレイ数式は PNG に、インライン数式はテキストに置き換え、
-  #         使われなくなった SVG はパッケージから外す（EpubBuilder.sweep_unreferenced_assets!）
+  #         使われなくなった SVG はパッケージから外す（Epub::Workspace.sweep_unreferenced_assets!）
   def test_should_workspace_math_svgs_and_stage_to_consumers
     skip_unless_built!
 

@@ -211,7 +211,7 @@ module VivlioStarter
               context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', flavor: :kindle }
 
               Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-                Build::EpubBuilder.inject_heading_images_into_file!('11-basics.html', context)
+                Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('11-basics.html', context)
               end
 
               html = File.read('11-basics.html')

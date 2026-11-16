@@ -34,7 +34,7 @@
 #
 # フォールバック（§B-5）:
 #   画像が読めない／rsvg-convert・magick が無い／合成失敗時は nil を返し、呼び出し側
-#   （EpubBuilder）が注入をスキップして通常の見出しテキスト（simple 相当）へ自然縮退する。
+#   （Transforms::Shared::InjectHeadingImages）が注入をスキップして通常の見出しテキスト（simple 相当）へ自然縮退する。
 #
 # 依存:
 #   - ImageMagick（magick）: 飾り画像の寸法取得・JPEG 変換。
@@ -58,7 +58,7 @@ module VivlioStarter
         # 扉絵・節絵とも段幅いっぱいに出すので、Kindle 端末幅 1072px より大きくとる。
         RENDER_WIDTH = { frontispiece: 1400, ornament: 1400 }.freeze
 
-        # 合成レイアウトの版数。座標・方式を変えたら +1 する（EpubBuilder が生成キャッシュのキーに混ぜる）。
+        # 合成レイアウトの版数。座標・方式を変えたら +1 する（Transforms::Shared::InjectHeadingImages が生成キャッシュのキーに混ぜる）。
         # v2: 上下分割（62% 帯＋裾飾り）を廃止し、リード文まで焼き込む縦長ファクシミリ 1 枚へ。
         # v3: 寸法を book.yml の文字数指定（heading_chars / lead_chars / ornament.heading_chars）から
         #     導き、節絵を左右並びのコンパクト帯へ（heading-metrics-spec §5-2・§5-3）。
@@ -68,7 +68,7 @@ module VivlioStarter
         LAYOUT_VERSION = 5
 
         # 文字数指定の既定。tokens.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
-        # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
+        # （Transforms::Shared::InjectHeadingImages が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
         DEFAULT_METRICS = { heading_chars: 8, ornament_chars: 14 }.freeze
 
         # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
@@ -159,7 +159,7 @@ module VivlioStarter
         end
 
         # 扉絵タイトルの字面（画像幅比）。「タイトル領域の幅 ÷ 字数」を安全域に収める。
-        # EpubBuilder が節題の大きさをこの比から導くので公開している。
+        # Transforms::Shared::InjectHeadingImages が節題の大きさをこの比から導くので公開している。
         def frontispiece_title_ratio(chars)
           chars = chars.to_i
           chars = DEFAULT_METRICS[:heading_chars] unless chars.positive?
@@ -259,7 +259,7 @@ module VivlioStarter
         # 字面は「節題領域の幅 ÷ 字数」。ORNAMENT_MAX_LINES 行に収まらない長い節題だけ
         # 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
         # 字数は小数も受ける。EPUB の節題は章題との比から導いた字数で、整数とは限らない
-        # （EpubBuilder#epub_ornament_chars）。
+        # （Transforms::Shared::InjectHeadingImages.epub_ornament_chars）。
         # @return [Array(Integer, Array<Hash>)] [フォントサイズ, {number:, text:} の行配列]
         def ornament_layout(width, number, title, chars)
           count = chars.to_f

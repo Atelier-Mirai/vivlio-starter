@@ -39,7 +39,7 @@ module VivlioStarter
         # @font-face の囲み 1 つ（中身は 1 段の宣言だけ）
         FONT_FACE_PATTERN = /@font-face\s*\{[^{}]*\}/
 
-        # 書体を埋め込まなくても運ぶ面。keyfont は実体も同梱する（EpubBuilder.keyfont_asset?）。
+        # 書体を埋め込まなくても運ぶ面。keyfont は実体も同梱する（Epub::Workspace.keyfont_asset?）。
         # Kindle の異体字の 1 字書体（vs-variant-*）は、このフィルタの後に足されるが、
         # 目印として同じ表に置く
         KEPT_FACE_PATTERN = /font-family:\s*["']?(?:keyfont\b|vs-variant-)/i

@@ -4,7 +4,7 @@
 # Test: epub_builder_sanitize_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder の EPUB 構造修正フック
+#   Build::Epub::Opf・Build::Transforms の EPUB 構造修正フック
 #   （epub-pipeline-fix-spec.md の Fix-1〜4 / §4.1 EPF-01〜05）
 #
 # 検証内容:
@@ -51,7 +51,7 @@ module VivlioStarter
         path = File.join(@test_dir, '01-intro.html')
         File.write(path, html)
 
-        Build::EpubBuilder.strip_inline_footnote_ids_for_epub!([path])
+        apply_transform(Build::Transforms::Shared::StripInlineFootnoteIds, [path])
 
         result = File.read(path)
         refute_match(/page-footnote-inline[^>]*id="fn1"/, result, 'span 側の id は除去されるべき')
@@ -73,7 +73,7 @@ module VivlioStarter
         path = File.join(@test_dir, '22-extensions.html')
         File.write(path, html)
 
-        Build::EpubBuilder.strip_inline_footnote_ids_for_epub!([path])
+        apply_transform(Build::Transforms::Shared::StripInlineFootnoteIds, [path])
 
         result = File.read(path)
         assert_equal 1, result.scan('id="idx-abc-19"').size, '索引アンカーは文書内で 1 つだけになるべき'
@@ -99,7 +99,7 @@ module VivlioStarter
       def test_should_generate_config_with_entry_context
         dir = '.cache/vs/build/epub'
         FileUtils.mkdir_p(dir)
-        path = Build::EpubBuilder.generate_epub_config!(dir:)
+        path = Build::Epub::Config.generate_epub_config!(dir:)
         content = File.read(path)
 
         assert_equal File.join(dir, 'vivliostyle.config.epub.js'), path, 'config は消費者 dir 内に生成されるべき'
@@ -120,7 +120,7 @@ module VivlioStarter
         path = File.join(@test_dir, '11-workflow.html')
         File.write(path, html)
 
-        Build::EpubBuilder.rewrite_table_align_for_epub!([path])
+        apply_transform(Build::Transforms::Shared::RewriteTableAlign, [path])
 
         result = File.read(path)
         refute_match(/\salign="/, result, 'align 属性はすべて除去されるべき')
@@ -152,8 +152,8 @@ module VivlioStarter
         XML
         epub = build_epub_with_css('EPUB/content.opf' => opf)
 
-        # P2: content.opf zip 手術は Build::EpubBuilder へ移設済み。
-        Build::EpubBuilder.sanitize_epub_opf_ids!(epub)
+        # P2: content.opf zip 手術は Build::Epub::Opf にある。
+        Build::Epub::Opf.sanitize_epub_opf_ids!(epub)
 
         result = read_css_from_epub(epub, 'EPUB/content.opf')
         assert_includes result, 'id="id-00-prefacexhtml"', '数字始まりの id に接頭辞が付くべき'
@@ -180,7 +180,7 @@ module VivlioStarter
         XHTML
         epub = build_epub_with_css('EPUB/content.opf' => opf, 'EPUB/00-preface.xhtml' => preface)
 
-        Build::EpubBuilder.anchor_nav_self_link!(epub)
+        Build::Epub::Opf.anchor_nav_self_link!(epub)
 
         result = read_css_from_epub(epub, 'EPUB/00-preface.xhtml')
         assert_includes result, '<li><a href="00-preface.xhtml#ch-preface">はじめに</a></li>'
@@ -193,7 +193,7 @@ module VivlioStarter
         create_stylesheet_fixture
         dir = '.cache/vs/build/epub'
 
-        Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
+        Build::Epub::Workspace.localize_assets!(dir, flavor: :epub)
 
         refute File.exist?(File.join(dir, 'stylesheets/theme.css')),
                'CSS は運ばない（styles/ の平らな CSS だけを読む・css-layer-restructure-spec.md §4.2）'
@@ -210,8 +210,8 @@ module VivlioStarter
         create_stylesheet_fixture
         dir = '.cache/vs/build/epub'
 
-        Build::EpubBuilder.stub(:embed_fonts?, true) do
-          Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
+        Build::Epub::Workspace.stub(:embed_fonts?, true) do
+          Build::Epub::Workspace.localize_assets!(dir, flavor: :epub)
 
           assert File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
                  '埋め込み時は fonts/ もローカライズすべき'
@@ -227,7 +227,7 @@ module VivlioStarter
         path = File.join(@test_dir, '11-workflow.html')
         File.write(path, html)
 
-        Build::EpubBuilder.restore_plain_emoji_for_epub!([path])
+        apply_transform(Build::Transforms::Shared::RestorePlainEmoji, [path])
 
         result = File.read(path)
         assert_includes result, 'OK ✅ done', '絵文字は alt の元文字へ復元されるべき'
@@ -246,8 +246,8 @@ module VivlioStarter
         epub_dir = '.cache/vs/build/epub'
         kindle_dir = '.cache/vs/build/kindle'
 
-        Build::EpubBuilder.localize_assets!(epub_dir, flavor: :epub)
-        Build::EpubBuilder.localize_assets!(kindle_dir, flavor: :kindle)
+        Build::Epub::Workspace.localize_assets!(epub_dir, flavor: :epub)
+        Build::Epub::Workspace.localize_assets!(kindle_dir, flavor: :kindle)
 
         # kindle は WebP を同梱しない（transcode 済み・Kindle 非対応）
         refute File.exist?(File.join(kindle_dir, 'images/01/photo.webp')), 'kindle は本文画像の WebP を除外すべき'
@@ -281,7 +281,7 @@ module VivlioStarter
           </dl>
         HTML
 
-        result = Build::EpubBuilder.split_glossary_groups_for_epub(html)
+        result = Build::Transforms::Shared::PostProcessIndexGlossary.split_glossary_groups(html)
 
         refute_match(%r{<dl[^>]*>\s*<div class="glossary-group-header"}, result,
                      '<dl> 直下に見出し div が残ってはいけない（RSC-005）')
@@ -306,7 +306,7 @@ module VivlioStarter
         path = File.join(@test_dir, '00-preface.html')
         File.write(path, html)
 
-        Build::EpubBuilder.strip_webp_inline_styles_for_kindle!([path])
+        apply_transform(Build::Transforms::Kindle::StripWebpInlineStyles, [path])
 
         result = File.read(path)
         refute_includes result, '.webp', 'インライン style から webp 参照が除去される'

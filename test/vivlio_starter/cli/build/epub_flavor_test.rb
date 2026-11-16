@@ -4,9 +4,9 @@
 # Test: build/epub_flavor_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder のフレーバ分岐（epub-kindle-target-split-spec.md §5-1）
-#   - generate_epub_entries!(flavor: :epub)   … Kindle 専用 rewrite を行わない（クリーン）
-#   - generate_epub_entries!(flavor: :kindle) … 全 rewrite を行う（劣化）
+#   Build::EpubFlow.prepare_pages! の出力先ごとの分岐（epub-kindle-target-split-spec.md §5-1）
+#   - prepare_pages!(:epub の宣言)            … Kindle 専用 rewrite を行わない（クリーン）
+#   - prepare_pages!(:kindle の宣言)          … 全 rewrite を行う（劣化）
 #   - generate_epub_config!(flavor: :kindle)  … 表紙を embed しない（§1-6）
 #   - convert_epub_to_kpf!                     … kindlepreviewer 未導入時は graceful skip（DI）・
 #                                                変換の入口で落ちたときだけ 1 回やり直す
@@ -19,12 +19,11 @@ require 'fileutils'
 require 'nokogiri'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/build'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubFlavorTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
 
       # Kindle 専用 rewrite を一通り誘発する章 HTML（コラム枠・行番号コード・数式）。
@@ -148,7 +147,7 @@ module VivlioStarter
       def test_kindle_config_disables_cover_embed
         Dir.mktmpdir('vs-epub-config') do |dir|
           Dir.chdir(dir) do
-            content = File.read(Builder.generate_epub_config!(flavor: :kindle))
+            content = File.read(Build::Epub::Config.generate_epub_config!(flavor: :kindle))
             assert_includes content, 'kindle.embed: false', 'kindle は cover 非埋め込みのコメントを出す'
             refute_match(/^\s*cover: '/, content, 'kindle は cover: 行を出力しない')
           end
@@ -162,7 +161,7 @@ module VivlioStarter
           kpf  = File.join(dir, 'book.kpf')
           File.write(epub, 'dummy')
 
-          result = Builder.convert_epub_to_kpf!(epub, kpf, command: 'vs-no-such-previewer-xyz')
+          result = Build::Epub::Kpf.convert_epub_to_kpf!(epub, kpf, command: 'vs-no-such-previewer-xyz')
 
           assert_equal false, result, '未導入時は false を返す'
           refute File.exist?(kpf), 'KPF は生成されない'
@@ -176,7 +175,7 @@ module VivlioStarter
         errors = capture_log_errors do
           Dir.mktmpdir('vs-kpf-mobi') do |dir|
             File.write(File.join(dir, 'book_epub.mobi'), 'dummy')
-            Builder.report_missing_kpf(dir, 'book-kindle.epub')
+            Build::Epub::Kpf.report_missing_kpf(dir, 'book-kindle.epub')
           end
         end
 
@@ -187,7 +186,7 @@ module VivlioStarter
       # Mobi すら出ていなければ、従来どおり「変換に失敗」と伝える。
       def test_missing_kpf_is_reported_as_a_failure_when_nothing_was_produced
         errors = capture_log_errors do
-          Dir.mktmpdir('vs-kpf-none') { Builder.report_missing_kpf(it, 'book-kindle.epub') }
+          Dir.mktmpdir('vs-kpf-none') { Build::Epub::Kpf.report_missing_kpf(it, 'book-kindle.epub') }
         end
 
         assert_equal 1, errors.size
@@ -200,7 +199,7 @@ module VivlioStarter
         Dir.mktmpdir('vs-kpf-retry') do |dir|
           epub, kpf = kpf_paths(dir)
           command = fake_previewer(dir, %w[abort convert])
-          warnings = capture_log(:log_warn) { assert Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+          warnings = capture_log(:log_warn) { assert Build::Epub::Kpf.convert_epub_to_kpf!(epub, kpf, command:) }
 
           assert_path_exists kpf
           assert_equal 2, conversion_count(dir), '1 回だけやり直す'
@@ -222,7 +221,7 @@ module VivlioStarter
             "注意","W14016: カバーが指定されていません","","","",""
           CSV
 
-          summaries = capture_log(:log_summary) { Builder.summarize_kpf_logs(dir) }
+          summaries = capture_log(:log_summary) { Build::Epub::Kpf.summarize_kpf_logs(dir) }
 
           assert_equal '[KPF] 変換ログ: エラー 0 件・注意 2 件（注意は出版を止めません）', summaries.first[:message]
           assert_equal 'W14001 ハイパーリンクは解決されていません: 25-cross-reference.xhtml#ruby-sample', summaries.first[:detail]
@@ -236,7 +235,7 @@ module VivlioStarter
           FileUtils.mkdir_p(File.join(dir, 'Logs'))
           File.write(File.join(dir, 'Logs', 'book_log.csv'), %("注意","W14016: カバーが指定されていません","","","",""\n))
 
-          summaries = capture_log(:log_summary) { Builder.summarize_kpf_logs(dir) }
+          summaries = capture_log(:log_summary) { Build::Epub::Kpf.summarize_kpf_logs(dir) }
 
           assert_empty summaries
         end
@@ -247,7 +246,7 @@ module VivlioStarter
         Dir.mktmpdir('vs-kpf-give-up') do |dir|
           epub, kpf = kpf_paths(dir)
           command = fake_previewer(dir, %w[abort abort abort])
-          errors = capture_log(:log_error) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+          errors = capture_log(:log_error) { refute Build::Epub::Kpf.convert_epub_to_kpf!(epub, kpf, command:) }
 
           assert_equal 2, conversion_count(dir), '3 回目は走らせない'
           assert_equal 1, errors.size
@@ -260,7 +259,7 @@ module VivlioStarter
         Dir.mktmpdir('vs-kpf-no-retry') do |dir|
           epub, kpf = kpf_paths(dir)
           command = fake_previewer(dir, %w[reject convert])
-          capture_log(:log_error) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+          capture_log(:log_error) { refute Build::Epub::Kpf.convert_epub_to_kpf!(epub, kpf, command:) }
 
           assert_equal 1, conversion_count(dir)
         end
@@ -280,7 +279,7 @@ module VivlioStarter
           File.write(crash, '{}')
 
           errors = capture_log(:log_error) do
-            Builder.report_missing_kpf(File.join(dir, 'out'), 'book-kindle.epub', since:, report_dir: reports)
+            Build::Epub::Kpf.report_missing_kpf(File.join(dir, 'out'), 'book-kindle.epub', since:, report_dir: reports)
           end
 
           assert_includes errors.first[:message], 'Kindle 変換に失敗しました'
@@ -302,7 +301,7 @@ module VivlioStarter
           SH
           File.chmod(0o755, command)
 
-          warnings = capture_log(:log_warn) { refute Builder.convert_epub_to_kpf!(epub, kpf, command:) }
+          warnings = capture_log(:log_warn) { refute Build::Epub::Kpf.convert_epub_to_kpf!(epub, kpf, command:) }
 
           refute_path_exists File.join(dir, 'converted'), '3 では変換を走らせない'
           assert_equal 1, warnings.count { it[:message].include?('Kindle Previewer 4 が必要です') }
@@ -312,7 +311,7 @@ module VivlioStarter
 
       # kindlepreviewer_available? は存在しないコマンドに false を返す（DI 用の存在チェック）
       def test_kindlepreviewer_available_is_false_for_missing_command
-        refute Builder.kindlepreviewer_available?('vs-no-such-previewer-xyz')
+        refute Build::Epub::Kpf.kindlepreviewer_available?('vs-no-such-previewer-xyz')
       end
 
       # `-locale` は book.language から導出する（専用キーは設けない）。
@@ -325,14 +324,14 @@ module VivlioStarter
           'ko' => 'en', 'ru' => 'en', '' => 'ja'
         }.each do |language, expected|
           with_book_language(language) do
-            assert_equal expected, Builder.kpf_locale, "book.language: #{language.inspect}"
+            assert_equal expected, Build::Epub::Kpf.kpf_locale, "book.language: #{language.inspect}"
           end
         end
       end
 
       # 対応表は kindlepreviewer -help の記載と一致していること（版差の検知）。
       def test_kpf_locales_match_the_previewer_option
-        assert_equal %w[de en es fr it ja nl pt zh], Build::EpubBuilder::KPF_LOCALES.sort
+        assert_equal %w[de en es fr it ja nl pt zh], Build::Epub::Kpf::KPF_LOCALES.sort
       end
 
       # 出力ファイル名: kindle → .kpf、中間は -kindle.epub
@@ -407,8 +406,8 @@ module VivlioStarter
         Common.stub(:book_language, resolved) { yield }
       end
 
-      # FIXTURE_HTML を 1 章として generate_epub_entries! にかけ、結果 DOM を返す。
-      # collect_epub_htmls と inject_heading_images_for_epub! は環境依存（章収集・theme.css）を
+      # FIXTURE_HTML を 1 章として EpubFlow.prepare_pages! にかけ、結果 DOM を返す。
+      # collect_epub_htmls と InjectHeadingImages は環境依存（章収集・theme.css）を
       # 避けるためスタブし、フレーバ分岐そのものだけを検証する。
       # 抽出済みの回転テーブル画像が有る状態を作る（PDF 枝が用意した体）。
       def with_rotate_table_image
@@ -428,9 +427,9 @@ module VivlioStarter
           path = File.join(dir, '11-sample.html')
           File.write(path, FIXTURE_HTML, encoding: 'utf-8')
 
-          Builder.stub(:collect_epub_htmls, ->(_base, _entries) { [path] }) do
-            Builder.stub(:inject_heading_images_for_epub!, ->(files, **) { files }) do
-              Builder.generate_epub_entries!(dir, [], flavor:)
+          Build::Epub::Config.stub(:collect_epub_htmls, ->(_base, _entries) { [path] }) do
+            Build::Transforms::Shared::InjectHeadingImages.stub(:call, ->(files, _ctx) { files }) do
+              Build::EpubFlow.prepare_pages!(Build::OutputTarget.for(flavor), [], dir:)
             end
           end
 
@@ -448,7 +447,6 @@ module VivlioStarter
     # （CONFIG 定数を最小 book.yml で差し替えるため、teardown で canonical へ復元する）
     # ================================================================
     class EpubConfigMetadataTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
 
       def setup
@@ -472,7 +470,7 @@ module VivlioStarter
       # 著者名が空文字でも author はプレースホルダへ寄せられ、空文字を出力しない
       def test_should_substitute_placeholder_when_author_is_empty
         write_book_yml(author: '', language: '')
-        content = File.read(Builder.generate_epub_config!(flavor: :epub))
+        content = File.read(Build::Epub::Config.generate_epub_config!(flavor: :epub))
 
         assert_includes content, "author: '著者名'", '空 author はプレースホルダへ寄せる'
         refute_match(/author:\s*'',/, content, 'author: \'\' を出力しない（vivliostyle 11 が拒否）')
@@ -482,7 +480,7 @@ module VivlioStarter
       # 著者名が設定済みならその値をそのまま使う（プレースホルダで上書きしない）
       def test_should_keep_author_when_present
         write_book_yml(author: '早乙女 遙香', language: 'ja')
-        content = File.read(Builder.generate_epub_config!(flavor: :epub))
+        content = File.read(Build::Epub::Config.generate_epub_config!(flavor: :epub))
 
         assert_includes content, "author: '早乙女 遙香'", '設定済み author はそのまま使う'
       end

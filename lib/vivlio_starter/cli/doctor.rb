@@ -87,8 +87,8 @@ module VivlioStarter
       OCR_OPTIONAL_TOOLS = %w[tesseract tesseract-lang vips].freeze
 
       # Kindle Previewer 同梱の CLI（targets: kindle の KPF 変換専用の任意ツール）。
-      # Build::EpubBuilder::KINDLEPREVIEWER_COMMAND と同値だが、doctor を軽量に保つため
-      # epub_builder を require せず独立に持つ。kindle を使わない利用者には不足を
+      # Build::Epub::Kpf::KINDLEPREVIEWER_COMMAND と同値だが、doctor を軽量に保つため
+      # epub/kpf.rb を require せず独立に持つ。kindle を使わない利用者には不足を
       # ハードエラーにせず 🟡 注記に回す。
       KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
       # macOS の Kindle Previewer 4 のアプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。

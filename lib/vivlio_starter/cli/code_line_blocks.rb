@@ -21,7 +21,7 @@ module VivlioStarter
     #   分割の意味論を 2 度実装しないための正典（notation-implementation-guide.md §2）。
     #
     # 使い分け（容器の作りは利用側の責務）:
-    #   - EPUB/Kindle: pre を div.vs-code-epub > div.vs-code-line へ置換（EpubBuilder）
+    #   - EPUB/Kindle: pre を div.vs-code-epub > div.vs-code-line へ置換（Transforms::Shared::ConvertCodeBlocks）
     #   - PDF:         pre を保ったまま code の中身を span.vs-code-line へ組み直す（PdfBuilder）
     # ================================================================
     module CodeLineBlocks

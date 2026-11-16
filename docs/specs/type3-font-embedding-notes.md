@@ -398,7 +398,7 @@ Linux の CI なら DejaVu になる。**成果物が再現しない。**
 
 #### EPUB は本文書体を埋め込まない
 
-`EpubBuilder#embed_fonts?` は `false` を返す。EPUB の本文は読者が選んだ書体で組まれるので、
+`Epub::Workspace.embed_fonts?` は `false` を返す。EPUB の本文は読者が選んだ書体で組まれるので、
 「図を本文と揃える」という目標が EPUB には最初から存在しない。図が拠れる書体は
 **図自身が持つものだけ**である。
 

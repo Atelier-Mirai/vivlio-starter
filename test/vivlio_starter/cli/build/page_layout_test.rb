@@ -4,7 +4,7 @@
 # Test: page_layout_test.rb
 # ================================================================
 # テスト対象:
-#   - vivliostyle size 解決（EpubBuilder.resolve_page_size）
+#   - vivliostyle size 解決（Epub::Config.resolve_page_size）
 #   - CSS break-before: recto による右ページ始まり
 #   - 奥付の偶数ページ配置（空白ページ挿入）
 #   - 画像オーバーフロー防止 CSS
@@ -31,30 +31,30 @@ module VivlioStarter
     class VivliostyleConfigSizeTest < Minitest::Test
       def test_resolve_page_size_returns_a5_for_a5_preset
         config = Common.wrap_config(page: { size: 'A5' })
-        size = Build::EpubBuilder.resolve_page_size(config)
+        size = Build::Epub::Config.resolve_page_size(config)
         assert_equal 'A5', size
       end
 
       def test_resolve_page_size_returns_a5_when_page_nil
-        size = Build::EpubBuilder.resolve_page_size(Common.wrap_config(page: nil))
+        size = Build::Epub::Config.resolve_page_size(Common.wrap_config(page: nil))
         assert_equal 'A5', size
       end
 
       def test_resolve_page_size_returns_dimensions_when_no_size_key
         config = Common.wrap_config(page: { width: '182mm', height: '257mm' })
-        size = Build::EpubBuilder.resolve_page_size(config)
+        size = Build::Epub::Config.resolve_page_size(config)
         assert_equal '182mm 257mm', size
       end
 
       def test_resolve_page_size_returns_b5_for_b5_preset
         config = Common.wrap_config(page: { size: 'B5' })
-        size = Build::EpubBuilder.resolve_page_size(config)
+        size = Build::Epub::Config.resolve_page_size(config)
         assert_equal 'B5', size
       end
 
       def test_resolve_page_size_normalizes_case
         config = Common.wrap_config(page: { size: 'a4' })
-        size = Build::EpubBuilder.resolve_page_size(config)
+        size = Build::Epub::Config.resolve_page_size(config)
         assert_equal 'A4', size
       end
 

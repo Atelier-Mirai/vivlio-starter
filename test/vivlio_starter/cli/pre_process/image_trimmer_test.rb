@@ -435,7 +435,6 @@ end
 
 # EPUB には data-vs-source（ビルド機のパス）を持ち込まない
 class EpubStageDropsTrimSourceTest < Minitest::Test
-  EB = VivlioStarter::CLI::Build::EpubBuilder
   Common = VivlioStarter::CLI::Common
 
   def test_should_strip_data_vs_source_when_staging
@@ -445,7 +444,7 @@ class EpubStageDropsTrimSourceTest < Minitest::Test
         File.write(File.join(Common::BUILD_HTML_DIR, '11-workflow.html'),
                    '<img src="images/trim/11-workflow/k.svg" data-vs-source=".cache/vs/trim/k.svg" alt="流れ">')
 
-        EB.stage_consumer_htmls!('epub')
+        VivlioStarter::CLI::Build::Epub::Workspace.stage_consumer_htmls!('epub')
 
         assert_equal '<img src="images/trim/11-workflow/k.svg" alt="流れ">', File.read('epub/11-workflow.html')
       end

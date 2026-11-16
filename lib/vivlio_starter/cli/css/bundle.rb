@@ -214,8 +214,8 @@ module VivlioStarter
 
         # url() が指す作業ディレクトリの中のファイルを、パッケージの中の位置へ置き換えて、
         # dest から見た相対にする。パッケージには stylesheets/ がそのままの階層で写り
-        # （EpubBuilder.localize_assets!）、生成キャッシュ .cache/vs/ の中のもの（theme-images/）は
-        # パッケージのルート直下に写る（EpubBuilder.localize_theme_variant_images!）。
+        # （Epub::Workspace.localize_assets!）、生成キャッシュ .cache/vs/ の中のもの（theme-images/）は
+        # パッケージのルート直下に写る（Epub::Workspace.localize_theme_variant_images!）。
         def package_rebase(dest, package_root)
           from = Pathname(dest).dirname.relative_path_from(Pathname(package_root))
           lambda do |absolute|

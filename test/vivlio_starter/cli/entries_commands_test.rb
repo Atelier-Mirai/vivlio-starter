@@ -13,7 +13,7 @@
 # 注: 旧 `vs entries`（execute_entries によるルート entries.js 生成）は
 #     手動フロー撤去（vivlioverso-manual-flow-removal-spec.md）で削除済み。
 #     本モジュールは workspace entries 生成（VivliostyleConfigWriter /
-#     EpubBuilder）の実装基盤としてヘルパのみを提供する。
+#     Epub::Config）の実装基盤としてヘルパのみを提供する。
 # ================================================================
 
 require 'test_helper'

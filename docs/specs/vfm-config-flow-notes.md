@@ -68,7 +68,7 @@ vivliostyle CLI の config（`VivliostyleConfigSchema`）の vfm 設定
 VFM 変換するとき**にだけ参照される。本システムでは:
 
 - パイプライン生成 config（`Build::VivliostyleConfigWriter`）: entry は HTML
-- EPUB/Kindle 生成 config（`EpubBuilder.generate_epub_config!`）: entry は HTML
+- EPUB/Kindle 生成 config（`Epub::Config.generate_epub_config!`）: entry は HTML
 - 著者向け手動フロー（`vs entries` → `vs pdf`・ルート config）: `vs entries` は
   HTML からしか entries.js を作らない（`entries.rb:56-79`）→ entry は HTML
 

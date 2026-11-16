@@ -17,7 +17,7 @@
 # 出力（§6.3）:
 #   - SVG: PDF 用（注釈がベクタのまま印刷解像度で出る）。元画像は base64 PNG で埋め込む
 #     （<img> から参照される SVG は外部リソースを読めないため）。
-#   - ラスター: EPUB/Kindle 用（Kindle は SVG 内 base64 を非対応）。EpubBuilder が src を
+#   - ラスター: EPUB/Kindle 用（Kindle は SVG 内 base64 を非対応）。Transforms::Shared::LocalizeShowcaseImages が src を
 #     data-vs-raster の値へ差し替える（§7.9）。形式は元画像の素性で選び分ける（下記）。
 #
 # ラスター形式の自動判定（PHOTO_COLOR_THRESHOLD）:
@@ -253,8 +253,8 @@ module VivlioStarter
 
         # 置換後の HTML。前後に空行を補い独立段落として組ませる。
         # ラスターの参照を data-vs-raster に明示して持たせる——形式が png / jpg のどちらにも
-        # なりうるため、EpubBuilder 側で拡張子を推測させない（推測させると --no-clean ビルドで
-        # 前回形式の残骸を拾いうる）。EpubBuilder は使用後にこの属性を取り除く。
+        # なりうるため、Transforms::Shared::LocalizeShowcaseImages 側で拡張子を推測させない（推測させると --no-clean ビルドで
+        # 前回形式の残骸を拾いうる）。Transforms::Shared::LocalizeShowcaseImages は使用後にこの属性を取り除く。
         def figure(svg_rel, raster_rel, alt, width)
           "\n\n<figure class=\"vs-showcase\">\n" \
             "<img class=\"vs-showcase\" src=\"#{svg_rel}\" data-vs-raster=\"#{raster_rel}\" " \

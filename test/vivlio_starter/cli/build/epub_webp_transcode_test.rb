@@ -4,7 +4,7 @@
 # Test: build/epub_webp_transcode_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder の WebP→JPEG/PNG トランスコード
+#   Build::Transforms::Kindle::TranscodeWebpImages の WebP→JPEG/PNG トランスコード
 #   （epub-kindle-webp-transcode-spec.md §2・§6-1）
 #
 # 検証内容:
@@ -21,12 +21,11 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/common'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubWebpTranscodeTest < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
 
       def setup
@@ -45,7 +44,7 @@ module VivlioStarter
           make_webp('images/10-intro/photo.webp', 'xc:red')
           write_html('chapter.html', 'images/10-intro/photo.webp')
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           updated = File.read('chapter.html')
 
           assert_match %r{images/_epub_assets/[0-9a-f]{16}\.jpg}, updated
@@ -68,7 +67,7 @@ module VivlioStarter
             <p><img src="images/23-figures/photo.webp" alt=""></p></body></html>
           HTML
 
-          Builder.stub(:target_edge_for, 320) { Builder.transcode_webp_images_for_epub!(['chapter.html']) }
+          Build::Epub::Images.stub(:target_edge_for, 320) { apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html']) }
           gallery, inline = File.read('chapter.html').scan(/src="([^"]+)"/).flatten
 
           assert_equal [700, 1000], Common.image_size(gallery).to_a, '素材の画素数のまま（上限より小さいので縮めない）'
@@ -82,7 +81,7 @@ module VivlioStarter
           make_webp('images/10-intro/icon.webp', 'xc:none')
           write_html('chapter.html', 'images/10-intro/icon.webp')
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           updated = File.read('chapter.html')
 
           assert_match %r{images/_epub_assets/[0-9a-f]{16}\.png}, updated
@@ -97,7 +96,7 @@ module VivlioStarter
                  out: File::NULL, err: File::NULL)
           write_html('chapter.html', 'images/10-intro/diagram.webp')
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           updated = File.read('chapter.html')
 
           assert_match %r{images/_epub_assets/[0-9a-f]{16}\.png}, updated,
@@ -111,7 +110,7 @@ module VivlioStarter
           make_webp("images/94-sample/Einstein's_later_years.webp", 'xc:gray')
           write_html('chapter.html', 'images/94-sample/Einstein&apos;s_later_years.webp')
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           updated = File.read('chapter.html')
 
           refute_includes updated, '&apos;'
@@ -130,7 +129,7 @@ module VivlioStarter
           write_html('chapter.html', 'images/data/physics_books/relativity.webp')
           refute File.exist?('images/data/physics_books/relativity.webp'), 'cwd には実体が無い前提'
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           updated = File.read('chapter.html')
 
           assert_match %r{images/_epub_assets/[0-9a-f]{16}\.(jpg|png)}, updated,
@@ -146,14 +145,14 @@ module VivlioStarter
           make_webp('images/10-intro/photo.webp', 'xc:red')
           write_html('chapter.html', 'images/10-intro/photo.webp')
 
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           first = File.read('chapter.html')
           count1 = Dir.glob('images/_epub_assets/*').size
 
           # 差し替え済みの HTML を再度走査しても WebP 参照は無いので変化しない。
           # 元 HTML を作り直してもう一度走査し、出力数が増えないことを確認する。
           write_html('chapter.html', 'images/10-intro/photo.webp')
-          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          apply_transform(Build::Transforms::Kindle::TranscodeWebpImages, ['chapter.html'])
           second = File.read('chapter.html')
           count2 = Dir.glob('images/_epub_assets/*').size
 
@@ -170,7 +169,7 @@ module VivlioStarter
           make_image('images/10-intro/diagram.png', 'xc:blue')
           write_html('chapter.html', 'images/10-intro/diagram.png')
 
-          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+          Build::Epub::Images.transcode_to_webp!(['chapter.html'])
           staged = staged_src(File.read('chapter.html'))
 
           assert_match(%r{\Aimages/_epub_assets/[0-9a-f]{16}\.webp\z}, staged)
@@ -184,7 +183,7 @@ module VivlioStarter
           make_image('images/10-intro/diagram.png', 'xc:blue')
           write_html('chapter.html', 'images/10-intro/diagram.png')
 
-          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+          Build::Epub::Images.transcode_to_webp!(['chapter.html'])
 
           refute_path_exists 'images/10-intro/diagram.png'
         end
@@ -198,7 +197,7 @@ module VivlioStarter
           make_image('images/10-intro/unreferenced.png', 'xc:green')
           write_html('chapter.html', 'images/10-intro/diagram.png')
 
-          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+          Build::Epub::Images.transcode_to_webp!(['chapter.html'])
 
           assert_path_exists 'images/10-intro/unreferenced.png'
         end
@@ -211,7 +210,7 @@ module VivlioStarter
           write_html('chapter.html', 'images/10-intro/photo.webp')
           before = File.read('chapter.html')
 
-          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+          Build::Epub::Images.transcode_to_webp!(['chapter.html'])
 
           assert_equal before, File.read('chapter.html')
         end

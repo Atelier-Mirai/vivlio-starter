@@ -167,7 +167,7 @@
 
 - [Medium] **Kindle Previewer 3 の検出と更新の案内を削除する（2027 年 1 月のバージョンアップ）**: 2026-12-25 に公開予定の Ruby 4.1.0 への対応と同じバージョンアップで行う。Amazon が必須としているのは 4 で、KPF の変換は 4 だけで行っている。削除後の 3 は、インストールされていないものとして扱う（Kindle を選んだ本なら `vs doctor --fix` が 4 をインストールする）。
   - `lib/vivlio_starter/cli/doctor.rb`: `KINDLE_PREVIEWER_3_APP`・`kindle_previewer_outdated?`・`report_kindle_previewer_outdated`・`kindlepreviewer_wrapper_outdated?` と、それらの呼び出し
-  - `lib/vivlio_starter/cli/build/epub_builder.rb`: `kindle_previewer_3?` と `convert_epub_to_kpf!` の中の判定（`DoctorCommands` を使わなくなるので、`require_relative '../doctor'` も外す）
+  - `lib/vivlio_starter/cli/build/epub/kpf.rb`: `kindle_previewer_3?` と `convert_epub_to_kpf!` の中の判定（`DoctorCommands` を使わなくなるので、`require_relative '../doctor'` も外す）
   - `test/vivlio_starter/cli/doctor_commands_test.rb`・`test/vivlio_starter/cli/build/epub_flavor_test.rb`: 上の処理のテスト
   - `contents/44-build.md`・`contents/51-doctor.md`: Kindle Previewer 3 についての記述
 
@@ -176,7 +176,7 @@
     - `<html>` に `xmlns:epub="http://www.idpf.org/2007/ops"` が宣言済み（名前空間の追加作業は不要）
     - 参照リンク `<a id="fnref1" href="…#fn1">` の飛び先が `aside` の `id` と正確に対応している（`fn1`/`fn2`/`fn3`）
     - 段落内インライン span の `id` は `strip_inline_footnote_ids_for_epub!` が除去済みなので、`#fnN` の解決先が `aside` に一意（ポップアップの対象が曖昧にならない）
-  - **作業は属性 2 つ**。`EpubBuilder#decorate_footnotes_for_epub!` が既に `aside.page-footnote-print[data-footnote-number]` を走査しているので、そこで `aside['epub:type'] = 'footnote'` を、対応する `a#fnrefN` に `epub:type="noteref"` を付ける。
+  - **作業は属性 2 つ**。`Transforms::Shared::DecorateFootnotes` が既に `aside.page-footnote-print[data-footnote-number]` を走査しているので、そこで `aside['epub:type'] = 'footnote'` を、対応する `a#fnrefN` に `epub:type="noteref"` を付ける。
   - **確認は実機で**。KFX のポップアップは epubcheck では検証できず、Kindle Previewer で開くしかない（`kindle-css-compatibility-notes.md` の実機確認の流儀に従う）。ポップアップ化すると `aside` は本文に出なくなるため、**CSS 側の注記ブロック体裁（`body.vs-epub aside.page-footnote`）を残すか外すか**も同時に判断する。
 
 - [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → `kindle-fixed-layout-ideas.md`
@@ -196,11 +196,11 @@
 
 ## 開発者体験 / CLI UX
 
-- [Medium] **大きなファイルと長いメソッドを分ける（1.0.0 の後）**: 読み通せない大きさになっている。いちばん大きい `build/epub_builder.rb` は 3,858 行で、EPUB と Kindle の処理が一つに入っている。次に `doctor.rb`（1,697 行）・`index/unified_index_manager.rb`（1,604 行）。メソッドでは `execute_doctor`（400 行）・`apply_markdown_review!`（229 行）・`process_cross_references_for_files`（169 行）・`execute_post_process`（141 行）・`wrap_sideimage_blocks!`（129 行）。分けるときは Kindle Previewer の確認をやり直す（EPUB・Kindle の出力は `rake test` では確かめきれない）。`Label`・`Heading` の `Struct` も `Data.define` へ移す。
+- [Medium] **大きなファイルと長いメソッドを分ける（1.0.0 の後）**: 読み通せない大きさになっている。`build/epub_builder.rb`（3,771 行）は 2.0 の S4 で分けた（`v2-architecture-spec.md` §4.3）。残りで大きいのは `doctor.rb`（1,697 行）・`index/unified_index_manager.rb`（1,604 行）。メソッドでは `execute_doctor`（400 行）・`apply_markdown_review!`（229 行）・`process_cross_references_for_files`（169 行）・`execute_post_process`（141 行）・`wrap_sideimage_blocks!`（129 行）。分けるときは Kindle Previewer の確認をやり直す（EPUB・Kindle の出力は `rake test` では確かめきれない）。`Label`・`Heading` の `Struct` も `Data.define` へ移す。
 - [Low] **小さなリファクタリングの残り（1.0.0 の後）**: 2026-11-07 の洗い出しで、出力やテストに影響するため 1.0.0 の前には手を付けなかったもの。
   - **HTML エスケープの手書きを `CGI.escapeHTML` へ寄せる**: `escape_attr`・`escape_text`・`escape_html`・`escape_html_text` が 8 ファイルに 11 個ある（`code_line_blocks.rb`・`markdown_transformer.rb`・`mermaid_transformer.rb`・`showcase_svg_builder.rb`・`showcase_transformer.rb`・`unified_page_builder.rb`・`math_text_renderer.rb`・`heading_image_composer.rb`）。`CGI.escapeHTML` は `'` も `&#39;` にするので出力のバイト列が変わる。表示は変わらないが、文字列を突き合わせるテストの期待値を確かめ直す。
   - **`require 'cgi'` を Ruby 4.0 で警告が出ない形にする**: Ruby 4.0 では `require 'cgi'` が「CGI library is removed」と警告する（`bin/vs` は `-W0` で隠れるが、テストでは出る）。`require 'cgi/escape'` に替えるだけでは直らない。Ruby 3.4 の `cgi/escape` 単体では `CGI.unescape` と `CGI.unescapeURIComponent` が `NameError`（`@@accept_charset` が未定義）になるため。この 2 つ（どちらも `epub_builder.rb`。`unescape` が 1 箇所・`unescapeURIComponent` が 2 箇所）を `URI.decode_www_form_component`・`URI.decode_uri_component` へ置き換えてから `cgi/escape` にする。`URI.decode_www_form_component` は不正な `%` の並びで `ArgumentError` を出す（`CGI.unescape` は出さない）ので、そこの扱いを決める。
-  - **使っていない引数（テストからも呼ばれているもの）**: `epub_builder.rb` の `build_cover_config_line` の `config`、`pdf_builder.rb` の `convert_code_pre_lines!` の `doc`、`new.rb` の `rewrite_book_yml` の `cmd`。外すとテストの呼び出しも書き換えることになる。
+  - **使っていない引数（テストからも呼ばれているもの）**: `build/epub/config.rb` の `build_cover_config_line` の `config`、`pdf_builder.rb` の `convert_code_pre_lines!` の `doc`、`new.rb` の `rewrite_book_yml` の `cmd`。外すとテストの呼び出しも書き換えることになる。
   - **Samovar コマンドの例外処理の定型**: `rescue StandardError => e` → `Common.log_error("… 実行中にエラー: #{e.message}")` → `1` が各コマンドに繰り返し書かれている。`VsCommand` に寄せられるが、コマンドの構造を変えることになる。
   - **2 箇所だけの重複（3 箇所目が出たら抜き出す）**: `preface_basenames`（`unified_page_builder.rb`・`cross_reference_processor.rb`）、`load_yaml`（`book_key_inserter.rb`・`config_guide.rb`）、`format_number`／`fmt`（`book_settings_css.rb`・`showcase_svg_builder.rb`）、`resolve_entries`（`build/utilities.rb`・`pre_process.rb`）、`svg_to_data_uri`（`image_path_normalizer.rb`・`theme_image_resolver.rb`）、PDF を開く処理（`direct_build.rb` の `open_pdf`・`samovar/build_command.rb` の `open_pdf` と `open_generated_pdf`）。
 - [Medium] **`vs new` に、見本の原稿を入れずに本を作るオプションを足す（2.0 までに）**: 今は `vs new` の後に `vs delete 00-99` で章を消せるが、`config/catalog.yml` の `CHAPTERS:` に、ガイドブックの部の名前（【第一部：はじめる】〜【第五部：トラブルシューティング】）が中身の無いまま 5 つ残る。このまま組むと、空の部の扉が出るおそれがある。オプション（`vs new mybook --empty` など）を付けたときは、`contents/` に見本の章を置かず、`catalog.yml` を部の無い最小の形（前書き・章 1 つ・後書き、または空）で書く。合わせて、`vs delete` で部の中の章が全部消えたときに、空の部を `catalog.yml` から消すか確認する動きと、章の無い部を組むときの扱い（扉を出さずに 🟡）も決める。

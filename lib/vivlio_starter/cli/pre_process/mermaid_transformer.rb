@@ -7,7 +7,7 @@
 #   ```mermaid フェンスブロックを前処理で消費し、mmdc で描いた図への
 #   <figure class="vs-mermaid"><img> 参照へ置換する（mermaid-diagram-spec.md §4.1）。
 #   生成物の後段処理（PDF=ベクタ SVG / EPUB・Kindle=対のラスター）は図解注釈
-#   （showcase）と同型で、EpubBuilder が data-vs-raster の PNG へ差し替える。
+#   （showcase）と同型で、Transforms::Shared::LocalizeShowcaseImages が data-vs-raster の PNG へ差し替える。
 #
 # なぜコード保護の前段で横取りするのか（§0・§4.2）:
 #   ```mermaid は言語付きフェンスなので、通常のコード保護に任せると Prism へ流れ、
@@ -169,7 +169,7 @@ module VivlioStarter
         # --- 出力 HTML ---
 
         # 置換後の HTML。前後に空行を補い独立段落として組ませる。ラスター参照は
-        # data-vs-raster に明示し、EpubBuilder が EPUB/Kindle で src を PNG へ差し替える。
+        # data-vs-raster に明示し、Transforms::Shared::LocalizeShowcaseImages が EPUB/Kindle で src を PNG へ差し替える。
         def figure(svg_rel, raster_rel, alt)
           "\n\n<figure class=\"vs-mermaid\">\n" \
             "<img class=\"vs-mermaid\" src=\"#{svg_rel}\" data-vs-raster=\"#{raster_rel}\" " \

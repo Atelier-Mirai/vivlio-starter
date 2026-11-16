@@ -159,7 +159,7 @@ module VivlioStarter
         # 字は後の面が優先されるので、HackGen を並びに含む本文・見出し・コラム・コード・ノンブルの
         # すべてで、HackGen の次に DejaVu が探される。雛形の base/page.css の並びを書き換えないので、
         # vs upgrade で CSS を上げなくても効く（書体のファイルは雛形と一緒に届く）。
-        # 書体のファイルが無いプロジェクトでは何も出さない。EPUB は @font-face を取り除く（EpubBuilder）。
+        # 書体のファイルが無いプロジェクトでは何も出さない。EPUB は @font-face を取り除く（Css::TargetFilter）。
         def fallback_font_rules(image_prefix:)
           family = SvgFontEmbedder::DEFAULT_CODE_FONT
           { 400 => :regular, 700 => :bold }.flat_map do |weight, face|
@@ -266,7 +266,7 @@ module VivlioStarter
         end
 
         # tokens.css が持つ既定の文字数（未指定時の値と一致させる）。
-        # EpubBuilder も同じ既定でリード幅比を導くため公開している（§5-1）。
+        # Transforms::Shared::InjectHeadingImages も同じ既定でリード幅比を導くため公開している（§5-1）。
         DEFAULT_HEADING_CHARS = 8
         DEFAULT_LEAD_CHARS = 20
         DEFAULT_ORNAMENT_HEADING_CHARS = 14
@@ -282,7 +282,7 @@ module VivlioStarter
           chapter_title_font_q(scale) * 0.25 * 1.08
         end
 
-        # 章題の字の大きさ（Q）。EpubBuilder も、PDF の章題と節題の比を取るのに使う。
+        # 章題の字の大きさ（Q）。Transforms::Shared::InjectHeadingImages も、PDF の章題と節題の比を取るのに使う。
         def chapter_title_font_q(scale) = (scale * 48).clamp(34, 50)
 
         # 章リード 1 字の送り（mm）。リードは本文の基準の大きさ（page プリセットの

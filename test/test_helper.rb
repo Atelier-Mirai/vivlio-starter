@@ -55,3 +55,17 @@ module ResetIssueRegistryBeforeEachTest
 end
 
 Minitest::Test.include(ResetIssueRegistryBeforeEachTest)
+
+# 変換の段を 1 つだけ、HTML のファイルへ当てる（出力先の宣言の並びを通さずに、1 段の働きを確かめる）
+module ApplyTransformHelper
+  # @param transform [Module] 変換の段（VivlioStarter::CLI::Build::Transforms の下のモジュール）
+  # @param html_files [Array<String>] 書き換える HTML のパス
+  # @param target [Symbol] 出力先（:epub / :kindle）
+  # @param workspace [String, nil] 出力先のワークスペース（省くと出力先の宣言の値）
+  def apply_transform(transform, html_files, target: :kindle, workspace: nil)
+    build = VivlioStarter::CLI::Build
+    build::Transforms::Runner.apply!([transform], html_files, build::Transforms::Context.for(target, workspace:))
+  end
+end
+
+Minitest::Test.include(ApplyTransformHelper)

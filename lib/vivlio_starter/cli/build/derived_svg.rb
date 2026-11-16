@@ -28,7 +28,7 @@ module VivlioStarter
       #
       # **PDF 専用ではない。** EPUB もこの派生をそのまま配る——`<img>` 参照の SVG が
       # 独立文書である事情はリーダーでも同じで、しかも EPUB は本文書体を埋め込まない
-      # （`EpubBuilder#embed_fonts?` は false）ため、図が拠れる書体は図自身が持つものしかない。
+      # （`Epub::Workspace.embed_fonts?` は false）ため、図が拠れる書体は図自身が持つものしかない。
       # ラスタライズして逃げる手は使えない。librsvg は data: URI の @font-face を読まず
       # （実測: 埋め込み前後の PNG がバイト一致）、**焼いた機械の OS 書体**が焼き付いて
       # 成果物が再現しなくなる。Kindle だけは KFX が SVG を扱えないので、そこで初めて焼く。

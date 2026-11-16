@@ -171,7 +171,7 @@ module VivlioStarter
 
         # 拡張子違いを探すときの順。**png / jpg を webp より先に見る**——同名の原本が
         # 残っていれば、そちらから派生を作るほうが劣化が一段で済む
-        # （`EpubBuilder#transcode_source_for` と同じ流儀）。
+        # （`Transforms::Kindle::TranscodeWebpImages.transcode_source_for` と同じ流儀）。
         FALLBACK_EXTENSIONS = %w[.png .jpg .jpeg .webp].freeze
 
         # 原稿の参照を、実在するファイルへ解決する（見つからなければ nil）。

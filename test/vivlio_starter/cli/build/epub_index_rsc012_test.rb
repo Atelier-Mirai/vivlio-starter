@@ -4,12 +4,12 @@
 # Test: build/epub_index_rsc012_test.rb
 # ================================================================
 # テスト対象:
-#   Build::EpubBuilder の索引・用語集 EPUB 後処理における RSC-012 恒常対策
+#   Build::Transforms::Shared::PostProcessIndexGlossary の索引・用語集 EPUB 後処理における RSC-012 恒常対策
 #   （epub-kindle-target-split-spec.md 付録 A-2 / KNOWN_ISSUES.md）。
 #
 #   epubcheck の RSC-012（「フラグメント識別子が定義されていません」）は、
 #   索引リンク（#idx-…）・用語集バックリンク（#gls-src-…）が当該 EPUB に
-#   存在しない id を指すと発生する。post_process_index_glossary_for_epub! は
+#   存在しない id を指すと発生する。Transforms::Shared::PostProcessIndexGlossary は
 #   全 HTML から実在 id を収集し、参照先 id が無いリンクを素のテキストへ
 #   フォールバック（リンク解除）して RSC-012 を恒常的に出さないことを検査する。
 #
@@ -27,12 +27,11 @@ require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/build'
-require 'vivlio_starter/cli/build/epub_builder'
+require 'vivlio_starter/cli/build/epub_flow'
 
 module VivlioStarter
   module CLI
     class EpubIndexRsc012Test < Minitest::Test
-      Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
 
       def setup
@@ -64,7 +63,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
         result = File.read(index_path, encoding: 'utf-8')
 
         refute_includes result, 'idx-missing-9', '実在しない索引リンクは解除され href から消える'
@@ -89,7 +88,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
         result = File.read(index_path, encoding: 'utf-8')
 
         assert_match(%r{<a href="33-network.html#idx-a-1">第7部</a>}, result)
@@ -109,7 +108,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
 
         assert_includes File.read(index_path, encoding: 'utf-8'),
                         '</a>, <span class="index-other-volume"><strong>上巻 第7章</strong></span>'
@@ -132,7 +131,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
         result = File.read(index_path, encoding: 'utf-8')
 
         refute_includes result, 'href="22-extensions.html#idx-eee-1"',
@@ -154,7 +153,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
         result = File.read(glossary_path, encoding: 'utf-8')
 
         refute_includes result, 'gls-src-11-basics-foo-99', '実在しないバックリンクは解除される'
@@ -176,7 +175,7 @@ module VivlioStarter
           </section>
         HTML
 
-        Builder.post_process_index_glossary_for_epub!(html_files)
+        apply_transform(Build::Transforms::Shared::PostProcessIndexGlossary, html_files)
         result = File.read(glossary_path, encoding: 'utf-8')
 
         assert_includes result, 'gls-src-31-lint-css%E7%B5%84%E7%89%88-1',
@@ -198,7 +197,7 @@ module VivlioStarter
         h1 = doc.css('h1').first
         lead = doc.css('.chapter-lead').first
 
-        Builder.apply_image_heading!(h1, 'images/headings/x.svg', %w[第14章 ビルド], doc)
+        Build::Transforms::Shared::InjectHeadingImages.apply_image_heading!(h1, 'images/headings/x.svg', %w[第14章 ビルド], doc)
 
         assert_equal 1, h1.css('img').size, '見出しの中身は合成画像 1 枚になる'
         assert_equal '第14章 ビルド', h1.css('img').first['alt'], '見出しテキストは alt へ格納される'
@@ -217,7 +216,7 @@ module VivlioStarter
         HTML
         h1 = doc.css('h1').first
 
-        Builder.apply_image_heading!(h1, 'images/headings/x.svg', %w[第7章 ビルド], doc)
+        Build::Transforms::Shared::InjectHeadingImages.apply_image_heading!(h1, 'images/headings/x.svg', %w[第7章 ビルド], doc)
 
         assert_equal %w[ch-build], h1.css('span.vs-epub-anchor').map { it['id'] }
       end
