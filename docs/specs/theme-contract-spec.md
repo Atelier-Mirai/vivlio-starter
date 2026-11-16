@@ -711,6 +711,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | S8 の仕様 | 2.0 では `theme-bunko` だけを確かめる |
 | 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8（`bunko` を書くとき） | S6 では見出しの 2 枚だけを移す。`bunko` で打ち消しが要った規則を移す。いちばんの候補は前書きの見た目（`parts/preface.css`） |
 | 6 | 改ページの打ち消し（`page.section_pagebreak`・`page.chapter_pagebreak`）が写すテーマの選択子を、テーマの側からどう宣言させるか | S6-10 まで（完了の条件 2） | 今は `BookSettingsCss` が `standard` の選択子（`vs-header-*`）を持つ（§11.11 の 6） |
+| 7 | `vs build` が、著者が入れたテーマの層の勝ち負けの組を、要素ごとの判定で 🟡 にする（`css-layer-restructure-spec.md` §4.3 の「扱い（S6 以降）」）のを、どの小段階で入れるか | S7（`theme:add` で外のテーマを入れられるようになる時点）まで | S6-8 では作っていない。今は `--log=debug` のときだけ出す（§11.12 の 2） |
 
 ---
 
@@ -1081,3 +1082,46 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 - **画面（`v2-migration-plan.md` §3.6 の S6-7 の後の 1 回・2026-11-17）。** B1 の KPF とクリーン EPUB を、r2 の 10 か所（基準の `VERSIONS.md` の表）と見比べた。撮った画面は `r2/check/s6-7/screens/`。
   - Kindle Previewer（Tablet・縦・Mincho・Size 4）は、10 か所とも r2 と画素まで一致する頁があった（`magick compare -metric AE` で 0）。ただし後ろの 4 か所は Location がずれ、コード 1421 → 1428、付録 8400 → 8436、用語集 9990 → 10024、索引 10290 → 10326 で一致した（前の 6 か所は同じ Location）。全体は 10,360 Locations。ずれの元は、Kindle 用 EPUB の XHTML が各 20 バイト長くなったこと（Techbook が `<head>` に入れる `<style>` の中の変数の名前が S6-2 で `--book-*` に変わった）と、S6-4〜S6-6 で `styles/*.css` の中身が変わったことで、表示は変わらない。r3 で場所の表を作り直す。
   - Apple Books（書名を `vs-test s6-7 ` で始めた写し・1024×768 の見開き）は、r2 と同じ着き方（「次の章」1・4・28・33・35・36 回、第 2 章の扉から → 1〜4 回）で、10 か所とも同じ頁（同じページ番号）に着いた。違う画素は、窓の題（書名）と窓の角のほか、下のページ番号の数字の横の位置（数字は同じ）と、付録のコードの字の縁の 4 画素だけで、紙面は同じ。写しは撮った後にライブラリから削除した（「名称変更…」で書名を確かめてから）。
+
+### 11.12 S6-8 コマンド（2026-11-17）
+
+#### 作ったもの
+
+- **`vs theme`**（`ThemeCommands.list`）: 本の `themes/` のテーマを、題・版・土台つきで並べ、`book.yml` の `theme.name` のものに印を付ける。`theme.name` のテーマが本に無ければ 🟡（同梱のテーマなら `vs theme:add <名前>` を示す）。本に無い同梱のテーマがあれば、別の見出しで並べる（無ければ見出しごと出さない）。
+- **`vs theme:check [名前]`**（`Theme::Check`・`lib/vivlio_starter/cli/theme/check.rb`。名前を省くと `theme.name`）: 指摘を 🔴・🟡・💡 で返し、🔴 があれば終了コード 1。
+  - 🔴: `theme.yml` の誤り・契約の版・`requires_vs:`・`extends:` の先が本に無い（`Theme.resolve` の誤り）。
+  - 🟡: `theme.yml` の知らないキー。テーマのファイルが選ぶクラスのうち、契約 HTML に無いもの・`:internal` のもの（`HtmlContract.lookup`。テーマ自身と土台の `body_class:` のクラスは許す）。層の中の `!important`。外部の URL（`url(http…)`・`url(//…)`・`@import "http…"`）。入れ子の規則。
+  - Kindle に対応するテーマ（`supports.targets` に `kindle`）だけ: Kindle に届かない宣言（`LiteralResolver` が落としたもの。紙の寸法は 💡 で数だけ、ほかは場所と `Bundle::UNRESOLVED_ADVICE` の直し方つきの 🟡）。`kindle_tokens:` と、テーマの `kindle*.css` の `body.vs-kindle`（body のほかのクラスとの組を含む）で定義した `--book-font-size`・`--book-line-height`・総称の名前でない書体の変数（🟡）。
+  - 💡: 層を外すと勝ち負けが変わりうる組（`InversionCheck.pairs` の静的な判定。EPUB・Kindle に対応するテーマだけ）。テーマの規則ごとに、取り合うプロパティと相手の選択子を 1 行にまとめる。
+  - 見るのはテーマ自身のファイル（`themes/<名前>/` の下の全部の CSS と `theme.yml`）だけ。Kindle に届くかと層の勝ち負けは、一時ディレクトリに本の写し（`stylesheets/` と `themes/` への参照・空の `custom.css`・本の今の設定から作った `book-settings.css`・テーマの `tokens:`）を作り、ページの種類ごとに EPUB と Kindle の入口を組んで判定する。Kindle の変数の表の範囲は、ページの種類の body のクラスと、テーマのオプションが付けるクラス（`Resolved#body_classes`）。
+  - 場所（`ファイル:行`）は、注釈を外した字面で選択子・宣言を探した最初の行。
+- **`vs theme:add <名前|パス>`**（`ThemeCommands.add`・`Theme::Install`・`lib/vivlio_starter/cli/theme/install.rb`）: §7.2 の S6 の経路（同梱のテーマの名前・手元のディレクトリ・手元の zip）と複製の決まりの 1〜5。
+  - 写す先の名前は、`theme.yml` の `name:`（ダウンロードしたディレクトリの名前は `mono-main` のようになるため）。一時ディレクトリへ許可の表のファイルだけを写してから `Manifest.load` と契約の版を検査し、通ったものだけを本へ写す。
+  - 写さなかったもの（許可の表に無い拡張子・シンボリックリンク・`.` で始まるディレクトリは 1 行）を 💡 で並べる。
+  - 本に同じ名前のテーマがあれば、ファイルごとの「置き換え・追加・削除」を全部見せてから確認する（中身が同じファイルは出さない）。「いいえ」なら何も変えない。置き換えはディレクトリごと（本の側にだけあるファイルは削除）。全部が同じなら「変えるものはありません」と示し、何もしない。
+  - `extends:` の先が本に無ければ、同梱のテーマなら一緒に写す（確認も一緒）。同梱に無ければ 🟡 で知らせ、検査と `book.yml` の案内は省く（テーマを読めないため）。
+  - 写した後に `vs theme:check` を走らせ、`book.yml` に書く行（`theme:` と `name:`）を示す。テーマの `tokens:` を `book.yml` に書いた `theme:` の値が覆っていれば、その行と、空欄にする書き方を 💡 で示す（§3.2）。`book.yml` は書き換えない。
+  - git の URL・npm のパッケージ名の形（`://`・`git@`・`.git`・`@`）は「この版ではまだできません」と 🔴（S7）。見つからない名前は、同梱のテーマの名前を示す。
+- **zip の検査**（`Theme::ZipInspector`）: 展開の前に、中央ディレクトリを Ruby で読み、絶対パス（`/`・`\`・ドライブ名）・`..` を含むパス・シンボリックリンク（Unix で作った項目の外部属性が `S_IFLNK`）の項目を挙げる。1 つでもあれば展開せずに 🔴。ZIP64 は読まずに 🔴（展開したディレクトリの指定を案内する）。展開は一時ディレクトリで `unzip` が行う。
+- **`vs theme:new <名前> [--extends 土台]`**（`ThemeCommands.new_theme`・`Theme::Template`）: `--extends` があれば配色のテーマ（`extends:` と、例を注釈にした `tokens:`）、無ければ組版のテーマ（`supports:` と `styles: [theme.css]`、注釈だけの `theme.css`）を作る。名前の形・既にあるディレクトリ・本に無い土台は 🔴。作った後に `vs theme:check` を走らせ、`book.yml` に書く行を示す。
+- **テーマが見つからないときの案内**（§11.6 の 5）: `Theme.load_named` が、同梱のテーマにある名前なら「同梱のテーマなので、vs theme:add <名前> で本に入れられます」を先に示す（`theme.name`・`extends:` の両方）。`TraitCombinationCheck` の対応するテーマの案内も、本に無い同梱のテーマには「（vs theme:add <名前> で入れます）」を添える。
+- **ヘルプ**: 4 つを `RootCommand.public_commands` と `vs --help` の「テーマ」の分類に足した。原稿（マニュアル）には S11 で書くので、`docs_allowlist.yml` の `undocumented_commands` に理由つきで入れた（原稿に書いたら外す）。
+- **テスト**: `theme_commands_test.rb`（8 件。同梱の `standard` で 🟡 0・`theme:new` の 2 種類が `theme:check` を通る・範囲の外の書き方の 🟡・許可の表と土台の同梱・置き換えの確認・zip の検査と展開・まだ受けない経路・一覧）。`theme_test.rb` の土台の無いテーマの案内に、同梱の名前と同梱に無い名前の 2 通りを足した。
+
+#### 仕様と違えたこと・仕様に無かったので決めたこと
+
+1. **層の勝ち負けの組は 💡 で示す。** §4.3（`css-layer-restructure-spec.md`）は「`vs theme:check` は静的な判定で起きうる組を示す」としている。静的な判定は、取り合わない要素どうし（見出しとコードの中の要素、章の body と目次のページ）も挙げる。`standard` では 39 組で、どれも `css_layer_test.rb` の許可の表の理由（同じ要素にならない）に当たる。🟡 にすると、完了の条件（`standard` で 🟡 0）と合わず、直すものでもないので、💡 で「起きうる組」とし、確定は `vs build --log=debug` の要素ごとの判定が行うと書いた。
+2. **`vs build` が、著者が入れたテーマの組を要素ごとの判定で 🟡 にする扱い（§4.3 の「扱い（S6 以降）」）は、S6-8 では作っていない。** 小段階の表の S6-8 の行に無い。今の `vs build` は、テーマに依らず `--log=debug` のときだけ組を出す。どの小段階で入れるかは §10 の論点 7 とした。
+3. **`book-settings.css` は本の今の設定から作る。** 検査するテーマが選ばれているテーマと違っても、設定の書き出しは今のテーマの宣言による。設定が定義する変数は名前が同じ（公開する変数）なので、Kindle の変数の表への影響は無いと見た。
+4. **`scaffold.lock` への記録（§7.3 の「`vs theme:add` で入れた同梱のテーマ」）は S6-9 で行う。** 小段階の表で S6-9 の行にある。
+5. **置き換えはディレクトリごと。** §7.2 の 4 は「置き換わるファイルの一覧を見せて確認」とだけ書いている。テーマの版を上げたときにファイルが減ることがあり、古いファイルが残ると `styles:` に無い CSS が残るだけでなく、出力先の CSS（`epub.css` など。置けば読まれる）が残って効いてしまうので、本の側にだけあるファイルは削除し、確認の一覧に「削除」として出す。
+
+#### 確かめた結果
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 完了の条件: `themes/standard/` に `vs theme:check` | 🔴・🟡 とも 0。💡 は紙の寸法の 39 個と、層の勝ち負けの 39 組（テーマの規則 10 個） |
+| 完了の条件: `vs theme:new x --extends standard` | 出力が `vs theme:check` を通る（指摘 0）。組版のテーマの雛形も同じ |
+| 完了の条件: zip の検査のテスト | `../evil.css`・`/etc/evil.css`・`theme/../../evil.css`・`C:/evil.css`・シンボリックリンクの項目で展開せずに 🔴、安全な zip は 1 階層下の `theme.yml` を見つけて入る（`theme_commands_test.rb`） |
+| 写しの本で `bin/vs` | `vs theme`・`vs theme:check`・`vs theme:new mono --extends standard`・`vs theme:new plain`・`vs theme:add standard`（同じなので何もしない）・`vs theme:add ../dl/blue-theme`（`install.sh` を写さず、`theme.color: green` が覆っていることを示す）・`vs --help` の分類 |
+| テスト | `rake test` 4,474 件が通った（S6-7 の後の 4,466 件に、足した 8 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |

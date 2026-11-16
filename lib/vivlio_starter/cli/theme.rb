@@ -242,6 +242,10 @@ module VivlioStarter
           detail = if names.empty? then "#{dir}/#{Manifest::FILE} を置いてください"
                    else "本にあるテーマ: #{names.join('・')}（#{wanted_by} に書きます）"
                    end
+          # 同梱のテーマの名前なら、本に入れるコマンドを先に示す（§7.1）
+          bundled = root != BUNDLED_ROOT && name.to_s.match?(Manifest::NAME_PATTERN) &&
+                    File.file?(File.join(BUNDLED_ROOT, dir, Manifest::FILE))
+          detail = ["同梱のテーマなので、vs theme:add #{name} で本に入れられます", detail] if bundled
           raise Error.new("#{wanted_by} のテーマ #{name} が、本の #{DIR}/ にありません", detail:)
         end
 

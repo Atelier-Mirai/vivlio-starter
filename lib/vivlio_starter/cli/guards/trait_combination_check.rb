@@ -141,7 +141,9 @@ module VivlioStarter
                        .select { |name, found| name != theme.name && found.supports.fetch(axis).include?(value) }.keys.sort
           return "#{label}に対応するテーマは、まだ同梱されていません" if names.empty?
 
-          "#{label}に対応するテーマ: #{names.join('・')}（config/book.yml の theme.name に書きます）"
+          # 本に無い同梱のテーマは、vs theme:add で入れてから選ぶ
+          shown = names.map { File.file?(File.join(@root, Theme::DIR, it, Theme::Manifest::FILE)) ? it : "#{it}（vs theme:add #{it} で入れます）" }
+          "#{label}に対応するテーマ: #{shown.join('・')}（config/book.yml の theme.name に書きます）"
         end
 
       end

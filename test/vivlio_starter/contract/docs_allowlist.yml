@@ -17,3 +17,9 @@ undocumented_commands:
   # help はメタコマンドで、マニュアルでは `vs --help` の形で案内している。
   # 「vs help」表記が無いのは意図的（2026-06-12）
   - "help"
+  # テーマのコマンドは 2.0 の S6-8 で作った。原稿（マニュアル）は S11 でまとめて書き直す
+  # （theme-contract-spec.md §9 の S6 の決め 8）。原稿に書いたら外す（2026-11-17）
+  - "theme"
+  - "theme:add"
+  - "theme:check"
+  - "theme:new"

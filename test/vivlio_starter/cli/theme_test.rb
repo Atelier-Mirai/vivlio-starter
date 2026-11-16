@@ -88,7 +88,13 @@ module VivlioStarter
 
           error = assert_raises(Theme::Error) { Theme.resolve('mono', root:) }
           assert_equal 'themes/mono/theme.yml の extends: のテーマ standard が、本の themes/ にありません', error.message
-          assert_equal '本にあるテーマ: mono（themes/mono/theme.yml の extends: に書きます）', error.detail
+          # standard は同梱のテーマなので、本に入れるコマンドを先に示す（S6-8）
+          assert_equal ['同梱のテーマなので、vs theme:add standard で本に入れられます',
+                        '本にあるテーマ: mono（themes/mono/theme.yml の extends: に書きます）'], error.detail
+
+          write_theme(root, 'mono', { 'extends' => 'bunko' })
+          error = assert_raises(Theme::Error) { Theme.resolve('mono', root:) }
+          assert_equal '本にあるテーマ: mono（themes/mono/theme.yml の extends: に書きます）', error.detail, '同梱に無い名前'
         end
       end
 
