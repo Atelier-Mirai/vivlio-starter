@@ -15,12 +15,16 @@
 #   判定）が許可の表の外に無いことを見る。これは早めの警報で、保証は組み上がった HTML での
 #   要素ごとの判定が行う（ビルドの --log=debug。v2-flat-cascade-consultation.md §5.4）。
 #   book-settings*.css は本の設定から生成されるので含めない。
+#   Kindle の束で落ちる宣言（Css::LiteralResolver）が、紙の寸法と許可の表のものだけであることを見る
+#   （§4.5）。こちらは、本書の book.yml から作った book-settings.css を入れた束で数える。
 # ================================================================
 
 require 'test_helper'
 require 'tmpdir'
 require 'nokogiri'
+require 'fileutils'
 require 'vivlio_starter/cli/css/bundle'
+require 'vivlio_starter/cli/pre_process/book_settings_css'
 
 module VivlioStarter
   module CLI
@@ -65,6 +69,61 @@ module VivlioStarter
             reason: '.align-* を重ねた囲みの段落が .text-* の中にもある形（囲みに .align-* と .text-* を両方付けるか、' \
                     '.text-* の囲いの中に置く）。PDF は .text-* が勝ち、EPUB と Kindle は 1.0.1 と同じく囲みの組み方になる' }
         ].freeze
+
+        # Kindle 用の CSS で落ちる宣言のうち、直さないもの（css-layer-restructure-spec.md §4.5 の許可の表）。
+        # 紙の寸法（:paper_dimension）は意図した書き方なので載せない。表に無い宣言が落ちたら失敗し、
+        # 表の行がどの宣言にも当たらなくなっても失敗する（名前を変えて変数が解けなくなったことを見つけ、
+        # 表を古びさせないため）。reason は LiteralResolver::Dropped#reason（配列ならどれか）、file は
+        # 宣言のあるファイル、rule は「選択子 { 宣言 }」（:has() で選択子ごと落としたものは選択子だけ）に当てる。
+        # KFX は var()・calc()・color-mix()・linear-gradient()・:has() を解さないので（kindle-css-compatibility-notes.md §2）、
+        # どの行も、リテラル化を入れる前から Kindle には届いていない
+        ALLOWED_KINDLE_DROPS = [
+          { reason: :variable, file: 'stylesheets/parts/talk.css', rule: /var\(--talk-(?:accent|bg|icon-size|speaker-size)\b/,
+            why: '会話の変数は .talk と話者の .talk-c-<key> の上で定義する（要素ごとに値が違う）。Kindle は会話を ' \
+                 'inline の形に組み替え、話者の色は book-settings.css が :root の変数で名前・区切り・強調に当てる' },
+          { reason: :variable, file: %r{\Astylesheets/pages/(?:colophon|titlepage)\.css\z},
+            rule: /\A\.subtitle::(?:before|after) \{ content: var\(--subtitle-(?:prefix|suffix)\) \}\z/,
+            why: '副題の飾りは .subtitle と .subtitle--wave などの上で定義する（要素ごとに値が違う）。既定は飾りなし' },
+          { reason: :variable, file: 'stylesheets/pages/chapter.css',
+            rule: /\A@page \{ background-image: var\(--frontispiece-image\) \}\z/,
+            why: '扉絵。Kindle には WebP を運ばないので、定義を TargetFilter が落とす。Kindle の章扉は合成した画像になる' },
+          { reason: :variable, file: 'stylesheets/parts/image-header.css', rule: /\{ background-image: var\(--section-bg-image\) \}\z/,
+            why: '節絵。扉絵と同じく WebP の定義が落ちる。Kindle の節の見出しは合成した画像になる' },
+          { reason: :calc, file: 'stylesheets/pages/chapter.css',
+            rule: /\A@page \{ background-size: var\(--frontispiece-background-size\) \}\z/,
+            why: '扉絵の大きさ（100% から縁の余白を引く。単位が混ざる）。Kindle の章扉は合成した画像になる' },
+          { reason: :calc, file: '.cache/vs/book-settings.css', rule: /\A@page \{ background-position: calc\(50% \+ [\d.]+mm\) center \}\z/,
+            why: '扉絵を綴じの側へ寄せる量（単位が混ざる）。Kindle の章扉は合成した画像になる' },
+          { reason: :calc, file: 'stylesheets/pages/colophon.css', rule: /: calc\((?:50% - 50vw|70vh - 24pt)\) \}\z/,
+            why: '奥付の紙面の全幅と、ページの高さに対する位置（単位が混ざる）。Kindle の奥付は targets/kindle-colophon.css が決める' },
+          { reason: %i[calc variable], file: 'stylesheets/parts/layout.css', rule: /\A\.pictures > figure \{ flex: /,
+            why: '写真の列の幅を画像の数で割る（数は後処理が style 属性に書くので要素ごとに違い、単位も混ざる）。' \
+                 'KFX は flex も解さない' },
+          { reason: :color_mix, file: 'stylesheets/parts/preface.css',
+            rule: /\Ah[23] \{ (?:background: linear-gradient|border-block-end: 1px solid color-mix\(in oklab)/,
+            why: '前書きの見出しの地のぼかしと下線（oklab の混色は解かない）。Kindle の前書きの見出しの線は ' \
+                 'targets/kindle-preface.css が決める' },
+          { reason: :has, file: 'stylesheets/parts/code.css', rule: /\Ah6:has\(\+ pre\)\z/,
+            why: 'コードの題（h6）の幅をコードに合わせる。Kindle では題が全幅になる' },
+          { reason: :has, file: 'stylesheets/parts/heading.css', rule: /\Asection:has\(hr:last-child\) \+ section > h3:first-child\z/,
+            why: '区切り線で改ページした直後の h3 の上の余白を消す（margin-break）。同じ規則のほかの選択子は残る' },
+          { reason: :has, file: 'stylesheets/parts/table.css', rule: /\A(?:body:not\(\.appendix\) )?p:has\(> strong:only-child\):has\(\+ table\)/,
+            why: '表の直前の太字だけの段落を表の題として組む。Kindle では太字の段落のまま' },
+          { reason: :has, file: 'stylesheets/parts/table.css', rule: /\Athead:(?:has|not\(:has)\(/,
+            why: '短い表の見出しの行で改ページを避ける・空の見出しの行を隠す' },
+          # 以下は、どこにも定義の無い変数を読む宣言。PDF と EPUB でも値が無効になる（S6-2 で直す）
+          { reason: :variable, file: 'stylesheets/parts/preface.css', rule: /var\(--color-(?:header|surface)\)/,
+            why: '定義の無い変数' },
+          { reason: :variable, file: 'stylesheets/pages/toc.css', rule: /var\(--(?:header-font|folio-font)\)/,
+            why: '定義の無い変数' },
+          { reason: :variable, file: 'stylesheets/parts/simple-header.css', rule: /var\(--(?:heading|section)-gray\)/,
+            why: '定義の無い変数（--color-gray）を読む変数' }
+        ].freeze
+
+        # Kindle 用 EPUB の body のクラス（本書の B1。書いていない種類は種類の名前だけ）。
+        # 変数の表を作る範囲（LiteralResolver.scope_for）を、実際の本と同じにする
+        KINDLE_BODY_CLASSES = { 'chapter' => 'chapter vs-header-image', 'appendix' => 'appendix vs-header-simple',
+                                'index' => 'index-page', 'glossary' => 'glossary-page' }.freeze
 
         def test_should_not_use_important_in_bundled_stylesheets
           files = bundled_css_files
@@ -131,6 +190,21 @@ module VivlioStarter
                                         "#{unexpected.uniq.join("\n")}"
         end
 
+        # Kindle 用の CSS で落ちる宣言が、紙の寸法と許可の表のものだけであること。本の設定から作る
+        # book-settings.css を入れた束で数える。入れないと、本の設定が定義する変数（扉絵の画像・会話の
+        # 話者の色など）を読む宣言まで「解けない」に数え、実際のビルドには無い落ち方が表に載る
+        def test_should_drop_only_allowed_declarations_for_kindle
+          drops = kindle_drops.reject { |(reason, *), _| reason == :paper_dimension }
+          unexpected = drops.reject { |drop, _| ALLOWED_KINDLE_DROPS.any? { allowed_drop?(it, drop) } }
+                            .map { |(reason, file, rule), kinds| "#{file}（#{reason}・#{kinds.join('・')}）: #{rule}" }
+          unused = ALLOWED_KINDLE_DROPS.reject { |entry| drops.each_key.any? { allowed_drop?(entry, it) } }
+
+          assert_empty unexpected, "Kindle 用の CSS で、許可の表に無い宣言が落ちた（css-layer-restructure-spec.md §4.5）:\n" \
+                                   "#{unexpected.join("\n")}"
+          assert_empty unused.map { "#{it[:file]}: #{it[:rule].inspect}" },
+                       '許可の表に、どの宣言にも当たらない行がある（直ったなら表から消す）'
+        end
+
         # 検査が空振りしないこと（下の層の詳細度の高い規則が、上の層の規則と同じ要素を取り合う）
         def test_should_report_inversion_between_layers
           css = <<~CSS
@@ -182,7 +256,41 @@ module VivlioStarter
         def allowed?(pair)
           ALLOWED_INVERSIONS.any? { pair.upper.selector.match?(it[:upper]) && pair.lower.selector.match?(it[:lower]) }
         end
+        def allowed_drop?(entry, drop)
+          reason, file, rule = drop
+          Array(entry[:reason]).include?(reason) && (entry[:file] === file) && rule.match?(entry[:rule]) # rubocop:disable Style/CaseEquality
+        end
 
+        # 本の写し（stylesheets/ は custom.css を空にして、ほかはリポジトリへの symlink）に、本書の
+        # book.yml から作った book-settings.css を置き、ページの種類ごとに Kindle の束を解いて落ちた宣言を集める
+        # @return [Hash{Array(Symbol, String, String) => Array<String>}] [理由, ファイル, 規則] → ページの種類
+        def kindle_drops
+          drops = Hash.new { |hash, key| hash[key] = [] }
+          Dir.mktmpdir('vs-kindle-drops') do |tmp|
+            dir = File.realpath(tmp)
+            stylesheets = File.join(dir, 'stylesheets')
+            FileUtils.mkdir_p([stylesheets, File.join(dir, '.cache', 'vs')])
+            Dir.children(File.join(ROOT, 'stylesheets')).each do
+              File.symlink(File.join(ROOT, 'stylesheets', it), File.join(stylesheets, it)) unless AUTHOR_FILES.include?("stylesheets/#{it}")
+            end
+            File.write(File.join(stylesheets, 'custom.css'), '')
+            File.write(File.join(dir, '.cache', 'vs', EntryWriter::BOOK_SETTINGS), PreProcessCommands::BookSettingsCss.render)
+            File.write(File.join(dir, '.cache', 'vs', EntryWriter::BOOK_FONTS), '')
+            Dir.chdir(dir) do
+              EntryWriter::IMPORTS.each_key do |kind|
+                html = File.join(dir, "#{kind}.html")
+                File.write(html, %(<html><body class="#{KINDLE_BODY_CLASSES.fetch(kind, kind)}"></body></html>))
+                pieces = Bundle.flat_pieces(kind, target: :kindle, dest: File.join(dir, 'styles', "#{kind}.css"),
+                                                  package_root: dir, embed_fonts: false)
+                LiteralResolver.resolve(pieces.reject(&:nested), scope: Bundle.kindle_scope([html])).dropped.each do |dropped|
+                  rule = dropped.declaration ? "#{dropped.selector} { #{dropped.declaration} }" : dropped.selector
+                  drops[[dropped.reason, dropped.source.delete_prefix("#{dir}/"), rule]] << kind
+                end
+              end
+            end
+          end
+          drops
+        end
 
         def bundled_css_files
           Dir.glob(File.join(ROOT, '{stylesheets,themes}', '**', '*.css'))
