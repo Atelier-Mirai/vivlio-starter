@@ -111,7 +111,7 @@ module VivlioStarter
               author: '#{esc.call(resolve_author)}',
               language: '#{esc.call(resolve_language)}',
               size: '#{esc.call(Epub::Config.resolve_page_size(Common::CONFIG))}',
-              readingProgression: 'ltr',
+              readingProgression: '#{Common.traits.binding}',
               workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',
               entry: entries,
               copyAsset: { excludeFileExtensions: [#{SKIPPED_ASSET_EXTENSIONS.map { "'#{it}'" }.join(', ')}] },

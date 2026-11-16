@@ -12,7 +12,9 @@
 #   - config_keys.rb   … キーの宣言
 #   - book_profile.rb  … 種類の既定値の表と、book.type の読み方
 #   - common.rb        … load_config（種類の既定値を重ねる）
-#   - vs new と、著者向けの表示（種類の名前を出す）は、作った段階でここに足す
+#   - guards/trait_combination_check.rb … 著者向けの表示（知らない種類の名前を 🔴 で示す文面。
+#     値は BookProfile.unknown_type から受け取り、種類では分岐しない）
+#   - vs new は、作った段階でここに足す
 # ================================================================
 
 require 'test_helper'
@@ -22,7 +24,7 @@ module VivlioStarter
     class BookTypeUsageTest < Minitest::Test
       LIB_DIR = File.expand_path('../../../lib/vivlio_starter', __dir__)
 
-      ALLOWED = %w[cli/config_keys.rb cli/book_profile.rb cli/common.rb].freeze
+      ALLOWED = %w[cli/config_keys.rb cli/book_profile.rb cli/common.rb cli/guards/trait_combination_check.rb].freeze
 
       # book.type の読み方。ドット・安全参照・dig・添字・キーの宣言の形
       PATTERN = /

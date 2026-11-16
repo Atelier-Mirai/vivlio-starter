@@ -6,6 +6,7 @@ require 'json'
 require 'yaml'
 require_relative 'config_keys'
 require_relative 'book_profile'
+require_relative 'book_traits'
 require_relative 'units'
 require_relative 'spinner'
 require_relative 'source_aliases'
@@ -1019,7 +1020,13 @@ module VivlioStarter
       def install_configuration!(config)
         remove_const(:CONFIG) if const_defined?(:CONFIG)
         const_set(:CONFIG, config)
+        @traits = nil
       end
+
+      # 本の軸の値（組方向・レイアウト）と、連動して決まる値（v2-architecture-spec.md §2.4）。
+      # CONFIG を差し替えるたびに作り直す（install_configuration! が捨てる）
+      # @return [BookTraits]
+      def traits = @traits ||= BookTraits.resolve(CONFIG)
 
       # 直接ビルド（vs build myawesome.md）用の CONFIG を YAML を読まずに組み立てる。
       # 「設定ファイルを介さない」が本機能の定義のため book.yml は一切参照せず、
@@ -1282,7 +1289,7 @@ module VivlioStarter
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,
                       :current_step_label, :deep_merge_config,
-                      :build_direct_configuration, :direct_page_settings, :install_configuration!,
+                      :build_direct_configuration, :direct_page_settings, :install_configuration!, :traits,
                       :default_config_schema,
                       :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,

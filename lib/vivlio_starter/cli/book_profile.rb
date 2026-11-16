@@ -73,7 +73,18 @@ module VivlioStarter
         book.is_a?(Hash) ? book[:type].to_s.strip : ''
       end
 
+      # 読み込んだ設定の book.type が知らない名前なら、その字を返す（正しければ nil）。
+      # 組み合わせの検査（Guards::TraitCombinationCheck）が、名前の誤りを示すのに使う
+      #
+      # @param config [Data, nil] Common::CONFIG
+      # @return [String, nil]
+      def unknown_type(config)
+        name = config&.book&.type.to_s.strip
+        name unless name.empty? || PROFILES.key?(name.to_sym)
+      end
+
       # 種類の既定値を、book.yml と同じ入れ子のハッシュにして返す
+
       #
       # @param type [Symbol]
       # @return [Hash]

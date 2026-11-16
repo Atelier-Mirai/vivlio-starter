@@ -85,6 +85,7 @@ module VivlioStarter
           # 違反があれば 🔴 メッセージを表示して本処理に入らず終了する
           Guards::Guard.run!(
             Guards::ProjectRootCheck.new,
+            Guards::TraitCombinationCheck.new,
             Guards::CatalogFileCheck.new,
             Guards::CatalogEntriesCheck.new,
             Guards::ChapterFileNameCheck.new,

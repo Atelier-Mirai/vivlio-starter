@@ -53,8 +53,9 @@ module VivlioStarter
         #
         # @param pdf_path [String] 対象 PDF のパス（成功時に上書きされる）
         # @param bleed_mm [Numeric] 塗り足し幅（mm）。ノンブルの X 座標に使う
+        # @param recto_side [Symbol] 奇数ページの側（:right＝左綴じ・:left＝右綴じ）。ノドの左右を決める
         # @return [Boolean] 書き込み成功なら true
-        def stamp!(pdf_path, bleed_mm: 3)
+        def stamp!(pdf_path, bleed_mm: 3, recto_side: Common.traits.recto_side)
           # --- Phase: 検証 ---
           unless File.exist?(pdf_path)
             Common.log_warn("[NombreStamper] PDF が見つかりません: #{pdf_path}")
@@ -67,7 +68,7 @@ module VivlioStarter
           # --- Phase: ノンブル PDF の生成（Prawn） ---
           Common.log_action("[NombreStamper] 隠しノンブルを書き込みます（#{total_pages} ページ）…")
           nombre_pdf = "#{pdf_path}.nombre.pdf"
-          create_nombre_pdf!(nombre_pdf, pdf_path, bleed_mm.to_f * MM_TO_PT)
+          create_nombre_pdf!(nombre_pdf, pdf_path, bleed_mm.to_f * MM_TO_PT, recto_side:)
 
           # --- Phase: 重畳（qpdf・構造保存・等倍） ---
           success = Build::QpdfOverlay.apply!(pdf_path, nombre_pdf)
@@ -92,7 +93,8 @@ module VivlioStarter
         # @param output_path [String] 出力先
         # @param source_pdf [String] ページ数・ページサイズの参照元
         # @param bleed_pt [Float] 塗り足し幅（pt）
-        def create_nombre_pdf!(output_path, source_pdf, bleed_pt)
+        # @param recto_side [Symbol] 奇数ページの側
+        def create_nombre_pdf!(output_path, source_pdf, bleed_pt, recto_side:)
           reader = ::PDF::Reader.new(source_pdf)
           font = nombre_font
 
@@ -108,7 +110,7 @@ module VivlioStarter
               pdf.font(font, size: FONT_SIZE)
               pdf.fill_color('000000')
 
-              draw_page_number(pdf, idx + 1, width, height, bleed_pt)
+              draw_page_number(pdf, idx + 1, width, height, bleed_pt, recto_side:)
             end
           end
         end
@@ -122,14 +124,16 @@ module VivlioStarter
           [NOMBRE_FONT_RELATIVE, gem_bundled].find { File.exist?(it) } || 'Helvetica'
         end
 
-        # 個別ページにノンブルを描画する
-        # 奇数ページ（右ページ）はノド側 = 左端、偶数ページ（左ページ）はノド側 = 右端
-        def draw_page_number(pdf, page_number, width, height, bleed_pt)
+        # 個別ページにノンブルを描画する。
+        # 右ページはノド側 = 左端、左ページはノド側 = 右端。奇数ページがどちらの側かは
+        # 綴じの向きで決まる（左綴じ＝右ページ・右綴じ＝左ページ。BookTraits#recto_side）
+        def draw_page_number(pdf, page_number, width, height, bleed_pt, recto_side: :right)
           x_offset = bleed_pt / 2.0
           y_center = height / 2.0
           text = page_number.to_s
+          right_page = page_number.odd? == (recto_side == :right)
 
-          if page_number.odd?
+          if right_page
             # 右ページ → ノド = 左端、時計回り 90°
             draw_rotated_text(pdf, text, x: x_offset, y: y_center, angle: 90)
           else

@@ -46,6 +46,7 @@ require_relative 'guards/container_class_check'
 require_relative 'guards/text_table_check'
 require_relative 'guards/pdf_artifact_check'
 require_relative 'guards/config_validity_check'
+require_relative 'guards/trait_combination_check'
 
 module VivlioStarter
   module CLI

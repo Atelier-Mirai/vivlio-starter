@@ -66,6 +66,15 @@ module VivlioStarter
         assert_includes content, "'./x.pdf'"
       end
 
+      # 綴じの向きは組方向から決まる（横書き＝左綴じ・縦書き＝右綴じ。BookTraits#binding）
+      def test_should_render_reading_progression_from_the_writing_mode
+        write_book_yml(page: { 'size' => 'A5' })
+        assert_match(/readingProgression: 'ltr',/, Writer.config_content(entries_basename: 'e.js', output: 'x.pdf'))
+
+        write_book_yml(page: { 'size' => 'A5', 'writing_mode' => 'vertical' })
+        assert_match(/readingProgression: 'rtl',/, Writer.config_content(entries_basename: 'e.js', output: 'x.pdf'))
+      end
+
       # size は実寸指定（プリセット名なし）でも "<width> <height>" として出る
       def test_should_render_literal_page_size
         write_book_yml(book: { 'main_title' => 'T' }, page: { 'width' => '128mm', 'height' => '188mm' })

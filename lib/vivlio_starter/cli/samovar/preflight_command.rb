@@ -79,6 +79,7 @@ module VivlioStarter
           # Guard.run! は全違反をログしてから停止判定するため、複数の問題を一度に報告できる
           Guards::Guard.run!(
             Guards::ProjectRootCheck.new,
+            Guards::TraitCombinationCheck.new,
             Guards::CatalogFileCheck.new,
             Guards::CatalogEntriesCheck.new,
             Guards::ChapterFileNameCheck.new,

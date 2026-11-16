@@ -729,3 +729,30 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 #### 残したもの
 
 - 原稿の 41 章と 44 章は、`output.epub.layout`・`output.kindle.layout` を書く例を載せている。原稿を直すと PDF と EPUB が変わり、基準の版を上げることになるので、S5 では直さない。2.0 の原稿の更新（S11）でまとめて直す。
+
+### 10.4 S5-2 `BookTraits` と、横書き・左綴じの前提（2026-11-16）
+
+#### 作ったもの
+
+- **`BookTraits`**（`lib/vivlio_starter/cli/book_traits.rb`）: §2.4 のとおり。`resolve` は `page.writing_mode`・`page.layout` を、前後の空白と大文字・小文字を無視して読む。設定が無いとき（プロジェクトの外）と知らない値は、既定（横書き・リフロー）にする。書ける値は `BookTraits::WRITING_MODES`・`BookTraits::LAYOUTS` に置いた。
+- **`Common.traits`**: `CONFIG` を差し替える唯一の入口（`install_configuration!`）が捨てて、次に引いたときに作り直す。`reload_configuration!` のほか、直接ビルド（`build_direct_configuration`）と巻の切り替えでも作り直される。
+- **`vivliostyle_config_writer.rb`**: `readingProgression` を `Common.traits.binding` から書く。
+- **`nombre_stamper.rb`**: `stamp!` が `recto_side:`（既定は `Common.traits.recto_side`）を受け、`draw_page_number` まで渡す。右ページ（ノド＝左端）かどうかを「奇数ページか」と「奇数ページの側」から決める。
+- **`Guards::TraitCombinationCheck`**（`guards/trait_combination_check.rb`）: `vs build` と `vs preflight` の入口の検査の並びに、`ProjectRootCheck` の次に置いた。🔴 は、知らない `book.type`・知らない `page.writing_mode`・知らない `page.layout`・`page.layout: fixed`（S9 まで）。どれも `config/book.yml` のキーと、書ける値か直し方を示す。
+- **`BookProfile.unknown_type(config)`**: 読み込んだ設定の `book.type` が知らない名前ならその字を返す。検査は種類を自分で読まず、ここから受け取る。
+- **テスト**: `book_traits_test.rb`（5 件）・`guards/trait_combination_check_test.rb`（8 件）・`vivliostyle_config_writer_test.rb` に組方向と `readingProgression`（1 件）・`nombre_stamper_test.rb` に綴じの向きとノドの左右（1 件）。
+
+#### 仕様と違えたこと
+
+1. **知らない `page.writing_mode`・`page.layout` も 🔴 で止める。** §2.5 の表には無い。`BookTraits.resolve` は知らない値を既定として読むので、`writing_mode: tategaki` と書いた本が、何も示されずに横書き・左綴じで組まれることになる。`book.type` の名前の誤り（§10.3 の 1）と同じ扱いにした。
+2. **固定レイアウトを 🔴 で止めている間は、索引と用語集の 🟡 を出さない。** §8 の S5 の決め 6 の「2 が先に当たるので、🟡 が出るのは S9 から」は、`Guard.run!` が全部の違反を出してから止まるので、何もしなければ 🟡 と 🔴 が並んで出る。組めない本に次の直しを示しても役に立たないので、`fixed_layout || fixed_layout_with_index` とした。S9 で 🔴 を外すと 🟡 が出る（テストに書き換えの注記を置いた）。
+3. **`book_type_usage_test.rb` の許す箇所に `guards/trait_combination_check.rb` を足した。** 著者向けの文面に `book.type` の字が出るため（§2.3 の 3）。値は `BookProfile.unknown_type` から受け取り、種類では分岐しない。
+4. **EPUB の設定（`build/epub/config.rb`）の `readingProgression: 'ltr'` は直していない。** ここを `rtl` にすると Vivliostyle が OPF の `page-progression-direction` を書き、S8 に回した範囲（§8 の「S5 の範囲に入れないもの」）に入る。S8 で `traits.binding` から引く。
+
+#### 確かめた結果
+
+- **完了の条件の 4**: 本書の写しから章を 1 つ（3 ページ）にし、`page.writing_mode: vertical`・`targets: pdf, print_pdf` にした本を組んだ（64 秒）。`VivliostyleConfigWriter.config_content` の `readingProgression` は `rtl`。入稿用 PDF（12 ページ）を `pdftotext -bbox` で読み、隠しノンブルは奇数ページが右端（x=677.7〜683.7。ページの幅 686.0）、偶数ページが左端（x=2.3〜8.3）だった。本文は横組みのままである（S5 の決め 3）。
+- 本書（`book.type` なし・横書き）の `readingProgression` は `ltr` のままで、`Common.traits` は横書き・リフロー。隠しノンブルの左右を決める式は、`recto_side: :right` のとき前と同じ値になる（既存のテスト 7 件がそのまま通る）。
+- `page.layout: fixed` にした写しで `vs preflight` が 🔴 を出して止まる。
+- `rake test`: 4,389 件・失敗 0（S5-1 から 15 件の増。足した 15 件と一致）。`bundle exec rubocop`: 指摘 0。
+- 四つの出力先を組んで r2 と比べるのは、計画どおり S5-4 の後に行う。

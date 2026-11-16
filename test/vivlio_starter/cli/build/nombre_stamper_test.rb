@@ -177,6 +177,28 @@ class TestNombreStamper < Minitest::Test
     end
   end
 
+  # 隠しノンブルはノド側の裁ち落としに置く。左綴じ（横書き）は奇数ページが右ページで
+  # ノドは左端、右綴じ（縦書き）は奇数ページが左ページでノドは右端（BookTraits#recto_side）
+  def test_should_place_nombre_on_the_gutter_side_for_each_binding
+    Dir.mktmpdir do |dir|
+      bleed_pt = 3 * NombreStamper::MM_TO_PT
+
+      { right: [:left_edge, :right_edge], left: [:right_edge, :left_edge] }.each do |recto_side, expected|
+        path = File.join(dir, "nombre-#{recto_side}.pdf")
+        source = create_test_pdf(dir, page_count: 2)
+        NombreStamper.create_nombre_pdf!(path, source, bleed_pt, recto_side:)
+
+        actual = PDF::Reader.new(path).pages.map do |page|
+          page_width = page.attributes[:MediaBox][2].to_f
+          x = page.raw_content[/1(?:\.0)? 0(?:\.0)? 0(?:\.0)? 1(?:\.0)? ([\d.]+) [\d.]+ cm/, 1].to_f
+          x < page_width / 2 ? :left_edge : :right_edge
+        end
+
+        assert_equal expected, actual, "recto_side: #{recto_side}（1 ページ目・2 ページ目）"
+      end
+    end
+  end
+
   private
 
   # 全ページに TrimBox を与える
