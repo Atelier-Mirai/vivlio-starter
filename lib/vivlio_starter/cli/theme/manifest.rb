@@ -12,12 +12,13 @@
 #   - 知らないキー → warnings に積んで読み飛ばす（🟡）。後の版のテーマを前の版の vs で
 #     開いた場合に止めないため。知らせるのは Guards::TraitCombinationCheck（build と preflight）。
 #
-# ここで中身を読まないキー:
-#   features:・options:・kindle_tokens: は形（配列・表）だけを見て、そのまま持つ。
-#   使い方を決めるのは S6-7（オプションと機能）と S6-10（kindle_tokens:）である。
+# options: は Theme::Option の並び、features: は組み込みの機能（Theme::Features）の名前の並びにする
+# （§3.3・§3.4）。kindle_tokens: は形（表）だけを見て、そのまま持つ（使い方は S6-10）。
 # ================================================================
 
 require 'yaml'
+require_relative 'option'
+require_relative 'features'
 
 module VivlioStarter
   module CLI
@@ -98,10 +99,10 @@ module VivlioStarter
               license: optional_string(raw, 'license', label),
               extends: extends_name(raw, label),
               supports: supports(raw, label),
-              features: typed(raw, 'features', Array, [], label),
+              features: features(raw, label),
               tokens: tokens(raw, label),
               kindle_tokens: typed(raw, 'kindle_tokens', Hash, {}, label),
-              options: typed(raw, 'options', Hash, {}, label),
+              options: OptionParser.parse(typed(raw, 'options', Hash, {}, label), label:, feature_names: Features.names),
               styles: styles(raw, path, label),
               dir:, path:,
               css_files: Dir.children(path).select { it.end_with?('.css') && File.file?(File.join(path, it)) }.sort,
@@ -178,6 +179,16 @@ module VivlioStarter
 
               [name, value.to_s]
             end
+          end
+
+          # 組み込みの機能の名前（vs の本体にあるものだけ。テーマの側からは足せない）
+          def features(raw, label)
+            names = typed(raw, 'features', Array, [], label).map(&:to_s)
+            unknown = names - Features.names
+            return names.uniq if unknown.empty?
+
+            raise Error.new("#{label} の features: に、知らない機能があります: #{unknown.join('・')}",
+                            detail: "書ける機能: #{Features.names.join('・')}")
           end
 
           # styles: のファイルは、テーマのディレクトリの中の CSS に限る（外のファイルを theme 層へ入れない）

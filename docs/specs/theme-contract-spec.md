@@ -710,6 +710,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | S8 の仕様 | 2.0 では `theme-bunko` だけを確かめる |
 | 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8（`bunko` を書くとき） | S6 では見出しの 2 枚だけを移す。`bunko` で打ち消しが要った規則を移す。いちばんの候補は前書きの見た目（`parts/preface.css`） |
+| 6 | 改ページの打ち消し（`page.section_pagebreak`・`page.chapter_pagebreak`）が写すテーマの選択子を、テーマの側からどう宣言させるか | S6-10 まで（完了の条件 2） | 今は `BookSettingsCss` が `standard` の選択子（`vs-header-*`）を持つ（§11.11 の 6） |
 
 ---
 
@@ -1027,3 +1028,54 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | `InversionCheck` の要素ごとの判定 | 8 種類 × EPUB・Kindle 用 EPUB とも 0 組 |
 | EPUBCheck | B1 のクリーン・Kindle 用、B4 とも致命・エラー・警告 0 |
 | テスト | `rake test` 4,455 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+
+### 11.11 S6-7 オプションと機能の宣言（2026-11-17）
+
+#### 作ったもの
+
+- **`themes/standard/theme.yml`**: `features: [frontispiece, ornament]` と `options:`（`color`・`preface_color`・`appendix_color`・`style`・`lead_size`・`markers.h3`・`markers.h4`）。`style` は `body_class:`（章は値で `vs-header-image`・`vs-header-simple`、付録は値に依らず `vs-header-simple`）と `features:`（`simple` は扉絵・節絵を使わない）を持つ。
+- **`Theme::Option`・`Theme::OptionParser`**（`theme/option.rb`）: `options:` の 1 件の宣言（`type:`・`default:`・`default_from:`・`token:`・`body_class:`・`values:`・`min:`・`max:`・`unit:`・`features:`）。`type:` を持たない表は入れ子の節。誤りは 🔴（`Theme::Error`）。
+- **`Theme::Features`**（`theme/features.rb`・`features/frontispiece.rb`・`ornament.rb`）: 機能の一覧と、機能ごとのオプションの宣言（`OPTIONS`）・`book-settings.css` に書く変数（`declarations`）・`@page` の規則（`page_rule`。扉絵の位置）。`Features.active?` は、テーマの `features:` と、`features:` を持つ enum のオプションの今の値から決める。
+- **`Theme::Values`**（`theme/values.rb`）: 値の決まり方（書いた値 → `default_from:` の先 → `default:`）と、型ごとの読み方・CSS への書き方（色は 12 色の `var()` か小文字の HEX、倍率は百分率、文字列は引用符つき）。
+- **`Theme::Resolved`**: `options`（土台 → 自分）・`features`・`feature_options`・`all_options`・`config_specs`（`ConfigKeys::Spec` の形。テーマの `tokens:` に `token:` と同じ名前があればそれを既定値に。§3.2 の決め 4）・`active_features`・`body_classes`・`token_value`。
+- **`Theme.for_settings`・`Theme.declared`・`Theme.token_value`**: 設定の既定値と宣言を読むときのテーマ。本の `themes/` に読めるものが無ければ同梱のテーマの宣言を読む（設定の読み込みを止めない。誤りは入口の検査が 🔴 で示す）。`token_value` は公開する変数の名前で値を引く窓口（§3.4 の決め 1）。
+- **`ConfigKeys`**: `theme.*`（`name` を除く 15 個）を `KEYS` から外した。`keys_with(theme_specs)`（`KEYS` に宣言を重ねる入口）と `default_schema(theme_specs)`。
+- **`Common.load_config`**: 生の YAML から `theme.name` を先に取り出し、テーマの宣言を既定値に重ねる（`v2-architecture-spec.md` §5.3 の 3）。`Common.theme_specs` が今の宣言を持ち、`default_config_schema`・`config_guide.rb`（`vs config`）・直接ビルドがこれを読む。
+- **`BookSettingsCss`**: `options:` の `token:` から変数を書き、機能の変数と `@page` の規則は機能のモジュールに書かせる。オプションの名前（`theme.color` など）と `--book-frontispiece-*`・`--book-ornament-*` の名前は、このファイルから無くなった。
+- **`BodyClassInjector`**: `body_class:` の宣言から付ける。**`HtmlContract`**: `theme_option` の分類を `GROUPS` から外し、選ばれたテーマの `body_class:` から引く（`lookup`・`theme_option_classes`。`LiteralResolver` のページの種類のクラスと `scripts/html_contract_doc.rb` も同じ）。
+- **`ThemeValidator`**: 宣言の `type:` から検査する（色・数・倍率・enum）。画像の有無は、機能が有効なときに見る（§3.4）。
+- **`BuildPlan.features`** に `frontispiece`・`ornament`。`ImageOptimizer`・`InjectHeadingImages`・`ChapterLeadCheck` は `style` を読まず、これを読む。
+- **公開する変数の窓口へ移した箇所**: `HeadingProcessor`・`Kindle::RestoreH3Markers`（`marker-h3`）、`Techbook::Processor`（`marker-h3`・`marker-h4`・`color-accent`）、`TalkAvatarGenerator`（`color-accent`）、`FrontmatterGenerator.parse_theme_settings`（`color-accent`・`chapter-lead-size`）。`ThemeColor.resolve` は `var(--book-accent-<名前>)` も読む。`ThemeColor::DEFAULT_NAME` と `BookSettingsCss::DEFAULT_LEAD_SIZE` は定数にした（テストが `theme.yml` と `tokens.css` と突き合わせる）。
+- **`Guards::TraitCombinationCheck`**: `theme:` の、選ばれたテーマにも機能にも無いキーの 🟡（§3.3）。綴りの近いキーを `DidYouMean` で示し、同じ段に書けるキーを並べる。廃止キーは出さない。
+- **テスト**: `theme_options_test.rb`（9 件）・`trait_combination_check_test.rb`（2 件）を足した。`config_keys_test.rb` は雛形の `standard` の宣言を重ねた表と、`book_yml_consumption_test.rb` は `theme:` の下を宣言（`token:`・`body_class:`・`features:`・機能の宣言・入れ子の節）で照合する。`book_settings_css_test.rb` などを新しい形に合わせた。
+- 雛形は `themes/` だけを写した（S6-3 からと同じ）。
+
+#### 仕様と違えたこと・仕様に無かったので決めたこと
+
+1. **倍率の型 `ratio`**（§11.10 の 1）。
+2. **機能の数のうち、検査するのは範囲を宣言したもの（`frontispiece.lead_size`）だけ。** 字数（`heading_chars` など）と長さ（`edge_inset` など）は、値を読む `FrontmatterGenerator` が今までどおり 🟡 を出す。両方で見ると同じ誤りに 🟡 が 2 つ出る。
+3. **🟡 の文面の違い（色と画像は前後で同じ）。** (a) 読めない `theme.style`（`fancy` など）に「theme.style 'fancy' は選べない値です。image で組みます」が出るようになった（前は黙って `image` で組んでいた）。(b) 倍率が範囲の上を超えたときの括弧の中が「章題と張り合う大きさです」から「2.0 より大きい値です」に、下を割ったときの 2 行目「リードが章扉に収まらないときは、リードを縮めてください」が無くなった。どちらも章リードに固有の言い回しで、宣言から作る文面に持てないためである。下を割ったときの「本文より小さくなります」は、倍率の型なら一般に正しいので残した。
+4. **`Common::CONFIG` のキーの並び。** `theme:` の下は、`options:` の順の後に機能のオプションが並ぶ（前は `markers` が最後）。値は同じで、引き方（`CONFIG.theme.markers.h3`）も変わらない。
+5. **設定の読み込みで、本のテーマが読めないときは同梱のテーマの宣言を読む。** `ConfigKeys` から `theme.*` を外したので、テーマの宣言が無いと `CONFIG.theme.color` などのキーが無くなり、`vs doctor`・`vs upgrade`・直接ビルドが起動できなくなる。組むときの CSS は今までどおり本の `themes/` だけを読み（`Theme.selected`）、誤りは入口の検査が 🔴 で示す。
+6. **完了の条件 2 のうち、改ページの打ち消しの選択子が `BookSettingsCss` に残る。** `page.section_pagebreak: false`・`page.chapter_pagebreak` の規則は、テーマの CSS の改ページの規則と同じ選択子を写して打ち消す（`SECTION_PAGEBREAK_SELECTORS` の `body.vs-header-image .section-topic h2`・`body.vs-header-simple h2`、`CHAPTER_PAGEBREAK_SELECTORS` の `body.vs-header-simple h1`、章扉の保護の `body.vs-header-image:not(.vs-epub) …`）。テーマが変われば選択子も変わるので、テーマの側から宣言させる形（`theme.yml` に打ち消す選択子を書く・テーマの CSS が変数で改ページを読む など）を決める必要がある。S6-7 では決めずに残した（§10 の論点 6）。
+
+#### 確かめた結果
+
+全部の比べ（`v2-migration-plan.md` §3.6）。B1（四つの出力先・Kindle の記録つき・`--log=debug`）・B2・B3・B4（`pdf`・`epub`・`kindle`）・単章（`bin/vs build 21`）・preflight（別の写し）を組んだ（`r2/check/s6-7/`・台本 `r2/runs/s6-7.sh`。S6-7 のコミットを置いた別の worktree から組んだ）。どれも終了コード 0。🔴 は 0、🟡 は B4 の 7 件だけ（§11.10 と同じ）。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| `Common::CONFIG`（前段のコードと。B1〜B4 の設定・葉ごと・キーの順を除く） | 4 つとも同じ（152・152・152・158 葉） |
+| `book-settings.css` と ThemeValidator の 🟡（前段のコードと。B1〜B4 の設定と、読めない値を並べた材料） | 5 つとも同じ。材料は `theme.color: pinky`・`preface_color: zzz`・`lead_size: 12pt`・`frontispiece.image: fuji`・`frontispiece.lead_size: large`・`ornament.image: kaede`。文面の違いは上の 3 だけ |
+| 入口の CSS 11 枚・`book-settings.css`・`book-fonts.css`（B1 の写しの前段と） | バイト単位で同じ |
+| 契約 HTML（B1 の写しの前段と） | 同じ。違いは showcase の SVG 2 枚の、埋め込んだ PNG の生成日時（`date:create`）だけ（§11.9 と同じ） |
+| 段の一覧（前段のコードと。B1〜B4 の設定・全章と単章） | 同じ |
+| PDF の画素（r2 と） | B1 の閲覧用 p83・印刷用 p82、B2 p80、B3 p125 の日付の行だけ（`pdftotext` で「16 日」→「17 日」）。B4 は p316（§11.5 の既知の差）だけ |
+| EPUB（`epub_diff.rb`。前段と） | B1 のクリーン 339 ファイル・Kindle 用 261 ファイル、B4 242 ファイルとも違い 0 件 |
+| Kindle の中間生成物（`kindle_record_diff.rb`。前段の記録と） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0。Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| `InversionCheck` の要素ごとの判定 | B1 の 8 種類 × 2、B4 の 7 種類 × 2 とも 0 組 |
+| EPUBCheck | B1 のクリーン・Kindle 用、B4 とも致命・エラー・警告 0 |
+| 宣言に無いキー | 写しの `book.yml` に `theme.colour: red` を書いて `bin/vs preflight` を走らせ、「config/book.yml の theme.colour は、テーマ standard には無い設定です」「直すなら: colour → color」が出た（終了コード 0） |
+| テスト | `rake test`・`rake test:standard` とも 4,466 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+
+- Kindle Previewer と Apple Books の 10 か所の画面の見比べ（`v2-migration-plan.md` §3.6 の S6-7 の後の 1 回）は、まだ行っていない。EPUB と Kindle の中間生成物が前段と同じで、前段は S6-6 と計算値・中間生成物とも差 0 なので、表示が変わる経路は無いと見込んでいる。

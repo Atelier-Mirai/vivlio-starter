@@ -24,7 +24,7 @@ module VivlioStarter
         # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
         # @param ctx [Transforms::Context]
         def call(doc, _ctx)
-          marker = Common::CONFIG.theme.markers.h3 || '♣'
+          marker = Theme.token_value('marker-h3').to_s
           doc.css('span.subsection-marker').select { it.text.empty? }.each { it.content = marker }
         end
       end

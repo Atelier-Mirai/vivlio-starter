@@ -24,6 +24,7 @@
 # ================================================================
 
 require 'set'
+require_relative 'common'
 
 module VivlioStarter
   module CLI
@@ -69,7 +70,6 @@ module VivlioStarter
         [:position, :guaranteed, :contract, %w[chapter-first]],
         [:writing_mode, :guaranteed, :contract, %w[vs-vertical]],
         [:layout, :guaranteed, :contract, %w[vs-fixed]],
-        [:theme_option, :theme, :contract, %w[vs-header-image vs-header-simple]],
         [:target, :guaranteed, :target, %w[vs-epub vs-kindle]],
 
         [:skeleton, :guaranteed, :contract, %w[level1 level2 level3 level4 section-topic]],
@@ -188,10 +188,22 @@ module VivlioStarter
 
       module_function
 
-      # クラス名を表で引く。表にも名前の形にも無ければ nil
+      # クラス名を表で引く。表にも名前の形にも無ければ nil。テーマのオプションのクラス（:theme_option）は、
+      # 選ばれたテーマの theme.yml の body_class: から引く（theme-contract-spec.md §3.3）
       # @return [ClassEntry, nil]
-      def lookup(name)
-        CLASSES[name] || PATTERNS.find { |pattern, _| pattern.match?(name) }&.last
+      def lookup(name, config: Common::CONFIG)
+        return CLASSES[name] if CLASSES.key?(name)
+        if theme_option_classes(config).include?(name)
+          return ClassEntry.new(name:, category: :theme_option, level: :theme, stage: :contract)
+        end
+
+        PATTERNS.find { |pattern, _| pattern.match?(name) }&.last
+      end
+
+      # 選ばれたテーマのオプションが body に付けるクラス（body_class: に書かれたものの全部）
+      # @return [Array<String>]
+      def theme_option_classes(config = Common::CONFIG)
+        Theme.declared(config)&.options.to_a.flat_map(&:body_classes).uniq
       end
 
       # CSS が選んでよいクラスか。保証・テーマのクラスと、Prism のトークン

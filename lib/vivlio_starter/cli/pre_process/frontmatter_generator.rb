@@ -52,22 +52,13 @@ module VivlioStarter
           cfg ||= Common::CONFIG
           theme_cfg = cfg.theme
 
-          theme_color = theme_cfg.color
-          theme_style_raw = theme_cfg.style
-          frontispiece_raw = theme_cfg.frontispiece
-          ornament_raw = theme_cfg.ornament
-
-          theme_name, theme_accent_value = parse_theme_color(theme_color)
-          theme_style = parse_theme_style(theme_style_raw)
-
-          frontispiece_cfg = parse_frontispiece_config(frontispiece_raw)
-          ornament_cfg = parse_ornament_config(ornament_raw)
-          lead_size = parse_lead_size(theme_cfg[:lead_size]).first || BookSettingsCss::DEFAULT_LEAD_SIZE
+          frontispiece_cfg = parse_frontispiece_config(theme_cfg[:frontispiece])
+          ornament_cfg = parse_ornament_config(theme_cfg[:ornament])
+          lead_size = chapter_lead_size(cfg)
 
           {
-            theme_name: theme_name,
-            theme_accent_value: theme_accent_value,
-            theme_style: theme_style,
+            # 本のテーマ色（公開する変数 --book-color-accent の値。theme-contract-spec.md §3.4 の決め 1）
+            theme_accent_value: Theme::Values.css_color(Theme.token_value('color-accent', cfg).to_s),
             theme_cfg: theme_cfg,
             frontispiece_path: frontispiece_cfg[:path],
             edge_inset_value: frontispiece_cfg[:edge_inset],
@@ -80,6 +71,14 @@ module VivlioStarter
             ornament_path: ornament_cfg[:path],
             ornament_heading_chars_value: ornament_cfg[:heading_chars]
           }
+        end
+
+        # 章リードの倍率（公開する変数 --book-chapter-lead-size の値）。テーマのオプションに無ければ
+        # stylesheets/tokens.css の既定（1.2em）
+        def chapter_lead_size(cfg)
+          value = Theme.token_value('chapter-lead-size', cfg)
+          number = value.is_a?(Numeric) ? value.to_f : value.to_s.to_f
+          number.positive? ? number : BookSettingsCss::DEFAULT_LEAD_SIZE
         end
 
         # frontispiece 設定を解析（Data オブジェクト前提）
@@ -354,14 +353,6 @@ module VivlioStarter
 
         # 未指定・無効な色名のときの色（config_keys.rb の theme.color の既定値）
         def default_theme_color = [ThemeColor::DEFAULT_NAME, "var(--book-accent-#{ThemeColor::DEFAULT_NAME})"]
-
-        # テーマスタイルをパース
-        def parse_theme_style(raw_style)
-          s = (raw_style || 'image').to_s.strip.downcase
-          %w[simple image].include?(s) ? s : 'image'
-        rescue StandardError
-          'image'
-        end
 
         # CSS長さ値を正規化
         def normalize_css_length(value, label:, default: nil, fallback_unit: 'mm')

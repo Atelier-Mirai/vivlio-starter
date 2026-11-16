@@ -122,7 +122,9 @@ module VivlioStarter
         assert_nil cfg.project.name
 
         # default: のキーは宣言どおりの値が入る
-        assert_equal ConfigKeys::KEYS[%i[theme markers h3]].default, cfg.theme.markers.h3
+        # theme: の下は、選ばれたテーマ（既定の standard）の宣言の既定値（v2-architecture-spec.md §5.3 の 3）
+        assert_equal Common.theme_specs.fetch(%i[theme markers h3]).default, cfg.theme.markers.h3
+        assert_equal '♣', cfg.theme.markers.h3
         assert_equal ConfigKeys::KEYS[%i[book cover]].default, cfg.book.cover
         assert_equal ConfigKeys::KEYS[%i[index_glossary enabled]].default, cfg.index_glossary.enabled
         assert_equal ConfigKeys::KEYS[%i[pdf_read ocr mode]].default, cfg.pdf_read.ocr.mode

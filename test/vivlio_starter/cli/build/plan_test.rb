@@ -114,7 +114,8 @@ module VivlioStarter
 
       def plan(list, print_full_bleed: false, pdf_cover: true, epub_cover: true)
         features = BuildFeatures.new(index: true, techbook_post_process: true, web_novel: false,
-                                     print_full_bleed:, pdf_cover:, epub_cover:, whole_toc: false)
+                                     print_full_bleed:, pdf_cover:, epub_cover:, whole_toc: false,
+                                     frontispiece: true, ornament: true)
         BuildPlan.new(targets: targets_from(list), traits: BookTraits.resolve(nil), features:)
       end
 

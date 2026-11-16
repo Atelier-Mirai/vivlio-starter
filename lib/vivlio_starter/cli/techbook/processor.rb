@@ -108,11 +108,11 @@ module VivlioStarter
           FileUtils.mkdir_p(GENERATED_ASSET_DIR)
           accent = theme_color_hex
 
-          h3_char = @config.dig(:theme, :markers, :h3).to_s.strip
+          h3_char = Theme.token_value('marker-h3', @config).to_s.strip
           h3_char = '♣' if h3_char.empty?
           h3_codepoint = EmojiReplacer.emoji_codepoint(h3_char)
 
-          h4_char = @config.dig(:theme, :markers, :h4).to_s.strip
+          h4_char = Theme.token_value('marker-h4', @config).to_s.strip
           h4_char = '♦' if h4_char.empty?
           h4_codepoint = EmojiReplacer.emoji_codepoint(h4_char)
 
@@ -131,8 +131,11 @@ module VivlioStarter
           Common.log_warn("[Techbook] 画像化アセットの生成に失敗しました: #{e.message}")
         end
 
-        # theme.color を hex へ解決する（パレット・解決規則は ThemeColor に一元化）。未解決は既定色。
-        def theme_color_hex = ThemeColor.resolve(@config.dig(:theme, :color)) || ThemeColor.resolve(ThemeColor::DEFAULT_NAME)
+        # 本のテーマ色（公開する変数 --book-color-accent の値）を hex へ解決する（パレット・解決規則は
+        # ThemeColor に一元化）。未解決は既定色。
+        def theme_color_hex
+          ThemeColor.resolve(Theme.token_value('color-accent', @config)) || ThemeColor.resolve(ThemeColor::DEFAULT_NAME)
+        end
 
         def recolored_twemoji_svg(codepoint, char, color)
           svg_path = File.join('stylesheets', 'twemoji', "#{codepoint}.svg")

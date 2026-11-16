@@ -26,11 +26,16 @@
 require 'test_helper'
 require 'yaml'
 require 'vivlio_starter/cli/config_keys'
+require 'vivlio_starter/cli/theme'
 
 module VivlioStarter
   module CLI
     class ConfigKeysTest < Minitest::Test
       SCAFFOLD_BOOK_YML = File.expand_path('../../../lib/project_scaffold/config/book.yml', __dir__)
+
+      # 雛形の book.yml の theme: 節は、雛形の standard の宣言（theme.yml の options: と機能の宣言）と照合する
+      # （v2-architecture-spec.md §5.2）。ほかの節は ConfigKeys::KEYS と照合する
+      DECLARED = ConfigKeys.keys_with(Theme.resolve('standard', root: Theme::BUNDLED_ROOT).config_specs).freeze
 
       # vs new が {{ }} を著者の回答で置き換えるキー。値の比較対象にしない。
       PLACEHOLDER = /\A\{\{.+\}\}\z/
@@ -41,7 +46,7 @@ module VivlioStarter
 
       # 表に宣言が無いキーが book.yml にあると、著者が設定しても既定値が無い状態になる
       def test_every_scaffold_key_is_declared
-        missing = scaffold_leaves.keys - ConfigKeys::KEYS.keys
+        missing = scaffold_leaves.keys - DECLARED.keys
 
         assert_empty missing.map { it.join('.') },
                      'scaffold の book.yml にあるが ConfigKeys::KEYS に宣言が無いキー'
@@ -50,7 +55,7 @@ module VivlioStarter
       # 表にあって book.yml に無いキーは、著者から見えない設定になる
       # （見せたくないなら設定にせず定数にする——config-key-criteria-guidelines.md）
       def test_every_declared_key_is_in_scaffold
-        extra = ConfigKeys::KEYS.keys - scaffold_leaves.keys
+        extra = DECLARED.keys - scaffold_leaves.keys
 
         assert_empty extra.map { it.join('.') },
                      'ConfigKeys::KEYS にあるが scaffold の book.yml に無いキー'
@@ -58,7 +63,7 @@ module VivlioStarter
 
       # 既定値が book.yml の値と一致すること。**これが再発防止の本体。**
       def test_defaults_match_scaffold_values
-        mismatches = ConfigKeys::KEYS.filter_map do |path, spec|
+        mismatches = DECLARED.filter_map do |path, spec|
           next if spec.authored?
 
           actual = scaffold_leaves[path]

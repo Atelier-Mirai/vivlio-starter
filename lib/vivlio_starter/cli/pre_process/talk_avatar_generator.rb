@@ -134,7 +134,7 @@ module VivlioStarter
 
         # 本のテーマ色（未設定・プロジェクト外では ThemeColor の既定）。
         def theme_hex
-          raw = Common.configured? ? Common::CONFIG.theme.color : nil
+          raw = Common.configured? ? Theme.token_value('color-accent') : nil
           ThemeColor.to_hex6(raw)
         end
 

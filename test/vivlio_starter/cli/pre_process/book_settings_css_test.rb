@@ -22,8 +22,16 @@ require 'vivlio_starter/cli/loader'
 
 class BookSettingsCssThemeTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  FP = VivlioStarter::CLI::Theme::Features::Frontispiece
+  ORN = VivlioStarter::CLI::Theme::Features::Ornament
   Common = VivlioStarter::CLI::Common
   PREFIX = '../../stylesheets/'
+
+  # 扉絵と節絵の機能の変数（style: simple のときは機能が無効）
+  def feature_lines(settings)
+    active = settings[:theme_style] != 'simple'
+    FP.declarations(settings, active:, image_prefix: PREFIX) + ORN.declarations(settings, active:, image_prefix: PREFIX)
+  end
 
   # theme.style: simple では画像 2 変数を none にし、edge_inset は宣言しない
   def test_should_disable_images_and_omit_edge_inset_for_simple_style
@@ -34,7 +42,7 @@ class BookSettingsCssThemeTest < Minitest::Test
       edge_inset_value: '10mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
-    lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
+    lines = feature_lines(settings)
 
     assert_includes lines, '--book-ornament-image: none;'
     assert_includes lines, '--book-frontispiece-image: none;'
@@ -50,7 +58,7 @@ class BookSettingsCssThemeTest < Minitest::Test
       edge_inset_value: '10mm', heading_chars_value: 8, lead_chars_value: 20
     }
 
-    lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
+    lines = feature_lines(settings)
 
     assert_includes lines, '--book-ornament-image: url("../../stylesheets/images/bundled/sakura_landscape.webp");'
     assert_includes lines, '--book-frontispiece-image: url("../../stylesheets/images/bundled/sakura_portrait.webp");'
@@ -68,7 +76,7 @@ class BookSettingsCssThemeTest < Minitest::Test
       edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
-    lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
+    lines = feature_lines(settings)
 
     refute(lines.any? { it.start_with?('--book-frontispiece-heading-width:') })
     refute(lines.any? { it.start_with?('--book-frontispiece-lead-width:') })
@@ -86,9 +94,9 @@ class BookSettingsCssThemeTest < Minitest::Test
     assert_in_delta 12.96, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a4)), 0.01
     assert_in_delta 9.18, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a5)), 0.01
 
-    lines = BSC.frontispiece_metric_declarations({ heading_chars_value: 8 }, a4)
+    lines = FP.metric_declarations({ heading_chars_value: 8 }, a4)
     assert_includes lines, '--book-frontispiece-heading-width: 103.68mm;'
-    lines = BSC.frontispiece_metric_declarations({ heading_chars_value: 8 }, a5)
+    lines = FP.metric_declarations({ heading_chars_value: 8 }, a5)
     assert_includes lines, '--book-frontispiece-heading-width: 73.44mm;'
   end
 
@@ -98,14 +106,14 @@ class BookSettingsCssThemeTest < Minitest::Test
     a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
 
     # 版面 162mm − 飾り避け 34mm = 128mm に余裕 4% を掛けて字数で割る
-    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
+    assert_includes ORN.metric_declarations({ ornament_heading_chars_value: 14 }, a4),
                     '--book-ornament-title-font-size: 35.11Q;'
-    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
+    assert_includes ORN.metric_declarations({ ornament_heading_chars_value: 20 }, a4),
                     '--book-ornament-title-font-size: 24.58Q;'
     # 極端な指定は本文との階層が壊れるため 20〜48Q に収める
-    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
+    assert_includes ORN.metric_declarations({ ornament_heading_chars_value: 4 }, a4),
                     '--book-ornament-title-font-size: 48Q;'
-    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 40 }, a4),
+    assert_includes ORN.metric_declarations({ ornament_heading_chars_value: 40 }, a4),
                     '--book-ornament-title-font-size: 20Q;'
   end
 
@@ -114,7 +122,7 @@ class BookSettingsCssThemeTest < Minitest::Test
     a5 = { width: '148mm', height: '210mm', margin_inner: '22mm', margin_outer: '18mm', paper_scale: 0.7048 }
     warnings = []
     VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
-      BSC.frontispiece_metric_declarations({ heading_chars_value: 16 }, a5)
+      FP.metric_declarations({ heading_chars_value: 16 }, a5)
     end
 
     # A5 の版面 108mm ÷ 1 字 9.18mm = 11 文字が上限
@@ -128,7 +136,7 @@ class BookSettingsCssThemeTest < Minitest::Test
     a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
     warnings = []
     VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
-      BSC.frontispiece_metric_declarations({ heading_chars_value: 12, lead_chars_value: 24 }, a4)
+      FP.metric_declarations({ heading_chars_value: 12, lead_chars_value: 24 }, a4)
     end
 
     assert_empty warnings
@@ -138,13 +146,7 @@ class BookSettingsCssThemeTest < Minitest::Test
   # 強調の色は tokens.css の既定（var(--book-color-accent)）に任せ、settings 層で書き直さない。
   # 書き直すと、付録の色の割り当て（pages/appendix.css・改善案 #132）を打ち消す
   def test_should_declare_accent_but_leave_strong_colors_to_tokens
-    settings = {
-      theme_accent_value: '#123456', theme_style: 'simple',
-      ornament_path: nil, frontispiece_path: nil,
-      edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
-    }
-
-    lines = BSC.option_declarations(settings, Common::CONFIG)
+    lines = BSC.option_declarations({ theme: { color: '#123456' } })
 
     assert_includes lines, '--book-color-accent: #123456;'
     refute(lines.any? { it.start_with?('--book-color-strong:', '--book-color-em-underline:') })
@@ -161,6 +163,8 @@ end
 # 章扉の幅は「字数 × 1 字の送り」で、送りが倍率に比例するので、1 行の字数は変わらない。
 class BookSettingsCssLeadSizeTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  FP = VivlioStarter::CLI::Theme::Features::Frontispiece
+  ORN = VivlioStarter::CLI::Theme::Features::Ornament
   Common = VivlioStarter::CLI::Common
   # 本文 10.5pt の A4（spiral-ruby の 33 章で実測した判型）
   A4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm',
@@ -171,8 +175,8 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     settings = { theme_accent_value: 'var(--book-accent-green)', lead_chars_value: 20, lead_size_value: 1.2,
                  frontispiece_lead_size_value: 1.2 }
 
-    assert_includes BSC.option_declarations(settings, Common::CONFIG), '--book-chapter-lead-size: 120%;'
-    lines = BSC.frontispiece_metric_declarations(settings, A4)
+    assert_includes BSC.option_declarations(Common::CONFIG), '--book-chapter-lead-size: 120%;'
+    lines = FP.metric_declarations(settings, A4)
     assert_includes lines, '--book-frontispiece-lead-size: 120%;'
     assert_includes lines, '--book-frontispiece-lead-width: 88.9mm;'
   end
@@ -182,9 +186,9 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     settings = { theme_accent_value: 'var(--book-accent-green)', lead_chars_value: 28, lead_size_value: 1.2,
                  frontispiece_lead_size_value: 1.1 }
 
-    assert_includes BSC.option_declarations(settings, Common::CONFIG), '--book-chapter-lead-size: 120%;',
+    assert_includes BSC.option_declarations(Common::CONFIG), '--book-chapter-lead-size: 120%;',
                     '本全体（simple の章・付録）は 1.2 倍のまま'
-    lines = BSC.frontispiece_metric_declarations(settings, A4)
+    lines = FP.metric_declarations(settings, A4)
     assert_includes lines, '--book-frontispiece-lead-size: 110%;'
     assert_includes lines, '--book-frontispiece-lead-width: 114.09mm;'
   end
@@ -197,13 +201,13 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     settings = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.parse_theme_settings(cfg)
 
     assert_equal 1.1, settings[:frontispiece_lead_size_value]
-    assert_includes BSC.option_declarations(settings, cfg), '--book-chapter-lead-size: 110%;'
-    assert_includes BSC.frontispiece_metric_declarations(settings, A4), '--book-frontispiece-lead-size: 110%;'
+    assert_includes BSC.option_declarations(cfg), '--book-chapter-lead-size: 110%;'
+    assert_includes FP.metric_declarations(settings, A4), '--book-frontispiece-lead-size: 110%;'
   end
 
   # 刻みは丸めない（1.05 は 105%）。`1.2em` は `1.2` と同じ意味
   def test_should_keep_fine_steps_and_accept_em_unit
-    fine = BSC.option_declarations({ theme_accent_value: 'red', lead_size_value: 1.05 }, Common::CONFIG)
+    fine = BSC.option_declarations({ theme: { lead_size: 1.05 } })
     assert_includes fine, '--book-chapter-lead-size: 105%;'
 
     cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(lead_size: '1.2em'))
@@ -214,8 +218,8 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
   # 字数を書かずに倍率だけ変えても、既定の字数（20）で幅を出し直す。theme.css の既定幅は
   # 1.2 倍の送りで決めてあるので、そのままだと 1 行の字数がずれる
   def test_should_resolve_default_chars_when_only_lead_size_changes
-    unchanged = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
-    changed = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
+    unchanged = FP.metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
+    changed = FP.metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
 
     refute(unchanged.any? { it.start_with?('--book-frontispiece-lead-width:') }, '既定のままなら theme.css に任せる')
     assert_includes changed, '--book-frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
@@ -234,9 +238,9 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
   # 字数も倍率も既定でも、字間が付いていれば既定の字数（20）で幅を出し直す。theme.css の既定幅は
   # 字間 0 で決めてあるので、そのままだと 1 行の字数が減る
   def test_should_resolve_default_chars_when_letter_spaced
-    spaced = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+    spaced = FP.metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
                                                  A4.merge(letter_spacing: '0.05em'))
-    unspaced = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+    unspaced = FP.metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
                                                    A4.merge(letter_spacing: '0em'))
 
     assert_includes spaced, '--book-frontispiece-lead-width: 93.34mm;' # 20 字 × 10.5pt × 1.2 × 1.05
@@ -304,15 +308,10 @@ end
 
 class BookSettingsCssSupplementalTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
-  ThemeDouble = Data.define(:appendix_color, :preface_color)
-  CfgDouble = Data.define(:theme)
 
   # appendix_color・preface_color を省略したら、どちらもテーマ色を宣言する（「省略時は color と同じ」・改善案 #73）
   def test_should_declare_theme_accent_for_unset_appendix_and_preface
-    cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: nil, preface_color: ''))
-    settings = { theme_accent_value: 'var(--book-accent-yellow)' }
-
-    lines = BSC.supplemental_color_declarations(settings, cfg)
+    lines = BSC.option_declarations({ theme: { color: 'yellow', appendix_color: nil, preface_color: '' } })
 
     assert_includes lines, '--book-color-accent-appendix: var(--book-accent-yellow);'
     assert_includes lines, '--book-color-accent-preface: var(--book-accent-yellow);'
@@ -320,10 +319,7 @@ class BookSettingsCssSupplementalTest < Minitest::Test
 
   # appendix_color / preface_color を指定すればその色（色名→var(--accent-*)）を宣言する
   def test_should_declare_configured_appendix_and_preface_colors
-    cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: 'red', preface_color: 'indigo'))
-    settings = { theme_accent_value: 'var(--book-accent-yellow)' }
-
-    lines = BSC.supplemental_color_declarations(settings, cfg)
+    lines = BSC.option_declarations({ theme: { color: 'yellow', appendix_color: 'red', preface_color: 'indigo' } })
 
     assert_includes lines, '--book-color-accent-appendix: var(--book-accent-red);'
     assert_includes lines, '--book-color-accent-preface: var(--book-accent-indigo);'
@@ -332,14 +328,10 @@ end
 
 class BookSettingsCssMarkerTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
-  ThemeDouble = Data.define(:markers)
-  CfgDouble = Data.define(:theme)
 
   # markers 未指定なら既定のトランプ記号（♣/♦）
   def test_should_use_default_markers_when_unset
-    cfg = CfgDouble.new(theme: ThemeDouble.new(markers: {}))
-
-    lines = BSC.marker_declarations(cfg)
+    lines = BSC.option_declarations({ theme: { markers: {} } })
 
     assert_includes lines, '--book-marker-h3: "♣";'
     assert_includes lines, '--book-marker-h4: "♦";'
@@ -347,9 +339,7 @@ class BookSettingsCssMarkerTest < Minitest::Test
 
   # markers.h3/h4 を指定すればその記号
   def test_should_use_custom_markers_when_set
-    cfg = CfgDouble.new(theme: ThemeDouble.new(markers: { h3: '★', h4: '☆' }))
-
-    lines = BSC.marker_declarations(cfg)
+    lines = BSC.option_declarations({ theme: { markers: { h3: '★', h4: '☆' } } })
 
     assert_includes lines, '--book-marker-h3: "★";'
     assert_includes lines, '--book-marker-h4: "☆";'

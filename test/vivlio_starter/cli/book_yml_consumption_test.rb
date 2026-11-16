@@ -26,6 +26,7 @@
 
 require 'test_helper'
 require 'yaml'
+require 'vivlio_starter/cli/theme'
 
 module VivlioStarter
   module CLI
@@ -47,6 +48,8 @@ module VivlioStarter
 
         # Act
         unconsumed = key_paths(book).reject do |path|
+          next theme_key_consumed?(path) if theme_option_key?(path)
+
           ALLOWED_UNREFERENCED.key?(path.join('.')) || referenced?(sources, path.last)
         end
 
@@ -72,6 +75,21 @@ module VivlioStarter
       end
 
       private
+
+      # theme: の下の name 以外のキー（テーマのオプション・機能のオプション）
+      def theme_option_key?(path) = path.first == 'theme' && path.size > 1 && path[1] != 'name'
+
+      # テーマのオプションは lib/ に名前が出ないことがある（token: で渡る）。雛形の standard の宣言で、
+      # token:・body_class:・features: のどれかで渡すオプションか、機能の宣言（theme/features/）にあるキーか、
+      # 入れ子の節であることを確かめる（v2-architecture-spec.md §5.2）
+      def theme_key_consumed?(path)
+        theme = Theme.resolve('standard', root: Theme::BUNDLED_ROOT)
+        key = path.drop(1).map(&:to_sym)
+        return true if theme.feature_options.any? { it.path == key }
+        return true if theme.all_options.any? { it.path.size > key.size && it.path.first(key.size) == key }
+
+        theme.options.any? { it.path == key && (it.token || it.body_class || it.features) }
+      end
 
       # book.yml のネスト構造を ['section', 'key', ...] のパス配列に展開する
       def key_paths(node, prefix = [])

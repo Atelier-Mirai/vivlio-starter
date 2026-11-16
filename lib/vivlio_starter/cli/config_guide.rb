@@ -258,7 +258,7 @@ module VivlioStarter
         end
 
         def default_value(path)
-          path.reduce(ConfigKeys.default_schema) { |node, key| node.is_a?(Hash) ? node[key.to_sym] : nil }
+          path.reduce(Common.default_config_schema) { |node, key| node.is_a?(Hash) ? node[key.to_sym] : nil }
         end
 
         def show_unknown_key(query)

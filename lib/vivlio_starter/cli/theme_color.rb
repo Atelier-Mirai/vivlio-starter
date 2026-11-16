@@ -25,9 +25,10 @@ module VivlioStarter
         'teal' => '#0d9488', 'green' => '#15803d', 'lime' => '#65a30d'
       }.freeze
 
-      # 本の既定テーマ色。config_keys.rb の theme.color を正典とし、未指定・空・無効な色名の
-      # どれも同じ色で組む（行を消すと緑、綴りを誤ると黄、という食い違いをなくすため）。
-      DEFAULT_NAME = ConfigKeys::KEYS[%i[theme color]].default
+      # 本の既定テーマ色。stylesheets/tokens.css の --book-color-accent の既定（var(--book-accent-green)）と、
+      # 同梱の standard の theme.color の default: と同じ（theme_color_test.rb が突き合わせる）。未指定・空・
+      # 無効な色名のどれも同じ色で組む（行を消すと緑、綴りを誤ると黄、という食い違いをなくすため）。
+      DEFAULT_NAME = 'green'
       # パレット不明・空・不正値のフォールバック（DEFAULT_NAME の hex）。
       DEFAULT = PALETTE.fetch(DEFAULT_NAME)
 
@@ -48,6 +49,8 @@ module VivlioStarter
         return raw if raw.match?(/\A#(?:\h{3}|\h{6}|\h{8})\z/)
         return "##{raw}" if raw.match?(/\A(?:\h{3}|\h{6}|\h{8})\z/)
         return "##{raw.delete_prefix('0x')}" if raw.match?(/\A0x(?:\h{6}|\h{8})\z/)
+        # 12 色を指す var()（配色のテーマの tokens: と、stylesheets/tokens.css の既定の書き方）
+        return palette[Regexp.last_match(1)] if raw.match(/\Avar\(--book-accent-([a-z]+)\)\z/)
 
         palette[raw]
       end

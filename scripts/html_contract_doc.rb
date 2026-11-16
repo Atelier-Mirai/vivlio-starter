@@ -30,7 +30,11 @@ OptionParser.new do |o|
 end.parse!
 
 # --- Phase: クラス（分類ごとの表） --------------------------------------------
-entries = Contract::CLASSES.values + Contract::PATTERNS.map(&:last)
+# テーマのオプションのクラスは、同梱の standard の theme.yml の body_class: から引く
+theme_entries = Contract.theme_option_classes.map do
+  Contract::ClassEntry.new(name: it, category: :theme_option, level: :theme, stage: :contract)
+end
+entries = Contract::CLASSES.values + theme_entries + Contract::PATTERNS.map(&:last)
 class_sections = Contract::CATEGORIES.filter_map do |key, category|
   rows = entries.select { it.category == key }
   next if rows.empty?

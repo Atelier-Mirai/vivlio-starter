@@ -11,6 +11,7 @@
 
 require_relative '../../test_helper'
 require_relative '../../../lib/vivlio_starter/cli/theme_color'
+require_relative '../../../lib/vivlio_starter/cli/theme'
 
 module VivlioStarter
   module CLI
@@ -45,9 +46,13 @@ module VivlioStarter
         assert_equal '#0186d8', TC.to_hex6('bogus', fallback: 'blue'), 'fallback を尊重'
       end
 
-      # 既定色は config_keys.rb の theme.color に従う（未指定と無効な色名で色が食い違わないように）
+      # 既定色は、同梱の standard の theme.color の default: と、tokens.css の --book-color-accent の既定に
+      # 従う（未指定と無効な色名で色が食い違わないように）
       def test_default_follows_declared_theme_color
-        declared = ConfigKeys::KEYS[%i[theme color]].default
+        declared = Theme.resolve('standard', root: Theme::BUNDLED_ROOT).options.find { it.key == 'color' }.default
+        tokens = File.read(File.expand_path('../../../stylesheets/tokens.css', __dir__))
+
+        assert_match(/--book-color-accent: var\(--book-accent-#{TC::DEFAULT_NAME}\);/, tokens)
 
         assert_equal declared, TC::DEFAULT_NAME
         assert_equal TC.resolve(declared), TC::DEFAULT

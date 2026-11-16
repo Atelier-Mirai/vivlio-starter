@@ -103,7 +103,8 @@ module VivlioStarter
           []
         end
 
-        def image_style? = Common::CONFIG.theme.style.to_s.strip.downcase == 'image'
+        # 章扉の扉絵の機能が有効か（standard の style: image）
+        def image_style? = BuildPlan.current.features.frontispiece
 
         # 組んだ HTML から、章扉のある章のリードを取る。付録は image の本でも vs-header-simple
         # なので入らない

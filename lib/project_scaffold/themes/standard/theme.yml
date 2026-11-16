@@ -8,6 +8,49 @@ supports:
   layout: [reflowable]
   targets: [pdf, print_pdf, epub, kindle]
 
+features:              # 使う組み込みの機能（オプションは機能の側が持つ: theme.frontispiece.*・theme.ornament.*）
+  - frontispiece
+  - ornament
+
+options:               # 著者が config/book.yml の theme: で変えられる項目
+  color:
+    type: color
+    default: green
+    token: color-accent
+  preface_color:
+    type: color
+    default_from: color
+    token: color-accent-preface
+  appendix_color:
+    type: color
+    default_from: color
+    token: color-accent-appendix
+  style:
+    type: enum
+    values: [image, simple]
+    default: image
+    body_class:        # 章だけ値で選び、付録は値に依らず simple の見出し
+      chapter: { image: vs-header-image, simple: vs-header-simple }
+      appendix: vs-header-simple
+    features:          # simple では扉絵・節絵を使わない
+      image: [frontispiece, ornament]
+      simple: []
+  lead_size:
+    type: ratio        # 本文に対する倍率（CSS には 120% のように書き出す）
+    min: 1.0
+    max: 2.0
+    default: 1.2
+    token: chapter-lead-size
+  markers:
+    h3:
+      type: string
+      default: "♣"
+      token: marker-h3
+    h4:
+      type: string
+      default: "♦"
+      token: marker-h4
+
 styles:
   - simple-header.css
   - image-header.css

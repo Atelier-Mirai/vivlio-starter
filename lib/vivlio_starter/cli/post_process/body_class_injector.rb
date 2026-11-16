@@ -50,19 +50,13 @@ module VivlioStarter
           Common.log_info("#{html_file}: <body>→class追加(#{class_attr})")
         end
 
-        # ヘッダ切替（方式A）用の body クラスを種別ごとに決める。
-        #   - chapter : theme.style（image 既定 / simple 明示）に従う
-        #   - appendix: 常に simple（appendix.css は simple-header.css を単独 import）
-        #   - その他  : ヘッダ CSS を import しないため付与不要（nil）
+        # 選ばれたテーマのオプションが付ける body のクラス（theme.yml の body_class:・theme-contract-spec.md §3.3）。
+        # standard は章に style の値で vs-header-image・vs-header-simple、付録に vs-header-simple を付ける
         # @param kind [Symbol] entry.kind
         # @return [String, nil]
         def header_mode_class(kind)
-          case kind
-          when :chapter
-            Common::CONFIG.theme.style.to_s.strip.downcase == 'simple' ? 'vs-header-simple' : 'vs-header-image'
-          when :appendix
-            'vs-header-simple'
-          end
+          classes = Theme.declared&.body_classes(kind, Common::CONFIG).to_a
+          classes.empty? ? nil : classes.join(' ')
         end
 
         # 最初の本文章かどうかを判定

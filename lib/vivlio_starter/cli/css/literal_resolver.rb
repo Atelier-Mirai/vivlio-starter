@@ -105,7 +105,7 @@ module VivlioStarter
         # @param target_classes [Array<String>] 出力先の変換が後で足すクラス（vs-epub・vs-kindle）
         def scope_for(html_body_classes, target_classes:, language:, scoped: [])
           page_classes = HtmlContract::GROUPS.filter_map { |category, _, _, names| names if PAGE_CATEGORIES.include?(category) }
-                                             .flatten.to_set
+                                             .flatten.to_set | HtmlContract.theme_option_classes
           common = html_body_classes.map { it.to_set & page_classes }.reduce(:&) || Set.new
           Scope.new(body_classes: common | target_classes, page_classes:, language:, scoped: scoped.to_set)
         end

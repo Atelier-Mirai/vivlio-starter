@@ -311,7 +311,7 @@ module VivlioStarter
 
         # h3 のスパン処理
         def process_h3_spans(doc)
-          marker = Common::CONFIG.theme.markers.h3 || '♣'
+          marker = Theme.token_value('marker-h3').to_s
           modified = false
           doc.css('h3').each do |h3|
             title_text = extract_heading_core_text(h3)

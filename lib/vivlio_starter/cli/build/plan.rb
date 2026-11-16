@@ -26,8 +26,11 @@ module VivlioStarter
     # @!attribute pdf_cover             閲覧用 PDF に表紙を綴じる（output.pdf.combined）
     # @!attribute epub_cover            EPUB に表紙を埋める（output.epub.embed）
     # @!attribute whole_toc             全巻目次を載せる巻である（分冊）
+    # @!attribute frontispiece          章扉の扉絵（テーマの組み込みの機能。theme-contract-spec.md §3.4）
+    # @!attribute ornament              節見出しの節絵（同）
     BuildFeatures = Data.define(:index, :techbook_post_process, :web_novel,
-                                :print_full_bleed, :pdf_cover, :epub_cover, :whole_toc)
+                                :print_full_bleed, :pdf_cover, :epub_cover, :whole_toc,
+                                :frontispiece, :ornament)
 
     # 出力先・軸・機能の組。段の表の条件の列が読む、ただ一つの材料
     BuildPlan = Data.define(:targets, :traits, :features) do
@@ -48,7 +51,9 @@ module VivlioStarter
               print_full_bleed: Common.print_pdf_full_bleed?,
               pdf_cover: Common.pdf_combined?,
               epub_cover: Common.epub_embed?,
-              whole_toc: Build::WholeTocGenerator.needed?
+              whole_toc: Build::WholeTocGenerator.needed?,
+              frontispiece: Theme::Features.active?(:frontispiece, config),
+              ornament: Theme::Features.active?(:ornament, config)
             ))
       end
 

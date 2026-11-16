@@ -73,25 +73,9 @@ module VivlioStarter
       # ------- theme -------
       # テーマの名前。本の themes/<名前>/ を読む（theme-contract-spec.md §7.1）
       %i[theme name]                                  => Spec[default: "standard"],
-      %i[theme color]                                 => Spec[default: "green"],
-      # 前書き・付録の色は書かなければ theme.color に従う（改善案 #73）。既定値を持たせると、
-      # 行を消しても空欄にしてもこの色が入り、「省略時は color と同じ」にならない
-      %i[theme preface_color]                         => Spec[default: nil],
-      %i[theme appendix_color]                        => Spec[default: nil],
-      %i[theme style]                                 => Spec[default: "image"],
-      %i[theme lead_size]                             => Spec[default: 1.2],
-      %i[theme frontispiece image]                    => Spec[default: "sakura"],
-      %i[theme frontispiece edge_inset]               => Spec[default: "5mm"],
-      %i[theme frontispiece heading_offset]           => Spec[default: "15mm"],
-      %i[theme frontispiece heading_chars]            => Spec[default: 10],
-      %i[theme frontispiece lead_chars]               => Spec[default: 24],
-      # 章扉だけのリードの大きさ。書かなければ theme.lead_size に従う（chapter-lead-size-spec.md §2.2）。
-      # appendix_color と同じく、既定値を持たせると行を消しても空欄にしてもこの値が入り、従わなくなる
-      %i[theme frontispiece lead_size]                => Spec[default: nil],
-      %i[theme ornament image]                        => Spec[default: "sakura"],
-      %i[theme ornament heading_chars]                => Spec[default: 14],
-      %i[theme markers h3]                            => Spec[default: "♣"],
-      %i[theme markers h4]                            => Spec[default: "♦"],
+      # theme.name のほかのキー（color・style・frontispiece.* など）は、選ばれたテーマの theme.yml の
+      # options: と組み込みの機能の宣言が持つ（theme-contract-spec.md §3.3・§3.4）。Common.load_config が
+      # ここに重ねる（keys_with・v2-architecture-spec.md §5.2）
 
       # ------- page -------
       %i[page use]                                    => Spec[default: "b5_standard"],
@@ -291,11 +275,17 @@ module VivlioStarter
 
       module_function
 
+      # 現役キーに、選ばれたテーマのオプションと機能の宣言（Theme::Resolved#config_specs）を重ねた表。
+      # 設定を読む仕組みは、どれもこの入口を通る（v2-architecture-spec.md §5.2）
+      # @param theme_specs [Hash{Array<Symbol> => Spec}]
+      def keys_with(theme_specs = {}) = KEYS.merge(theme_specs)
+
       # 既定値スキーマ（Common.default_config_schema の実体）。
       # 葉キーの宣言から入れ子ハッシュを組み立て直す。default: を持たないキー
       # （authored:）は nil——著者が埋めるまで値は無い。
-      def default_schema
-        KEYS.each_with_object({}) do |(path, spec), tree|
+      # @param theme_specs [Hash{Array<Symbol> => Spec}] テーマの宣言（keys_with）
+      def default_schema(theme_specs = {})
+        keys_with(theme_specs).each_with_object({}) do |(path, spec), tree|
           *parents, leaf = path
           node = parents.reduce(tree) { |h, key| h[key] ||= {} }
           node[leaf] = spec.default

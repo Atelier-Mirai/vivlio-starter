@@ -43,6 +43,7 @@ body.vs-header-image h1 {
    以前は負マージンで章題へ引き寄せており、3 要素が等間隔で 1 つの塊に見えていた。 */
 body.vs-header-image .chapter-lead {
   inline-size: var(--book-frontispiece-lead-width);
+  font-size: var(--book-frontispiece-lead-size);
   max-inline-size: 100%;
   margin-block: clamp(3mm, calc(var(--book-paper-scale) * 5mm), 5mm)
     clamp(8mm, calc(var(--book-paper-scale) * 10mm), 12mm);

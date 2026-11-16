@@ -103,6 +103,31 @@ module VivlioStarter
         end
       end
 
+      # theme: の、選ばれたテーマにも機能にも無いキーは 🟡。綴りの近いキーと、同じ段に書けるキーを示す。
+      # 廃止キーは廃止の案内に任せ、ここでは出さない（theme-contract-spec.md §3.3）
+      def test_should_warn_about_theme_keys_that_the_theme_does_not_declare
+        violations = validate(theme: { name: 'standard', colour: 'red', color: 'green',
+                                       frontispiece: { imag: 'x', image: 'sakura' }, markers: { h3: '♣' } })
+
+        assert_equal %i[warn warn], violations.map(&:severity)
+        colour = violations.find { it.message.include?('theme.colour') }
+        assert_equal 'config/book.yml の theme.colour は、テーマ standard には無い設定です', colour.message
+        assert_equal '直すなら: colour → color', colour.detail.first
+        assert_match(/テーマ standard の theme: に書けるキー: name・color・.*・ornament\z/, colour.detail.last)
+        imag = violations.find { it.message.include?('theme.frontispiece.imag') }
+        assert_match(/theme\.frontispiece: に書けるキー: image・edge_inset/, imag.detail.last)
+      end
+
+      # 機能を使わないテーマでは、その機能のオプションも「無い設定」になる（前のテーマのものが残った場合）
+      def test_should_warn_about_feature_options_of_a_theme_without_the_feature
+        with_themes('plain' => {}) do |root|
+          violations = validate({ theme: { name: 'plain', frontispiece: { image: 'sakura' }, ornament: 'sakura' } }, root)
+
+          assert_equal ['config/book.yml の theme.frontispiece は、テーマ plain には無い設定です',
+                        'config/book.yml の theme.ornament は、テーマ plain には無い設定です'], violations.map(&:message)
+        end
+      end
+
       def test_should_report_an_unknown_book_type_with_the_valid_names
         violations = validate(book: { type: 'novle' })
 

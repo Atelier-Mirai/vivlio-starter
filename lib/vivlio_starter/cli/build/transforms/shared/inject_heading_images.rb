@@ -42,7 +42,8 @@ module VivlioStarter
         # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
         # @param ctx [Transforms::Context]
         def call(doc, ctx)
-          return unless Common::CONFIG.theme.style == 'image'
+          features = BuildPlan.current.features
+          return unless features.frontispiece || features.ornament
 
           context = ctx.remember(:heading_images) { heading_image_context(ctx.flavor) }
           inject_heading_images!(doc, ctx.path, context) if context

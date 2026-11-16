@@ -41,6 +41,7 @@ require 'pathname'
 require_relative '../common'
 require_relative '../font_manager'
 require_relative '../theme_color'
+require_relative '../theme'
 require_relative '../build/vivliostyle_config_writer'
 require_relative '../css/legacy_tokens'
 require_relative 'css_updater'
@@ -103,10 +104,11 @@ module VivlioStarter
           settings = FrontmatterGenerator.parse_theme_settings(cfg)
           page_cfg = build_page_cfg(cfg)
           registry = TalkRegistry.load
+          theme = Theme.declared(cfg)
 
           root_lines = []
-          root_lines.concat(option_declarations(settings, cfg))
-          root_lines.concat(theme_declarations(settings, image_prefix:, page_cfg:))
+          root_lines.concat(option_declarations(cfg, theme))
+          root_lines.concat(feature_declarations(settings, cfg, image_prefix:, page_cfg:, theme:))
           root_lines.concat(page_declarations(page_cfg))
           root_lines.concat(talk_variable_declarations(registry))
           root_lines.concat(Css::LegacyTokens.settings_declarations(custom_css))
@@ -114,7 +116,7 @@ module VivlioStarter
           <<~CSS
             #{header_comment}
             #{page_size_rule(page_cfg)}
-            #{frontispiece_position_rule(settings, page_cfg)}
+            #{feature_page_rules(cfg, page_cfg, theme:)}
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
@@ -203,67 +205,44 @@ module VivlioStarter
         # ================================================================
         # theme 系変数（旧 update_theme_css 相当）
         # ================================================================
-        # 並びは theme.yml の options:（token: のあるもの）→ 機能（扉絵 → 節絵）の順
-        # （theme-contract-spec.md §3.3・§3.4）。
+        # 選ばれたテーマの宣言から書く（theme-contract-spec.md §3.3・§3.4）。並びは options: のうち token: の
+        # あるもの → 機能（features: の順）。テーマに固有の名前（オプションの名前・機能の変数）はここに書かない。
         #   - 強調の色（--book-color-strong・--book-color-em-underline）は書かない。tokens.css の既定が
         #     var(--book-color-accent) で、ここ（settings 層）で書き直すと、付録の色の割り当て
         #     （pages/appendix.css・改善案 #132）やテーマの指定を打ち消すため
-        def option_declarations(settings, cfg)
-          [
-            "--book-color-accent: #{settings[:theme_accent_value]};",
-            *supplemental_color_declarations(settings, cfg),
-            "--book-chapter-lead-size: #{format_percent(settings[:lead_size_value] || DEFAULT_LEAD_SIZE)};",
-            *marker_declarations(cfg)
-          ]
-        end
+        # @param theme [Theme::Resolved, nil]
+        def option_declarations(cfg, theme = Theme.declared(cfg))
+          return [] unless theme
 
-        # 扉絵と節絵の変数。条件付き宣言のセマンティクスを in-place 版と一致させる（調査報告 §7.3-2）:
-        #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
-        #   - image スタイル : 画像 2 変数＋edge_inset を宣言
-        #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
-        def theme_declarations(settings, image_prefix:, page_cfg: {})
-          frontispiece_declarations(settings, image_prefix:, page_cfg:) +
-            ornament_declarations(settings, image_prefix:, page_cfg:)
-        end
-
-        # 扉絵（機能 frontispiece）の変数
-        def frontispiece_declarations(settings, image_prefix:, page_cfg: {})
-          lines = []
-          if settings[:theme_style] == 'simple'
-            lines << '--book-frontispiece-image: none;'
-          else
-            lines << "--book-frontispiece-image: #{css_image_value(settings[:frontispiece_path], image_prefix:)};"
-            lines << "--book-frontispiece-edge-inset: #{settings[:edge_inset_value]};"
+          theme_cfg = cfg&.dig(:theme)
+          theme.options.select(&:token).map do |option|
+            "--book-#{option.token}: #{Theme::Values.css(option, Theme::Values.effective(option, theme_cfg, theme.all_options))};"
           end
+        end
 
-          if settings[:heading_offset_value]
-            lines << "--book-frontispiece-heading-offset: #{settings[:heading_offset_value]};"
+        # 組み込みの機能の変数。テーマが使う機能だけを書く（使わない機能の画像は tokens.css の既定 none）。
+        # 使うが今の設定で無効な機能（standard の style: simple）は、機能の側が画像を none にする
+        # @param settings [Hash] FrontmatterGenerator.parse_theme_settings の結果
+        def feature_declarations(settings, cfg, image_prefix:, page_cfg: {}, theme: Theme.declared(cfg))
+          return [] unless theme
+
+          active = theme.active_features(cfg)
+          theme.features.flat_map do |name|
+            Theme::Features[name].declarations(settings, active: active.include?(name), image_prefix:, page_cfg:)
           end
-
-          lines.concat(frontispiece_metric_declarations(settings, page_cfg))
         end
 
-        # 節絵（機能 ornament）の変数
-        def ornament_declarations(settings, image_prefix:, page_cfg: {})
-          image = if settings[:theme_style] == 'simple'
-                    '--book-ornament-image: none;'
-                  else
-                    "--book-ornament-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
-                  end
-          [image, *ornament_metric_declarations(settings, page_cfg)]
-        end
+        # 組み込みの機能の @page の規則（扉絵の位置）
+        def feature_page_rules(cfg, page_cfg, theme: Theme.declared(cfg))
+          return '' unless theme
 
-        # 節題の字の大きさ（文字数指定がある時だけ）
-        def ornament_metric_declarations(settings, page_cfg)
-          chars = settings[:ornament_heading_chars_value]
-          return [] unless chars
-
-          size = section_title_font_q(chars, text_area_width_mm(page_cfg), paper_scale_of(page_cfg))
-          ["--book-ornament-title-font-size: #{size}Q;"]
+          active = theme.active_features(cfg)
+          theme.features.map { Theme::Features[it].page_rule(page_cfg, active: active.include?(it)) }
+               .reject(&:empty?).join("\n")
         end
 
         # ================================================================
-        # 見出しの寸法（heading-metrics-spec §1-2）
+        # 見出しの寸法（heading-metrics-spec §1-2）— 組み込みの機能が値を書くときの計算
         # ================================================================
         # 著者は book.yml に「1 行の文字数」で書く。判型に追従する CSS の
         # clamp() を calc() の中で掛け合わせると Vivliostyle が宣言ごと落とすため、
@@ -271,35 +250,7 @@ module VivlioStarter
         #
         # 章題・章リードは「箱幅」を、節題は「フォントサイズ」を決める——節絵の帯は
         # 版面幅いっぱいで固定なので、箱を広げる余地が無く字送りで調整するしかない。
-        #
-        # 章扉の章リードの大きさ（--book-frontispiece-lead-size）も扉絵の変数として書く。
-        # 書かなければ theme.lead_size に従う（chapter-lead-size-spec.md §2.2）。
-        def frontispiece_metric_declarations(settings, page_cfg)
-          text_mm = text_area_width_mm(page_cfg)
-          scale = paper_scale_of(page_cfg)
-          lines = []
-
-          if (chars = settings[:heading_chars_value])
-            lines << "--book-frontispiece-heading-width: #{format_mm(chars * chapter_title_advance_mm(scale))};"
-            warn_if_wider_than_text_area('theme.frontispiece.heading_chars', chars,
-                                         chapter_title_advance_mm(scale), text_mm)
-          end
-
-          # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率と字間で決まる。字数が
-          # 未指定でも倍率や字間を変えたなら、tokens.css の既定幅（既定の字数 × 1.2 倍）のままでは
-          # 字数が合わなくなるので、既定の字数で幅を出し直す。
-          lead_size = settings[:frontispiece_lead_size_value] || DEFAULT_LEAD_SIZE
-          lines << "--book-frontispiece-lead-size: #{format_percent(lead_size)};"
-          default_width = lead_size == DEFAULT_LEAD_SIZE && !letter_spaced?(page_cfg)
-          chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless default_width)
-          if chars
-            advance_mm = chapter_lead_advance_mm(page_cfg, lead_size)
-            lines << "--book-frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
-            warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm)
-          end
-
-          lines
-        end
+        # 変数へ書くのは Theme::Features::Frontispiece・Ornament。
 
         # tokens.css が持つ既定の文字数（未指定時の値と一致させる）。
         # Transforms::Shared::InjectHeadingImages も同じ既定でリード幅比を導くため公開している（§5-1）。
@@ -307,8 +258,10 @@ module VivlioStarter
         DEFAULT_LEAD_CHARS = 20
         DEFAULT_ORNAMENT_HEADING_CHARS = 14
 
-        # 章リードの倍率の既定（parts/heading.css の `font-size: larger` と同じ 1.2 倍）。
-        DEFAULT_LEAD_SIZE = ConfigKeys::KEYS[%i[theme lead_size]].default
+        # 章リードの倍率の既定（stylesheets/tokens.css の --book-chapter-lead-size と、同梱の standard の
+        # theme.lead_size の default: と同じ。book_settings_css_test.rb が突き合わせる）。
+        # 扉絵のリードの既定の幅（tokens.css の --book-frontispiece-lead-width）は、この倍率で決めてある
+        DEFAULT_LEAD_SIZE = 1.2
 
         # 章題 1 字の送り（mm）。image-header.css の .chapter-title の
         # `font-size: clamp(34Q, calc(var(--book-paper-scale) * 48Q), 50Q)` と
@@ -443,35 +396,6 @@ module VivlioStarter
           rounded == rounded.to_i ? rounded.to_i.to_s : rounded.to_s
         end
 
-        # appendix / preface のアクセント色（旧 update_appendix_css / update_preface_css 相当）。
-        # どちらも常に宣言し、未指定なら theme accent に従う（「省略時は color と同じ」・改善案 #73）
-        def supplemental_color_declarations(settings, cfg)
-          theme_cfg = cfg.theme
-          accent = settings[:theme_accent_value]
-
-          [
-            "--book-color-accent-preface: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};",
-            "--book-color-accent-appendix: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};"
-          ]
-        end
-
-        # 見出しマーカー（旧 update_chapter_common_css 相当）。
-        def marker_declarations(cfg)
-          h3, h4 = heading_markers(cfg)
-          [
-            %(--book-marker-h3: "#{escape_marker(h3)}";),
-            %(--book-marker-h4: "#{escape_marker(h4)}";)
-          ]
-        end
-
-        # 未指定時は ♣ / ♦。
-        def heading_markers(cfg)
-          markers = FrontmatterGenerator.safe_config_hash(cfg.theme.markers)
-          h3 = (markers[:h3] || markers['h3']).to_s
-          h4 = (markers[:h4] || markers['h4']).to_s
-          [h3.strip.empty? ? '♣' : h3, h4.strip.empty? ? '♦' : h4]
-        end
-
         # page-settings 系 22 変数（旧 update_page_settings_css 相当）。
         # nil/空値は宣言しない（base/page.css の既定がカスケードで生きる）。
         def page_declarations(page_cfg)
@@ -490,19 +414,6 @@ module VivlioStarter
           return '' if w.empty? || h.empty?
 
           "@page { size: #{w} #{h}; }"
-        end
-
-        # 扉背景の background-position もリテラル必須——Vivliostyle は background-position の
-        # calc() 内 var() を解さず宣言ごと落とし、背景が左上（0 0）へ偏る（pdf_chapter5 実測。
-        # background-size の calc()+var() は解すので size 側は image-header.css のままでよい）。
-        # 綴じオフセットを生成時に焼き込み、image-header.css の既定（center center）を上書きする。
-        def frontispiece_position_rule(settings, page_cfg)
-          return '' if settings[:theme_style] == 'simple'
-
-          offset = page_cfg[:frontispiece_binding_offset].to_s.strip
-          return '' if offset.empty? || offset == '0mm'
-
-          "@page :nth(1) { background-position: calc(50% + #{offset}) center; }"
         end
 
         # ================================================================
@@ -870,11 +781,6 @@ module VivlioStarter
           return Pathname("#{image_prefix}#{p}").cleanpath.to_s if p.start_with?('../')
 
           "#{image_prefix}#{p}"
-        end
-
-        # CSS の "..." 文字列内で安全なマーカー文字にする（" と \ をエスケープ）。
-        def escape_marker(mark)
-          mark.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
         end
 
         # ================================================================

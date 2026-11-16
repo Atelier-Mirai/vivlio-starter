@@ -7,6 +7,7 @@ require 'yaml'
 require_relative 'config_keys'
 require_relative 'book_profile'
 require_relative 'book_traits'
+require_relative 'theme'
 require_relative 'units'
 require_relative 'spinner'
 require_relative 'source_aliases'
@@ -202,6 +203,8 @@ module VivlioStarter
         # 既定値をマージすると未知キーが落ちるので、著者の記述はここで記録する
         @authored_keys = collect_key_paths(raw_config)
         profile = BookProfile.defaults_for(BookProfile.type_of(raw_config))
+        # テーマのオプションの既定値（v2-architecture-spec.md §5.3 の 3）。theme.name を生の YAML から先に取り出す
+        @theme_specs = theme_specs_for(raw_config[:theme].is_a?(Hash) ? raw_config[:theme][:name] : nil)
         cfg = apply_page_preset(raw_config, fallback_use: profile.dig(:page, :use))
         merge_hardcoded_defaults(cfg, profile)
       end
@@ -310,7 +313,14 @@ module VivlioStarter
       # book.yml の全セクションの既定値スキーマ。
       # 宣言は ConfigKeys::KEYS が持つ（config-defaults-design-spec.md）。
       # ここは葉キーの宣言から入れ子ハッシュを組み立て直すだけで、値は持たない。
-      def default_config_schema = ConfigKeys.default_schema
+      def default_config_schema = ConfigKeys.default_schema(theme_specs)
+
+      # 選ばれたテーマのオプションと機能の宣言（ConfigKeys の形）。load_config が book.yml の theme.name から
+      # 決める。book.yml を読む前（直接ビルド・プロジェクトの外）は既定のテーマの宣言
+      def theme_specs = @theme_specs ||= theme_specs_for(nil)
+
+      # @param name [String, nil] theme.name
+      def theme_specs_for(name) = Theme.for_settings(name)&.config_specs || {}
 
       # --- Hardcoded Defaults (Data objects for immutability) ---
       #
@@ -1290,7 +1300,7 @@ module VivlioStarter
                       :warn_unknown_log_level,
                       :current_step_label, :deep_merge_config,
                       :build_direct_configuration, :direct_page_settings, :install_configuration!, :traits,
-                      :default_config_schema,
+                      :default_config_schema, :theme_specs, :theme_specs_for,
                       :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../theme'
+require 'did_you_mean'
 require_relative '../build/targets'
 
 module VivlioStarter
@@ -82,12 +83,45 @@ module VivlioStarter
         # （v2-architecture-spec.md §2.5）。固定レイアウトは上で止めているので、レイアウトは重ねない
         def theme_violations
           theme = Theme.resolve(Theme.selected_name(@config), root: @root)
-          [*theme.warnings.map { warning(it) },
+          [*theme.warnings.map { warning(it) }, *unknown_theme_keys(theme),
            unsupported(theme, :writing_mode, [traits.writing_mode], 'page.writing_mode'),
            (unsupported(theme, :layout, [traits.layout], 'page.layout') unless traits.fixed?),
            unsupported(theme, :targets, Build::Targets.resolve(@config).to_h.filter_map { |target, on| target if on }, 'output.targets')]
         rescue Theme::Error => e
           [error(e.message, detail: e.detail)]
+        end
+
+        # book.yml の theme: の、選ばれたテーマの options: にも機能の宣言にも無いキー（theme-contract-spec.md §3.3）。
+        # 前のテーマのオプションが残ったのか打ち間違いかは区別できないので、文面は一つ。値は読まない。
+        # 廃止キー（ConfigKeys::RETIRED）は廃止の案内だけを出す（二重に知らせない）
+        def unknown_theme_keys(theme)
+          declared = [[:name], *theme.all_options.map(&:path)]
+          groups = declared.flat_map { |path| (1...path.size).map { path.first(it) } }.uniq
+          retired = ConfigKeys::RETIRED.keys.filter_map { it.drop(1) if it.first == :theme }
+          collect_unknown(@config.dig(:theme), [], declared, groups, retired).map do |path|
+            unknown_theme_key_warning(theme, path, declared + groups)
+          end
+        end
+
+        # 宣言に無いキーの並び（入れ子の節の下は、節が宣言にあるときだけたどる）
+        def collect_unknown(node, prefix, declared, groups, retired)
+          table = node.respond_to?(:to_h) && !node.is_a?(String) ? node.to_h : {}
+          table.keys.flat_map do |key|
+            path = prefix + [key.to_sym]
+            next [] if declared.include?(path) || retired.any? { path.first(it.size) == it }
+            next collect_unknown(table[key], path, declared, groups, retired) if groups.include?(path)
+
+            [path]
+          end
+        end
+
+        def unknown_theme_key_warning(theme, path, known)
+          siblings = known.filter_map { it.last.to_s if it.size == path.size && it.first(path.size - 1) == path[0...-1] }.uniq
+          near = DidYouMean::SpellChecker.new(dictionary: siblings).correct(path.last.to_s).first
+          where = ['theme', *path[0...-1]].join('.')
+          warning("config/book.yml の theme.#{path.join('.')} は、テーマ #{theme.name} には無い設定です",
+                  detail: [*("直すなら: #{path.last} → #{near}" if near),
+                           "テーマ #{theme.name} の #{where}: に書けるキー: #{siblings.join('・')}"])
         end
 
         # @param values [Array<Symbol>] 本が求める値（出力先は複数）

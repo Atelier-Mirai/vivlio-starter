@@ -77,10 +77,12 @@ module VivlioStarter
           require_relative '../pre_process/book_settings_css'
           VivlioStarter::CLI::PreProcessCommands::BookSettingsCss.generate!(cfg)
 
-          # style: simple のときは画像を使わないため生成をスキップ
-          theme_style = theme_cfg[:style].to_s.strip.downcase
-          if theme_style == 'simple'
-            Common.log_info('[Step 2] style: simple のため frontispiece / ornament の生成をスキップします')
+          # 扉絵・節絵の機能が無効（standard の style: simple・機能を使わないテーマ）なら画像を使わない
+          features = BuildPlan.current.features
+          frontispiece_on = features.frontispiece
+          ornament_on = features.ornament
+          unless frontispiece_on || ornament_on
+            Common.log_info('[Step 2] 扉絵・節絵の機能を使わないため frontispiece / ornament の生成をスキップします')
             return
           end
 
@@ -93,7 +95,7 @@ module VivlioStarter
 
           generated_any = false
 
-          if frontispiece_source && !frontispiece_source.to_s.strip.empty?
+          if frontispiece_on && frontispiece_source && !frontispiece_source.to_s.strip.empty?
             path = VivlioStarter::CLI::PreProcessCommands.resolve_frontispiece_path(frontispiece_source,
                                                                                       allow_generation: true)
             Common.log_success("[Step 2] frontispiece を準備しました: #{path}")
@@ -102,7 +104,7 @@ module VivlioStarter
             Common.log_info('[Step 2] frontispiece 設定なし（既定画像を使用）')
           end
 
-          if ornament_source && !ornament_source.to_s.strip.empty?
+          if ornament_on && ornament_source && !ornament_source.to_s.strip.empty?
             path = VivlioStarter::CLI::PreProcessCommands.resolve_ornament_path(ornament_source,
                                                                                   allow_generation: true)
             Common.log_success("[Step 2] ornament を準備しました: #{path}")
