@@ -712,6 +712,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8（`bunko` を書くとき） | S6 では見出しの 2 枚だけを移す。`bunko` で打ち消しが要った規則を移す。いちばんの候補は前書きの見た目（`parts/preface.css`） |
 | 6 | 改ページの打ち消し（`page.section_pagebreak`・`page.chapter_pagebreak`）が写すテーマの選択子を、テーマの側からどう宣言させるか | S6-10 まで（完了の条件 2） | 今は `BookSettingsCss` が `standard` の選択子（`vs-header-*`）を持つ（§11.11 の 6） |
 | 7 | `vs build` が、著者が入れたテーマの層の勝ち負けの組を、要素ごとの判定で 🟡 にする（`css-layer-restructure-spec.md` §4.3 の「扱い（S6 以降）」）のを、どの小段階で入れるか | S7（`theme:add` で外のテーマを入れられるようになる時点）まで | S6-8 では作っていない。今は `--log=debug` のときだけ出す（§11.12 の 2） |
+| 8 | 雛形から消えたテーマのファイル（とくに置けば読まれる出力先の CSS）を、`vs upgrade` が本から消すか | 同梱のテーマからファイルを消す変更をするとき（S8 の `bunko` まで） | 今は消さない。lock から記録が消えるだけ（§11.13 の 6） |
 
 ---
 
@@ -1125,3 +1126,31 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | 完了の条件: zip の検査のテスト | `../evil.css`・`/etc/evil.css`・`theme/../../evil.css`・`C:/evil.css`・シンボリックリンクの項目で展開せずに 🔴、安全な zip は 1 階層下の `theme.yml` を見つけて入る（`theme_commands_test.rb`） |
 | 写しの本で `bin/vs` | `vs theme`・`vs theme:check`・`vs theme:new mono --extends standard`・`vs theme:new plain`・`vs theme:add standard`（同じなので何もしない）・`vs theme:add ../dl/blue-theme`（`install.sh` を写さず、`theme.color: green` が覆っていることを示す）・`vs --help` の分類 |
 | テスト | `rake test` 4,474 件が通った（S6-7 の後の 4,466 件に、足した 8 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+
+### 11.13 S6-9 `vs upgrade`（2026-11-17）
+
+#### 作ったもの
+
+- **雛形のテーマの振り分け**（`UpgradeCommands#managed_theme_digests`）: 雛形の `themes/<名前>/` のファイルを、三者比較の前に次のとおり振り分ける。残さなかったファイルは計画に載らず、lock からも記録が消える。
+  - 本にあり、lock に記録があるテーマ: 雛形から来たテーマとして、ほかの雛形のファイルと同じに更新する（追加・更新・合流・競合）。
+  - 本にあり、lock に記録が無いテーマ: 著者が入れたテーマとして触らない（同梱と同じ名前でも）。
+  - 本に無いテーマ: 本が使うテーマ（`book.yml` の `theme.name`、無ければ `standard`。とその `extends:` の 1 段）だけを足す。1.x の本は `themes/` を持たないので、ここで `standard` が入る。ほかの同梱のテーマは足さない（§7.1。`vs theme:add` で入れる）。
+- **著者のテーマの契約の版**（`contract_mismatches`）: lock に記録の無いテーマのうち、`Theme::Contract.check!`（契約の版・`requires_vs:`）に通らないものを、`vs upgrade` の最後（外部ツールの出力の後）に 🟡 で示す。`theme.yml` の書き方の誤りは `vs theme:check` と `vs build` が示すので挙げない。
+- **`vs theme:add` の記録**（`ScaffoldLock.record_theme!`・`ThemeCommands#record_in_lock`）: 同梱のテーマを入れたら、入れたファイルのハッシュを lock に記録し、三方向のマージの祖先（`.cache/vs/scaffold-base/`）も進める。同梱でないテーマを入れたら、同じ名前の記録を消す。本と同じで何も写さなかったときも記録する。lock の無い本では何もしない。
+- **`custom.css` の 1.x の変数の名前**（`rename_legacy_tokens!`・`Css::LegacyTokens.rename_lines`・`renamed_css`）: 雛形追従の後（全体の確認で「いいえ」なら行わない）、置き換える行を行番号と前後の形で全部見せてから尋ねる。「はい」なら `.vs-backup/upgrade/` へ退避してから書き換える。「いいえ」なら何も変えない。`--dry-run` は行を見せるだけで尋ねない。
+
+#### 仕様に無かったので決めたこと
+
+1. **`custom.css` の置き換えは `--yes` でも尋ねる。** `--yes` は「競合以外を確認なしで適用する」オプションで、`custom.css` は §7.3 で「触らない」としている著者のファイルである。競合と同じく、必ず尋ねる。断っても、今の名前は別名で効くので組み上がりは変わらない。
+2. **自分自身を読む定義になる行は置き換えない。** `--theme-accent: var(--book-color-accent);` は置き換えると `--book-color-accent: var(--book-color-accent);`（循環）になる。行を残し、💡 で「要らなければ削除してください」と示す（`css-layer-restructure-spec.md` §7.2 の、settings 層へ渡さない定義と同じもの）。
+3. **注釈の中の名前も置き換える。** `LegacyTokens.rename`（S6-2）の決まりのまま。置き換える行は全部見せるので、注釈の行も確認の前に分かる。雛形の `custom.css` の「使い方の例」も新しい名前で書いてある。
+4. **本が使うテーマは `Common::CONFIG` でなく `book.yml` を直接読む。** `vs upgrade` は廃止キーの残った `book.yml` でも動き、設定を読み込んだ時点と作業ディレクトリが合うとも限らないため。
+5. **著者のテーマの 🟡 の案内は `vs upgrade` 用に書き換える。** `Contract` の案内（「vs upgrade で vs を新しくしてください」）は、`vs upgrade` の最後では次の手にならない。版の事実（読める契約の版）だけを残し、「著者が入れたテーマなので更新していない」「この vs に合う版のテーマを `vs theme:add` で入れ直す」を示す。
+6. **雛形から消えたテーマのファイルは、本から消さない。** 今の雛形の更新と同じ（lock から記録が消えるだけ）。テーマの出力先の CSS（`epub.css` など）は置けば読まれるので、雛形がそれを消したときは本に残って効く。同梱のテーマからファイルを消す変更をするときに、消す扱いを足す（S8 で `bunko` を書くときに見直す）。
+
+#### 確かめた結果
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 写しの本（B4 の素材 `r2/src/ai_web_starter/`・lock は 1.0.0）で `vs upgrade`。`ToolUpgrader.run!` と `run_gem_command`（`bundle update`）を差し替え、`--skip-self-update` | `--dry-run`: `themes/standard/` の 17 個が「追加」、置き換える `custom.css` の 4 行と残す 1 行、`themes/future/`（`contract: 2`）の 🟡 が最後に出て、何も変えない。1 回目（全体の確認は「はい」・`custom.css` は「いいえ」）: `themes/standard/` が入り lock に 17 個の記録、`themes/future/` は記録されない、`custom.css` は前とバイト単位で同じ。2 回目（「はい」）: 4 行だけが変わり、元が退避された |
+| テスト | `upgrade_commands_test.rb` に 7 件（テーマの振り分け 3・契約の版 1・`custom.css` 3）、`theme_commands_test.rb` に 1 件（lock の記録）、`legacy_tokens_test.rb` に 1 件（行の計画）。`rake test` 4,483 件が通った（S6-8 の後の 4,474 件に、足した 9 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |

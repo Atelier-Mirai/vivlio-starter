@@ -24,8 +24,14 @@
 #   - 競合: 雛形も著者も**同じ場所**を変更 → diff 提示・個別確認（y/n/d）
 #   - 著者データ領域（ScaffoldLock::AUTHOR_DATA_*）は分類しない。雛形で上書きせず、計画にも載せない
 #
+#   - テーマ（themes/<名前>/）は、雛形から来たもの（lock に記録がある）だけを更新し、著者が入れたものは
+#     触らない（契約の版が合わなければ 🟡 で知らせるだけ）。theme-contract-spec.md §7.3・managed_theme_digests
+#
 #   合流の共通祖先は ScaffoldBase が調達する（upgrade-three-way-merge-spec.md）。
 #   祖先が得られないファイルは従来どおり競合として著者に尋ねる。
+#
+# custom.css の 1.x の変数の名前（css-layer-restructure-spec.md §7.2）:
+#   雛形追従の後で、置き換える行を全部見せてから尋ねる（--yes でも尋ねる）。いいえなら何も変えない。
 #
 # 安全策:
 #   - 上書き前に必ず .vs-backup/upgrade/<timestamp>/ へ元ファイルを退避
@@ -35,8 +41,11 @@
 #     本体更新・ツール更新は実行できる
 # ================================================================
 
+require 'date'
 require 'fileutils'
+require 'yaml'
 
+require_relative 'css/legacy_tokens'
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
 require_relative 'scaffold_updates'
@@ -45,6 +54,7 @@ require_relative 'retired_key_remover'
 require_relative 'token_resolver'
 require_relative 'index/unified_terms_manager'
 require_relative 'new'
+require_relative 'theme'
 require_relative 'doctor'
 require_relative '../version'
 
@@ -172,14 +182,19 @@ module VivlioStarter
         # --- Phase: ① 本体 gem 更新（--skip-self-update は再起動ループ防止も兼ねる）---
         self_result = options[:skip_self_update] ? :none : self_update!(options, tool_deps)
 
-        # --- Phase: ② 雛形追従＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
+        # --- Phase: ② 雛形追従＋custom.css の変数の名前＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
         sync = SyncResult.new
+        theme_mismatches = []
         if gem_repository?
           Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
         elsif File.exist?(File.join('config', 'book.yml'))
           move_legacy_backups!(options)
           sync = sync_scaffold!(cmd)
-          refresh_gemfile_lock!(options) unless sync.aborted
+          unless sync.aborted
+            rename_legacy_tokens!(options)
+            refresh_gemfile_lock!(options)
+          end
+          theme_mismatches = contract_mismatches
         else
           Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
         end
@@ -191,8 +206,9 @@ module VivlioStarter
           deps: tool_deps, report: ->(text) { tools_summary = text }
         )
 
-        # --- Phase: 改名と足した設定の案内（③の長い出力で流れないよう、いちばん最後に出す）---
+        # --- Phase: 改名と足した設定・読めない著者のテーマの案内（③の長い出力で流れないよう、いちばん最後に出す）---
         report_renames(sync.renames)
+        report_contract_mismatches(theme_mismatches)
         ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
 
         code = [self_result == :failed ? 1 : 0, sync.code, tools_code].max
@@ -251,8 +267,8 @@ module VivlioStarter
       def sync_scaffold!(cmd)
         # --- Phase: 分類（三者比較） ---
         Common.log_summary("雛形との差分を確認しています…（gem #{VivlioStarter::VERSION} の雛形）")
-        scaffold_digests = ScaffoldLock.digest_scaffold(scaffold_source)
         lock = ScaffoldLock.read
+        scaffold_digests = managed_theme_digests(ScaffoldLock.digest_scaffold(scaffold_source), lock)
         warn_missing_lock if lock.nil?
         tidy = plan_tidy(lock)
         renames = plan_renames
@@ -543,6 +559,142 @@ module VivlioStarter
         Common.log_result('設定ファイルの名前を変えました（中身はそのままです）', status: :success)
         renames.moved.each { |old, new| Common.log_always("#{indent}#{old} → #{new}") }
         renames.rewritten.each_key { Common.log_always("#{indent}#{it}: 中で指している名前も書き換えました") }
+      end
+
+      # ================================================================
+      # テーマ（theme-contract-spec.md §7.3）
+      # ================================================================
+
+      # 雛形の themes/ のうち、この本で更新するテーマのファイルだけを残す。残さなかったファイルは計画に
+      # 載らず、lock からも記録が消える。
+      #   - 本にあり、lock に記録があるテーマ: 雛形から来たテーマ（vs new・vs theme:add で入れた同梱の
+      #     テーマ）。ほかの雛形のファイルと同じに更新する
+      #   - 本にあり、lock に記録が無いテーマ: 著者が入れたテーマなので触らない
+      #   - 本に無いテーマ: 本が使う（theme.name とその extends:）ときだけ足す。1.x の本は themes/ を
+      #     持たないので、ここで standard が入る。ほかの同梱のテーマは足さない（vs theme:add で入れる。§7.1）
+      # @param scaffold_digests [Hash{String => String}] 雛形の全部のファイルのハッシュ表
+      # @param lock [Hash, nil]
+      # @return [Hash{String => String}]
+      def managed_theme_digests(scaffold_digests, lock)
+        lock_files = lock&.dig(:files) || {}
+        used = used_theme_names
+        scaffold_digests.select do |relative, _|
+          name = relative[%r{\A#{Theme::DIR}/([^/]+)/}, 1] or next true
+
+          dir = File.join(Theme::DIR, name)
+          File.directory?(dir) ? recorded_theme?(dir, lock_files) : used.include?(name)
+        end
+      end
+
+      def recorded_theme?(dir, lock_files) = lock_files.each_key.any? { it.start_with?("#{dir}/") }
+
+      # 本が使うテーマ（theme.name と、その extends: の 1 段）。Common::CONFIG は読まない——vs upgrade は
+      # 廃止キーの残った book.yml でも動き、CONFIG の読み込みの時点と作業ディレクトリが合うとも限らない
+      # @return [Array<String>]
+      def used_theme_names
+        book = YAML.safe_load_file(File.join('config', 'book.yml'), permitted_classes: [Date, Time], aliases: true)
+        written = (book.dig('theme', 'name') if book.is_a?(Hash) && book['theme'].is_a?(Hash)).to_s.strip
+        name = written.empty? ? Theme::DEFAULT_NAME : written
+        [name, theme_extends(name)].compact
+      rescue StandardError
+        [Theme::DEFAULT_NAME]
+      end
+
+      # テーマの extends:。本のテーマを先に、無ければ雛形の同じ名前のテーマを読む
+      def theme_extends(name)
+        path = [File.join(Theme::DIR, name), File.join(scaffold_source, Theme::DIR, name)]
+               .map { File.join(it, Theme::Manifest::FILE) }.find { File.file?(it) }
+        manifest = path && YAML.safe_load_file(path)
+        manifest['extends'] if manifest.is_a?(Hash) && manifest['extends'].is_a?(String)
+      rescue StandardError
+        nil
+      end
+
+      # 著者が入れたテーマ（lock に記録が無い）のうち、この vs が契約の版か requires_vs: で読めないもの。
+      # 著者のテーマは更新しないので、合わないことだけを知らせる。theme.yml の書き方の誤りは vs theme:check と
+      # vs build が示すので、ここでは挙げない
+      # @return [Array(String, Theme::Error)] テーマのディレクトリと誤り
+      def contract_mismatches
+        lock_files = ScaffoldLock.read&.dig(:files) || {}
+        Dir.glob("*/#{Theme::Manifest::FILE}", base: Theme::DIR).map { File.dirname(it) }.sort.filter_map do |name|
+          dir = File.join(Theme::DIR, name)
+          next if recorded_theme?(dir, lock_files)
+
+          manifest = begin
+            Theme::Manifest.load(dir, root: '.')
+          rescue Theme::Error
+            next
+          end
+          Theme::Contract.check!(manifest)
+          nil
+        rescue Theme::Error => e
+          [dir, e]
+        end
+      end
+
+      # Contract の誤りの案内（「vs upgrade で vs を新しく」）は、vs upgrade の最後では次の手にならない。
+      # 版の事実だけを残し、テーマを入れ替える手を示す
+      def report_contract_mismatches(mismatches)
+        mismatches.each do |dir, error|
+          facts = Array(error.detail).reject { it.include?('vs upgrade') || it.include?('入れ替えて') }
+          Common.log_warn(error.message,
+                          detail: [*facts, "#{dir}/ は著者が入れたテーマなので、vs upgrade は更新していません",
+                                   '→ この vs に合う版のテーマを、vs theme:add で入れ直してください'])
+        end
+      end
+
+      # ================================================================
+      # custom.css の 1.x の変数の名前（css-layer-restructure-spec.md §7.2）
+      # ================================================================
+
+      CUSTOM_CSS = File.join('stylesheets', 'custom.css')
+
+      # custom.css の 1.x の変数の名前を、新しい名前へ置き換える。著者のファイルなので、置き換える行を
+      # 全部見せてから、--yes でも必ず尋ねる（競合と同じ扱い。--yes は競合以外を確認なしで適用する）。
+      # いいえなら何も変えない。今の名前のままでも別名で効くので、断っても組み上がりは変わらない
+      def rename_legacy_tokens!(options)
+        return unless File.file?(CUSTOM_CSS)
+
+        css = File.read(CUSTOM_CSS, encoding: 'utf-8')
+        lines = Css::LegacyTokens.rename_lines(css)
+        return if lines.empty?
+
+        # --- Phase: 置き換える行と、残す行を全部見せる ---
+        replaced, kept = lines.partition { !it.cyclic }
+        print_token_renames(replaced, kept)
+        return if replaced.empty?
+
+        if options[:dry_run]
+          Common.log_always('   --dry-run のため置き換えません')
+          return
+        end
+
+        # --- Phase: 確認と書き換え ---
+        unless Common.confirm?("#{CUSTOM_CSS} を書き換えますか？")
+          Common.log_always("   #{CUSTOM_CSS} は変えていません（1.x の名前のままでも効きます）")
+          return
+        end
+
+        backup_dir = backup!(CUSTOM_CSS, nil)
+        File.write(CUSTOM_CSS, Css::LegacyTokens.renamed_css(css), encoding: 'utf-8')
+        Common.log_result("#{CUSTOM_CSS} の変数の名前を置き換えました（#{replaced.size} 行・バックアップ: #{backup_dir}/）",
+                          status: :success)
+      end
+
+      def print_token_renames(replaced, kept)
+        Common.log_always('')
+        unless replaced.empty?
+          Common.log_always("📋 #{CUSTOM_CSS} の 1.x の変数の名前を、新しい名前に置き換えます（#{replaced.size} 行）:")
+          replaced.each do |line|
+            Common.log_always(format('   %5d 行目  - %s', line.lineno, line.before.strip))
+            Common.log_always("               + #{line.after.strip}")
+          end
+        end
+        return if kept.empty?
+
+        Common.log_always("💡 #{CUSTOM_CSS} の次の行は変えません（1.x の名前を新しい名前の別名として定義した行で、" \
+                          '置き換えると自分自身を読む定義になります。要らなければ削除してください）:')
+        kept.each { Common.log_always(format('   %5d 行目    %s', it.lineno, it.before.strip)) }
       end
 
       def warn_missing_lock

@@ -40,8 +40,9 @@ module VivlioStarter
       # 新しく足した表紙のデザイン（covers/bundled/floral.svg など）も vs upgrade で既存の本へ届ける。
       # 著者が手を入れていれば、他の雛形ファイルと同じく三者比較で確認を求める。
       # テーマ色の stylesheets/tokens.css は著者データ領域の外にあるので、ここに書かなくても届く。
-      # 同梱のテーマ（扉絵・装飾画像を持つ themes/standard/ など）も同じで、雛形にあるファイルだけが lock に載る。著者が自分で置いたテーマは雛形に無いので、
-      # lock に載らず、vs upgrade の対象にならない（theme-contract-spec.md §7.3）。
+      # 同梱のテーマ（扉絵・装飾画像を持つ themes/standard/ など）は、本にあって lock に記録があるものだけを
+      # vs upgrade が更新する。著者が自分で置いたテーマは lock に記録が無いので触らない。vs theme:add で入れた
+      # 同梱のテーマは record_theme! が記録する（theme-contract-spec.md §7.3。振り分けは UpgradeCommands）。
       SCAFFOLD_MANAGED_DIRS = %w[covers/bundled/ covers/templates/].freeze
 
       # 著者データ領域のうち個別ファイル指定分。
@@ -178,6 +179,24 @@ module VivlioStarter
         write(project_root, version:, files:,
                             book_keys: existing&.dig(:book_keys) || scaffold_book_keys(scaffold_source),
                             declined: existing&.dig(:declined) || {})
+      end
+
+      # vs theme:add で入れたテーマを lock に記録し直す（theme-contract-spec.md §7.3）。
+      # 同梱のテーマは、入れたファイルのハッシュを記録する。雛形から来たテーマと同じに、vs upgrade が更新する。
+      # 同梱でないテーマは記録を消す。同梱と同じ名前のテーマ（standard の手直し）を入れた本で、
+      # vs upgrade がそれを競合として雛形の版へ戻すよう尋ねないように、著者のテーマとして扱う。
+      # lock の無い本では何もしない（lock の無い本の vs upgrade は、themes/ の記録が無いので触らない）
+      # @param dir [String] themes/<名前>（本のルートからの相対パス）
+      # @return [Hash{String => String}, nil] 書いた後の files 節（lock が無ければ nil）
+      def record_theme!(project_root, dir, bundled:)
+        lock = read(project_root) or return nil
+
+        prefix = "#{dir}/"
+        files = lock[:files].reject { |relative, _| relative.start_with?(prefix) }
+        files.merge!(digest_scaffold(File.join(project_root, dir)).transform_keys { "#{prefix}#{it}" }) if bundled
+        write(project_root, version: lock[:version], files:, book_keys: lock[:book_keys],
+                            declined: lock[:declined].reject { |relative, _| relative.start_with?(prefix) })
+        files
       end
 
       private

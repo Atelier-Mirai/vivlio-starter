@@ -74,6 +74,18 @@ module VivlioStarter
           CSS
         end
 
+        # vs upgrade が見せる行の計画。自分自身を読む定義になる行は残す（cyclic）
+        def test_should_plan_line_renames_and_keep_self_referring_definitions
+          css = ":root {\n  --theme-accent: var(--book-color-accent);\n  --color-link: var(--theme-accent);\n}\np { color: red; }\n"
+
+          lines = LT.rename_lines(css)
+
+          assert_equal [[2, true], [3, false]], lines.map { [it.lineno, it.cyclic] }
+          assert_equal '  --book-color-link: var(--book-color-accent);', lines.last.after
+          assert_equal ":root {\n  --theme-accent: var(--book-color-accent);\n  --book-color-link: var(--book-color-accent);\n}\np { color: red; }\n",
+                       LT.renamed_css(css)
+        end
+
         def test_should_find_legacy_names_outside_comments
           css = "/* :root { --color-mark: red; } */\n.box { color: var(--theme-accent); --color-link: blue; }\n"
 

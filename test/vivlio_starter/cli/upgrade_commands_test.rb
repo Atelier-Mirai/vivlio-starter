@@ -25,6 +25,11 @@
 #   - プロジェクト外では雛形追従だけをスキップし、ツール更新は実行される
 #   - 終了コードは各フェーズの悪い方（max）
 #
+# テーマと custom.css（theme-contract-spec.md §7.3・css-layer-restructure-spec.md §7.2。S6-9）:
+#   - lock に記録のあるテーマだけを更新し、著者のテーマは触らない・使うテーマだけを足す
+#   - 著者のテーマの契約の版が合わなければ 🟡
+#   - custom.css の 1.x の変数の名前は、行を全部見せて尋ね、いいえなら何も変えない
+#
 # テスト環境:
 #   - Dir.mktmpdir にミニ雛形とプロジェクトを組み、scaffold_source を DI で差し替え
 #   - ネットワーク・外部コマンドは tool_deps（Deps）を DI で差し替えて遮断
@@ -1466,6 +1471,161 @@ module VivlioStarter
           assert_operator out.index('整理   config/index_glossary_terms.yml'), :<, question
           assert_operator out.index('整理   contents/_titlepage.md'), :<, question
           refute_path_exists 'contents/_titlepage.md'
+        end
+      end
+
+      # ================================================================
+      # テーマ（theme-contract-spec.md §7.3）
+      # ================================================================
+
+      THEME_YML = "name: standard\ncontract: 1\n"
+
+      # 雛形から来たテーマ（lock に記録がある）は更新し、記録の無いテーマは同梱と同じ名前でも触らない
+      def test_should_update_scaffold_themes_and_leave_authors_themes_alone
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write(scaffold, 'themes/standard/simple-header.css', NEW_CSS)
+          write(scaffold, 'themes/bunko/theme.yml', "name: bunko\ncontract: 1\n")
+          write(scaffold, 'themes/bunko/bunko.css', NEW_CSS)
+          write('.', 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/simple-header.css', OLD_CSS)
+          write_lock
+          write('.', 'themes/bunko/theme.yml', "name: bunko\ncontract: 1\n")
+          write('.', 'themes/bunko/bunko.css', CUSTOM_CSS)
+          lock = ScaffoldLock.read('.')
+          ScaffoldLock.write('.', version: '0.9.0', files: lock[:files].reject { |relative, _| relative.start_with?('themes/bunko/') })
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_match(%r{更新\s+themes/standard/simple-header\.css}, out)
+          refute_includes out, 'themes/bunko'
+          assert_equal NEW_CSS, File.read('themes/standard/simple-header.css')
+          assert_equal CUSTOM_CSS, File.read('themes/bunko/bunko.css'), '著者が入れたテーマは触らない'
+          assert_empty ScaffoldLock.read('.')[:files].keys.grep(%r{\Athemes/bunko/}), '著者のテーマは lock に載せない'
+        end
+      end
+
+      # 1.x の本（themes/ が無い）には、使うテーマ（既定の standard）だけを足す。ほかの同梱のテーマは足さない
+      def test_should_add_only_the_theme_the_book_uses
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write(scaffold, 'themes/bunko/theme.yml', "name: bunko\ncontract: 1\n")
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_match(%r{追加\s+themes/standard/theme\.yml}, out)
+          assert_path_exists 'themes/standard/theme.yml'
+          refute_path_exists 'themes/bunko'
+          assert_equal digest(THEME_YML), ScaffoldLock.read('.')[:files]['themes/standard/theme.yml'], '足したテーマは次から更新の対象'
+          assert_empty ScaffoldLock.read('.')[:files].keys.grep(%r{\Athemes/bunko/})
+        end
+      end
+
+      # 著者のテーマの土台（extends:）が本に無ければ、同梱のものを足す
+      def test_should_add_the_bundled_base_of_the_authors_theme
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\ntheme:\n  name: mono\n")
+          write('.', 'themes/mono/theme.yml', "name: mono\ncontract: 1\nextends: standard\n")
+          write_lock
+          lock = ScaffoldLock.read('.')
+          ScaffoldLock.write('.', version: '0.9.0', files: lock[:files].reject { |relative, _| relative.start_with?('themes/') })
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_path_exists 'themes/standard/theme.yml'
+        end
+      end
+
+      # 著者のテーマの契約の版がこの vs に合わなければ、最後に 🟡 で知らせる（更新はしない）
+      def test_should_warn_about_an_authors_theme_this_vs_cannot_read
+        within_project do |scaffold|
+          write('.', 'themes/future/theme.yml', "name: future\ncontract: 2\n")
+          write('.', 'themes/fine/theme.yml', "name: fine\ncontract: 1\n")
+          ScaffoldLock.write('.', version: '0.9.0', files: {})
+
+          out, = capture_io { run_upgrade(scaffold, yes: true, tool_output: '外部ツールの出力') }
+
+          assert_includes out, 'テーマ future の契約の版（contract: 2）に、この vs は対応していません'
+          assert_includes out, 'この vs が読める契約の版: 1'
+          assert_includes out, 'themes/future/ は著者が入れたテーマなので、vs upgrade は更新していません'
+          assert_includes out, '→ この vs に合う版のテーマを、vs theme:add で入れ直してください'
+          refute_includes out, 'vs upgrade で vs を新しく'
+          refute_includes out, 'テーマ fine'
+          assert_operator out.index('外部ツールの出力'), :<, out.index('テーマ future'), 'ツールの出力で流れないよう最後に出す'
+        end
+      end
+
+      # ================================================================
+      # custom.css の 1.x の変数の名前（css-layer-restructure-spec.md §7.2）
+      # ================================================================
+
+      LEGACY_CUSTOM_CSS = <<~CSS
+        :root {
+          --color-link: #1a73e8;
+          --theme-accent: var(--book-color-accent);
+        }
+        /* 見出しは --theme-accent の色 */
+        h2 { color: var(--theme-accent); }
+        p { color: black; }
+      CSS
+
+      # 置き換える行を全部見せてから尋ね、「いいえ」なら何も変えない。--yes でも尋ねる
+      def test_should_show_every_line_and_change_nothing_when_declined
+        within_project do |scaffold|
+          write('.', 'stylesheets/custom.css', LEGACY_CUSTOM_CSS)
+          write_lock
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold, yes: true) } }
+
+          assert_includes out, 'stylesheets/custom.css の 1.x の変数の名前を、新しい名前に置き換えます（3 行）'
+          assert_match(/2 行目  - --color-link: #1a73e8;\n\s+\+ --book-color-link: #1a73e8;/, out)
+          assert_match(/5 行目  - .*\n\s+\+ \/\* 見出しは --book-color-accent の色 \*\//, out)
+          assert_match(/6 行目  - h2 \{ color: var\(--theme-accent\); \}/, out)
+          assert_operator out.index('6 行目'), :<, out.index('stylesheets/custom.css を書き換えますか？')
+          assert_includes out, 'stylesheets/custom.css は変えていません'
+          assert_equal LEGACY_CUSTOM_CSS, File.read('stylesheets/custom.css')
+          assert_empty Dir.glob('.vs-backup/upgrade/**/custom.css')
+        end
+      end
+
+      # 「はい」で置き換え、元を退避する。自分自身を読む定義になる行は残す
+      def test_should_rename_legacy_tokens_with_backup_and_keep_self_referring_lines
+        within_project do |scaffold|
+          write('.', 'stylesheets/custom.css', LEGACY_CUSTOM_CSS)
+          write_lock
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_equal <<~CSS, File.read('stylesheets/custom.css')
+            :root {
+              --book-color-link: #1a73e8;
+              --theme-accent: var(--book-color-accent);
+            }
+            /* 見出しは --book-color-accent の色 */
+            h2 { color: var(--book-color-accent); }
+            p { color: black; }
+          CSS
+          assert_match(/3 行目    --theme-accent: var\(--book-color-accent\);/, out)
+          assert_includes out, '置き換えると自分自身を読む定義になります'
+          assert_equal [LEGACY_CUSTOM_CSS], Dir.glob('.vs-backup/upgrade/*/stylesheets/custom.css').map { File.read(it) }
+          assert_includes out, 'stylesheets/custom.css の変数の名前を置き換えました（3 行'
+        end
+      end
+
+      # --dry-run は行を見せるだけで、尋ねず、書き換えない
+      def test_should_only_show_legacy_token_lines_on_dry_run
+        within_project do |scaffold|
+          write('.', 'stylesheets/custom.css', LEGACY_CUSTOM_CSS)
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, '置き換えます（3 行）'
+          assert_includes out, '--dry-run のため置き換えません'
+          refute_includes out, '書き換えますか？'
+          assert_equal LEGACY_CUSTOM_CSS, File.read('stylesheets/custom.css')
         end
       end
 

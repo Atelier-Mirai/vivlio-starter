@@ -8,7 +8,7 @@
 #   theme-contract-spec.md §5）。次の三つが、この 1 枚の表を読む。
 #     - stylesheets/tokens-legacy.css   今の名前を**読む**向きの別名（tokens 層。alias_css と同じ中身）
 #     - BookSettingsCss                 custom.css が今の名前に**値を入れる**向き（settings 層。settings_declarations）
-#     - vs upgrade                      custom.css の今の名前を新しい名前へ置き換える（rename）
+#     - vs upgrade                      custom.css の今の名前を新しい名前へ置き換える（rename_lines・renamed_css）
 #
 # 名前を変える範囲（theme-contract-spec.md §5.1）:
 #   公開する変数（§5.2）と機能の変数（扉絵 --book-frontispiece-*・節絵 --book-ornament-*）と、
@@ -88,6 +88,33 @@ module VivlioStarter
         # @param text [String]
         # @return [String]
         def rename(text) = text.gsub(NAME) { MAP.fetch(it, it) }
+
+        # vs upgrade が custom.css に当てる置き換えの 1 行。lineno は 1 起点。
+        # cyclic は、置き換えると自分自身を読む定義になる行（`--theme-accent: var(--book-color-accent);` が
+        # `--book-color-accent: var(--book-color-accent);` になる）で、置き換えずに残す
+        Line = Data.define(:lineno, :before, :after, :cyclic)
+
+        # 置き換えで変わる行（css-layer-restructure-spec.md §7.2）。著者に全部を見せてから確認するので、
+        # 行の単位で返す。名前は改行をまたがないので、行ごとに rename を当てても全文に当てたのと同じになる
+        # @param css [String] custom.css の全文
+        # @return [Array<Line>]
+        def rename_lines(css)
+          css.lines.each_with_index.filter_map do |line, index|
+            after = rename(line)
+            next if after == line
+
+            Line.new(lineno: index + 1, before: line.chomp, after: after.chomp,
+                     cyclic: after.match?(/(--[\w-]+)\s*:[^;]*var\(\s*\1(?![\w-])/))
+          end
+        end
+
+        # rename_lines の cyclic でない行だけを置き換えた全文
+        # @param css [String]
+        # @return [String]
+        def renamed_css(css)
+          kept = rename_lines(css).select(&:cyclic).map(&:lineno)
+          css.lines.each_with_index.map { |line, index| kept.include?(index + 1) ? line : rename(line) }.join
+        end
 
         # CSS が使っている今の名前（定義と var() の両方）。注釈の中は数えない
         # @return [Array<String>] 出てきた順

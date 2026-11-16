@@ -15,6 +15,7 @@
 #   - theme:add は許可の表のファイルだけを写し、写さなかったものを示す。extends: の先が無ければ同梱のものを一緒に入れる
 #   - zip は、展開先の外を指すパス・シンボリックリンクがあれば、展開せずに止める（§7.2 の複製の決まりの 3）
 #   - 本にあるテーマを置き換えるときは確認し、「いいえ」なら何も変えない。book.yml は書き換えない
+#   - 同梱のテーマは scaffold.lock に記録し、同梱でないテーマは記録を消す（§7.3。S6-9）
 # ================================================================
 
 require 'test_helper'
@@ -121,6 +122,32 @@ module VivlioStarter
 
           capture_io { assert_equal 0, ThemeCommands.add(source, root:, input: StringIO.new("y\n")) }
           assert_equal %w[theme.yml], Theme::Install.files_in(File.join(root, 'themes', 'mono'))
+        end
+      end
+
+      # §7.3: 同梱のテーマを入れたら scaffold.lock に記録する（vs upgrade が更新する）。同梱でないテーマは
+      # 同じ名前でも記録を消し、vs upgrade が触らない著者のテーマにする。ほかの記録は変えない
+      def test_should_record_bundled_themes_in_the_scaffold_lock
+        with_book(themes: false) do |root|
+          ScaffoldLock.write(root, version: '2.0.0', files: { 'stylesheets/custom.css' => 'sha256:x', 'themes/standard/old.css' => 'sha256:y' },
+                                   declined: { 'themes/standard/old.css' => 'sha256:z' })
+
+          capture_io { assert_equal 0, ThemeCommands.add('standard', root:, input: StringIO.new('')) }
+          lock = ScaffoldLock.read(root)
+
+          installed = Theme::Install.files_in(File.join(root, 'themes', 'standard')).map { "themes/standard/#{it}" }
+          assert_equal installed.sort, lock[:files].keys.grep(%r{\Athemes/}).sort
+          assert_equal ScaffoldLock.file_digest(File.join(root, 'themes', 'standard', 'theme.yml')), lock[:files]['themes/standard/theme.yml']
+          assert_equal 'sha256:x', lock[:files]['stylesheets/custom.css']
+          assert_empty lock[:declined]
+          assert_path_exists File.join(root, '.cache', 'vs', 'scaffold-base', 'themes', 'standard', 'theme.yml'), '三方向のマージの祖先も進める'
+
+          source = File.join(root, 'download', 'standard')
+          write_theme_files(source, { 'name' => 'standard', 'contract' => 1 })
+          capture_io { ThemeCommands.add(source, root:, input: StringIO.new("y\n")) }
+
+          assert_empty ScaffoldLock.read(root)[:files].keys.grep(%r{\Athemes/})
+          assert_equal 'sha256:x', ScaffoldLock.read(root)[:files]['stylesheets/custom.css']
         end
       end
 

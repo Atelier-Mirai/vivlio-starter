@@ -13,6 +13,8 @@
 require 'tmpdir'
 require 'yaml'
 require_relative 'common'
+require_relative 'scaffold_base'
+require_relative 'scaffold_lock'
 require_relative 'theme'
 require_relative 'theme/check'
 require_relative 'theme/install'
@@ -129,6 +131,7 @@ module VivlioStarter
             changes.each { |item, change| Theme::Install.apply!(item, root) unless change.none? }
             changes.each { |item, change| report_added(item, change) }
           end
+          record_in_lock(staged, from, root, bundled_root)
           Common.log_warn(base_note[:message], detail: base_note[:detail]) if base_note
 
           # --- Phase: 検査と、book.yml に書く行（土台が無ければテーマを読めないので省く） ---
@@ -157,6 +160,20 @@ module VivlioStarter
 
         { message: "テーマ #{staged.first.name} の土台 #{base} が、本の #{Theme::DIR}/ にありません",
           detail: "→ #{base} を vs theme:add で入れてから、theme.name に #{staged.first.name} を書いてください" }
+      end
+
+      # 入れたテーマを scaffold.lock に記録する（§7.3）。同梱のテーマは vs upgrade が更新し、
+      # ほかは著者のテーマとして触らない。本と同じで写さなかったときも記録する（手で置いた同梱の
+      # テーマを vs theme:add し直せば、vs upgrade の対象になる）。2 つめ以降は土台で、同梱から写している
+      def record_in_lock(staged, from, root, bundled_root)
+        bundled_dir = File.join(bundled_root, Theme::DIR)
+        files = nil
+        staged.each_with_index do |item, index|
+          bundled = index.positive? || File.expand_path(from) == File.expand_path(File.join(bundled_dir, item.name))
+          files = ScaffoldLock.record_theme!(root, File.join(Theme::DIR, item.name), bundled:) || files
+        end
+        # 次の vs upgrade の三方向のマージの祖先も、lock と一緒に進める（ScaffoldBase の冒頭）
+        ScaffoldBase.sync!(root, scaffold_source: bundled_root, lock_files: files) if files
       end
 
       def report_skipped(staged)
