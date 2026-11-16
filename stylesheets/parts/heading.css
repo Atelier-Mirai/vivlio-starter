@@ -125,7 +125,7 @@ section:has(hr:last-child) + section > h3:first-child {
   margin-block: 0.5rlh;
   margin-inline: auto;
   font-weight: 500;
-  font-size: larger;
+  font-size: var(--book-chapter-lead-size);
   line-height: 1.7;
   text-align: justify;
   text-indent: 1em;

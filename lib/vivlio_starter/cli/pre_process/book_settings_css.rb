@@ -105,9 +105,8 @@ module VivlioStarter
           registry = TalkRegistry.load
 
           root_lines = []
+          root_lines.concat(option_declarations(settings, cfg))
           root_lines.concat(theme_declarations(settings, image_prefix:, page_cfg:))
-          root_lines.concat(supplemental_color_declarations(settings, cfg))
-          root_lines.concat(marker_declarations(cfg))
           root_lines.concat(page_declarations(page_cfg))
           root_lines.concat(talk_variable_declarations(registry))
           root_lines.concat(Css::LegacyTokens.settings_declarations(custom_css))
@@ -122,7 +121,6 @@ module VivlioStarter
             #{section_pagebreak_rule(page_cfg)}
             #{chapter_pagebreak_rule(page_cfg)}
             #{heading_numbering_rule(page_cfg)}
-            #{chapter_lead_size_rules(settings)}
             #{section_lead_width_rule(page_cfg)}
             #{font_synthesis_rules(cfg)}
             #{talk_class_rules(registry)}
@@ -205,21 +203,35 @@ module VivlioStarter
         # ================================================================
         # theme 系変数（旧 update_theme_css 相当）
         # ================================================================
-        # 条件付き宣言のセマンティクスを in-place 版と一致させる（調査報告 §7.3-2）:
-        #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
-        #   - image スタイル : 画像 2 変数＋edge_inset を宣言
-        #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
+        # 並びは theme.yml の options:（token: のあるもの）→ 機能（扉絵 → 節絵）の順
+        # （theme-contract-spec.md §3.3・§3.4）。
         #   - 強調の色（--book-color-strong・--book-color-em-underline）は書かない。tokens.css の既定が
         #     var(--book-color-accent) で、ここ（settings 層）で書き直すと、付録の色の割り当て
         #     （pages/appendix.css・改善案 #132）やテーマの指定を打ち消すため
-        def theme_declarations(settings, image_prefix:, page_cfg: {})
-          lines = ["--book-color-accent: #{settings[:theme_accent_value]};"]
+        def option_declarations(settings, cfg)
+          [
+            "--book-color-accent: #{settings[:theme_accent_value]};",
+            *supplemental_color_declarations(settings, cfg),
+            "--book-chapter-lead-size: #{format_percent(settings[:lead_size_value] || DEFAULT_LEAD_SIZE)};",
+            *marker_declarations(cfg)
+          ]
+        end
 
+        # 扉絵と節絵の変数。条件付き宣言のセマンティクスを in-place 版と一致させる（調査報告 §7.3-2）:
+        #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
+        #   - image スタイル : 画像 2 変数＋edge_inset を宣言
+        #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
+        def theme_declarations(settings, image_prefix:, page_cfg: {})
+          frontispiece_declarations(settings, image_prefix:, page_cfg:) +
+            ornament_declarations(settings, image_prefix:, page_cfg:)
+        end
+
+        # 扉絵（機能 frontispiece）の変数
+        def frontispiece_declarations(settings, image_prefix:, page_cfg: {})
+          lines = []
           if settings[:theme_style] == 'simple'
-            lines << '--book-ornament-image: none;'
             lines << '--book-frontispiece-image: none;'
           else
-            lines << "--book-ornament-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
             lines << "--book-frontispiece-image: #{css_image_value(settings[:frontispiece_path], image_prefix:)};"
             lines << "--book-frontispiece-edge-inset: #{settings[:edge_inset_value]};"
           end
@@ -228,7 +240,26 @@ module VivlioStarter
             lines << "--book-frontispiece-heading-offset: #{settings[:heading_offset_value]};"
           end
 
-          lines.concat(heading_metric_declarations(settings, page_cfg))
+          lines.concat(frontispiece_metric_declarations(settings, page_cfg))
+        end
+
+        # 節絵（機能 ornament）の変数
+        def ornament_declarations(settings, image_prefix:, page_cfg: {})
+          image = if settings[:theme_style] == 'simple'
+                    '--book-ornament-image: none;'
+                  else
+                    "--book-ornament-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
+                  end
+          [image, *ornament_metric_declarations(settings, page_cfg)]
+        end
+
+        # 節題の字の大きさ（文字数指定がある時だけ）
+        def ornament_metric_declarations(settings, page_cfg)
+          chars = settings[:ornament_heading_chars_value]
+          return [] unless chars
+
+          size = section_title_font_q(chars, text_area_width_mm(page_cfg), paper_scale_of(page_cfg))
+          ["--book-ornament-title-font-size: #{size}Q;"]
         end
 
         # ================================================================
@@ -240,7 +271,10 @@ module VivlioStarter
         #
         # 章題・章リードは「箱幅」を、節題は「フォントサイズ」を決める——節絵の帯は
         # 版面幅いっぱいで固定なので、箱を広げる余地が無く字送りで調整するしかない。
-        def heading_metric_declarations(settings, page_cfg)
+        #
+        # 章扉の章リードの大きさ（--book-frontispiece-lead-size）も扉絵の変数として書く。
+        # 書かなければ theme.lead_size に従う（chapter-lead-size-spec.md §2.2）。
+        def frontispiece_metric_declarations(settings, page_cfg)
           text_mm = text_area_width_mm(page_cfg)
           scale = paper_scale_of(page_cfg)
           lines = []
@@ -255,16 +289,13 @@ module VivlioStarter
           # 未指定でも倍率や字間を変えたなら、tokens.css の既定幅（既定の字数 × 1.2 倍）のままでは
           # 字数が合わなくなるので、既定の字数で幅を出し直す。
           lead_size = settings[:frontispiece_lead_size_value] || DEFAULT_LEAD_SIZE
+          lines << "--book-frontispiece-lead-size: #{format_percent(lead_size)};"
           default_width = lead_size == DEFAULT_LEAD_SIZE && !letter_spaced?(page_cfg)
           chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless default_width)
           if chars
             advance_mm = chapter_lead_advance_mm(page_cfg, lead_size)
             lines << "--book-frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
             warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm)
-          end
-
-          if (chars = settings[:ornament_heading_chars_value])
-            lines << "--book-ornament-title-font-size: #{section_title_font_q(chars, text_mm, scale)}Q;"
           end
 
           lines
@@ -311,27 +342,6 @@ module VivlioStarter
 
         # 字間が付いているか（既定の幅のままでは字数が合わなくなるか）
         def letter_spaced?(page_cfg) = !letter_spacing_mm(page_cfg, 1.0).zero?
-
-        # 章リードの文字の大きさ（chapter-lead-size-spec.md §6.2）。既定の 1.2 倍のままなら
-        # 何も出さず、parts/heading.css の `larger` に任せる。
-        #
-        # 本全体（simple の章・付録も）と、image の章扉の 2 本に分ける。付録の body には image の
-        # 本でも vs-header-simple が付くので、2 本目は付録に当たらない。
-        # var() を使わずリテラルで書くのは、Kindle が var() を含む宣言を丸ごと捨てるため。
-        # EPUB にも同じ規則を効かせる。EPUB の章扉はリードを焼き込まず、リードは本文の文字として
-        # 流れるので、PDF と同じ倍率で本文と区別する（chapter-lead-size-spec.md §2.2.1）。
-        def chapter_lead_size_rules(settings)
-          book = settings[:lead_size_value] || DEFAULT_LEAD_SIZE
-          frontispiece = settings[:frontispiece_lead_size_value] || book
-          rules = []
-          rules << "body .chapter-lead { font-size: #{format_number(book)}em; }" unless book == DEFAULT_LEAD_SIZE
-          unless frontispiece == book
-            rules << "body.vs-header-image .chapter-lead { font-size: #{format_number(frontispiece)}em; }"
-          end
-          return '' if rules.empty?
-
-          ['/* 章リードの文字の大きさ（theme.lead_size / theme.frontispiece.lead_size） */', *rules].join("\n")
-        end
 
         # 節リードの幅（parts/heading.css の .section-lead の inline-size: 32em）。字数で決めた幅ではなく、
         # 版面より一回り狭く見せるための見た目の幅で、字間 0 なら 1 行 32 字になる
@@ -423,6 +433,10 @@ module VivlioStarter
 
         def format_mm(value) = "#{format_number(value)}mm"
 
+        # 倍率を百分率で書く（1.2 → 120%）。字の大きさの倍率を em で書くと、Vivliostyle が px に直すときに
+        # 丸め、両端揃えの字の位置がずれる（% と larger はずれない。vivliostyle-css-pitfalls-notes.md §2.18）
+        def format_percent(ratio) = "#{format_number(ratio * 100)}%"
+
         # 末尾の 0 を落とす（103.68 → 103.68 / 36.0 → 36）
         def format_number(value)
           rounded = value.round(2)
@@ -436,8 +450,8 @@ module VivlioStarter
           accent = settings[:theme_accent_value]
 
           [
-            "--book-color-accent-appendix: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};",
-            "--book-color-accent-preface: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};"
+            "--book-color-accent-preface: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};",
+            "--book-color-accent-appendix: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};"
           ]
         end
 

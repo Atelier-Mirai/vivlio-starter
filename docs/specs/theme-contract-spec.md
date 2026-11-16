@@ -297,7 +297,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | :--- | :--- | :--- |
 | `color` | 色の名前（`--book-accent-*` の 12 色）か HEX | `token:` に書いた変数へ |
 | `length` | 単位付きの長さ | `token:` の変数へ |
-| `number` | 数（`min`・`max` を書ける） | `token:` の変数へ |
+| `number` | 数（`min`・`max`・`unit` を書ける） | `token:` の変数へ（`unit:` があれば単位を付けて） |
+| `ratio` | 倍率（`1.2`。`1.2em` と書いてもよい。`min`・`max` を書ける） | `token:` の変数へ百分率で（`120%`。字の大きさの倍率を `em` で書くと Vivliostyle の丸めで字の位置がずれる） |
 | `string` | 文字列（見出しの印など） | `token:` の変数へ（CSS の文字列として） |
 | `enum` | `values:` のどれか | `body_class:` に書いたクラスを `body` に付ける。`token:` も書ける |
 | `image` | テーマの `images/` の中の名前か、本の画像のパス | `token:` の変数へ（`url()` として） |
@@ -327,6 +328,25 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 機能を使わないテーマでは、その機能の段は走らず、オプションは `theme:` 節に書けない（書いてあれば §3.3 の「このテーマには無い設定」の 🟡）。
 - **扉絵の `@page :nth(1)` の規則は、vs の `stylesheets/pages/chapter.css` に置く（機能 `frontispiece` の骨格。`v2-s6-consultation.md` §4.2 の決め 3）。** テーマの `styles:` は全部の種類の入口に入り、`@page` は `body` のクラスで絞れない。テーマに置くと、付録・前書き・目次の最初のページにも扉絵が出る。テーマは変数（`--book-frontispiece-*`）で値を入れる。機能を使わないテーマのために、`stylesheets/tokens.css` に `--book-frontispiece-image: none;` の既定値を置く。
 - `standard` の今の 15 個のキーを「`options:`」「`frontispiece`」「`ornament`」に分けた表は、S6-7 の最初に作ってここに書く。どれにも入らないキー（Ruby が読むが、扉絵にも節絵にも属さないもの。`markers.*` と `lead_size` が候補）が出たら、実装を止めて相談する。3 つ目の機能を足すかは、その表を見て決める。
+
+**`standard` の 15 個のキーの振り分け（2026-11-17・S6-7 の最初。46186ddd のコードで数えた）。**
+
+| キー | 値を読む箇所（`BookSettingsCss` の外も含む） | 振り分け |
+| :--- | :--- | :--- |
+| `preface_color`・`appendix_color` | `BookSettingsCss`（`--book-color-accent-preface`・`-appendix`）だけ | `options:`（`default_from: color`） |
+| `frontispiece.image`・`edge_inset`・`heading_offset`・`heading_chars`・`lead_chars`・`lead_size` | `BookSettingsCss`・`FrontmatterGenerator`・`ThemeImageResolver`・`ImageOptimizer`・`InjectHeadingImages`・`ChapterLeadCheck`・`FrontispieceEstimate` | `frontispiece` |
+| `ornament.image`・`heading_chars` | `BookSettingsCss`・`FrontmatterGenerator`・`ThemeImageResolver`・`ImageOptimizer`・`InjectHeadingImages` | `ornament` |
+| `color` ⚠ | `BookSettingsCss`（`--book-color-accent`）のほか、`Techbook::Processor`（h3・h4・前書きの印の画像の色）・`TalkAvatarGenerator`（アバターの地色）・`InjectHeadingImages`（合成した見出しの画像の番号の色）・`DirectBuild`（`--theme`） | `token:` で渡せるが、扉絵・節絵の外の Ruby も読む |
+| `style` ⚠ | `BodyClassInjector`（`vs-header-*`）のほか、`BookSettingsCss`（`simple` で画像の変数を `none`・扉絵の位置の規則を出さない）・`ImageOptimizer`（画像の準備を飛ばす）・`InjectHeadingImages`・`ChapterLeadCheck`・`PageBreakNormalizer`（body のクラスで判定） | `body_class:` で渡せるが、扉絵・節絵の機能の入り切りを兼ねる |
+| `lead_size` ⚠ | `BookSettingsCss`（`.chapter-lead` の `font-size` をリテラルの規則で書く・扉絵のリードの幅の既定）・`ChapterLeadCheck`（`frontispiece.lead_size` の既定として） | `token:` が無い（公開する変数に無い）。`simple` の章・付録にも効くので扉絵に属さない |
+| `markers.h3`・`markers.h4` ⚠ | `BookSettingsCss`（`--book-marker-h3`・`-h4`）のほか、`HeadingProcessor`（h3 の印の字を HTML に入れる）・`Kindle::RestoreH3Markers`・`Techbook::Processor`（印の画像） | `token:` で渡せるが、扉絵・節絵の外の Ruby も読む |
+
+⚠ の 5 キーが「どれにも入らないキー」に当たる。2026-11-17 にユーザーが次のように決めた。3 つ目の機能は足さない。
+
+1. **`color`・`markers.h3`・`markers.h4` は `options:` に `token:` で置き、vs のコードは公開する変数の名前で値を引く。** 公開する変数は契約の一部（§1）なので、vs の部品の Ruby（技術書の印の画像・会話のアバターの地色・h3 の印の字・Kindle の印の復元・合成した見出しの番号の色）がその値を読むのは契約の内側である。読むのはオプションの名前（`theme.color`）ではなく変数の名前（`color-accent`・`marker-h3`・`marker-h4`）で、窓口は `Theme.token_value` の 1 つにする。引く順は、選ばれたテーマのオプションのうち `token:` がその名前のもの（解決した後の値）→ テーマの `tokens:` → vs の既定（`stylesheets/tokens.css`）。
+2. **`style` は `body_class:` で渡し、扉絵・節絵の入り切りは、enum のオプションの値ごとに `features:` で宣言する。** `features: { image: [frontispiece, ornament], simple: [] }` と書くと、`simple` のとき 2 つの機能は使わない。機能が有効なのは、テーマの `features:` にあり、かつ `features:` を持つ enum のオプションの今の値の並びにあるときである。vs のコードは `style` の名前も値も読まず、機能が有効かだけを読む（`BuildPlan.features.frontispiece`・`Theme::Features.active?`）。
+3. **`lead_size` は公開する変数 `--book-chapter-lead-size` を足し、`options:` に `type: ratio`・`min: 1.0`・`max: 2.0`・`token: chapter-lead-size` で置く。** `parts/heading.css` の `.chapter-lead` がこの変数を読む。扉絵の章の倍率（`frontispiece.lead_size`）は、機能 `frontispiece` が `--book-frontispiece-lead-size` で渡す。今の書き出し（`.chapter-lead` の `font-size` をリテラルの規則で書く）は、Kindle が `var()` を捨てるためだったが、S3-3a から Kindle 用の CSS の生成が `var()` を解く。`book-settings.css` の字面が変わるので、S6-7 の前段の小段階として先に入れ、PDF の画素・EPUB の計算値・Kindle の中間生成物で前後を比べる（§11）。
+   - 倍率の型 `ratio` を §3.3 の表に足す（2026-11-17・前段の確かめで決めた）。値は `1.2`（`1.2em` と書いてもよい）で、CSS には百分率（`120%`）で書き出す。最初は `type: number`・`unit: em` で `1.2em` と書き出したが、前の `font-size: larger` と比べて、章扉と付録の扉の章リードの 1 行で字の位置がわずかにずれた（B1 で 9 ページ）。`em` の長さは Vivliostyle が px に直すときに丸め、`larger` と `120%` は丸めない（1 章だけのビルドで `larger`・`var()` の中の `larger`・`120%`・`1.2em` を比べ、`1.2em` だけが違った）。`calc(var(…) * 1em)` も同じ理由で使わない（`vivliostyle-css-pitfalls-notes.md` §2.18）。
 - 2.0 で用意する機能はこの二つだけとする。小説と絵本のテーマが必要とする処理は、個別の仕様で、機能として足すかを決める。機能を足すのは vs の本体の変更で、テーマの側からは足せない。
 
 ### 3.5 Kindle で組むための CSS の範囲
@@ -426,11 +446,12 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） | `--book-font-size`・`--book-line-height` は端末任せ（`1em`・`normal`）。残り（余白・`--book-letter-spacing`・`--book-paper-scale`）は届かない（Kindle に紙面が無い） |
 | 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` | 届かない（Kindle に紙面が無い） |
 | 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） | 届く |
+| 章リード | `--book-chapter-lead-size`（S6-7 の前段で新設。§3.4 の決め 3） | （無し。`book-settings.css` がリテラルの規則を書いていた） | `settings`（テーマのオプション） | 届く |
 | 会話 | `--book-talk-accent`・`-bg`・`-icon-size`・`-speaker-size` | `--talk-*` | `settings`・テーマ | 届く |
 
 - 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする（`--section-bg-image` は `--book-ornament-image`、`--section-title-font-size` は `--book-ornament-title-font-size`）。
 - 使われていない変数（`--color-shadow`）は消す。
-- 1 行ずつの一覧（`tokens.css`）に定義を置かないものが 4 種類ある。前書きと付録の色（`pages/preface.css`・`pages/appendix.css` がそのページの `:root` で定義する）、会話の色（`parts/talk.css` が `.talk` で定義する。要素ごとに値が違うので `:root` に上げない）、扉絵と節絵の画像（`book-settings.css` が必ず定義する）、アバターの大きさ（`talk.yml` から生成する）。一覧には注釈で置き場を書く。
+- 1 行ずつの一覧（`tokens.css`）に定義を置かないものが 3 種類ある。前書きと付録の色（`pages/preface.css`・`pages/appendix.css` がそのページの `:root` で定義する）、会話の色（`parts/talk.css` が `.talk` で定義する。要素ごとに値が違うので `:root` に上げない）、アバターの大きさ（`talk.yml` から生成する）。一覧には注釈で置き場を書く。扉絵と節絵の画像は、S6-7 の前段から `tokens.css` に既定の `none` を置く（機能を使わないテーマのため。§3.4）。
 - 「Kindle」の列は、テーマと `settings` が入れた値が Kindle に届くかを示す（`v2-post-s3-consultation.md` §5.2）。「届く」は、CSS の生成が値をリテラルに解いて Kindle 用の CSS に書くことを指す。書体と、版面の字の大きさ・行送りは、`targets/kindle-tokens.css` が `body.vs-kindle` で置き換える。Kindle だけで値を変える道は §3.5 に書く。
 - S6 で、`kindle-tokens.css` は `--book-*` の名前で書く。部品が読む名前が `--book-*` になるので、同じ名前で置き換えるのが変数の表の解き方（`body` に近い定義が勝つ）に合う。`vs upgrade` の名前の置き換え（`css-layer-restructure-spec.md` §7.2）は、選択子を問わず `custom.css` の全部の定義に当てる（`body.vs-kindle` の中の定義を含む）。
 - Kindle では、`--book-color-link` が `#111` 以下の黒に近い色だと、リンクは Kindle の青で描かれる（`#222` から指定どおり）。テーマの既定を決めるときの前提にする（`kindle-css-compatibility-notes.md` §2 の表）。
@@ -977,3 +998,32 @@ B1（`pdf`・`epub`・`kindle`、`--no-clean`・Kindle の記録つき・`--log=
 
 - 契約 HTML の showcase の SVG 2 枚が S6-5 の写しとバイト単位で違うが、埋め込んだ PNG の生成日時（`date:create`）だけで、大きさは同じ。
 - 1 回目の `rake test` で `epub_kindle_layout_test.rb` の「targets/ の Kindle の規則が全部解ける」が落ちた。作業ツリーの `.cache/vs/book-settings.css` が 1.x の `vs` の書いたもの（`--appendix-accent-color`・`!important` つきの Kindle の規則）になっていたためで、0a869716 でも同じく落ちる。v2 のコードで書き直すと通る。このテストは作業ツリーの `.cache/vs/book-settings.css` を読むので、1.x の `vs` を作業ツリーで走らせた後は落ちる。
+
+### 11.10 S6-7 の前段: 章リードの大きさを公開する変数へ（2026-11-17）
+
+§3.4 の決め 3（`lead_size` は公開する変数 `--book-chapter-lead-size` で渡す）は `book-settings.css` の字面を変えるので、S6-7 の本体（`book-settings.css` がバイト単位で同じ）の前に、この小段階として入れた。
+
+#### 作ったもの
+
+- `stylesheets/tokens.css`: `--book-chapter-lead-size: 120%`・`--book-frontispiece-lead-size: var(--book-chapter-lead-size)`・`--book-frontispiece-image: none`・`--book-ornament-image: none`（扉絵と節絵の画像の既定。§3.4 の「機能を使わないテーマのために」）。
+- `parts/heading.css` の `.chapter-lead` の `font-size: larger` を `var(--book-chapter-lead-size)` に、`themes/standard/image-header.css` の `body.vs-header-image .chapter-lead` に `font-size: var(--book-frontispiece-lead-size)` を足した。
+- `BookSettingsCss`: 二つの変数を百分率で書き出す（`format_percent`）。章リードの大きさのリテラルの規則（`chapter_lead_size_rules`）を消した。`:root` の宣言を、S6-7 の本体の書き出しと同じ順（`options:` の `token:` のあるもの → 扉絵 → 節絵）に並べ替えた。前書きの色を付録の色の前にした。
+- テスト: `book_settings_css_test.rb` を変数で渡す形に、`css_layer_test.rb` の Kindle の許可の表から扉絵と節絵の画像の 2 行を消した（`tokens.css` の既定 `none` で解けるようになった）。
+
+#### 仕様と違えたこと
+
+1. **倍率は `em` でなく百分率で書き出す（§3.4 の決め 3 を直した）。** 最初は `1.2em` と書き出し、B1 で章扉と付録の扉の 9 ページ（p22・p101 など。日付の p83 を除く）、B2 で 21 ページの章リードの 1 行で、字の位置がわずかにずれた（1 ページに 9〜2,230 画素）。1 章だけのビルド（24 章と 93 章）で `.chapter-lead` の `font-size` を 4 通りに書いて比べると、`larger`・`var()` の中の `larger`・`120%` は画素が同じで、`1.2em` だけが違った。`em` の長さは Vivliostyle が px に直すときに丸める（`vivliostyle-css-pitfalls-notes.md` §2.18 と同じ根）。倍率の型 `ratio` を §3.3 に足し、CSS には百分率で書く。最初の確かめの出力は `r2/check/s6-7a-em/` に残した。
+2. **前書きの章リードの大きさ。** 前は `theme.lead_size` を 1.2 以外にすると、`body .chapter-lead`（詳細度 0,1,1）が `parts/preface.css` の `.chapter-lead { font-size: inherit }` に勝ち、前書きの章リードも大きくなっていた。今は変数を読む `parts/heading.css` の規則と `parts/preface.css` の規則が同じ詳細度で、後に読む前書きの規則が勝つので、前書きの章リードは本文と同じ字のままになる（`parts/preface.css` の注釈どおり）。本書と B4 は `lead_size: 1.2` なので、出力は変わらない。
+
+#### 確かめた結果
+
+B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2（`pdf`・`theme.style: simple`）・B4（`pdf`・`epub`）を組んだ（`r2/check/s6-7a/`・台本 `r2/runs/s6-7a.sh`。前段のコミットを置いた別の worktree から組んだ）。ビルドの 🔴 は 0、🟡 は B4 の 7 件だけ（廃止キー 3 行・画像の余白 3 件・索引候補の抽出。§11.4 と同じ）。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| PDF の画素（r2 と） | B1 284 ページは p83、B2 279 ページは p80 の 1 ページだけが違う（日付の行。`pdftotext` で「16 日」→「17 日」だけ）。B4 317 ページは p316（§11.5 の既知の差）だけ |
+| 計算値（`css_computed_diff.rb`。前は 46186ddd と S6-6 の B1 の写しの HTML・`book-settings.css`、後は前段の B1 の `book-settings.css` を `--after-settings` で） | EPUB・Kindle の 78 文書・156 組で違い 0 |
+| Kindle の中間生成物（`kindle_record_diff.rb`。S6-6 の記録と） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0。Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| `InversionCheck` の要素ごとの判定 | 8 種類 × EPUB・Kindle 用 EPUB とも 0 組 |
+| EPUBCheck | B1 のクリーン・Kindle 用、B4 とも致命・エラー・警告 0 |
+| テスト | `rake test` 4,455 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |

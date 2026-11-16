@@ -95,12 +95,17 @@
   --book-marker-h3: "♣";
   --book-marker-h4: "♦";
 
+  /* 章リードの字の大きさ（config/book.yml の theme.lead_size により自動更新。本文に対する倍率を百分率で。
+     em で書くと Vivliostyle が px に直すときに丸め、字の位置がずれる） */
+  --book-chapter-lead-size: 120%;
+
   /* 会話の色 --book-talk-accent・--book-talk-bg は、話者の要素の上で決まるので
      parts/talk.css の .talk で定義する。アバターの大きさ --book-talk-icon-size・
      --book-talk-speaker-size は talk.yml の display.avatar_size から生成する */
 
-  /* 扉絵（config/book.yml の theme.frontispiece により自動更新）。
-     画像 --book-frontispiece-image は book-settings.css が必ず定義する */
+  /* 扉絵（config/book.yml の theme.frontispiece により自動更新）。画像の既定 none は、扉絵の機能を
+     使わないテーマのため（使うテーマでは book-settings.css が必ず定義する） */
+  --book-frontispiece-image: none;
   --book-frontispiece-edge-inset: 10mm;  /* 扉絵の上下と紙の端の間の余白（左右は画像の縦横比で決まる） */
   --book-frontispiece-background-size: auto calc(100% - 2 * var(--book-frontispiece-edge-inset));
   --book-frontispiece-binding-offset: 2.00mm; /* ノドと小口の差による背景のずれ */
@@ -108,9 +113,11 @@
      文字数 × 1 字の送りを mm に解いて上書きする（既定は A4・8 字 / 20 字） */
   --book-frontispiece-heading-width: 103.7mm;
   --book-frontispiece-lead-width: 88.9mm;
+  --book-frontispiece-lead-size: var(--book-chapter-lead-size); /* 章扉の章リードの字の大きさ */
   --book-frontispiece-heading-offset: 0mm; /* 章扉の見出しの塊（章番号〜リード）を下げる量 */
 
-  /* 節絵（config/book.yml の theme.ornament により自動更新）。
-     画像 --book-ornament-image は book-settings.css が必ず定義する */
+  /* 節絵（config/book.yml の theme.ornament により自動更新）。画像の既定 none は、節絵の機能を
+     使わないテーマのため（使うテーマでは book-settings.css が必ず定義する） */
+  --book-ornament-image: none;
   --book-ornament-title-font-size: 36Q; /* 節題の字の大きさ（節絵の帯は版面の幅いっぱいなので、字の大きさで 1 行の文字数を決める。A4・14 字） */
 }

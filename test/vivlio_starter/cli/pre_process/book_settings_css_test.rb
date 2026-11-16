@@ -86,9 +86,9 @@ class BookSettingsCssThemeTest < Minitest::Test
     assert_in_delta 12.96, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a4)), 0.01
     assert_in_delta 9.18, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a5)), 0.01
 
-    lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a4)
+    lines = BSC.frontispiece_metric_declarations({ heading_chars_value: 8 }, a4)
     assert_includes lines, '--book-frontispiece-heading-width: 103.68mm;'
-    lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a5)
+    lines = BSC.frontispiece_metric_declarations({ heading_chars_value: 8 }, a5)
     assert_includes lines, '--book-frontispiece-heading-width: 73.44mm;'
   end
 
@@ -98,14 +98,14 @@ class BookSettingsCssThemeTest < Minitest::Test
     a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
 
     # 版面 162mm − 飾り避け 34mm = 128mm に余裕 4% を掛けて字数で割る
-    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
+    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
                     '--book-ornament-title-font-size: 35.11Q;'
-    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
+    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
                     '--book-ornament-title-font-size: 24.58Q;'
     # 極端な指定は本文との階層が壊れるため 20〜48Q に収める
-    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
+    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
                     '--book-ornament-title-font-size: 48Q;'
-    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 40 }, a4),
+    assert_includes BSC.ornament_metric_declarations({ ornament_heading_chars_value: 40 }, a4),
                     '--book-ornament-title-font-size: 20Q;'
   end
 
@@ -114,7 +114,7 @@ class BookSettingsCssThemeTest < Minitest::Test
     a5 = { width: '148mm', height: '210mm', margin_inner: '22mm', margin_outer: '18mm', paper_scale: 0.7048 }
     warnings = []
     VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
-      BSC.heading_metric_declarations({ heading_chars_value: 16 }, a5)
+      BSC.frontispiece_metric_declarations({ heading_chars_value: 16 }, a5)
     end
 
     # A5 の版面 108mm ÷ 1 字 9.18mm = 11 文字が上限
@@ -128,7 +128,7 @@ class BookSettingsCssThemeTest < Minitest::Test
     a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
     warnings = []
     VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
-      BSC.heading_metric_declarations({ heading_chars_value: 12, lead_chars_value: 24 }, a4)
+      BSC.frontispiece_metric_declarations({ heading_chars_value: 12, lead_chars_value: 24 }, a4)
     end
 
     assert_empty warnings
@@ -144,7 +144,7 @@ class BookSettingsCssThemeTest < Minitest::Test
       edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
-    lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
+    lines = BSC.option_declarations(settings, Common::CONFIG)
 
     assert_includes lines, '--book-color-accent: #123456;'
     refute(lines.any? { it.start_with?('--book-color-strong:', '--book-color-em-underline:') })
@@ -166,25 +166,27 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
   A4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm',
          paper_scale: 1.0, base_font_size: '10.5pt' }.freeze
 
-  # 既定の 1.2 倍のままなら規則を出さず、幅も今と同じ値（chapter-common.css の larger に任せる）
+  # 既定の 1.2 倍は 120% として書き、幅も今と同じ値
   def test_should_keep_current_output_when_lead_size_is_default
-    settings = { lead_chars_value: 20, lead_size_value: 1.2, frontispiece_lead_size_value: 1.2 }
+    settings = { theme_accent_value: 'var(--book-accent-green)', lead_chars_value: 20, lead_size_value: 1.2,
+                 frontispiece_lead_size_value: 1.2 }
 
-    assert_equal '', BSC.chapter_lead_size_rules(settings)
-    assert_includes BSC.heading_metric_declarations(settings, A4), '--book-frontispiece-lead-width: 88.9mm;'
+    assert_includes BSC.option_declarations(settings, Common::CONFIG), '--book-chapter-lead-size: 120%;'
+    lines = BSC.frontispiece_metric_declarations(settings, A4)
+    assert_includes lines, '--book-frontispiece-lead-size: 120%;'
+    assert_includes lines, '--book-frontispiece-lead-width: 88.9mm;'
   end
 
-  # 章扉だけ 1.1 倍にすると、章扉の規則だけが出て、幅も 1.1 倍の送りで出る（28 字 × 10.5pt × 1.1）
+  # 章扉だけ 1.1 倍にすると、章扉の変数だけが 1.1em になり、幅も 1.1 倍の送りで出る（28 字 × 10.5pt × 1.1）
   def test_should_shrink_only_frontispiece_lead_when_overridden
-    settings = { lead_chars_value: 28, lead_size_value: 1.2, frontispiece_lead_size_value: 1.1 }
+    settings = { theme_accent_value: 'var(--book-accent-green)', lead_chars_value: 28, lead_size_value: 1.2,
+                 frontispiece_lead_size_value: 1.1 }
 
-    rules = BSC.chapter_lead_size_rules(settings)
-
-    assert_includes rules, 'body.vs-header-image .chapter-lead { font-size: 1.1em; }'
-    refute_includes rules, 'body .chapter-lead', '本全体（simple の章・付録）は 1.2 倍のまま'
-    # EPUB にも効かせる。EPUB の章扉はリードを焼き込まず、本文の文字として流す（§2.2.1）
-    refute_includes rules, 'vs-epub'
-    assert_includes BSC.heading_metric_declarations(settings, A4), '--book-frontispiece-lead-width: 114.09mm;'
+    assert_includes BSC.option_declarations(settings, Common::CONFIG), '--book-chapter-lead-size: 120%;',
+                    '本全体（simple の章・付録）は 1.2 倍のまま'
+    lines = BSC.frontispiece_metric_declarations(settings, A4)
+    assert_includes lines, '--book-frontispiece-lead-size: 110%;'
+    assert_includes lines, '--book-frontispiece-lead-width: 114.09mm;'
   end
 
   # 本全体だけを書けば、章扉もそれに従う（規則は 1 本で、章扉の幅も同じ倍率）
@@ -194,17 +196,15 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     ))
     settings = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.parse_theme_settings(cfg)
 
-    rules = BSC.chapter_lead_size_rules(settings)
-
     assert_equal 1.1, settings[:frontispiece_lead_size_value]
-    assert_includes rules, 'body .chapter-lead { font-size: 1.1em; }'
-    refute_includes rules, 'body.vs-header-image', '章扉が本全体と同じなら上書きの規則は要らない'
+    assert_includes BSC.option_declarations(settings, cfg), '--book-chapter-lead-size: 110%;'
+    assert_includes BSC.frontispiece_metric_declarations(settings, A4), '--book-frontispiece-lead-size: 110%;'
   end
 
-  # 刻みは丸めない（1.05 は 1.05em）。`1.2em` は `1.2` と同じ意味なので規則を出さない
+  # 刻みは丸めない（1.05 は 105%）。`1.2em` は `1.2` と同じ意味
   def test_should_keep_fine_steps_and_accept_em_unit
-    fine = BSC.chapter_lead_size_rules({ lead_size_value: 1.05, frontispiece_lead_size_value: 1.05 })
-    assert_includes fine, 'body .chapter-lead { font-size: 1.05em; }'
+    fine = BSC.option_declarations({ theme_accent_value: 'red', lead_size_value: 1.05 }, Common::CONFIG)
+    assert_includes fine, '--book-chapter-lead-size: 105%;'
 
     cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(lead_size: '1.2em'))
     settings = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.parse_theme_settings(cfg)
@@ -214,8 +214,8 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
   # 字数を書かずに倍率だけ変えても、既定の字数（20）で幅を出し直す。theme.css の既定幅は
   # 1.2 倍の送りで決めてあるので、そのままだと 1 行の字数がずれる
   def test_should_resolve_default_chars_when_only_lead_size_changes
-    unchanged = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
-    changed = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
+    unchanged = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
+    changed = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
 
     refute(unchanged.any? { it.start_with?('--book-frontispiece-lead-width:') }, '既定のままなら theme.css に任せる')
     assert_includes changed, '--book-frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
@@ -234,10 +234,10 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
   # 字数も倍率も既定でも、字間が付いていれば既定の字数（20）で幅を出し直す。theme.css の既定幅は
   # 字間 0 で決めてあるので、そのままだと 1 行の字数が減る
   def test_should_resolve_default_chars_when_letter_spaced
-    spaced = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
-                                             A4.merge(letter_spacing: '0.05em'))
-    unspaced = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
-                                               A4.merge(letter_spacing: '0em'))
+    spaced = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+                                                 A4.merge(letter_spacing: '0.05em'))
+    unspaced = BSC.frontispiece_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
+                                                   A4.merge(letter_spacing: '0em'))
 
     assert_includes spaced, '--book-frontispiece-lead-width: 93.34mm;' # 20 字 × 10.5pt × 1.2 × 1.05
     refute(unspaced.any? { it.start_with?('--book-frontispiece-lead-width:') }, '字間 0 なら theme.css に任せる')
@@ -253,13 +253,16 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     assert_includes BSC.section_lead_width_rule(A4.merge(letter_spacing: '0.5mm')), 'body .section-lead { inline-size: calc(32em + 16mm); }'
   end
 
-  # 生成した CSS 全文に、リードの規則が入る
+  # 生成した CSS 全文に、リードの大きさの変数が入る
   def test_should_render_lead_size_rules
     cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(
       lead_size: 1.2, frontispiece: Common::CONFIG.theme.frontispiece.with(lead_size: 1.1)
     ))
 
-    assert_includes BSC.render(cfg), 'body.vs-header-image .chapter-lead { font-size: 1.1em; }'
+    css = BSC.render(cfg)
+    assert_includes css, '--book-chapter-lead-size: 120%;'
+    assert_includes css, '--book-frontispiece-lead-size: 110%;'
+    refute_includes css, '.chapter-lead {', 'リードの大きさは規則でなく変数で渡す'
   end
 end
 
