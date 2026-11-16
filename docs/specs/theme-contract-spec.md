@@ -907,3 +907,40 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき、`--log=debug`）・B2�
 | テスト | `rake test` 4,448 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
 
 - B4 の PDF・単章のビルド・preflight は、小段階の表の確かめに無いので組んでいない。雛形の同期もしていない。
+
+### 11.8 S6-5 `standard` へファイルと画像を移す（2026-11-17）
+
+#### 作ったもの
+
+- `themes/standard/`: `simple-header.css`・`image-header.css`（`stylesheets/parts/` から）と `images/` の 12 枚（`stylesheets/images/bundled/` から）。`theme.yml` の `styles:` に今の順で 2 枚を並べた。`EntryWriter::STANDARD_HEADERS` は消し、2 枚はテーマの `styles:` として theme 層に入る（入口の行は S6-4 と同じ位置）。
+- `ThemeImageResolver`: 画像の指定を、(1) 本の直下からのパス、(2) `stylesheets/images/` の中の名前、(3) 選ばれたテーマの `images/` の中の名前（テーマ → 土台の順）の順に探す（`v2-migration-plan.md` §5.3 の 4）。
+- 生成したバリアントの置き場（`cache_stem`）: `stylesheets/images/` の画像は今と同じくキャッシュの直下、ほかは本のルートからのパスのまま（`.cache/vs/theme-images/themes/standard/images/sakura_portrait.webp`）。`ImageGenerator` は見つけた元画像のパスをそのまま受ける（`resolve_image_reference` を消した）。
+- CSS へ書く形: テーマの画像と本の直下の画像は `../<本のルートからのパス>`（`stylesheets/` 基準）で返し、`BookSettingsCss.rebase_relative` が `../../themes/…` に畳む。
+- EPUB: 選ばれたテーマの `images/` を、本のルートと同じ階層でパッケージへ運ぶ（`Epub::Workspace.localize_theme_images!`。Kindle は WebP を除く）。参照されない画像は、今の `stylesheets/` の画像と同じく回収で外れる。
+- `Guards::ImageFilenameCheck` が `themes/` の画像の名前も見る（`stylesheets/images/bundled/` を見ていた分）。
+- テスト: 置き場の順・`bundled/` の読み方・`cache_stem`・テーマ → 土台の順・EPUB への同梱・`themes/` の画像の名前の検査を足した。2 枚と画像の置き場を読むテスト（`entry_writer_test.rb`・`css_layer_test.rb`・`book_settings_css_test.rb`・`theme_test.rb` など）を新しい置き場に合わせた。
+
+#### 仕様に無かったので決めたこと
+
+1. **生成したバリアントの置き場は、テーマごとに分ける。** `theme-images/bundled/` のままにすると、テーマを替えたときに、前のテーマの同じ名前の画像から作ったバリアントを使う（新しいテーマの元画像のほうが古ければ、作り直さない）。分けた結果、EPUB の中の `theme-images/` のパスと、合成した見出しの画像の名前（鍵に元画像のパスが入る）が変わる。仕様の「`epub_diff.rb` で違い 0 件」は、この名前を中身のハッシュにそろえて確かめた（下の表）。
+2. **1.x の `bundled/<名前>` は、テーマの画像の名前として読む。** 42 章が「その名前のまま同梱画像を使うときは `image: bundled/sakura` と書く」と説明している書き方で、置き場が無くなっても同じ画像を指す。
+3. **置き場の 1（本の直下からのパス）は、「/」を含み、本の中にその画像があるときだけ使う。** 名前だけの指定（`sakura`）は 2・3 で探す。`..` を含むパスと絶対パスは使わない（パッケージの外を指すため）。
+4. **著者への文面と原稿は変えない。** `ThemeValidator` の「バンドル画像名（sakura・himawari など）」の文面は 42 章が出力例として載せており、42 章・51 章は `stylesheets/images/bundled/` を置き場として説明している。変えると本書の PDF が変わるので、§9 の S6 の決め 8 と同じく S11 で書き直す。今の文面は誤りにはならない（名前は同じ画像を指す）。
+5. **雛形は `themes/` だけを写した**（S6-3 と同じ。`vs new` の本に見出しと扉絵が無くなるため）。雛形の `stylesheets/` には前の 2 枚と `images/bundled/` が残るが、入口は読まず、名前で探す置き場にも入らない。雛形の同期（`ruby scripts/copy_to_scaffold.rb`）で消える。
+6. **EPUB 枝の Vivliostyle の作業ディレクトリを、出力先ごとに組む前に空にする（`EpubFlow#build_target`）。** 最初の確かめで、Kindle 用 EPUB にテーマの WebP 12 枚が入った。Vivliostyle は組むたびに作業ディレクトリを消すが、`<workspaceDir>/themes` だけは自分のテーマの置き場（`themesDir`）として残す。パッケージに運ぶ `themes/standard/images/` がそこに重なり、先に組んだクリーン EPUB の分が Kindle 用 EPUB に入った（`build-pipeline-pitfalls-notes.md` §6）。前は同じ画像が `stylesheets/` の下にあり、毎回消えていた。
+
+#### 確かめた結果
+
+B1（`pdf`・`epub`・`kindle`、`--no-clean`・`--log=debug`）と B2（`pdf`・`theme.style: simple`）を組んだ（`r2/check/s6-5/`・台本 `r2/runs/s6-5.sh`。B1 は 6 の修正の後に組み直した）。ビルドの 🔴・🟡 は 0。日付が変わってから組んだので、原稿の `@today`（「2026 年 11 月 16 日 更新」→「17 日」）の差が出る。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 入口の CSS（S6-4 の B1 と） | 11 枚とも、違いは 2 枚の `@import` の 2 行のパスだけ（`../../stylesheets/parts/` → `../../themes/standard/`） |
+| PDF の画素（r2 と） | B1 284 ページは p83、B2 279 ページは p80 の 1 ページだけが違う。どちらも `@today` の日付の行（B1 は `pdftotext` で日付の 1 行だけが違うことを確かめた） |
+| EPUB（S6-4 の B1 と） | 画像はすべて中身のハッシュで一致（クリーン 292 件・Kindle 用 217 件）。テキストは、画像の名前を中身のハッシュに、置き場の名前（`theme-images/themes/standard/images/`・`themes/standard/images/`・平らな CSS の出どころの注釈 2 行）を前の名前に、日付を前の日にそろえると、XHTML・CSS はすべて一致。OPF の違いは、パスから作られる項目の id だけ（クリーンは移した 14 枚、Kindle 用は前から写しごとに変わる `_epub_assets/` の名前の分） |
+| Kindle 用 EPUB の WebP | 0 枚（6 の修正の前は 12 枚）。KPF ができた |
+| EPUBCheck | クリーン・Kindle 用とも致命・エラー・警告 0 |
+| テスト | `rake test` 4,454 件が通った（スキップ 1 は前からのもの）。`rake test:layout` 7 件が通った。変えたファイルに `rubocop` を掛け、違反 0 |
+
+- クリーン EPUB には、前と同じくテーマの 12 枚（花）が入る。42 章が本文に `images/42-frontispiece/ajisai.webp` などを載せており、参照の切れた画像の回収はファイルの名前で見るので、同じ名前のテーマの画像も残る（前は `stylesheets/images/bundled/` に入っていた）。
+- Kindle の中間生成物（`kindle_record_diff.rb`）は比べていない。Kindle 用 EPUB の中身が、名前を除いて同じだからである（小段階の表のとおり）。

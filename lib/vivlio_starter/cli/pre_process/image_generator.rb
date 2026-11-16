@@ -51,41 +51,39 @@ module VivlioStarter
 
         # バリアント画像が無いか古ければ生成。
         # 生成物はソースの隣ではなく生成キャッシュ .cache/vs/theme-images/ へ
-        # （images root からの相対サブパスを維持・generated-assets 移設仕様 §2）。
+        # （名前は ThemeImageResolver.cache_stem・generated-assets 移設仕様 §2）。
         # waifu2x を伴う高コスト処理のため、生成済みチェックが実質のメモ化になる。
         # 元画像を描き直したときと、判型が変わって扉絵の縦横比が合わなくなったときは作り直す。
+        # @param source_path [String] ThemeImageResolver が見つけた元画像
         def ensure_variant_generated(source_path, variant)
-          images_root = ThemeImageResolver.theme_images_root
-          relative = source_path.sub(%r{\A#{Regexp.escape(images_root)}/}, '')
-          return nil if relative.empty?
-
-          base = relative.sub(/\.[^.]+\z/, '')
-          target = File.join(ThemeImageResolver.theme_images_cache_root, "#{base}_#{variant}.webp")
+          stem = ThemeImageResolver.cache_stem(source_path)
+          target = File.join(ThemeImageResolver.theme_images_cache_root, "#{stem}_#{variant}.webp")
           return target if File.exist?(target) && ThemeImageResolver.cached_variant_current?(target, variant)
 
-          success = generate_frontispiece_and_ornament_from(relative)
+          success = generate_frontispiece_and_ornament_from(source_path)
           success ? target : nil
         end
 
         # frontispiece と ornament を生成
-        def generate_frontispiece_and_ornament_from(image_spec, fuzz: nil, waifu2x: DEFAULT_WAIFU2X_BIN,
+        # @param source_path [String] 元画像（本のルートからの相対か、絶対パス）
+        def generate_frontispiece_and_ornament_from(source_path, fuzz: nil, waifu2x: DEFAULT_WAIFU2X_BIN,
                                                     waifu2x_args: [], waifu2x_noise: FRONTISPIECE_WAIFU2X_NOISE,
                                                     scale: FRONTISPIECE_SCALE, target_width: FRONTISPIECE_TARGET_WIDTH,
                                                     webp_quality: FRONTISPIECE_WEBP_QUALITY, keep_intermediate: false)
           ensure_magick_available!
 
-          images_root = File.join(Common::STYLESHEETS_DIR, 'images')
-          source_path = resolve_image_reference(images_root, image_spec)
+          raise "画像が見つかりません: #{source_path}" unless File.file?(source_path)
+
           basename = File.basename(source_path, '.*')
 
-          # 出力先はソースの隣ではなく生成キャッシュ（相対サブパス維持・移設仕様 §2）。
-          # bundled/sakura.webp → theme-images/bundled/、myphoto.png → theme-images/ 直下。
-          relative_dir = File.dirname(
-            File.expand_path(source_path).delete_prefix("#{File.expand_path(images_root)}/")
-          )
-          base_dir = File.join(ThemeImageResolver.theme_images_cache_root, relative_dir == '.' ? '' : relative_dir)
+          # 出力先はソースの隣ではなく生成キャッシュ（名前は ThemeImageResolver.cache_stem・移設仕様 §2）。
+          # themes/standard/images/sakura.webp → theme-images/themes/standard/images/、
+          # stylesheets/images/myphoto.png → theme-images/ 直下。
+          base_dir = File.dirname(File.join(ThemeImageResolver.theme_images_cache_root,
+                                            ThemeImageResolver.cache_stem(source_path)))
 
-          Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
+          Common.log_action("frontispiece/ornament 生成: #{ThemeImageResolver.book_relative(source_path)} → " \
+                            "#{basename}_portrait/landscape.webp")
 
           waifu2x_available = waifu2x && !waifu2x.strip.empty? && Common.external_command_available?(waifu2x)
           Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。") unless waifu2x_available
@@ -129,38 +127,6 @@ module VivlioStarter
           raise 'ImageMagick (magick) が見つかりません。インストールを確認してください。' unless status.success?
         rescue Errno::ENOENT
           raise 'magick コマンドが見つかりません。ImageMagick をインストールしてください。'
-        end
-
-        # 画像参照を解決
-        def resolve_image_reference(images_root, image_spec)
-          spec = image_spec.to_s.strip
-          raise '画像指定が空です' if spec.empty?
-
-          normalized_root = File.expand_path(images_root)
-          base_dir = normalized_root.end_with?(File::SEPARATOR) ? normalized_root : normalized_root + File::SEPARATOR
-          relative = spec.sub(%r{^/+}, '')
-          absolute = File.expand_path(relative, base_dir)
-
-          unless absolute == normalized_root || absolute.start_with?(normalized_root + File::SEPARATOR)
-            raise "画像指定が不正です: #{spec}"
-          end
-
-          return absolute if File.exist?(absolute)
-
-          if File.extname(relative).empty?
-            %w[.webp .png .jpg .jpeg].each do |ext|
-              candidate = absolute + ext
-              return candidate if File.exist?(candidate)
-            end
-          else
-            stem = absolute.sub(/\.[^.]+\z/, '')
-            exts = %w[.webp .png .jpg .jpeg]
-            ([absolute] + exts.map { |ext| "#{stem}#{ext}" }).each do |candidate|
-              return candidate if File.exist?(candidate)
-            end
-          end
-
-          raise "画像が見つかりません: #{spec}"
         end
 
         # 画像をトリミング

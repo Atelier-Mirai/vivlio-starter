@@ -7,3 +7,7 @@ supports:
   writing_mode: [horizontal]
   layout: [reflowable]
   targets: [pdf, print_pdf, epub, kindle]
+
+styles:
+  - simple-header.css
+  - image-header.css

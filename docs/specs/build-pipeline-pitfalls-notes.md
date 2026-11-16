@@ -78,3 +78,11 @@ Ruby              用語A
 の左右が区別できない。「次の行が定義行か」で決めようとすると**どちらも次が定義行**なので破れる（実際に一度そう実装して、継続行が `<dt>` に化けた）。
 
 こういうときは、**前処理に残すのは印だけにして、HTML 化はしない**。定義リストでは継続行の頭へ幅ゼロの WORD JOINER（U+2060）を置き、後処理がそれを見て判断してから取り除く。行の中身は素の Markdown のままなので、ルビも索引もこれまでどおり効く。印を選ぶときは**取りこぼしても紙面に出ない側**（幅ゼロ・不可視）にしておく。
+
+## 6. Vivliostyle の作業ディレクトリの `themes/` は消えない
+
+Vivliostyle は組むたびに作業ディレクトリ（`workspaceDir`）を消すが、`<workspaceDir>/themes` だけは自分のテーマの置き場（`themesDir`）として退避して残す（`@vivliostyle/cli` の `cleanupWorkspace`）。EPUB 枝は `entryContext`（消費者 dir）の中身を作業ディレクトリへ写してパッケージにするので、パッケージに `themes/` を運ぶと（テーマの画像 `themes/<名前>/images/`）、その `themes/` が次のビルドまで残る。
+
+- 症状: クリーン EPUB を組んだ後の Kindle 用 EPUB に、Kindle では運ばない WebP（テーマの画像 12 枚）が入った（2026-11-17・S6-5）。前のビルドで回収した画像が次の EPUB に入ることもある。
+- 対処: `EpubFlow#build_target` が、出力先ごとに Vivliostyle を走らせる前に、EPUB 枝の作業ディレクトリ（`Common::BUILD_VIVLIOSTYLE_EPUB_DIR`）を空にする。
+- `theme-images/`・`covers/` など、ほかの名前のディレクトリは Vivliostyle が毎回消すので残らない。

@@ -10,8 +10,8 @@
 #   - 危険文字（' ( ) & 等）を含む画像名を検出し、警告のみ（非ブロッキング）で報告する
 #   - 許可文字・マルチバイト（日本語）は検出しない
 #   - 改名案（危険文字→_・連続_畳み）を detail に含む
-#   - images/ は contents/*.md の出現行番号、covers/・stylesheets/images/ は固定文言
-#   - 3 ディレクトリすべてを走査する
+#   - images/ は contents/*.md の出現行番号、covers/・stylesheets/images/・themes/ は固定文言
+#   - 4 ディレクトリすべてを走査する
 # ================================================================
 
 require 'test_helper'
@@ -72,21 +72,23 @@ module VivlioStarter
         end
       end
 
-      # covers/・stylesheets/images/ も走査し、用途に応じた固定文言を案内する
+      # covers/・stylesheets/images/・themes/ も走査し、用途に応じた固定文言を案内する
       def test_should_scan_covers_and_stylesheets_with_usage_hint
         with_temp_project do
-          FileUtils.mkdir_p('covers')
-          FileUtils.mkdir_p('stylesheets/images')
+          FileUtils.mkdir_p(%w[covers stylesheets/images themes/mine/images])
           File.write("covers/Einstein's_portrait.webp", 'x')
           File.write('stylesheets/images/sakura(1).webp', 'x')
+          File.write('themes/mine/images/ume(1).webp', 'x')
 
           violations = Guards::ImageFilenameCheck.new.validate
 
-          assert_equal 2, violations.size
+          assert_equal 3, violations.size
           cover = violations.find { it.message.include?('covers/') }
           theme = violations.find { it.message.include?('stylesheets/images/') }
           assert cover.detail.any? { it.include?('表紙・裏表紙として配置されています') }
           assert theme.detail.any? { it.include?('扉絵・節絵として配置されています') }
+          assert violations.find { it.message.include?('themes/mine/images/') }
+                           .detail.any? { it.include?('扉絵・節絵として配置されています') }
         end
       end
 

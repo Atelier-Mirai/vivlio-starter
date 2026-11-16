@@ -42,7 +42,7 @@ module VivlioStarter
                  '層の順の宣言は @import より前'
         end
 
-        # 本文以外のページは、土台・自分のページの CSS・見出しの 2 枚・設定だけを読む
+        # 本文以外のページは、土台・自分のページの CSS・テーマ（standard の見出しの 2 枚）・設定だけを読む
         def test_should_give_generated_pages_only_the_foundation_and_their_own_css
           imports = EntryWriter.render('index').scan(/@import url\("([^"]+)"\)/).flatten
 
@@ -50,7 +50,7 @@ module VivlioStarter
                           ../../stylesheets/base/reset.css ../../stylesheets/base/elements.css
                           ../../stylesheets/base/page.css ../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css
                           ../../stylesheets/pages/index.css
-                          ../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css
+                          ../../themes/standard/simple-header.css ../../themes/standard/image-header.css
                           book-settings.css ../../stylesheets/custom.css], imports
         end
 
@@ -72,17 +72,20 @@ module VivlioStarter
           layered.each_value { assert_equal chapter['utilities'], it['utilities'] }
         end
 
-        # standard の見出しの 2 枚は、どの種類のページでも parts 層でなく theme 層に読む
-        # （theme-contract-spec.md §9 の S6-4）
-        def test_should_import_the_standard_headers_into_the_theme_layer_of_every_page
-          headers = %w[../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css]
-          EntryWriter::IMPORTS.each_key do |kind|
-            imports = EntryWriter.render(kind, theme: nil).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/)
+        # standard の見出しの 2 枚は themes/standard/ にあり、theme.yml の styles: から、どの種類のページでも
+        # theme 層にだけ入る。vs の stylesheets/ には無いので、テーマ無しの入口は読まない
+        # （theme-contract-spec.md §9 の S6-4・S6-5）
+        def test_should_import_the_standard_headers_from_the_theme_into_every_page
+          headers = %w[../../themes/standard/simple-header.css ../../themes/standard/image-header.css]
+          standard = Theme.resolve('standard', root: REPO_ROOT)
+          layered = ->(kind, theme) { EntryWriter.render(kind, theme:).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/) }
 
-            theme, others = imports.partition { it.last == 'theme' }
+          EntryWriter::IMPORTS.each_key do |kind|
+            theme, others = layered.call(kind, standard).partition { it.last == 'theme' }
 
             assert_equal headers, theme.map(&:first), kind
             assert_empty others.map(&:first) & headers, "#{kind} はほかの層で 2 枚を読まない"
+            assert_empty layered.call(kind, nil).select { it.last == 'theme' }, "#{kind} はテーマ無しで theme 層を読まない"
           end
         end
 
@@ -174,8 +177,7 @@ module VivlioStarter
 
             assert_equal %w[../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css theme-tokens.css],
                          imports.call('tokens')
-            assert_equal %w[../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css
-                            ../../themes/base/head.css ../../themes/mono/mono.css], imports.call('theme')
+            assert_equal %w[../../themes/base/head.css ../../themes/mono/mono.css], imports.call('theme')
             assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
                             ../../stylesheets/targets/kindle.css ../../themes/base/epub.css
                             ../../themes/mono/kindle-chapter.css],
@@ -184,7 +186,8 @@ module VivlioStarter
           end
         end
 
-        # tokens: は :root の --book-* にして書き出す。空のテーマでは書かず、入口もテーマの無い入口と同じになる
+        # tokens: は :root の --book-* にして書き出す。tokens: が空のテーマ（standard）では書かず、入口の違いも
+        # テーマの styles: の行だけになる
         def test_should_write_the_theme_tokens_and_leave_an_empty_theme_out_of_the_entries
           with_theme_book do |theme, root|
             Dir.chdir(root) do
@@ -194,12 +197,14 @@ module VivlioStarter
 
               assert_includes css, ":root {\n  --book-color-accent: #555;\n  --book-color-link: #222;\n}"
 
-              empty = Theme.resolve('standard', root: REPO_ROOT)
-              EntryWriter.write_theme_tokens!(empty)
+              standard = Theme.resolve('standard', root: REPO_ROOT)
+              EntryWriter.write_theme_tokens!(standard)
               refute File.exist?(File.join(Common::CACHE_DIR, EntryWriter::THEME_TOKENS)), '前のビルドの残りを消す'
               EntryWriter::IMPORTS.each_key do |kind|
                 [nil, :epub, :kindle].each do |target|
-                  assert_equal EntryWriter.render(kind, target:, theme: nil), EntryWriter.render(kind, target:, theme: empty)
+                  own = EntryWriter.render(kind, target:, theme: standard).lines.grep_v(%r{\A@import url\("\.\./\.\./themes/standard/})
+
+                  assert_equal EntryWriter.render(kind, target:, theme: nil).lines, own
                 end
               end
             end

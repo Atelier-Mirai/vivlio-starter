@@ -31,11 +31,13 @@
 #
 # 画像 URL の基準:
 #   生成ファイルは `.cache/vs/` 直下に置かれるため、stylesheets/ 基準の相対
-#   （例: images/bundled/x.webp）は `../../stylesheets/images/bundled/x.webp` へ
+#   （例: images/x.webp）は `../../stylesheets/images/x.webp` へ、本のルートを指す
+#   `../themes/standard/images/x.webp` は `../../themes/standard/images/x.webp` へ
 #   組み替える。data:/http(s):/絶対パスは不変（調査報告 §7.3-1）。
 # ================================================================
 
 require 'fileutils'
+require 'pathname'
 require_relative '../common'
 require_relative '../font_manager'
 require_relative '../theme_color'
@@ -845,11 +847,13 @@ module VivlioStarter
         # 外部 URL・data URI・絶対パスは対象外。二重組替を避ける冪等ガード付き。
         # theme-images/… は生成バリアントのキャッシュ参照で、既に生成ファイル位置
         # （.cache/vs/）基準のため組み替えない（generated-assets 移設仕様 §3.1）。
+        # ../ で stylesheets/ の外（テーマの images/ など）を指すものは、つないだ後の ../ を畳む
         def rebase_relative(path, image_prefix:)
           p = path.to_s.strip
           return p if p.empty?
           return p if p.start_with?('data:', 'http://', 'https://', '/')
-          return p if p.start_with?(image_prefix, 'theme-images/')
+          return p if p.start_with?(image_prefix, "#{File.dirname(image_prefix)}/", 'theme-images/')
+          return Pathname("#{image_prefix}#{p}").cleanpath.to_s if p.start_with?('../')
 
           "#{image_prefix}#{p}"
         end

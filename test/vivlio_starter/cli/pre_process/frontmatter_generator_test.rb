@@ -51,22 +51,26 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
   TIR = VivlioStarter::CLI::PreProcessCommands::ThemeImageResolver
 
   # フォールバック先（sakura）も含め画像が一切無い空の一時ディレクトリへ隔離する。
-  # これにより実リポジトリの bundled 画像や ImageMagick 生成を巻き込まずに検証できる。
-  # バリアント生成キャッシュ（theme_images_cache_root）も同様に隔離する。
+  # これにより実リポジトリのテーマの画像（themes/standard/images/）や ImageMagick 生成を巻き込まずに
+  # 検証できる。バリアント生成キャッシュ（theme_images_cache_root）も同様に隔離し、テーマの images/ は空にする。
   def setup
     @had_root = TIR.instance_variable_defined?(:@theme_images_root)
     @original_root = TIR.instance_variable_get(:@theme_images_root)
     @had_cache_root = TIR.instance_variable_defined?(:@theme_images_cache_root)
     @original_cache_root = TIR.instance_variable_get(:@theme_images_cache_root)
+    @had_theme_dirs = TIR.instance_variable_defined?(:@theme_image_dirs)
+    @original_theme_dirs = TIR.instance_variable_get(:@theme_image_dirs)
     @tmp = Dir.mktmpdir('frontmatter-config-test')
     FileUtils.mkdir_p(File.join(@tmp, 'images'))
     TIR.instance_variable_set(:@theme_images_root, File.join(@tmp, 'images'))
     TIR.instance_variable_set(:@theme_images_cache_root, File.join(@tmp, 'theme-images'))
+    TIR.instance_variable_set(:@theme_image_dirs, [])
   end
 
   def teardown
     restore_ivar(:@theme_images_root, @had_root, @original_root)
     restore_ivar(:@theme_images_cache_root, @had_cache_root, @original_cache_root)
+    restore_ivar(:@theme_image_dirs, @had_theme_dirs, @original_theme_dirs)
     FileUtils.rm_rf(@tmp)
   end
 
@@ -81,16 +85,14 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
   # frontispiece 未指定時は edge_inset が既定値 0mm になり、
   # heading_chars/lead_chars は省略可（nil）のまま、画像は既定の sakura になることを確認
   def test_parse_frontispiece_config_defaults_when_unset
-    bundled = File.join(@tmp, 'images', 'bundled')
-    FileUtils.mkdir_p(bundled)
-    File.write(File.join(bundled, 'sakura_portrait.webp'), 'p')
+    File.write(File.join(@tmp, 'images', 'sakura_portrait.webp'), 'p')
 
     config = FG.parse_frontispiece_config(nil)
 
     assert_equal '0mm', config[:edge_inset]
     assert_nil config[:heading_chars]
     assert_nil config[:lead_chars]
-    assert_equal 'images/bundled/sakura_portrait.webp', config[:path], '未指定時は既定画像 sakura になるべき'
+    assert_equal 'images/sakura_portrait.webp', config[:path], '未指定時は既定画像 sakura になるべき'
   end
 
   # edge_inset/heading_chars/lead_chars を明示指定した場合、そのまま反映されることを確認。

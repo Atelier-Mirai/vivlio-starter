@@ -99,7 +99,7 @@ module VivlioStarter
           { reason: :variable, file: 'stylesheets/pages/chapter.css',
             rule: /\A@page \{ background-image: var\(--book-frontispiece-image\) \}\z/,
             why: '扉絵。Kindle には WebP を運ばないので、定義を TargetFilter が落とす。Kindle の章扉は合成した画像になる' },
-          { reason: :variable, file: 'stylesheets/parts/image-header.css', rule: /\{ background-image: var\(--book-ornament-image\) \}\z/,
+          { reason: :variable, file: 'themes/standard/image-header.css', rule: /\{ background-image: var\(--book-ornament-image\) \}\z/,
             why: '節絵。扉絵と同じく WebP の定義が落ちる。Kindle の節の見出しは合成した画像になる' },
           { reason: :calc, file: 'stylesheets/pages/chapter.css',
             rule: /\A@page \{ background-size: var\(--book-frontispiece-background-size\) \}\z/,
@@ -279,6 +279,8 @@ module VivlioStarter
               File.symlink(File.join(ROOT, 'stylesheets', it), File.join(stylesheets, it)) unless AUTHOR_FILES.include?("stylesheets/#{it}")
             end
             File.write(File.join(stylesheets, 'custom.css'), '')
+            # テーマ（standard の見出しの 2 枚）も束に入る
+            File.symlink(File.join(ROOT, Theme::DIR), File.join(dir, Theme::DIR))
             File.write(File.join(dir, '.cache', 'vs', EntryWriter::BOOK_SETTINGS), PreProcessCommands::BookSettingsCss.render)
             File.write(File.join(dir, '.cache', 'vs', EntryWriter::BOOK_FONTS), '')
             Dir.chdir(dir) do

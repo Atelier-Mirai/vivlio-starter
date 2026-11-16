@@ -46,11 +46,6 @@ module VivlioStarter
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
                        'tokens' => %w[tokens.css tokens-legacy.css] }.freeze
 
-        # どのページも theme 層に読む、standard テーマの見出しの 2 枚（theme-contract-spec.md §4・
-        # §9 の S6-4）。body の vs-header-* のクラスで選ぶので、そのクラスが付く章と付録のほかには
-        # 当たらない。S6-5 で themes/standard/ へ移し、theme.yml の styles: から読む
-        STANDARD_HEADERS = { 'theme' => %w[parts/simple-header.css parts/image-header.css] }.freeze
-
         # 本文のページ（章・付録・前書き・後書き）がみな読む部品（css-layer-restructure-spec.md §3.3）。
         # 順は 1.x の章の @import の順を保つ（prism・code・table・layout-utils・components →
         # chapter-common）
@@ -168,9 +163,8 @@ module VivlioStarter
         # @param theme [Theme::Resolved, nil] 選ばれたテーマ（読めなければ nil で、テーマの分を足さない）
         def render(kind, target: nil, theme: Theme.selected)
           name = entry_name(kind)
-          layered = [FOUNDATION, IMPORTS.fetch(name), STANDARD_HEADERS]
-                    .reduce { |a, b| a.merge(b) { |_, x, y| x + y } }
-                    .transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
+          layered = FOUNDATION.merge(IMPORTS.fetch(name)) { |_, a, b| a + b }
+                              .transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
           layered = layered.merge(theme_hrefs(theme)) { |_, a, b| a + b } if theme
           lines = LAYERS.flat_map { |layer| (layered[layer] || []).map { import(it, layer) } }
           lines << import(BOOK_SETTINGS, 'settings')

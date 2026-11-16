@@ -65,7 +65,7 @@ module VivlioStarter
         #
         # **EPUB / Kindle では捨てない。** あちらは html/ の原本（素材そのもの）を読む。
         # Kindle 端末のダークモードは背景を黒にするが画像は反転しないため、白で塗って
-        # あると矩形が浮く。テーマ素材（`stylesheets/images/`）も CSS 背景で入るので
+        # あると矩形が浮く。テーマ素材（`stylesheets/images/`・`themes/<名前>/images/`）も CSS 背景で入るので
         # `<img>` を経由せず、この差し替えの対象に最初から入らない——章扉の生成では
         # `-trim` が透過を「絵の範囲」の手掛かりに使っており、潰してはならない。
         FLATTEN_OPTIONS = %w[-background white -alpha remove -alpha off].freeze

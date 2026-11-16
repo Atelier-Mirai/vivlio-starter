@@ -76,10 +76,8 @@ module VivlioStarter
 
       # 実在する base 画像（バリアント生成元）があれば警告しない
       def test_existing_base_image_does_not_warn
-        with_temp_theme_images do |root|
-          bundled = File.join(root, 'bundled')
-          FileUtils.mkdir_p(bundled)
-          File.write(File.join(bundled, 'sakura.webp'), 'base')
+        with_temp_theme_images do |_root, theme_images|
+          File.write(File.join(theme_images, 'sakura.webp'), 'base')
 
           assert_empty capture_stdout { TV.validate_image(:ornament, 'sakura', variant: :landscape) }
         end
@@ -173,10 +171,8 @@ module VivlioStarter
 
       # theme_image_available? : base 画像があれば true（バリアント未生成でも生成元になる）
       def test_theme_image_available_true_for_base_image
-        with_temp_theme_images do |root|
-          bundled = File.join(root, 'bundled')
-          FileUtils.mkdir_p(bundled)
-          File.write(File.join(bundled, 'himawari.webp'), 'base')
+        with_temp_theme_images do |_root, theme_images|
+          File.write(File.join(theme_images, 'himawari.webp'), 'base')
 
           assert PreProcessCommands::ThemeImageResolver.theme_image_available?('himawari', variant: :portrait)
         end
@@ -197,28 +193,31 @@ module VivlioStarter
         out
       end
 
-      # ThemeImageResolver の画像ルートを一時ディレクトリへ差し替える
+      # ThemeImageResolver の置き場（stylesheets/images/・テーマの images/）を一時ディレクトリへ差し替える
       def with_temp_theme_images
         resolver = PreProcessCommands::ThemeImageResolver
-        @resolver_had_root = resolver.instance_variable_defined?(:@theme_images_root)
-        @resolver_original_root = resolver.instance_variable_get(:@theme_images_root)
+        @resolver_originals = %i[@theme_images_root @theme_image_dirs].to_h do |name|
+          [name, [resolver.instance_variable_defined?(name), resolver.instance_variable_get(name)]]
+        end
 
         Dir.mktmpdir('theme-validator-test') do |tmp|
           images_root = File.join(tmp, 'images')
-          FileUtils.mkdir_p(images_root)
+          theme_images = File.join(tmp, 'themes', 'standard', 'images')
+          FileUtils.mkdir_p([images_root, theme_images])
           resolver.instance_variable_set(:@theme_images_root, images_root)
-          yield images_root
+          resolver.instance_variable_set(:@theme_image_dirs, [theme_images])
+          yield images_root, theme_images
         end
       end
 
       def restore_theme_images_root
         resolver = PreProcessCommands::ThemeImageResolver
-        return unless defined?(@resolver_had_root)
-
-        if @resolver_had_root
-          resolver.instance_variable_set(:@theme_images_root, @resolver_original_root)
-        elsif resolver.instance_variable_defined?(:@theme_images_root)
-          resolver.remove_instance_variable(:@theme_images_root)
+        (@resolver_originals || {}).each do |name, (defined, value)|
+          if defined
+            resolver.instance_variable_set(name, value)
+          elsif resolver.instance_variable_defined?(name)
+            resolver.remove_instance_variable(name)
+          end
         end
       end
     end

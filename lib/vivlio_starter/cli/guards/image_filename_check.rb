@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../image_filename_sanitizer'
+require_relative '../theme'
 
 module VivlioStarter
   module CLI
@@ -10,8 +11,8 @@ module VivlioStarter
       #
       # きっかけ: アポストロフィ `'` を含む画像が Kindle で解決できず W14010 になった。
       # `'` 限定ではなく「確実に壊れる文字」一般を、改名案と出現箇所を添えて警告する。
-      # 重大度は警告のみ（非ブロッキング）。検出は images/・covers/・stylesheets/images/ の
-      # 3 ディレクトリすべてに対して行い、出現箇所の行番号報告は本文画像（contents/*.md
+      # 重大度は警告のみ（非ブロッキング）。検出は images/・covers/・stylesheets/images/・themes/ の
+      # 4 ディレクトリすべてに対して行い、出現箇所の行番号報告は本文画像（contents/*.md
       # 参照）にのみ付ける（表紙・扉絵は config/CSS 経由のため固定文言の軽い案内）。
       class ImageFilenameCheck < BaseCheck
         # 検出対象とする画像拡張子。
@@ -29,7 +30,8 @@ module VivlioStarter
           {
             Common::IMAGES_DIR => :contents,
             Common::COVERS_DIR => :cover,
-            File.join(Common::STYLESHEETS_DIR, 'images') => :frontispiece
+            File.join(Common::STYLESHEETS_DIR, 'images') => :frontispiece,
+            Theme::DIR => :frontispiece
           }
         end
 

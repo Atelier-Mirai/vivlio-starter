@@ -27,12 +27,13 @@ module VivlioStarter
     class ThemeTest < Minitest::Test
       REPO_ROOT = File.expand_path('../../..', __dir__)
 
-      def test_should_read_the_bundled_standard_theme_as_an_empty_declaration
+      # standard は見出しの 2 枚だけを持ち、tokens: は空（theme-contract-spec.md §4・§9 の S6 の決め 12）
+      def test_should_read_the_bundled_standard_theme
         theme = Theme.resolve('standard', root: REPO_ROOT)
 
         assert_pattern do
           theme.manifest => { name: 'standard', title: '標準（技術書）', version: '2.0.0', contract: 1, extends: nil,
-                              styles: [], tokens: {}, warnings: [] }
+                              styles: %w[simple-header.css image-header.css], tokens: {}, warnings: [] }
         end
         assert_nil theme.base
         assert_equal({ writing_mode: %i[horizontal], layout: %i[reflowable], targets: %i[pdf print_pdf epub kindle] },

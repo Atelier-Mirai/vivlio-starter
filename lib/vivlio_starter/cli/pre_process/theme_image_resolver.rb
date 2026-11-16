@@ -7,16 +7,28 @@
 #   テーマ画像（扉絵・飾り画像）のパスを解決する。
 #   指定された名前から実際のファイルパスまたはプレースホルダーを返す。
 #
-# 探索順序:
-#   1. {name}_portrait.{webp,png,jpg,jpeg}（バリアント。ユーザー手置き → 生成キャッシュ .cache/vs/theme-images/）
-#   2. images/{name}.webp
-#   3. images/{name}.png/.jpg/.jpeg
+# 画像の置き場（v2-migration-plan.md §5.3 の 4。この順に探す）:
+#   1. 本の直下からのパス（「/」を含み、そのファイルがあるとき。例: images/door/rose.png）
+#   2. stylesheets/images/ の中の名前（:user。1.x からの著者の置き場）
+#   3. 選ばれたテーマの images/ の中の名前（:theme。テーマ → 土台の順。standard の 12 枚の花）
+#
+# 名前で探すときの順序:
+#   1. {name}_portrait.{webp,png,jpg,jpeg}（バリアント。手置き → 生成キャッシュ .cache/vs/theme-images/）
+#   2. {name}.webp
+#   3. {name}.png/.jpg/.jpeg
 #   4. プレースホルダー SVG（見つからない場合）
 #
 # 返却形（generated-assets 移設仕様 §3.1）:
 #   - stylesheets/images/ 内の実体   → 'images/<サブパス>'（stylesheets/ 基準・従来形）
 #   - 生成キャッシュ内のバリアント   → 'theme-images/<サブパス>'（book-settings.css の
 #     生成位置 .cache/vs/ 基準。BookSettingsCss.rebase_relative はこの形を素通しする）
+#   - ほかの実体（テーマの images/・本の直下からのパス） → '../<本のルートからのパス>'
+#     （stylesheets/ 基準）
+#
+# 生成キャッシュの中の名前（cache_stem）:
+#   stylesheets/images/ の画像はそこからの相対（1.x と同じ）、ほかは本のルートからの相対
+#   （themes/standard/images/sakura.webp → theme-images/themes/standard/images/sakura_portrait.webp）。
+#   テーマごとに分けるので、テーマを替えても同じ名前の別の画像のバリアントを使わない。
 #
 # バリアント:
 #   - portrait: 縦長（扉絵用、ページ比率に合わせて飾りの間を広げる）
@@ -29,6 +41,7 @@
 require 'cgi'
 require 'uri'
 require_relative '../common'
+require_relative '../theme'
 
 module VivlioStarter
   module CLI
@@ -38,13 +51,13 @@ module VivlioStarter
         THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
 
         # 扉絵・飾り画像の既定画像スラッグ。未指定時も無効な指定時もこの画像に寄せる。
-        # （無効な color が既定色へフォールバックするのと揃えた挙動。バンドルの桜を使う）
+        # （無効な color が既定色へフォールバックするのと揃えた挙動。standard テーマの桜を使う）
         FALLBACK_THEME_IMAGE_SLUG = 'sakura'
 
         # 万一バリアント解決に失敗したときの最終フォールバックパス（通常は到達しない）。
         # バリアントは生成キャッシュに出るため theme-images/ 形で指す（移設仕様 §3.1）。
-        FRONTISPIECE_DEFAULT_PATH = 'theme-images/bundled/sakura_portrait.webp'
-        ORNAMENT_DEFAULT_PATH = 'theme-images/bundled/sakura_landscape.webp'
+        FRONTISPIECE_DEFAULT_PATH = 'theme-images/themes/standard/images/sakura_portrait.webp'
+        ORNAMENT_DEFAULT_PATH = 'theme-images/themes/standard/images/sakura_landscape.webp'
 
         DEFAULT_PAGE_WIDTH_MM = 210.0
         DEFAULT_PAGE_HEIGHT_MM = 297.0
@@ -99,20 +112,20 @@ module VivlioStarter
           slug_value = value =~ /^frame-[a-z0-9_-]+(?:_landscape)?(?:\.[^.]+)?$/i ? value.downcase : value
           slug = normalize_theme_image_slug(slug_value)
           base_slug, requested_variant, ext = split_slug_and_variant(slug)
+          book_path = book_root_image(value)
 
           # ornament用に landscape バリアント（2.39:1）を使用
           if requested_variant == :landscape
-            if (direct = find_existing_theme_image(slug, location_order: %i[user bundled]))
+            if (direct = book_path || find_existing_theme_image(slug))
               return theme_relative_path(direct)
             end
-          elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape",
-                                                              location_order: %i[user bundled]))
+          elsif !book_path && (variant_specific = find_existing_theme_image("#{base_slug}_landscape"))
             return theme_relative_path(variant_specific)
           end
 
           base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
 
-          if (direct = find_existing_theme_image(base_query, location_order: %i[user bundled]))
+          if (direct = book_path || find_existing_theme_image(base_query))
             if allow_generation
               require_relative 'image_generator'
               # ornamentはlandscapeバリアントを生成
@@ -182,19 +195,19 @@ module VivlioStarter
           slug_value = slug_transform ? slug_transform.call(value) : value
           slug = normalize_theme_image_slug(slug_value)
           base_slug, requested_variant, ext = split_slug_and_variant(slug)
+          book_path = book_root_image(value)
 
-          if (requested_variant == variant) && (direct = find_existing_theme_image(slug,
-                                                                                   location_order: %i[user bundled]))
+          if (requested_variant == variant) && (direct = book_path || find_existing_theme_image(slug))
             return theme_relative_path(direct)
           end
 
-          if (variant_specific = find_existing_theme_variant(base_slug, variant))
+          if !book_path && (variant_specific = find_existing_theme_variant(base_slug, variant))
             return theme_relative_path(variant_specific)
           end
 
           base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
 
-          if (user_source = find_existing_theme_image(base_query, location_order: [:user]))
+          if (user_source = book_path || find_existing_theme_image(base_query, location_order: [:user]))
             ratio = image_ratio(user_source)
             return theme_relative_path(user_source) if ratio && ratio_accepted_for_frontispiece?(ratio)
 
@@ -206,10 +219,10 @@ module VivlioStarter
             end
           end
 
-          if allow_generation && (bundled_source = find_existing_theme_image(base_query, location_order: [:bundled],
-                                                                                         allowed_extensions: ['.webp']))
+          if allow_generation && (theme_source = find_existing_theme_image(base_query, location_order: [:theme],
+                                                                                       allowed_extensions: ['.webp']))
             require_relative 'image_generator'
-            if (generated = ImageGenerator.ensure_variant_generated(bundled_source, variant))
+            if (generated = ImageGenerator.ensure_variant_generated(theme_source, variant))
               return theme_relative_path(generated)
             end
           end
@@ -238,6 +251,7 @@ module VivlioStarter
 
           value = raw.to_s.strip
           return true if value =~ /^url\(/i || value =~ %r{^https?://}i
+          return true if book_root_image(value)
 
           slug = normalize_theme_image_slug(value)
           base_slug, requested_variant, ext = split_slug_and_variant(slug)
@@ -255,16 +269,16 @@ module VivlioStarter
         # 次に生成キャッシュ（.cache/vs/theme-images/。ImageGenerator の出力先）を見る。
         # 手置きは元画像と同じく WebP・PNG・JPEG を受ける（ornament の直接探索と揃える）。
         def find_existing_theme_variant(base_slug, variant)
-          find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled]) ||
-            find_cached_theme_variant(base_slug, variant)
+          find_existing_theme_image("#{base_slug}_#{variant}") || find_cached_theme_variant(base_slug, variant)
         end
 
-        # 生成キャッシュ内のバリアントを探索する。
-        # ImageGenerator は images root からの相対サブパスを保って生成するため、
-        # bundled 由来は theme-images/bundled/ に、ユーザー画像由来はルート直下に出る。
+        # 生成キャッシュ内のバリアントを探索する（名前の決まりはファイル冒頭の cache_stem）。
+        # stylesheets/images/ の画像のバリアントはキャッシュの直下の同じサブパスに、テーマの画像の
+        # バリアントは theme-images/themes/<名前>/images/ に出る。
         def find_cached_theme_variant(base_slug, variant)
-          %W[#{base_slug}_#{variant}.webp bundled/#{File.basename(base_slug)}_#{variant}.webp].uniq.each do |candidate|
-            path = File.join(theme_images_cache_root, candidate)
+          stems = [base_slug, *theme_image_dirs.map { cache_stem(File.join(it, theme_slug(base_slug))) }]
+          stems.uniq.each do |stem|
+            path = File.join(theme_images_cache_root, "#{stem}_#{variant}.webp")
             return path if File.exist?(path) && cached_variant_current?(path, variant)
           end
 
@@ -288,11 +302,36 @@ module VivlioStarter
           ratio.nil? || ((ratio - expected).abs / expected) <= CACHED_VARIANT_RATIO_TOLERANCE
         end
 
-        # 生成キャッシュのバリアントの元画像（stylesheets/images/ の同じサブパス）。
-        # ImageGenerator は元画像のサブパスを保って出力するので、そこから逆に引ける
+        # 生成キャッシュのバリアントの元画像。cache_stem の逆で、stylesheets/images/ の同じサブパスか、
+        # 本のルートからの同じパス（テーマの images/ など）
         def variant_source(cached_path, variant)
           stem = cached_path.delete_prefix("#{theme_images_cache_root}/").delete_suffix("_#{variant}.webp")
-          THEME_IMAGE_EXTENSIONS.map { File.join(theme_images_root, "#{stem}#{it}") }.find { File.exist?(it) }
+          [File.join(theme_images_root, stem), stem].product(THEME_IMAGE_EXTENSIONS)
+                                                    .map(&:join).find { File.exist?(it) }
+        end
+
+        # 生成キャッシュの中の、元画像に対応する名前（拡張子なし）。stylesheets/images/ の画像は
+        # そこからの相対（1.x と同じ）、ほかは本のルートからの相対
+        # @param source_path [String] 元画像（本のルートからの相対か、絶対パス）
+        def cache_stem(source_path)
+          stem = book_relative(source_path).sub(/\.[^.]+\z/, '')
+          stem.delete_prefix("#{book_relative(theme_images_root)}/")
+        end
+
+        # 本のルートからの相対パス（作業ディレクトリの下の絶対パスを相対にする）
+        def book_relative(path)
+          path.to_s.delete_prefix("#{Dir.pwd}/")
+        end
+
+        # 置き場の 1（本の直下からのパス）。「/」を含み、本の中にその画像があるときだけ、そのパスを返す。
+        # 名前だけの指定（sakura）は 2・3 の置き場で探す
+        # @return [String, nil]
+        def book_root_image(value)
+          path = value.to_s.strip.delete_prefix('./')
+          return nil unless path.include?('/') && !path.start_with?('/') && !path.split('/').include?('..')
+          return nil unless THEME_IMAGE_EXTENSIONS.include?(File.extname(path).downcase)
+
+          path if File.file?(path)
         end
 
         # テーマ画像スラッグを正規化
@@ -314,8 +353,8 @@ module VivlioStarter
           end
         end
 
-        # 既存テーマ画像を探索
-        def find_existing_theme_image(slug, location_order: %i[user bundled],
+        # 既存テーマ画像を名前で探索する。:user は stylesheets/images/、:theme はテーマの images/
+        def find_existing_theme_image(slug, location_order: %i[user theme],
                                       allowed_extensions: THEME_IMAGE_EXTENSIONS)
           base = normalize_theme_image_slug(slug)
           ext = File.extname(base)
@@ -327,9 +366,9 @@ module VivlioStarter
                        end
 
           location_order.each do |loc|
-            dir = loc == :user ? theme_images_root : File.join(theme_images_root, 'bundled')
-            candidates.each do |candidate|
-              path = File.join(dir, candidate)
+            dirs, names = loc == :user ? [[theme_images_root], candidates] : [theme_image_dirs, candidates.map { theme_slug(it) }]
+            dirs.product(names).each do |dir, name|
+              path = File.join(dir, name)
               return path if File.exist?(path)
             end
           end
@@ -337,9 +376,19 @@ module VivlioStarter
           nil
         end
 
-        # テーマ画像のルートディレクトリ（ソース置き場: stylesheets/images/）
+        # テーマの images/ の中で探す名前。1.x の「bundled/<名前>」（同梱の画像を、同じ名前の独自画像より
+        # 先に使う書き方。stylesheets/images/bundled/ にあった）は、テーマの画像の名前として読む
+        def theme_slug(slug) = slug.delete_prefix('bundled/')
+
+        # 著者のテーマ画像の置き場（stylesheets/images/）
         def theme_images_root
           @theme_images_root ||= File.join(Common::STYLESHEETS_DIR, 'images')
+        end
+
+        # 選ばれたテーマの images/（テーマ → 土台の順）。テーマが読めなければ空。
+        # テストは @theme_image_dirs を差し替える
+        def theme_image_dirs
+          @theme_image_dirs || Theme.selected&.chain&.reverse&.map { File.join(it.dir, 'images') } || []
         end
 
         # 生成バリアントのキャッシュルート（.cache/vs/theme-images/）。
@@ -353,7 +402,10 @@ module VivlioStarter
           cache_prefix = "#{theme_images_cache_root}/"
           return "theme-images/#{path.delete_prefix(cache_prefix)}" if path.start_with?(cache_prefix)
 
-          path.sub(%r{\A#{Regexp.escape(theme_images_root)}/}, 'images/')
+          user_prefix = "#{theme_images_root}/"
+          return "images/#{path.delete_prefix(user_prefix)}" if path.start_with?(user_prefix)
+
+          "../#{book_relative(path)}"
         end
 
         # 画像のアスペクト比（縦 / 横）を取得。章ごとに同じ画像を何度も調べるので、

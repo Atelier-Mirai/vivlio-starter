@@ -144,7 +144,7 @@ module VivlioStarter
             Common.stub :log_warn, ->(msg, **) { warns << msg } do
               capture_io do
                 result = PreProcessCommands::ImageGenerator.generate_frontispiece_and_ornament_from(
-                  'dg04.png', waifu2x: '/nonexistent/waifu2x-ncnn-vulkan'
+                  'stylesheets/images/dg04.png', waifu2x: '/nonexistent/waifu2x-ncnn-vulkan'
                 )
               end
             end

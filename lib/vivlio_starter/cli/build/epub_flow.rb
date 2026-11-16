@@ -138,6 +138,11 @@ module VivlioStarter
 
           # --- Phase: Vivliostyle build ---
           # Kindle は KPF 変換の入力にすぎないため中間 EPUB（…-kindle.epub）として作る（§1-4）。
+          # 作業ディレクトリ（workspaceDir）はクリーンと Kindle で共有する。Vivliostyle は組むたびに
+          # そこを消すが、<workspaceDir>/themes だけは自分のテーマの置き場（themesDir）として残す。
+          # パッケージに運ぶテーマの画像（themes/<名前>/images/）がそこに重なるので、先に組んだ
+          # クリーンの画像（Kindle が運ばない WebP）や前のビルドの画像が、次の EPUB に入る。組む前に空にする
+          FileUtils.rm_rf(Common::BUILD_VIVLIOSTYLE_EPUB_DIR)
           to_kpf = target.packager == :vivliostyle_epub_to_kpf
           target_name = to_kpf ? Common.generate_kindle_epub_filename : Common.generate_epub_filename
           EpubCommands.execute_epub({}, target_name, config_path:,

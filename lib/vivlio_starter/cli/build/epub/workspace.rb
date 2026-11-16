@@ -60,6 +60,7 @@ module VivlioStarter
         # - stylesheets/**: CSS は運ばない（styles/ の平らな CSS だけを読む・Epub::Stylesheets.bundle_flat!）。
         #   twemoji 直下（絵文字マスター・プレーン復元で未参照）とフォント実体（非埋め込み時）も除外。
         #   kindle は WebP も除外（CSS の参照は Css::TargetFilter が宣言ごと落とす）。
+        # - themes/<名前>/images/**: 選ばれたテーマの画像（localize_theme_images!）。
         # - theme-images/**: 生成バリアント webp（生成キャッシュ）のうち book-settings.css が
         #   参照する分を同梱（:epub のみ・移設仕様 §3.2）。
         # - カバー画像: embed 有効時のみ dir/covers/ へコピー（cover は entryContext 基準で解決）。
@@ -74,9 +75,20 @@ module VivlioStarter
             localized_image?(it, flavor)
           end
           copy_asset_tree!(Common.stylesheets_dir, dir, flavor:) { localized_stylesheet?(it, flavor) }
+          localize_theme_images!(dir, flavor)
           localize_theme_variant_images!(dir, flavor)
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
+        end
+
+        # 選ばれたテーマ（と土台）の images/ を、本のルートからと同じ階層で同梱する（themes/<名前>/images/）。
+        # 扉絵・節絵の元画像と、テーマの CSS が url() で指す画像の置き場で、stylesheets/ と同じく
+        # 参照を見ずに運び、参照されない画像は sweep_unreferenced_assets! が外す。
+        # kindle は WebP を運ばない（localized_stylesheet? と同じ）
+        def localize_theme_images!(dir, flavor)
+          PreProcessCommands::ThemeImageResolver.theme_image_dirs.each do |images|
+            copy_asset_tree!(images, dir, flavor:) { flavor != :kindle || !it.match?(/\.webp\z/i) }
+          end
         end
 
         # 生成バリアント webp（.cache/vs/theme-images/）を dir/theme-images/ へ同梱する。

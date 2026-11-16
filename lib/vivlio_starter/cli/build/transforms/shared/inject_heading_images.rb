@@ -140,10 +140,10 @@ module VivlioStarter
         end
 
         # テーマ画像の url(...) 値を実ファイルパスへ解決する。
-        # 生成バリアント（theme-images/…）は生成キャッシュ基準、それ以外（images/…）は
-        # stylesheets/ 基準で解決する（返却 2 形・移設仕様 §3.1/§3.2）。
+        # 生成バリアント（theme-images/…）は生成キャッシュ基準、それ以外（images/…・../themes/…）は
+        # stylesheets/ 基準で解決する（返却形は ThemeImageResolver の冒頭・移設仕様 §3.1/§3.2）。
         #
-        # @param rel [String, nil] 例: "theme-images/bundled/sakura_portrait.webp" / "images/mypic.webp"
+        # @param rel [String, nil] 例: "theme-images/themes/standard/images/sakura_portrait.webp" / "images/mypic.webp"
         # @return [String, nil] 存在する実ファイルパス、無ければ nil
         def resolve_theme_image_file(rel)
           return nil if rel.nil? || rel.strip.empty?

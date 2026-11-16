@@ -2,8 +2,8 @@
    simple-header.css
    -------------------------------------------------------------
    シンプル版（画像なし）の章ヘッダースタイル。
-   どのページの入口（Css::EntryWriter）も image-header.css と共に theme 層に読む
-   （standard テーマの見出し。theme-contract-spec.md §4）。
+   standard テーマの見出し。theme.yml の styles: に image-header.css と並べ、どのページの
+   入口（Css::EntryWriter）も theme 層に読む（theme-contract-spec.md §4）。
    theme.style: simple の章／付録（付録は常に simple）で body.vs-header-simple が
    付与され、この規則群だけが有効になる（方式A・BodyClassInjector が注入）。
    画像版とは body クラスで相互排他になるため、両方読んでも衝突しない。

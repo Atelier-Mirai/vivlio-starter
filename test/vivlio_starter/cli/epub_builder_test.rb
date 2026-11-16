@@ -519,32 +519,32 @@ module VivlioStarter
       # パッケージ theme-images/ へ同梱されることを確認（generated-assets 移設仕様 §3.2）
       def test_localize_theme_variant_images_copies_referenced_variants
         cache_root = File.join(Common::CACHE_DIR, 'theme-images')
-        FileUtils.mkdir_p(File.join(cache_root, 'bundled'))
-        File.write(File.join(cache_root, 'bundled', 'sakura_landscape.webp'), 'ref')
-        File.write(File.join(cache_root, 'bundled', 'himawari_portrait.webp'), 'unref')
+        FileUtils.mkdir_p(File.join(cache_root, 'themes/standard/images'))
+        File.write(File.join(cache_root, 'themes/standard/images', 'sakura_landscape.webp'), 'ref')
+        File.write(File.join(cache_root, 'themes/standard/images', 'himawari_portrait.webp'), 'unref')
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
-          :root { --book-ornament-image: url("theme-images/bundled/sakura_landscape.webp"); }
+          :root { --book-ornament-image: url("theme-images/themes/standard/images/sakura_landscape.webp"); }
         CSS
 
         dir = 'pkg-epub'
         FileUtils.mkdir_p(dir)
         Build::Epub::Workspace.localize_theme_variant_images!(dir, :epub)
 
-        assert_path_exists File.join(dir, 'theme-images', 'bundled', 'sakura_landscape.webp'),
+        assert_path_exists File.join(dir, 'theme-images', 'themes/standard/images', 'sakura_landscape.webp'),
                            'CSS が参照するバリアントは同梱されるべき'
-        refute_path_exists File.join(dir, 'theme-images', 'bundled', 'himawari_portrait.webp'),
+        refute_path_exists File.join(dir, 'theme-images', 'themes/standard/images', 'himawari_portrait.webp'),
                            'CSS が参照しないバリアントは同梱しないべき'
       end
 
       # kindle フレーバでは WebP 非対応のため theme-images を同梱しないことを確認
       def test_localize_theme_variant_images_skips_kindle
         cache_root = File.join(Common::CACHE_DIR, 'theme-images')
-        FileUtils.mkdir_p(File.join(cache_root, 'bundled'))
-        File.write(File.join(cache_root, 'bundled', 'sakura_landscape.webp'), 'ref')
+        FileUtils.mkdir_p(File.join(cache_root, 'themes/standard/images'))
+        File.write(File.join(cache_root, 'themes/standard/images', 'sakura_landscape.webp'), 'ref')
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
-          :root { --book-ornament-image: url("theme-images/bundled/sakura_landscape.webp"); }
+          :root { --book-ornament-image: url("theme-images/themes/standard/images/sakura_landscape.webp"); }
         CSS
 
         dir = 'pkg-kindle'
@@ -552,6 +552,24 @@ module VivlioStarter
         Build::Epub::Workspace.localize_theme_variant_images!(dir, :kindle)
 
         refute_path_exists File.join(dir, 'theme-images'), 'kindle には theme-images を同梱しないべき'
+      end
+
+      # 選ばれたテーマの images/ は本のルートと同じ階層で同梱し、kindle には WebP を運ばない
+      def test_localize_theme_images_mirrors_the_theme_directory
+        FileUtils.mkdir_p('themes/standard/images')
+        File.write('themes/standard/images/sakura.webp', 'webp')
+        File.write('themes/standard/images/frame.png', 'png')
+        resolver = PreProcessCommands::ThemeImageResolver
+
+        resolver.stub(:theme_image_dirs, ['themes/standard/images']) do
+          Build::Epub::Workspace.localize_theme_images!('pkg-epub', :epub)
+          Build::Epub::Workspace.localize_theme_images!('pkg-kindle', :kindle)
+        end
+
+        assert_path_exists 'pkg-epub/themes/standard/images/sakura.webp'
+        assert_path_exists 'pkg-epub/themes/standard/images/frame.png'
+        refute_path_exists 'pkg-kindle/themes/standard/images/sakura.webp'
+        assert_path_exists 'pkg-kindle/themes/standard/images/frame.png'
       end
 
       # html/ → 消費者 dir のステージングで asset_prefix が剥がれることを確認（P4 段階 4）
@@ -581,7 +599,7 @@ module VivlioStarter
         File.write('stylesheets/custom.css', %(@page { @top-left { content: "柱"; } }\n))
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(File.join(Common::CACHE_DIR, 'book-settings.css'),
-                   %(:root { --bg: url("theme-images/bundled/a.webp"); }\n))
+                   %(:root { --bg: url("theme-images/themes/standard/images/a.webp"); }\n))
         dir = 'pkg-epub'
         FileUtils.mkdir_p(dir)
         html = File.join(dir, '01-intro.html')
@@ -593,7 +611,7 @@ module VivlioStarter
         flat = File.read(File.join(dir, 'styles', 'chapter.css'))
         assert flat.index('.box') < flat.index(':root'), 'settings 層は parts 層の後に並ぶ'
         assert_includes flat, 'url("../stylesheets/images/box.webp")'
-        assert_includes flat, 'url("../theme-images/bundled/a.webp")'
+        assert_includes flat, 'url("../theme-images/themes/standard/images/a.webp")'
         refute_includes flat, '@top-left', '余白の箱は EPUB の CSS から落とす'
         refute_match(/@layer|@import/, flat)
       end
