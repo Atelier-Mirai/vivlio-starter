@@ -1078,4 +1078,6 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | 宣言に無いキー | 写しの `book.yml` に `theme.colour: red` を書いて `bin/vs preflight` を走らせ、「config/book.yml の theme.colour は、テーマ standard には無い設定です」「直すなら: colour → color」が出た（終了コード 0） |
 | テスト | `rake test`・`rake test:standard` とも 4,466 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
 
-- Kindle Previewer と Apple Books の 10 か所の画面の見比べ（`v2-migration-plan.md` §3.6 の S6-7 の後の 1 回）は、まだ行っていない。EPUB と Kindle の中間生成物が前段と同じで、前段は S6-6 と計算値・中間生成物とも差 0 なので、表示が変わる経路は無いと見込んでいる。
+- **画面（`v2-migration-plan.md` §3.6 の S6-7 の後の 1 回・2026-11-17）。** B1 の KPF とクリーン EPUB を、r2 の 10 か所（基準の `VERSIONS.md` の表）と見比べた。撮った画面は `r2/check/s6-7/screens/`。
+  - Kindle Previewer（Tablet・縦・Mincho・Size 4）は、10 か所とも r2 と画素まで一致する頁があった（`magick compare -metric AE` で 0）。ただし後ろの 4 か所は Location がずれ、コード 1421 → 1428、付録 8400 → 8436、用語集 9990 → 10024、索引 10290 → 10326 で一致した（前の 6 か所は同じ Location）。全体は 10,360 Locations。ずれの元は、Kindle 用 EPUB の XHTML が各 20 バイト長くなったこと（Techbook が `<head>` に入れる `<style>` の中の変数の名前が S6-2 で `--book-*` に変わった）と、S6-4〜S6-6 で `styles/*.css` の中身が変わったことで、表示は変わらない。r3 で場所の表を作り直す。
+  - Apple Books（書名を `vs-test s6-7 ` で始めた写し・1024×768 の見開き）は、r2 と同じ着き方（「次の章」1・4・28・33・35・36 回、第 2 章の扉から → 1〜4 回）で、10 か所とも同じ頁（同じページ番号）に着いた。違う画素は、窓の題（書名）と窓の角のほか、下のページ番号の数字の横の位置（数字は同じ）と、付録のコードの字の縁の 4 画素だけで、紙面は同じ。写しは撮った後にライブラリから削除した（「名称変更…」で書名を確かめてから）。
