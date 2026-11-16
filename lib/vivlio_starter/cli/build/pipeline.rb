@@ -3,6 +3,7 @@
 require 'digest'
 require 'tmpdir'
 
+require_relative 'plan'
 require_relative 'backlink_dedup_orchestrator'
 require_relative 'destination_names'
 require_relative 'type3_font_check'
@@ -44,8 +45,11 @@ module VivlioStarter
         #   ステップ計時の合計より短くなるため、著者へ見せる所要時間はこちらを使う。
         # @!attribute parallel_step_labels [Array<String>] 子枝で並行に走った
         #   ステップのラベル（＝壁時計には現れないぶん）。逐次実行なら空。
-        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets, :wall_time,
+        attr_reader :timings, :mode, :entries, :generated_pdf_name, :plan, :wall_time,
                     :parallel_step_labels
+
+        # 出力先（plan が持つ。EpubFlow と表示が読む）
+        def targets = plan.targets
 
         # @param command [Samovar::Command] ビルドコマンドインスタンス
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
@@ -57,7 +61,8 @@ module VivlioStarter
           @entries = Array(entries)
           @mode = mode
           @options = command.options
-          @targets = targets || Build::Targets.resolve
+          # 段を走らせるかどうかの材料は、ここで一度だけ決める（v2-architecture-spec.md §3.2）
+          @plan = BuildPlan.resolve(targets: targets || Build::Targets.resolve)
           @timings = []
           @steps = []
           @generated_pdf_name = nil
@@ -74,7 +79,7 @@ module VivlioStarter
           Common.reset_vivliostyle_build_timings
           # 回転テーブルの画像を PDF 枝が用意する構成でだけ、Kindle 枝を待たせる。
           # 待つ相手がいないビルドで永久に待たないよう、ここで明示的に宣言する。
-          Build::RotateTableImages.arm!(mode == :full && rotate_table_images?)
+          Build::RotateTableImages.arm!(mode == :full && plan.rotate_table_images?)
           # 画像の測定も同じ。測るのは shrink oversized images の段（t.any_pdf?）だけである。
           Build::DerivedImage.arm!(mode == :full && targets.any_pdf?)
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -259,14 +264,10 @@ module VivlioStarter
           end
         end
 
-        # 入稿用 PDF を閲覧用 PDF から導出するか（ビルド開始時に一度だけ確定）。
-        # 導出時は print_pdf 単独ターゲットでも閲覧用の中間 PDF が必要になるため、
-        # ステップ表の条件と dedup の再レンダ条件がこの値に連動する。
-        # プロバイダ能力には依存しない（MIT のみで完結する）。
-        def derive_print? = targets.print_pdf && !Common.print_pdf_full_bleed?
-
         # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件, 相, 単位]。
-        # 条件はビルド開始時に確定した targets から評価した真偽値（ビルド中は不変）。
+        # 条件はビルド開始時に確定した plan（出力先・軸・機能）だけから評価した真偽値（ビルド中は不変）。
+        # ハンドラの中で設定を読んで何もせずに戻る段は作らない——走らせるかどうかは、この表だけで読める
+        # ようにする（v2-architecture-spec.md §3.2）。
         # 分岐はこの条件列に吸収され、経路の組み合わせは表を上から評価するだけで一意に定まる。
         #
         # **相**は :shared → (:pdf ∥ :epub) → :join の順に評価される
@@ -280,31 +281,32 @@ module VivlioStarter
         # 逆にすると章単位でないものが単章で動いて壊れる。
         # 単位は「章単位か」だけを言い、単章で走らせるかは SINGLE_MODE_SKIP が最終的に決める。
         def full_mode_step_table
-          t = targets
-          derive_print = derive_print?
+          t = plan.targets
+          f = plan.features
+          derive_print = plan.derive_print?
           # 導出のソースは「dedup 済みの閲覧用中間 PDF」。よって print_pdf 単独でも
           # 本文・前付・奥付の閲覧用 PDF を作る。最終成果物（merge 以降）は従来どおり t.pdf 次第。
-          need_viewing_pdf = t.pdf || derive_print
+          need_viewing_pdf = plan.viewing_pdf?
           [
             # --- :shared 共通前段（HTML と共有資産を作る・両枝が読む） ---
             ['clean',                     -> { run_step0_clean },                             true, :shared, :chapter],
             ['optimize images',           -> { run_step1_optimize_images },                   true, :shared, :chapter],
             ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! }, true, :shared, :chapter],
             # カバー資産は両枝が同じファイルを読む。分岐前に 1 回だけ作る（§3.2）。
-            ['prepare cover assets',      -> { run_prepare_cover_assets },      cover_assets_needed?, :shared, :whole_book],
+            ['prepare cover assets',      -> { run_prepare_cover_assets },      plan.cover_assets?, :shared, :whole_book],
             ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true, :shared, :chapter],
-            ['index scan and build',      -> { run_step4_index_processing },                  true, :shared, :chapter],
+            ['index scan and build',      -> { run_step4_index_processing },               f.index, :shared, :chapter],
             ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true, :shared, :chapter],
             ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },     true, :shared, :whole_book],
             ['generate whole toc',        -> { Build::WholeTocGenerator.generate! },
-             Build::WholeTocGenerator.needed?, :shared, :whole_book],
+             f.whole_toc, :shared, :whole_book],
             # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に置く。
             # ここで作れば html/ の一括後処理が拾い、個別再適用が要らなくなる
             # （front-back-matter-single-render-spec.md §2.1）。EPUB のスパイン末尾も
             # _colophon.html を読むので、生成が :shared にあることが枝の独立を支えている（§3.3）。
             ['generate front and back matter html',
              -> { Build::PdfBuilder.generate_front_and_back_matter_html! },                   true, :shared, :whole_book],
-            ['techbook post-process',     -> { run_techbook_post_process },                   true, :shared, :chapter],
+            ['techbook post-process',     -> { run_techbook_post_process }, f.techbook_post_process, :shared, :chapter],
             ['generate toc html',
              -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) },  true, :shared, :whole_book],
             # --- :pdf 枝（臨界経路。書き換えはワークスペース pdf/ に閉じる） ---
@@ -316,7 +318,7 @@ module VivlioStarter
             # ページを画像へ焼く。**dedup 前のこのレンダ**を使う——後段の再レンダを待つと
             # Kindle 枝の開始が 150 秒遅れ、PDF 枝の陰に収まらなくなる
             # （kindle-rotate-table-image-spec.md §7）。
-            ['extract rotate table images', -> { run_rotate_table_extraction }, rotate_table_images?, :pdf, :whole_book],
+            ['extract rotate table images', -> { run_rotate_table_extraction }, plan.rotate_table_images?, :pdf, :whole_book],
             ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
              !t.pdf && t.print_pdf && !derive_print, :pdf, :whole_book],
             # 組み上がった PDF から実効解像度を測り、過剰な画像を縮小版へ差し替える。
@@ -326,9 +328,10 @@ module VivlioStarter
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
+            # 索引・用語集が無い本には除く重複が無いので、段ごと出さない。
             ['backlink dedup', -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf,
                                                                                    images_changed: @images_reswapped) },
-             t.any_pdf?, :pdf, :whole_book],
+             t.any_pdf? && f.index, :pdf, :whole_book],
             # 前付・奥付。HTML は共通前段で作り済みなので、ここは相乗りできなかった
             # ときのフォールバックレンダだけを持つ。生成するのは扉・権利ページ（前付）と
             # 奥付（後付）。旧称の "tail" は奥付を指す曖昧語だったため、出版用語に合わせた
@@ -371,11 +374,11 @@ module VivlioStarter
             ['optimize images',      -> { run_step1_optimize_images }],
             ['prepare theme images', -> { Build::ImageOptimizer.prepare_theme_images! }],
             ['preprocess sections',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
-            ['index scan and build', -> { run_step4_index_processing }],
+            (['index scan and build', -> { run_step4_index_processing }] if plan.features.index),
             # 章扉からはみ出すリードを、組まずに見積もって知らせる（chapter-lead-size-spec.md §4.4）。
             # build は組んだ PDF で同じ知らせを出す。用語集の印 † も幅を取るので、索引の走査の後に置く
             ['estimate chapter leads', -> { Build::ChapterLeadCheck.estimate!(entries) }]
-          ].each { |label, handler| add_step(label, handler) }
+          ].compact.each { |label, handler| add_step(label, handler) }
         end
 
         # single mode は閲覧用 PDF のみ生成する（プレビュー・サンプル配布が主用途）。
@@ -535,10 +538,6 @@ module VivlioStarter
           Common.log_warn("[prepare cover assets] カバー生成中にエラー: #{e.message}")
         end
 
-        # 回転テーブルのページ画像化を PDF 枝が担うか。Kindle を作らないビルドでは不要、
-        # 本文 PDF を作らないビルドでは不能（素の表へ縮退し、Kindle 枝が 🟡 で案内する）。
-        def rotate_table_images? = targets.kindle && (targets.pdf || derive_print?)
-
         # 抽出ステップの本体。Kindle 枝を待たせているので、成否によらず必ず解放する。
         # 抽出ステップの本体。**終わった瞬間に解放する**のが要点で、これを怠ると
         # Kindle 枝は PDF 枝の全終了（dedup ＋ アウトラインで 200 秒近く先）まで待たされ、
@@ -549,14 +548,6 @@ module VivlioStarter
           Common.log_info("[rotate-table] 回転テーブルを #{count} 件画像化しました") if count.positive?
         ensure
           Build::RotateTableImages.release!
-        end
-
-        # カバー資産を読む枝があるか（従来の各枝の実行条件をそのまま合成したもの）。
-        # 閲覧用 PDF は結合が有効なときだけ表紙 PDF を綴じ、EPUB/Kindle は cover.embed が
-        # 真のときだけ表紙 JPG を埋める。どちらも使わない構成では作らない。
-        def cover_assets_needed?
-          (targets.pdf && Common.pdf_combined?) || targets.print_pdf ||
-            (targets.epub_or_kindle? && Common.epub_embed?)
         end
 
 
@@ -690,19 +681,14 @@ module VivlioStarter
           @epub_flow ||= Build::EpubFlow.new(entries, targets, options)
         end
 
-        # Techbook モード: SVG→WebP 参照書き換え + 絵文字差し替え + CSS 注入
-        # techbook: true でない場合は何もしない（Processor 内部で判定）
+        # Techbook モード: SVG→WebP 参照書き換え + 絵文字差し替え + CSS 注入。
+        # output.pdf.techbook が true の本だけ、段の表に載る（plan.features.techbook_post_process）
         def run_techbook_post_process
           Techbook::Processor.new(Common::CONFIG).post_process_html_files!
         end
 
-        # Step 4: 索引処理を実行
+        # Step 4: 索引処理を実行。索引・用語集が有効な本だけ、段の表に載る（plan.features.index）
         def run_step4_index_processing
-          unless IndexCommands.index_enabled?
-            Common.log_action('[index scan and build] 索引・用語集機能が無効のためスキップします（book.yml: index_glossary.enabled = false）')
-            return
-          end
-
           # 対象章を取得（Entry 配列から basename を抽出）
           chapter_targets = if entries.any?
                               basenames.sort

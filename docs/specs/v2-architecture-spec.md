@@ -756,3 +756,39 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 - `page.layout: fixed` にした写しで `vs preflight` が 🔴 を出して止まる。
 - `rake test`: 4,389 件・失敗 0（S5-1 から 15 件の増。足した 15 件と一致）。`bundle exec rubocop`: 指摘 0。
 - 四つの出力先を組んで r2 と比べるのは、計画どおり S5-4 の後に行う。
+
+### 10.5 S5-3 `BuildPlan` と段の表（2026-11-16）
+
+#### 作ったもの
+
+- **`BuildPlan`・`BuildFeatures`**（`lib/vivlio_starter/cli/build/plan.rb`）: `BuildPlan = Data.define(:targets, :traits, :features)`。`BuildPlan.resolve(targets:)` が、出力先（`Build::Targets`）・軸（`Common.traits`）・機能（`BuildFeatures`）をまとめる。導く値は `derive_print?`・`viewing_pdf?`・`rotate_table_images?`・`cover_assets?` で、パイプラインにあった同じ名前の述語（`derive_print?`・`rotate_table_images?`・`cover_assets_needed?`）を移した。
+- **`UnifiedBuildPipeline`**: `initialize` で `BuildPlan.resolve` を一度だけ呼ぶ（`attr_reader :plan`。`targets` は `plan.targets` を返す）。`full_mode_step_table` の条件の列は `plan`（`t = plan.targets`・`f = plan.features` と導く値）だけを読む。
+- **条件の列へ移した段**（§3.3 の表のうち、今ある段の行）:
+
+  | 段 | 前 | 後 |
+  | :--- | :--- | :--- |
+  | `index scan and build` | 常に載り、ハンドラが `IndexCommands.index_enabled?` を見て戻る | `f.index` |
+  | `techbook post-process` | 常に載り、`Techbook::Processor` が `enabled?` を見て戻る | `f.techbook_post_process` |
+  | `backlink dedup` | `t.any_pdf?`（索引が無効なら `BacklinkDedupOrchestrator.run!` がすぐ戻る） | `t.any_pdf? && f.index` |
+  | `generate whole toc` | `Build::WholeTocGenerator.needed?` | `f.whole_toc` |
+  | `prepare cover assets` | `cover_assets_needed?`（`Common.pdf_combined?`・`Common.epub_embed?`） | `plan.cover_assets?` |
+  | `extract rotate table images` | `rotate_table_images?` | `plan.rotate_table_images?` |
+
+  `vs preflight` の段の一覧（`register_preflight_steps`）の `index scan and build` も、`plan.features.index` のときだけ載せる。
+- **テスト**: `build/plan_test.rb`（9 件）。導く値・設定から作る・索引が無効の本の段の一覧（全章・単章・preflight）・段の表の条件の列に `Common`・`CONFIG`・`IndexCommands` が現れないこと。
+
+#### 仕様と違えたこと
+
+1. **`BuildFeatures` に、§6 の表に無い値を 4 つ置いた。** `print_full_bleed`（`output.print_pdf.full_bleed`）・`pdf_cover`（`output.pdf.combined`）・`epub_cover`（`output.epub.embed`）・`whole_toc`（分冊の、全巻目次を載せる巻）。段の表が今まで設定や巻から直接読んでいたもので、ここへ置かないと「条件の列が `plan` だけを読む」（完了の条件の 3）にならない。
+2. **`BuildPlan.resolve` は設定を引数に取らず、`targets:` だけを取る。** §3.2 は `resolve(config = Common::CONFIG)` としている。機能の値は `Common.index_enabled?` などの述語を通して読む。同じ述語を、段の中の処理（索引のページを並べる `PdfBuilder`・しおりを作る `OutlineExtractor`）も読むので、読み方を二つにしないためである。出力先を引数にしたのは、直接ビルドとテストが設定と違う組を渡すため。
+3. **`BacklinkDedupOrchestrator.run!` と `Techbook::Processor#post_process_html_files!` の中の有効・無効の判定は残した。** どちらも段の表のほかからも呼ばれる（先回りの `speculate!`、前付・奥付の組み直しの後の再適用）。段の表から見ると、無効の本ではその段が載らないので、判定で戻ることは無い。
+4. **`OutputTarget.for(id, traits)`（§10.1 の 6 で「S5 で引数を足す」としたもの）は足していない。** `traits` で宣言が変わるのは固定レイアウトだけで、S9 までは読む箇所が無い。S9 で足す。
+
+#### 確かめた結果
+
+- **完了の条件の 3**: `plan_test.rb` が、段の表の条件の列に設定の読み出しが無いこと、パイプラインに `index_enabled?` が残っていないことを検査する。
+- **完了の条件の 5**: 章 1 つの写しを `index_glossary.enabled: false` にして `vs build --log=debug` で組み、段の一覧（Build Step Timings）に `index scan and build` と `backlink dedup` が出ないことを確かめた（21 段・24.95 秒）。
+- **本書の段の一覧が前後で同じ**: 出力先の 8 つの組（`pdf`・`print_pdf`・`pdf+print_pdf`・`pdf+epub`・四つ全部・`epub`・`kindle`・`print_pdf+kindle`）× 3 つのモード（全章・単章・preflight）と、本書の設定のままの全章の、計 25 通りの段の並び（ラベル・相・単位）を、S5-2 の版（`96f16920`）と書き出して比べ、バイト単位で一致した。
+- `rake test`: 4,398 件・失敗 0（S5-2 から 9 件の増。足した 9 件と一致）。`bundle exec rubocop`: 指摘 0。
+- `book_yml_consumption_test.rb` の許可リストから `notation.web_novel` を外した（`BuildPlan` が読むようになり、陳腐化の検査が促した。§10.3 の 3）。
+- `pipeline_unit_test.rb` は `@targets` の代わりに `@plan` を置く形に、`epub_builder_test.rb` の `EpubTargetTest` は `output` だけの設定の代わりに本書の設定の `output.targets` を差し替える形にした（パイプラインが開始時に設定の全体から `plan` を作るため）。期待値は変えていない。

@@ -769,10 +769,10 @@ module VivlioStarter
       # output.targets を一時的に書き換えるヘルパー
       def with_config_targets(targets_str)
         original_config = Common::CONFIG
-        # extract_targets が受け取る文字列をモック
-        mock_output = Struct.new(:targets, :pdf, :epub, keyword_init: true)
-                            .new(targets: targets_str, pdf: nil, epub: nil)
-        mock_config = Struct.new(:output, keyword_init: true).new(output: mock_output)
+        # 本書の設定の output.targets だけを差し替える。パイプラインは開始時に設定の全体から
+        # BuildPlan を作るので、output だけの設定では組み立てられない
+        raw = Common.load_config
+        mock_config = Common.wrap_config(raw.merge(output: raw[:output].merge(targets: targets_str)))
 
         # CONFIG を一時差し替え
         Common.const_set(:TEMP_ORIGINAL_CONFIG, original_config)

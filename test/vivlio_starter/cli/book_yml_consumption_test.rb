@@ -39,8 +39,7 @@ module VivlioStarter
       ALLOWED_UNREFERENCED = {
         'metrics.author_custom' => 'metrics.use の値として動的参照される著者定義プリセット名',
         # 2.0 の S5 の途中で足したキー。読む段ができたら、陳腐化の検査がこの行の削除を促す
-        'lint.ruleset' => 'S5-5 で Lint::RULESETS が読む（v2-architecture-spec.md §8 の S5）',
-        'notation.web_novel' => 'S5-3 で BuildPlan.features が読む（v2-architecture-spec.md §8 の S5）'
+        'lint.ruleset' => 'S5-5 で Lint::RULESETS が読む（v2-architecture-spec.md §8 の S5）'
       }.freeze
 
       def test_should_reference_every_book_yml_key_in_lib_code

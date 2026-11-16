@@ -42,7 +42,7 @@ module VivlioStarter
         # ハンドラは呼ばないので、実ビルドは起きない。
         def step_table
           pipeline = Pipeline.allocate
-          pipeline.instance_variable_set(:@targets, Build::Targets.resolve)
+          pipeline.instance_variable_set(:@plan, BuildPlan.resolve)
           pipeline.instance_variable_set(:@entries, [])
           pipeline.send(:full_mode_step_table)
         end
@@ -113,7 +113,7 @@ module VivlioStarter
         def single_mode_step_labels
           @single_mode_step_labels ||= begin
             pipeline = Pipeline.allocate
-            pipeline.instance_variable_set(:@targets, Build::Targets.resolve)
+            pipeline.instance_variable_set(:@plan, BuildPlan.resolve)
             pipeline.instance_variable_set(:@entries, [])
             pipeline.instance_variable_set(:@steps, [])
             pipeline.send(:register_single_mode_steps)

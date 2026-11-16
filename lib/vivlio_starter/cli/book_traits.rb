@@ -26,10 +26,14 @@ module VivlioStarter
       # @param config [Data, nil] Common::CONFIG
       # @return [BookTraits]
       def self.resolve(config = Common::CONFIG)
-        page = config&.[](:page)
-        new(writing_mode: normalize(page&.[](:writing_mode), self::WRITING_MODES),
-            layout: normalize(page&.[](:layout), self::LAYOUTS))
+        page = member(config, :page)
+        new(writing_mode: normalize(member(page, :writing_mode), self::WRITING_MODES),
+            layout: normalize(member(page, :layout), self::LAYOUTS))
       end
+
+      # 節やキーが無い設定（直接ビルドの途中・テストの最小の設定）でも既定で作れるよう、
+      # あるときだけ読む
+      def self.member(node, key) = node.respond_to?(key) ? node.public_send(key) : nil
 
       # @param raw [Object] book.yml に書かれた値
       # @param known [Array<Symbol>] 有効な値（先頭が既定）
