@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 # scripts/copy_to_scaffold.rb
-# contents/, stylesheets/, config/, codes/, data/, templates/ を
+# contents/, stylesheets/, themes/, config/, codes/, data/, templates/ を
 # lib/project_scaffold/ 以下に上書きコピーする。
 #
 # 使い方: ruby scripts/copy_to_scaffold.rb
@@ -14,7 +14,7 @@ require 'fileutils'
 ROOT = File.expand_path('..', __dir__)
 SCAFFOLD = File.join(ROOT, 'lib/project_scaffold')
 
-DIRS = %w[contents stylesheets images config codes data templates covers].freeze
+DIRS = %w[contents stylesheets themes images config codes data templates covers].freeze
 
 DIRS.each do |dir|
   src = File.join(ROOT, dir)

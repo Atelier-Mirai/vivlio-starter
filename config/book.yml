@@ -57,6 +57,8 @@ project:
 
 # ======= テーマ =======
 theme:
+  name: standard # テーマ（themes/ の中のディレクトリの名前）。下のキーは standard テーマの設定
+
   # ------- テーマカラー -------
   color:  green # yellow / orange / red / magenta
                 # purple / indigo / navy / blue

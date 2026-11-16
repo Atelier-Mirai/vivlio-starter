@@ -39,6 +39,16 @@ module VivlioStarter
         assert_empty same, '既定値と同じ値は書かない（既定値を変えたときに種類の値が取り残される）'
       end
 
+      # 種類の既定のテーマの名前は、そのテーマを同梱する段階で足す（v2-architecture-spec.md §2.2）。
+      # 名前だけが先に入ると、その種類の本が「テーマが無い」で止まる
+      def test_should_name_only_bundled_themes_in_the_profiles
+        bundled = Dir.glob('*/theme.yml', base: File.expand_path('../../../themes', __dir__)).map { File.dirname(it) }
+        named = BookProfile::PROFILES.filter_map { |_, table| table[%i[theme name]] }
+
+        assert_includes bundled, ConfigKeys::KEYS.fetch(%i[theme name]).default
+        assert_empty named - bundled, 'PROFILES の theme.name が同梱のテーマ（リポジトリの themes/）に無い'
+      end
+
       def test_should_keep_techbook_as_the_default_with_no_overrides
         assert_equal :techbook, BookProfile::DEFAULT_TYPE
         assert_empty BookProfile::PROFILES.fetch(:techbook), '1.x の本は何も書き足さずに今と同じ値で組める'

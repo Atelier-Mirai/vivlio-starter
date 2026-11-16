@@ -164,6 +164,7 @@ module VivlioStarter
               File.write('config/catalog.yml', "CHAPTERS:\n  - 15\n")
               File.write('contents/15.md', "# Chapter 15\n")
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              copy_standard_theme
               # PipelineStub が生成したと報告するファイル
               File.write('single.pdf', '%PDF-1.7')
               Common.install_configuration!(kindle_only)
@@ -196,6 +197,7 @@ module VivlioStarter
               File.write('contents/15.md', "# Chapter 15\n")
               # Guard（前提条件検証）を通過させるための最小プロジェクト構成
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              copy_standard_theme
 
               pipelines = []
               with_pipeline_stub(pipelines) do
@@ -222,6 +224,7 @@ module VivlioStarter
               File.write('config/catalog.yml', "CHAPTERS:\n  - 15\n")
               File.write('contents/15.md', "# Chapter 15\n")
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              copy_standard_theme
               refute_path_exists('vivliostyle.config.js')
 
               pipelines = []
@@ -301,13 +304,20 @@ module VivlioStarter
           end
         end
 
-        private
+private
 
-        def with_volume_project
+# S6-3 から、vs build の入口の検査は、book.yml の theme.name（既定 standard）のテーマが
+# 本の themes/ にあることを求める。最小の本にも、リポジトリの standard を置く
+def copy_standard_theme
+  FileUtils.cp_r(File.expand_path('../../../../themes', __dir__), '.')
+end
+
+def with_volume_project
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p(%w[config contents])
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              copy_standard_theme
               File.write('config/catalog.yml', <<~YAML)
                 VOLUMES:
                   - name: 上巻

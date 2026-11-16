@@ -40,6 +40,7 @@ require_relative '../common'
 require_relative '../masking'
 require_relative '../new'
 require_relative '../resize'
+require_relative '../theme'
 require_relative '../token_resolver'
 require_relative 'build_lock'
 require_relative 'pipeline'
@@ -265,6 +266,7 @@ module VivlioStarter
           FileUtils.mkdir_p(File.join(workspace, Common::CONTENTS_DIR))
           FileUtils.mkdir_p(File.join(workspace, Common::CONFIG_DIR))
           link_stylesheets(workspace)
+          link_themes(workspace)
           link_node_modules(workspace)
           File.write(File.join(workspace, 'package.json'), PACKAGE_JSON, encoding: 'utf-8')
 
@@ -314,6 +316,15 @@ module VivlioStarter
 
           bundle = File.join(source, FONTS_DIR, GOOGLE_FONTS_BUNDLE)
           FileUtils.cp(bundle, File.join(dest, FONTS_DIR, GOOGLE_FONTS_BUNDLE)) if File.file?(bundle)
+        end
+
+        # テーマ（themes/）は、stylesheets と同じくプロジェクトの中ならプロジェクトのものを、外なら
+        # 同梱のものを読む。直接ビルドの theme.name は既定の standard。ビルドはテーマを書き換えないので、
+        # 丸ごと 1 本の参照でよい
+        def link_themes(workspace)
+          local = File.expand_path(Theme::DIR)
+          source = Dir.exist?(local) && File.file?(File.expand_path(Common::CONFIG_FILE)) ? local : File.join(Theme::BUNDLED_ROOT, Theme::DIR)
+          link_or_copy(source, File.join(workspace, Theme::DIR)) if Dir.exist?(source)
         end
 
         # 実体ディレクトリを作り、直下の各エントリへ symlink を張る（浅いミラー）。

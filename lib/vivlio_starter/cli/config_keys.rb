@@ -71,6 +71,8 @@ module VivlioStarter
       %i[project include_version]                     => Spec[default: true],
 
       # ------- theme -------
+      # テーマの名前。本の themes/<名前>/ を読む（theme-contract-spec.md §7.1）
+      %i[theme name]                                  => Spec[default: "standard"],
       %i[theme color]                                 => Spec[default: "green"],
       # 前書き・付録の色は書かなければ theme.color に従う（改善案 #73）。既定値を持たせると、
       # 行を消しても空欄にしてもこの色が入り、「省略時は color と同じ」にならない

@@ -834,3 +834,49 @@ S6-2 の完了のコミット（8afd8000）の後に入れた、見た目を変�
 | B1（本文が Noto Serif JP） | PDF は r2 と 284 ページとも一致（書体の並びが前と同じ）。EPUB は CSS 8 枚の同じ行だけ。EPUBCheck は 0 件 |
 | Kindle | 組んでいない。前は `kindle-tokens.css` の `--font-body: serif`、後は同じファイルの `--book-font-body: serif` を読むので、値は同じ `serif` になる |
 | テスト | `rake test` 4,429 件が通った |
+
+### 11.6 S6-3 テーマを読む仕組み（2026-11-16）
+
+#### 作ったもの
+
+- **`theme.name`**（`ConfigKeys::KEYS`。既定 `standard`）。雛形と本書の `book.yml` の `theme:` 節の先頭に `name: standard` を書いた（§9 の S6 の決め 9）。`BookProfile::PROFILES` には足していない（`v2-architecture-spec.md` §2.2。`book_profile_test.rb` に「`PROFILES` の `theme.name` は同梱のテーマにある」を足した）。
+- **`Theme::Manifest`**（`lib/vivlio_starter/cli/theme/manifest.rb`）: `theme.yml` を読んだ結果の `Data` と、読み込みと検査の `Manifest.load`。`name:` がディレクトリの名前と同じこと・`contract:` が整数であること・`styles:` がテーマの中にある CSS であること・`tokens:` が `--book-` を除いた名前で、`:root { … }` に書き出せる値であること・`supports:` の軸と値を検査し、外れたら `Theme::Error`（🔴）。知らないキーは読み飛ばして 🟡 にする。`features:`・`options:`・`kindle_tokens:` は形（並び・表）だけを見て持つ（中身は S6-7・S6-10）。
+- **`Theme::Contract`**（`theme/contract.rb`）: `CURRENT = 1`・`SUPPORTED = [1]`。`contract:` が `SUPPORTED` に無ければ、新しい版なら「`vs upgrade` で vs を新しく」、古い版なら「契約の版 1 に対応した版のテーマに入れ替え」を示す。`requires_vs:` は `Gem::Requirement` で突き合わせる。
+- **`Theme`**（`lib/vivlio_starter/cli/theme.rb`）: `Theme.resolve(name, root:)` が本の `themes/<名前>/` を読み、`extends:` を 1 段だけ読む（土台がさらに `extends:` を持てば 🔴）。結果の `Theme::Resolved` が、土台 → 自分の順の `styles`・`target_files(kind, target)`、自分の値が勝つ `tokens`、`supports` を返す。`Theme.selected` は設定で選ばれたテーマで、読めなければ nil（入口の CSS はテーマ無しで書く。誤りは入口の検査が示す）。設定と作業ディレクトリが同じ間は読み直さない。`Theme.available` は、本の `themes/` と同梱のテーマ（`lib/project_scaffold/themes/`）から読めるものを集める（対応するテーマの名前を示すため）。
+- **`EntryWriter`**: `tokens:` を `.cache/vs/theme-tokens.css` に `:root { --book-…: …; }` として書き出し、tokens 層の最後（`tokens-legacy.css` の後）で読む。`styles:` を theme 層に、テーマの出力先の CSS を target 層の vs の `targets/` の後に入れる（`css-layer-restructure-spec.md` §5 の 1・3・4・5。2 の `kindle_tokens:` は S6-10）。`render` は `theme:` を受け取れる（既定は `Theme.selected`）。
+- **`Guards::TraitCombinationCheck`**: テーマの行を足した。テーマが本に無い・`theme.yml` の誤り・契約の版と `requires_vs:` が合わない → 🔴。読めたら、知らないキーの 🟡 と、`supports:` に無い組方向・レイアウト・出力先の 🔴。対応するテーマは本の `themes/` と同梱のテーマから探し、無ければ「縦書きに対応するテーマは、まだ同梱されていません」と示す（`v2-architecture-spec.md` §2.5）。
+- **`themes/standard/theme.yml`**（`name`・`title`・`version`・`contract`・`supports` だけ）。
+- **複製の対象**: `copy_to_scaffold.rb` の `DIRS` に `themes` を足した。`build_copy.rb` は S0 から `themes` を写している。直接ビルド（`vs build x.md`）は、作業場所に `themes/` の参照を張る（プロジェクトの中ならプロジェクトの、外なら同梱のもの。`stylesheets/` と同じ決まり）。
+- **テスト**: `theme_test.rb`（8 件。`extends:` の読む順・`supports:` の補い・1 段だけ・`theme.yml` の誤り・契約の版と `requires_vs:`・`Theme.selected`）、`trait_combination_check_test.rb`（テーマの 🔴 の 3 通りと、出力先・知らないキー・対応するテーマの名前・縦書きに対応する材料のテーマ）、`entry_writer_test.rb`（3 件。層ごとの読む順・`theme-tokens.css`・中身の無いテーマはテーマ無しの入口と同じ字面・平らにした CSS の中の位置）、`book_profile_test.rb`（1 件）。
+
+#### 仕様と違えたこと・仕様に無かったので決めたこと
+
+1. **テーマが無い・契約の版が合わない 🔴 も `TraitCombinationCheck` に置いた。** 小段階の表は `supports:` の行だけを挙げているが、`supports:` を見るにはテーマを読む必要があり、読めなかった理由を同じ検査で示すのが自然である（`vs build` と `vs preflight` で同じものが出る）。
+2. **`supports:` の書いていない軸。** §3.1 は `targets` の省略（四つ全部）だけを決めている。書いていない軸は `extends:` の先から補い、土台も書いていなければ、組方向は `horizontal`、レイアウトは `reflowable`、出力先は四つ全部とした。配色のテーマが土台の対応をそのまま引き継げるようにするためである。
+3. **出力先も `supports:` で検査する。** `v2-architecture-spec.md` §2.5 の表は組方向とレイアウトだけを挙げているが、§3.1 の `supports.targets` と S7 の完了の条件（`targets` に `kindle` があると §2.5 の検査が 🔴）に合わせた。🔴 には「`output.targets` から kindle を外すと組めます」を添える。
+4. **固定レイアウトの本では、レイアウトの `supports:` を見ない。** 固定レイアウトは S9 まで別の 🔴 で止めており、二重に止めない（索引の 🟡 を重ねないのと同じ）。S9 で固定レイアウトの 🔴 を外すと、`supports.layout` の検査が働く。
+5. **テーマが見つからないときの案内。** §7.1 は `vs theme:add` の書き方を示すとしているが、`vs theme:add` は S6-8 で作る。S6-3 では「本にあるテーマ: standard（config/book.yml の theme.name に書きます）」を示す。S6-8 で、同梱のテーマにある名前なら `vs theme:add <名前>` を示す形に直す。
+6. **`theme-tokens.css` は、`tokens:` が空なら書かず、入口でも読まない。** 中身の無いテーマの入口を、テーマの無い入口と同じ字面にするためである（完了の条件「入口の CSS がバイト単位で同じ」）。
+7. **雛形に `themes/` だけを写した。** `vs new` で作った本は、`themes/standard/` が無いと入口の検査で止まる（記法網羅のテスト `test:notation` が `vs new` の本を組むので落ちた）。雛形の全体の同期（`copy_to_scaffold.rb`）は S6 の間はしていないので、`themes/` のディレクトリだけを写した。`book.yml` の `name: standard` の 1 行も、S5-1 と同じく雛形の `book.yml` に直接書いた（`config_keys_test.rb` が雛形の `book.yml` を読むため）。
+8. **`scaffold.lock` のコードは変えていない。** 雛形にあるファイルはどれも lock に載るので、同梱のテーマは何もしなくても lock に載る。著者が置いたテーマは雛形に無いので lock に載らず、`vs upgrade` の対象にならない（§7.3）。`scaffold_lock.rb` の説明にこのことを書いた。`vs upgrade` の扱いそのものは S6-9 で作る。
+9. **`build_command_test.rb` の最小の本に `themes/standard/` を置いた。** 入口の検査を通るための最小の本の構成に、テーマが加わったためである。
+10. **テーマの CSS の中の `url()`。** EPUB のパッケージに写るのは `stylesheets/` だけで、テーマの `images/` はまだ写らない。`standard` に CSS が入るのは S6-4・S6-5 で、画像の置き場を移すのは S6-5 なので、そこで扱う。
+
+#### 確かめた結果
+
+B1（`pdf`・`epub`・`kindle`、`--no-clean`）を、前の版（eafb7856 の worktree の `bin/vs`）と後の版で、同じ素材から組んで比べた（`r2/check/s6-3/`。写しは `r2/runs/s6-3-before-b1/`・`s6-3-b1/`）。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 入口の CSS（`.cache/vs/entry-*.css`） | 11 枚ともバイト単位で同じ。`theme-tokens.css` は前後とも無い。ビルドを通さず、11 種類 × PDF・EPUB・Kindle の `EntryWriter.render` を前後で書き出しても同じ |
+| 契約 HTML（`.cache/vs/build/html/`） | 39 件ともバイト単位で同じ |
+| クリーン EPUB | CSS 8 枚はバイト単位で同じ。XHTML の差は画像の名前だけ（画像 25 件の中身は同じで、名前を中身のハッシュにそろえると XHTML 38 件が一致）。OPF の差は、画像の名前と並びと `dcterms:modified` だけ |
+| Kindle 用 EPUB | 画像 64 件の中身は同じで、名前をそろえると XHTML と CSS が一致。OPF はクリーン EPUB と同じ種類の差だけ |
+| EPUBCheck | クリーン EPUB・Kindle 用 EPUB とも致命・エラー・警告 0 |
+| 完了の条件の 6 | 写しの本で `bin/vs build` と `bin/vs preflight` を走らせ、3 通りとも 🔴 で止まった（終了コード 1）。`theme.name: standart` →「config/book.yml の theme.name のテーマ standart が、本の themes/ にありません」「本にあるテーマ: standard（config/book.yml の theme.name に書きます）」。`contract: 2` のテーマ →「テーマ future の契約の版（contract: 2）に、この vs は対応していません」「この vs が読める契約の版: 1」「vs upgrade で vs を新しくしてください」。`page.writing_mode: vertical` →「テーマ standard は縦書き（page.writing_mode: vertical）に対応していません」「縦書きに対応するテーマは、まだ同梱されていません」。build と preflight で同じ文面 |
+| 単章・preflight | `bin/vs build 21` と `bin/vs preflight`（別の写し）とも終了コード 0。🔴・🟡 は 0 |
+| テスト | `rake test` 4,447 件が通った（S6-2 の後の 4,429 件に、足した 18 件。スキップ 1 は前からのもの）。`bundle exec rubocop` は違反 0 |
+
+- PDF は組んだが、画素では比べていない。PDF が読むのは入口の CSS と契約 HTML だけで、どちらもバイト単位で同じだからである（小段階の表の確かめにも無い）。
+- Kindle の中間生成物も比べていない。Kindle 用 EPUB の中身が、画像の名前を除いて同じだからである。
+- 雛形の同期（`ruby scripts/copy_to_scaffold.rb`）はしていない（上の 7 の `themes/` と `book.yml` の 1 行だけ）。

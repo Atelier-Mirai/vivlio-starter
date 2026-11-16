@@ -21,6 +21,7 @@
 
 require 'fileutils'
 require_relative '../common'
+require_relative '../theme'
 
 module VivlioStarter
   module CLI
@@ -30,12 +31,16 @@ module VivlioStarter
         # 層の順（css-layer-restructure-spec.md §2.1）
         LAYERS = %w[reset base tokens parts pages theme utilities settings target].freeze
 
-        # `.cache/vs/` から `stylesheets/` への相対
-        CACHE_TO_STYLESHEETS = '../../stylesheets/'
+        # `.cache/vs/` から本のルート・`stylesheets/` への相対
+        CACHE_TO_ROOT = '../../'
+        CACHE_TO_STYLESHEETS = "#{CACHE_TO_ROOT}stylesheets/"
 
         # book.yml から生成する CSS（`.cache/vs/` に置かれる）
         BOOK_SETTINGS = 'book-settings.css'
         BOOK_FONTS = 'book-fonts.css'
+        # テーマの tokens: を書き出した CSS（theme-contract-spec.md §3.1）。tokens 層の最後に読む。
+        # tokens: が空なら書かず、入口でも読まない（テーマの無い入口と同じ字面になる）
+        THEME_TOKENS = 'theme-tokens.css'
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
@@ -132,6 +137,7 @@ module VivlioStarter
         # @return [Array<String>] 書き出したパス
         def write_all!
           FileUtils.mkdir_p(Common::CACHE_DIR)
+          write_theme_tokens!(Theme.selected)
           IMPORTS.each_key.map do |kind|
             path = path_for(kind)
             File.write(path, render(kind), encoding: 'utf-8')
@@ -139,18 +145,32 @@ module VivlioStarter
           end
         end
 
+        # テーマの tokens: を :root の変数にして書き出す。空なら前のビルドの残りを消す
+        def write_theme_tokens!(theme)
+          path = File.join(Common::CACHE_DIR, THEME_TOKENS)
+          tokens = theme&.tokens || {}
+          return FileUtils.rm_f(path) if tokens.empty?
+
+          declarations = tokens.map { |name, value| "  --book-#{name}: #{value};" }
+          File.write(path, <<~CSS, encoding: 'utf-8')
+            /* 自動生成: テーマ #{theme.name} の tokens:（手編集しない。生成器: VivlioStarter::CLI::Css::EntryWriter） */
+            :root {
+            #{declarations.join("\n")}
+            }
+          CSS
+        end
+
         # 入口の CSS の全文（副作用なし）
         # @param target [Symbol, nil] :epub・:kindle なら target 層に出力先の CSS を足す
-        def render(kind, target: nil)
+        # @param theme [Theme::Resolved, nil] 選ばれたテーマ（読めなければ nil で、テーマの分を足さない）
+        def render(kind, target: nil, theme: Theme.selected)
           name = entry_name(kind)
           layered = FOUNDATION.merge(IMPORTS.fetch(name)) { |_, a, b| a + b }
-          lines = LAYERS.flat_map do |layer|
-            (layered[layer] || []).map { %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(#{layer});) }
-          end
-          lines << %(@import url("#{BOOK_SETTINGS}") layer(settings);)
-          [*TARGET_FOUNDATION.fetch(target, []), *TARGET_IMPORTS.fetch(name, {}).fetch(target, [])].each do
-            lines << %(@import url("#{CACHE_TO_STYLESHEETS}#{it}") layer(target);)
-          end
+                              .transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
+          layered = layered.merge(theme_hrefs(theme)) { |_, a, b| a + b } if theme
+          lines = LAYERS.flat_map { |layer| (layered[layer] || []).map { import(it, layer) } }
+          lines << import(BOOK_SETTINGS, 'settings')
+          target_hrefs(name, target, theme).each { lines << import(it, 'target') }
 
           <<~CSS
             @charset "utf-8";
@@ -163,6 +183,22 @@ module VivlioStarter
             @import url("#{CACHE_TO_STYLESHEETS}custom.css");
           CSS
         end
+
+        # テーマの tokens: は tokens 層の最後、styles: は theme 層（土台 → 自分の順。theme-contract-spec.md §3.1）
+        def theme_hrefs(theme)
+          { 'tokens' => theme.tokens.empty? ? [] : [THEME_TOKENS],
+            'theme' => theme.styles.map { "#{CACHE_TO_ROOT}#{it}" } }
+        end
+
+        # target 層の順（css-layer-restructure-spec.md §5）: 1. kindle-tokens.css → 3. vs の targets/ →
+        # 4・5. 土台とテーマの出力先の CSS。2 の kindle_tokens: は S6-10 で足す
+        def target_hrefs(name, target, theme)
+          own = [*TARGET_FOUNDATION.fetch(target, []), *TARGET_IMPORTS.fetch(name, {}).fetch(target, [])]
+          [*own.map { "#{CACHE_TO_STYLESHEETS}#{it}" },
+           *(theme&.target_files(name, target) || []).map { "#{CACHE_TO_ROOT}#{it}" }]
+        end
+
+        def import(href, layer) = %(@import url("#{href}") layer(#{layer});)
       end
     end
   end

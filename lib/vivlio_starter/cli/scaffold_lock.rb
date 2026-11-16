@@ -40,7 +40,9 @@ module VivlioStarter
       # 新しく足した表紙のデザイン（covers/bundled/floral.svg など）も vs upgrade で既存の本へ届ける。
       # 著者が手を入れていれば、他の雛形ファイルと同じく三者比較で確認を求める。
       # 扉絵・装飾画像の stylesheets/images/bundled/ とテーマ色の stylesheets/tokens.css は
-      # 著者データ領域の外にあるので、ここに書かなくても届く。
+      # 著者データ領域の外にあるので、ここに書かなくても届く。同梱のテーマ（themes/standard/ など）も
+      # 同じで、雛形にあるファイルだけが lock に載る。著者が自分で置いたテーマは雛形に無いので、
+      # lock に載らず、vs upgrade の対象にならない（theme-contract-spec.md §7.3）。
       SCAFFOLD_MANAGED_DIRS = %w[covers/bundled/ covers/templates/].freeze
 
       # 著者データ領域のうち個別ファイル指定分。

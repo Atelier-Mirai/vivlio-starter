@@ -15,6 +15,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'vivlio_starter/cli/css/entry_writer'
 require 'vivlio_starter/cli/css/flattener'
+require 'yaml'
 
 module VivlioStarter
   module CLI
@@ -146,6 +147,82 @@ module VivlioStarter
                   .flatten.uniq
 
           files.each { assert File.file?(File.join(STYLESHEETS, it)), "#{it} が無い" }
+        end
+
+        # テーマの tokens: は tokens 層の最後、styles: は theme 層、出力先の CSS は target 層の vs の targets/ の後に
+        # 入る（theme-contract-spec.md §3.1・css-layer-restructure-spec.md §5）。土台 → 自分の順
+        def test_should_import_the_theme_into_the_tokens_theme_and_target_layers
+          with_theme_book do |theme|
+            lines = EntryWriter.render('chapter', target: :kindle, theme:).lines.map(&:strip)
+            imports = ->(layer) { lines.grep(/layer\(#{layer}\);\z/).map { it[/url\("([^"]+)"\)/, 1] } }
+
+            assert_equal %w[../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css theme-tokens.css],
+                         imports.call('tokens')
+            assert_equal %w[../../themes/base/head.css ../../themes/mono/mono.css], imports.call('theme')
+            assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
+                            ../../stylesheets/targets/kindle.css ../../themes/base/epub.css
+                            ../../themes/mono/kindle-chapter.css],
+                         imports.call('target')
+            assert_empty EntryWriter.render('chapter', theme:).lines.grep(/layer\(target\)/), 'PDF は target 層を読まない'
+          end
+        end
+
+        # tokens: は :root の --book-* にして書き出す。空のテーマでは書かず、入口もテーマの無い入口と同じになる
+        def test_should_write_the_theme_tokens_and_leave_an_empty_theme_out_of_the_entries
+          with_theme_book do |theme, root|
+            Dir.chdir(root) do
+              FileUtils.mkdir_p(Common::CACHE_DIR)
+              EntryWriter.write_theme_tokens!(theme)
+              css = File.read(File.join(Common::CACHE_DIR, EntryWriter::THEME_TOKENS))
+
+              assert_includes css, ":root {\n  --book-color-accent: #555;\n  --book-color-link: #222;\n}"
+
+              empty = Theme.resolve('standard', root: REPO_ROOT)
+              EntryWriter.write_theme_tokens!(empty)
+              refute File.exist?(File.join(Common::CACHE_DIR, EntryWriter::THEME_TOKENS)), '前のビルドの残りを消す'
+              EntryWriter::IMPORTS.each_key do |kind|
+                [nil, :epub, :kindle].each do |target|
+                  assert_equal EntryWriter.render(kind, target:, theme: nil), EntryWriter.render(kind, target:, theme: empty)
+                end
+              end
+            end
+          end
+        end
+
+        # テーマの CSS も、層を外すと 1 枚の CSS の、その層の位置に入る
+        def test_should_flatten_the_theme_stylesheets_into_their_layers
+          with_theme_book do |theme, root|
+            Dir.chdir(root) do
+              File.symlink(STYLESHEETS, 'stylesheets')
+              FileUtils.mkdir_p(Common::CACHE_DIR)
+              EntryWriter.write_theme_tokens!(theme)
+              css = EntryWriter.render('chapter', target: :kindle, theme:)
+              flat = Flattener.render(Flattener.pieces(EntryWriter.path_for('chapter'), rebase: ->(path) { path }, css:))
+
+              assert_operator flat.index('--book-color-accent: #555'), :<, flat.index('.from-head'), 'tokens 層は theme 層の前'
+              assert_operator flat.index('.from-mono'), :<, flat.index('.from-kindle-chapter'), 'theme 層は target 層の前'
+            end
+          end
+        end
+
+        private
+
+        REPO_ROOT = File.expand_path('../../../..', __dir__)
+
+        # 土台（base）と配色のテーマ（mono）を置いた本。中の CSS は、平らにした後の位置を探せる規則 1 つだけ
+        def with_theme_book
+          Dir.mktmpdir('vs-css-theme') do |root|
+            { 'base' => [{ 'styles' => %w[head.css], 'tokens' => { 'color-accent' => '#111', 'color-link' => '#222' } },
+                         %w[head.css epub.css]],
+              'mono' => [{ 'extends' => 'base', 'styles' => %w[mono.css], 'tokens' => { 'color-accent' => '#555' } },
+                         %w[mono.css kindle-chapter.css]] }.each do |name, (extra, files)|
+              dir = File.join(root, 'themes', name)
+              FileUtils.mkdir_p(dir)
+              File.write(File.join(dir, 'theme.yml'), { 'name' => name, 'contract' => 1 }.merge(extra).to_yaml)
+              files.each { File.write(File.join(dir, it), ".from-#{File.basename(it, '.css')} { color: red; }\n") }
+            end
+            yield Theme.resolve('mono', root:), root
+          end
         end
       end
     end
