@@ -224,7 +224,7 @@ body.vs-kindle kbd {
   font-family: keyfont, monospace;
 }
 
-/* 強調の色。詳細度を上げ、前書きの strong（--color-header）などの規則より強調の色を優先する
+/* 強調の色。詳細度を上げ、前書きの strong（color: inherit）などの規則より強調の色を優先する
    （1.x の BookSettingsCss が Kindle に焼いていた規則と同じ選択子と値） */
 body.vs-kindle strong {
   color: var(--color-strong);

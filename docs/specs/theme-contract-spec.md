@@ -747,3 +747,37 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 
 - PDF は比べていない。S6-1 は Kindle 用の CSS の生成だけを変え、PDF が読む入口の CSS に触れないためである（S6 の小段階の表の確かめにも無い）。
 - 下調べで、vs の CSS がどこにも定義の無い変数を読んでいる箇所を 5 つ見つけた（`--color-header`・`--color-surface`・`--header-font`・`--page-block-margin-start`・`--color-gray`）。S6-1 の前からのもので、直していない。S6-2 で変数の名前を一覧にするときに扱う。
+
+### 11.3 S6-2 の前段: 許可の表と、定義の無い変数（2026-11-16）
+
+S6-2 の名前の変更に入る前に、宣言が解けずに落ちたことを見つける検査と、どこにも定義の無い変数を読む宣言の直しを、別のコミットにした。名前の変更の差と混ざらないようにするためである。
+
+#### 作ったもの
+
+- **Kindle で落ちる宣言の許可の表**（`css-layer-restructure-spec.md` §4.5。`css_layer_test.rb` の `ALLOWED_KINDLE_DROPS`）。本書の `book.yml` から作った `book-settings.css` を入れた束で、ページの種類ごとに Kindle の束を解く。紙の寸法のほかに表に無い宣言が落ちたら失敗し、表の行がどの宣言にも当たらなくなっても失敗する。body のクラスは本書の Kindle 用 EPUB と同じにした（章は `vs-header-image`、付録は `vs-header-simple`）。紙の寸法を除いて 45 件が落ち、表は 13 行になった（会話・副題の飾り・WebP の扉絵と節絵・単位の混ざる `calc()`・oklab の混色・`:has()`）。どの行も、KFX が解さない書き方なので、リテラル化を入れる前から Kindle には届いていない。
+- **定義の無い変数を読む宣言を直した。** §11.2 で挙げた 5 つに、目次のページ番号の `--folio-font` を足して 6 つあった。値が無効な宣言は、色や書体のように受け継ぐプロパティでは親の値に、ほかでは初期値になる。同じ要素に当たるほかの規則を調べ、今と同じ値になる書き方にした。
+
+| 箇所 | 直し方 | 今と同じになる理由 |
+| :--- | :--- | :--- |
+| `parts/preface.css` の h1〜h3 の `color: var(--color-header)` | 消す | ほかに色を決める規則が無く、親の色を受け継ぐ |
+| `parts/preface.css` の `strong, b` の `color: var(--color-header)` | `color: inherit` | 消すと `parts/prose.css` の `strong { color: var(--color-strong) }` が勝つ |
+| `parts/preface.css` の blockquote の `background: var(--color-surface)` | 消す | 地の色を決める規則がほかに無い（初期値の透明） |
+| `pages/toc.css` の h2 の `font-family: var(--header-font)`・ページ番号の `font-family: var(--folio-font)` | 消す | 目次の束で書体を決める規則がほかに無く、親の書体を受け継ぐ |
+| `parts/simple-header.css` の h1・h2 の `background-color`（`--heading-gray`・`--section-gray` ← `--color-gray`）と、二つの変数の定義 | 消す | 同じ規則の `background` の一括指定が地の色を初期値（透明）にしている |
+| `parts/simple-header.css` の h1 の `margin-block-start`（`--page-block-margin-start` を引く） | 消す | reset の `* { margin: 0 }` と同じ 0 |
+
+- Kindle 用の CSS では、`strong, b { color: inherit; }` の 1 行が前書き・後書きに増える。強調は `targets/kindle.css` の `body.vs-kindle strong` が勝ち、`b` は初期値のまま受け継ぐので、表示は変わらない（下の中間生成物の差 0）。
+
+#### 確かめた結果
+
+B1（四つの出力先・Kindle の記録つき）・B2・B4 を組み（`r2/check/s6-2a/`）、r2 と比べた。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| PDF の画素 | B1 の `pdf` 284 ページ・`print_pdf` 282 ページ、B2 279 ページ、B4 317 ページとも違い 0 |
+| 計算値（`css_computed_diff.rb`。前は 8624010e） | B1 の 78 文書・234 組、B4 の 56 文書・168 組（EPUB と PDF・画面と印刷・層ありと平ら）とも違い 0。前書きの強調（本書の前書きに 15 か所）を含む |
+| EPUB | B1 のクリーン EPUB は、S4 で記録した属性の順の 2 件と、CSS 4 枚の上の宣言の削除だけ。B4 は CSS 3 枚だけ。EPUBCheck は B1 の 2 本・B4 とも致命・エラー・警告 0 |
+| Kindle | 中間生成物 36 件・26,405 要素で `computedstyle`・`style` とも差 0。Kindle 用 EPUB の S6-1 との差は、`preface.css`・`postface.css` の `color: inherit` の 1 行ずつだけ |
+| テスト | `rake test` 4,419 件が通った（スキップ 1 は前からのもの）。`bundle exec rubocop` は違反 0 |
+
+- B4 の素材（`r2/src/ai_web_starter/`）は r2 の時点の `stylesheets/` を持っている。そのまま組むと CSS の変更が入らず、差 0 になってしまう。`v2-migration-plan.md` §3.2 の決まりどおり、`stylesheets/` を作業ツリーのものに差し替えた写し（`custom.css` は本のものを残す）で組んだ。

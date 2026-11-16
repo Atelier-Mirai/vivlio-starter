@@ -23,7 +23,6 @@ h1 {
   font-size: clamp(16.8Q, calc(var(--paper-scale) * 24Q), 24Q);
   font-weight: bold;
   letter-spacing: 0.1em;
-  color: var(--color-header);
   text-align: center;
   margin-block-end: clamp(21pt, calc(var(--paper-scale) * 30pt), 30pt);
   padding-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
@@ -35,7 +34,6 @@ h2 {
   font-family: var(--font-header);
   font-size: clamp(14Q, calc(var(--paper-scale) * 20Q), 20Q);
   font-weight: bold;
-  color: var(--color-header);
   margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt) clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
   padding-block: clamp(5.6pt, calc(var(--paper-scale) * 8pt), 8pt);
   padding-inline-start: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
@@ -48,7 +46,6 @@ h3 {
   font-family: var(--font-header);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   font-weight: bold;
-  color: var(--color-header);
   margin-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt) clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt);
   padding-block: clamp(3.5pt, calc(var(--paper-scale) * 5pt), 5pt);
   border-block-end: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
@@ -93,10 +90,11 @@ a:hover {
   border-block-end-color: var(--color-preface-accent);
 }
 
+/* 前書きの強調は本文の字の色（parts/prose.css の強調の色を打ち消す） */
 strong,
 b {
   font-weight: bold;
-  color: var(--color-header);
+  color: inherit;
 }
 
 ruby {
@@ -134,7 +132,6 @@ blockquote {
   padding-block: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
   padding-inline: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
   border-inline-start: 3px solid var(--color-preface-accent);
-  background: var(--color-surface);
 }
 
 blockquote p {

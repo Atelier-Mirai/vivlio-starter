@@ -20,7 +20,6 @@
 #toc li.toc-chapter > .toc-title::after,
 #toc li.toc-chapter-appendix > .toc-title::after,
 #toc li.toc-chapter-no-number > .toc-title::after {
-  font-family: var(--folio-font);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -310,7 +309,6 @@ h2 {
   padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
   font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
-  font-family: var(--header-font);
   letter-spacing: 0.02em;
   align-content: center;
   border-block-end: none;

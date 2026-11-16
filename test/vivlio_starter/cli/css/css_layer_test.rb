@@ -110,14 +110,7 @@ module VivlioStarter
           { reason: :has, file: 'stylesheets/parts/table.css', rule: /\A(?:body:not\(\.appendix\) )?p:has\(> strong:only-child\):has\(\+ table\)/,
             why: '表の直前の太字だけの段落を表の題として組む。Kindle では太字の段落のまま' },
           { reason: :has, file: 'stylesheets/parts/table.css', rule: /\Athead:(?:has|not\(:has)\(/,
-            why: '短い表の見出しの行で改ページを避ける・空の見出しの行を隠す' },
-          # 以下は、どこにも定義の無い変数を読む宣言。PDF と EPUB でも値が無効になる（S6-2 で直す）
-          { reason: :variable, file: 'stylesheets/parts/preface.css', rule: /var\(--color-(?:header|surface)\)/,
-            why: '定義の無い変数' },
-          { reason: :variable, file: 'stylesheets/pages/toc.css', rule: /var\(--(?:header-font|folio-font)\)/,
-            why: '定義の無い変数' },
-          { reason: :variable, file: 'stylesheets/parts/simple-header.css', rule: /var\(--(?:heading|section)-gray\)/,
-            why: '定義の無い変数（--color-gray）を読む変数' }
+            why: '短い表の見出しの行で改ページを避ける・空の見出しの行を隠す' }
         ].freeze
 
         # Kindle 用 EPUB の body のクラス（本書の B1。書いていない種類は種類の名前だけ）。
