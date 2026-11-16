@@ -181,7 +181,9 @@ module VivlioStarter
 
         # Kindle 用に var()・calc()・color-mix()・:is() を解く（css-layer-restructure-spec.md §4.4）。
         # 解けずに落とした宣言は --log=debug で一覧にし、著者の CSS（custom.css・章が足した CSS）の
-        # ものだけを 🟡 で知らせる（§4.5）。同じものを種類ごとに何度も知らせない
+        # ものだけを 🟡 で知らせる（§4.5）。同じものを種類ごとに何度も知らせない。
+        # 紙の寸法（clamp()・min()・max()）で落とした宣言は、著者の CSS でも知らせない。PDF の紙面のために
+        # 書いた意図した書き方で、直すものではない（Kindle に届かないのは、ここで落とす前も同じだった）
         # @param base [Array<Flattener::Piece>] 変数の表にだけ使う規則
         # @param author [Boolean] pieces が全部著者の CSS か（章が足した CSS）
         def literalize(pieces, target:, scope:, reported:, base: [], author: false)
@@ -193,6 +195,7 @@ module VivlioStarter
             reported[key] = true
             what = dropped.declaration ? "#{dropped.selector} { #{dropped.declaration} }" : dropped.selector
             Common.log_debug("[css] #{target}: 解けないので落とした（#{dropped.reason}）: #{what} — #{relative(dropped.source)}")
+            next if dropped.reason == :paper_dimension
             next unless author || File.basename(dropped.source) == 'custom.css'
 
             Common.log_warn("#{relative(dropped.source)} の「#{what}」は Kindle では効きません",

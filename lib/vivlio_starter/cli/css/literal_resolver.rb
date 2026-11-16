@@ -11,14 +11,21 @@
 #     color-mix()  in srgb の混色を計算して #rrggbb にする
 #     :is()・:where()  選択子の並びに展開する
 #     :has()       解けないので、その選択子を落とす
+#     clamp()・min()・max()  紙の寸法。解かずに、含む宣言を落とす（下の「紙の寸法」）
 #   変数の定義（--x: …）は、値を解いた形で残す（resolve_declarations の説明）。
 #
 # 解く層（css-layer-restructure-spec.md §4.4 の「解く層」）:
 #   どの層の規則も解く。部品の色・枠・書体の指定は、PDF と同じ変数で Kindle に届く。
 #   PDF 向けの本文の字の大きさと行送り（--base-font-size: 10.5pt など）は、Kindle の束が最初に読む
-#   targets/kindle-tokens.css が端末の既定に置き換える。見出しなどの紙の寸法は
-#   clamp(…mm, calc(var(--paper-scale) * …), …) の形で書いてあり、calc() の外の clamp() は解かないので、
-#   今までどおり Kindle には届かない（KFX も Kindle Previewer の前処理も clamp() を捨てる）。
+#   targets/kindle-tokens.css が端末の既定に置き換える。
+#
+# 紙の寸法（css-layer-restructure-spec.md §4.4 の「関数と選択子」・theme-contract-spec.md §3.5）:
+#   見出し・前書き・奥付などの寸法は clamp(…mm, calc(var(--paper-scale) * …), …) の形で書いてある。
+#   判型に対する比で決めた値で、判型の無い端末では基準が無いので、Kindle には届けない。
+#   clamp()・min()・max() を含む宣言は、理由 :paper_dimension を付けて落とす（変数の値から入って
+#   きたものも落とす）。以前は解かずに残し、KFX と Kindle Previewer の前処理が宣言ごと捨てるのに
+#   任せていた。下流の二つが同じに捨てることに頼らないために、ここで落とす。
+#   Kindle での大きさと余白は、targets/kindle*.css に em で書く。
 #
 # なぜ要るか:
 #   KFX は var()・calc()・color-mix() を含む宣言を捨て、:is() を含む規則を丸ごと捨てる
@@ -51,7 +58,8 @@ module VivlioStarter
       # Kindle 用の平らな CSS のリテラル化
       module LiteralResolver
         # 落とした宣言・選択子 1 つ。declaration は宣言（選択子を落としたときは nil）、
-        # reason は :variable / :calc / :color_mix / :has
+        # reason は :variable / :calc / :color_mix / :has / :paper_dimension（紙の寸法。意図した書き方で、
+        # 著者に直してもらうものではないので、ほかの理由と分けて扱う）
         Dropped = Data.define(:source, :selector, :declaration, :reason)
 
         # 解いた結果。pieces は書き換えた規則の列、dropped は落としたもの
@@ -74,6 +82,10 @@ module VivlioStarter
 
         # 解く関数の名前（ここに無い関数の中は触らない）
         LITERAL_FUNCTIONS = /\b(?:var|calc|color-mix)\(/i
+
+        # 紙の寸法の関数。含む宣言は落とす（call_start で引用符の外・名前の頭だけを見るので、
+        # minmax() の max( や、min-width のようなプロパティの名前には当たらない）
+        PAPER_DIMENSION_FUNCTION = /\A(?:clamp|min|max)\(/i
 
         # 色の名前（color-mix() の引数で読むもの。CSS の色名のうち、vs の CSS と著者がよく使うもの）
         NAMED_COLORS = {
@@ -257,10 +269,12 @@ module VivlioStarter
         # 宣言の値をリテラルにする。
         # @return [Array(String, nil)] 解いた値と nil、または nil と落とした理由
         def literal_value(value, table)
+          return [nil, :paper_dimension] if paper_dimension?(value)
           return [value, nil] unless value.match?(LITERAL_FUNCTIONS)
 
           substituted = substitute_variables(value, [table.body, table.root], table.scoped, 0)
           return [nil, :variable] unless substituted
+          return [nil, :paper_dimension] if paper_dimension?(substituted)
 
           calculated = replace_calls(substituted, 'calc') { evaluate_calc(it) }
           return [nil, :calc] unless calculated
@@ -270,6 +284,9 @@ module VivlioStarter
 
           [mixed, nil]
         end
+
+        # 値が紙の寸法の関数（clamp()・min()・max()）を含むか
+        def paper_dimension?(value) = !call_start(value, PAPER_DIMENSION_FUNCTION).nil?
 
         # ================================================================
         # var()
@@ -351,8 +368,7 @@ module VivlioStarter
 
         # calc() の中身を計算する。値は 単位 → 係数 の Hash で持ち、加減は単位ごとに足し、
         # 乗除は片方が数のときだけ行う。単位が 2 つ以上残るもの（100% - 2mm）は解けない。
-        # 中の clamp()・min()・max() は、引数の単位が 1 つにそろうときだけ計算する
-        # （calc() の外の clamp() は触らない。KFX は解さず、今と同じく宣言ごと捨てる）
+        # 中に clamp()・min()・max() は来ない（含む宣言は literal_value が先に落とす）
         def evaluate_calc(expression)
           tokens = calc_tokens(expression) or return nil
           value, rest = calc_sum(tokens)
@@ -361,9 +377,9 @@ module VivlioStarter
           format_quantity(value)
         end
 
-        CALC_TOKEN = %r{\s+|calc\(|(?:clamp|min|max)\(|\(|\)|,|[*/]|[+-](?=\s)|[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:%|[a-z]+)?}i
+        CALC_TOKEN = %r{\s+|calc\(|\(|\)|[*/]|[+-](?=\s)|[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:%|[a-z]+)?}i
 
-        # 数（単位つき）・演算子・括弧・比べる関数の列。読めない字句（別の関数・名前）があれば nil
+        # 数（単位つき）・演算子・括弧の列。読めない字句（別の関数・名前）があれば nil
         def calc_tokens(expression)
           tokens = []
           position = 0
@@ -410,36 +426,7 @@ module VivlioStarter
             [value, rest.drop(1)]
           when /\A([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(%|[a-z]+)?\z/i
             [{ Regexp.last_match(2).to_s => Regexp.last_match(1).to_f }, tokens.drop(1)]
-          when /\A(clamp|min|max)\(\z/i
-            calc_compare(Regexp.last_match(1).downcase, tokens.drop(1))
           end
-        end
-
-        # clamp(MIN, VAL, MAX)・min(…)・max(…)。引数は , で区切った式で、単位が 1 つにそろうこと
-        def calc_compare(name, tokens)
-          args = []
-          loop do
-            value, tokens = calc_sum(tokens)
-            return nil unless value
-
-            args << value
-            case tokens.first
-            when ',' then tokens = tokens.drop(1)
-            when ')' then break
-            else return nil
-            end
-          end
-          units = args.flat_map { |arg| arg.reject { |_, coefficient| coefficient.zero? }.keys }.uniq
-          return nil if units.size > 1
-
-          unit = units.first || args.first.keys.first
-          numbers = args.map { it.fetch(unit, 0.0) }
-          result = case name
-                   when 'min' then numbers.min
-                   when 'max' then numbers.max
-                   else numbers.size == 3 ? [numbers[0], [numbers[1], numbers[2]].min].max : (return nil)
-                   end
-          [{ unit => result }, tokens.drop(1)]
         end
 
         # 乗除。片方が数（単位の無い値）のときだけ計算できる

@@ -721,3 +721,29 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 1. クラスがすべて表で分類されている | 本書の生成物のクラス 147 種（Prism を除く。`v2-inventory-report.md` §2.2 の 146 種との差 1 は数え方による）と、CSS が選ぶクラス 238 種が、すべて表にある。記法網羅の見本帳・分冊の本（全巻目次つき）・本書の PDF と EPUB の写しでも、表に無いクラスは 0 |
 | 2. 本書の四つの出力先 | 閲覧用 PDF 283 ページ・印刷用 PDF 281 ページとも、違うページ 0。EPUB・Kindle 用 EPUB とも、テキストの差 35 件はすべて `role` の追加（章 20・付録 6・部扉 5・前書き・後書き・索引・奥付 各 1）と奥付の section だけ（S1 の変更をほどいて XHTML を比べると差 0）。EPUBCheck は両方ともエラー・警告 0。Kindle は変換の記録が基準と同じ（Supported・Success・エラー 0・注意は W14016 の 1 件）、中間生成物 36 件の計算済みの値は、奥付に足した div を除いて一致。Kindle Previewer の画面は 10 か所とも基準と画素まで一致（差 0 画素）。ただし奥付の Location が 10480 から 10484 へずれた（それより前の 9 か所は同じ Location）。Apple Books の画面も 10 か所とも基準と画素まで一致 |
 | 3. `simple` の PDF | 279 ページとも、違うページ 0 |
+
+### 11.2 S6-1 紙の寸法の宣言を落とす（2026-11-16）
+
+#### 作ったもの
+
+- `Css::LiteralResolver.literal_value` が、値に `clamp()`・`min()`・`max()` を含む宣言を、理由 `:paper_dimension` を付けて落とす。変数を解く前の値と、解いた後の値の両方を見る（変数の値から入ってきた紙の寸法も落とす）。判定は `call_start`（引用符の外・名前の頭だけ）を使うので、`minmax()` の `max(` や `min-width` には当たらない。変数の定義に紙の寸法があれば、ほかの解けない定義と同じく知らせずに落とす。
+- `calc()` の中の `clamp()`・`min()`・`max()` を計算する道（`calc_compare` と `CALC_TOKEN` の該当の字句）を消した。含む宣言を先に落とすので、通らなくなったためである。
+- `Css::Bundle.literalize` は、`:paper_dimension` で落とした宣言を、著者の CSS（`custom.css`・章が足した CSS）のものでも 🟡 で知らせない（`--log=debug` の一覧には出る）。
+- テスト（`literal_resolver_test.rb`）: 紙の寸法の決まり（`calc()` の中・外・変数から・`minmax()`・`min-width`・引用符の中）を確かめるテストを足した。同梱の CSS で組む Kindle の束に `clamp(`・`min(`・`max(` が残らないことを、`test_should_leave_no_function_that_kfx_drops` に足した。`custom.css` の紙の寸法を知らせないことを、警告のテストに足した。`calc()` の中の `clamp()` を計算する、今までのテストの 2 行は、新しいテストへ移した（期待値は「落とす」に変わる）。
+
+#### 仕様と違えたこと
+
+1. **検査の置き場。** 小段階の表は「`css_layer_test.rb` の許可の表から紙の寸法を分ける」としていたが、その許可の表（`css-layer-restructure-spec.md` §4.5 の「Kindle 用に落ちる宣言は、紙の寸法のほかを、理由つきの許可の表で持つ」）は、まだ作られていなかった。紙の寸法の検査は、実物の `book-settings.css` で Kindle の束を組む `literal_resolver_test.rb` に入れた。`css_layer_test.rb` は `book-settings.css` を外して束を組むので、本書のビルドでは定義される変数（扉絵の画像など）も「解けない」に数えられる。許可の表をそこで作ると、実際のビルドには無い落ち方が表に載る。§4.5 の許可の表は、S6-2 の最初に、`book-settings.css` を入れた束で作る（S6-2 は名前の変更で、宣言が解けずに落ちても組むのは止まらないので、その検出に要る）。
+2. **著者の `custom.css` の紙の寸法。** §4.5 の表は、著者の `custom.css` の「Kindle に届かない宣言」を 🟡 で示すとしている。紙の寸法は意図した書き方（§3.5・`css-layer-restructure-spec.md` §4.4 の「ほかの理由と分けて扱う」）で、`custom.css` に PDF の紙面のために書いた `clamp()` を毎回知らせると、直す必要の無い警告が続く。S6-1 の前も、知らせずに Kindle へ届いていなかった。知らせないことにした。
+
+#### 確かめた結果
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 完了の条件の 7（Kindle の中間生成物） | B1 の四つの出力先を組み（`r2/check/s6-1/`）、r2 と比べた。中間生成物 36 件・26,405 要素で `computedstyle`・`style` とも差 0。疑似要素の値（`data-before`・`data-after`）も差 0。変換は Enhanced Typesetting の KPF・成功 |
+| Kindle 用の CSS | `clamp(`・`min(`・`max(` が 0 か所（r2 では 5 ファイル・243 か所）。r2 との差は、紙の寸法の宣言の行 233 行と、宣言が紙の寸法だけだった規則が空になって消えた選択子と閉じ括弧の行 42 行だけで、増えた行は 0。HTML の差は S4 で記録した属性の順の 2 件だけ |
+| クリーン EPUB | r2 との差は S4 で記録した属性の順の 2 件だけ（CSS はバイト単位で同じ）。EPUBCheck は致命・エラー・警告とも 0（Kindle 用 EPUB も 0） |
+| テスト | `rake test` 4,418 件が通った（スキップ 1 は前からのもの）。`bundle exec rubocop` は違反 0 |
+
+- PDF は比べていない。S6-1 は Kindle 用の CSS の生成だけを変え、PDF が読む入口の CSS に触れないためである（S6 の小段階の表の確かめにも無い）。
+- 下調べで、vs の CSS がどこにも定義の無い変数を読んでいる箇所を 5 つ見つけた（`--color-header`・`--color-surface`・`--header-font`・`--page-block-margin-start`・`--color-gray`）。S6-1 の前からのもので、直していない。S6-2 で変数の名前を一覧にするときに扱う。

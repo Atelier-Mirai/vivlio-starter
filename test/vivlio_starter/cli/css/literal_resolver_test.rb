@@ -100,8 +100,6 @@ module VivlioStarter
             p {
               margin: calc(var(--paper-scale) * 4mm);
               width: calc(100% * 2 / 3);
-              text-indent: calc(-1 * clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm));
-              padding: clamp(1mm, calc(var(--paper-scale) * 2mm), 3mm);
               left: calc(50% + 2mm);
             }
           CSS
@@ -109,9 +107,36 @@ module VivlioStarter
 
           assert_includes css, 'margin: 3.84mm;'
           assert_includes css, 'width: 66.666667%;'
-          assert_includes css, 'text-indent: -12.48mm;', 'calc() の中の clamp() は単位がそろえば計算する'
-          assert_includes css, 'padding: clamp(1mm, 1.92mm, 3mm);', 'calc() の外の clamp() は残す（KFX は今と同じく捨てる）'
           assert_equal [['left: calc(50% + 2mm)', :calc]], result.dropped.map { [it.declaration, it.reason] }
+        end
+
+        # 紙の寸法（clamp()・min()・max()）は、calc() の中でも外でも、変数から入ってきても落とす。
+        # 落とした理由は :paper_dimension で、ほかの理由と分ける（css-layer-restructure-spec.md §4.4）
+        def test_should_drop_paper_dimensions_with_their_own_reason
+          result = resolve(<<~CSS)
+            :root { --paper-scale: 0.96; --gap: clamp(2mm, 3mm, 4mm); --plain: 2mm; }
+            p {
+              padding: clamp(1mm, calc(var(--paper-scale) * 2mm), 3mm);
+              text-indent: calc(-1 * clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm));
+              inline-size: min(100%, 30em);
+              block-size: MAX(1em, 2mm);
+              row-gap: var(--gap);
+              min-width: 10mm;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              margin: var(--plain);
+              content: "clamp(";
+            }
+          CSS
+          css = text_of(result)
+
+          assert_equal %w[padding text-indent inline-size block-size row-gap],
+                       result.dropped.map { it.declaration[/\A[\w-]+/] }
+          assert(result.dropped.all? { it.reason == :paper_dimension })
+          refute_includes css, '--gap', '紙の寸法の定義は、知らせずに落とす'
+          assert_includes css, 'min-width: 10mm;', 'プロパティの名前の min は関数ではない'
+          assert_includes css, 'minmax(0, 1fr)', 'minmax() の max( は紙の寸法の関数ではない'
+          assert_includes css, 'margin: 2mm;'
+          assert_includes css, 'content: "clamp(";', '引用符の中は見ない'
         end
 
         def test_should_mix_srgb_colors_and_drop_the_others
@@ -249,6 +274,8 @@ module VivlioStarter
             %w[var( calc( color-mix( :is( :where( :has( @layer @import].each do |token|
               refute_includes css, token, "#{kind} の Kindle 用の CSS に #{token} を残さない"
             end
+            # 紙の寸法は、生成が理由を付けて落とす（theme-contract-spec.md §9 の S6 の完了の条件の 7）
+            refute_match(/(?<![\w-])(?:clamp|min|max)\(/, css, "#{kind} の Kindle 用の CSS に紙の寸法を残さない")
           end
         end
 
@@ -378,13 +405,16 @@ module VivlioStarter
           assert_equal '1px solid #f0a000', value_of(css, 'body.vs-kindle .diagram', 'border')
         end
 
-        # custom.css の解けない宣言は、場所と直し方を 🟡 で知らせる。vs の CSS で落とした宣言は知らせない
+        # custom.css の解けない宣言は、場所と直し方を 🟡 で知らせる。vs の CSS で落とした宣言は知らせない。
+        # 紙の寸法は、custom.css に書いたものでも知らせない（PDF の紙面のための意図した書き方）
         def test_should_warn_only_author_declarations_that_kindle_cannot_use
-          _, out = kindle_css('chapter', custom: "h2 { margin-block-start: calc(100% - 2mm); }\n")
+          _, out = kindle_css('chapter', custom: "h2 { margin-block-start: calc(100% - 2mm); }\n" \
+                                                 "h3 { margin-block-end: clamp(2mm, 3mm, 4mm); }\n")
 
           assert_includes out, 'stylesheets/custom.css の「h2 { margin-block-start: calc(100% - 2mm) }」は Kindle では効きません'
           assert_includes out, 'calc(100% - 2mm) → 95%'
           refute_includes out, 'talk', 'vs の CSS の落とした宣言（会話の深い変数）は知らせない'
+          refute_includes out, 'clamp', '紙の寸法は知らせない'
         end
       end
     end
