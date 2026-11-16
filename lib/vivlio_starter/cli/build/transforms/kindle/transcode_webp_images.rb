@@ -37,17 +37,18 @@ module VivlioStarter
         # 各 HTML の <img src="*.webp"> を JPEG/PNG へ変換し src を差し替える。
         # 変換結果はソース src 文字列でメモ化し、同一画像の重複変換を避ける。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          cache = {}
-          html_files.each { |path| transcode_webp_in_file!(path, cache) }
-          html_files
+        # @param html [String] 1 ページの HTML
+        # @param ctx [Transforms::Context]
+        # @return [String] 書き換えた HTML（変えなければ html のまま）
+        def rewrite(html, ctx)
+          # 変換の結果は、本の全部のページで使い回す（同じ画像を二度変換しない）
+          cache = ctx.remember(:webp_replacements) { {} }
+          transcode_webp_in_html(html, ctx, cache)
         end
 
-        # 1 ファイル分の <img> WebP 参照を変換・差し替える。
-        def transcode_webp_in_file!(path, cache)
-          html = File.read(path, encoding: 'utf-8')
+        # 1 ページ分の <img> WebP 参照を変換・差し替える。
+        # タグの文字列のまま src を置き換える（src の実体参照を保ち、変換の表の鍵にするため）。
+        def transcode_webp_in_html(html, ctx, cache)
           changed = false
           gallery = gallery_image_srcs(html)
 
@@ -56,16 +57,14 @@ module VivlioStarter
             next tag unless src&.match?(/\.webp\z/i)
 
             full = gallery.include?(Epub::Images.decode_html_entities(src))
-            staged = cache.fetch([src, full]) { cache[[src, full]] = stage_webp_replacement(src, File.dirname(path), full:) }
+            staged = cache.fetch([src, full]) { cache[[src, full]] = stage_webp_replacement(src, ctx.page_dir, full:) }
             next tag unless staged
 
             changed = true
             tag.sub(/(\ssrc=")[^"]*(")/i, "\\1#{staged}\\2")
           end
-          return unless changed
-
-          File.write(path, updated, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} の WebP 画像を JPEG/PNG へ差し替えました")
+          Common.log_info("[EPUB] #{ctx.page_name} の WebP 画像を JPEG/PNG へ差し替えました") if changed
+          updated
         end
 
         # 写真を横に並べる囲み（.pictures・.image-group）の中にある画像の src。

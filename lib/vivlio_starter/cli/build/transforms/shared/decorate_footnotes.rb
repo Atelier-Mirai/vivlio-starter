@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -29,28 +28,20 @@ module VivlioStarter
         # ::before ではなく実テキストにするのは Kindle(KFX) が擬似要素を解さないため。
         # クリーン EPUB も同じ経路に揃えてフレーバ分岐を増やさない（vs-adm-label と同じ方式）。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          changed = false
+          doc.css('aside.page-footnote-print[data-footnote-number]').each do |aside|
+            next if aside.at_css('.vs-fn-num') # 二重注入を防ぐ（冪等）
 
-            changed = false
-            doc.css('aside.page-footnote-print[data-footnote-number]').each do |aside|
-              next if aside.at_css('.vs-fn-num') # 二重注入を防ぐ（冪等）
-
-              span = Nokogiri::XML::Node.new('span', doc)
-              span['class'] = 'vs-fn-num'
-              span.content = "#{aside['data-footnote-number']}. "
-              aside.prepend_child(span)
-              changed = true
-            end
-            next unless changed
-
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の脚注に番号を注入しました")
+            span = Nokogiri::XML::Node.new('span', doc)
+            span['class'] = 'vs-fn-num'
+            span.content = "#{aside['data-footnote-number']}. "
+            aside.prepend_child(span)
+            changed = true
           end
-          html_files
+          Common.log_info("[EPUB] #{ctx.page_name} の脚注に番号を注入しました") if changed
         end
       end
     end

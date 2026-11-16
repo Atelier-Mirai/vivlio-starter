@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative 'context'
-require_relative '../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -25,18 +24,10 @@ module VivlioStarter
           node['class'] = (classes << klass).join(' ')
         end
 
-        # 各 HTML の body にクラスを足す。
-        def mark_body!(html_files, css_class)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
-            body = doc.at_css('body')
-            next unless body
-
-            add_class(body, css_class)
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-          end
-          html_files
+        # body にクラスを足す。
+        def mark_body!(doc, css_class)
+          body = doc.at_css('body')
+          add_class(body, css_class) if body
         end
 
         # 既存 style を保ったまま CSS 宣言を追記する。

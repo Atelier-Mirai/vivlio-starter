@@ -9,7 +9,6 @@
 
 require 'open3'
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 require_relative '../../../pre_process/generated_asset_cache'
 
 module VivlioStarter
@@ -41,21 +40,19 @@ module VivlioStarter
         # **クリーン EPUB はラスター化しない。** 数式 SVG はパスだけで安全であり、
         # Kobo・Apple では拡大に強いベクタの利点が残る（§3-2.2）。
         # rsvg-convert 不在・変換失敗時は SVG のまま残して警告する（ビルドは止めない）。
-        def call(html_files, _ctx)
-          return html_files unless rsvg_available?
+        #
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          return unless ctx.remember(:rsvg_available) { rsvg_available? }
 
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            images = doc.css('figure.vs-math-display img')
-            next if images.empty?
+          images = doc.css('figure.vs-math-display img')
+          return if images.empty?
 
-            replaced = images.count { rasterize_display_math_image!(it, path) }
-            next if replaced.zero?
+          replaced = images.count { rasterize_display_math_image!(it, ctx.path) }
+          return if replaced.zero?
 
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} のディスプレイ数式 #{replaced} 件を PNG へ差し替えました")
-          end
-          html_files
+          Common.log_info("[EPUB] #{ctx.page_name} のディスプレイ数式 #{replaced} 件を PNG へ差し替えました")
         end
 
         # <img> 1 つを PNG へ差し替える。差し替えたら true。

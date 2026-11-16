@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -37,18 +36,11 @@ module VivlioStarter
         # （実測: 22 章「CSS」・33 章「ノンブル」で epubcheck RSC-005 ERROR）。
         # span は丸ごと aside の控えなので、中の id もすべて控え側から外す。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            removed = doc.css('span.page-footnote-inline').sum { strip_ids_within!(it) }
-            next if removed.zero?
-
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の脚注 span から id を #{removed} 件除去しました")
-          end
-          html_files
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          removed = doc.css('span.page-footnote-inline').sum { strip_ids_within!(it) }
+          Common.log_info("[EPUB] #{ctx.page_name} の脚注 span から id を #{removed} 件除去しました") if removed.positive?
         end
 
         # 要素自身とその子孫から id 属性を外す。

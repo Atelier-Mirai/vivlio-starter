@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -28,19 +27,14 @@ module VivlioStarter
         # ゼロ幅の空白は残る（Previewer の画面で確かめた。2026-10-30）。
         # 字が既にあれば text が空にならないので、2 回通しても増えない。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            cells = doc.css('td, th').select { it.at_css('img.vs-math-inline') && it.text.strip.empty? }
-            next if cells.empty?
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          cells = doc.css('td, th').select { it.at_css('img.vs-math-inline') && it.text.strip.empty? }
+          return if cells.empty?
 
-            cells.each { it.css('img.vs-math-inline').last.add_next_sibling(Nokogiri::XML::Text.new(CELL_MATH_GLUE, doc)) }
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の数式だけのセル #{cells.size} 件に字を添えました")
-          end
-          html_files
+          cells.each { it.css('img.vs-math-inline').last.add_next_sibling(Nokogiri::XML::Text.new(CELL_MATH_GLUE, doc)) }
+          Common.log_info("[EPUB] #{ctx.page_name} の数式だけのセル #{cells.size} 件に字を添えました")
         end
       end
     end

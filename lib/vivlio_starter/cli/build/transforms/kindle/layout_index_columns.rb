@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -28,20 +27,16 @@ module VivlioStarter
         # 左の段を下まで埋めてから右の段へ移る組み方はできない。節の中だけ縦に並べると、
         # 節がページをまたいだときに語の順が飛ぶ。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          path = html_files.find { File.basename(it, '.html') == '_indexpage' }
-          return html_files unless path
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          return unless File.basename(ctx.path, '.html') == '_indexpage'
 
-          doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
           lists = doc.css('div.index-section dl.index-list')
-          return html_files if lists.empty?
+          return if lists.empty?
 
           lists.each { it.replace(doc.fragment(index_items_html(it))) }
-          PostProcessCommands::HtmlParser.save_html_document(path, doc)
           Common.log_info('[EPUB] 索引を 2 列に組み替えました')
-          html_files
         end
 
         # `index-list` を残すのは、リンクの体裁（太字の主要参照など）の規則をそのまま使うため。

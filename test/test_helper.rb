@@ -66,6 +66,14 @@ module ApplyTransformHelper
     build = VivlioStarter::CLI::Build
     build::Transforms::Runner.apply!([transform], html_files, build::Transforms::Context.for(target, workspace:))
   end
+
+  # 1 ページの DOM を書き換える補助メソッドを、HTML のファイルに当てる（読んで、ブロックへ渡し、書く）
+  def rewrite_html_file(path)
+    parser = VivlioStarter::CLI::PostProcessCommands::HtmlParser
+    doc = parser.parse_html_document(File.read(path, encoding: 'utf-8'))
+    yield doc
+    parser.save_html_document(path, doc)
+  end
 end
 
 Minitest::Test.include(ApplyTransformHelper)

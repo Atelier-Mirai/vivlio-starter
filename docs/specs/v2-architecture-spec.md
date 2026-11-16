@@ -1,7 +1,7 @@
 # 2.0 のアーキテクチャ（本の種類・パイプライン・出力先・設定）
 
 > 作成日: 2026-11-14
-> ステータス: **設計済み・実装待ち**
+> ステータス: **一部実装済み**（S4 は 2026-11-16 に完了・§10。S5・S8〜S10 は実装待ち）
 > 対象: 2.0.0 で、技術書に加えて縦書きの小説・絵本・動く絵本を `pdf`・`print_pdf`・`epub`・`kindle` の四つで出せるようにするための、本体の構造の決定
 > 出自: `v2-design-research-brief.md` §3 の A（A-1〜A-5）と B-4〜B-6。事実は `v2-inventory-report.md` と `v2-feasibility-notes.md` による
 > 組になる仕様書: `theme-contract-spec.md`（テーマと HTML の契約）・`css-layer-restructure-spec.md`（CSS の層と Kindle 用の CSS）・`v2-migration-plan.md`（段階の順序。段階の番号 S0〜S11 はそちらが正典）
@@ -334,10 +334,12 @@ module VivlioStarter::CLI::Build::Transforms::Kindle::TextifySimpleMath
   module_function
 
   # @param doc [Nokogiri::HTML5::Document] 1 ページ分の契約 HTML（破壊的に書き換えてよい）
-  # @param ctx [Transforms::Context] 出力先・ワークスペース・entry・traits
+  # @param ctx [Transforms::Context] 出力先・ワークスペース・書き換えているページ（traits は S5 で足す）
   def call(doc, ctx) = ...
 end
 ```
+
+文字列の置換でしか書けない段（HTML として不正な途中の形を通るもの）は、`call` の代わりに `rewrite(html, ctx)` を持ち、書き換えた HTML の文字列を返す。`runner.rb` は、文字列が変わったページだけ DOM を作り直す（§10.2）。
 
 本全体の段（`finalizers`）の 1 段は、次の形にする。どれも `Css::Bundle` などを呼ぶ薄い段である。
 
@@ -633,4 +635,46 @@ theme:
 
 - テストの呼び出しは、移った先の名前へ付け替えた（期待値は変えていない）。変換の段を 1 つだけ当てるテストは、`test_helper.rb` の `apply_transform(段, html_files)` を通す。`Transforms::Runner.apply!` を呼ぶ補助で、第二段階で段の引数が `doc` に変わっても、テストの書き方は変わらない。
 - テストのファイルの名前（`epub_builder_test.rb`・`epub_builder_sanitize_test.rb`）は変えていない。
-- `stylesheets/` の CSS のコメントに `EpubBuilder` の名前が 7 ファイルに残っている。平らな CSS に写る字を変えないために、第一段階では触っていない。
+- `stylesheets/` の CSS のコメントに `EpubBuilder` の名前が 8 ファイルに残っている。平らな CSS に写る字を変えないために、第一段階では触っていない。
+
+### 10.2 S4 の第二段階: 1 ページを一度読み、一度書く（2026-11-16）
+
+§4.3 の (2)。`Transforms::Runner.apply!` が、全部のページを一度だけ読み、出力先の宣言の順に段を当て、一度だけ書く。段の入口は `call(doc, ctx)` になった。これで S4 は完了である。
+
+#### 作ったもの
+
+- **`Transforms::Runner.apply!`**: 全部のページを DOM にして持ち、段の順（外側）・ページの順（内側）で当て、最後に全部のページを書く。第一段階までは、27 段のそれぞれがページごとに読んで書いていた（Kindle では 1 ページにつき最大 27 回）。
+- **`Transforms::Context`** に、書き換えているページ（`path`・`page_name`・`page_dir`）、本の全部のページの今の DOM（`pages`）、本で一度だけ求める値の置き場（`remember`）を足した。段は状態を持たないので、テーマの画像・外部コマンドの有無・変換した画像の表は `ctx.remember` に置く。
+- **25 段を `call(doc, ctx)` にした。** 22 段は、ファイルを読む行と書く行を外しただけである。文字列の置換で書かれていた 3 段（`RestorePlainEmoji`・`RewriteTableAlign`・`StripWebpInlineStyles`）は、DOM の操作に書き直した。
+- **2 段は `rewrite(html, ctx)` のまま残した。** `PostProcessIndexGlossary` は、`</dl>` を足してリストを分けるなど、HTML として不正な途中の形を通る。`TranscodeWebpImages` は、`src` の実体参照の字のまま変換の表を引く。`runner.rb` は、この種別の段に DOM を書き出した文字列を渡し、返った文字列が変わっていたページだけ DOM を作り直す。ファイルの読み書きは増えない。
+
+#### 仕様と違えたこと
+
+1. **段の順が外側で、ページの順が内側である。** §4.1 は「1 ページを一度読んで一度書く形にでき、後でページごとに並べて走らせる余地も残る」としていた。`PostProcessIndexGlossary` が、索引と用語集のリンク先の id を全部のページから照合するので、この段に来たときには、前の段が全部のページに当たり終えていなければならない。ページを並べて走らせるには、この段の前後で区切ることになる（今は並べていない）。
+2. **`PostProcessIndexGlossary` は `ctx.pages` でほかのページを読む。** 「変換は 1 ページだけを見る」の例外で、書き換えるのは自分のページ（索引・用語集）だけである。`finalizers` へ移さなかったのは、Kindle の段（`LayoutIndexColumns` など）がこの段の書き換えた後の索引を組み替えるためで、順を変えると出力が変わる。
+3. **`ConstrainLayoutImages` が組む表に `tbody` を足した。** 1.x は `<table><tr>` を DOM で作り、後の段がファイルを読み直すたびに、構文解析が `tbody` を補っていた。読み直しが無くなったので、段が `tbody` も作る。これを足さないと、書き出した HTML から `tbody` が消える（属性の順と空白のほかの差になる）。
+4. **扉絵・節絵の注入は、DOM の写しに行い、全部できたときだけ差し替える。** 1.x は、途中で失敗したページのファイルを書かないことで、見出しを文字のまま残していた（simple 縮退）。DOM を持ち回す形では途中までの書き換えが残るので、写し（`doc.dup`）に注入して、成功したら根の要素を差し替える。
+5. **`OutputTarget` の `transforms` の段の数は変わらない。** 文字列の段を別の並びに分けることはせず、段が `rewrite` を持つかで `runner.rb` が見分ける。
+
+#### 確かめた結果
+
+比べた結果は、基準のディレクトリの `r2/check/s4-2/`。
+
+| 確かめ（S4 の完了の条件） | 結果 |
+| :--- | :--- |
+| 1. `build/epub_builder.rb` が無く、どのファイルも 600 行を超えない | いちばん大きいのは `epub/workspace.rb` の 389 行 |
+| 2. 段の名前に `_for_epub!`・`_for_kindle!` が残っていない | Ruby のコードに 0 件（CSS のコメントの中に 3 か所。下の「残したもの」） |
+| 3. 本書（B1）を四つの出力先で組み、基準 r2 と比べる | 閲覧用 PDF 284 ページ・入稿用 PDF 282 ページとも、違うページ 0。EPUB は HTML・CSS・OPF の 46 件のうち 44 件がバイト単位で同じ、2 件（`42-frontispiece`・`92-latex-cheatsheet`）が属性の順だけの違い。Kindle 用 EPUB は 45 件のうち 43 件が同じ、同じ 2 件が属性の順だけの違い。CSS と OPF は全部バイト単位で同じ。EPUBCheck は致命・エラー・警告 0 |
+| 3. `custom.css` に 2 行を足した写しを、分割の前（`56570316`）のコードで組んだものと比べる | EPUB・Kindle 用 EPUB とも、B1 と同じ 2 件が属性の順だけの違いで、ほかはバイト単位で同じ |
+| Kindle の変換 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0。中間生成物は 36 件・26,405 要素で、`computedstyle` の差 0・`style` の差 0 |
+| 4. `rake test:standard` | 4,358 件・失敗 0 |
+| `rake test` | 4,358 件・失敗 0（第一段階から 5 件増えた。`transforms_runner_test.rb`） |
+
+- **属性の順が変わったのは、表のセルの `class` と `style` である。** `RewriteTableAlign` は、1.x では開始タグの文字列の先頭に `style` を足していた（`<td style="text-align:center" class="vs-inline-image">`）。DOM の操作では、後から足した属性が後ろに付く（`<td class="vs-inline-image" style="text-align:center">`）。`style` の値は同じである。本書では 2 ページ・21 個のセル。
+- **実際の本の HTML を、ビルドをせずに比べる道具を使った。** `--no-clean` で組んだ写しの `.cache/vs/build/html/` から、`EpubFlow.prepare_pages!` だけを前後のコードで走らせて、EPUB と Kindle のワークスペースの HTML（36 ページずつ）を比べる（1 回 1 分）。`tbody` の差は、これで全部のビルドの前に見つけた。使い捨ての道具で、スクラッチに置いた。
+- **書き出しの回数は減ったが、ビルドの時間はほぼ変わらない。** `prepare_pages!` の 2 出力先の合計は、第一段階のコードで 62.9 秒、第二段階で 61.3 秒だった。時間のほとんどは画像の変換と合成である。
+
+#### 残したもの
+
+- `stylesheets/` の CSS のコメントに `EpubBuilder` の名前が 15 か所（8 ファイル）残っている。コメントは平らな CSS にそのまま写るので、書き換えると EPUB の中の CSS が基準 r2 とバイト単位で一致しなくなる。CSS に手を入れる次の段階（S6）で、基準の版を上げるときに直す。
+- テストのファイルの名前（`epub_builder_test.rb`・`epub_builder_sanitize_test.rb`）は変えていない。

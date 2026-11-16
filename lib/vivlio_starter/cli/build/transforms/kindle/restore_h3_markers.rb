@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -21,17 +20,12 @@ module VivlioStarter
         # span を空にするが、Kindle には WebP も var() も届かず、印だけが消えて字下げが残る。
         # ::before に頼らず実体の文字を入れるのは、Techbook でない本は span に印が残っていて
         # 二重になるため（KFX が :empty を解するかに賭けない）。
-        def call(html_files, _ctx)
+        #
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, _ctx)
           marker = Common::CONFIG.theme.markers.h3 || '♣'
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            empty = doc.css('span.subsection-marker').select { it.text.empty? }
-            next if empty.empty?
-
-            empty.each { it.content = marker }
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-          end
-          html_files
+          doc.css('span.subsection-marker').select { it.text.empty? }.each { it.content = marker }
         end
       end
     end

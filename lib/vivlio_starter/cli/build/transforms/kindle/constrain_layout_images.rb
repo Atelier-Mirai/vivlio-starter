@@ -10,7 +10,6 @@
 require_relative '../context'
 require_relative '../dom'
 require_relative 'decorate_admonitions'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -38,37 +37,28 @@ module VivlioStarter
 
         # 横並びコンテナ内の画像に inline で幅・float を付与する。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          changed = false
+          LAYOUT_IMAGE_RULES.each do |klass, rule|
+            doc.css(".#{klass}").each do |container|
+              target = layout_image_target(container)
+              next unless target
 
-            changed = false
-            LAYOUT_IMAGE_RULES.each do |klass, rule|
-              doc.css(".#{klass}").each do |container|
-                target = layout_image_target(container)
-                next unless target
-
-                if target.parent == container && container.ancestors(Transforms::Kindle::DecorateAdmonitions::FRAMED_BOX_SELECTOR).any?
-                  lay_out_in_table!(container, target, rule)
-                else
-                  apply_inline_image_constraint!(target, rule)
-                  # float は後ろの本文にしか回り込まない。本文 → 画像の順の原稿では、
-                  # 画像が本文の下へ落ちるので先頭へ動かす。
-                  first = container.element_children.first
-                  first.add_previous_sibling(target) if target.parent == container && first != target
-                end
-                changed = true
+              if target.parent == container && container.ancestors(Transforms::Kindle::DecorateAdmonitions::FRAMED_BOX_SELECTOR).any?
+                lay_out_in_table!(container, target, rule)
+              else
+                apply_inline_image_constraint!(target, rule)
+                # float は後ろの本文にしか回り込まない。本文 → 画像の順の原稿では、
+                # 画像が本文の下へ落ちるので先頭へ動かす。
+                first = container.element_children.first
+                first.add_previous_sibling(target) if target.parent == container && first != target
               end
+              changed = true
             end
-            next unless changed
-
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の横並び画像を inline で制約しました")
           end
-          html_files
+          Common.log_info("[EPUB] #{ctx.page_name} の横並び画像を inline で制約しました") if changed
         end
 
         # 枠の中の横並びを、float から 1 行の表へ組み替える。
@@ -98,8 +88,12 @@ module VivlioStarter
 
           row = doc.create_element('tr')
           (left ? [image_cell, body_cell] : [body_cell, image_cell]).each { row.add_child(it) }
+          # tbody も作る。HTML の構文解析は tr の親に tbody を補うので、書き出した HTML を
+          # リーダーが読んだときの形と、この DOM を同じにしておく（後の段と平らな CSS の判定が同じ木を見る）
+          body = doc.create_element('tbody')
+          body.add_child(row)
           table = doc.create_element('table', style: 'width: 100%; border: none; margin: 0;')
-          table.add_child(row)
+          table.add_child(body)
           container.add_child(table)
         end
 

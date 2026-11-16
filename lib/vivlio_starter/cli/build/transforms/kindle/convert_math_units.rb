@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -35,29 +34,21 @@ module VivlioStarter
         # CSS を解す閲覧アプリは em（style）で本文連動、Kindle は em を無視して px 属性で本文相当に固定する。
         # 固有寸法のない数式 SVG は px 属性が無いと 300px 既定で巨大表示されるため（§3）。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          nodes = doc.css('img.vs-math-inline, figure.vs-math-display img')
+          return if nodes.empty?
 
-            nodes = doc.css('img.vs-math-inline, figure.vs-math-display img')
-            next if nodes.empty?
+          nodes.each do |img|
+            style = img['style']
+            next if style.nil? || style.empty?
 
-            nodes.each do |img|
-              style = img['style']
-              next if style.nil? || style.empty?
-
-              converted = convert_math_style(style, in_table: math_in_table?(img))
-              img['style'] = converted unless converted == style
-              apply_math_px_fallback!(img, converted)
-            end
-
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の数式寸法を em＋px 属性へ整えました")
+            converted = convert_math_style(style, in_table: math_in_table?(img))
+            img['style'] = converted unless converted == style
+            apply_math_px_fallback!(img, converted)
           end
-          html_files
+          Common.log_info("[EPUB] #{ctx.page_name} の数式寸法を em＋px 属性へ整えました")
         end
 
         # style の em 値から px を算出し、width/height の HTML 属性へ反映する（Kindle 用フォールバック）。

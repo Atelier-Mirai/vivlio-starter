@@ -8,7 +8,6 @@
 # ================================================================
 
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -27,19 +26,14 @@ module VivlioStarter
         # 紛れ込むこともない（クリーン EPUB も同じラスターを使い、両フレーバで見た目を揃える）。
         # ラスター実体が無い場合（通常起きない）は参照を変えず警告に留める。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            images = doc.css('img[data-vs-raster]')
-            next if images.empty?
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          images = doc.css('img[data-vs-raster]')
+          return if images.empty?
 
-            images.each { |img| localize_showcase_image!(img, path) }
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の図版 #{images.size} 件をラスター参照へ差し替えました")
-          end
-          html_files
+          images.each { |img| localize_showcase_image!(img, ctx.path) }
+          Common.log_info("[EPUB] #{ctx.page_name} の図版 #{images.size} 件をラスター参照へ差し替えました")
         end
 
         # <img> 1 つを data-vs-raster の参照へ差し替え、EPUB に不要な同属性を取り除く。

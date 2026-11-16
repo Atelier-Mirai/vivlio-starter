@@ -50,8 +50,9 @@ end
 def elements(path)
   File.read(path, encoding: 'utf-8').scan(/<([a-zA-Z0-9]+)\s([^>]*)>/).filter_map do |tag, attrs|
     computed = attrs[/\scomputedstyle="([^"]*)"/, 1] or next
-    declarations = attrs[/\sstyle="([^"]*)"/, 1].to_s.split(';').map { it.strip.sub(/\s*:\s*/, ':') }
-    Element.new(tag:, css_class: attrs[/\sclass="([^"]*)"/, 1],
+    # 属性は最初のものにも当たるように読む（タグの名前の後の空白は、上の scan が取っている）
+    declarations = attrs[/(?:\A|\s)style="([^"]*)"/, 1].to_s.split(';').map { it.strip.sub(/\s*:\s*/, ':') }
+    Element.new(tag:, css_class: attrs[/(?:\A|\s)class="([^"]*)"/, 1],
                 computed: computed.split(';').to_h { it.split(':', 2) },
                 declarations: declarations.reject(&:empty?).sort)
   end

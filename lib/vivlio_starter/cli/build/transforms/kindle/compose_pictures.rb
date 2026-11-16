@@ -13,7 +13,6 @@ require 'fileutils'
 require_relative '../../epub/images'
 require_relative '../../epub/workspace'
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -46,20 +45,17 @@ module VivlioStarter
         # 組み方は PDF に合わせる。.pictures は同じ幅で、行の高さはいちばん高い写真に合わせ、
         # ほかは中央で切り抜く（object-fit: cover）。1 枚だけの行も同じ幅で中央に置く。
         # .image-group は {width=40%} から作った比の幅で、上をそろえる（align-items: start）。
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            containers = doc.css('div.pictures, div.image-group')
-            next if containers.empty?
+        #
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          containers = doc.css('div.pictures, div.image-group')
+          return if containers.empty?
 
-            html_dir = File.dirname(path)
-            composed = containers.count { compose_picture_container!(it, html_dir) }
-            next if composed.zero?
+          composed = containers.count { compose_picture_container!(it, ctx.page_dir) }
+          return if composed.zero?
 
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の写真の並び #{composed} か所を 1 行 1 枚の画像に合成しました")
-          end
-          html_files
+          Common.log_info("[EPUB] #{ctx.page_name} の写真の並び #{composed} か所を 1 行 1 枚の画像に合成しました")
         end
 
         # 囲み 1 つを、行ごとの合成画像に差し替える。合成できなければ何もせず false を返す

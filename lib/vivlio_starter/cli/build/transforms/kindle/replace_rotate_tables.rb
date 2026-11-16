@@ -11,7 +11,6 @@ require 'fileutils'
 require_relative '../../epub/workspace'
 require_relative '../../rotate_table_images'
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -34,28 +33,18 @@ module VivlioStarter
         # 枝が並列に走るため待たないと「まだ無い」を「PDF が無い」と誤認する。
         #
         # クリーン EPUB は対象外。あちらは回転が効いており、画像化すると拡大時に劣化する。
-        def call(html_files, _ctx)
-          RotateTableImages.wait_until_ready!
-          targets = html_files.select { |path| File.read(path, encoding: 'utf-8').include?('rotate-table') }
-          return html_files if targets.empty?
-
-          replaced = targets.count { |path| replace_rotate_tables_in_file!(path) }
-          Common.log_info("[EPUB] 回転テーブルを画像へ差し替えました（#{replaced} ファイル）") if replaced.positive?
-          html_files
-        end
-
-        # 1 ファイル分の `.rotate-table` を画像へ差し替える。
-        # 画像が無いラッパは素の表のまま残す（RotateTableImages が理由を 🟡 で案内済み）。
-        def replace_rotate_tables_in_file!(path)
-          doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+        #
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          # PDF の枝がページの画像を用意し終えるのを待つ（回転した表の無い本でも待つのは 1.x と同じ）
+          ctx.remember(:rotate_table_images_ready) { RotateTableImages.wait_until_ready! || true }
           wrappers = doc.css('div.rotate-table')
-          return false if wrappers.empty?
+          return if wrappers.empty?
 
-          changed = wrappers.count { |wrapper| swap_rotate_table_with_image!(wrapper, path) }
-          return false if changed.zero?
-
-          PostProcessCommands::HtmlParser.save_html_document(path, doc)
-          true
+          # 画像が無いラッパは素の表のまま残す（RotateTableImages が理由を 🟡 で案内済み）
+          replaced = wrappers.count { |wrapper| swap_rotate_table_with_image!(wrapper, ctx.path) }
+          Common.log_info("[EPUB] #{ctx.page_name} の回転テーブル #{replaced} 件を画像へ差し替えました") if replaced.positive?
         end
 
         # ラッパ 1 つを `<img>` へ置き換える。差し替えたら true。

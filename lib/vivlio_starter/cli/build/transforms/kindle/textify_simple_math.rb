@@ -9,7 +9,6 @@
 
 require_relative '../../math_text_renderer'
 require_relative '../context'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -38,26 +37,21 @@ module VivlioStarter
         # （実測: 追従率 20% → 100%）。LaTeX で書かれた式（data-vs-tex が無い）に原文は使えない
         # ——`\sqrt{2}` と出てしまうため。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            nodes = doc.css('img.vs-math-inline')
-            next if nodes.empty?
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          nodes = doc.css('img.vs-math-inline')
+          return if nodes.empty?
 
-            counts = Hash.new(0)
-            nodes.each { |img| counts[textify_inline_math!(img, doc)] += 1 }
-            next if counts[:html].zero? && counts[:plain].zero?
+          counts = Hash.new(0)
+          nodes.each { |img| counts[textify_inline_math!(img, doc)] += 1 }
+          return if counts[:html].zero? && counts[:plain].zero?
 
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info(
-              "[EPUB] #{File.basename(path)} のインライン数式 #{counts[:html] + counts[:plain]} 件をテキスト化" \
-              "（HTML #{counts[:html]} 件 / 原文 #{counts[:plain]} 件" \
-              "#{counts[:svg].positive? ? " / SVG 維持 #{counts[:svg]} 件" : ''}）"
-            )
-          end
-          html_files
+          Common.log_info(
+            "[EPUB] #{ctx.page_name} のインライン数式 #{counts[:html] + counts[:plain]} 件をテキスト化" \
+            "（HTML #{counts[:html]} 件 / 原文 #{counts[:plain]} 件" \
+            "#{counts[:svg].positive? ? " / SVG 維持 #{counts[:svg]} 件" : ''}）"
+          )
         end
 
         # <img> 1 つの落とし先を決めて置換する。戻り値は :html / :plain / :svg。

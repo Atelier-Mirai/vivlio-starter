@@ -8,7 +8,7 @@
 #   - 宣言が登録されていて、名前で引ける
 #   - EPUB と Kindle の変換の並び（Kindle は EPUB の並びの後ろに Kindle だけの段を足す）
 #   - body_classes が、並びの中の MarkBody の段が付けるクラスと一致する
-#   - 変換の段は call(html_files, ctx)、本全体の段は call(book, ctx) を持つ
+#   - 変換の段は call(doc, ctx) か rewrite(html, ctx)、本全体の段は call(book, ctx) を持つ
 # ================================================================
 
 require 'test_helper'
@@ -82,14 +82,17 @@ module VivlioStarter
         assert_equal %w[vs-epub vs-kindle], Build::OutputTarget.for(:kindle).body_classes
       end
 
-      def test_should_give_every_step_a_two_argument_call
-        %i[epub kindle].each do |id|
-          target = Build::OutputTarget.for(id)
+      # 変換の段は call(doc, ctx) か rewrite(html, ctx)、本全体の段は call(book, ctx)
+      def test_should_give_every_step_a_two_argument_entry
+        kindle = Build::OutputTarget.for(:kindle)
 
-          [*target.transforms, *target.finalizers].each do |step|
-            assert_equal 2, step.method(:call).arity, "#{step.name}.call は 2 引数"
-          end
+        kindle.transforms.each do |step|
+          entry = step.respond_to?(:rewrite) ? :rewrite : :call
+          assert_equal 2, step.method(entry).arity, "#{step.name}.#{entry} は 2 引数"
         end
+        kindle.finalizers.each { assert_equal 2, it.method(:call).arity, "#{it.name}.call は 2 引数" }
+        assert_equal [Build::Transforms::Shared::PostProcessIndexGlossary, Build::Transforms::Kindle::TranscodeWebpImages],
+                     kindle.transforms.select { it.respond_to?(:rewrite) }, "文字列を書き換える段は 2 つだけ"
       end
     end
   end

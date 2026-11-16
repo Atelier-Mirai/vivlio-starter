@@ -9,7 +9,6 @@
 
 require_relative '../context'
 require_relative '../../../code_line_blocks'
-require_relative '../../../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -24,24 +23,15 @@ module VivlioStarter
         # EPUB では CSS カウンタ（::before）、Kindle では Transforms::Kindle::InjectCodeLineNumbers
         # の実テキスト注入が担うため、ここでは番号を持たない構造だけを作る（両フレーバ共通）。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          targets = doc.css('pre.line-numbers')
+          return if targets.empty?
 
-            targets = doc.css('pre.line-numbers')
-            next if targets.empty?
-
-            changed = false
-            targets.each { |pre| changed |= convert_code_pre_to_lines!(pre, doc) }
-            next unless changed
-
-            PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} のコードを行ブロック化しました")
-          end
-          html_files
+          changed = false
+          targets.each { |pre| changed |= convert_code_pre_to_lines!(pre, doc) }
+          Common.log_info("[EPUB] #{ctx.page_name} のコードを行ブロック化しました") if changed
         end
 
         # 1 つの pre.line-numbers を div.vs-code-epub（行ブロック容器）へ置換する。失敗時は変更せず false。

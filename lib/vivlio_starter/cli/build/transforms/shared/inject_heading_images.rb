@@ -13,7 +13,6 @@ require_relative '../../epub/workspace'
 require_relative '../../heading_image_composer'
 require_relative '../context'
 require_relative '../dom'
-require_relative '../../../post_process/html_parser'
 require_relative '../../../pre_process/book_settings_css'
 require_relative '../../../pre_process/frontmatter_generator'
 
@@ -40,16 +39,21 @@ module VivlioStarter
         # 扉絵・節絵を合成画像として見出しに焼き込む（theme.style=image のときのみ）。
         # 画像解決や合成に失敗したファイルは注入をスキップし simple 相当へ縮退する（§B-5）。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, ctx)
-          flavor = ctx.flavor
-          return html_files unless Common::CONFIG.theme.style == 'image'
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          return unless Common::CONFIG.theme.style == 'image'
 
+          context = ctx.remember(:heading_images) { heading_image_context(ctx.flavor) }
+          inject_heading_images!(doc, ctx.path, context) if context
+        end
+
+        # 本の全部のページで同じ値（テーマの画像・書体・寸法）。テーマの画像が無ければ nil
+        def heading_image_context(flavor)
           theme = read_theme_heading_assets
-          return html_files unless theme
+          return nil unless theme
 
-          context = {
+          {
             frontispiece: theme[:frontispiece],
             ornament: theme[:ornament],
             font_family: epub_heading_font_family,
@@ -57,9 +61,6 @@ module VivlioStarter
             number_color: theme[:number_color],
             flavor:
           }
-
-          html_files.each { |path| inject_heading_images_into_file!(path, context) }
-          html_files
         end
 
         # 見出しの寸法。合成画像側の字面・折返しをこれで決める。
@@ -188,23 +189,24 @@ module VivlioStarter
           stack.join(', ')
         end
 
-        # 1 ファイルの h1（扉絵）・h2（節絵）へ合成画像を注入する。
+        # 1 ページの h1（扉絵）・h2（節絵）へ合成画像を注入する。
         # 本文章（番号 1..89）のみが対象。付録・前付・後付は simple 版とする（§B-4・PDF と整合）。
-        def inject_heading_images_into_file!(path, context)
+        #
+        # 写しに注入し、全部できたときだけ元の DOM と差し替える。途中で失敗したページは、
+        # どの見出しも文字のまま残す（simple 縮退）。
+        def inject_heading_images!(doc, path, context)
           return unless main_chapter_file?(path)
 
           # 合成画像は HTML と同じ消費者 dir 配下（images/headings/）へ生成する（P4 §5.2-b）
           context = context.merge(base_dir: File.dirname(path))
 
-          html = File.read(path, encoding: 'utf-8')
-          doc = PostProcessCommands::HtmlParser.parse_html_document(html)
-
+          work = doc.dup
           changed = false
-          changed |= inject_frontispiece_headings!(doc, context)
-          changed |= inject_ornament_headings!(doc, context)
+          changed |= inject_frontispiece_headings!(work, context)
+          changed |= inject_ornament_headings!(work, context)
           return unless changed
 
-          PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          doc.root.replace(work.root)
           Common.log_info("[EPUB] #{File.basename(path)} に扉絵/節絵の合成画像を注入しました")
         rescue StandardError => e
           Common.log_warn("[EPUB] #{File.basename(path)} の扉絵注入に失敗（simple 縮退）: #{e.message}")

@@ -28,18 +28,14 @@ module VivlioStarter
         # Css::TargetFilter は平らな CSS のファイルだけを扱い、インライン <style> は拾わないため、
         # ここで章 HTML の <style> ブロックを処理する。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(%r{<style\b[^>]*>.*?</style>}m) { it.gsub(INLINE_WEBP_DECL_PATTERN, '') }
-            next if updated == html
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, ctx)
+          styles = doc.css('style').select { it.content.match?(INLINE_WEBP_DECL_PATTERN) }
+          return if styles.empty?
 
-            File.write(path, updated, encoding: 'utf-8')
-            Common.log_info("[EPUB] #{File.basename(path)} のインライン style から webp 参照を除去しました")
-          end
-          html_files
+          styles.each { it.content = it.content.gsub(INLINE_WEBP_DECL_PATTERN, '') }
+          Common.log_info("[EPUB] #{ctx.page_name} のインライン style から webp 参照を除去しました")
         end
       end
     end

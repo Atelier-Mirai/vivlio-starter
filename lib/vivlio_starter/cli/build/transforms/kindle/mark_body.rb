@@ -24,9 +24,9 @@ module VivlioStarter
         # body.vs-kindle ガードの CSS（画像上限・コードテーブル体裁等）を効かせるための目印。
         # PDF 用 HTML には付かないため PDF では当該 CSS が不発で無害。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx) = Transforms::Dom.mark_body!(html_files, BODY_CLASS)
+        # @param doc [Nokogiri::HTML5::Document] 1 ページの HTML（破壊的に書き換える）
+        # @param ctx [Transforms::Context]
+        def call(doc, _ctx) = Transforms::Dom.mark_body!(doc, BODY_CLASS)
       end
     end
   end

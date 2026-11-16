@@ -98,7 +98,7 @@ module VivlioStarter
         context = heading_context(flavor: :kindle)
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('10-spring.html', context)
+          rewrite_html_file('10-spring.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '10-spring.html', context) }
         end
 
         html = File.read('10-spring.html')
@@ -134,9 +134,9 @@ module VivlioStarter
 
         context = heading_context(flavor: :kindle)
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('11-summer.html', context)
+          rewrite_html_file('11-summer.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '11-summer.html', context) }
           first = File.read('11-summer.html')
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('11-summer.html', context)
+          rewrite_html_file('11-summer.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '11-summer.html', context) }
           second = File.read('11-summer.html')
 
           assert_equal first, second, '2 回目の注入で HTML は変化しない'
@@ -158,7 +158,7 @@ module VivlioStarter
 
         context = heading_context(flavor: :kindle)
         Build::HeadingImageComposer.stub(:render, nil) do
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('12-autumn.html', context)
+          rewrite_html_file('12-autumn.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '12-autumn.html', context) }
         end
 
         html = File.read('12-autumn.html')
@@ -179,7 +179,7 @@ module VivlioStarter
         warned = []
         Common.stub(:log_warn, ->(msg, **_) { warned << msg }) do
           Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-            Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('13-winter.html', heading_context)
+            rewrite_html_file('13-winter.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '13-winter.html', heading_context) }
           end
         end
 
@@ -202,7 +202,7 @@ module VivlioStarter
         context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('94-sample.html', context)
+          rewrite_html_file('94-sample.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '94-sample.html', context) }
         end
 
         html = File.read('94-sample.html')
@@ -220,7 +220,7 @@ module VivlioStarter
         context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::Transforms::Shared::InjectHeadingImages.inject_heading_images_into_file!('00-preface.html', context)
+          rewrite_html_file('00-preface.html') { Build::Transforms::Shared::InjectHeadingImages.inject_heading_images!(it, '00-preface.html', context) }
         end
 
         html = File.read('00-preface.html')

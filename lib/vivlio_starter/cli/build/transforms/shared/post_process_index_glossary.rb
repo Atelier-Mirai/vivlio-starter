@@ -30,26 +30,24 @@ module VivlioStarter
         # 索引・用語集 HTML を EPUB 用に直接修正する
         # リフローにページ番号は無いので、リンクの文字は章の短い名前（序章・第7部 など）にする
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列（書籍構成順）
-        # @return [Array<String>] そのままの配列（パス変更なし）
-        def call(html_files, _ctx)
-          chapter_map = build_chapter_label_map(html_files)
-          # 索引・用語集の参照先 id が EPUB 内に実在するか照合するための id 集合（RSC-012 恒常対策）
-          existing_ids = collect_existing_fragment_ids(html_files)
+        # @param html [String] 1 ページの HTML
+        # @param ctx [Transforms::Context]
+        # @return [String] 書き換えた HTML（変えなければ html のまま）
+        def rewrite(html, ctx)
+          kind = { '_indexpage' => :index, '_glossarypage' => :glossary }[File.basename(ctx.path, '.html')]
+          return html unless kind
 
-          html_files.each do |path|
-            basename = File.basename(path, '.html')
-            case basename
-            when '_indexpage'
-              rewrite_index!(path, chapter_map, existing_ids)
-            when '_glossarypage'
-              rewrite_glossary!(path, chapter_map, existing_ids)
-            end
+          chapter_map = ctx.remember(:chapter_labels) { build_chapter_label_map(ctx.pages) }
+          # 索引・用語集の参照先 id が EPUB 内に実在するか照合するための id 集合（RSC-012 恒常対策）
+          existing_ids = ctx.remember(:fragment_ids) { collect_existing_fragment_ids(ctx.pages) }
+
+          case kind
+          when :index then rewrite_index(html, ctx.page_name, chapter_map, existing_ids)
+          when :glossary then rewrite_glossary(html, ctx.page_name, chapter_map, existing_ids)
           end
-          html_files
         end
 
-        # EPUB に含まれる全 HTML から id 属性値を収集する（RSC-012 恒常対策）。
+        # EPUB に含まれる全部のページから id 属性値を収集する（RSC-012 恒常対策）。
         # 索引（#idx-…）・用語集バックリンク（#gls-src-…）の参照先が実在するかの照合に使う。
         # epubcheck は当該 EPUB に存在しないフラグメントを指すリンクを RSC-012 ERROR とするため、
         # ここで集めた集合に無い id を指すリンクは rewrite 時に素のテキストへフォールバックする。
@@ -57,19 +55,14 @@ module VivlioStarter
         # 重要: 正規表現で `id="…"` を拾うと、コード例として本文に載った
         # `&lt;span id="idx-…"&gt;`（エスケープ済みテキスト）まで実在 id と誤カウントし、
         # 実 DOM には無い id を「実在」と判定して死リンクを温存してしまう（RSC-012 残存）。
-        # epubcheck と同じく **実 DOM の要素 id だけ**を数えるため Nokogiri でパースする。
+        # epubcheck と同じく **実 DOM の要素 id だけ**を数える。
         #
-        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @param pages [Hash{String => Nokogiri::HTML5::Document}] 本の全部のページ（パス → 今の DOM）
         # @return [Set<String>] EPUB 内に実在する（要素として存在する）id 値の集合
-        def collect_existing_fragment_ids(html_files)
-          ids = Set.new
-          html_files.each do |path|
-            next unless File.exist?(path)
-
-            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+        def collect_existing_fragment_ids(pages)
+          pages.each_value.with_object(Set.new) do |doc, ids|
             doc.xpath('//*[@id]').each { |node| ids << node['id'] }
           end
-          ids
         end
 
         # 索引・用語集 HTML 内で、参照先フラグメント id が EPUB に実在しないリンクを
@@ -117,18 +110,23 @@ module VivlioStarter
         # 例: { "07" => "序章", "33" => "第7部", "53" => "特別編" }
         # 題が読めない HTML だけ、構成順の番号で埋める。
         #
-        # @param html_files [Array<String>] 書籍構成順の HTML ファイルパス
+        # @param pages [Hash{String => Nokogiri::HTML5::Document}] 本の全部のページ（本の順）
         # @return [Hash{String => String}] プレフィックス → 章の短い名前
-        def build_chapter_label_map(html_files)
+        def build_chapter_label_map(pages)
           mapping = {}
-          html_files.each do |path|
+          pages.each do |path, doc|
             basename = File.basename(path, '.html')
             next unless basename.match?(/\A\d{2}(?=-|\z)/) # 番号だけの原稿（22.html）も章
 
-            mapping[basename[0, 2]] ||= chapter_label(CLI::EntriesCommands.extract_html_title(path)) || mapping.size.to_s
+            mapping[basename[0, 2]] ||= chapter_label(page_title(doc)) || mapping.size.to_s
           end
           Common.log_info("[EPUB] 章の名前: #{mapping.map { |k, v| "#{k}→#{v}" }.join(', ')}")
           mapping
+        end
+
+        # ページの <title> の中身（書き出される HTML での字のまま。1 行に収まらない題は読まない）
+        def page_title(doc)
+          PostProcessCommands::HtmlParser.render_html_document(doc)[%r{<title>(.+?)</title>}, 1]&.strip
         end
 
         # 章の題から、索引へ並べられる短い名前を取り出す。
@@ -147,16 +145,15 @@ module VivlioStarter
         # - 空リンクに章の名前を挿入
         # - 連続するリンク間に ", " 区切りを追加
         #
-        # @param path [String] _indexpage.html のパス
+        # @param html [String] _indexpage.html の HTML
+        # @param name [String] ログに出すファイル名
         # @param chapter_map [Hash{String => String}] プレフィックス → 章の名前
         # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
-        def rewrite_index!(path, chapter_map, existing_ids)
-          html = File.read(path, encoding: 'utf-8')
-
+        def rewrite_index(html, name, chapter_map, existing_ids)
           # Step 0: 参照先 id が EPUB に実在しない索引リンクを解除（RSC-012 恒常対策）。
           # 名前の挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
           html, removed = unlink_missing_fragment_links(html, existing_ids)
-          Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメント索引リンクを #{removed} 件解除しました") if removed.positive?
+          Common.log_info("[EPUB] #{name} の未定義フラグメント索引リンクを #{removed} 件解除しました") if removed.positive?
 
           # Step 1: 空の <a> タグに章の名前を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
@@ -171,8 +168,8 @@ module VivlioStarter
           # Step 3: 連続する </a><a を </a>, <a に変換（カンマ区切り）。末尾の別の巻の案内の前も区切る
           html = html.gsub(%r{</a>\s*(<a\s+href="|<span class="index-other-volume">)}, '</a>, \1')
 
-          File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（章の名前のリンク＋併合＋区切り挿入）")
+          Common.log_info("[EPUB] #{name} を書き換えました（章の名前のリンク＋併合＋区切り挿入）")
+          html
         end
 
         # 用語集 HTML を EPUB 用に書き換える
@@ -182,9 +179,7 @@ module VivlioStarter
         # @param path [String] _glossarypage.html のパス
         # @param chapter_map [Hash{String => String}] プレフィックス → 章の名前
         # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
-        def rewrite_glossary!(path, chapter_map, existing_ids)
-          html = File.read(path, encoding: 'utf-8')
-
+        def rewrite_glossary(html, name, chapter_map, existing_ids)
           # RSC-005 是正（§1-8）: <dl class="glossary-list"> 直下のグループ見出し <div> は
           # XHTML5 の dl 内容モデル違反。見出しを <dl> の外（兄弟 <p role=heading>）へ出し、
           # 頭文字ごとに <dl> を分割する。PDF は生成元 HTML をそのまま使うため無影響（EPUB 専用後処理）。
@@ -193,7 +188,7 @@ module VivlioStarter
           # 参照先 id が EPUB に実在しない用語集バックリンク（#gls-src-…）を解除（RSC-012 恒常対策）。
           # 名前の挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
           html, removed = unlink_missing_fragment_links(html, existing_ids)
-          Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメントバックリンクを #{removed} 件解除しました") if removed.positive?
+          Common.log_info("[EPUB] #{name} の未定義フラグメントバックリンクを #{removed} 件解除しました") if removed.positive?
 
           # 空の <a> タグに章の名前を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
@@ -205,8 +200,8 @@ module VivlioStarter
           # 同一番号（同一章＝EPUB 上の同一ページ）を指す連続バックリンクを併合
           html = dedup_sequential_number_links(html)
 
-          File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（章の名前のバックリンク＋併合）")
+          Common.log_info("[EPUB] #{name} を書き換えました（章の名前のバックリンク＋併合）")
+          html
         end
 
         # 用語集の <dl> 直下のグループ見出し <div> を <dl> の外へ出し、頭文字ごとに <dl> を分割する。
