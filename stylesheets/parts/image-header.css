@@ -2,7 +2,8 @@
    image-header.css
    -------------------------------------------------------------
    画像あり版の章ヘッダー用スタイル。
-   章の入口（Css::EntryWriter）が simple-header.css と共に常に読む。
+   どのページの入口（Css::EntryWriter）も simple-header.css と共に theme 層に読む
+   （standard テーマの見出し。theme-contract-spec.md §4）。
    theme.style: image のとき body.vs-header-image が付与され、この規則群だけが
    有効になる（方式A・book.yml→BodyClassInjector が注入）。simple 版とは
    body クラスで相互排他になるため、両方読んでも衝突しない。

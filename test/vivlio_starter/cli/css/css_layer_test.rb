@@ -67,7 +67,19 @@ module VivlioStarter
           { upper: /\A\.text-(?:left|right|center) p\z/,
             lower: /\A\.(?:column|memo|tip|note|notice)\.align-(?:center|right) > p\z/,
             reason: '.align-* を重ねた囲みの段落が .text-* の中にもある形（囲みに .align-* と .text-* を両方付けるか、' \
-                    '.text-* の囲いの中に置く）。PDF は .text-* が勝ち、EPUB と Kindle は 1.0.1 と同じく囲みの組み方になる' }
+                    '.text-* の囲いの中に置く）。PDF は .text-* が勝ち、EPUB と Kindle は 1.0.1 と同じく囲みの組み方になる' },
+          # 以下は S6-4 で見出しの 2 枚を parts 層から theme 層へ移して挙がるようになった組
+          # （theme-contract-spec.md §9 の S6 の決め 1）
+          { upper: /\Abody\.vs-header-(?:simple|image) h[12]\z/,
+            lower: /\A\.(?:output|text-table-body|table-text-body) > :(?:first|last)-child\z/,
+            reason: '章題と節見出しは本文の最上位に書き、囲みや並べ方の中に置かない' },
+          { upper: /\Abody\.vs-header-(?:simple|image)(?: \.section-topic)? h[12]\z/, lower: /code\[class\*="language-"\] \*\z/,
+            reason: '見出しはコードの中の要素にならない' },
+          { upper: /\Abody\.vs-header-image \.section-topic h2 > \*\z/,
+            lower: /(?:code\[class\*="language-"\]|p:has\(> strong:only-child\):has\(\+ table\))\z/,
+            reason: '節見出しの子は番号と題の span で、コードの図（figure > pre > code）や段落にならない' },
+          { upper: /\Abody\.vs-header-(?:simple|image) /, lower: /\A#toc(?:-title::before| li\.)/,
+            reason: '目次のページの body には vs-header-* が付かない（BodyClassInjector は章と付録にだけ付ける）' }
         ].freeze
 
         # Kindle 用の CSS で落ちる宣言のうち、直さないもの（css-layer-restructure-spec.md §4.5 の許可の表）。

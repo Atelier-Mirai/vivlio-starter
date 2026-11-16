@@ -42,14 +42,16 @@ module VivlioStarter
                  '層の順の宣言は @import より前'
         end
 
-        # 本文以外のページは、土台・自分のページの CSS・設定だけを読む
+        # 本文以外のページは、土台・自分のページの CSS・見出しの 2 枚・設定だけを読む
         def test_should_give_generated_pages_only_the_foundation_and_their_own_css
           imports = EntryWriter.render('index').scan(/@import url\("([^"]+)"\)/).flatten
 
           assert_equal %w[../../stylesheets/fonts.css book-fonts.css
                           ../../stylesheets/base/reset.css ../../stylesheets/base/elements.css
                           ../../stylesheets/base/page.css ../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css
-                          ../../stylesheets/pages/index.css book-settings.css ../../stylesheets/custom.css], imports
+                          ../../stylesheets/pages/index.css
+                          ../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css
+                          book-settings.css ../../stylesheets/custom.css], imports
         end
 
         # 本文のページ（章・付録・前書き・後書き）は同じ部品と著者の指定を読む。前書き・後書きは
@@ -68,6 +70,20 @@ module VivlioStarter
                          "#{kind} は章の部品の後に parts/preface.css を読む"
           end
           layered.each_value { assert_equal chapter['utilities'], it['utilities'] }
+        end
+
+        # standard の見出しの 2 枚は、どの種類のページでも parts 層でなく theme 層に読む
+        # （theme-contract-spec.md §9 の S6-4）
+        def test_should_import_the_standard_headers_into_the_theme_layer_of_every_page
+          headers = %w[../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css]
+          EntryWriter::IMPORTS.each_key do |kind|
+            imports = EntryWriter.render(kind, theme: nil).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/)
+
+            theme, others = imports.partition { it.last == 'theme' }
+
+            assert_equal headers, theme.map(&:first), kind
+            assert_empty others.map(&:first) & headers, "#{kind} はほかの層で 2 枚を読まない"
+          end
         end
 
         # 扉絵を敷く @page :nth(1) は body のクラスで絞れないので、章だけが読むファイルに置く
@@ -158,7 +174,8 @@ module VivlioStarter
 
             assert_equal %w[../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css theme-tokens.css],
                          imports.call('tokens')
-            assert_equal %w[../../themes/base/head.css ../../themes/mono/mono.css], imports.call('theme')
+            assert_equal %w[../../stylesheets/parts/simple-header.css ../../stylesheets/parts/image-header.css
+                            ../../themes/base/head.css ../../themes/mono/mono.css], imports.call('theme')
             assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
                             ../../stylesheets/targets/kindle.css ../../themes/base/epub.css
                             ../../themes/mono/kindle-chapter.css],
