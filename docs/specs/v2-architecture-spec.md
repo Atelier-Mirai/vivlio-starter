@@ -792,3 +792,31 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 - `rake test`: 4,398 件・失敗 0（S5-2 から 9 件の増。足した 9 件と一致）。`bundle exec rubocop`: 指摘 0。
 - `book_yml_consumption_test.rb` の許可リストから `notation.web_novel` を外した（`BuildPlan` が読むようになり、陳腐化の検査が促した。§10.3 の 3）。
 - `pipeline_unit_test.rb` は `@targets` の代わりに `@plan` を置く形に、`epub_builder_test.rb` の `EpubTargetTest` は `output` だけの設定の代わりに本書の設定の `output.targets` を差し替える形にした（パイプラインが開始時に設定の全体から `plan` を作るため）。期待値は変えていない。
+
+### 10.6 S5-4 前処理・後処理の並びを表にする（2026-11-16）
+
+#### 作ったもの
+
+- **`MarkdownPreprocessor::STEPS`**: §3.4 の形 `[メソッド, 種別, 条件]` の 37 行。種別は `:check`（content を変えない点検）・`:transform`（content を書き換える）・`:output`（書き出し）。`run` は表を上から回し、条件が `nil` か `condition.call(plan)` が真の段を走らせる。並びの順は前と同じ。
+- **条件の付いた段**: `strip_index_markup!` の `->(plan) { !plan.features.index }` だけ。メソッドの中の `return if Common.index_enabled?` を条件の列へ移した（S5-3 の段の表と同じ扱い）。ほかの段は記法を使わなければ何もしないので、条件を付けない。
+- **後処理の表**（`post_process.rb`）: `first_pass_steps`（全ページに先にかける 2 段）と `page_steps`（1 ページずつ順にかける 25 段）。1 行は `[名前, 処理, 失敗したときの扱い, 条件]`。失敗したときの扱いは、表にする前の `begin`/`rescue` をそのまま写した（`[:error, 文]` は 🔴・`[:warn, 文]` は 🟡 で記録して次の段へ、`nil` は例外を上げる）。表を回すのは `run_post_process_steps`。置換ルールの件数の合計は、表を作るときに渡す `count_replacements` で数える。
+- **`BuildPlan.current`・`BuildPlan.install`**: パイプラインが段を走らせている間だけ、開始時に作った `plan` を置く。前処理（`MarkdownPreprocessor.new(md, entry, plan: BuildPlan.current)`）と後処理はそれを読み、ビルドの途中で設定を読み直さない（§3.2）。パイプラインの外（テスト・単独の前処理）では、その場の設定から作る。
+- **テスト**: `markdown_preprocessor_test.rb` に表の形（名前が実在の private メソッドで重複が無い・書き出しが最後・種別と条件の形）の 2 件。`post_process/step_table_test.rb`（5 件。🔴・🟡・例外・条件・表の形）。索引の記法のテストは、`Common` の差し替えをやめ、`plan` を引数で渡して表の条件を通す形にした（期待値は変えていない）。
+
+#### 仕様と違えたこと
+
+1. **後処理の表は `[名前, 処理, 失敗したときの扱い, 条件]` の 4 列にした。** §3.4 は「後処理も同じ形にする」としている。後処理の段は、段ごとに失敗の扱い（🔴 で続ける・🟡 で続ける・止める）と記録の文が違い、引数も `html` だけの段と `html` と `entry` を取る段がある。前処理の形（メソッドの名前だけ）に合わせると、段ごとに中継のメソッドが 25 個要る。そこで、S5-3 の段の表（`full_mode_step_table`）と同じく処理を lambda で持たせ、失敗の扱いを列にした。種別の列は置いていない（後処理の段はどれも HTML を書き換える）。
+2. **`plan` を引数で引き回さず、`BuildPlan.current` に置いた。** 前処理と後処理は、章の段のほかに部扉・全巻目次・目次の生成からも呼ばれ、テストの差し替えも引数の数に依っている。引数で渡すと、呼び出しの連なり（`SectionBuilder` → `PreProcessCommands` → `MarkdownPreprocessor`）の 4 か所の形が変わる。`Build::Volumes.current` と同じ置き方にした。
+
+#### 確かめた結果
+
+比べた結果は、基準のディレクトリの `r2/check/s5-4/`。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 本書の契約 HTML（`.cache/vs/build/html/` の全部の HTML）が前後で同じ | 39 件とも、S4 の第二段階の写し（`r2/check/s4-2/runs/b1`）とバイト単位で同じ。基準 r2 の写し（`r2/runs/b1`）とも同じ |
+| 本書（B1）を四つの出力先で組み、基準 r2 と比べる | 閲覧用 PDF 284 ページ・入稿用 PDF 282 ページとも、違うページ 0。EPUB・Kindle 用 EPUB とも、r2 との違いは S4 で記録した 2 件（`42-frontispiece`・`92-latex-cheatsheet` の属性の順。§10.2）だけで、S4 の第二段階の出力とは違い 0 件 |
+| Kindle の変換 | Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0。中間生成物は 36 件・26,405 要素で、r2 との `computedstyle` の差 0・`style` の差 0 |
+| `rake test` | 4,405 件・失敗 0（S5-3 から 7 件の増。足した 7 件と一致）。`bundle exec rubocop`: 指摘 0 |
+
+- §8 の S5 の完了の条件の 1（四つの出力先が基準と同じ）は、S5 の最後にもう一度確かめる（S5-5 は `vs lint` と `vs metrics` だけを変え、ビルドの出力を作る段を変えない）。

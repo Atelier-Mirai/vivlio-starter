@@ -52,6 +52,26 @@ module VivlioStarter
             ))
       end
 
+      # ビルド中の plan。パイプラインが開始時に置き、終わりに外す（install）。
+      # 段の中の処理（前処理の段の表）は、設定を読み直さずにこれを読む。
+      # パイプラインの外（テスト・単独の前処理）では、その場の設定から作る
+      # @return [BuildPlan]
+      def self.current = @current || resolve
+
+      # ビルド中の plan を置く（nil で外す）。ブロックを渡すと、抜けるときに前の値へ戻す
+      # @param plan [BuildPlan, nil]
+      def self.install(plan)
+        previous = @current
+        @current = plan
+        return unless block_given?
+
+        begin
+          yield
+        ensure
+          @current = previous
+        end
+      end
+
       # 入稿用 PDF を閲覧用 PDF から導出するか。導出するときは、print_pdf だけの本でも
       # 閲覧用の中間 PDF が要る。フチなしの要素がある本は塗り足しを復元できないので、個別に組む
       def derive_print? = targets.print_pdf && !features.print_full_bleed

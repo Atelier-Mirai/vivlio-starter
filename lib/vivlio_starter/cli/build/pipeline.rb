@@ -83,9 +83,12 @@ module VivlioStarter
           # 画像の測定も同じ。測るのは shrink oversized images の段（t.any_pdf?）だけである。
           Build::DerivedImage.arm!(mode == :full && targets.any_pdf?)
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          run_phase(:shared)
-          fork_branches? ? run_branches_in_parallel : run_branches_sequentially
-          run_phase(:join)
+          # 段の中の処理（前処理の段の表）も、開始時に決めた plan を読む（設定を読み直さない）
+          BuildPlan.install(plan) do
+            run_phase(:shared)
+            fork_branches? ? run_branches_in_parallel : run_branches_sequentially
+            run_phase(:join)
+          end
           timings
         ensure
           @wall_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at if started_at

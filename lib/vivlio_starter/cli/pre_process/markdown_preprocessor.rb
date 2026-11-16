@@ -44,6 +44,7 @@ require_relative 'mermaid_transformer'
 require_relative 'talk_registry'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
+require_relative '../build/plan'
 
 module VivlioStarter
   module CLI
@@ -61,7 +62,7 @@ module VivlioStarter
 
       # Markdown 前処理を段階的に実行するクラス
       class MarkdownPreprocessor
-        attr_reader :context
+        attr_reader :context, :plan
 
         # テーブルコンテナのクラス名（long-table との語順統一で rotate-table を採用）。
         TABLE_CONTAINER_CLASSES = %w[long-table rotate-table].freeze
@@ -89,7 +90,9 @@ module VivlioStarter
 
         # @param md_file [String] Markdown ファイルパス
         # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
-        def initialize(md_file, entry)
+        # @param plan [BuildPlan] 段の条件の材料。既定はビルド中のパイプラインが置いたもの
+        def initialize(md_file, entry, plan: BuildPlan.current)
+          @plan = plan
           filename = File.basename(md_file)
           @context = PreProcessContext.new(
             source_path: md_file,
@@ -102,46 +105,66 @@ module VivlioStarter
           )
         end
 
+        # 前処理の段の並び（v2-architecture-spec.md §3.4）。各行 = [メソッド, 種別, 条件]。
+        #
+        # **並びの順は意味を持つ。** 順序の理由は各メソッドのコメントに書く
+        # （notation-implementation-guide.md §0 の 5）。種別は段の性格を示す。
+        #   :check     … 原稿を点検して指摘するだけで、content を変えない
+        #   :transform … content を書き換える
+        #   :output    … 加工済みの content を書き出す
+        # 条件は BuildPlan を受ける lambda で、nil の段は常に走る。記法を使っていなければ
+        # 何もしない段（コード・数式・mermaid など）には条件を付けない。条件を付けるのは、
+        # 有効にすると既存の本の出力が変わりうる段と、機能の有効・無効で走るかが決まる段だけ。
+        STEPS = [
+          # --- 原稿そのままの行番号で指摘する検査（加工の前に置く） ---
+          [:validate_directives!,             :check,     nil],
+          [:validate_image_borders!,          :check,     nil],
+          [:validate_image_trims!,            :check,     nil],
+          [:validate_qr_codes!,               :check,     nil],
+          [:validate_links!,                  :check,     nil],
+          # --- 書き換え ---
+          [:apply_frontmatter!,               :transform, nil],
+          [:strip_html_comments!,             :transform, nil],
+          [:transform_terminal_blocks!,       :transform, nil],
+          [:process_data_streams!,            :transform, nil],
+          [:normalize_image_paths!,           :transform, nil],
+          [:transform_image_borders!,         :transform, nil],
+          [:transform_qr_codes!,              :transform, nil],
+          [:validate_images!,                 :check,     nil],
+          [:transform_showcases!,             :transform, nil],
+          [:delimit_bare_urls!,               :transform, nil],
+          [:transform_mermaid!,               :transform, nil],
+          [:transform_talk!,                  :transform, nil],
+          [:process_code_includes!,           :transform, nil],
+          [:normalize_code_languages!,        :transform, nil],
+          [:detect_plain_math!,               :transform, nil],
+          [:transform_math!,                  :transform, nil],
+          [:normalize_html_block_boundaries!, :transform, nil],
+          [:escape_inline_code_html!,         :transform, nil],
+          [:transform_text_right_inlines!,    :transform, nil],
+          [:transform_spacing_markers!,       :transform, nil],
+          [:transform_text_align_containers!, :transform, nil],
+          [:transform_book_cards!,            :transform, nil],
+          [:transform_tables!,                :transform, nil],
+          [:normalize_container_fences!,      :transform, nil],
+          [:transform_fancy_lists!,           :transform, nil],
+          [:mark_definition_continuations!,   :transform, nil],
+          [:transform_links!,                 :transform, nil],
+          [:expose_container_footnotes!,      :transform, nil],
+          # 索引・用語集が有効な本では、索引の走査が [用語] にタグを付けるので剥がさない
+          [:strip_index_markup!,              :transform, ->(plan) { !plan.features.index }],
+          # --- 加工後の姿で調べる検査と、書き出し ---
+          [:warn_missing_glyphs!,             :check,     nil],
+          [:warn_stroked_figures!,            :check,     nil],
+          [:write_output!,                    :output,    nil]
+        ].freeze
+
         # 指定Markdownの前処理パイプラインを順次実行する
         def run
           Common.log_info("#{context.source_path} → #{context.output_path}")
-          validate_directives!
-          validate_image_borders!
-          validate_image_trims!
-          validate_qr_codes!
-          validate_links!
-          apply_frontmatter!
-          strip_html_comments!
-          transform_terminal_blocks!
-          process_data_streams!
-          normalize_image_paths!
-          transform_image_borders!
-          transform_qr_codes!
-          validate_images!
-          transform_showcases!
-          delimit_bare_urls!
-          transform_mermaid!
-          transform_talk!
-          process_code_includes!
-          normalize_code_languages!
-          detect_plain_math!
-          transform_math!
-          normalize_html_block_boundaries!
-          escape_inline_code_html!
-          transform_text_right_inlines!
-          transform_spacing_markers!
-          transform_text_align_containers!
-          transform_book_cards!
-          transform_tables!
-          normalize_container_fences!
-          transform_fancy_lists!
-          mark_definition_continuations!
-          transform_links!
-          expose_container_footnotes!
-          strip_index_markup!
-          warn_missing_glyphs!
-          warn_stroked_figures!
-          write_output!
+          STEPS.each do |method, _kind, condition|
+            send(method) if condition.nil? || condition.call(plan)
+          end
         end
 
         private
@@ -819,9 +842,8 @@ module VivlioStarter
         # 素のテキストへ落とす姿も IndexMarkup が持つ。ここで独自に剥がしていた
         # ころは `CGI.escapeHTML` を通しておらず、`[<h1>]` が生タグとして VFM へ
         # 渡って**本物の章見出しになっていた**（index-markup-plain-fallback-spec.md §2.2）。
+        # 索引・用語集が無効の本でだけ走る（STEPS の条件）。
         def strip_index_markup!
-          return if Common.index_enabled?
-
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
           # 数式の SVG 化が使えない環境では、数式が素のまま残る。単位の `[\Omega]` を
           # 印として剥がすと式が変わるので退避する（改善案.md #115）

@@ -28,12 +28,34 @@ module VivlioStarter
         # 索引・用語集が**無効**なときの経路（＝素のテキストへ落とす代替）を見る。
         # 有効なときは索引スキャナがタグを付けるので、ここは何もしない（下の
         # test_should_keep_index_markup_when_index_enabled が担当）。
+        #
+        # 有効・無効は段の表（STEPS）の条件が決めるので、その条件を通して呼ぶ。
         def strip(markdown, index_enabled: false)
-          Common.stub(:index_enabled?, index_enabled) do
-            pre = MarkdownPreprocessor.new(@md_path, @entry)
-            pre.context.content = markdown
-            pre.send(:strip_index_markup!)
-            pre.context.content
+          plan = BuildPlan.resolve
+          plan = plan.with(features: plan.features.with(index: index_enabled))
+          pre = MarkdownPreprocessor.new(@md_path, @entry, plan:)
+          pre.context.content = markdown
+          _method, _kind, condition = MarkdownPreprocessor::STEPS.assoc(:strip_index_markup!)
+          pre.send(:strip_index_markup!) if condition.call(pre.plan)
+          pre.context.content
+        end
+
+        # --- phase: 段の表（v2-architecture-spec.md §3.4） ---
+
+        # 表に書いた名前が実在しないと、その段が走らないことにテストの外で気づけない
+        def test_steps_should_name_each_private_method_once
+          names = MarkdownPreprocessor::STEPS.map(&:first)
+
+          assert_equal names.uniq, names, "同じ段を二度書いている"
+          missing = names.reject { MarkdownPreprocessor.private_method_defined?(it) }
+          assert_empty missing, "MarkdownPreprocessor に無いメソッド"
+          assert_equal :write_output!, names.last, "書き出しは最後"
+        end
+
+        def test_steps_should_declare_a_known_kind_and_a_callable_condition
+          MarkdownPreprocessor::STEPS.each do |method, kind, condition|
+            assert_includes %i[check transform output], kind, method.to_s
+            assert(condition.nil? || condition.respond_to?(:call), method.to_s)
           end
         end
 

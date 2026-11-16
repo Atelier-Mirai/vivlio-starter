@@ -48,6 +48,7 @@ require_relative 'post_process/heading_processor'
 require_relative 'post_process/terminal_block_converter'
 require_relative 'post_process/definition_list_converter'
 require_relative 'prism_lines'
+require_relative 'build/plan'
 
 module VivlioStarter
   module CLI
@@ -60,171 +61,176 @@ module VivlioStarter
       module_function
 
       # 変換済みの HTML に後処理をかける（ビルドの各段から呼ぶ）
+      #
+      # 段の並びは first_pass_steps（全ページに先にかける）と page_steps（1 ページずつ順にかける）の
+      # 2 枚の表に書く（v2-architecture-spec.md §3.4。前処理の MarkdownPreprocessor::STEPS と同じ形）。
       # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
       def execute_post_process(entries)
         entry_map = resolve_entry_map(entries)
-
-        entry_map.each do |html_file, entry|
-          BodyClassInjector.inject_body_class(html_file, entry)
-          # HtmlReplacer より前に <pre> 化しておく。以降 <pre> は退避対象となり、
-          # 端末の逐語出力に含まれる `---` 等が置換ルール（<hr class="pagebreak">）に食われない。
-          TerminalBlockConverter.convert_terminal_blocks!(html_file)
-        end
-
+        plan = BuildPlan.current
         total_replacements = 0
+        count_replacements = ->(count) { total_replacements += count }
 
+        entry_map.each { |html_file, entry| run_post_process_steps(first_pass_steps, html_file, entry, plan) }
+
+        steps = page_steps(count_replacements)
         entry_map.each do |html_file, entry|
           Common.log_action("処理中: #{html_file}")
-
-          result = ReplacementRules.apply_builtin!(html_file)
-          if result[:changed]
-            total_replacements += result[:replacements]
-            Common.log_success("#{html_file}: #{result[:replacements]}個の置換を反映")
-          else
-            Common.log_info("#{html_file}: 変更なし")
-          end
-
-          begin
-            content_before = File.read(html_file, encoding: 'utf-8')
-            content_after  = SectionWrapper.wrap_h2_with_article!(content_before)
-            if content_after != content_before
-              File.write(html_file, content_after, encoding: 'utf-8')
-              Common.log_success("#{html_file}: h2を<article.section-topic>でラップ")
-              result2 = ReplacementRules.apply_builtin!(html_file)
-              if result2[:changed]
-                Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
-              end
-            end
-          rescue StandardError => e
-            Common.log_error("#{html_file}: section-topicラップ中にエラー: #{e.message}")
-          end
-
-          begin
-            RoleInjector.inject!(html_file, entry)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: role 属性の付与中にエラー: #{e.message}")
-          end
-
-          begin
-            wrap_sideimage_blocks!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: sideimage ラップ中にエラー: #{e.message}")
-          end
-
-          begin
-            process_image_groups!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: image-group 処理中にエラー: #{e.message}")
-          end
-
-          begin
-            set_pictures_columns!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: pictures 処理中にエラー: #{e.message}")
-          end
-
-          begin
-            wrap_img_text_blocks!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
-          end
-
-          # `:::{.text-table}`・`:::{.table-text}` の div ができた（組み込み置換ルールの）後に行う
-          begin
-            wrap_text_table_blocks!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: text-table ラップ中にエラー: #{e.message}")
-          end
-
-          # sideimage / image-group が img の width を読んで消したあとに行う
-          begin
-            apply_inline_image_widths!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: 文中の画像の幅の反映中にエラー: #{e.message}")
-          end
-
-          begin
-            split_kbd_combinations!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: キーの組み合わせの分割中にエラー: #{e.message}")
-          end
-
-          content = File.read(html_file, encoding: 'utf-8')
-          converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
-          if converted != content
-            File.write(html_file, converted, encoding: 'utf-8')
-            Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
-          end
-
-          begin
-            process_sideimage_footnotes!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: sideimage 脚注処理中にエラー: #{e.message}")
-          end
-
-          begin
-            renumber_footnotes_by_document_order!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: 脚注再番号付け中にエラー: #{e.message}")
-          end
-
-          # Prism.js 行番号付与（直接呼び出し）
-          PrismLinesCommands.execute_prism_lines(html_file)
-
-          # 定義リストは VFM が組んだ HTML を受け取ってから <dl> にする。
-          # Markdown 段階で HTML 化すると、中のルビ・索引が以降の処理から隠れる
-          begin
-            DefinitionListConverter.convert!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: 定義リストの組み立て中にエラー: #{e.message}")
-          end
-
-          unescape_pipes_in_table_code!(html_file)
-          # ラベル付きのコードを先に包む。mark_code_captions! が `.side-by-side` の 1 列に
-          # 包むと、キャプションとコードの間の <!--xref:ID--> が包みの外に残り、ID が付かない
-          # （25 章の @ruby-sample の飛び先が無かった）。先に包めばキャプションに code-caption が
-          # 付き、mark_code_captions! はその段落を飛ばす
-          wrap_cross_ref_code_blocks!(html_file)
-          mark_code_captions!(html_file)
-          mark_strong_headings!(html_file)
-          mark_inline_image_blocks!(html_file)
-          add_line_break_opportunities!(html_file)
-
-          begin
-            HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
-            Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
-          rescue StandardError => e
-            Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
-          end
-
-          begin
-            HeadingProcessor.inject_heading_number_spans!(html_file, entry)
-            Common.log_info("#{html_file}: 見出し番号スパンを構築")
-          rescue StandardError => e
-            Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
-          end
-
-          # 最終クリーンアップ: Nokogiri 系のステップが <p><div>...</div></p> の
-          # ねじれを正すときに残してしまう空の <p></p> などを除去する。
-          final_result = ReplacementRules.apply_builtin!(html_file)
-          if final_result[:changed]
-            total_replacements += final_result[:replacements]
-            Common.log_info("#{html_file}: 最終クリーンアップで #{final_result[:replacements]} 件を整理")
-          end
-
-          # 二重改ページの正規化は最後に行う。改ページマーカー（ReplacementRules）と
-          # article.section-topic ラップ（SectionWrapper）が揃った DOM でなければ
-          # 「マーカーの直後が h2 か」を正しく判定できない（page-break-control-spec §2.1-5）。
-          begin
-            PageBreakNormalizer.normalize!(html_file)
-          rescue StandardError => e
-            Common.log_error("#{html_file}: 改ページ正規化中にエラー: #{e.message}")
-          end
+          run_post_process_steps(steps, html_file, entry, plan)
         end
 
         Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
       end
       module_function :execute_post_process
+
+      # 後処理の段の表の 1 行 = [名前, 処理, 失敗したときの扱い, 条件]。
+      #   処理 … ->(html_file, entry) { ... }
+      #   失敗したときの扱い … nil（例外をそのまま上げてビルドを止める）か
+      #     [:error か :warn, 記録の文]（🔴 か 🟡 で記録して次の段へ進む）
+      #   条件 … BuildPlan を受ける lambda。nil の段は常に走る
+      # **並びの順は意味を持つ。** 順序の理由は、表の行のコメントと各処理のコメントに書く。
+
+      # 全ページに、page_steps より先にかける段
+      def first_pass_steps
+        [
+          [:inject_body_class,       ->(html, entry) { BodyClassInjector.inject_body_class(html, entry) }, nil, nil],
+          # HtmlReplacer より前に <pre> 化しておく。以降 <pre> は退避対象となり、
+          # 端末の逐語出力に含まれる `---` 等が置換ルール（<hr class="pagebreak">）に食われない。
+          [:convert_terminal_blocks, ->(html, _) { TerminalBlockConverter.convert_terminal_blocks!(html) }, nil, nil]
+        ]
+      end
+      module_function :first_pass_steps
+
+      # 1 ページずつ、上から順にかける段
+      # @param count_replacements [Proc] 置換ルールの件数を合計へ足す（完了の記録に出す）
+      def page_steps(count_replacements)
+        [
+          [:apply_replacement_rules, ->(html, _) { apply_replacement_rules!(html, count_replacements) }, nil, nil],
+          [:wrap_sections,           ->(html, _) { wrap_sections!(html) }, [:error, 'section-topicラップ中にエラー'], nil],
+          [:inject_roles,            ->(html, entry) { RoleInjector.inject!(html, entry) }, [:error, 'role 属性の付与中にエラー'], nil],
+          [:wrap_sideimage_blocks,   ->(html, _) { wrap_sideimage_blocks!(html) }, [:error, 'sideimage ラップ中にエラー'], nil],
+          [:process_image_groups,    ->(html, _) { process_image_groups!(html) }, [:error, 'image-group 処理中にエラー'], nil],
+          [:set_pictures_columns,    ->(html, _) { set_pictures_columns!(html) }, [:error, 'pictures 処理中にエラー'], nil],
+          [:wrap_img_text_blocks,    ->(html, _) { wrap_img_text_blocks!(html) }, [:error, 'img-text ラップ中にエラー'], nil],
+          # `:::{.text-table}`・`:::{.table-text}` の div ができた（組み込み置換ルールの）後に行う
+          [:wrap_text_table_blocks,  ->(html, _) { wrap_text_table_blocks!(html) }, [:error, 'text-table ラップ中にエラー'], nil],
+          # sideimage / image-group が img の width を読んで消したあとに行う
+          [:apply_inline_image_widths, ->(html, _) { apply_inline_image_widths!(html) }, [:error, '文中の画像の幅の反映中にエラー'], nil],
+          [:split_kbd_combinations,  ->(html, _) { split_kbd_combinations!(html) }, [:error, 'キーの組み合わせの分割中にエラー'], nil],
+          [:convert_endnotes,        ->(html, _) { convert_endnotes_to_page_footnotes!(html) }, nil, nil],
+          [:process_sideimage_footnotes, ->(html, _) { process_sideimage_footnotes!(html) }, [:error, 'sideimage 脚注処理中にエラー'], nil],
+          [:renumber_footnotes,      ->(html, _) { renumber_footnotes_by_document_order!(html) }, [:error, '脚注再番号付け中にエラー'], nil],
+          # Prism.js 行番号付与（直接呼び出し）
+          [:prism_lines,             ->(html, _) { PrismLinesCommands.execute_prism_lines(html) }, nil, nil],
+          # 定義リストは VFM が組んだ HTML を受け取ってから <dl> にする。
+          # Markdown 段階で HTML 化すると、中のルビ・索引が以降の処理から隠れる
+          [:convert_definition_lists, ->(html, _) { DefinitionListConverter.convert!(html) }, [:error, '定義リストの組み立て中にエラー'], nil],
+          [:unescape_pipes_in_table_code, ->(html, _) { unescape_pipes_in_table_code!(html) }, nil, nil],
+          # ラベル付きのコードを先に包む。mark_code_captions! が `.side-by-side` の 1 列に
+          # 包むと、キャプションとコードの間の <!--xref:ID--> が包みの外に残り、ID が付かない
+          # （25 章の @ruby-sample の飛び先が無かった）。先に包めばキャプションに code-caption が
+          # 付き、mark_code_captions! はその段落を飛ばす
+          [:wrap_cross_ref_code_blocks, ->(html, _) { wrap_cross_ref_code_blocks!(html) }, nil, nil],
+          [:mark_code_captions,      ->(html, _) { mark_code_captions!(html) }, nil, nil],
+          [:mark_strong_headings,    ->(html, _) { mark_strong_headings!(html) }, nil, nil],
+          [:mark_inline_image_blocks, ->(html, _) { mark_inline_image_blocks!(html) }, nil, nil],
+          [:add_line_break_opportunities, ->(html, _) { add_line_break_opportunities!(html) }, nil, nil],
+          [:inject_heading_markers,  ->(html, _) { inject_heading_markers!(html) }, [:warn, '見出しメタ付与に失敗'], nil],
+          [:inject_heading_number_spans, ->(html, entry) { inject_heading_number_spans!(html, entry) },
+           [:warn, '見出し番号スパン構築に失敗'], nil],
+          # 最終クリーンアップ: Nokogiri 系のステップが <p><div>...</div></p> の
+          # ねじれを正すときに残してしまう空の <p></p> などを除去する。
+          [:final_cleanup,           ->(html, _) { final_cleanup!(html, count_replacements) }, nil, nil],
+          # 二重改ページの正規化は最後に行う。改ページマーカー（ReplacementRules）と
+          # article.section-topic ラップ（SectionWrapper）が揃った DOM でなければ
+          # 「マーカーの直後が h2 か」を正しく判定できない（page-break-control-spec §2.1-5）。
+          [:normalize_page_breaks,   ->(html, _) { PageBreakNormalizer.normalize!(html) }, [:error, '改ページ正規化中にエラー'], nil]
+        ]
+      end
+      module_function :page_steps
+
+      # 表の段を 1 ページへ上から順にかける
+      # @param steps [Array<Array>] first_pass_steps か page_steps
+      # @param plan [BuildPlan] 条件の材料
+      def run_post_process_steps(steps, html_file, entry, plan)
+        steps.each do |_name, handler, on_error, condition|
+          next unless condition.nil? || condition.call(plan)
+
+          run_post_process_step(handler, html_file, entry, on_error)
+        end
+      end
+      module_function :run_post_process_steps
+
+      # 1 段を走らせる。失敗したときの扱いがある段は、記録して次の段へ進む
+      def run_post_process_step(handler, html_file, entry, on_error)
+        return handler.call(html_file, entry) unless on_error
+
+        begin
+          handler.call(html_file, entry)
+        rescue StandardError => e
+          level, label = on_error
+          message = "#{html_file}: #{label}: #{e.message}"
+          level == :warn ? Common.log_warn(message) : Common.log_error(message)
+        end
+      end
+      module_function :run_post_process_step
+
+      # 組み込みの置換ルールをかけ、件数を合計へ足す
+      def apply_replacement_rules!(html_file, count_replacements)
+        result = ReplacementRules.apply_builtin!(html_file)
+        if result[:changed]
+          count_replacements.call(result[:replacements])
+          Common.log_success("#{html_file}: #{result[:replacements]}個の置換を反映")
+        else
+          Common.log_info("#{html_file}: 変更なし")
+        end
+      end
+      module_function :apply_replacement_rules!
+
+      # h2 を article.section-topic で包み、包んだ後に残る空の段落を置換ルールで片付ける
+      def wrap_sections!(html_file)
+        content_before = File.read(html_file, encoding: 'utf-8')
+        content_after  = SectionWrapper.wrap_h2_with_article!(content_before)
+        return if content_after == content_before
+
+        File.write(html_file, content_after, encoding: 'utf-8')
+        Common.log_success("#{html_file}: h2を<article.section-topic>でラップ")
+        result = ReplacementRules.apply_builtin!(html_file)
+        Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result[:replacements]}件)") if result[:changed]
+      end
+      module_function :wrap_sections!
+
+      def convert_endnotes_to_page_footnotes!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
+        return if converted == content
+
+        File.write(html_file, converted, encoding: 'utf-8')
+        Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
+      end
+      module_function :convert_endnotes_to_page_footnotes!
+
+      def inject_heading_markers!(html_file)
+        HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
+        Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
+      end
+      module_function :inject_heading_markers!
+
+      def inject_heading_number_spans!(html_file, entry)
+        HeadingProcessor.inject_heading_number_spans!(html_file, entry)
+        Common.log_info("#{html_file}: 見出し番号スパンを構築")
+      end
+      module_function :inject_heading_number_spans!
+
+      # 最後にもう一度置換ルールをかけ、件数を合計へ足す
+      def final_cleanup!(html_file, count_replacements)
+        result = ReplacementRules.apply_builtin!(html_file)
+        return unless result[:changed]
+
+        count_replacements.call(result[:replacements])
+        Common.log_info("#{html_file}: 最終クリーンアップで #{result[:replacements]} 件を整理")
+      end
+      module_function :final_cleanup!
 
       # Entry 配列を解決し、HTML パス => Entry の Hash を返す
       # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
