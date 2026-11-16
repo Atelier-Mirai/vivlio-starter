@@ -143,10 +143,13 @@ module VivlioStarter
                                   "#{offenders.join("\n")}"
         end
 
-        # 出力先の規則（body.vs-epub・body.vs-kindle）は stylesheets/targets/ にだけ置く。PDF は target 層を
-        # 読まないので、出力先の規則が PDF の束に入らない（css-layer-restructure-spec.md §5・§8 の S3-2 (a)）
+        # 出力先の規則（body.vs-epub・body.vs-kindle）は stylesheets/targets/ と、テーマの出力先の CSS
+        # （themes/<名前>/epub.css・kindle-<種類>.css など）にだけ置く。PDF は target 層を読まないので、
+        # 出力先の規則が PDF の束に入らない（css-layer-restructure-spec.md §5・§8 の S3-2 (a)・
+        # theme-contract-spec.md §3.1）
         def test_should_keep_target_rules_in_targets
-          offenders = bundled_css_files.reject { relative(it).start_with?('stylesheets/targets/') }.flat_map do |path|
+          target_file = %r{\A(?:stylesheets/targets/|themes/[^/]+/(?:epub|kindle)(?:-[a-z-]+)?\.css\z)}
+          offenders = bundled_css_files.reject { relative(it).match?(target_file) }.flat_map do |path|
             selectors(Crass.parse(File.read(path, encoding: 'utf-8')))
               .grep(/vs-(?:epub|kindle)/).map { "#{relative(path)}: #{it}" }
           end

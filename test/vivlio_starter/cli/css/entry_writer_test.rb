@@ -89,6 +89,22 @@ module VivlioStarter
           end
         end
 
+        # standard の出力先の CSS（選択子が vs-header-* を含む規則）は、どの種類のページでも target 層の vs の
+        # targets/ の後に入る。EPUB は epub.css、Kindle は epub.css → kindle.css（theme-contract-spec.md §9 の S6-6）
+        def test_should_import_the_standard_target_files_after_the_vs_targets
+          standard = Theme.resolve('standard', root: REPO_ROOT)
+          targets = lambda do |kind, target|
+            EntryWriter.render(kind, target:, theme: standard).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
+          end
+        
+          EntryWriter::IMPORTS.each_key do |kind|
+            assert_equal %w[../../themes/standard/epub.css], targets.call(kind, :epub).grep(%r{/themes/}), kind
+            assert_equal %w[../../themes/standard/epub.css ../../themes/standard/kindle.css],
+                         targets.call(kind, :kindle).last(2), "#{kind} はテーマの 2 枚を target 層の最後に読む"
+            assert_empty targets.call(kind, nil), "#{kind} の PDF は target 層を読まない"
+          end
+        end
+        
         # 扉絵を敷く @page :nth(1) は body のクラスで絞れないので、章だけが読むファイルに置く
         def test_should_keep_the_frontispiece_page_rule_out_of_non_chapter_pages
           frontispiece = /@page :nth\(1\) \{[^}]*--book-frontispiece-image/
@@ -140,10 +156,11 @@ module VivlioStarter
 
         # 出力先の規則は target 層で、そのページの種類の分だけ読む。Kindle は EPUB の規則も読む。
         # Kindle は、どの種類も最初に本文の字の大きさと行送りのトークン（kindle-tokens.css）を読む。
-        # book.yml から生成する Kindle だけの規則は無い（色は Css::LiteralResolver が変数から解く）
+        # book.yml から生成する Kindle だけの規則は無い（色は Css::LiteralResolver が変数から解く）。
+        # vs の targets/ だけを見るため、テーマ無しで書く（テーマの出力先の CSS は下のテスト）
         def test_should_import_target_files_per_kind_and_target
           targets = lambda do |kind, target|
-            EntryWriter.render(kind, target:).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
+            EntryWriter.render(kind, target:, theme: nil).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
           end
 
           assert_empty targets.call('chapter', nil), 'PDF は target 層を読まない'

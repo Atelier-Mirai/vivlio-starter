@@ -944,3 +944,36 @@ B1（`pdf`・`epub`・`kindle`、`--no-clean`・`--log=debug`）と B2（`pdf`�
 
 - クリーン EPUB には、前と同じくテーマの 12 枚（花）が入る。42 章が本文に `images/42-frontispiece/ajisai.webp` などを載せており、参照の切れた画像の回収はファイルの名前で見るので、同じ名前のテーマの画像も残る（前は `stylesheets/images/bundled/` に入っていた）。
 - Kindle の中間生成物（`kindle_record_diff.rb`）は比べていない。Kindle 用 EPUB の中身が、名前を除いて同じだからである（小段階の表のとおり）。
+
+### 11.9 S6-6 出力先の規則を `standard` へ（2026-11-17）
+
+#### 作ったもの
+
+- `themes/standard/epub.css`: `stylesheets/targets/epub.css` の `body.vs-epub:not(.vs-header-image) .section-lead`（1 規則）。
+- `themes/standard/kindle.css`: `stylesheets/targets/kindle.css` の `body.vs-header-simple.vs-kindle` の 5 規則（`h1::before`・`h1::after`・`h1`・`h1 .chapter-number`・`h2`・`h2 .section-number`）。
+- どちらも選択子と宣言を変えずに移した。読み込みは S6-3 の仕組み（`Theme::Manifest#target_files`）のままで、`theme.yml` は変えていない。`targets/epub.css`・`kindle.css` の冒頭に、`vs-header-*` の規則の置き場を書いた。
+- テスト: `entry_writer_test.rb` に「standard の 2 枚は、どの種類でも target 層の vs の `targets/` の後に入る」を足した。vs の `targets/` の読む順を見るテストはテーマ無しで書く形にした。`css_layer_test.rb` の「出力先の規則は `targets/` に置く」に、テーマの出力先の CSS（`themes/<名前>/epub.css`・`kindle-<種類>.css` など）を足した。`theme_test.rb` の standard の出力先の CSS の期待を改めた。`literal_resolver_test.rb` の仮の本に `themes/` を置いた（置かないと、移した Kindle の見出しの規則が束に入らない）。
+- `scripts/css_computed_diff.rb`: 前の版の取り出しに `themes/` を足し（その版にあるときだけ）、作業場所に `themes/` の参照を張る。S6-5 までは、テーマの CSS が前後とも比べに入っていなかった（S6-4 の比べは、2 枚がまだ `stylesheets/` にあったので影響しない）。
+
+#### 仕様に無かったので決めたこと
+
+1. **小段階の表の「3 か所と 8 か所」は、`grep` で数えた行の数（注釈の行を含む）で、規則は 1 つと 5 つだった。** 移した規則は上のとおりで、選択子が `vs-header-*` を含む規則はほかに無い。
+2. **移した規則と、詳細度が同じ規則との前後。** テーマの出力先の CSS は `targets/kindle-preface.css` の後に読まれ、`body.preface.vs-kindle h2` と `body.vs-header-simple.vs-kindle h2` は詳細度が同じ (0,2,2) である。前書き・後書きの body には `vs-header-*` が付かない（`BodyClassInjector` は章と付録にだけ付ける）ので、同じ要素で取り合わない。静的な判定（`css_layer_test.rb`）でも新しい組は挙がらず、許可の表は変えていない。
+3. **雛形は `themes/` だけを写した**（S6-3・S6-5 と同じ）。雛形の `stylesheets/targets/` には移す前の規則が残り、`vs new` の本では同じ規則が 2 回入る（並びと詳細度が同じなので、結果は変わらない）。雛形の同期（`ruby scripts/copy_to_scaffold.rb`）で消える。
+
+#### 確かめた結果
+
+B1（`pdf`・`epub`・`kindle`、`--no-clean`・Kindle の記録つき・`--log=debug`）を組んだ（`r2/check/s6-6/`・台本 `r2/runs/s6-6.sh`）。ビルドの 🔴・🟡 は 0。S6-5 と同じ日に組んだので、`@today` の差は無い。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 入口の CSS（S6-5 の B1 と） | 11 枚ともバイト単位で同じ（PDF は target 層を読まないので、PDF の画素は比べていない） |
+| 計算値（`css_computed_diff.rb`。前は 0a869716。HTML は S6-5 の B1 の写しのもの） | EPUB・Kindle の 78 文書・156 組で違い 0。`themes/standard/kindle.css` を消した写しを後の側に渡すと、付録の見出しに違いが出ることも確かめた（道具がテーマの CSS を読んでいることの確かめ） |
+| Kindle の中間生成物（`kindle_record_diff.rb`。S6-4 の記録と） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0。Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| `InversionCheck` の要素ごとの判定 | 8 種類 × EPUB・Kindle 用 EPUB とも 0 組 |
+| EPUB（S6-5 の B1 と） | 画像の名前を中身のハッシュにそろえると（PNG に埋め込まれた生成日時を除く）、画像はすべて一致し、XHTML もすべて一致。OPF の違いは、写しごとに変わる `_epub_assets/` の名前と `dcterms:modified` だけ。CSS の違いは 8 枚: クリーン EPUB の本文のページは出どころの注釈 1 行だけ（移した規則は `targets/epub.css` の最後にあったので、位置が変わらない）、本文以外の種類には移した規則が入る（その body には `vs-header-*` が付かない）、Kindle 用は移した規則が `targets/` の後ろへ移る |
+| EPUBCheck | クリーン・Kindle 用とも致命・エラー・警告 0 |
+| テスト | `rake test` 4,455 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+
+- 契約 HTML の showcase の SVG 2 枚が S6-5 の写しとバイト単位で違うが、埋め込んだ PNG の生成日時（`date:create`）だけで、大きさは同じ。
+- 1 回目の `rake test` で `epub_kindle_layout_test.rb` の「targets/ の Kindle の規則が全部解ける」が落ちた。作業ツリーの `.cache/vs/book-settings.css` が 1.x の `vs` の書いたもの（`--appendix-accent-color`・`!important` つきの Kindle の規則）になっていたためで、0a869716 でも同じく落ちる。v2 のコードで書き直すと通る。このテストは作業ツリーの `.cache/vs/book-settings.css` を読むので、1.x の `vs` を作業ツリーで走らせた後は落ちる。

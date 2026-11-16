@@ -65,8 +65,10 @@ Pair = Data.define(:html, :base, :flavor, :name, :kind, :form, :media)
 
 # git のリビジョンを一時のディレクトリへ取り出す（css_cascade_diff.rb と同じ）
 def checkout(rev, into)
-  archive, status = Open3.capture2('git', '-C', ROOT, 'archive', rev, 'lib', 'stylesheets', 'config',
-                                   binmode: true)
+  # themes/ は S6-3 より前の版に無い。git archive は無いパスで止まるので、あるときだけ取り出す
+  paths = %w[lib stylesheets config]
+  paths << 'themes' if system('git', '-C', ROOT, 'cat-file', '-e', "#{rev}:themes", err: File::NULL)
+  archive, status = Open3.capture2('git', '-C', ROOT, 'archive', rev, *paths, binmode: true)
   abort("git archive に失敗しました: #{rev}") unless status.success?
   _, err, status = Open3.capture3('tar', '-x', '-C', into, stdin_data: archive, binmode: true)
   abort("取り出しに失敗しました: #{err}") unless status.success?
@@ -82,6 +84,9 @@ def prepare_css(source, workspace, book_cache, kindle_htmls, settings = book_cac
   cache = File.join(workspace, '.cache', 'vs')
   FileUtils.mkdir_p([cache, File.join(workspace, 'flat')])
   File.symlink(File.join(source, 'stylesheets'), File.join(workspace, 'stylesheets'))
+  # テーマの CSS は、入口から ../../themes/ で読まれる（Css::EntryWriter.theme_hrefs）
+  themes = File.join(source, 'themes')
+  File.symlink(themes, File.join(workspace, 'themes')) if File.directory?(themes)
   %w[book-settings.css book-fonts.css book-settings-kindle.css].each do
     FileUtils.cp(File.join(settings, it), cache) if File.file?(File.join(settings, it))
   end

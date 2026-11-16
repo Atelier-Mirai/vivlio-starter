@@ -403,7 +403,7 @@ class BookSettingsCssPageTest < Minitest::Test
     assert_includes css, 'page-break-before: auto;'
   end
 
-  # Kindle の簡素な節見出し（targets/kindle.css）は詳細度が高く規則では打ち消せないので、
+  # Kindle の簡素な節見出し（themes/standard/kindle.css）は詳細度が高く規則では打ち消せないので、
   # 変数で値を渡す。Kindle 用の CSS では Css::LiteralResolver が値に解く
   def test_should_pass_section_pagebreak_to_kindle_through_variables
     disabled = BSC.section_pagebreak_rule({ section_pagebreak: false })

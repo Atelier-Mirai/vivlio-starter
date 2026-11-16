@@ -243,6 +243,8 @@ module VivlioStarter
               File.symlink(File.join(ROOT, 'stylesheets', it), File.join(stylesheets, it)) unless it == 'custom.css'
             end
             File.write(File.join(stylesheets, 'custom.css'), custom.to_s)
+            # standard の見出しの規則（Kindle の簡素な見出しを含む）は themes/standard/ にある
+            File.symlink(File.join(ROOT, 'themes'), File.join(dir, 'themes'))
             File.write(File.join(dir, '.cache', 'vs', 'book-settings.css'), settings)
             File.write(File.join(dir, '.cache', 'vs', 'book-fonts.css'), '')
             html = File.join(dir, 'page.html')

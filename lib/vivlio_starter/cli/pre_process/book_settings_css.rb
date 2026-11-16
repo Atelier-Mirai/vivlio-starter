@@ -514,7 +514,7 @@ module VivlioStarter
         def section_pagebreak_rule(page_cfg)
           return '' unless section_pagebreak_disabled?(page_cfg)
 
-          # Kindle の簡素な節見出し（targets/kindle.css の body.vs-header-simple.vs-kindle h2）は、
+          # Kindle の簡素な節見出し（themes/standard/kindle.css の body.vs-header-simple.vs-kindle h2）は、
           # 下の選択子より詳細度が高いので、規則では打ち消せない。変数で値を渡す
           <<~CSS.chomp
             /* page.section_pagebreak: false — 節（h2）でページを改めない。

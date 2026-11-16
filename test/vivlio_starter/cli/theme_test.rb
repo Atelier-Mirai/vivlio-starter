@@ -27,7 +27,7 @@ module VivlioStarter
     class ThemeTest < Minitest::Test
       REPO_ROOT = File.expand_path('../../..', __dir__)
 
-      # standard は見出しの 2 枚だけを持ち、tokens: は空（theme-contract-spec.md §4・§9 の S6 の決め 12）
+      # standard は見出しの 2 枚と、その出力先の CSS を持ち、tokens: は空（theme-contract-spec.md §4・§9 の S6 の決め 12）
       def test_should_read_the_bundled_standard_theme
         theme = Theme.resolve('standard', root: REPO_ROOT)
 
@@ -38,7 +38,9 @@ module VivlioStarter
         assert_nil theme.base
         assert_equal({ writing_mode: %i[horizontal], layout: %i[reflowable], targets: %i[pdf print_pdf epub kindle] },
                      theme.supports)
-        assert_empty theme.target_files('chapter', :kindle)
+        # 出力先の CSS は、選択子が vs-header-* を含む規則（S6-6 で stylesheets/targets/ から移した）
+        assert_equal %w[themes/standard/epub.css], theme.target_files('chapter', :epub)
+        assert_equal %w[themes/standard/epub.css themes/standard/kindle.css], theme.target_files('index', :kindle)
       end
 
       # 配色のテーマが組版のテーマを土台にする形（theme-contract-spec.md §3.2）

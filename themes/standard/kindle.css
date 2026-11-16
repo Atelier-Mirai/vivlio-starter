@@ -1,0 +1,72 @@
+@charset "utf-8";
+
+/* standard テーマの Kindle の規則。target 層で、vs の stylesheets/targets/ と、このテーマの
+   epub.css の後に読む（theme-contract-spec.md §3.1）。全部の種類の束に入るので、選択子は
+   vs-header-*（章と付録の body にだけ付く）で絞る。
+   S6-6 で stylesheets/targets/kindle.css から、選択子と宣言を変えずに移した（同 §4）。
+   色は部品と同じ変数で書いてよい。Kindle 用の平らな CSS を作るときに Css::LiteralResolver が
+   値に解く（css-layer-restructure-spec.md §4.4） */
+
+/* --- simple-header.css --- */
+
+/* =============================================================
+   Kindle 専用フォールバック（付録など simple スタイルの章/節見出し）
+   -------------------------------------------------------------
+   Kindle KFX は display:grid / clamp() / ::before(absolute) / linear-gradient を解さず、
+   simple-header.css の装飾が崩れて素テキスト化する（kindle_epub_debug.md）。
+   body.vs-header-simple.vs-kindle 配下に、KFX が解す形の装飾を与え、付録の章/節見出しにも
+   枠付きの装飾を施す。枠の色は --book-color-heading（付録は pages/appendix.css が付録の色にする）。
+   画像版（vs-header-image）や PDF はこの規則の影響を受けない。
+   ============================================================= */
+body.vs-header-simple.vs-kindle h1::before,
+body.vs-header-simple.vs-kindle h1::after {
+  content: none;
+}
+
+body.vs-header-simple.vs-kindle h1 {
+  display: block;
+  overflow: visible;
+  border: 2px solid var(--book-color-heading);
+  border-radius: 4px;
+  background: #f4f1ea;
+  margin: 1em 0;
+  padding: 0.8em 0.6em;
+  text-align: center;
+  font-size: 1.6em;
+  line-height: 1.4;
+  page-break-before: always;
+  break-before: page;
+}
+
+body.vs-header-simple.vs-kindle h1 .chapter-number {
+  display: block;
+  margin-bottom: 0.3em;
+  font-size: 0.7em;
+  font-weight: 700;
+  color: var(--book-color-heading);
+}
+
+body.vs-header-simple.vs-kindle h2 {
+  display: block;
+  border: 1px solid var(--book-color-heading);
+  border-left: 4px solid var(--book-color-heading);
+  border-radius: 3px;
+  background: #f4f1ea;
+  margin: 1.2em 0 0.6em;
+  padding: 0.4em 0.6em;
+  font-size: 1.3em;
+  font-weight: 800;
+  /* page.section_pagebreak: false のとき、book-settings.css が両方の変数を auto にする */
+  page-break-before: var(--section-page-break-before, always);
+  break-before: var(--section-break-before, page);
+}
+
+body.vs-header-simple.vs-kindle h2 .section-number {
+  display: inline-block;
+  margin-right: 0.5em;
+  padding: 0 0.4em;
+  background: var(--book-color-heading);
+  border-radius: 2px;
+  color: #fff;
+  font-weight: 900;
+}
