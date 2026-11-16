@@ -14,7 +14,7 @@
    章タイトル
    ------------------------------------------------------------- */
 /* 章題の箱幅は「1 行の文字数」で決まる（heading-metrics-spec §1-2）。
-   --frontispiece-heading-width は book.yml の theme.frontispiece.heading_chars を
+   --book-frontispiece-heading-width は book.yml の theme.frontispiece.heading_chars を
    BookSettingsCss がリテラル mm へ解いた値。以前は clamp() の上限に置いていたため
    大きくしても効かず、8 字の章題が 1 字だけ泣き別れていた。 */
 body.vs-header-image h1 {
@@ -23,17 +23,17 @@ body.vs-header-image h1 {
   grid-template-rows: auto auto;
   /* 章番号と章題は同じ見出しの一部なので近づける（近接の原則）。
      空けるのは章題とリード文の間（.chapter-lead 側で開ける）。 */
-  gap: clamp(1mm, calc(var(--paper-scale) * 2mm), 2mm);
+  gap: clamp(1mm, calc(var(--book-paper-scale) * 2mm), 2mm);
   align-items: center;
   justify-items: center;
   margin-inline: auto;
   /* 見出しブロック（章番号〜リード）全体の下げ量。book.yml の
      theme.frontispiece.heading_offset で調整できる（扉絵の絵柄に合わせて追い込む用）。 */
-  margin-block: var(--frontispiece-heading-offset) 0;
+  margin-block: var(--book-frontispiece-heading-offset) 0;
   text-align: center;
-  inline-size: var(--frontispiece-heading-width);
+  inline-size: var(--book-frontispiece-heading-width);
   max-inline-size: 100%;
-  padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
+  padding-block: clamp(3mm, calc(var(--book-paper-scale) * 6mm), 8mm);
 }
 
 /* リード文の幅も「1 行の文字数」で決まる（theme.frontispiece.lead_chars 由来）。
@@ -41,23 +41,23 @@ body.vs-header-image h1 {
 /* 章題とリード文の間は空ける（章番号↔章題を詰めたぶんの対）。
    以前は負マージンで章題へ引き寄せており、3 要素が等間隔で 1 つの塊に見えていた。 */
 body.vs-header-image .chapter-lead {
-  inline-size: var(--frontispiece-lead-width);
+  inline-size: var(--book-frontispiece-lead-width);
   max-inline-size: 100%;
-  margin-block: clamp(3mm, calc(var(--paper-scale) * 5mm), 5mm)
-    clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
+  margin-block: clamp(3mm, calc(var(--book-paper-scale) * 5mm), 5mm)
+    clamp(8mm, calc(var(--book-paper-scale) * 10mm), 12mm);
 }
 
 body.vs-header-image h1 .chapter-number {
   display: block;
-  font-family: var(--font-header);
-  font-size: clamp(24Q, calc(var(--paper-scale) * 30Q), 32Q);
+  font-family: var(--book-font-heading);
+  font-size: clamp(24Q, calc(var(--book-paper-scale) * 30Q), 32Q);
   font-weight: 600;
   letter-spacing: 0.25em;
   color: #333;
   text-transform: none;
-  margin-block-start: clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
-  padding-block-end: clamp(2mm, calc(var(--paper-scale) * 3mm), 4mm);
-  /* margin-block-end: clamp(5mm, calc(var(--paper-scale) * 7mm), 8mm); */
+  margin-block-start: clamp(8mm, calc(var(--book-paper-scale) * 10mm), 12mm);
+  padding-block-end: clamp(2mm, calc(var(--book-paper-scale) * 3mm), 4mm);
+  /* margin-block-end: clamp(5mm, calc(var(--book-paper-scale) * 7mm), 8mm); */
   width: 100%;
   position: relative;
 }
@@ -80,8 +80,8 @@ body.vs-header-image h1 .chapter-title {
   margin: 0 auto;
   padding: 0;
   text-align: center;
-  font-family: var(--font-header);
-  font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q);
+  font-family: var(--book-font-heading);
+  font-size: clamp(34Q, calc(var(--book-paper-scale) * 48Q), 50Q);
   font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1.45;
@@ -99,7 +99,7 @@ body.vs-header-image h1 .chapter-title {
   white-space: normal;
   text-shadow: 0 0 1mm rgb(255 255 255 / 70%);
   margin-block-start: 0;
-  margin-block-end: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
+  margin-block-end: clamp(2mm, calc(var(--book-paper-scale) * 4mm), 5mm);
 }
 
 body.vs-header-image h1::after {
@@ -125,9 +125,9 @@ body.vs-header-image .section-topic {
      親（section.level2）へ collapse して margin-break の対象がずれるため。 */
   display: grid;
   grid-template-columns: 100%;
-  row-gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
-  margin-block-start: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm);
-  margin-block-end: clamp(3mm, calc(var(--paper-scale) * 4mm), 4mm);
+  row-gap: clamp(2mm, calc(var(--book-paper-scale) * 3mm), 3mm);
+  margin-block-start: clamp(11mm, calc(var(--book-paper-scale) * 16mm), 16mm);
+  margin-block-end: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 4mm);
   margin-break: discard;
 }
 
@@ -141,11 +141,11 @@ body.vs-header-image .section-topic + * {
    （帯 68mm ＝ A4 ページ高の 23%）。左右に並べ替えて約半分（33.8mm）にする。
    font-size は theme.ornament.heading_chars から解いたリテラル（§1-2）。 */
 body.vs-header-image .section-topic h2 {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   font-weight: 900;
   break-before: page;
   margin: 0;
-  font-size: var(--section-title-font-size);
+  font-size: var(--book-ornament-title-font-size);
   /* 3 行の節題でも飾りの枠に収まるよう行送りは詰め気味にする（§3 の帯の高さと対で決まる） */
   line-height: 1.25;
   align-self: center;
@@ -153,14 +153,14 @@ body.vs-header-image .section-topic h2 {
 
   display: flex;
   align-items: center;
-  gap: clamp(3mm, calc(var(--paper-scale) * 4mm), 4mm);
+  gap: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 4mm);
   position: relative;
   /* 左右の飾りを避ける。飾りの「最大張り出し」ではなく「節題の行位置での輪郭」で
      決める——角飾りは帯の上端付近で最も張り出し中央へ向かって細くなるので、
      最大値に合わせると横幅を約 20mm 捨てることになる（§3-2 の輪郭実測）。 */
-  padding-inline: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm)
-    clamp(12mm, calc(var(--paper-scale) * 18mm), 18mm);
-  padding-block: clamp(1.5mm, calc(var(--paper-scale) * 2mm), 2mm);
+  padding-inline: clamp(11mm, calc(var(--book-paper-scale) * 16mm), 16mm)
+    clamp(12mm, calc(var(--book-paper-scale) * 18mm), 18mm);
+  padding-block: clamp(1.5mm, calc(var(--book-paper-scale) * 2mm), 2mm);
   /* 帯の高さは「2 行の節題が飾りの間に収まる」ことで決まる。A4 版面 162mm では
      27mm ＝ 2 行 22.9mm ＋ 上下パディング 4mm。1 行の節題も同じ高さで組む（行数で
      帯の高さが変わると紙面が落ち着かない）。以前は 3 行を見込んだ 38.6mm（420 / 100）
@@ -188,7 +188,7 @@ body.vs-header-image .section-topic h2::after {
   position: absolute;
   inset-block: 0;
   inline-size: 50%;
-  background-image: var(--section-bg-image);
+  background-image: var(--book-ornament-image);
   background-repeat: no-repeat;
   /* 飾りの幅は帯幅の 67%。帯の高さに合わせて縮めると（112%）飾りが小さく見えるので、
      帯より大きく描く。はみ出す分は帯の端で切れ、左は上寄り・右は下寄りの部分が見える */
@@ -211,7 +211,7 @@ body.vs-header-image .section-topic h2 > * {
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  gap: clamp(2mm, calc(var(--book-paper-scale) * 3mm), 3mm);
   white-space: normal;
 }
 
@@ -237,7 +237,7 @@ body.vs-header-image .section-topic h2 .section-title {
 body.vs-header-image .section-topic h2 .section-number {
   font-size: calc(1em * 1.1);
   font-weight: 900;
-  color: var(--section-number-color);
+  color: var(--book-color-section-number);
   /* Type 3 font avoidance: Chromium PDF can emit stroked text as Type 3.
      Keep the former visual treatment here for future reference.
      -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30); */

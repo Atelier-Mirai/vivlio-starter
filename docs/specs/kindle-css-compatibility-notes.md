@@ -49,7 +49,7 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | `@media (max-width: …)` | ❌ | Previewer の Phone でも Tablet と同じ規則のまま（`40em`・`600px` とも。2026-11-07） | 画面の幅で組み方を変えない。写真の横並びは端末によらず同じ枚数 |
 | `inline-block` の `min-width` | △ | 幅は守られるが、行に収まらなくても折り返さず画面からはみ出す（間に空白を置いても同じ） | 最小の幅で折り返させる組み方はしない |
 
-| リンク（`<a>`）の `color` | △ | 指定なしと、`#000`・`#111` の黒に近い色は、Kindle のリンクの青（`#0000ff` 前後）で描かれる。`#222` から先と、灰色・色・親から継いだ色は指定どおりに描かれる。本の中へのリンクも外へのリンクも同じ。中間生成物の `style` には、どの色も指定どおりに出る（2026-11-15・Previewer 4.0.4・Tablet） | 黒に近いリンクにしたいときは `#222` 以上で書く。vs の既定（`--color-link: #000`）は、Kindle では青のリンクになる |
+| リンク（`<a>`）の `color` | △ | 指定なしと、`#000`・`#111` の黒に近い色は、Kindle のリンクの青（`#0000ff` 前後）で描かれる。`#222` から先と、灰色・色・親から継いだ色は指定どおりに描かれる。本の中へのリンクも外へのリンクも同じ。中間生成物の `style` には、どの色も指定どおりに出る（2026-11-15・Previewer 4.0.4・Tablet） | 黒に近いリンクにしたいときは `#222` 以上で書く。vs の既定（`--book-color-link: #000`）は、Kindle では青のリンクになる |
 | リンクの `text-decoration: none` | ❌ | 下線が消えない。Kindle はリンクに必ず下線を引く（同上） | 下線の有無でリンクを見分ける組み方はしない |
 
 > ❌＝非対応（解されない）、△＝不安定（端末/状況で挙動が変わる）。
@@ -93,9 +93,9 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 **Previewer 4 では、失うものが「画像 1 枚」では済まなくなった。** WebP が 1 枚でも混じると、その画像が破棄される（`W14012` / `W14015`）だけでなく、**Enhanced Typesetting ごと落ちて本が `.mobi` になる**（実測 2026-09-23。同じ絵を JPEG に替えた対照では `Supported` になるので、画像の中身ではなく形式が効いている）。除外は「画質のため」ではなく「KPF を作るため」の必須処理である。
 
 1. **実体のトランスコード**（`transcode_webp_images_for_epub!`）: `<img>` が参照する WebP を JPEG/PNG に変換し、参照を貼り替える。
-2. **インライン CSS 宣言の除去**（`strip_webp_inline_styles_for_kindle!`）: techbook テーマが `<head>` に注入する `<style>` 内の `--h3-marker: url(...webp)` 系を削除。
+2. **インライン CSS 宣言の除去**（`strip_webp_inline_styles_for_kindle!`）: techbook テーマが `<head>` に注入する `<style>` 内の `--book-marker-h3: url(...webp)` 系を削除。
    - パターンは `INLINE_WEBP_DECL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i`。
-   - **教訓**: カスタムプロパティ名は `[\w-]+` で**丸ごと**拾うこと。`[a-zA-Z-]+` だと `--h3-marker` の `-marker` だけ消えて `--h3` 断片が残り、別の CSS エラー（CSS-008）を誘発した。
+   - **教訓**: カスタムプロパティ名は `[\w-]+` で**丸ごと**拾うこと。`[a-zA-Z-]+` だと `--h3-marker`（2.0 の `--book-marker-h3`）の `-marker` だけ消えて `--h3` 断片が残り、別の CSS エラー（CSS-008）を誘発した。
    - **教訓**: 正規表現リテラルは `%r{...}` ではなく `/.../` を使う。宣言値の `[^;{}]` に含まれる `{}` が `%r{}` の区切りと衝突する。
 3. **同梱からの除外**（`localized_stylesheet?(rel, flavor)` / `Css::TargetFilter`）: Kindle フレーバのときのみ `images/**/*.webp`・`stylesheets/**/*.webp` を除外し、CSS の WebP `url()` を含む宣言も除去する。2.0 の S3-1 からは、組み上がった EPUB を開いて書き換えるのでなく、平らな CSS を作る段で落とす（`css-layer-restructure-spec.md` §4.2 の 4）。
    - **教訓**: これは**フレーバ依存**にすること。当初 WebP を常時除外したらクリーン EPUB（WebP 同梱が正）で参照切れが起きた。クリーン EPUB は WebP を**残す**。
@@ -140,7 +140,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
   - クリーン EPUB/PDF 向けの装飾は従来どおり（`:is()`/`var()` 等を使ってよい）。
   - Kindle 向け調整は **`body.vs-kindle` セレクタ配下に**追記する。`var()`・`calc()`（単位のそろったもの）・`color-mix(in srgb …)`・`:is()`・`:where()` は、2.0 の S3-3 から Kindle 用の CSS を作るときに `Css::LiteralResolver` が値と並べた選択子に解くので、書いてよい。解けないもの（要素の上で定義した変数・単位の混ざった `calc()`・`:has()`）は宣言や選択子ごと落ちる。`display: grid` など §2 のほかの機能は今までどおり避ける。
 - **置き場（2.0 の S3-2 から）**: `body.vs-epub`・`body.vs-kindle` の規則は `stylesheets/targets/` に置き、target 層（settings 層の上）で読む。本文のページの規則は `targets/epub.css`・`targets/kindle.css`、前書き・索引・用語集・奥付だけの規則は `targets/kindle-{preface,index,glossary,colophon}.css`。ファイルの中は、移す前の部品の名前の見出し（`/* --- parts/box.css --- */`）で区切る。どのページの種類がどれを読むかは `Css::EntryWriter::TARGET_IMPORTS`。PDF は target 層を読まない（`css-layer-restructure-spec.md` §5）。
-- **テーマ色は変数で書く（2.0 の S3-3 から）**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` の規則に固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。1.x は `BookSettingsCss#kindle_accent_rules` がテーマ色をリテラルにした規則を後から書いて上書きしていた。2.0 では `targets/kindle*.css` の規則を部品と同じ変数（`--heading-accent`・`--color-mark` など）で書き、Kindle 用の平らな CSS を作るときに `Css::LiteralResolver` がページの種類ごとの変数の表で値に解く（付録は付録の色になる）。`color-mix(in srgb …)` も計算する。custom.css の `:root` で変えた色も、平らな CSS の後ろで定義が勝つので、そのまま届く。
+- **テーマ色は変数で書く（2.0 の S3-3 から）**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` の規則に固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。1.x は `BookSettingsCss#kindle_accent_rules` がテーマ色をリテラルにした規則を後から書いて上書きしていた。2.0 では `targets/kindle*.css` の規則を部品と同じ変数（`--book-color-heading`・`--book-color-mark` など）で書き、Kindle 用の平らな CSS を作るときに `Css::LiteralResolver` がページの種類ごとの変数の表で値に解く（付録は付録の色になる）。`color-mix(in srgb …)` も計算する。custom.css の `:root` で変えた色も、平らな CSS の後ろで定義が勝つので、そのまま届く。
 - **部品の値も届く（2.0 の S3-4 から）**: `Css::LiteralResolver` はどの層の規則も解くので、部品（`parts/*.css`）の `var()` で書いた色・枠・書体は、Kindle の規則に書き直さなくても届く。`targets/kindle*.css` には、Kindle で変えたいところだけを書く。本文の字の大きさと行送りは、Kindle のどの束も最初に読む `targets/kindle-tokens.css` が `body.vs-kindle` で端末の既定（`1em`・`normal`）に置き換える。見出しなどの紙の寸法は `calc()` の外の `clamp()` で書いてあり、解かずに残るので Kindle には届かない（`css-layer-restructure-spec.md` §4.4 の「解く層」）。
 
 ### 5.2 「CSS で無理なら画像」戦略

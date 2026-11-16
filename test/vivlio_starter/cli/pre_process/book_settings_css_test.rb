@@ -28,7 +28,7 @@ class BookSettingsCssThemeTest < Minitest::Test
   # theme.style: simple では画像 2 変数を none にし、edge_inset は宣言しない
   def test_should_disable_images_and_omit_edge_inset_for_simple_style
     settings = {
-      theme_accent_value: 'var(--accent-blue)', theme_style: 'simple',
+      theme_accent_value: 'var(--book-accent-blue)', theme_style: 'simple',
       ornament_path: 'images/bundled/sakura_landscape.webp',
       frontispiece_path: 'images/bundled/sakura_portrait.webp',
       edge_inset_value: '10mm', heading_chars_value: nil, lead_chars_value: nil
@@ -36,15 +36,15 @@ class BookSettingsCssThemeTest < Minitest::Test
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
-    assert_includes lines, '--section-bg-image: none;'
-    assert_includes lines, '--frontispiece-image: none;'
-    refute(lines.any? { it.start_with?('--frontispiece-edge-inset:') })
+    assert_includes lines, '--book-ornament-image: none;'
+    assert_includes lines, '--book-frontispiece-image: none;'
+    refute(lines.any? { it.start_with?('--book-frontispiece-edge-inset:') })
   end
 
   # theme.style: image では画像 URL を .cache/vs/ 基準へ組み替え、edge_inset と幅も宣言する
   def test_should_emit_rebased_urls_and_edge_inset_for_image_style
     settings = {
-      theme_accent_value: 'var(--accent-yellow)', theme_style: 'image',
+      theme_accent_value: 'var(--book-accent-yellow)', theme_style: 'image',
       ornament_path: 'images/bundled/sakura_landscape.webp',
       frontispiece_path: 'images/bundled/sakura_portrait.webp',
       edge_inset_value: '10mm', heading_chars_value: 8, lead_chars_value: 20
@@ -52,26 +52,26 @@ class BookSettingsCssThemeTest < Minitest::Test
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
-    assert_includes lines, '--section-bg-image: url("../../stylesheets/images/bundled/sakura_landscape.webp");'
-    assert_includes lines, '--frontispiece-image: url("../../stylesheets/images/bundled/sakura_portrait.webp");'
-    assert_includes lines, '--frontispiece-edge-inset: 10mm;'
+    assert_includes lines, '--book-ornament-image: url("../../stylesheets/images/bundled/sakura_landscape.webp");'
+    assert_includes lines, '--book-frontispiece-image: url("../../stylesheets/images/bundled/sakura_portrait.webp");'
+    assert_includes lines, '--book-frontispiece-edge-inset: 10mm;'
     # 文字数 → リテラル mm 換算（A4・paper_scale 1.0: 章題 8 × 12.96mm / リード 20 × 4.445mm）
-    assert_includes lines, '--frontispiece-heading-width: 103.68mm;'
-    assert_includes lines, '--frontispiece-lead-width: 88.9mm;'
+    assert_includes lines, '--book-frontispiece-heading-width: 103.68mm;'
+    assert_includes lines, '--book-frontispiece-lead-width: 88.9mm;'
   end
 
   # heading_chars / lead_chars が nil のときはその行を宣言しない
   def test_should_omit_widths_when_nil
     settings = {
-      theme_accent_value: 'var(--accent-yellow)', theme_style: 'image',
+      theme_accent_value: 'var(--book-accent-yellow)', theme_style: 'image',
       ornament_path: 'images/x_landscape.webp', frontispiece_path: 'images/x_portrait.webp',
       edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
-    refute(lines.any? { it.start_with?('--frontispiece-heading-width:') })
-    refute(lines.any? { it.start_with?('--frontispiece-lead-width:') })
+    refute(lines.any? { it.start_with?('--book-frontispiece-heading-width:') })
+    refute(lines.any? { it.start_with?('--book-frontispiece-lead-width:') })
   end
 
   # --- 見出しの寸法（heading-metrics-spec §1-2） ---
@@ -87,9 +87,9 @@ class BookSettingsCssThemeTest < Minitest::Test
     assert_in_delta 9.18, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a5)), 0.01
 
     lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a4)
-    assert_includes lines, '--frontispiece-heading-width: 103.68mm;'
+    assert_includes lines, '--book-frontispiece-heading-width: 103.68mm;'
     lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a5)
-    assert_includes lines, '--frontispiece-heading-width: 73.44mm;'
+    assert_includes lines, '--book-frontispiece-heading-width: 73.44mm;'
   end
 
   # 節題は箱幅ではなくフォントサイズで字数を決める（帯は版面幅いっぱいで固定のため）。
@@ -99,14 +99,14 @@ class BookSettingsCssThemeTest < Minitest::Test
 
     # 版面 162mm − 飾り避け 34mm = 128mm に余裕 4% を掛けて字数で割る
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
-                    '--section-title-font-size: 35.11Q;'
+                    '--book-ornament-title-font-size: 35.11Q;'
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
-                    '--section-title-font-size: 24.58Q;'
+                    '--book-ornament-title-font-size: 24.58Q;'
     # 極端な指定は本文との階層が壊れるため 20〜48Q に収める
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
-                    '--section-title-font-size: 48Q;'
+                    '--book-ornament-title-font-size: 48Q;'
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 40 }, a4),
-                    '--section-title-font-size: 20Q;'
+                    '--book-ornament-title-font-size: 20Q;'
   end
 
   # 版面に収まらない字数は 🟡 で上限を示す（warning-messages-actionable の方針）
@@ -135,7 +135,7 @@ class BookSettingsCssThemeTest < Minitest::Test
   end
 
   # theme accent と強調色は常に宣言される
-  # 強調の色は tokens.css の既定（var(--theme-accent)）に任せ、settings 層で書き直さない。
+  # 強調の色は tokens.css の既定（var(--book-color-accent)）に任せ、settings 層で書き直さない。
   # 書き直すと、付録の色の割り当て（pages/appendix.css・改善案 #132）を打ち消す
   def test_should_declare_accent_but_leave_strong_colors_to_tokens
     settings = {
@@ -146,11 +146,11 @@ class BookSettingsCssThemeTest < Minitest::Test
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
-    assert_includes lines, '--theme-accent: #123456;'
-    refute(lines.any? { it.start_with?('--color-strong:', '--color-em-underline:') })
+    assert_includes lines, '--book-color-accent: #123456;'
+    refute(lines.any? { it.start_with?('--book-color-strong:', '--book-color-em-underline:') })
     tokens = File.read(File.expand_path('../../../../stylesheets/tokens.css', __dir__))
-    assert_match(/--color-strong:\s*var\(--theme-accent\);/, tokens)
-    assert_match(/--color-em-underline:\s*var\(--theme-accent\);/, tokens)
+    assert_match(/--book-color-strong:\s*var\(--book-color-accent\);/, tokens)
+    assert_match(/--book-color-em-underline:\s*var\(--book-color-accent\);/, tokens)
   end
 end
 
@@ -171,7 +171,7 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     settings = { lead_chars_value: 20, lead_size_value: 1.2, frontispiece_lead_size_value: 1.2 }
 
     assert_equal '', BSC.chapter_lead_size_rules(settings)
-    assert_includes BSC.heading_metric_declarations(settings, A4), '--frontispiece-lead-width: 88.9mm;'
+    assert_includes BSC.heading_metric_declarations(settings, A4), '--book-frontispiece-lead-width: 88.9mm;'
   end
 
   # 章扉だけ 1.1 倍にすると、章扉の規則だけが出て、幅も 1.1 倍の送りで出る（28 字 × 10.5pt × 1.1）
@@ -184,7 +184,7 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     refute_includes rules, 'body .chapter-lead', '本全体（simple の章・付録）は 1.2 倍のまま'
     # EPUB にも効かせる。EPUB の章扉はリードを焼き込まず、本文の文字として流す（§2.2.1）
     refute_includes rules, 'vs-epub'
-    assert_includes BSC.heading_metric_declarations(settings, A4), '--frontispiece-lead-width: 114.09mm;'
+    assert_includes BSC.heading_metric_declarations(settings, A4), '--book-frontispiece-lead-width: 114.09mm;'
   end
 
   # 本全体だけを書けば、章扉もそれに従う（規則は 1 本で、章扉の幅も同じ倍率）
@@ -217,8 +217,8 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     unchanged = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 }, A4)
     changed = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.1 }, A4)
 
-    refute(unchanged.any? { it.start_with?('--frontispiece-lead-width:') }, '既定のままなら theme.css に任せる')
-    assert_includes changed, '--frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
+    refute(unchanged.any? { it.start_with?('--book-frontispiece-lead-width:') }, '既定のままなら theme.css に任せる')
+    assert_includes changed, '--book-frontispiece-lead-width: 81.49mm;' # 20 字 × 10.5pt × 1.1
   end
 
   # 本文の字間はリードにも付くので、1 字の送りに足す。em はリードの字の大きさに対する比、
@@ -239,8 +239,8 @@ class BookSettingsCssLeadSizeTest < Minitest::Test
     unspaced = BSC.heading_metric_declarations({ lead_chars_value: nil, frontispiece_lead_size_value: 1.2 },
                                                A4.merge(letter_spacing: '0em'))
 
-    assert_includes spaced, '--frontispiece-lead-width: 93.34mm;' # 20 字 × 10.5pt × 1.2 × 1.05
-    refute(unspaced.any? { it.start_with?('--frontispiece-lead-width:') }, '字間 0 なら theme.css に任せる')
+    assert_includes spaced, '--book-frontispiece-lead-width: 93.34mm;' # 20 字 × 10.5pt × 1.2 × 1.05
+    refute(unspaced.any? { it.start_with?('--book-frontispiece-lead-width:') }, '字間 0 なら theme.css に任せる')
   end
 
   # 節リードの幅は max(32em, 32 字と字間のぶん)。字間を広げたときだけ幅を書き出し、字間 0 や
@@ -307,23 +307,23 @@ class BookSettingsCssSupplementalTest < Minitest::Test
   # appendix_color・preface_color を省略したら、どちらもテーマ色を宣言する（「省略時は color と同じ」・改善案 #73）
   def test_should_declare_theme_accent_for_unset_appendix_and_preface
     cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: nil, preface_color: ''))
-    settings = { theme_accent_value: 'var(--accent-yellow)' }
+    settings = { theme_accent_value: 'var(--book-accent-yellow)' }
 
     lines = BSC.supplemental_color_declarations(settings, cfg)
 
-    assert_includes lines, '--appendix-accent-color: var(--accent-yellow);'
-    assert_includes lines, '--color-preface-accent: var(--accent-yellow);'
+    assert_includes lines, '--book-color-accent-appendix: var(--book-accent-yellow);'
+    assert_includes lines, '--book-color-accent-preface: var(--book-accent-yellow);'
   end
 
   # appendix_color / preface_color を指定すればその色（色名→var(--accent-*)）を宣言する
   def test_should_declare_configured_appendix_and_preface_colors
     cfg = CfgDouble.new(theme: ThemeDouble.new(appendix_color: 'red', preface_color: 'indigo'))
-    settings = { theme_accent_value: 'var(--accent-yellow)' }
+    settings = { theme_accent_value: 'var(--book-accent-yellow)' }
 
     lines = BSC.supplemental_color_declarations(settings, cfg)
 
-    assert_includes lines, '--appendix-accent-color: var(--accent-red);'
-    assert_includes lines, '--color-preface-accent: var(--accent-indigo);'
+    assert_includes lines, '--book-color-accent-appendix: var(--book-accent-red);'
+    assert_includes lines, '--book-color-accent-preface: var(--book-accent-indigo);'
   end
 end
 
@@ -338,8 +338,8 @@ class BookSettingsCssMarkerTest < Minitest::Test
 
     lines = BSC.marker_declarations(cfg)
 
-    assert_includes lines, '--h3-marker: "♣";'
-    assert_includes lines, '--h4-marker: "♦";'
+    assert_includes lines, '--book-marker-h3: "♣";'
+    assert_includes lines, '--book-marker-h4: "♦";'
   end
 
   # markers.h3/h4 を指定すればその記号
@@ -348,8 +348,8 @@ class BookSettingsCssMarkerTest < Minitest::Test
 
     lines = BSC.marker_declarations(cfg)
 
-    assert_includes lines, '--h3-marker: "★";'
-    assert_includes lines, '--h4-marker: "☆";'
+    assert_includes lines, '--book-marker-h3: "★";'
+    assert_includes lines, '--book-marker-h4: "☆";'
   end
 end
 
@@ -374,9 +374,9 @@ class BookSettingsCssPageTest < Minitest::Test
     lines = BSC.page_declarations(page_cfg)
 
     assert_includes lines, '--page-width: 148mm;'
-    assert_includes lines, '--paper-scale: 0.7;'
+    assert_includes lines, '--book-paper-scale: 0.7;'
     refute(lines.any? { it.start_with?('--page-height:') })
-    refute(lines.any? { it.start_with?('--base-font-size:') })
+    refute(lines.any? { it.start_with?('--book-font-size:') })
   end
 
   # :font 変数はフォントスタック整形（generic フォールバック）を通す
@@ -385,7 +385,7 @@ class BookSettingsCssPageTest < Minitest::Test
 
     lines = BSC.page_declarations(page_cfg)
 
-    assert_includes lines, '--font-main-text: "Noto Serif JP", "HackGen35 Console NF", serif;'
+    assert_includes lines, '--book-font-body: "Noto Serif JP", "HackGen35 Console NF", serif;'
   end
 
   # --- page.section_pagebreak（page-break-control-spec.md §2.2） ---
@@ -520,24 +520,24 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   Common = VivlioStarter::CLI::Common
 
   PAGE_VARS = %w[
-    --page-width --page-height --paper-scale --align-max-width
-    --base-font-size --base-line-height --letter-spacing
-    --page-margin-top --page-margin-bottom --page-margin-inner --page-margin-outer
-    --frontispiece-binding-offset
-    --font-main-text --font-header --font-code --font-column --font-folio
-    --folio-center-content --folio-left-content --folio-right-content
+    --page-width --page-height --book-paper-scale --align-max-width
+    --book-font-size --book-line-height --book-letter-spacing
+    --book-page-margin-top --book-page-margin-bottom --book-page-margin-inner --book-page-margin-outer
+    --book-frontispiece-binding-offset
+    --book-font-body --book-font-heading --book-font-code --book-font-column --book-font-folio
+    --book-folio-center-content --book-folio-left-content --book-folio-right-content
   ].freeze
 
-  # 両 style で必ず宣言される公開変数（--frontispiece-image / --section-bg-image は
-  # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-edge-inset は除く。
+  # 両 style で必ず宣言される公開変数（--book-frontispiece-image / --book-ornament-image は
+  # simple では値が none になるが宣言自体は出る）。image 固有の --book-frontispiece-edge-inset は除く。
   THEME_VARS_COMMON = %w[
-    --theme-accent
-    --frontispiece-image --section-bg-image
-    --color-preface-accent --h3-marker --h4-marker
+    --book-color-accent
+    --book-frontispiece-image --book-ornament-image
+    --book-color-accent-preface --book-marker-h3 --book-marker-h4
   ].freeze
 
   # live book.yml の theme.style（image/simple どちらで作業中でも）に依存せず通るようにする。
-  # image 固有の --frontispiece-edge-inset は style で条件分岐して検証する。
+  # image 固有の --book-frontispiece-edge-inset は style で条件分岐して検証する。
   def test_should_render_all_public_interface_variables_and_page_size
     css = BSC.render(Common::CONFIG)
 
@@ -545,10 +545,10 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
       assert_includes css, "#{var}:", "生成 CSS に #{var} が含まれること"
     end
     if Common::CONFIG.theme.style == 'image'
-      assert_includes css, '--frontispiece-edge-inset:', 'image では扉絵の余白を宣言する'
+      assert_includes css, '--book-frontispiece-edge-inset:', 'image では扉絵の余白を宣言する'
     else
-      assert_includes css, '--frontispiece-image: none;', 'simple では画像を none 宣言する'
-      refute_includes css, '--frontispiece-edge-inset:', 'simple では扉絵の余白を宣言しない'
+      assert_includes css, '--book-frontispiece-image: none;', 'simple では画像を none 宣言する'
+      refute_includes css, '--book-frontispiece-edge-inset:', 'simple では扉絵の余白を宣言しない'
     end
     assert_match(/@page \{ size: \d+mm \d+mm; \}/, css)
   end
@@ -595,7 +595,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
       end
     end
 
-    refute_includes css, 'strong, b { font-family: var(--font-header); }'
+    refute_includes css, 'strong, b { font-family: var(--book-font-heading); }'
   end
 
   # theme.color / appendix_color / preface_color を差し替えた Common::CONFIG 相当の Data を組む
@@ -674,7 +674,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   def test_should_pin_chapter_title_metrics_that_the_char_conversion_reproduces
     css = File.read(File.join(STYLESHEETS, 'parts', 'image-header.css'))
 
-    assert_match(/font-size:\s*clamp\(34Q,\s*calc\(var\(--paper-scale\)\s*\*\s*48Q\),\s*50Q\)/, css,
+    assert_match(/font-size:\s*clamp\(34Q,\s*calc\(var\(--book-paper-scale\)\s*\*\s*48Q\),\s*50Q\)/, css,
                  '.chapter-title の font-size clamp が変わりました。' \
                  'BookSettingsCss#chapter_title_advance_mm の換算も合わせてください。')
     assert_match(/letter-spacing:\s*0\.08em/, css,
@@ -694,7 +694,7 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
     assert_equal({ min: 12.0, base: 18.0 }, BSC::SECTION_TITLE_PADDING_RIGHT_MM)
   end
 
-  # 飾り避けは CSS 側が --paper-scale で縮めるので、Ruby も同じ式で求める。
+  # 飾り避けは CSS 側が --book-paper-scale で縮めるので、Ruby も同じ式で求める。
   # かつては 34.0mm（A4 の値）固定で、B5 では実際 29.4mm しか使われないのに
   # 34.0 と見積もっていた。その差 4.6mm が字送りを小さくし「1 行 14 字」の指定に
   # 4% の余裕を生んでいたが、A4 では見積もりが一致して余裕ゼロになり、
@@ -758,7 +758,7 @@ class BookSettingsCssTalkTest < Minitest::Test
 
   def registry
     TalkRegistry.from_hash({
-      'sensei' => { 'color' => 'indigo' }, # テーマ色名 → var(--accent-indigo) / Kindle は hex
+      'sensei' => { 'color' => 'indigo' }, # テーマ色名 → var(--book-accent-indigo) / Kindle は hex
       'yamada' => '#1565c0',               # HEX はそのまま
       'nocolor' => { 'name' => '色なし' }  # 色未指定 → 生成しない（テーマ色を使う）
     })
@@ -768,19 +768,19 @@ class BookSettingsCssTalkTest < Minitest::Test
   def test_should_declare_talk_color_variables_for_colored_characters
     lines = BSC.talk_variable_declarations(registry)
 
-    assert_includes lines, '--talk-c-sensei: var(--accent-indigo);'
+    assert_includes lines, '--talk-c-sensei: var(--book-accent-indigo);'
     assert_includes lines, '--talk-c-yamada: #1565c0;'
     refute(lines.any? { it.include?('nocolor') }, '色未指定の話者は宣言しない')
   end
 
   # .talk-c-<key> の var() 差し替えと、名前・区切り・強調への話者の色。
-  # 色は :root の --talk-c-<key> で当てる。話者の要素の上の --talk-accent は、Kindle 用の CSS では
+  # 色は :root の --talk-c-<key> で当てる。話者の要素の上の --book-talk-accent は、Kindle 用の CSS では
   # 値に解けない（Css::LiteralResolver）ため。Kindle に吹き出しの枠線は無いので、枠には当てない
   def test_should_emit_class_rules
     css = BSC.talk_class_rules(registry)
 
-    assert_includes css, '.talk-c-sensei { --talk-accent: var(--talk-c-sensei); }'
-    assert_includes css, '.talk-c-yamada { --talk-accent: var(--talk-c-yamada); }'
+    assert_includes css, '.talk-c-sensei { --book-talk-accent: var(--talk-c-sensei); }'
+    assert_includes css, '.talk-c-yamada { --book-talk-accent: var(--talk-c-yamada); }'
     assert_includes css, '.talk-c-sensei .talk-name, .talk-c-sensei .talk-sep, .talk-item.talk-c-sensei strong ' \
                          '{ color: var(--talk-c-sensei); }'
     refute_includes css, 'vs-kindle', 'Kindle の規則は targets/ に置く'
@@ -794,9 +794,9 @@ class BookSettingsCssTalkTest < Minitest::Test
     sized = TalkRegistry.from_hash({ 'display' => { 'avatar_size' => 15 } })
     lines = BSC.talk_variable_declarations(sized)
 
-    assert_includes lines, '--talk-icon-size: 15mm;'
-    assert_includes lines, '--talk-speaker-size: 17mm;'
-    refute(BSC.talk_variable_declarations(registry).any? { it.include?('--talk-icon-size') },
+    assert_includes lines, '--book-talk-icon-size: 15mm;'
+    assert_includes lines, '--book-talk-speaker-size: 17mm;'
+    refute(BSC.talk_variable_declarations(registry).any? { it.include?('--book-talk-icon-size') },
            '指定が無ければ components.css の既定（12mm）に任せる')
   end
 
@@ -810,10 +810,10 @@ class BookSettingsCssTalkTest < Minitest::Test
     })
     css = BSC.talk_class_rules(sized)
 
-    assert_includes css, '.talk-c-haruka { --talk-icon-size: 15mm; --talk-speaker-size: 17mm; }'
-    assert_includes css, '.talk-c-bohr { --talk-icon-size: 13.5mm; --talk-speaker-size: 15.5mm; }'
-    refute_match(/\.talk-c-mirai \{ --talk-icon-size/, css, '大きさを書いていない話者には出さない')
-    assert_includes css, '.talk-c-haruka { --talk-accent: var(--talk-c-haruka); }', '色のルールも残る'
+    assert_includes css, '.talk-c-haruka { --book-talk-icon-size: 15mm; --book-talk-speaker-size: 17mm; }'
+    assert_includes css, '.talk-c-bohr { --book-talk-icon-size: 13.5mm; --book-talk-speaker-size: 15.5mm; }'
+    refute_match(/\.talk-c-mirai \{ --book-talk-icon-size/, css, '大きさを書いていない話者には出さない')
+    assert_includes css, '.talk-c-haruka { --book-talk-accent: var(--talk-c-haruka); }', '色のルールも残る'
   end
 
   # characters.yml 不在（空 registry）なら talk の宣言・ルールを一切出さない。

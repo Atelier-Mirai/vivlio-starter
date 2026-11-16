@@ -39,7 +39,7 @@ module VivlioStarter
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
-                       'tokens' => %w[tokens.css] }.freeze
+                       'tokens' => %w[tokens.css tokens-legacy.css] }.freeze
 
         # 本文のページ（章・付録・前書き・後書き）がみな読む部品（css-layer-restructure-spec.md §3.3）。
         # 順は 1.x の章の @import の順を保つ（見出し 2 種 → prism・code・table・layout-utils・

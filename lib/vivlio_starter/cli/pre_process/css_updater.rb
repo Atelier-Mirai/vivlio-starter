@@ -36,7 +36,7 @@ module VivlioStarter
         # 色値を正規化（色名 or HEX）
         # @param warn [Boolean] 読めない色を 🟡 で知らせるか。theme の色は ThemeValidator が
         #   キーの名前と直し方を添えて知らせるので、theme の色を渡すときは false
-        def normalize_color_value(raw_value, fallback: "var(--accent-#{ThemeColor::DEFAULT_NAME})", warn: true)
+        def normalize_color_value(raw_value, fallback: "var(--book-accent-#{ThemeColor::DEFAULT_NAME})", warn: true)
           raw_string = raw_value.to_s.strip
           return fallback if raw_string.empty?
 
@@ -52,7 +52,7 @@ module VivlioStarter
           elsif normalized.start_with?('var(')
             raw_string
           elsif ALLOWED_COLORS.include?(normalized)
-            "var(--accent-#{normalized})"
+            "var(--book-accent-#{normalized})"
           else
             Common.log_warn("認識できない色: '#{raw_value}'。フォールバックを使用します。") if warn
             fallback
@@ -126,20 +126,20 @@ module VivlioStarter
         # コード=monospace の category がリーダー側で保たれるようにする。
         # PDF では実体フォントが常に在るため不発（無害）。
         FONT_GENERIC_FALLBACKS = {
-          '--font-main-text' => 'serif',
-          '--font-header'    => 'sans-serif',
-          '--font-code'      => 'monospace',
-          '--font-column'    => 'sans-serif',
-          '--font-folio'     => 'sans-serif'
+          '--book-font-body'    => 'serif',
+          '--book-font-heading' => 'sans-serif',
+          '--book-font-code'    => 'monospace',
+          '--book-font-column'  => 'sans-serif',
+          '--book-font-folio'   => 'sans-serif'
         }.freeze
 
         # 本文・見出しの書体に無い記号（⁵ 等）は Chromium が OS フォントへフォールバックし、
         # Chrome 149 がそれを Type 3 フォントで埋め込む。これを防ぐため、記号被覆の広い
         # 同梱 HackGen35 Console NF（Regular/Bold 両字面）を generic の前に挟む。
-        # --font-code は既にこのフォントのため対象外。
+        # --book-font-code は既にこのフォントのため対象外。
         FONT_TYPE3_FALLBACK = '"HackGen35 Console NF"'
         FONT_TYPE3_FALLBACK_TARGETS = %w[
-          --font-main-text --font-header --font-column --font-folio
+          --book-font-body --book-font-heading --book-font-column --book-font-folio
         ].freeze
 
         # :font 型の CSS 変数値を整形する。
@@ -147,7 +147,7 @@ module VivlioStarter
         # 変数に対応する generic フォールバックを付与する。
         # book.yml 側で既にカンマ区切り（独自フォールバック）が指定されている場合は尊重する。
         #
-        # @param name [String] CSS 変数名（例: '--font-code'）
+        # @param name [String] CSS 変数名（例: '--book-font-code'）
         # @param value [String] book.yml 由来のフォント値
         # @param kind [Symbol, nil] :font のときのみ整形する
         # @return [String]
@@ -165,27 +165,27 @@ module VivlioStarter
         # CSS変数マッピングを構築
         def build_css_variable_mappings(page_cfg)
           [
-            ['--page-width',            page_cfg[:width]],
-            ['--page-height',           page_cfg[:height]],
-            ['--paper-scale',           page_cfg[:paper_scale]],
-            ['--align-max-width',       page_cfg[:align_max_width]],
-            ['--base-font-size',        page_cfg[:base_font_size]],
-            ['--base-line-height',      page_cfg[:base_line_height]],
-            ['--letter-spacing',        page_cfg[:letter_spacing] || '0em'],
-            ['--page-margin-top',       page_cfg[:margin_top]],
-            ['--page-margin-bottom',    page_cfg[:margin_bottom]],
-            ['--page-margin-inner',     page_cfg[:margin_inner]],
-            ['--page-margin-outer',     page_cfg[:margin_outer]],
-            ['--frontispiece-binding-offset', page_cfg[:frontispiece_binding_offset]],
-            ['--folio-font-size',       page_cfg[:folio_font_size]],
-            ['--font-main-text',        page_cfg[:main_text_font],  :font],
-            ['--font-header',           page_cfg[:header_font],     :font],
-            ['--font-code',             page_cfg[:code_font],       :font],
-            ['--font-column',           page_cfg[:column_font],     :font],
-            ['--font-folio',            page_cfg[:folio_font],      :font],
-            ['--folio-center-content',  page_cfg[:folio_center]],
-            ['--folio-left-content',    page_cfg[:folio_left]],
-            ['--folio-right-content',   page_cfg[:folio_right]]
+            ['--page-width',                       page_cfg[:width]],
+            ['--page-height',                      page_cfg[:height]],
+            ['--book-paper-scale',                 page_cfg[:paper_scale]],
+            ['--align-max-width',                  page_cfg[:align_max_width]],
+            ['--book-font-size',                   page_cfg[:base_font_size]],
+            ['--book-line-height',                 page_cfg[:base_line_height]],
+            ['--book-letter-spacing',              page_cfg[:letter_spacing] || '0em'],
+            ['--book-page-margin-top',             page_cfg[:margin_top]],
+            ['--book-page-margin-bottom',          page_cfg[:margin_bottom]],
+            ['--book-page-margin-inner',           page_cfg[:margin_inner]],
+            ['--book-page-margin-outer',           page_cfg[:margin_outer]],
+            ['--book-frontispiece-binding-offset', page_cfg[:frontispiece_binding_offset]],
+            ['--book-folio-font-size',             page_cfg[:folio_font_size]],
+            ['--book-font-body',                   page_cfg[:main_text_font], :font],
+            ['--book-font-heading',                page_cfg[:header_font],    :font],
+            ['--book-font-code',                   page_cfg[:code_font],      :font],
+            ['--book-font-column',                 page_cfg[:column_font],    :font],
+            ['--book-font-folio',                  page_cfg[:folio_font],     :font],
+            ['--book-folio-center-content',        page_cfg[:folio_center]],
+            ['--book-folio-left-content',          page_cfg[:folio_left]],
+            ['--book-folio-right-content',         page_cfg[:folio_right]]
           ]
         end
       end

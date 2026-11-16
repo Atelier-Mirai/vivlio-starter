@@ -272,7 +272,7 @@ module VivlioStarter
         DEFAULT_CODE_FONT = 'HackGen35 Console NF'
 
         # 本の書体に無い字を補う予備の書体。上から順に探す（改善案 #127）。
-        # HackGen は base/page.css の本文・見出しの並び（`--font-body`・`--font-header`）で
+        # HackGen は tokens.css の本文・見出しの並び（`--book-font-body`・`--book-font-heading`）で
         # 本の書体の次に置いている書体。DejaVu は HackGen にも無い字（⟹・⌃・ₙ など）の受け皿で、
         # 本文の HTML へは book-settings.css が HackGen と同じ書体名の面として足す（BookSettingsCss）。
         # Mono を先にするのは、字幅が HackGen の半角と同じ 0.6 字で、コードの桁がずれないため

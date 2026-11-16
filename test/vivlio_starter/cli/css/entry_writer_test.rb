@@ -31,6 +31,7 @@ module VivlioStarter
           assert_includes lines, '@import url("../../stylesheets/fonts.css");'
           assert_includes lines, '@import url("book-fonts.css");'
           assert_includes lines, '@import url("../../stylesheets/tokens.css") layer(tokens);'
+          assert_includes lines, '@import url("../../stylesheets/tokens-legacy.css") layer(tokens);'
           assert_includes lines, '@import url("../../stylesheets/parts/box.css") layer(parts);'
           assert_includes lines, '@import url("../../stylesheets/pages/chapter.css") layer(pages);'
           assert_includes lines, '@import url("../../stylesheets/utilities/pagebreak.css") layer(utilities);'
@@ -46,7 +47,7 @@ module VivlioStarter
 
           assert_equal %w[../../stylesheets/fonts.css book-fonts.css
                           ../../stylesheets/base/reset.css ../../stylesheets/base/elements.css
-                          ../../stylesheets/base/page.css ../../stylesheets/tokens.css
+                          ../../stylesheets/base/page.css ../../stylesheets/tokens.css ../../stylesheets/tokens-legacy.css
                           ../../stylesheets/pages/index.css book-settings.css ../../stylesheets/custom.css], imports
         end
 
@@ -70,7 +71,7 @@ module VivlioStarter
 
         # 扉絵を敷く @page :nth(1) は body のクラスで絞れないので、章だけが読むファイルに置く
         def test_should_keep_the_frontispiece_page_rule_out_of_non_chapter_pages
-          frontispiece = /@page :nth\(1\) \{[^}]*--frontispiece-image/
+          frontispiece = /@page :nth\(1\) \{[^}]*--book-frontispiece-image/
           files = EntryWriter::IMPORTS.select { |kind, _| kind != 'chapter' }.values
                                       .flat_map(&:values).flatten.uniq
                                       .concat(EntryWriter::FOUNDATION.values.flatten)

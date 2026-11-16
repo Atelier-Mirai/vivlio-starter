@@ -10,10 +10,10 @@
 
 /* カスタム変数 */
 :root {
-  --color-preface-accent: var(--accent-indigo); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
-  --color-preface-accent-glow-strong: color-mix(in oklab, var(--color-preface-accent) 22%, transparent);
-  --color-preface-accent-glow-weak: color-mix(in oklab, var(--color-preface-accent) 8%, transparent);
-  --color-link: var(--color-preface-accent);
+  --book-color-accent-preface: var(--book-accent-indigo); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
+  --color-preface-accent-glow-strong: color-mix(in oklab, var(--book-color-accent-preface) 22%, transparent);
+  --color-preface-accent-glow-weak: color-mix(in oklab, var(--book-color-accent-preface) 8%, transparent);
+  --book-color-link: var(--book-color-accent-preface);
 
   /* 前書き・後書きの h3 マーカー。techbook モードでは Twemoji 画像へ差し替わる。
      絵文字を CSS の content で描くと EmojiReplacer（HTML しか走査しない）の
@@ -23,10 +23,10 @@
 
 /* 基本設定 */
 body {
-  font-family: var(--font-main-text);
-  font-size: var(--base-font-size);
-  line-height: var(--base-line-height);
-  color: var(--color-text);
+  font-family: var(--book-font-body);
+  font-size: var(--book-font-size);
+  line-height: var(--book-line-height);
+  color: var(--book-color-text);
   text-align: justify;
   hanging-punctuation: allow-end;
 

@@ -8,7 +8,7 @@
 
 /* Kindle は var() を解さず border-bottom 宣言ごと無効化して下線が消えるため、具体色で再現（§11） */
 body.vs-kindle .index h1 {
-  border-bottom: 2px solid var(--theme-accent, #333);
+  border-bottom: 2px solid var(--book-color-accent, #333);
 }
 
 /* Kindle は段組みを解さないので、EpubBuilder が語を横に 2 つずつ並ぶ形へ組み替える
@@ -22,8 +22,8 @@ body.vs-kindle .index-section h2 {
   font-size: 1.05em;
   margin: 0 0 0.2em;
   padding-bottom: 0.1em;
-  border-bottom: 1px solid var(--theme-accent, #333);
-  color: var(--theme-accent, #333);
+  border-bottom: 1px solid var(--book-color-accent, #333);
+  color: var(--book-color-accent, #333);
 }
 
 /* 既定の両端揃えだと、語が 1 つだけの最後の行で語の先頭がずれる */

@@ -10,7 +10,7 @@
    前書き/後書きの見出し下線をクリーン EPUB に合わせて物理方向で再現する。色は前書きの色
    （book.yml の theme.preface_color）。 */
 body.vs-kindle h1 {
-  border-bottom: 3px solid var(--color-preface-accent);
+  border-bottom: 3px solid var(--book-color-accent-preface);
   padding-bottom: 0.4em;
   margin-bottom: 1em;
 }
@@ -19,16 +19,16 @@ body.vs-kindle h1 {
    KFX が解すかを確かめていないので、物理方向で書き直す */
 body.preface.vs-kindle h2,
 body.postface.vs-kindle h2 {
-  border-left: 3px solid var(--color-preface-accent);
+  border-left: 3px solid var(--book-color-accent-preface);
 }
 
 body.preface.vs-kindle blockquote,
 body.postface.vs-kindle blockquote {
-  border-left: 3px solid var(--color-preface-accent);
+  border-left: 3px solid var(--book-color-accent-preface);
 }
 
 body.preface.vs-kindle a,
 body.postface.vs-kindle a {
-  color: var(--color-preface-accent);
-  border-bottom: 1px dotted var(--color-preface-accent);
+  color: var(--book-color-accent-preface);
+  border-bottom: 1px dotted var(--book-color-accent-preface);
 }

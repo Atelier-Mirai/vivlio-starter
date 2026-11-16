@@ -298,7 +298,7 @@ module VivlioStarter
         html = <<~HTML
           <html><head><style>
           :root {
-            --h3-marker: url("stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
+            --book-marker-h3: url("stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
             --vs-plain-color: #333;
           }
           </style></head><body><p>本文</p></body></html>
@@ -310,7 +310,7 @@ module VivlioStarter
 
         result = File.read(path)
         refute_includes result, '.webp', 'インライン style から webp 参照が除去される'
-        refute_includes result, '--h3-marker', 'webp を含む宣言ごと除去される'
+        refute_includes result, '--book-marker-h3', 'webp を含む宣言ごと除去される'
         # 数字入りカスタムプロパティ名が途中切れして断片（--h3 等）が残ると CSS-008 になる
         refute_match(/--h3|--h4|--subtitle/, result, '宣言の断片が残ってはいけない（CSS-008 回避）')
         assert_includes result, '--vs-plain-color: #333', 'webp を含まない宣言は残る'

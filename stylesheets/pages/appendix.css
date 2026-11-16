@@ -9,28 +9,28 @@
    Kindle の規則（targets/kindle.css）も同じ変数で書いてあるので、付録の色に解ける */
 :root {
   /* 付録のアクセント色（book-settings.css が book.yml の値で上書きする） */
-  --appendix-accent-color: var(--theme-accent);
+  --book-color-accent-appendix: var(--book-color-accent);
 
   /* テーマ色から決まる変数を付録色にマッピング（tokens.css・simple-header.css の既定を覆う） */
-  --heading-accent: var(--appendix-accent-color);
-  --color-mark: var(--appendix-accent-color);
-  --color-strong: var(--appendix-accent-color);
-  --color-em-underline: var(--appendix-accent-color);
-  --color-column-border: var(--appendix-accent-color);
-  --color-column-bg: color-mix(in srgb, var(--appendix-accent-color) 15%, white);
+  --book-color-heading: var(--book-color-accent-appendix);
+  --book-color-mark: var(--book-color-accent-appendix);
+  --book-color-strong: var(--book-color-accent-appendix);
+  --book-color-em-underline: var(--book-color-accent-appendix);
+  --book-color-column-border: var(--book-color-accent-appendix);
+  --book-color-column-bg: color-mix(in srgb, var(--book-color-accent-appendix) 15%, white);
 }
 
-/* --theme-accent を直に読む部品の色。選択子は部品（parts/box.css・parts/talk.css）と同じにし、
+/* --book-color-accent を直に読む部品の色。選択子は部品（parts/box.css・parts/talk.css）と同じにし、
    上の層（pages）で勝たせる（平らな CSS でも、同じ詳細度で後に並ぶので勝つ） */
 .tip {
-  border-color: var(--appendix-accent-color);
+  border-color: var(--book-color-accent-appendix);
 }
 
 .tip::before {
-  color: var(--appendix-accent-color);
-  border-color: var(--appendix-accent-color);
+  color: var(--book-color-accent-appendix);
+  border-color: var(--book-color-accent-appendix);
 }
 
 .talk {
-  --talk-accent: var(--appendix-accent-color);
+  --book-talk-accent: var(--book-color-accent-appendix);
 }

@@ -16,11 +16,11 @@
 #
 # 解く層（css-layer-restructure-spec.md §4.4 の「解く層」）:
 #   どの層の規則も解く。部品の色・枠・書体の指定は、PDF と同じ変数で Kindle に届く。
-#   PDF 向けの本文の字の大きさと行送り（--base-font-size: 10.5pt など）は、Kindle の束が最初に読む
+#   PDF 向けの本文の字の大きさと行送り（--book-font-size: 10.5pt など）は、Kindle の束が最初に読む
 #   targets/kindle-tokens.css が端末の既定に置き換える。
 #
 # 紙の寸法（css-layer-restructure-spec.md §4.4 の「関数と選択子」・theme-contract-spec.md §3.5）:
-#   見出し・前書き・奥付などの寸法は clamp(…mm, calc(var(--paper-scale) * …), …) の形で書いてある。
+#   見出し・前書き・奥付などの寸法は clamp(…mm, calc(var(--book-paper-scale) * …), …) の形で書いてある。
 #   判型に対する比で決めた値で、判型の無い端末では基準が無いので、Kindle には届けない。
 #   clamp()・min()・max() を含む宣言は、理由 :paper_dimension を付けて落とす（変数の値から入って
 #   きたものも落とす）。以前は解かずに残し、KFX と Kindle Previewer の前処理が宣言ごと捨てるのに
@@ -248,7 +248,7 @@ module VivlioStarter
 
         # 宣言を解く。解けない宣言は落として dropped に足す。
         # 変数の定義も値を解いて残す。KFX は定義を読まないが、HTML の中の <style>（Techbook の
-        # `pre { font-family: var(--font-code) !important }` など）が var() で読むので、消すと
+        # `pre { font-family: var(--book-font-code) !important }` など）が var() で読むので、消すと
         # Kindle Previewer の前処理（Chromium と同じ組み方）でそこが解けなくなる。
         # 解けない定義は知らせずに落とす（定義そのものは表示に出ない）
         def resolve_declarations(properties, selector, context)

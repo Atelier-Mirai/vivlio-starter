@@ -524,7 +524,7 @@ module VivlioStarter
         File.write(File.join(cache_root, 'bundled', 'himawari_portrait.webp'), 'unref')
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
-          :root { --section-bg-image: url("theme-images/bundled/sakura_landscape.webp"); }
+          :root { --book-ornament-image: url("theme-images/bundled/sakura_landscape.webp"); }
         CSS
 
         dir = 'pkg-epub'
@@ -544,7 +544,7 @@ module VivlioStarter
         File.write(File.join(cache_root, 'bundled', 'sakura_landscape.webp'), 'ref')
         FileUtils.mkdir_p(Common::CACHE_DIR)
         File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
-          :root { --section-bg-image: url("theme-images/bundled/sakura_landscape.webp"); }
+          :root { --book-ornament-image: url("theme-images/bundled/sakura_landscape.webp"); }
         CSS
 
         dir = 'pkg-kindle'

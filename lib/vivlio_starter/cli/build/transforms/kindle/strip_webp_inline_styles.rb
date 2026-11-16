@@ -22,7 +22,7 @@ module VivlioStarter
         INLINE_WEBP_DECL_PATTERN = Css::TargetFilter::WEBP_URL_PATTERN
 
         # Kindle 専用: 章 HTML のインライン <style> 内の webp url() 宣言を除去する（RSC-007 回避）。
-        # Techbook が PDF の Type3 対策で head に注入する :root{ --h3-marker: url(...webp) } 等は、
+        # Techbook が PDF の Type3 対策で head に注入する :root{ --book-marker-h3: url(...webp) } 等は、
         # Kindle では WebP を同梱しない（localize_assets! が除外）ため参照切れになる。
         # Kindle は var() も解さずこのマーカーを描画しないので、宣言ごと除去して無害化する。
         # Css::TargetFilter は平らな CSS のファイルだけを扱い、インライン <style> は拾わないため、

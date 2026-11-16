@@ -42,7 +42,7 @@ class GlyphCoverageCheckTest < Minitest::Test
     assert_equal [[3, ['ₙ'], nil]], findings_of("φ≒1.618 です。\n\nHₙ の和。\n")
   end
 
-  # コードはコードの書体だけで探す（--font-code の次は OS の書体）。インラインもフェンスも
+  # コードはコードの書体だけで探す（--book-font-code の次は OS の書体）。インラインもフェンスも
   def test_should_check_code_with_code_font_only
     content = "キーは `⌃+G` です。\n\n```\nγ = lim (Hₙ − ln n)\n```\n"
 

@@ -11,9 +11,9 @@
 # 字が書体に無いと何が起きるか:
 #   Chromium は字を書体の並び（font-family）の順に探し、どれにも無ければ OS の書体で描く。
 #   その書体が Type 3 で埋め込まれる。どの書体の並びで探すかは、字の置き場所で違う:
-#   - 本文・見出し: 本文（見出し）の書体 → HackGen（base/page.css の --font-body・--font-header）
+#   - 本文・見出し: 本文（見出し）の書体 → HackGen（tokens.css の --book-font-body・--book-font-heading）
 #     → DejaVu Sans Mono → DejaVu Sans（book-settings.css が HackGen と同じ書体名の面として足す・改善案 #127）
-#   - コード: コードの書体だけ（--font-code の次は monospace = OS の書体）。HackGen なら DejaVu も
+#   - コード: コードの書体だけ（--book-font-code の次は monospace = OS の書体）。HackGen なら DejaVu も
 #   - 数式の画像: SVG に埋めた本文の書体だけ（MathTransformer#embed_text_font）
 #   - 図の SVG: SVG に埋めた書体だけ（DerivedSvg が、図の名指しする書体と見出しの書体を埋め、
 #     それらに無い字は予備の書体 SvgFontEmbedder::FALLBACK_FONTS で補う・改善案 #127）

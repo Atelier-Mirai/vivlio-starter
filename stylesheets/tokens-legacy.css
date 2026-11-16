@@ -1,0 +1,90 @@
+@charset "utf-8";
+
+/* =============================================================
+   tokens-legacy.css - 1.x の変数の名前の別名
+   =============================================================
+
+   2.0 で、公開する変数の名前は --book-* に変わりました（一覧は tokens.css）。
+   このファイルは、1.x の名前（--theme-accent など）を新しい名前の別名として定義し、
+   1.x の custom.css が var(--theme-accent) のように読んでも効くようにします。
+   1.x の名前に値を入れた custom.css（:root { --color-link: #1a73e8; }）は、
+   ビルドが book-settings.css で新しい名前へ渡します。
+
+   自動生成: Css::LegacyTokens.alias_css と同じ中身（手で編集しない）。
+   vs upgrade で custom.css を新しい名前へ置き換えられます。
+
+   ============================================================= */
+
+:root {
+  --accent-yellow: var(--book-accent-yellow);
+  --accent-orange: var(--book-accent-orange);
+  --accent-red: var(--book-accent-red);
+  --accent-magenta: var(--book-accent-magenta);
+  --accent-purple: var(--book-accent-purple);
+  --accent-indigo: var(--book-accent-indigo);
+  --accent-navy: var(--book-accent-navy);
+  --accent-blue: var(--book-accent-blue);
+  --accent-cyan: var(--book-accent-cyan);
+  --accent-teal: var(--book-accent-teal);
+  --accent-green: var(--book-accent-green);
+  --accent-lime: var(--book-accent-lime);
+  --theme-accent: var(--book-color-accent);
+  --color-preface-accent: var(--book-color-accent-preface);
+  --appendix-accent-color: var(--book-color-accent-appendix);
+  --color-text: var(--book-color-text);
+  --color-link: var(--book-color-link);
+  --color-strong: var(--book-color-strong);
+  --color-em-underline: var(--book-color-em-underline);
+  --color-border: var(--book-color-border);
+  --color-border-weak: var(--book-color-border-weak);
+  --color-output-border: var(--book-color-output-border);
+  --color-column-bg: var(--book-color-column-bg);
+  --color-column-border: var(--book-color-column-border);
+  --color-figure-border: var(--book-color-figure-border);
+  --color-overlay: var(--book-color-overlay);
+  --color-danger: var(--book-color-danger);
+  --color-mark: var(--book-color-mark);
+  --heading-accent: var(--book-color-heading);
+  --section-number-color: var(--book-color-section-number);
+  --font-main-text: var(--book-font-body);
+  --font-header: var(--book-font-heading);
+  --font-column: var(--book-font-column);
+  --font-code: var(--book-font-code);
+  --font-folio: var(--book-font-folio);
+  --font-title: var(--book-font-title);
+  --page-margin-top: var(--book-page-margin-top);
+  --page-margin-bottom: var(--book-page-margin-bottom);
+  --page-margin-inner: var(--book-page-margin-inner);
+  --page-margin-outer: var(--book-page-margin-outer);
+  --base-font-size: var(--book-font-size);
+  --base-line-height: var(--book-line-height);
+  --letter-spacing: var(--book-letter-spacing);
+  --paper-scale: var(--book-paper-scale);
+  --folio-font-size: var(--book-folio-font-size);
+  --folio-color: var(--book-folio-color);
+  --folio-left-content: var(--book-folio-left-content);
+  --folio-right-content: var(--book-folio-right-content);
+  --folio-center-content: var(--book-folio-center-content);
+  --h3-marker: var(--book-marker-h3);
+  --h4-marker: var(--book-marker-h4);
+  --talk-accent: var(--book-talk-accent);
+  --talk-bg: var(--book-talk-bg);
+  --talk-icon-size: var(--book-talk-icon-size);
+  --talk-speaker-size: var(--book-talk-speaker-size);
+  --frontispiece-image: var(--book-frontispiece-image);
+  --frontispiece-edge-inset: var(--book-frontispiece-edge-inset);
+  --frontispiece-background-size: var(--book-frontispiece-background-size);
+  --frontispiece-heading-width: var(--book-frontispiece-heading-width);
+  --frontispiece-lead-width: var(--book-frontispiece-lead-width);
+  --frontispiece-heading-offset: var(--book-frontispiece-heading-offset);
+  --frontispiece-binding-offset: var(--book-frontispiece-binding-offset);
+  --section-bg-image: var(--book-ornament-image);
+  --section-title-font-size: var(--book-ornament-title-font-size);
+  --heading-text: var(--standard-heading-text);
+}
+
+/* 会話の色は話者の要素の上で決まるので、同じ要素の上にも別名を置く */
+.talk, .talk-item {
+  --talk-accent: var(--book-talk-accent);
+  --talk-bg: var(--book-talk-bg);
+}

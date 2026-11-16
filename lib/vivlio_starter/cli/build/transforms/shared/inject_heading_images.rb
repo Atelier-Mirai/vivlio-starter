@@ -100,9 +100,9 @@ module VivlioStarter
         # P3 以降、tokens.css は読み取り専用のテーマ資産となり book.yml の設定は
         # book-settings.css へ書き出されるため、tokens.css の正規表現読みでは設定変更を
         # 拾えず既定値に化ける（調査報告 §7.1）。そこで生成器と同じ参照元
-        # （parse_theme_settings の計算値）を直接使う。節番号色（--section-number-color）は
-        # in-place 版でも書換対象外で常に var(--theme-accent) だったため、book.yml で選ばれた
-        # theme accent を、パレット定義（tokens.css の --accent-* は P3 でも不変）で具体色へ解決する。
+        # （parse_theme_settings の計算値）を直接使う。節番号色（--book-color-section-number）は
+        # in-place 版でも書換対象外で常に var(--book-color-accent) だったため、book.yml で選ばれた
+        # theme accent を、パレット定義（tokens.css の --book-accent-* は P3 でも不変）で具体色へ解決する。
         #
         # @return [Hash, nil] { frontispiece:, ornament:, number_color: }。解決不能時は nil
         def read_theme_heading_assets
@@ -157,11 +157,11 @@ module VivlioStarter
           File.exist?(path) ? path : nil
         end
 
-        # CSS 色値を具体色へ解決する。var(--theme-accent) → var(--accent-yellow) → #f0a000 の
+        # CSS 色値を具体色へ解決する。var(--book-color-accent) → var(--book-accent-yellow) → #f0a000 の
         # 連鎖を tokens.css 内の定義から辿る。解決できなければ既定のダークを返す。
         #
         # @param css [String] tokens.css 全文
-        # @param value [String, nil] --section-number-color の値
+        # @param value [String, nil] --book-color-section-number の値
         # @return [String] 具体的な CSS 色
         def resolve_css_color(css, value, depth = 0)
           v = value.to_s.strip

@@ -60,24 +60,24 @@ figure[style*="width"] > img {
 
 /* figcaption 全般のスタイル（ゴシック体＋太字） */
 figcaption {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   text-spacing: no-autospace;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--book-color-text);
   text-align: center;
   margin-block-start: 0.25lh;
 }
 
 figure :is(img, svg) {
-  border: solid 0.5mm var(--color-figure-border);
+  border: solid 0.5mm var(--book-color-figure-border);
 }
 
 /* crop で切り抜いた画像（改善案.md #54）。PDF では前処理が作った SVG を参照するため、
    後段の img[src$=".svg"] { border: none } に既定の枠を消されないよう、クラスで付け直す。
    border=off（下の figure.vs-borderless、同じ特異度で後ろに置く）はこれより優先される。 */
 figure img.vs-cropped {
-  border: solid 0.5mm var(--color-figure-border);
+  border: solid 0.5mm var(--book-color-figure-border);
 }
 
 figure p {
@@ -93,7 +93,7 @@ figure p {
    クラスは、キャプション付きなら figure に、それ以外なら img に載るので両方を見る。 */
 img.vs-bordered,
 figure.vs-bordered :is(img, svg) {
-  border: solid 0.5mm var(--color-figure-border);
+  border: solid 0.5mm var(--book-color-figure-border);
 }
 
 img.vs-borderless,
@@ -145,8 +145,8 @@ figure ul {
 figure li {
   font-size: 11Q;
   line-height: 16Q;
-  border: solid 0.25mm var(--color-danger);
-  background: var(--color-overlay);
+  border: solid 0.25mm var(--book-color-danger);
+  background: var(--book-color-overlay);
   margin-bottom: 2mm;
   padding: 0 0.5mm;
 }

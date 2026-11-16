@@ -44,7 +44,7 @@ module VivlioStarter
             @font-face { font-family: "Noto Serif JP"; src: url("fonts/NotoSerifJP-Regular.ttf"); }
             @font-face { font-family: keyfont; src: url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf"); }
             @font-face { font-family: "vs-variant-1"; font-weight: 400; src: url("fonts/vs-variant-1.ttf"); }
-            body { font-family: var(--font-main-text); }
+            body { font-family: var(--book-font-body); }
           CSS
 
           result = filtered(css, target: :kindle)
@@ -52,7 +52,7 @@ module VivlioStarter
           refute_includes result, 'Noto Serif JP', '運ばない書体の面は落とす（RSC-007）'
           assert_includes result, 'font-family: keyfont', 'keyfont は実体も運ぶので面を残す'
           assert_includes result, 'font-family: "vs-variant-1"; font-weight: 400', '異体字の書体の面を残す'
-          assert_includes result, 'font-family: var(--font-main-text)', '通常の宣言は残す'
+          assert_includes result, 'font-family: var(--book-font-body)', '通常の宣言は残す'
         end
 
         def test_should_keep_font_faces_when_embedding
@@ -63,7 +63,7 @@ module VivlioStarter
 
         def test_should_strip_webp_and_data_uri_declarations_only_for_kindle
           css = <<~CSS
-            :root { --h3-marker: url("images/marker.webp"); --vs-plain-color: #333; }
+            :root { --book-marker-h3: url("images/marker.webp"); --vs-plain-color: #333; }
             li.task-list-item > input[type="checkbox"]:checked {
               background-color: currentColor;
               background-image: url("data:image/svg+xml,%3Csvg%3E%3C/svg%3E");

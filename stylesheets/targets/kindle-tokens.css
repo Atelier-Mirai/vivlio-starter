@@ -15,14 +15,14 @@
    custom.css の :root で PDF 用に変えた値も、Kindle には届かない。Kindle の値を変えたいときは、
    custom.css で body.vs-kindle の同じ変数を書く。 */
 body.vs-kindle {
-  --base-font-size: 1em;
-  --base-line-height: normal;
+  --book-font-size: 1em;
+  --book-line-height: normal;
 
-  --font-main-text: serif;
+  --book-font-body: serif;
   --font-body: serif;
-  --font-title: sans-serif;
-  --font-header: sans-serif;
-  --font-column: sans-serif;
-  --font-code: monospace;
-  --font-folio: sans-serif;
+  --book-font-title: sans-serif;
+  --book-font-heading: sans-serif;
+  --book-font-column: sans-serif;
+  --book-font-code: monospace;
+  --book-font-folio: sans-serif;
 }

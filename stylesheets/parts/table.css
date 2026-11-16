@@ -21,7 +21,7 @@
 /* 表 */
 table {
   border-collapse: collapse;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
   line-height: 1.25em;
   
   /* ページ中央に配置（横方向） */
@@ -42,10 +42,10 @@ table {
    通常のテキストは普通の段落として表示する。 */
 p:has(> strong:only-child):has(+ table) {
   /* h4 相当のトーンに寄せる */
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
   font-weight: normal;
   text-indent: 0; /* 本文の字下げを打ち消し */
 }
@@ -54,7 +54,7 @@ p:has(> strong:only-child):has(+ table) {
    表キャプションとして扱う（色は本文色・太さは中程度） */
 p:has(> strong:only-child):has(+ table) strong {
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--book-color-text);
 }
 
 /* h4 と同様の先頭マーカー */
@@ -82,12 +82,12 @@ body:not(.appendix) p:has(> strong:only-child):has(+ table) {
 .table-caption,
 .code-caption,
 figure.cross-ref-figure > figcaption {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--book-color-text);
   text-align: center;
   margin-block: 0.25lh;
 }
@@ -136,8 +136,8 @@ thead:has(+ tbody > tr:first-child:nth-last-child(-n+6)) tr {
 td,
 th {
   /* 線幅とパディングを用紙スケールで調整 */
-  border: solid clamp(0.08mm, calc(0.1mm * var(--paper-scale)), 0.14mm) #000;
-  padding: clamp(0.6mm, calc(1mm * var(--paper-scale)), 1.4mm);
+  border: solid clamp(0.08mm, calc(0.1mm * var(--book-paper-scale)), 0.14mm) #000;
+  padding: clamp(0.6mm, calc(1mm * var(--book-paper-scale)), 1.4mm);
   
   /* 長い単語/URL/コードでのはみ出し抑制 */
   overflow-wrap: anywhere;
@@ -163,7 +163,7 @@ thead:not(:has(th:not(:empty))) {
 
 .long-table {
   /* 長い表はわずかに小さめ。スケール追従しつつ下限/上限を設ける */
-  font-size: clamp(9Q, calc(11Q * var(--paper-scale)), 12Q);
+  font-size: clamp(9Q, calc(11Q * var(--book-paper-scale)), 12Q);
 }
 
 .long-table table {
@@ -225,7 +225,7 @@ table code {
      ラッパー高さ＝版面高さ・translateY(-50%) なら回転後のテーブルは数学的に完全センタリングされる。
      フォールバックは旧実装の暫定値（通常は注入値が使われる） */
   width: 100%;
-  height: var(--rotate-table-height, clamp(320px, calc(500px * var(--paper-scale)), 560px));
+  height: var(--rotate-table-height, clamp(320px, calc(500px * var(--book-paper-scale)), 560px));
   overflow: visible;
 }
 

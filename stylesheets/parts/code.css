@@ -1,10 +1,10 @@
 @charset "utf-8";
 
 /* コード
-   フォント変数の定義名は --font-code（base/page.css）。かつて未定義の
+   フォント変数の定義名は --book-font-code（base/page.css）。かつて未定義の
    別名変数を参照して本文の明朝を継承していたため、総称 fallback も添える。 */
 code {
-  font-family: var(--font-code), monospace;
+  font-family: var(--book-font-code), monospace;
 }
 
 pre,
@@ -19,7 +19,7 @@ pre[class*="language-"] {
   margin-inline: 0;
 
   /* typography */
-  font-family: var(--font-code), monospace;
+  font-family: var(--book-font-code), monospace;
   white-space: pre-wrap;
   line-break: anywhere;
   font-size: 13Q;

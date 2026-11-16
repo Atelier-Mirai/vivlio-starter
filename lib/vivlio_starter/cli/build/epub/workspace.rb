@@ -232,7 +232,7 @@ module VivlioStarter
 
         # EPUB にフォント実体を埋め込むかどうか。
         # 既定は false（非埋め込み = リーダーのフォントに委ねる）。技術書では
-        # 明朝/ゴシック/等幅の generic フォールバック（base/page.css の --font-*）で
+        # 明朝/ゴシック/等幅の generic フォールバック（tokens.css の --book-font-*）で
         # 十分なため、サイズ最適化を優先する。
         #
         # NOTE: v2.0 で小説等の執筆に対応する際、book.yml の設定

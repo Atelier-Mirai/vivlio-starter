@@ -10,8 +10,7 @@
    ============================================================= */
 
 :root {
-  --heading-accent: var(--theme-accent);
-  --heading-text: var(--color-text);
+  --standard-heading-text: var(--book-color-text);
 }
 
 /* -------------------------------------------------------------
@@ -24,8 +23,8 @@ body.vs-header-simple h1 {
 
   /* appearance */
   overflow: hidden;
-  border: 1mm solid var(--heading-accent);
-  border-radius: clamp(3mm, calc(var(--paper-scale) * 5mm), 6mm);
+  border: 1mm solid var(--book-color-heading);
+  border-radius: clamp(3mm, calc(var(--book-paper-scale) * 5mm), 6mm);
   /* box-shadow:
     0 2mm 6mm rgb(0 0 0 / 15%),
     0 0 0 1mm rgb(255 255 255 / 60%); */
@@ -34,21 +33,21 @@ body.vs-header-simple h1 {
   /* 幅は章リードと同じ 32em を上限としつつ、ページ幅内で中央寄せ */
   margin-inline: auto;
   inline-size: 100%;
-  max-inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm); /* 32em 相当をスケール */
+  max-inline-size: clamp(114.24mm, calc(var(--book-paper-scale) * 163.2mm), 163.2mm); /* 32em 相当をスケール */
   box-sizing: border-box;
-  padding-inline: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
-  padding-block: clamp(9mm, calc(var(--paper-scale) * 12mm), 14mm); /* 余白をスケール */
+  padding-inline: clamp(6mm, calc(var(--book-paper-scale) * 8mm), 12mm);
+  padding-block: clamp(9mm, calc(var(--book-paper-scale) * 12mm), 14mm); /* 余白をスケール */
 
   /* layout (flex to stack number/title) */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
+  gap: clamp(4.2mm, calc(var(--book-paper-scale) * 6mm), 6mm);
 
   /* typography */
-  font-size: clamp(30.8Q, calc(var(--paper-scale) * 44Q), 44Q);
-  line-height: clamp(35Q, calc(var(--paper-scale) * 50Q), 50Q);
-  color: var(--heading-text);
+  font-size: clamp(30.8Q, calc(var(--book-paper-scale) * 44Q), 44Q);
+  line-height: clamp(35Q, calc(var(--book-paper-scale) * 50Q), 50Q);
+  color: var(--standard-heading-text);
 
   /* alignment */
   text-align: center;
@@ -69,33 +68,33 @@ body.vs-header-simple h1::after {
 /* 上部リボン */
 body.vs-header-simple h1::before {
   inset-block-start: 0;
-  block-size: clamp(3mm, calc(var(--paper-scale) * 5mm), 6mm);
+  block-size: clamp(3mm, calc(var(--book-paper-scale) * 5mm), 6mm);
   background:
     linear-gradient(90deg,
       rgba(255 255 255 / 0) 0%,
       rgba(255 255 255 / 40%) 15%,
       rgba(255 255 255 / 0) 50%,
       rgba(0 0 0 / 15%) 100%),
-    var(--heading-accent);
+    var(--book-color-heading);
 }
 
 /* 下部リボン */
 body.vs-header-simple h1::after {
   inset-block-end: 0;
-  block-size: clamp(3mm, calc(var(--paper-scale) * 4mm), 5mm);
+  block-size: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 5mm);
   background:
     linear-gradient(90deg,
       rgba(0 0 0 / 12%) 0%,
       rgba(255 255 255 / 45%) 50%,
       rgba(0 0 0 / 12%) 100%),
-    var(--heading-accent);
+    var(--book-color-heading);
 }
 
 body.vs-header-simple h1 .chapter-number {
-  font-size: clamp(21Q, calc(var(--paper-scale) * 30Q), 30Q);
+  font-size: clamp(21Q, calc(var(--book-paper-scale) * 30Q), 30Q);
   font-weight: 700;
   line-height: 1.1;
-  color: var(--heading-text);
+  color: var(--standard-heading-text);
 }
 
 body.vs-header-simple h1 .chapter-title {
@@ -111,27 +110,27 @@ body.vs-header-simple h2 {
   grid-template-areas: "number title";
   grid-template-columns: auto 1fr;
   align-items: center;
-  gap: clamp(3mm, calc(var(--paper-scale) * 4mm), 4.5mm);
+  gap: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 4.5mm);
   z-index: 0;
 
   /* spacing */
   margin-inline: auto;
-  margin-block: clamp(8mm, calc(var(--paper-scale) * 12mm), 15mm) clamp(5mm, calc(var(--paper-scale) * 8mm), 12mm);
-  padding-block: clamp(3mm, calc(var(--paper-scale) * 4mm), 6mm);
-  padding-inline: clamp(6mm, calc(var(--paper-scale) * 9mm), 12mm);
+  margin-block: clamp(8mm, calc(var(--book-paper-scale) * 12mm), 15mm) clamp(5mm, calc(var(--book-paper-scale) * 8mm), 12mm);
+  padding-block: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 6mm);
+  padding-inline: clamp(6mm, calc(var(--book-paper-scale) * 9mm), 12mm);
 
   /* box-size */
   inline-size: 100%;
-  max-inline-size: clamp(120mm, calc(var(--paper-scale) * 170mm), 185mm);
+  max-inline-size: clamp(120mm, calc(var(--book-paper-scale) * 170mm), 185mm);
 
   /* pagination */
   break-before: page;
 
   /* typography */
-  font-size: clamp(25Q, calc(var(--paper-scale) * 33Q), 34Q);
+  font-size: clamp(25Q, calc(var(--book-paper-scale) * 33Q), 34Q);
   line-height: 1.25;
   font-weight: 800;
-  color: var(--heading-text);
+  color: var(--standard-heading-text);
 
   /* visual */
   background:
@@ -139,11 +138,11 @@ body.vs-header-simple h2 {
       rgba(255 255 255 / 60%) 0%,
       rgba(255 255 255 / 20%) 40%,
       rgba(255 255 255 / 0) 100%);
-  border-radius: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
-  border-inline-start: clamp(3mm, calc(var(--paper-scale) * 4mm), 5mm) solid var(--heading-accent);
+  border-radius: clamp(2mm, calc(var(--book-paper-scale) * 4mm), 5mm);
+  border-inline-start: clamp(3mm, calc(var(--book-paper-scale) * 4mm), 5mm) solid var(--book-color-heading);
   /* box-shadow: 0 1.2mm 4mm rgb(0 0 0 / 12%); */
-  border-inline-end: 1px solid var(--heading-accent);
-  border-block: 1px solid var(--heading-accent);
+  border-inline-end: 1px solid var(--book-color-heading);
+  border-block: 1px solid var(--book-color-heading);
 }
 
 /* 節リードとの間隔を確保（PDF 用）。EPUB と Kindle の余白は targets/epub.css が持ち、target 層で勝つ
@@ -151,7 +150,7 @@ body.vs-header-simple h2 {
 body.vs-header-simple h2 + .section-lead,
 body.vs-header-simple h2 + * + .section-lead,
 body.vs-header-simple h2 ~ .section-lead {
-  margin-block-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
+  margin-block-start: clamp(6mm, calc(var(--book-paper-scale) * 8mm), 12mm);
 }
 
 body.vs-header-simple h2 .section-number {
@@ -159,22 +158,22 @@ body.vs-header-simple h2 .section-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: clamp(18mm, calc(var(--paper-scale) * 26mm), 28mm);
+  inline-size: clamp(18mm, calc(var(--book-paper-scale) * 26mm), 28mm);
   block-size: 100%;
-  min-block-size: clamp(9mm, calc(var(--paper-scale) * 12mm), 14mm);
-  padding-inline: clamp(2mm, calc(var(--paper-scale) * 2.6mm), 3mm);
-  background: var(--heading-accent);
+  min-block-size: clamp(9mm, calc(var(--book-paper-scale) * 12mm), 14mm);
+  padding-inline: clamp(2mm, calc(var(--book-paper-scale) * 2.6mm), 3mm);
+  background: var(--book-color-heading);
   color: #fff;
   font-weight: 900;
-  border-radius: clamp(1mm, calc(var(--paper-scale) * 2mm), 3mm);
+  border-radius: clamp(1mm, calc(var(--book-paper-scale) * 2mm), 3mm);
   /* prevent wrap for two-digit chapter numbers like 10-7 */
   white-space: nowrap;
   line-height: 1;
-  font-size: clamp(18Q, calc(var(--paper-scale) * 24Q), 26Q);
+  font-size: clamp(18Q, calc(var(--book-paper-scale) * 24Q), 26Q);
   font-variant-numeric: tabular-nums;
 }
 
 body.vs-header-simple h2 .section-title {
   grid-area: title;
-  color: var(--heading-text);
+  color: var(--standard-heading-text);
 }

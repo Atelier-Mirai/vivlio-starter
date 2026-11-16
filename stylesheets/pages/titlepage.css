@@ -20,7 +20,7 @@ body.titlepage {
     padding-inline: 5%;            /* 左右余白（版面幅の5%） */
 
     /* typography */
-    font-family: var(--font-main-text);
+    font-family: var(--book-font-body);
     line-height: 1.5;
     text-align: center;
 
@@ -30,7 +30,7 @@ body.titlepage {
 
 h1,
 h2 {
-    font-family: var(--font-title);
+    font-family: var(--book-font-title);
 }
 
 /* 本扉の下側余白を詰め、ノンブルと柱を非表示に */
@@ -40,8 +40,8 @@ h2 {
        ノド＝左・小口＝右。@page :left / :right は実際の表裏で左右を入れ替えるが、
        名前付きページは Paged Media の詳細度でそれに勝つため、何ページ目に組まれても
        綴じ側がぶれない。 */
-    margin-left: var(--page-margin-inner);
-    margin-right: var(--page-margin-outer);
+    margin-left: var(--book-page-margin-inner);
+    margin-right: var(--book-page-margin-outer);
     margin-bottom: 0;
 
     /* 柱。単独ドキュメントだった頃は @page :nth(1) が消していたが、本文の末尾に
@@ -68,7 +68,7 @@ h2 {
     grid-row: 1; /* Grid の1行目に配置 */
 
     /* typography */
-    font-family: var(--font-header);
+    font-family: var(--book-font-heading);
     font-size: clamp(2.1rem, 5.25vw, 4.2rem); /* レスポンシブ */
     font-weight: bold;
     line-height: 1.4;

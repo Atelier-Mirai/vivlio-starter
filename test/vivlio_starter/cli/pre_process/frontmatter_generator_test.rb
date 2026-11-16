@@ -126,9 +126,9 @@ class FrontmatterGeneratorThemeColorTest < Minitest::Test
 
   # 有効な色名・HEX はそのまま解決される
   def test_valid_color_and_hex
-    assert_equal ['blue', 'var(--accent-blue)'], FG.parse_theme_color('blue')
+    assert_equal ['blue', 'var(--book-accent-blue)'], FG.parse_theme_color('blue')
     assert_equal ['#ff0000', '#ff0000'], FG.parse_theme_color('#ff0000')
-    assert_equal ['green', 'var(--accent-green)'], FG.parse_theme_color('')
+    assert_equal ['green', 'var(--book-accent-green)'], FG.parse_theme_color('')
   end
 
   # 無効な色名は exit せず既定色（config_keys.rb の green）へフォールバックする
@@ -137,7 +137,7 @@ class FrontmatterGeneratorThemeColorTest < Minitest::Test
     result = nil
     out, err = capture_io { result = FG.parse_theme_color('pink') }
 
-    assert_equal ['green', 'var(--accent-green)'], result
+    assert_equal ['green', 'var(--book-accent-green)'], result
     assert_empty out, 'parse_theme_color は章ごとに呼ばれるため警告を出さないこと'
     assert_empty err
   end

@@ -45,7 +45,7 @@ module VivlioStarter
         KEPT_FACE_PATTERN = /font-family:\s*["']?(?:keyfont\b|vs-variant-)/i
 
         # `url(….webp)` を含む宣言 1 つ。`[^;{}]*` で宣言の境を越えず、url は 1 つに限る。
-        # プロパティの名前は数字を含む（`--h3-marker`）ので `[\w-]+` で丸ごと拾う
+        # プロパティの名前は数字を含む（`--book-marker-h3`）ので `[\w-]+` で丸ごと拾う
         WEBP_URL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
 
         # `url("data:…")` を含む宣言 1 つ（境の取り方は WEBP_URL_PATTERN と同じ）

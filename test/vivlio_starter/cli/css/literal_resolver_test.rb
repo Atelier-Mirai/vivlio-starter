@@ -63,10 +63,10 @@ module VivlioStarter
         # 読む宣言を落とす。KFX も var() を含む宣言を捨てるので、Kindle の結果は今と同じ
         def test_should_drop_declarations_that_read_scoped_variables
           result = resolve(<<~CSS, scoped: %w[--cols])
-            :root { --talk-accent: #111111; }
-            .talk { --talk-accent: #222222; }
+            :root { --book-talk-accent: #111111; }
+            .talk { --book-talk-accent: #222222; }
             body.chapter-first { --first: 1px; }
-            .talk-name { color: var(--talk-accent); }
+            .talk-name { color: var(--book-talk-accent); }
             .first { margin: var(--first); }
             .pictures { columns: var(--cols, 3); }
             p { color: red; }
@@ -96,9 +96,9 @@ module VivlioStarter
 
         def test_should_calculate_calc_with_consistent_units
           result = resolve(<<~CSS)
-            :root { --paper-scale: 0.96; }
+            :root { --book-paper-scale: 0.96; }
             p {
-              margin: calc(var(--paper-scale) * 4mm);
+              margin: calc(var(--book-paper-scale) * 4mm);
               width: calc(100% * 2 / 3);
               left: calc(50% + 2mm);
             }
@@ -114,10 +114,10 @@ module VivlioStarter
         # 落とした理由は :paper_dimension で、ほかの理由と分ける（css-layer-restructure-spec.md §4.4）
         def test_should_drop_paper_dimensions_with_their_own_reason
           result = resolve(<<~CSS)
-            :root { --paper-scale: 0.96; --gap: clamp(2mm, 3mm, 4mm); --plain: 2mm; }
+            :root { --book-paper-scale: 0.96; --gap: clamp(2mm, 3mm, 4mm); --plain: 2mm; }
             p {
-              padding: clamp(1mm, calc(var(--paper-scale) * 2mm), 3mm);
-              text-indent: calc(-1 * clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm));
+              padding: clamp(1mm, calc(var(--book-paper-scale) * 2mm), 3mm);
+              text-indent: calc(-1 * clamp(9.1mm, calc(var(--book-paper-scale) * 13mm), 13mm));
               inline-size: min(100%, 30em);
               block-size: MAX(1em, 2mm);
               row-gap: var(--gap);
@@ -141,9 +141,9 @@ module VivlioStarter
 
         def test_should_mix_srgb_colors_and_drop_the_others
           result = resolve(<<~CSS)
-            :root { --theme-accent: #15803d; }
+            :root { --book-color-accent: #15803d; }
             p {
-              background: color-mix(in srgb, var(--theme-accent) 15%, white);
+              background: color-mix(in srgb, var(--book-color-accent) 15%, white);
               color: color-mix(in srgb, red, blue);
               border-color: color-mix(in oklab, red 50%, white);
               outline-color: color-mix(in srgb, red 30%, transparent);
@@ -340,9 +340,9 @@ module VivlioStarter
         def test_should_bring_custom_css_colors_to_kindle
           css, out = kindle_css('chapter', custom: <<~CUSTOM)
             :root {
-              --color-strong: #1a73e8;
-              --color-column-border: var(--accent-red);
-              --color-column-bg: color-mix(in srgb, var(--accent-red) 20%, white);
+              --book-color-strong: #1a73e8;
+              --book-color-column-border: var(--book-accent-red);
+              --book-color-column-bg: color-mix(in srgb, var(--book-accent-red) 20%, white);
             }
           CUSTOM
 
@@ -367,9 +367,9 @@ module VivlioStarter
           assert_equal 'sans-serif', value_of(chapter, 'h1', 'font-family'), '見出しはゴシック'
           assert_equal 'monospace, monospace', value_of(chapter, 'code', 'font-family')
 
-          pdf_only, = kindle_css('chapter', custom: ":root { --base-font-size: 12pt; }\n")
+          pdf_only, = kindle_css('chapter', custom: ":root { --book-font-size: 12pt; }\n")
           assert_equal '1em', value_of(pdf_only, ':root', 'font-size')
-          kindle_only, = kindle_css('chapter', custom: "body.vs-kindle { --base-font-size: 1.1em; }\n")
+          kindle_only, = kindle_css('chapter', custom: "body.vs-kindle { --book-font-size: 1.1em; }\n")
           assert_equal '1.1em', value_of(kindle_only, ':root', 'font-size')
         end
 
@@ -378,16 +378,16 @@ module VivlioStarter
         def test_should_bring_custom_css_link_mark_and_diagram_colors_to_kindle
           css, = kindle_css('chapter', custom: <<~CUSTOM)
             :root {
-              --color-link: #1a73e8;
-              --color-mark: #7c3aed;
-              --color-border-weak: #aaaaaa;
+              --book-color-link: #1a73e8;
+              --book-color-mark: #7c3aed;
+              --book-color-border-weak: #aaaaaa;
             }
           CUSTOM
 
           assert_equal '#1a73e8', value_of(css, 'a', 'color')
           assert_equal '#7c3aed', value_of(css, '.column h5', 'color')
           assert_equal '1px solid #aaaaaa', value_of(css, 'body.vs-kindle .diagram', 'border'),
-                       '--color-output-border の既定は --color-border-weak'
+                       '--book-color-output-border の既定は --book-color-border-weak'
 
           default, = kindle_css('chapter')
           assert_equal '#000', value_of(default, 'a', 'color')
@@ -395,9 +395,9 @@ module VivlioStarter
           assert_equal '1px solid #ddd', value_of(default, 'body.vs-kindle .output', 'border')
         end
 
-        # 実行結果とテキストの図の枠は、custom.css の --color-output-border で PDF と Kindle の両方の色が変わる
+        # 実行結果とテキストの図の枠は、custom.css の --book-color-output-border で PDF と Kindle の両方の色が変わる
         def test_should_bring_output_border_color_to_kindle
-          css, = kindle_css('chapter', custom: ":root { --color-output-border: var(--theme-accent); }\n")
+          css, = kindle_css('chapter', custom: ":root { --book-color-output-border: var(--book-color-accent); }\n")
 
           assert_includes css, ".output,\n.diagram {\n  margin-block: 3mm;\n  padding: 2.5mm 3mm;\n  border: solid 0.2mm #f0a000;",
                           '部品の .output, .diagram の規則（PDF と同じ規則）'

@@ -14,7 +14,7 @@ body.whole_toc {
 }
 
 .whole-toc-volume {
-  margin-block-end: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+  margin-block-end: clamp(3.5mm, calc(var(--book-paper-scale) * 5mm), 5mm);
   color: #666;
 }
 
@@ -24,16 +24,16 @@ body.whole_toc {
 
 /* 上の余白は、題（全巻目次）との間を空けるため。巻と巻の間は .whole-toc-volume の下の余白と重なる */
 .whole-toc-volume-name {
-  margin-block: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm) clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
-  padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
-  border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) currentColor;
-  font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);
+  margin-block: clamp(3.5mm, calc(var(--book-paper-scale) * 5mm), 5mm) clamp(1.4mm, calc(var(--book-paper-scale) * 2mm), 2mm);
+  padding-block-end: clamp(0.7mm, calc(var(--book-paper-scale) * 1mm), 1mm);
+  border-block-end: solid clamp(0.35mm, calc(var(--book-paper-scale) * 0.5mm), 0.5mm) currentColor;
+  font-size: clamp(13.3Q, calc(var(--book-paper-scale) * 19Q), 19Q);
   font-weight: 700;
   break-after: avoid;
 }
 
 .vs-current-volume .whole-toc-volume-name {
-  border-block-end-width: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+  border-block-end-width: clamp(0.7mm, calc(var(--book-paper-scale) * 1mm), 1mm);
 }
 
 .whole-toc-volume ul {
@@ -43,13 +43,13 @@ body.whole_toc {
 }
 
 .whole-toc-volume li {
-  margin-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
-  font-size: clamp(9.8Q, calc(var(--paper-scale) * 14Q), 14Q);
+  margin-block-end: clamp(0.7mm, calc(var(--book-paper-scale) * 1mm), 1mm);
+  font-size: clamp(9.8Q, calc(var(--book-paper-scale) * 14Q), 14Q);
   line-height: 1.4;
 }
 
 li.whole-toc-part {
-  margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
+  margin-block-start: clamp(1.4mm, calc(var(--book-paper-scale) * 2mm), 2mm);
   font-weight: 700;
 }
 
@@ -66,13 +66,13 @@ li.whole-toc-appendix {
 
 /* 節（page.toc_depth が 2 以上のとき）。章の下に字下げして、章より小さく細く組む */
 .whole-toc-volume ul.whole-toc-sections {
-  margin-block-start: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
+  margin-block-start: clamp(0.7mm, calc(var(--book-paper-scale) * 1mm), 1mm);
 }
 
 .whole-toc-volume li.whole-toc-section {
-  margin-block-end: clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm);
+  margin-block-end: clamp(0.35mm, calc(var(--book-paper-scale) * 0.5mm), 0.5mm);
   padding-inline-start: 4.5em;
-  font-size: clamp(8.4Q, calc(var(--paper-scale) * 12Q), 12Q);
+  font-size: clamp(8.4Q, calc(var(--book-paper-scale) * 12Q), 12Q);
 }
 
 li.whole-toc-section .whole-toc-number {

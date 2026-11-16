@@ -7,7 +7,7 @@ module VivlioStarter
     # ================================================================
     # テーマ・アクセント色の解決（色名/hex → リテラル hex）と混色。
     # ================================================================
-    # パレットの正典は stylesheets/tokens.css の --accent-*。色名はビルドしているプロジェクトの
+    # パレットの正典は stylesheets/tokens.css の --book-accent-*。色名はビルドしているプロジェクトの
     # tokens.css から引き、PALETTE は tokens.css が無いときと、そこに無い色名の代わりに使う
     # （改善案 #79。既存の本の tokens.css は作ったときの写しなので、gem 側の値で焼くと
     # PDF と Kindle で色が食い違う。著者が tokens.css の値を変えた場合も同じ）。
@@ -17,7 +17,7 @@ module VivlioStarter
     #   - techbook の画像化アセットの色決定（Techbook::Processor#theme_color_hex）。
     # ================================================================
     module ThemeColor
-      # tokens.css の --accent-* と一致させること（12 色。theme_color_test の test_palette_matches_theme_css が確かめる）。
+      # tokens.css の --book-accent-* と一致させること（12 色。theme_color_test の test_palette_matches_theme_css が確かめる）。
       PALETTE = {
         'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
         'magenta' => '#e11d74', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',
@@ -35,7 +35,7 @@ module VivlioStarter
       THEME_CSS = File.join('stylesheets', 'tokens.css')
 
       # tokens.css の色の宣言。コメントアウトした旧パレットは先に取り除いてから読む
-      ACCENT_DECLARATION = /--accent-([a-z]+):\s*(\#(?:\h{8}|\h{6}|\h{3}))\s*;/
+      ACCENT_DECLARATION = /--book-accent-([a-z]+):\s*(\#(?:\h{8}|\h{6}|\h{3}))\s*;/
 
       module_function
 

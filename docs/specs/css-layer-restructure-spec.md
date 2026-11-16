@@ -379,7 +379,9 @@ KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.
 | 今の名前を**読む** | `custom.css` に `color: var(--theme-accent);` と書いてある | `stylesheets/tokens-legacy.css`（`tokens` 層）が、今の名前を新しい名前の別名として定義する（`--theme-accent: var(--book-color-accent);`） |
 | 今の名前に**値を入れる** | `custom.css` に `:root { --color-link: #1a73e8; }` と書いてある | ビルドのときに `custom.css` の `:root` の定義を読み（今の `BookSettingsCss.root_variables` と同じ読み方）、今の名前の定義があれば、`settings` 層に `--book-color-link: var(--color-link);` を書き出す |
 
-- 二つを同時に使っても循環しない。`custom.css` が今の名前に値を入れた場合、その定義は層の外なので `tokens-legacy.css` の別名に勝ち、今の名前は値そのものになる。
+- 二つを同時に使っても循環しない。`custom.css` が今の名前に値を入れた場合、その定義は層の外なので `tokens-legacy.css` の別名に勝ち、今の名前は値そのものになる。値が新しい名前を読んでいる定義（`--theme-accent: var(--book-color-accent)`）は、渡すと循環になるので書き出さない。
+- 読む向きの別名は `:root` に置く。`var()` は別名を定義した要素の上で解かれるので、`:root` より深い要素で値の変わる変数は、その要素の上にも別名を置く。今は会話の 2 つ（`--talk-accent`・`--talk-bg`。`.talk` と話者の `.talk-item.talk-c-<key>` の上で決まる）で、`.talk, .talk-item` にも置く。
+- `tokens-legacy.css` は、対応の表から書き出したファイルを `stylesheets/` に置く（雛形の一部として著者の本へ配る）。手では直さない。表と中身が同じであることをテスト（`legacy_tokens_test.rb`）が確かめる。
 - 今の名前を `custom.css` で使っている本には、`vs build` と `vs preflight` が 💡 で、`vs upgrade` で新しい名前に直せることを知らせる（原稿の場所を指す指摘ではないので 💡。`terminal-output-notes.md`）。
 - `vs upgrade` は、`custom.css` の中の今の名前を新しい名前へ置き換える。置き換える行を全部見せてから確認を取り、いいえなら何も変えない。
 - 別名は 2.x の間は残す。対応の表は `lib/vivlio_starter/cli/css/legacy_tokens.rb` に 1 枚で置き、`tokens-legacy.css` と `settings` 層の書き出しと `vs upgrade` の置き換えが、同じ表を読む。

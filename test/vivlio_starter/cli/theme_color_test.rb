@@ -59,7 +59,7 @@ module VivlioStarter
       def test_palette_follows_project_theme_css
         Dir.mktmpdir do |dir|
           css = File.join(dir, 'theme.css')
-          File.write(css, ":root {\n  --accent-blue: #0EA5E9;\n  /* --accent-green: #000000; */\n}\n")
+          File.write(css, ":root {\n  --book-accent-blue: #0EA5E9;\n  /* --book-accent-green: #000000; */\n}\n")
 
           palette = TC.palette(css)
 
@@ -70,12 +70,12 @@ module VivlioStarter
         assert_same TC::PALETTE, TC.palette('/nonexistent/tokens.css'), 'tokens.css が無ければ PALETTE'
       end
 
-      # PALETTE は tokens.css の --accent-* の写し。片方だけ直すと Kindle だけ色が違う本になる
+      # PALETTE は tokens.css の --book-accent-* の写し。片方だけ直すと Kindle だけ色が違う本になる
       # （PDF・EPUB は tokens.css、Kindle の焼き込みは PALETTE で組むため）。
       # コメントアウトした旧パレットの行は読まない
       def test_palette_matches_theme_css
         css = File.read(File.expand_path('../../../stylesheets/tokens.css', __dir__))
-        declared = css.gsub(%r{/\*.*?\*/}m, '').scan(/--accent-([a-z]+):\s*(#\h{6});/).to_h
+        declared = css.gsub(%r{/\*.*?\*/}m, '').scan(/--book-accent-([a-z]+):\s*(#\h{6});/).to_h
 
         assert_equal TC::PALETTE, declared
       end

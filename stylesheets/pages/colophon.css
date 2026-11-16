@@ -29,10 +29,10 @@ body {
     margin-block-start: calc(70vh - 24pt); /* 副題1行分(約24pt)だけ上に詰める */
 
     /* spacing */
-    padding: clamp(28px, calc(var(--paper-scale) * 40px), 40px);
+    padding: clamp(28px, calc(var(--book-paper-scale) * 40px), 40px);
 
     /* typography */
-    font-family: var(--font-main-text);
+    font-family: var(--book-font-body);
     line-height: 1.5;
 
     /* visual */
@@ -45,9 +45,9 @@ body {
        @page :left / :right は実際の表裏で左右を入れ替えるが、名前付きページは
        Paged Media の詳細度でそれに勝つため、何ページ目に組まれてもぶれない
        （front-back-matter-single-render-spec.md §2.4）。 */
-    margin-left: var(--page-margin-outer);
-    margin-right: var(--page-margin-inner);
-    margin-bottom: clamp(5.6mm, calc(var(--paper-scale) * 8mm), 8mm);
+    margin-left: var(--book-page-margin-outer);
+    margin-right: var(--book-page-margin-inner);
+    margin-bottom: clamp(5.6mm, calc(var(--book-paper-scale) * 8mm), 8mm);
 
     /* 柱。本文の末尾に置くと直前の章のタイトルが string() に残ったまま出る。 */
     @top-right { content: none; }
@@ -62,27 +62,27 @@ body {
 /* 書籍名 */
 h1,
 h2 {
-    font-family: var(--font-header);
+    font-family: var(--book-font-heading);
 }
 
 .book-title {
     /* typography */
-    font-family: var(--font-header);
-    font-size: clamp(9.8pt, calc(var(--paper-scale) * 14pt), 14pt);
+    font-family: var(--book-font-heading);
+    font-size: clamp(9.8pt, calc(var(--book-paper-scale) * 14pt), 14pt);
     font-weight: 700;
 }
 
 /* 副題 */
 .subtitle {
     /* typography */
-    font-size: clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt);
+    font-size: clamp(8.4pt, calc(var(--book-paper-scale) * 12pt), 12pt);
     font-style: italic; /* 任意 */
 
     /* alignment */
     text-align: left; /* 左揃え */
 
     /* spacing */
-    margin-block: clamp(4.2pt, calc(var(--paper-scale) * 6pt), 6pt) 0;           /* タイトルとの間隔はそのまま */
+    margin-block: clamp(4.2pt, calc(var(--book-paper-scale) * 6pt), 6pt) 0;           /* タイトルとの間隔はそのまま */
 
     /* 下線（ページ幅いっぱい） */
     display: block;
@@ -91,7 +91,7 @@ h2 {
     border-bottom: 1px solid currentcolor;
 
     /* 行頭位置を .book-title と揃える（コンテナの左右 40px に合わせる） */
-    padding-inline-start: clamp(28px, calc(var(--paper-scale) * 40px), 40px);
+    padding-inline-start: clamp(28px, calc(var(--book-paper-scale) * 40px), 40px);
 
     /* adornments (configurable) */
     --subtitle-prefix: ""; /* デフォルト装飾なし */
@@ -119,10 +119,10 @@ h2 {
 /* 出版情報 */
 .publication-info {
     /* typography */
-    font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
+    font-size: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
 
     /* spacing */
-    margin-block: clamp(3.5pt, calc(var(--paper-scale) * 5pt), 5pt) clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt); /* 下に1行分の空き */
+    margin-block: clamp(3.5pt, calc(var(--book-paper-scale) * 5pt), 5pt) clamp(8.4pt, calc(var(--book-paper-scale) * 12pt), 12pt); /* 下に1行分の空き */
 }
 
 /* 情報リスト */
@@ -130,11 +130,11 @@ h2 {
     /* layout: 2カラム（ラベル/値） */
     display: grid;
     grid-template-columns: 3em 1fr; /* ラベル列=4文字分 */
-    gap: clamp(2.8pt, calc(var(--paper-scale) * 4pt), 4pt) clamp(5.6pt, calc(var(--paper-scale) * 8pt), 8pt);
+    gap: clamp(2.8pt, calc(var(--book-paper-scale) * 4pt), 4pt) clamp(5.6pt, calc(var(--book-paper-scale) * 8pt), 8pt);
 
     /* spacing */
-    margin-block-start: clamp(12.6pt, calc(var(--paper-scale) * 18pt), 18pt);
-    padding-block-end: clamp(5.6pt, calc(var(--paper-scale) * 8pt), 8pt); /* 下線のためのスペース確保 */
+    margin-block-start: clamp(12.6pt, calc(var(--book-paper-scale) * 18pt), 18pt);
+    padding-block-end: clamp(5.6pt, calc(var(--book-paper-scale) * 8pt), 8pt); /* 下線のためのスペース確保 */
     position: relative;      /* ::after を絶対配置するための基準 */
 }
 
@@ -154,9 +154,9 @@ h2 {
     grid-column: 1;
 
     /* typography */
-    font-family: var(--font-main-text);
+    font-family: var(--book-font-body);
     font-weight: 700;
-    font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
+    font-size: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
 
     /* alignment */
     text-align: justify;
@@ -169,11 +169,11 @@ h2 {
     grid-column: 2;
 
     /* typography */
-    font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
+    font-size: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
 }
 
 .copyright {
-    font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
+    font-size: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
 }
 
 .powered-by {
@@ -186,5 +186,5 @@ h2 {
     text-align: right;
 
     /* typography */
-    font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
+    font-size: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
 }

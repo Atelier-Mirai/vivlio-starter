@@ -13,8 +13,8 @@
 #   - theme: テーマカラー・スタイル設定
 #
 # CSS 更新内容:
-#   - --theme-accent: テーマアクセントカラー
-#   - --frontispiece-image: 扉絵画像パス
+#   - --book-color-accent: テーマアクセントカラー
+#   - --book-frontispiece-image: 扉絵画像パス
 #   - --ornament-image: 飾り画像パス
 #
 # 依存:
@@ -343,7 +343,7 @@ module VivlioStarter
             normalized = "##{t.sub(/^0x/i, '')}"
             [normalized, normalized]
           elsif ALLOWED_COLORS.include?(t)
-            [t, "var(--accent-#{t})"]
+            [t, "var(--book-accent-#{t})"]
           else
             # 無効な色名は既定色（ThemeColor::DEFAULT_NAME）へフォールバックしてビルドを継続する。
             # 著者向けの警告は ThemeValidator が Step 2 で一度だけ表示する
@@ -353,7 +353,7 @@ module VivlioStarter
         end
 
         # 未指定・無効な色名のときの色（config_keys.rb の theme.color の既定値）
-        def default_theme_color = [ThemeColor::DEFAULT_NAME, "var(--accent-#{ThemeColor::DEFAULT_NAME})"]
+        def default_theme_color = [ThemeColor::DEFAULT_NAME, "var(--book-accent-#{ThemeColor::DEFAULT_NAME})"]
 
         # テーマスタイルをパース
         def parse_theme_style(raw_style)

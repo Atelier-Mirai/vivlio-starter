@@ -11,8 +11,8 @@
    ── 使い方の例 ──────────────────────────────────
 
    :root {
-     --color-link: #1a73e8;
-     --color-column-bg: #f5f5dc;
+     --book-color-link: #1a73e8;
+     --book-color-column-bg: #f5f5dc;
    }
 
    pre {

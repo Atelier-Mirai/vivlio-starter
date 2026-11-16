@@ -124,7 +124,7 @@ module VivlioStarter
           (POINTSIZE * scale).floor
         end
 
-        # 地色。話者の color 未指定なら本のテーマ色を使う（PDF の --talk-accent 既定と一致）。
+        # 地色。話者の color 未指定なら本のテーマ色を使う（PDF の --book-talk-accent 既定と一致）。
         def background_hex(char)
           raw = char&.color
           return ThemeColor.to_hex6(raw) unless raw.to_s.strip.empty?

@@ -313,8 +313,8 @@ module VivlioStarter
                記号を CSS 文字列として描画すると Chromium が Type 3
                フォントとして埋め込むため、Twemoji WebP の url() に置き換える。 */
             :root {
-              --h3-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
-              --h4-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
+              --book-marker-h3: url("#{p}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
+              --book-marker-h4: url("#{p}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
               --subtitle-wave-image: url("#{p}stylesheets/twemoji/vs-techbook/wave.webp") !important;
               --preface-h3-marker-image: url("#{p}stylesheets/twemoji/vs-techbook/marker-preface-h3.webp") !important;
             }
@@ -332,12 +332,12 @@ module VivlioStarter
             }
 
             .subsection-marker {
-              background-image: var(--h3-marker) !important;
+              background-image: var(--book-marker-h3) !important;
             }
 
             h4::before {
               content: "" !important;
-              background-image: var(--h4-marker) !important;
+              background-image: var(--book-marker-h4) !important;
             }
 
             /* Techbook: CSS文字列の波線装飾は Type 3 化しやすいため画像化する。 */
@@ -377,12 +377,12 @@ module VivlioStarter
               background-size: contain;
             }
 
-            /* Type 3 フォント対策: コードを必ず --font-code で組み、text-shadow を消す。 */
+            /* Type 3 フォント対策: コードを必ず --book-font-code で組み、text-shadow を消す。 */
             code,
             pre,
             code[class*="language-"],
             pre[class*="language-"] {
-              font-family: var(--font-code), monospace !important;
+              font-family: var(--book-font-code), monospace !important;
               text-shadow: none !important;
             }
           CSS

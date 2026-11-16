@@ -36,7 +36,7 @@ module VivlioStarter
         # 層の中でも使ってよい !important（ファイルと、その行に当てる正規表現と理由）。
         # target 層は PDF の束に入らず平らな CSS でだけ読まれるので、層の順の逆転は起きない
         ALLOWED_IMPORTANT = [
-          { file: 'stylesheets/targets/kindle.css', line: /content: var\(--h4-marker/,
+          { file: 'stylesheets/targets/kindle.css', line: /content: var\(--book-marker-h4/,
             reason: 'Kindle の h4 の印。Techbook が HTML の <style> で content を "" !important にしているのに勝つ' }
         ].freeze
 
@@ -78,19 +78,19 @@ module VivlioStarter
         # KFX は var()・calc()・color-mix()・linear-gradient()・:has() を解さないので（kindle-css-compatibility-notes.md §2）、
         # どの行も、リテラル化を入れる前から Kindle には届いていない
         ALLOWED_KINDLE_DROPS = [
-          { reason: :variable, file: 'stylesheets/parts/talk.css', rule: /var\(--talk-(?:accent|bg|icon-size|speaker-size)\b/,
+          { reason: :variable, file: 'stylesheets/parts/talk.css', rule: /var\(--book-talk-(?:accent|bg|icon-size|speaker-size)\b/,
             why: '会話の変数は .talk と話者の .talk-c-<key> の上で定義する（要素ごとに値が違う）。Kindle は会話を ' \
                  'inline の形に組み替え、話者の色は book-settings.css が :root の変数で名前・区切り・強調に当てる' },
           { reason: :variable, file: %r{\Astylesheets/pages/(?:colophon|titlepage)\.css\z},
             rule: /\A\.subtitle::(?:before|after) \{ content: var\(--subtitle-(?:prefix|suffix)\) \}\z/,
             why: '副題の飾りは .subtitle と .subtitle--wave などの上で定義する（要素ごとに値が違う）。既定は飾りなし' },
           { reason: :variable, file: 'stylesheets/pages/chapter.css',
-            rule: /\A@page \{ background-image: var\(--frontispiece-image\) \}\z/,
+            rule: /\A@page \{ background-image: var\(--book-frontispiece-image\) \}\z/,
             why: '扉絵。Kindle には WebP を運ばないので、定義を TargetFilter が落とす。Kindle の章扉は合成した画像になる' },
-          { reason: :variable, file: 'stylesheets/parts/image-header.css', rule: /\{ background-image: var\(--section-bg-image\) \}\z/,
+          { reason: :variable, file: 'stylesheets/parts/image-header.css', rule: /\{ background-image: var\(--book-ornament-image\) \}\z/,
             why: '節絵。扉絵と同じく WebP の定義が落ちる。Kindle の節の見出しは合成した画像になる' },
           { reason: :calc, file: 'stylesheets/pages/chapter.css',
-            rule: /\A@page \{ background-size: var\(--frontispiece-background-size\) \}\z/,
+            rule: /\A@page \{ background-size: var\(--book-frontispiece-background-size\) \}\z/,
             why: '扉絵の大きさ（100% から縁の余白を引く。単位が混ざる）。Kindle の章扉は合成した画像になる' },
           { reason: :calc, file: '.cache/vs/book-settings.css', rule: /\A@page \{ background-position: calc\(50% \+ [\d.]+mm\) center \}\z/,
             why: '扉絵を綴じの側へ寄せる量（単位が混ざる）。Kindle の章扉は合成した画像になる' },

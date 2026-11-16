@@ -40,6 +40,7 @@ require_relative '../common'
 require_relative '../font_manager'
 require_relative '../theme_color'
 require_relative '../build/vivliostyle_config_writer'
+require_relative '../css/legacy_tokens'
 require_relative 'css_updater'
 require_relative '../post_process/heading_processor'
 require_relative 'frontmatter_generator'
@@ -83,6 +84,7 @@ module VivlioStarter
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, css, encoding: 'utf-8')
           File.write(fonts_output_path, render_fonts, encoding: 'utf-8')
+          suggest_new_token_names
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path
@@ -106,6 +108,7 @@ module VivlioStarter
           root_lines.concat(marker_declarations(cfg))
           root_lines.concat(page_declarations(page_cfg))
           root_lines.concat(talk_variable_declarations(registry))
+          root_lines.concat(Css::LegacyTokens.settings_declarations(custom_css))
 
           <<~CSS
             #{header_comment}
@@ -184,7 +187,7 @@ module VivlioStarter
         # 本文書体に太字が無いときの強調（ゴシック代用）。
         def emphasis_fallback_rules
           ['/* 本文書体に太字が無いため、強調は見出し書体（ゴシック）で表す */',
-           'strong, b { font-family: var(--font-header); }']
+           'strong, b { font-family: var(--book-font-heading); }']
         end
 
         # 生成ファイル先頭の注意書き。
@@ -204,23 +207,23 @@ module VivlioStarter
         #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
         #   - image スタイル : 画像 2 変数＋edge_inset を宣言
         #   - 見出しの寸法は文字数指定がある時だけ宣言（tokens.css の既定が生きる）
-        #   - 強調の色（--color-strong・--color-em-underline）は書かない。tokens.css の既定が
-        #     var(--theme-accent) で、ここ（settings 層）で書き直すと、付録の色の割り当て
+        #   - 強調の色（--book-color-strong・--book-color-em-underline）は書かない。tokens.css の既定が
+        #     var(--book-color-accent) で、ここ（settings 層）で書き直すと、付録の色の割り当て
         #     （pages/appendix.css・改善案 #132）やテーマの指定を打ち消すため
         def theme_declarations(settings, image_prefix:, page_cfg: {})
-          lines = ["--theme-accent: #{settings[:theme_accent_value]};"]
+          lines = ["--book-color-accent: #{settings[:theme_accent_value]};"]
 
           if settings[:theme_style] == 'simple'
-            lines << '--section-bg-image: none;'
-            lines << '--frontispiece-image: none;'
+            lines << '--book-ornament-image: none;'
+            lines << '--book-frontispiece-image: none;'
           else
-            lines << "--section-bg-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
-            lines << "--frontispiece-image: #{css_image_value(settings[:frontispiece_path], image_prefix:)};"
-            lines << "--frontispiece-edge-inset: #{settings[:edge_inset_value]};"
+            lines << "--book-ornament-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
+            lines << "--book-frontispiece-image: #{css_image_value(settings[:frontispiece_path], image_prefix:)};"
+            lines << "--book-frontispiece-edge-inset: #{settings[:edge_inset_value]};"
           end
 
           if settings[:heading_offset_value]
-            lines << "--frontispiece-heading-offset: #{settings[:heading_offset_value]};"
+            lines << "--book-frontispiece-heading-offset: #{settings[:heading_offset_value]};"
           end
 
           lines.concat(heading_metric_declarations(settings, page_cfg))
@@ -241,7 +244,7 @@ module VivlioStarter
           lines = []
 
           if (chars = settings[:heading_chars_value])
-            lines << "--frontispiece-heading-width: #{format_mm(chars * chapter_title_advance_mm(scale))};"
+            lines << "--book-frontispiece-heading-width: #{format_mm(chars * chapter_title_advance_mm(scale))};"
             warn_if_wider_than_text_area('theme.frontispiece.heading_chars', chars,
                                          chapter_title_advance_mm(scale), text_mm)
           end
@@ -254,12 +257,12 @@ module VivlioStarter
           chars = settings[:lead_chars_value] || (DEFAULT_LEAD_CHARS unless default_width)
           if chars
             advance_mm = chapter_lead_advance_mm(page_cfg, lead_size)
-            lines << "--frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
+            lines << "--book-frontispiece-lead-width: #{format_mm(chars * advance_mm)};"
             warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm)
           end
 
           if (chars = settings[:ornament_heading_chars_value])
-            lines << "--section-title-font-size: #{section_title_font_q(chars, text_mm, scale)}Q;"
+            lines << "--book-ornament-title-font-size: #{section_title_font_q(chars, text_mm, scale)}Q;"
           end
 
           lines
@@ -275,7 +278,7 @@ module VivlioStarter
         DEFAULT_LEAD_SIZE = ConfigKeys::KEYS[%i[theme lead_size]].default
 
         # 章題 1 字の送り（mm）。image-header.css の .chapter-title の
-        # `font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q)` と
+        # `font-size: clamp(34Q, calc(var(--book-paper-scale) * 48Q), 50Q)` と
         # `letter-spacing: 0.08em` を再現する。CSS 側を変えたらここも直すこと
         # （回帰テストで両者の一致を固定してある）。
         def chapter_title_advance_mm(scale)
@@ -338,7 +341,7 @@ module VivlioStarter
         # 32 字に合わせて縮めると、本文が版面いっぱいに組まれる横で節リードだけが細くなる。
         #
         # 字間 0 以下では何も出さず、parts/heading.css の 32em に任せる。CSS 側で
-        # calc(32em + 32 * var(--letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
+        # calc(32em + 32 * var(--book-letter-spacing)) と書くと、字間 0 でも節リードの字の位置が
         # わずかにずれた（vivliostyle-css-pitfalls-notes.md §2.18）。
         # EPUB・Kindle は targets/epub.css の inline-size: auto が勝つ（target 層・特異度 0,2,1）。
         def section_lead_width_rule(page_cfg)
@@ -359,7 +362,7 @@ module VivlioStarter
         SECTION_TITLE_FONT_Q_RANGE = (20.0..48.0)
 
         # 節絵の飾り避け（image-header.css の padding-inline）。左右それぞれ
-        # `clamp(下限, --paper-scale × 基準, 基準)` で用紙比に応じて縮む。
+        # `clamp(下限, --book-paper-scale × 基準, 基準)` で用紙比に応じて縮む。
         SECTION_TITLE_PADDING_LEFT_MM = { min: 11.0, base: 16.0 }.freeze
         SECTION_TITLE_PADDING_RIGHT_MM = { min: 12.0, base: 18.0 }.freeze
 
@@ -370,7 +373,7 @@ module VivlioStarter
         # 飾り避けの合計（mm）。CSS と同じ式で求める。
         #
         # かつては 34.0mm の固定値だった——`padding-inline` の基準値 16 + 18 で、
-        # これは **A4（--paper-scale が 1.0）のときの値**。CSS 側は用紙比で縮むため、
+        # これは **A4（--book-paper-scale が 1.0）のときの値**。CSS 側は用紙比で縮むため、
         # B5 では実際 29.4mm しか使われず、Ruby が 4.6mm 広く見積もることで
         # 字送りが小さくなり、1 行に 14.6 字入る余裕が**偶然**生まれていた。
         # A4 では見積もりが一致して余裕ゼロになり、25 字の節題が 2 行に収まらず
@@ -431,8 +434,8 @@ module VivlioStarter
           accent = settings[:theme_accent_value]
 
           [
-            "--appendix-accent-color: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};",
-            "--color-preface-accent: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};"
+            "--book-color-accent-appendix: #{CssUpdater.normalize_color_value(theme_cfg.appendix_color, fallback: accent, warn: false)};",
+            "--book-color-accent-preface: #{CssUpdater.normalize_color_value(theme_cfg.preface_color, fallback: accent, warn: false)};"
           ]
         end
 
@@ -440,8 +443,8 @@ module VivlioStarter
         def marker_declarations(cfg)
           h3, h4 = heading_markers(cfg)
           [
-            %(--h3-marker: "#{escape_marker(h3)}";),
-            %(--h4-marker: "#{escape_marker(h4)}";)
+            %(--book-marker-h3: "#{escape_marker(h3)}";),
+            %(--book-marker-h4: "#{escape_marker(h4)}";)
           ]
         end
 
@@ -682,7 +685,7 @@ module VivlioStarter
         # 下の余白（6mm）と重なって大きい方になるので変わらない
         TOC_CHAPTER_SPACING_RULE = <<~CSS.chomp
           #toc > ul > li.toc-chapter {
-            margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+            margin-block-start: clamp(3.5mm, calc(var(--book-paper-scale) * 5mm), 5mm);
           }
         CSS
 
@@ -704,6 +707,30 @@ module VivlioStarter
         end
 
         # ================================================================
+        # 1.x の変数の名前（css-layer-restructure-spec.md §7.2）
+        # ================================================================
+        # custom.css が 1.x の名前に値を入れていれば（:root { --color-link: #1a73e8; }）、
+        # Css::LegacyTokens.settings_declarations が新しい名前へ渡す宣言を作り、:root の最後に書く
+        # （同じ :root の先の行が書いたテーマ色などに勝つため）。
+
+        # custom.css の全文。無ければ空
+        def custom_css
+          path = File.join(Common::STYLESHEETS_DIR, 'custom.css')
+          File.exist?(path) ? File.read(path, encoding: 'utf-8') : ''
+        end
+
+        # custom.css が 1.x の名前を使っていれば、vs upgrade で置き換えられることを 💡 で示す。
+        # 今の名前のままでも効くので 🟡 にしない。原稿の場所を指す指摘でもない（terminal-output-notes.md）
+        def suggest_new_token_names
+          names = Css::LegacyTokens.legacy_names_in(custom_css)
+          return if names.empty?
+
+          pairs = names.first(2).map { "#{it} → #{Css::LegacyTokens::MAP.fetch(it)}" }.join('、')
+          rest = names.size > 2 ? " ほか #{names.size - 2} 個" : ''
+          Common.log_always("💡 custom.css の 1.x の変数の名前は、vs upgrade で新しい名前に置き換えられます（#{pairs}#{rest}）")
+        end
+
+        # ================================================================
         # 会話文キャラクター色（characters-dialogue-spec.md §2.3-2 / §2.4-2）
         # ================================================================
         # talk.yml の各話者色を book-settings.css へ焼き込む。ソース CSS
@@ -711,8 +738,8 @@ module VivlioStarter
         # 生成側が持つ（P3「生成 1 枚がカスケードで勝つ」方式）。色未指定・不在なら何も出さない。
 
         # :root に置く --talk-c-<key> の宣言行。色を明示した話者のみ（未指定はテーマ色を使う）。
-        # display.avatar_size があれば、アバターの直径 --talk-icon-size と、名前を積む列の幅
-        # --talk-speaker-size（直径＋TALK_SPEAKER_EXTRA_MM）も置く（talk-avatar-initial-spec.md §7.3）。
+        # display.avatar_size があれば、アバターの直径 --book-talk-icon-size と、名前を積む列の幅
+        # --book-talk-speaker-size（直径＋TALK_SPEAKER_EXTRA_MM）も置く（talk-avatar-initial-spec.md §7.3）。
         # 列の幅を CSS の calc(var() + 2mm) にしないのは、Vivliostyle が calc と var の組み合わせを
         # 宣言ごと捨てることがあるため。無ければ出さず、parts/talk.css の var() の既定に任せる。
         def talk_variable_declarations(registry)
@@ -727,28 +754,28 @@ module VivlioStarter
 
         # アバターの直径と、名前を積む列の幅（直径＋TALK_SPEAKER_EXTRA_MM）の宣言 2 行。
         def talk_size_declarations(size)
-          ["--talk-icon-size: #{format_mm(size)};",
-           "--talk-speaker-size: #{format_mm(size + TALK_SPEAKER_EXTRA_MM)};"]
+          ["--book-talk-icon-size: #{format_mm(size)};",
+           "--book-talk-speaker-size: #{format_mm(size + TALK_SPEAKER_EXTRA_MM)};"]
         end
 
         # 名前を積む列をアバターより広くする幅。parts/talk.css の既定（12mm と 14mm）の差と同じ。
         TALK_SPEAKER_EXTRA_MM = 2
 
-        # .talk-c-<key> の --talk-accent 差し替え。PDF/クリーン EPUB は var() 経由で色を当てる。
+        # .talk-c-<key> の --book-talk-accent 差し替え。PDF/クリーン EPUB は var() 経由で色を当てる。
         #
         # 名前・区切り・発話の中の strong には、話者の色を :root の --talk-c-<key> で直接当てる。
-        # --talk-accent は話者の要素の上で定義する変数なので、Kindle 用の CSS では値に解けない
+        # --book-talk-accent は話者の要素の上で定義する変数なので、Kindle 用の CSS では値に解けない
         # （Css::LiteralResolver。要素ごとに値が違う変数は解かない）。:root の変数なら解ける。
-        # PDF とクリーン EPUB では parts/talk.css の var(--talk-accent) と同じ色になる。
+        # PDF とクリーン EPUB では parts/talk.css の var(--book-talk-accent) と同じ色になる。
         # strong は targets/kindle.css などの `body.vs-kindle strong`（0,1,2）に勝つよう (0,2,1) にする。
         #
-        # 話者の avatar_size は、同じ .talk-c-<key> に --talk-icon-size と --talk-speaker-size を
+        # 話者の avatar_size は、同じ .talk-c-<key> に --book-talk-icon-size と --book-talk-speaker-size を
         # 置いて :root（display.avatar_size）の値を覆う（talk-avatar-initial-spec.md §7.3）。
         # Kindle はアバターを出さないので、大きさは解けなくてよい。
         def talk_class_rules(registry)
           color_lines = registry.with_color.flat_map do |char|
             key = char.key
-            [".talk-c-#{key} { --talk-accent: var(--talk-c-#{key}); }",
+            [".talk-c-#{key} { --book-talk-accent: var(--talk-c-#{key}); }",
              ".talk-c-#{key} .talk-name, .talk-c-#{key} .talk-sep, .talk-item.talk-c-#{key} strong " \
              "{ color: var(--talk-c-#{key}); }"]
           end

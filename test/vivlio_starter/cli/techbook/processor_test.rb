@@ -65,14 +65,14 @@ module VivlioStarter
 
           # url() はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
           prefix = Common.asset_prefix
-          assert_includes css, %(--h3-marker: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;)
-          assert_includes css, %(--h4-marker: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;)
-          assert_includes css, 'background-image: var(--h3-marker) !important;'
-          assert_includes css, 'background-image: var(--h4-marker) !important;'
+          assert_includes css, %(--book-marker-h3: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;)
+          assert_includes css, %(--book-marker-h4: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;)
+          assert_includes css, 'background-image: var(--book-marker-h3) !important;'
+          assert_includes css, 'background-image: var(--book-marker-h4) !important;'
           assert_includes css, %(--subtitle-wave-image: url("#{prefix}stylesheets/twemoji/vs-techbook/wave.webp") !important;)
-          # --code-font 別名注入は code.css の参照名修正（--font-code）で不要になり削除済み
+          # --code-font 別名注入は code.css の参照名修正（--book-font-code）で不要になり削除済み
           refute_includes css, '--code-font'
-          assert_includes css, 'font-family: var(--font-code), monospace !important;'
+          assert_includes css, 'font-family: var(--book-font-code), monospace !important;'
           refute_includes css, '-webkit-text-stroke: 0 !important;'
           refute_includes css, 'mask-image'
         end
@@ -90,7 +90,7 @@ module VivlioStarter
           assert_includes css, 'body.preface h3::before,'
           assert_includes css, 'body.postface h3::before {'
           assert_includes css, 'content: "" !important;'
-          # url() は :root のカスタムプロパティ側に置く（--h3-marker / --subtitle-wave-image と同型）。
+          # url() は :root のカスタムプロパティ側に置く（--book-marker-h3 / --subtitle-wave-image と同型）。
           # Kindle の Transforms::Kindle::StripWebpInlineStyles が :root の 1 行を落とせば無害化される。
           assert_includes css,
                           %(--preface-h3-marker-image: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-preface-h3.webp") !important;)

@@ -27,27 +27,27 @@ class CssUpdaterFontValueTest < Minitest::Test
   # 本文（明朝）は Type3 回避フォールバック（HackGen35 Console NF）＋ serif が付く
   def test_should_append_serif_for_main_text
     assert_equal '"Noto Serif JP", "HackGen35 Console NF", serif',
-                 CU.format_font_value('--font-main-text', 'Noto Serif JP', :font)
+                 CU.format_font_value('--book-font-body', 'Noto Serif JP', :font)
   end
 
   # コードは Type3 回避フォールバックの本体（HackGen35 Console NF）のため挿入せず、monospace のみ付く
   def test_should_append_monospace_for_code
     assert_equal '"HackGen35 Console NF", monospace',
-                 CU.format_font_value('--font-code', 'HackGen35 Console NF', :font)
+                 CU.format_font_value('--book-font-code', 'HackGen35 Console NF', :font)
   end
 
   # 見出し・コラム・ノンブル（ゴシック系）は Type3 回避フォールバック＋ sans-serif が付く
   def test_should_append_sans_serif_for_gothic_variables
     assert_equal '"Noto Sans JP", "HackGen35 Console NF", sans-serif',
-                 CU.format_font_value('--font-header', 'Noto Sans JP', :font)
+                 CU.format_font_value('--book-font-heading', 'Noto Sans JP', :font)
     assert_equal '"Zen Maru Gothic", "HackGen35 Console NF", sans-serif',
-                 CU.format_font_value('--font-column', 'Zen Maru Gothic', :font)
+                 CU.format_font_value('--book-font-column', 'Zen Maru Gothic', :font)
   end
 
   # book.yml 側で既にフォールバックを指定済み（カンマ含む）なら尊重して触らない
   def test_should_respect_existing_fallback_chain
     value = '"My Font", serif'
-    assert_equal value, CU.format_font_value('--font-main-text', value, :font)
+    assert_equal value, CU.format_font_value('--book-font-body', value, :font)
   end
 
   # :font 以外（kind が nil）の値はそのまま返す

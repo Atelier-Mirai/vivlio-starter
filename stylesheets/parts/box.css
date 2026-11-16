@@ -23,13 +23,13 @@
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
-  border: solid 0.2mm var(--color-column-border);
+  border: solid 0.2mm var(--book-color-column-border);
   border-radius: 6px;
-  background: var(--color-column-bg);
+  background: var(--book-color-column-bg);
   position: relative;
   /* 地の文・箇条書き・引用は book.yml の typography.column.font で組む。
      見出し・ラベル（::before）・コードは、それぞれの書体を指定しているので変わらない */
-  font-family: var(--font-column);
+  font-family: var(--book-font-column);
 }
 .column::before {
   position: absolute;
@@ -37,11 +37,11 @@
   left: -1px;
   margin-top: 3mm;
   padding: 1mm 3mm;
-  background: var(--color-column-border);
+  background: var(--book-color-column-border);
   color: white;
   font-size: 0.75em;
   font-weight: bold;
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   border-radius: 4px 0 4px 0;
   content: "COLUMN";
 }
@@ -49,7 +49,7 @@
 .column h5 {
   margin-top: 0;
   font-size: 14Q;
-  color: var(--color-mark);
+  color: var(--book-color-mark);
 }
 
 .tip {
@@ -58,7 +58,7 @@
   padding-inline: 6mm;
   padding-block-start: 6mm;
   border-radius: 6px;
-  border: solid 0.2mm var(--theme-accent);
+  border: solid 0.2mm var(--book-color-accent);
   background: white;
   position: relative;
 }
@@ -69,11 +69,11 @@
   margin-top: 3mm;
   padding: 1mm 3mm;
   background: white;
-  color: var(--theme-accent);
-  border: solid 0.2mm var(--theme-accent);
+  color: var(--book-color-accent);
+  border: solid 0.2mm var(--book-color-accent);
   font-size: 0.75em;
   font-weight: bold;
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   border-radius: 4px 0 4px 0;
   content: "TIP";
 }
@@ -88,7 +88,7 @@
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
-  border: solid 0.2mm var(--color-column-border);
+  border: solid 0.2mm var(--book-color-column-border);
   background: white;
   border-radius: 6px;
   position: relative;
@@ -99,11 +99,11 @@
   left: -1px;
   margin-top: 3mm;
   padding: 1mm 3mm;
-  background: var(--color-column-border);
+  background: var(--book-color-column-border);
   color: white;
   font-size: 0.75em;
   font-weight: bold;
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   border-radius: 4px 0 4px 0;
   content: "MEMO";
 }
@@ -114,8 +114,8 @@
   padding-block: 3mm;
   padding-inline: 0;
   /* アクセントカラーの二重線で挟んだデザイン */
-  border-block-start: double 1mm var(--color-mark);
-  border-block-end: double 1mm var(--color-mark);
+  border-block-start: double 1mm var(--book-color-mark);
+  border-block-end: double 1mm var(--book-color-mark);
 }
 
 .note p {
@@ -127,10 +127,10 @@
   margin-inline: auto;
   padding: 3mm 4mm;
   border-radius: 4px;
-  border: solid 0.2mm var(--color-border-weak);
+  border: solid 0.2mm var(--book-color-border-weak);
   border-inline-start-width: 1mm;
-  border-inline-start-color: var(--color-mark);
-  background: var(--color-overlay);
+  border-inline-start-color: var(--book-color-mark);
+  background: var(--book-color-overlay);
 }
 
 .notice p {
@@ -146,7 +146,7 @@
    見出しの言葉（参考資料・出典・写真提供…）は本ごとに違うので、::before で
    ラベルを付けず、著者が **参考資料** のように書く。
 
-   line-height を指定しないのは意図的。行送りは --base-line-height（絶対値）が
+   line-height を指定しないのは意図的。行送りは --book-line-height（絶対値）が
    版面の行グリッドを作っており、ここで変えるとこの部分だけ行位置がずれて
    隣ページと小口が揃わなくなる。文字だけ小さくすれば行数は保たれる。 */
 .small,
@@ -199,7 +199,7 @@ p.references {
 .diagram {
   margin-block: 3mm;
   padding: 2.5mm 3mm;
-  border: solid 0.2mm var(--color-output-border);
+  border: solid 0.2mm var(--book-color-output-border);
   border-radius: 3px;
 }
 
@@ -270,7 +270,7 @@ p.references {
   /* テーマ非依存。Kindle(KFX) も var() なしの具体色なら反映される */
   background: #1a1a1a;
   color: #f5f5f5;
-  font-family: var(--font-code), monospace;
+  font-family: var(--book-font-code), monospace;
   /* 長いコマンドは枠内で折り返す */
   overflow-wrap: anywhere;
 }
@@ -282,7 +282,7 @@ p.references {
   padding: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-family: var(--font-code), monospace;
+  font-family: var(--book-font-code), monospace;
   background: none;
   border: none;
   color: inherit;

@@ -411,7 +411,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - vs の今の変数（99 種・接頭辞は `--color`・`--accent`・`--font`・`--frontispiece`・`--page`・`--folio`・`--talk` など）に `--vs-` で始まるものは無く、公式テーマとの衝突は今は無い（`v2-inventory-report.md` §7.3）。衝突が起きるのは、公開する変数に `--vs-` を付けた場合だけなので、付けない。
 - クラスの `vs-*`（`vs-epub`・`vs-h-marker` など）は今のまま使う。公式テーマに `.vs-*` のクラスは無い。
-- **S6 で名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** `--book-*` に変えるのは、§5.2 の公開する変数と、機能の変数（`--book-frontispiece-*`・`--book-ornament-*`）である。`standard` へ移る見出しの 2 枚の中だけの変数は `--standard-*` にする。vs の内部の変数（`base/page.css` の 24 個、`pages/titlepage.css`・`pages/colophon.css` の各 8 個など）は、2.0 では名前を変えない。`--_*` に変えて別名を置けば内部の変数でなくなり、置かなければ、その変数に値を入れていた 1.x の `custom.css` が警告なしに効かなくなるためである。`--_*` の決まりは、これから足す内部の変数に当てる。名前を変えた変数は例外なく対応の表（`css-layer-restructure-spec.md` §7.2）に載せる。
+- **S6 で名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** `--book-*` に変えるのは、§5.2 の公開する変数と、機能の変数（`--book-frontispiece-*`・`--book-ornament-*`）である。`standard` へ移る見出しの 2 枚の中だけの変数は `--standard-*` にする。vs の内部の変数（`base/page.css` の `--page-width`・`--page-height`・`--align-max-width`・`--font-body`、`pages/titlepage.css`・`pages/colophon.css` の `--subtitle-*`、生成する `--talk-c-<key>` など）は、2.0 では名前を変えない（`base/page.css` の残りの 20 個は §5.2 の公開する変数で、S6-2 で `tokens.css` へ移した。§11.4 の「仕様と違えたこと」の 1）。`--_*` に変えて別名を置けば内部の変数でなくなり、置かなければ、その変数に値を入れていた 1.x の `custom.css` が警告なしに効かなくなるためである。`--_*` の決まりは、これから足す内部の変数に当てる。名前を変えた変数は例外なく対応の表（`css-layer-restructure-spec.md` §7.2）に載せる。
 
 ### 5.2 公開する変数の一覧（分類）
 
@@ -421,15 +421,16 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | :--- | :--- | :--- | :--- | :--- |
 | テーマ色の 12 色 | `--book-accent-yellow` … `--book-accent-lime` | `--accent-*` | vs の土台 | 届く |
 | 本のテーマ色 | `--book-color-accent`・`--book-color-accent-preface`・`--book-color-accent-appendix` | `--theme-accent`・`--color-preface-accent`・`--appendix-accent-color` | `settings`（テーマのオプション） | 届く |
-| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ | 届く |
-| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title` | `settings`（`typography`） | 総称の名前に置き換わる（`kindle-tokens.css`） |
+| 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-overlay`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ | 届く |
+| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title`（奥付の本文が読む `--font-body` は内部の変数のまま） | `settings`（`typography`） | 総称の名前に置き換わる（`kindle-tokens.css`） |
 | 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） | `--book-font-size`・`--book-line-height` は端末任せ（`1em`・`normal`）。残り（余白・`--book-letter-spacing`・`--book-paper-scale`）は届かない（Kindle に紙面が無い） |
 | 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` | 届かない（Kindle に紙面が無い） |
 | 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） | 届く |
 | 会話 | `--book-talk-accent`・`-bg`・`-icon-size`・`-speaker-size` | `--talk-*` | `settings`・テーマ | 届く |
 
-- 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする。
+- 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする（`--section-bg-image` は `--book-ornament-image`、`--section-title-font-size` は `--book-ornament-title-font-size`）。
 - 使われていない変数（`--color-shadow`）は消す。
+- 1 行ずつの一覧（`tokens.css`）に定義を置かないものが 4 種類ある。前書きと付録の色（`pages/preface.css`・`pages/appendix.css` がそのページの `:root` で定義する）、会話の色（`parts/talk.css` が `.talk` で定義する。要素ごとに値が違うので `:root` に上げない）、扉絵と節絵の画像（`book-settings.css` が必ず定義する）、アバターの大きさ（`talk.yml` から生成する）。一覧には注釈で置き場を書く。
 - 「Kindle」の列は、テーマと `settings` が入れた値が Kindle に届くかを示す（`v2-post-s3-consultation.md` §5.2）。「届く」は、CSS の生成が値をリテラルに解いて Kindle 用の CSS に書くことを指す。書体と、版面の字の大きさ・行送りは、`targets/kindle-tokens.css` が `body.vs-kindle` で置き換える。Kindle だけで値を変える道は §3.5 に書く。
 - S6 で、`kindle-tokens.css` は `--book-*` の名前で書く。部品が読む名前が `--book-*` になるので、同じ名前で置き換えるのが変数の表の解き方（`body` に近い定義が勝つ）に合う。`vs upgrade` の名前の置き換え（`css-layer-restructure-spec.md` §7.2）は、選択子を問わず `custom.css` の全部の定義に当てる（`body.vs-kindle` の中の定義を含む）。
 - Kindle では、`--book-color-link` が `#111` 以下の黒に近い色だと、リンクは Kindle の青で描かれる（`#222` から指定どおり）。テーマの既定を決めるときの前提にする（`kindle-css-compatibility-notes.md` §2 の表）。
@@ -781,3 +782,41 @@ B1（四つの出力先・Kindle の記録つき）・B2・B4 を組み（`r2/ch
 | テスト | `rake test` 4,419 件が通った（スキップ 1 は前からのもの）。`bundle exec rubocop` は違反 0 |
 
 - B4 の素材（`r2/src/ai_web_starter/`）は r2 の時点の `stylesheets/` を持っている。そのまま組むと CSS の変更が入らず、差 0 になってしまう。`v2-migration-plan.md` §3.2 の決まりどおり、`stylesheets/` を作業ツリーのものに差し替えた写し（`custom.css` は本のものを残す）で組んだ。
+
+### 11.4 S6-2 変数の名前を `--book-*` へ（2026-11-16）
+
+#### 作ったもの
+
+- **対応の表** `Css::LegacyTokens`（`lib/vivlio_starter/cli/css/legacy_tokens.rb`）。今の名前 → 新しい名前の 69 行（§5.2 の公開する変数・扉絵と節絵の変数・`--heading-text` → `--standard-heading-text`）と、消した変数の表（`--color-shadow`・`--heading-gray`・`--section-gray`。後の 2 つは §11.3 で消したもの）。置き換え（`rename`）・`custom.css` が使う今の名前（`legacy_names_in`）・settings 層の書き出し（`settings_declarations`）・別名の CSS（`alias_css`）が、この表を読む。
+- **名前の置き換え。** `stylesheets/` の 32 ファイルと、`lib/` の書き出し（`BookSettingsCss`・`CssUpdater`・`FrontmatterGenerator`・`ThemeColor`・`techbook/processor.rb` が HTML に入れる `<style>`）を表で置き換えた。名前を組み立てる箇所（`var(--accent-#{…})`）と `ThemeColor::ACCENT_DECLARATION` は手で直した。
+- **`tokens.css` を公開する変数の 1 行ずつの一覧にした。** `base/page.css` の公開する変数（版面・書体・柱とノンブルの 20 個）、`parts/simple-header.css` の `--book-color-heading`、`parts/heading.css` の見出しの印の既定値を移した。一覧に定義を置かない 4 種類（前書きと付録の色・会話の色・扉絵と節絵の画像・アバターの大きさ）は注釈で置き場を示した（§5.2）。`--color-shadow` を消した。
+- **`targets/kindle-tokens.css`** を `--book-*` で書いた。
+- **読む向きの別名** `stylesheets/tokens-legacy.css`（tokens 層で `tokens.css` の後に読む。`EntryWriter::FOUNDATION`）。`:root` に 69 個、会話の 2 つは `.talk, .talk-item` にも置く（`css-layer-restructure-spec.md` §7.2）。
+- **値を入れる向き。** `BookSettingsCss.render` が `custom.css` の `:root`・`html` の定義を読み、今の名前に値が入っていれば `--book-x: var(--old);` を `:root` の最後に書く。値が新しい名前を読んでいる定義は、循環するので書かない。
+- **💡** `custom.css` が今の名前を使っていれば（注釈の中は数えない）、`vs build` と `vs preflight` が「vs upgrade で新しい名前に置き換えられます（--theme-accent → --book-color-accent、… ほか N 個）」と出す。置き換えそのものは S6-9 で作る。
+- **テスト** `legacy_tokens_test.rb`（10 件）。r1 の雛形の CSS が定義した 72 個の名前（`test/vivlio_starter/fixtures/css/r1_variables.txt`）が、どれも (a) 今も定義されている、(b) 対応の表にある、(c) 消した変数の表にある、のどれかであること。同梱の CSS が今の名前を使わないこと。`tokens-legacy.css` が `alias_css` と同じ中身であること。名前の全体だけを置き換えること。settings 層の書き出しと 💡。既存のテストの期待値は、表の置き換えを当てて新しい名前にした（原稿の文やコマンドの名前など、変数と関係のない文字列に当たった 2 本は戻した）。
+
+#### 仕様と違えたこと
+
+1. **`base/page.css` の変数。** §5.1 の決め 8 は「`base/page.css` の 24 個は内部の変数なので名前を変えない」としていたが、24 個のうち 20 個は §5.2 が新しい名前を示す公開する変数で、完了の条件の 9 も `kindle-tokens.css` をこの名前で書くことを前提にしている。§5.2 に従って名前を変え、§5.1 を直した（2026-11-16 ユーザー確認）。内部の変数として残したのは `--page-width`・`--page-height`・`--align-max-width`・`--font-body` の 4 つ。
+2. **`--font-body`。** §5.2 の対応に無く、奥付の「(Powered by Vivlio Starter)」の 1 行だけが読む、値の固定された変数だった（1.x の注釈は「`--font-main-text` の別名」だが、値は結び付いていなかった）。`--book-font-body` へまとめると、本文の書体を変えた本でその 1 行の書体が変わるので、S6-2 では内部の変数のまま残した。その 1 行を本文の書体で組み、`--font-body` を消すことは、S6-2 の完了の後に別のコミットで入れる（2026-11-16 ユーザー決定）。
+3. **`--color-overlay`。** §5.2 の色の行に無かったが、`tokens.css` の色なので `--book-color-overlay` にし、§5.2 に足した。
+4. **`tokens-legacy.css` を書き出しのファイルにしたこと。** §7.2 は「同じ表を読む」としているが、CSS は表を読めない。表から書き出したファイルを `stylesheets/` に置き、テストで表と突き合わせる形にした（`css-layer-restructure-spec.md` §7.2 に書いた）。
+
+#### 確かめた結果
+
+全部の比べ（`v2-migration-plan.md` §3.6）。B1（四つの出力先・Kindle の記録つき）・B2・B3・B4・単章（`bin/vs build 21`）・preflight を組んだ（`r2/check/s6-2/`）。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| PDF の画素（r2 と） | B1 の `pdf` 284 ページ・`print_pdf` 282 ページ、B2 279 ページ、B3 450 ページ、B4 317 ページとも違い 0 |
+| 完了の条件の 9（Kindle の中間生成物） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0（r2 とも、§11.3 の確かめとも） |
+| 平らな CSS（ビルドなしで、前の束に表の置き換えを当てて後の束と比べた） | 普通のプロパティの並びと、選択子ごとの変数の値が、22 枚（11 種類 × EPUB・Kindle）で一致。違いは、`--book-color-heading` が `tokens.css` へ移って本文以外の 7 種類のページでも定義されるようになった 14 件だけ（そのページに読む規則は無い）。`book-settings.css` は置き換えを当てると同じ |
+| 計算値（`css_computed_diff.rb`。前は 5da780e3） | B1 の 78 文書・234 組、B4 の 56 文書・168 組とも違い 0 |
+| EPUB の HTML | 前の小段階と比べ、XHTML の差は Techbook が `<head>` に入れる `<style>` の変数の名前だけ（前の側の `<style>` の中に置き換えを当てると、画像の名前を除いて一致）。画像の中身は同じ。EPUBCheck は B1 の 2 本・B4 とも致命・エラー・警告 0 |
+| 完了の条件の 5 | B4 の写しで、1.x の名前の `custom.css`（`--theme-accent`・`--color-link`・`--color-column-bg` に値を入れ、`var(--color-mark)` を読む規則を 1 つ）と、新しい名前で同じことを書いた `custom.css` を組み、317 ページとも画素が一致した。素の B4 とは 284 ページで違う（変更が効いている）。1.x の名前の写しでだけ 💡 が 1 回出た |
+| 単章・preflight | どちらも終了コード 0。🟡・🔴 は 0。B4 の 🟡 7 件は §11.3 の確かめと同じ（雛形の差の 💡 の件数だけ違う。`lib/project_scaffold/` を同期していないため） |
+| テスト | `rake test` 4,429 件が通った（スキップ 1 は前からのもの）。`bundle exec rubocop` は違反 0 |
+
+- 計算値の比べには、§11.3 の確かめの写しの HTML を使った。今回の B1 の写しで preflight を走らせたので、写しの `.cache/vs/build/` の HTML が消えたためである（preflight は別の写しで走らせるべきだった）。二つの HTML の違いは Techbook の `<style>` の中の名前だけで、上の EPUB の比べで確かめた。前の側の `book-settings.css` は §11.3 の写しのもの（前のコードで生成）、後の側は今回の写しのものを `--after-settings` で渡した。
+- 雛形の同期（`ruby scripts/copy_to_scaffold.rb`）はしていない。

@@ -118,14 +118,14 @@ module VivlioStarter
       def test_front_and_back_matter_named_pages_pin_the_gutter
         title = named_page_block(read_css('pages/titlepage.css'), 'titlepage')
 
-        assert_match(/margin-left:\s*var\(--page-margin-inner\)/, title, '本扉のノドは左であること')
-        assert_match(/margin-right:\s*var\(--page-margin-outer\)/, title, '本扉の小口は右であること')
+        assert_match(/margin-left:\s*var\(--book-page-margin-inner\)/, title, '本扉のノドは左であること')
+        assert_match(/margin-right:\s*var\(--book-page-margin-outer\)/, title, '本扉の小口は右であること')
 
         { 'pages/legalpage.css' => 'legalpage', 'pages/colophon.css' => 'colophon' }.each do |file, page_name|
           block = named_page_block(read_css(file), page_name)
 
-          assert_match(/margin-left:\s*var\(--page-margin-outer\)/, block, "#{file} の小口は左であること")
-          assert_match(/margin-right:\s*var\(--page-margin-inner\)/, block, "#{file} のノドは右であること")
+          assert_match(/margin-left:\s*var\(--book-page-margin-outer\)/, block, "#{file} の小口は左であること")
+          assert_match(/margin-right:\s*var\(--book-page-margin-inner\)/, block, "#{file} のノドは右であること")
         end
       end
 
