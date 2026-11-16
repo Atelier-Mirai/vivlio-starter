@@ -347,7 +347,7 @@ module VivlioStarter
         sections = out[/book\.yml の設定\n\n(.*?)\n\n/m, 1].lines
 
         assert_equal 0, status
-        assert_equal 15, sections.size
+        assert_equal 16, sections.size
         sections.each { assert_match(/\A  \S+ +\S/, it) }
       end
 

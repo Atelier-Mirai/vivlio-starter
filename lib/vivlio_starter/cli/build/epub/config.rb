@@ -50,7 +50,6 @@ module VivlioStarter
           Common.log_action("[EPUB] vivliostyle.config.epub.js を生成しています…（flavor: #{flavor}）")
 
           config = Common::CONFIG
-          validate_epub_layout_setting!(config, flavor:)
 
           # JS 文字列に安全に埋め込むための簡易エスケープ
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
@@ -100,20 +99,6 @@ module VivlioStarter
           File.write(config_path, config_content)
           Common.log_success("[EPUB] #{config_path} を生成しました")
           config_path
-        end
-
-        # book.yml の output.epub.layout / output.kindle.layout を検証する。
-        # 現在サポートするのは reflowable（リフロー型）のみ。fixed（固定レイアウト型）は
-        # 将来対応の予約値のため、指定されていたら警告して reflowable として続行する
-        # （黙って無視すると「設定したのに効かない」事故になるため）。
-        def validate_epub_layout_setting!(config, flavor:)
-          layout = config.output[flavor]&.layout.to_s.strip.downcase
-          return if layout.empty? || layout == 'reflowable'
-
-          Common.log_warn(
-            "output.#{flavor}.layout: #{layout} は未対応です。reflowable として出力します",
-            detail: "対応: config/book.yml の output.#{flavor}.layout を reflowable に変更してください（fixed は将来対応予定）"
-          )
         end
 
         # EPUB に含める HTML ファイルを収集する

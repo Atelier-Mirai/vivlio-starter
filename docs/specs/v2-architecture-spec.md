@@ -701,3 +701,31 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 
 - `stylesheets/` の CSS のコメントに `EpubBuilder` の名前が 15 か所（8 ファイル）残っている。コメントは平らな CSS にそのまま写るので、書き換えると EPUB の中の CSS が基準 r2 とバイト単位で一致しなくなる。CSS に手を入れる次の段階（S6）で、基準の版を上げるときに直す。
 - テストのファイルの名前（`epub_builder_test.rb`・`epub_builder_sanitize_test.rb`）は変えていない。
+
+### 10.3 S5-1 設定のキーと解決の順（2026-11-16）
+
+#### 作ったもの
+
+- **キー**（`ConfigKeys::KEYS`）: `book.type`（`techbook`）・`page.writing_mode`（`horizontal`）・`page.layout`（`reflowable`）・`notation.web_novel`（`false`）・`lint.ruleset`（`technical`）。直下の `book.yml` と雛形にも書いた（`notation:` は新しい節で、「機能ごとの詳細設定」の先頭に置いた）。
+- **廃止キー**: `output.epub.layout`・`output.kindle.layout`。案内は §5.1 のとおり「レイアウトは本全体で一つです。page.layout に書いてください」。値を読んでいた `Epub::Config.validate_epub_layout_setting!` は消した。
+- **`BookProfile`**（`lib/vivlio_starter/cli/book_profile.rb`）: §2.2 の表から `theme.name` と `page.use` を除いたもの（§8 の S5 の決め 1）。`type_of(raw)`・`written_type(raw)`・`defaults_for(type)`。
+- **`Common.load_config`** の解決の順を §5.3 の 1・2・4・5 にした。種類の既定値は、`ConfigKeys` の既定値の上、判型のプリセットと `book.yml` の値の下に重ねる。`apply_page_preset` は `fallback_use:` を受け、`book.yml` に `page.use` が無いときは種類の既定値の判型を選ぶ（S8 の小説の判型のため。今の表には `page.use` が無い）。
+- **`ConfigKeys::WHOLE_BOOK_KEYS`**（`%i[type]`）: `book.type` を分冊の巻で上書きできるキー（`ConfigKeys.book_keys`）から外す（§5.4）。
+- **テスト**: `book_profile_test.rb`（表のキーが `KEYS` にあり既定値と違う・`book.type` の読み方・解決の順・巻で上書きできない）・`book_type_usage_test.rb`（§2.3 の三か所のほかに `book.type` を読む箇所が無い）。
+
+#### 仕様と違えたこと
+
+1. **知らない `book.type` は、読み込みでは `techbook` として扱い、止めない。** 設定の読み込みはモジュールの読み込みのときに走るので、ここで止めると `vs doctor` も `vs upgrade` も起動できなくなる。名前の誤りは、S5-2 の組み合わせの検査（`vs build`・`vs preflight` の入口）が 🔴 で示す。書いた字は `CONFIG.book.type` に残るので、検査で示せる。
+2. **`book_type_usage_test.rb` の許す箇所は、`common.rb` に `config_keys.rb`（宣言）と `book_profile.rb`（表と読み方）を足した 3 ファイルである。** `vs new`（S8）と著者向けの表示は、作った段階で足す。
+3. **`book_yml_consumption_test.rb` の許可リストに、`lint.ruleset`（S5-5 で読む）と `notation.web_novel`（S5-3 の `BuildPlan` が読む）を理由つきで載せた。** 読まれるようになると、同じテストの陳腐化の検査が削除を促す。
+
+#### 確かめた結果
+
+- 本書の `Common::CONFIG` を葉のキーごとに書き出して前後で比べ、差は足した 5 キーと消した 2 キーだけだった。B4（1.x の `book.yml` のまま）は足した 5 キーだけ（`output.epub.layout` は `book.yml` に書いてあるので、知らないキーとしてそのまま残る。読む箇所は無い）。
+- 雛形の同期（`copy_to_scaffold.rb`）の差は `config/book.yml` だけ。同期の前に、同期しても差が 0 であることを確かめた。
+- `rake test`: 4,374 件・失敗 0。`config_guide_test.rb` の雛形の節の数を 15 から 16 に直した（`notation` を足したため）。
+- 四つの出力先を組んで r2 と比べるのは、計画どおり S5-4 の後に行う（S5-1 は設定の値だけを変え、本書の値の差は上の 7 キーで、どれも出力を作る段が読まない）。
+
+#### 残したもの
+
+- 原稿の 41 章と 44 章は、`output.epub.layout`・`output.kindle.layout` を書く例を載せている。原稿を直すと PDF と EPUB が変わり、基準の版を上げることになるので、S5 では直さない。2.0 の原稿の更新（S11）でまとめて直す。

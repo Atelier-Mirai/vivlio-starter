@@ -5,6 +5,7 @@ require 'cgi/escape'
 require 'json'
 require 'yaml'
 require_relative 'config_keys'
+require_relative 'book_profile'
 require_relative 'units'
 require_relative 'spinner'
 require_relative 'source_aliases'
@@ -186,21 +187,34 @@ module VivlioStarter
         end
       end
 
-      # book.yml を読み込み、ハードコーディングされた既定値をマージして返す
+      # book.yml を読み込み、既定値を重ねて返す。
+      #
+      # 後のものが前のものを上書きする（v2-architecture-spec.md §5.3）。
+      #   1. ConfigKeys の既定値
+      #   2. 本の種類の既定値（BookProfile。book.type を先に読んで決める）
+      #   4. 判型のプリセット（page.use）
+      #   5. book.yml に書いた値
+      # （3 のテーマのオプションの既定値は S6 で足す。6 の巻ごとの上書きは Build::Volumes が、
+      # ここの結果に重ねる）
       def load_config
         YAML.load_file(CONFIG_FILE, aliases: true, symbolize_names: true) => raw_config
         # 既定値をマージすると未知キーが落ちるので、著者の記述はここで記録する
         @authored_keys = collect_key_paths(raw_config)
-        cfg = apply_page_preset(raw_config)
-        merge_hardcoded_defaults(cfg)
+        profile = BookProfile.defaults_for(BookProfile.type_of(raw_config))
+        cfg = apply_page_preset(raw_config, fallback_use: profile.dig(:page, :use))
+        merge_hardcoded_defaults(cfg, profile)
       end
 
-      # ハードコーディングされた既定値スキーマをマージする
+      # 既定値スキーマ（と本の種類の既定値）の上に、book.yml の値を重ねる。
       # book.yml に記述がなくても全セクション・既知キーが常に存在し、
       # CONFIG.lint.config のようなドット記法が安全になる（値未設定なら nil）。
       # 仕様: config-access-unification-spec.md §2.2
-      def merge_hardcoded_defaults(cfg)
-        default_config_schema.merge(cfg) { |_key, default_val, user_val| deep_merge_config(default_val, user_val) }
+      #
+      # @param cfg [Hash] book.yml の値（判型のプリセットを当てた後）
+      # @param profile [Hash] 本の種類の既定値（BookProfile.defaults_for。book.yml と同じ入れ子）
+      def merge_hardcoded_defaults(cfg, profile = {})
+        defaults = deep_merge_config(default_config_schema, profile)
+        defaults.merge(cfg) { |_key, default_val, user_val| deep_merge_config(default_val, user_val) }
       end
 
       # 既定値と book.yml の値を再帰的にマージする。
@@ -298,10 +312,14 @@ module VivlioStarter
       def default_config_schema = ConfigKeys.default_schema
 
       # --- Hardcoded Defaults (Data objects for immutability) ---
-      def apply_page_preset(cfg)
+      #
+      # @param cfg [Hash] book.yml の値
+      # @param fallback_use [String, nil] book.yml に page.use が無いときに選ぶプリセット（本の種類の既定値）
+      def apply_page_preset(cfg, fallback_use: nil)
+        cfg = cfg.merge(page: {}) if fallback_use && !cfg[:page].is_a?(Hash)
         case cfg
         in { page: { **page_cfg } }
-          preset_name = page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).find { _1 }
+          preset_name = page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).find { _1 } || fallback_use
           return cfg if blank?(preset_name)
 
           presets = load_page_presets

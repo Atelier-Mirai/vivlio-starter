@@ -13,6 +13,7 @@
 #  • verify       : 原稿の検証（画像パス、外部URL）
 #  • legal        : リーガル情報（免責、商標）
 #  ── 機能ごとの詳細設定 ──────────────────
+#  • notation       : 原稿の記法の設定
 #  • index_glossary : 索引・用語集の共通設定
 #  • index          : 索引の詳細設定
 #  • glossary       : 用語集の詳細設定
@@ -24,6 +25,8 @@
 
 # ======= 書籍情報 =======
 book:
+  type: techbook # 本の種類（techbook: 技術書）。種類ごとに、ほかの設定の既定値が変わる
+
   # ------- 書籍名 -------
   main_title: "はじめての技術書づくり"
   # 副題
@@ -134,6 +137,9 @@ page:
                                          # chapter             … 章にだけ振る
                                          # none                … 振らない（見出しに自分で番号を書く本）
 
+  writing_mode: horizontal # 組方向（horizontal: 横書き）
+  layout: reflowable       # レイアウト（reflowable: 文字の大きさに合わせて組み直す。EPUB と Kindle も同じ）
+
 # ======= タイポグラフィ設定（書体・色・装飾） =======
 typography:
   # ------- 標準添付書体（page-settings.css の @font-face で定義） -------
@@ -208,13 +214,11 @@ output:
   # ------- EPUB設定（楽天Kobo / Apple Books 向けクリーン EPUB） -------
   epub:
     embed: true # 表紙画像を EPUB に埋め込むか（楽天/Apple向けは true 推奨）
-    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # メタデータ（title, author, language, isbn, publisher）は book セクションから自動的に流用される
 
   # ------- Kindle設定（Amazon Kindle 向け・KPF へ自動変換） -------
   kindle:
     embed: false # 表紙画像を EPUB に埋め込むか（Kindle は二重表紙を避けるため false 推奨）
-    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # メタデータは book セクションから自動流用。KPF 変換は Kindle Previewer を使用
 
 # ======= 原稿の検証（vs build と vs preflight に共通） =======
@@ -242,6 +246,10 @@ legal:
 
 #  ── ここから下は機能ごとの詳細設定 ────────────
 
+
+# ======= 原稿の記法 =======
+notation:
+  web_novel: false # 小説投稿サイトの記法（|漢字《かんじ》 のルビなど）を読むか
 
 # ======= 索引・用語集共通設定 =======
 index_glossary:
@@ -385,6 +393,8 @@ metrics:
 
 # ======= 文章校正（vs lint）設定 =======
 lint:
+  ruleset: technical # 校正の規則の組（technical: 技術書向け）
+
   disabled_rules: # 無効にする textlint ルール ID（集約表示の [ ] 内の名前）
     - arabic-kanji-numbers # 「一つ→1つ」を無効にする
 

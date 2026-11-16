@@ -61,6 +61,9 @@ module VivlioStarter
       %i[book language]                               => Spec[default: "ja"],
       %i[book isbn]                                   => Spec[default: ""],
       %i[book cover]                                  => Spec[default: "light"],
+      # 本の種類。ほかの軸と機能の既定値の組を選ぶ（BookProfile・v2-architecture-spec.md §2.2）。
+      # 本全体で一つなので、分冊の巻では上書きできない（WHOLE_BOOK_KEYS）
+      %i[book type]                                   => Spec[default: "techbook"],
 
       # ------- project -------
       %i[project name]                                => Spec[authored: "mybook"],
@@ -94,6 +97,9 @@ module VivlioStarter
       %i[page chapter_pagebreak]                      => Spec[default: "recto"],
       %i[page toc_depth]                              => Spec[default: 3],
       %i[page heading_numbering]                      => Spec[default: "chapter_and_section"],
+      # 組方向とレイアウト（v2-architecture-spec.md §2.1）。コードは BookTraits から読む
+      %i[page writing_mode]                           => Spec[default: "horizontal"],
+      %i[page layout]                                 => Spec[default: "reflowable"],
 
       # ------- typography -------
       %i[typography body font]                        => Spec[default: "Noto Serif JP"],
@@ -116,9 +122,7 @@ module VivlioStarter
       %i[output print_pdf cover_bleed]                => Spec[default: "scale"],
       %i[output print_pdf icc_profile]                => Spec[default: nil],
       %i[output epub embed]                           => Spec[default: true],
-      %i[output epub layout]                          => Spec[default: "reflowable"],
       %i[output kindle embed]                         => Spec[default: false],
-      %i[output kindle layout]                        => Spec[default: "reflowable"],
 
       # ------- verify -------
       %i[verify external_links]                       => Spec[default: false],
@@ -129,6 +133,10 @@ module VivlioStarter
       %i[legal disclaimer]                            => Spec[default: "本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。\n本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。\n"],
       %i[legal trademark]                             => Spec[default: "本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。\n本書では ™、®、© などのマークは省略しています。\n"],
       %i[legal twemoji]                               => Spec[default: "本書で使用している絵文字画像は Twemoji (https://twemoji.twitter.com) を利用しています。\nCopyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).\n"],
+
+      # ------- notation -------
+      # 小説投稿サイトの記法を読むか（v2-architecture-spec.md §7.1。読む段は S8 で足す）
+      %i[notation web_novel]                          => Spec[default: false],
 
       # ------- index_glossary -------
       %i[index_glossary enabled]                      => Spec[default: true],
@@ -206,6 +214,8 @@ module VivlioStarter
       %i[metrics labels too_complex]                  => Spec[default: "やや難解"],
 
       # ------- lint -------
+      # 規則の組の名前（v2-architecture-spec.md §6。組の中身は S5-5 で Lint::RULESETS に置く）
+      %i[lint ruleset]                                => Spec[default: "technical"],
       %i[lint disabled_rules]                         => Spec[default: ["arabic-kanji-numbers"]],
       %i[lint sentence_length_max]                    => Spec[default: 100],
       %i[lint parenthetical_length_max]               => Spec[default: 60],
@@ -266,10 +276,16 @@ module VivlioStarter
       %i[index max_sub_references]               => Spec[retired: "副次参照の最大値は 8 で固定になりました"],
       %i[output cover]                           => Spec[retired:"巻ごとに表紙を変えられるよう、書名と同じ book: の下に置きます", moved_to: %i[book cover]],
       %i[output include_version]                 => Spec[retired: "ファイル名を決める name・version と同じ project: の下に置きます", moved_to: %i[project include_version]],
+      %i[output epub layout]                     => Spec[retired: "レイアウトは本全体で一つです。page.layout に書いてください"],
+      %i[output kindle layout]                   => Spec[retired: "レイアウトは本全体で一つです。page.layout に書いてください"],
       }.freeze
 
       # 現役キーと廃止キーを合わせた全宣言
       ALL = KEYS.merge(RETIRED).freeze
+
+      # book: の下にあるが本全体で一つで、分冊の巻ごとには変えないキー（v2-architecture-spec.md §5.4）。
+      # 巻ごとに種類が違う本は、別の本として作る
+      WHOLE_BOOK_KEYS = %i[type].freeze
 
       module_function
 
@@ -304,9 +320,12 @@ module VivlioStarter
 
       # 分冊の巻で上書きできる book.yml のキー（multivolume-spec.md §3.2）。巻には book: の一段を
       # 省いて平らに書くので、book: の下の現役キーの名前がそのまま巻のキーになる。
+      # 本全体で一つのキー（WHOLE_BOOK_KEYS）は除く。
       # @return [Array<String>]
       def book_keys
-        KEYS.keys.filter_map { |section, key, *rest| key.to_s if section == :book && rest.empty? }
+        KEYS.keys.filter_map do |section, key, *rest|
+          key.to_s if section == :book && rest.empty? && !WHOLE_BOOK_KEYS.include?(key)
+        end
       end
     end
   end
