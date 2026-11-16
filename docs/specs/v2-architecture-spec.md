@@ -820,3 +820,41 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 | `rake test` | 4,405 件・失敗 0（S5-3 から 7 件の増。足した 7 件と一致）。`bundle exec rubocop`: 指摘 0 |
 
 - §8 の S5 の完了の条件の 1（四つの出力先が基準と同じ）は、S5 の最後にもう一度確かめる（S5-5 は `vs lint` と `vs metrics` だけを変え、ビルドの出力を作る段を変えない）。
+
+### 10.7 S5-5 `lint.ruleset` と `metrics.use: none`（2026-11-16）
+
+#### 作ったもの
+
+- **`Lint::Rulesets`**（`lib/vivlio_starter/cli/lint/rulesets.rb`）: 組の名前 → `technical` から切る規則の名前の表（`TABLE`）。`technical` は何も切らない（今の一組）。`minimal` は文体・文の長さ・空きの規則（`preset-ja-technical-writing`・`preset-ja-spacing` のプリセットごとと、独自の `ambiguous-comparison`・`slash-between-japanese`・`space-around-brackets`・`long-parenthetical`・`missing-period`・`sentence-length`・`max-ten`・`ja-no-weak-phrase`）を切る。`novel` は `minimal` と同じ（§8 の S5 の決め 4）。
+- **`LintRunner#disabled_rules`**: 組が切る規則と `lint.disabled_rules` を合わせたものを返す。textlint の実行時の設定・独自の規則・`--fix` はどれもここを読むので、組は全部に同じに効く。知らない組の名前は `LintError` で止め、書ける名前を示す。
+- **`metrics.use: none`**: `Metrics::ConfigLoader#judge_volume?` が偽になり、章と節の分量の判定（💡 加筆検討・やや長い・✅ ちょうどよい）を出さない。字数・棒・漢字の水準・文章の質の指摘（🤔）は残る。直下の `book.yml` の `metrics.use` の選択肢の一覧に `none` を書き足した。
+- **テスト**: `lint/rulesets_test.rb`（6 件）・`lint_commands_test.rb` に組が実行時の設定で効くことと知らない組の名前（2 件）・`metrics/volume_none_test.rb`（4 件）。`book_yml_consumption_test.rb` の許可リストから `lint.ruleset` を外した（読まれるようになり、陳腐化の検査が促した）。
+
+#### 仕様と違えたこと
+
+1. **`Lint::RULESETS` は「入れる規則の id の組」ではなく「`technical` から切る規則の名前」で書いた。名前は `Lint::Rulesets::TABLE`。** textlint のプリセットの中身は著者の `.textlintrc.yml` で増減するので、vs の側で入れる規則を数え上げられない。切る規則の名前は `lint.disabled_rules` と同じ読み方で、プリセットの名前を書けばプリセットごと切れる。`rulesets_test.rb` が、表の名前がどれも実在の独自の規則か、本書の `.textlintrc.yml` のプリセットの名前であることを確かめる（綴りを誤った名前は何も切らないため）。
+2. **`minimal` の中身（「誤字と表記の揺れだけ」）は、この版で次のように決めた。** 残すのは、表記の揺れ（`prh`）・誤字（`spellcheck-tech-word`・`kanji-lookalike`）・表記（`mazegaki`・`kansuji-counter-suffix`）・語の間の空きの取り違え（`index-term-spacing`・`affix-spacing`・`hiragana-spacing`）・記法の取り違え（`indented-code-block`・`setext-heading`・`multiple-chapter-headings`・`unclosed-suppression`・`accidental-emphasis`・`accidental-index-term`。紙面が壊れるため）。`minimal` を既定にする絵本は S9 まで組めないので、中身は絵本の仕様で確かめ直す。
+3. **`metrics.use: none` は、`vs metrics` の分量の判定のほかを変えない。** `--warn`（指摘のある章だけを出す）では、分量の指摘が出ないので、文章の質の指摘がある章だけが残る。
+
+#### 確かめた結果
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 本書の `vs lint` の全部の指摘を前後（`33816137` と作業ツリー）で突き合わせる | 本書は前後とも指摘 0 件で、出力は同じ。0 件どうしでは差を見落とせるので、基準の B4（`ai_web_starter`）の写しでも突き合わせた。455 行（日本語校正 194 箇所・スペルチェック 125 箇所）がバイト単位で同じ |
+| 同じ写しを `lint.ruleset: minimal` にする | 日本語校正 194 → 123 箇所。0 件になったのは文体の規則（`max-ten` 22・`ja-no-weak-phrase` 13・`ja-space-around-link` 8・`ja-no-space-between-full-width` 4・`no-doubled-conjunction` 2・`ambiguous-comparison` 1）。`prh` 64・`spellcheck-tech-word` 7・`kansuji-counter-suffix` 6・`mazegaki` 1・`index-term-spacing` 1 は同じ件数で残る |
+| `metrics.use: none` の本で、分量の判定の行だけが出ない | B4 の写しで `standard` と `none` の `vs metrics` を比べた。70 行のうち違うのは 18 行で、どれも行末の 💡・✅ が消えただけ（字数と棒は同じ）。`standard` の出力は前後で同じ |
+| `rake test` | 4,417 件・失敗 0（S5-4 から 12 件の増。足した 12 件と一致）。`bundle exec rubocop`: 指摘 0 |
+
+### 10.8 S5 の完了（2026-11-16）
+
+S5 の小段階 S5-1〜S5-5 を終えた。§8 の S5 の完了の条件は次のとおり満たした。比べた結果は、基準のディレクトリの `r2/check/s5-final/`。
+
+| 完了の条件 | 結果 |
+| :--- | :--- |
+| 1. `book.type` の無い本書が、基準と同じ出力になる（四つの出力先） | S5-5 の後の作業ツリーで組み、基準 r2 と比べた。契約 HTML 39 件はバイト単位で同じ。閲覧用 PDF 284 ページ・入稿用 PDF 282 ページとも違うページ 0。EPUB・Kindle 用 EPUB とも、r2 との違いは S4 で記録した 2 件（属性の順。§10.2）だけ。Kindle の変換は Supported・Success・エラー 0・品質の問題 0 で、中間生成物 26,405 要素の `computedstyle`・`style` の差 0 |
+| 2. `book_profile_test.rb`・`book_type_usage_test.rb` が通る | 通る（§10.3・§10.4） |
+| 3. `full_mode_step_table` の条件の列が `plan` だけを読み、ハンドラの中で設定を見て戻る段が無い | `plan_test.rb` が検査する（§10.5） |
+| 4. `page.writing_mode: vertical` の最小の本で、`readingProgression` が `rtl`、隠しノンブルが奇数ページの右端 | §10.4 |
+| 5. `index_glossary.enabled: false` の本で、`index scan and build` と `backlink dedup` が段の一覧に出ない | §10.5 |
+
+- 基準 r2 は「S0 の基準」の版を上げたもの（`v2-migration-plan.md` §3.2）なので、条件の 1 は r2 と比べた。

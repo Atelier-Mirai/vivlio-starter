@@ -39,6 +39,7 @@ require_relative 'lint/tokenizer'
 require_relative 'lint/dict_manager'
 require_relative 'lint/spell_checker'
 require_relative 'lint/prose_checker'
+require_relative 'lint/rulesets'
 require_relative 'lint/code_language_detector'
 require_relative 'index' # IndexCommands.without_excluded_chapters（index-term-spacing が索引の対象外の章を除く）
 
@@ -267,9 +268,18 @@ module VivlioStarter
             Lint::ProseChecker.allowlist_from(Common.resolve_path_from_root(TEXTLINT_ALLOWLIST_RELATIVE))
         end
 
-        # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
+        # 切る規則の名前。規則の組（lint.ruleset）が切るものと、book.yml の
+        # lint.disabled_rules（選んだ組からさらに外す指定）を合わせる（v2-architecture-spec.md §6）。
+        # textlint の設定・独自の規則・--fix のどれもここを読むので、組は全部に同じに効く
         def disabled_rules
-          Array(Common::CONFIG.lint.disabled_rules).map(&:to_s)
+          @disabled_rules ||= (ruleset_disabled_rules + Array(Common::CONFIG.lint.disabled_rules).map(&:to_s)).uniq
+        end
+
+        # 規則の組が切る規則の名前。知らない組の名前は、書ける名前を添えて止める
+        def ruleset_disabled_rules
+          Lint::Rulesets.disabled_by(Common::CONFIG.lint.ruleset)
+        rescue KeyError => e
+          raise LintError, "#{e.message}\n→ 書ける値: #{Lint::Rulesets.names.join('・')}"
         end
 
         # book.yml lint.trim_long_vowel（末尾長音を足す指摘を抑止：技術者向け文体）

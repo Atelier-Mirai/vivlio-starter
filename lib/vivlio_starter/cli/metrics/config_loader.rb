@@ -119,6 +119,12 @@ module VivlioStarter
                                  symbolize_thresholds(resolve_preset(effective_preset_name))
         end
 
+        # 分量（章と節の字数）を判定するか。`metrics.use: none` の本は判定しない。
+        # 章と節の基準は技術書で較正した値なので（chapter-volume-calibration-data.md）、
+        # 小説と絵本（種類の既定値が none）には当てない（v2-architecture-spec.md §6）。
+        # 字数・漢字の水準・文章の質の表示は、none でも残す
+        def judge_volume? = preset_name != 'none'
+
         # 相対モード（`metrics.use: relative`）か
         def relative? = preset_name == 'relative'
 

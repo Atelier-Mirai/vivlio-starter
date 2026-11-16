@@ -220,8 +220,9 @@ module VivlioStarter
         # 判定されたのかどうかが分からない。**ちょうどよい**ことも伝える
         # （`chapter-volume-calibration-data.md` §7.1）。
         # @param excluded [Boolean] 分量判定の対象外の章なら ✅ も出さない
+        # 分量を判定しない本（metrics.use: none）も ✅ を出さない
         def just_right?(chars, threshold, excluded: false)
-          return false if excluded
+          return false if excluded || !config.judge_volume?
 
           chars.between?(threshold[:ideal_min], threshold[:ideal_max])
         end
@@ -460,16 +461,16 @@ module VivlioStarter
           @mattr_window = Analyzer::DEFAULT_MATTR_WINDOW
         end
 
-        # 章の警告を判定する
+        # 章の警告を判定する（分量を判定しない本は出さない）
         def chapter_warning(chapter_num, chars)
-          return nil if excluded?(chapter_num)
+          return nil if excluded?(chapter_num) || !config.judge_volume?
 
           check_volume(chars, thresholds[:chapter])
         end
 
-        # 節の警告を判定する
+        # 節の警告を判定する（分量を判定しない本は出さない）
         def section_warning(chars, chapter_num: nil)
-          return nil if excluded?(chapter_num)
+          return nil if excluded?(chapter_num) || !config.judge_volume?
 
           check_volume(chars, thresholds[:section])
         end

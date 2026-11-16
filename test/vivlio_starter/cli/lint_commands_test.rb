@@ -1016,6 +1016,46 @@ module VivlioStarter
         Common.install_configuration!(original)
       end
 
+      # 規則の組（lint.ruleset）が切る規則は、disabled_rules と合わせて実行時 textlintrc でも切る。
+      # minimal はプリセットごと切り、表記の揺れ（prh）と誤字（spellcheck-tech-word）は残す
+      def test_generate_runtime_config_disables_the_rules_of_the_ruleset
+        original = Common::CONFIG
+        Common.install_configuration!(
+          Common.wrap_config(Common.merge_hardcoded_defaults(lint: { ruleset: 'minimal',
+                                                                    disabled_rules: ['spellcheck-tech-word'] })).freeze
+        )
+
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => { 'no-doubled-joshi' => false },
+                                          'preset-ja-spacing' => true, 'prh' => { 'rulePaths' => [] },
+                                          'spellcheck-tech-word' => true } }.to_yaml)
+
+          rules = runtime_config(base)['rules']
+
+          assert_equal false, rules['preset-ja-technical-writing'], '文体の規則はプリセットごと切る'
+          assert_equal false, rules['preset-ja-spacing']
+          assert_equal({ 'rulePaths' => [] }, rules['prh'], '表記の揺れは残す')
+          assert_equal false, rules['spellcheck-tech-word'], 'disabled_rules は組に重ねて効く'
+        end
+      ensure
+        Common.install_configuration!(original)
+      end
+
+      # 知らない組の名前は、書ける名前を添えて止める
+      def test_should_stop_with_the_valid_names_for_an_unknown_ruleset
+        original = Common::CONFIG
+        Common.install_configuration!(
+          Common.wrap_config(Common.merge_hardcoded_defaults(lint: { ruleset: 'technicl' })).freeze
+        )
+
+        error = assert_raises(LintCommands::LintError) { LintCommands::LintRunner.new([], {}).send(:disabled_rules) }
+        assert_includes error.message, 'technicl'
+        assert_includes error.message, 'technical・minimal・novel'
+      ensure
+        Common.install_configuration!(original)
+      end
+
       # 上流ルールの取りこぼしは、著者の allowlist ではなく実行時 textlintrc の
       # filters.allowlist.allow で打ち消す。著者の指定は残したまま合算する
       def test_generate_runtime_config_adds_builtin_allowlist
