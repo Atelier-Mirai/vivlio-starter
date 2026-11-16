@@ -411,7 +411,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - vs の今の変数（99 種・接頭辞は `--color`・`--accent`・`--font`・`--frontispiece`・`--page`・`--folio`・`--talk` など）に `--vs-` で始まるものは無く、公式テーマとの衝突は今は無い（`v2-inventory-report.md` §7.3）。衝突が起きるのは、公開する変数に `--vs-` を付けた場合だけなので、付けない。
 - クラスの `vs-*`（`vs-epub`・`vs-h-marker` など）は今のまま使う。公式テーマに `.vs-*` のクラスは無い。
-- **S6 で名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** `--book-*` に変えるのは、§5.2 の公開する変数と、機能の変数（`--book-frontispiece-*`・`--book-ornament-*`）である。`standard` へ移る見出しの 2 枚の中だけの変数は `--standard-*` にする。vs の内部の変数（`base/page.css` の `--page-width`・`--page-height`・`--align-max-width`・`--font-body`、`pages/titlepage.css`・`pages/colophon.css` の `--subtitle-*`、生成する `--talk-c-<key>` など）は、2.0 では名前を変えない（`base/page.css` の残りの 20 個は §5.2 の公開する変数で、S6-2 で `tokens.css` へ移した。§11.4 の「仕様と違えたこと」の 1）。`--_*` に変えて別名を置けば内部の変数でなくなり、置かなければ、その変数に値を入れていた 1.x の `custom.css` が警告なしに効かなくなるためである。`--_*` の決まりは、これから足す内部の変数に当てる。名前を変えた変数は例外なく対応の表（`css-layer-restructure-spec.md` §7.2）に載せる。
+- **S6 で名前を変える範囲（`v2-s6-consultation.md` §4.2 の決め 8）。** `--book-*` に変えるのは、§5.2 の公開する変数と、機能の変数（`--book-frontispiece-*`・`--book-ornament-*`）である。`standard` へ移る見出しの 2 枚の中だけの変数は `--standard-*` にする。vs の内部の変数（`base/page.css` の `--page-width`・`--page-height`・`--align-max-width`、`pages/titlepage.css`・`pages/colophon.css` の `--subtitle-*`、生成する `--talk-c-<key>` など）は、2.0 では名前を変えない（`base/page.css` の残りの 20 個は §5.2 の公開する変数で、S6-2 で `tokens.css` へ移した。§11.4 の「仕様と違えたこと」の 1）。`--_*` に変えて別名を置けば内部の変数でなくなり、置かなければ、その変数に値を入れていた 1.x の `custom.css` が警告なしに効かなくなるためである。`--_*` の決まりは、これから足す内部の変数に当てる。名前を変えた変数は例外なく対応の表（`css-layer-restructure-spec.md` §7.2）に載せる。
 
 ### 5.2 公開する変数の一覧（分類）
 
@@ -422,7 +422,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | テーマ色の 12 色 | `--book-accent-yellow` … `--book-accent-lime` | `--accent-*` | vs の土台 | 届く |
 | 本のテーマ色 | `--book-color-accent`・`--book-color-accent-preface`・`--book-color-accent-appendix` | `--theme-accent`・`--color-preface-accent`・`--appendix-accent-color` | `settings`（テーマのオプション） | 届く |
 | 色 | `--book-color-text`・`-link`・`-strong`・`-em-underline`・`-border`・`-border-weak`・`-output-border`・`-column-bg`・`-column-border`・`-figure-border`・`-overlay`・`-danger`・`-mark`・`-heading`・`-section-number` | `--color-*`・`--heading-accent`・`--section-number-color` | テーマ | 届く |
-| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title`（奥付の本文が読む `--font-body` は内部の変数のまま） | `settings`（`typography`） | 総称の名前に置き換わる（`kindle-tokens.css`） |
+| 書体 | `--book-font-body`・`-heading`・`-column`・`-code`・`-folio`・`-title` | `--font-main-text`・`--font-header`・`--font-column`・`--font-code`・`--font-folio`・`--font-title`（奥付のクレジットの 1 行だけが読んでいた `--font-body` は消した。§11.5） | `settings`（`typography`） | 総称の名前に置き換わる（`kindle-tokens.css`） |
 | 版面 | `--book-page-margin-top`・`-bottom`・`-inner`・`-outer`・`--book-font-size`・`--book-line-height`・`--book-letter-spacing`・`--book-paper-scale` | `--page-margin-*`・`--base-font-size`・`--base-line-height`・`--letter-spacing`・`--paper-scale` | `settings`（判型のプリセット） | `--book-font-size`・`--book-line-height` は端末任せ（`1em`・`normal`）。残り（余白・`--book-letter-spacing`・`--book-paper-scale`）は届かない（Kindle に紙面が無い） |
 | 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` | 届かない（Kindle に紙面が無い） |
 | 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） | 届く |
@@ -820,3 +820,17 @@ B1（四つの出力先・Kindle の記録つき）・B2・B4 を組み（`r2/ch
 
 - 計算値の比べには、§11.3 の確かめの写しの HTML を使った。今回の B1 の写しで preflight を走らせたので、写しの `.cache/vs/build/` の HTML が消えたためである（preflight は別の写しで走らせるべきだった）。二つの HTML の違いは Techbook の `<style>` の中の名前だけで、上の EPUB の比べで確かめた。前の側の `book-settings.css` は §11.3 の写しのもの（前のコードで生成）、後の側は今回の写しのものを `--after-settings` で渡した。
 - 雛形の同期（`ruby scripts/copy_to_scaffold.rb`）はしていない。
+
+### 11.5 奥付のクレジットの行を本文の書体で組む（2026-11-16・S6-2 の後）
+
+S6-2 の完了のコミット（8afd8000）の後に入れた、見た目を変える変更（`v2-migration-plan.md` §4.1 の手順）。
+
+- 奥付の「(Powered by Vivlio Starter)」の行（`pages/colophon.css` の `.powered-by`）は、値の固定された内部の変数 `--font-body`（Noto Serif JP）を読んでいた。奥付のほかの行は本文の書体（`--book-font-body`）なので、本文の書体を変えた本では、この 1 行だけが別の書体だった。`--book-font-body` を読むようにし、`--font-body` を `base/page.css` と `targets/kindle-tokens.css` から消した（2026-11-16 ユーザー決定。この 1 行だけのための変数は置かない）。
+- `--font-body` は `LegacyTokens::REMOVED` に入れ、別名を置かない。別名（`--book-font-body`）にすると、1.x で `--font-body` に値を入れていた `custom.css` が、クレジットの 1 行でなく本文全体の書体を変えてしまうためである。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| B4（本文が Shippori Mincho B1） | PDF は S6-2 の確かめ（`r2/check/s6-2/`）と比べ、違うのは奥付の p316 の 181 画素だけ。クレジットの行が、上の著作権の行と同じ書体になった（`r2/check/s6-2-font-body/colophon-credit-before-after.png`）。EPUB は CSS 7 枚の `--font-body` の定義の行と、`colophon.css` の `.powered-by` の 1 行だけ。EPUBCheck は 0 件 |
+| B1（本文が Noto Serif JP） | PDF は r2 と 284 ページとも一致（書体の並びが前と同じ）。EPUB は CSS 8 枚の同じ行だけ。EPUBCheck は 0 件 |
+| Kindle | 組んでいない。前は `kindle-tokens.css` の `--font-body: serif`、後は同じファイルの `--book-font-body: serif` を読むので、値は同じ `serif` になる |
+| テスト | `rake test` 4,429 件が通った |

@@ -13,7 +13,7 @@
 # 名前を変える範囲（theme-contract-spec.md §5.1）:
 #   公開する変数（§5.2）と機能の変数（扉絵 --book-frontispiece-*・節絵 --book-ornament-*）と、
 #   standard へ移る見出しの 2 枚の中だけの変数（--standard-*）。vs の内部の変数（--page-width・
-#   --font-body・--subtitle-* など）は 2.0 では名前を変えない。名前を変えた変数は例外なく、ここに載せる。
+#   --subtitle-* など）は 2.0 では名前を変えない。名前を変えた変数は例外なく、ここに載せる。
 # ================================================================
 
 require 'crass'
@@ -68,8 +68,10 @@ module VivlioStarter
           '--heading-text' => '--standard-heading-text'
         }.freeze
 
-        # 消した変数（どこからも読まれていなかった）。別名を置かない
-        REMOVED = %w[--color-shadow --heading-gray --section-gray].freeze
+        # 消した変数。別名を置かない。--color-shadow などはどこからも読まれていなかった。--font-body は
+        # 奥付のクレジットの 1 行だけが読む、値の固定された変数で、その行は本文の書体で組むようにした。
+        # 別名（--book-font-body）にすると、--font-body に値を入れていた custom.css が本文全体の書体を変えてしまう
+        REMOVED = %w[--color-shadow --heading-gray --section-gray --font-body].freeze
 
         # :root でなく会話の要素の上で定義される変数（parts/talk.css の .talk、生成 CSS の話者の
         # .talk-item.talk-c-<key>）。:root の別名だけでは、要素の上で変えた値が今の名前に届かないので、

@@ -177,7 +177,7 @@ h2 {
 }
 
 .powered-by {
-    font-family: var(--font-body);
+    font-family: var(--book-font-body);
 
     /* layout: ページ右端に揃える（全幅ブロック） */
     display: block;

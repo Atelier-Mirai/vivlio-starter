@@ -14,9 +14,6 @@
   /* .align-* 配置時の最大行長（A4=40em, B5=36em, A5=26em） */
   --align-max-width: 40em;
 
-  /* 奥付の本文の書体（typography では変わらない） */
-  --font-body: "Noto Serif JP", "HackGen35 Console NF", serif;
-
   /* その他の指定 */
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: auto;    /* 文字間隔 */
