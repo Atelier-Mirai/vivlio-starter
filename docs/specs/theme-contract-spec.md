@@ -1192,3 +1192,46 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | :--- | :--- |
 | 写しの本（B4 の素材 `r2/src/ai_web_starter/`・lock は 1.0.0）で `vs upgrade`。`ToolUpgrader.run!` と `run_gem_command`（`bundle update`）を差し替え、`--skip-self-update` | `--dry-run`: `themes/standard/` の 17 個が「追加」、置き換える `custom.css` の 4 行と残す 1 行、`themes/future/`（`contract: 2`）の 🟡 が最後に出て、何も変えない。1 回目（全体の確認は「はい」・`custom.css` は「いいえ」）: `themes/standard/` が入り lock に 17 個の記録、`themes/future/` は記録されない、`custom.css` は前とバイト単位で同じ。2 回目（「はい」）: 4 行だけが変わり、元が退避された |
 | テスト | `upgrade_commands_test.rb` に 7 件（テーマの振り分け 3・契約の版 1・`custom.css` 3）、`theme_commands_test.rb` に 1 件（lock の記録）、`legacy_tokens_test.rb` に 1 件（行の計画）。`rake test` 4,483 件が通った（S6-8 の後の 4,474 件に、足した 9 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+
+### 11.14 S6-9b 改ページを公開する変数で読む（2026-11-17）
+
+決定の経緯は `v2-s6-10-consultation.md` §4.3〜§4.5。
+
+#### 作ったもの
+
+- **`stylesheets/tokens.css`**: `--book-section-break-before: page`・`--book-section-page-break-before: always`・`--book-chapter-break-before: recto`（§5.2）。
+- **`themes/standard/` の 4 か所**: `simple-header.css` の `body.vs-header-simple h1`（`var(--book-chapter-break-before)`）と `h2`、`image-header.css` の `body.vs-header-image .section-topic h2`（`var(--book-section-break-before)`）、`kindle.css` の `body.vs-header-simple.vs-kindle h2`（変数の名前を `--book-*` にし、`var()` の予備の値を外した）。選択子は変えていない。
+- **`BookSettingsCss`**: `page.section_pagebreak: false` で `:root` に `--book-section-break-before: auto`・`--book-section-page-break-before: auto` を、`page.chapter_pagebreak` が `any`・`verso` で `--book-chapter-break-before: page`・`verso` を書く。`SECTION_PAGEBREAK_SELECTORS`（`article.vs-section-topic-epub` だけ）と `CHAPTER_PAGEBREAK_SELECTORS`（`body`・`body.toc`・`body.whole_toc`・`.part-title`）には vs 自身の選択子だけを残した。
+- **`Theme::Features::Frontispiece`**: `PAGE_KINDS = %i[chapter]`・`page?(body_classes, active:)`（扉絵の章扉か）・`guard_rule(active:)`（章扉の保護。選択子は `body.chapter:not(.vs-epub) section.level2:first-of-type > .section-topic h2:not(.vs-break-merged)`）。`BookSettingsCss` は、扉絵の機能が有効なときだけ保護を書く。
+- **`PageBreakNormalizer#breaking_h2_scope`・`ChapterLeadCheck#collect_leads`** は `Frontispiece.page?` で判定する。`lib/vivlio_starter` の Ruby に `vs-header-` を書いた行は、注釈を除いて 0 になった（完了の条件 2）。
+- **`vs theme:check`**: 最後の複合選択子が `h1`・`h2` の規則に、`var()` を使わない `break-before`（`auto`・`avoid` で始まる値を除く）があれば 🟡「`<ファイル>:<行>` の break-before: page では、config/book.yml の page.section_pagebreak が効きません」と、書き直す 1 行（`→ break-before: var(--book-section-break-before); と書いてください`）。出力先の CSS（`epub*.css`・`kindle*.css`）は `h2` だけを見る。**`vs theme:new`** の組版のテーマの `theme.css` の注釈に、変数で書く例を足した。
+- **テスト**: `theme_commands_test.rb` に 1 件（値で書いた改ページの 🟡・出力先の CSS の h1 は出さない）、`page_break_normalizer_test.rb` に 1 件（扉絵の機能が有効でも付録は章扉にならない）、`book_settings_css_test.rb` に 1 件（機能が無効なら章扉の保護を書かない）。既存のテストは、変数の名前・`body.chapter` の選択子・機能の有効の与え方（`frontispiece:` を明示する）に合わせた。`chapter_lead_check_test.rb` の付録の材料は、`body` を `chapter vs-header-simple` から実物と同じ `appendix vs-header-simple` に直した。
+
+#### 仕様に無かったので決めたこと
+
+1. **`ChapterLeadCheck#collect_leads` は、ページの種類だけを見る（`page?(…, active: true)`）。** 機能が有効かは、呼び出し元（`image_style?`）が先に確かめている。テストが `collect_leads` を直接呼ぶときに、`BuildPlan.current`（本の設定）を読ませないためでもある。
+2. **`PageBreakNormalizer` は、機能の有効を `BuildPlan.current.features.frontispiece` から読む（`frontispiece_active?`）。** テストは `section_pagebreak_enabled?` と同じく差し替えて与える。
+3. **`vs theme:check` の検査は、最上位の規則だけを見る（`@media` の中は見ない）。** 見出しの改ページを媒体で分けて書く理由が無いためである。行番号は、選択子の行から下で最初に `break-before` を含む行とした。
+4. **`book-settings.css` の中で、変数の `:root` を vs 自身の選択子の打ち消しより前に書く。** 設定の働きの中心が変数になったためで、規則の勝ち負けには関わらない（別の規則で、取り合うプロパティが無い）。
+5. **`book_settings_css_test.rb` の「右ページ始まりの規則を全部打ち消す」検査は、変数の定義を数えない。** `tokens.css` の `--book-chapter-break-before: recto` が、`break-before: recto` の字面に当たるためである（正規表現の前に `-` と英数字が無いことを条件にした）。
+6. **`stylesheets/utilities/pagebreak.css` の注釈の中のメソッドの名前を、`Theme::Features::Frontispiece.guard_rule` に直した。** EPUB の CSS の字面は変わるが、S6-9b は CSS の字面を変える小段階なので、比べは計算値で行う。
+7. **`style: simple` の本（B2）では、`book-settings.css` から章扉の保護が無くなる。** 前は、どの要素にも当たらない規則として出ていた（`body.vs-header-image` の付く頁が無い）。
+
+#### 確かめた結果
+
+前（`368ccc31`。S6-9 の後で、ビルドの経路は S6-7 から同じ）と後（`d373e871`）を、それぞれコミットを置いた別の worktree から組んだ（台本は基準の `r2/check/s6-9b/build_before.sh`・`build_after.sh`、出力は同じディレクトリ）。どの組み上がりも終了コード 0、🔴 と 🟡 は 0。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| 完了の条件 2 | `lib/vivlio_starter` の Ruby で、注釈を除いて `vs-header-` を書いた行は 0 |
+| PDF の画素（r2 と） | B1 の閲覧用 p83・印刷用 p82、B2 p80、B3 p125 の日付の行だけ（`pdftotext` で「16 日」→「17 日」）。ほかの全ページは一致 |
+| 契約 HTML（B1 の前後） | 同じ。違いは showcase の SVG 2 枚の、埋め込んだ PNG の生成日時だけ（§11.9 と同じ） |
+| `book-settings.css`（B1 の前後） | 違いは改ページの節だけ（変数の `:root` 2 つ・テーマの選択子 3 つが消えた・章扉の保護の選択子が `body.chapter`） |
+| EPUB の計算値（`css_computed_diff.rb`。前の HTML に、前の版と後の版の CSS を当て、後の側には後の `book-settings.css` を渡した） | B1 の 117 文書・312 組（PDF・クリーン EPUB・Kindle、画面と印刷、層ありと平ら）、B2（`simple`・`false`）と B2 の `true` の写しのクリーン EPUB が各 39 文書・78 組とも違い 0。`break-before` の計算値の差も無い |
+| EPUB の HTML（前後） | 違いは EPUB の中の画像の名前だけ（写しごとに変わる名前） |
+| Kindle の中間生成物（`kindle_record_diff.rb`。B1 の前後） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0。B1（`any`）の付録の章見出し（`body.vs-header-simple h1`）は、前は settings 層の規則から `page-break-before: always` を受けていたが、`themes/standard/kindle.css` の `body.vs-header-simple.vs-kindle h1` も同じ値を書いているので、差は出なかった |
+| `InversionCheck` の要素ごとの判定（`--log=debug`） | B1 の EPUB と Kindle の 16 種類、B2 の EPUB の 8 種類とも 0 組 |
+| EPUBCheck | B1 のクリーン・Kindle 用、B2 の `false`・`true` とも致命・エラー・警告 0 |
+| `vs theme:check standard` | 🔴・🟡 とも 0 |
+| テスト | `rake test` 4,486 件が通った（S6-9 の後の 4,483 件に、足した 3 件。スキップ 1 は前からのもの）。`rake test:layout` 7 件が通った。変えたファイルに `rubocop` を掛け、違反 0 |
+| Apple Books（B2 の `false`・`true` の写し） | **未実施（2026-11-17）。** 書名を `vs-test s6-9b false`・`true` で始めた写しを `r2/check/s6-9b/` に作った（EPUBCheck 0 件）。画面を操作し、ライブラリへ取り込む確かめなので、ユーザーの了承を得てから行う |
