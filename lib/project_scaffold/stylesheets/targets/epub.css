@@ -3,7 +3,9 @@
 /* EPUB と Kindle の本文のページ（章・付録・前書き・後書き）の規則。target 層。
    Kindle の body にも vs-epub が付くので、Kindle 用の CSS にも入る。PDF は読まない。
    どのページの種類がどれを読むかは Css::EntryWriter::TARGET_IMPORTS。中の規則は、移す前の
-   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5） */
+   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5）。
+   選択子が vs-header-* を含む規則は、見出しの 2 枚と同じ themes/standard/ にある
+   （theme-contract-spec.md §4。テーマの出力先の CSS） */
 
 /* --- parts/code.css --- */
 
@@ -172,7 +174,7 @@ body.vs-epub .section-topic h2::after {
   content: none; /* PDF 用の背景飾り（節絵 SVG と二重になる）を無効化 */
 }
 
-/* PDF の扉レイアウト幅（--frontispiece-lead-width ≈ 段組幅）と負マージンを解除し、
+/* PDF の扉レイアウト幅（--book-frontispiece-lead-width ≈ 段組幅）と負マージンを解除し、
    リード文をページ幅いっぱいの通常フローで組む（epub_h1 実測） */
 body.vs-epub .chapter-lead {
   inline-size: auto;
@@ -212,11 +214,3 @@ body.vs-epub .section-lead {
   inline-size: auto;
 }
 
-/* 上下の余白は simple の見出しのときだけ。image の見出しでは、parts/image-header.css の
-   `body.vs-header-image .section-topic .section-lead` の 0 を使う（1.x では両方に重要度の
-   指定があり、詳細度で image の側が勝っていた。その結果を、選ぶ対象で明示した。
-   css-layer-restructure-spec.md §2.4）。simple の見出しの PDF 用の余白
-   （parts/simple-header.css）には、target 層で勝つ。 */
-body.vs-epub:not(.vs-header-image) .section-lead {
-  margin-block: 0.3em 1em;
-}

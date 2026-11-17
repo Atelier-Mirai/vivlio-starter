@@ -1,16 +1,19 @@
 /* =============================================================
-   tokens.css - テーマ変数定義ファイル
+   tokens.css - 公開する変数の一覧
    =============================================================
-   
-   テーマ色や見出しの寸法などの CSS 変数の既定値を定義します。
 
-   テーマカラーや扉絵の設定を変更したい場合は、
-   config/book.yml の theme セクションを編集してください。
-   指定した値はビルド時に book-settings.css へ書き出され、
-   このファイルの値より優先されます。
+   vs の部品とテーマが読む変数（--book-*）の既定値を、1 行ずつ定義します。
+   ここが公開する変数の一覧の正典です。
+
+   テーマ色や判型・書体を変えたい場合は、config/book.yml を
+   編集してください。指定した値はビルド時に book-settings.css へ
+   書き出され、このファイルの値より優先されます。
 
    色や寸法を個別に変えたい場合は、custom.css で
    同じ変数を指定してください。
+
+   1.x の名前（--theme-accent・--color-link など）は、tokens-legacy.css が
+   別名として定義しているので、そのままでも効きます。
 
    このファイルは vs upgrade で新しい雛形へ更新されます。
    直接編集すると、雛形が変わるたびに手元の変更との
@@ -19,82 +22,109 @@
    ============================================================= */
 
 :root {
-  /* テーマ・アクセント（各色で切替可能） */
-  --accent-yellow:        #f0a000;
-  --accent-orange:        #ea580c;
-  --accent-red:           #dc2626;
+  /* テーマ色の 12 色（config/book.yml の theme.color で選ぶ） */
+  --book-accent-yellow:  #f0a000;
+  --book-accent-orange:  #ea580c;
+  --book-accent-red:     #dc2626;
 
-  --accent-magenta:       #e11d74;
-  --accent-purple:        #7c3aed;
-  --accent-indigo:        #4f46e5;
+  --book-accent-magenta: #e11d74;
+  --book-accent-purple:  #7c3aed;
+  --book-accent-indigo:  #4f46e5;
 
-  --accent-navy:          #1d4ed8;
-  --accent-blue:          #0186d8;
-  --accent-cyan:          #06b6d4;
+  --book-accent-navy:    #1d4ed8;
+  --book-accent-blue:    #0186d8;
+  --book-accent-cyan:    #06b6d4;
 
-  --accent-teal:          #0d9488;
-  --accent-green:         #15803d;
-  --accent-lime:          #65a30d;
+  --book-accent-teal:    #0d9488;
+  --book-accent-green:   #15803d;
+  --book-accent-lime:    #65a30d;
 
-  /* --accent-yellow:        #f0a000;
-  --accent-amber:         #f59e0b;
-  --accent-orange:        #ea580c;
-  --accent-peach:         #fb7185;
-  --accent-coral:         #f97316;
-  --accent-red:           #dc2626;
-  --accent-magenta:       #e11d74;
-  --accent-plum:          #a21caf;
-  --accent-purple:        #7c3aed;
-  --accent-indigo:        #4f46e5;
-  --accent-navy:          #1d4ed8;
-  --accent-blue:          #0186d8;
-  --accent-cyan:          #06b6d4;
-  --accent-teal:          #0d9488;
-  --accent-mint:          #10b981;
-  --accent-green:         #15803d;
-  --accent-lime:          #65a30d; */
-  --theme-accent:         var(--accent-green); /* config/book.yml の theme.color 設定により自動更新 */
+  /* 本のテーマ色（config/book.yml の theme.color により自動更新）。
+     前書きの色 --book-color-accent-preface は pages/preface.css、
+     付録の色 --book-color-accent-appendix は pages/appendix.css が、そのページの :root で定義する */
+  --book-color-accent: var(--book-accent-green);
 
-  /* カラートークン（共通） */
-  --color-text:            #000;
-  --color-link:            #000;           /* 必要に応じ変更 */
-  --color-strong:          var(--theme-accent);           /* 強調（重要） */
-  --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
-  --color-border:          #ccc;           /* 画像など汎用枠 */
-  --color-border-weak:     #ddd;           /* 引用枠など */
-  --color-output-border:   var(--color-border-weak); /* 実行結果（.output）・テキストの図（.diagram）の枠 */
-  --color-column-bg:       color-mix(in srgb, var(--theme-accent) 15%, white); /* コラム背景 */
-  /* コラム背景 theme-accent を白と混ぜて薄くする */
-  --color-column-border:   var(--theme-accent);           /* コラム枠 */
-  --color-figure-border:   #ccc;           /* 図枠 */
-  --color-overlay:         rgb(255 255 255 / 70%);
-  --color-shadow:          rgb(0 0 0 / 15%);
-  --color-danger:          #f00;
-  --color-mark:            var(--theme-accent); /* h3マーク等 */
+  /* 色 */
+  --book-color-text:           #000;
+  --book-color-link:           #000;
+  --book-color-strong:         var(--book-color-accent);  /* 強調（重要） */
+  --book-color-em-underline:   var(--book-color-accent);  /* 強意の下線色 */
+  --book-color-border:         #ccc;                      /* 画像など汎用枠 */
+  --book-color-border-weak:    #ddd;                      /* 引用枠など */
+  --book-color-output-border:  var(--book-color-border-weak); /* 実行結果（.output）・テキストの図（.diagram）の枠 */
+  --book-color-column-bg:      color-mix(in srgb, var(--book-color-accent) 15%, white); /* コラム背景（テーマ色を白と混ぜて薄くする） */
+  --book-color-column-border:  var(--book-color-accent);  /* コラム枠 */
+  --book-color-figure-border:  #ccc;                      /* 図枠 */
+  --book-color-overlay:        rgb(255 255 255 / 70%);    /* 図・囲みの上に重ねる白 */
+  --book-color-danger:         #f00;
+  --book-color-mark:           var(--book-color-accent);  /* h3 の印など */
+  --book-color-heading:        var(--book-color-accent);  /* 章・節の見出しの飾り */
+  --book-color-section-number: var(--book-color-accent);  /* 節番号 */
 
-  /* 節番号テーマ */
-  --section-number-color:  var(--theme-accent);
-  /* --section-bg-image は book.yml（theme.ornament）からビルド時に
-     book-settings.css が必ず設定するため、ここでは既定値を持たない */
+  /* 書体（config/book.yml の typography により自動更新）
+     末尾の総称の名前（serif/sans-serif/monospace）は、EPUB を書体を埋め込まずに配る
+     ときの予備。指定の書体が無い端末でも、明朝・ゴシック・等幅の区別が保たれる。
+     PDF では書体の実体が常にあるので使われない */
+  --book-font-body:    "Noto Serif JP", "HackGen35 Console NF", serif;      /* 本文 */
+  --book-font-title:   "Noto Sans JP", sans-serif;                          /* 書名 */
+  --book-font-heading: "Noto Sans JP", "HackGen35 Console NF", sans-serif;  /* 見出し */
+  --book-font-column:  "Zen Maru Gothic", "HackGen35 Console NF", sans-serif; /* コラム */
+  --book-font-code:    "HackGen35 Console NF", monospace;                   /* コード */
+  --book-font-folio:   "Noto Sans JP", "HackGen35 Console NF", sans-serif;  /* ノンブル */
 
-  /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
-  /* 扉絵の上下と紙の端の間の余白（左右は画像の縦横比で自動的に決まる） */
-  --frontispiece-edge-inset: 10mm;
-  --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-edge-inset));
-  /* --frontispiece-image も同様に book-settings.css が必ず設定する */
+  /* 版面（config/book.yml の page の判型のプリセットにより自動更新）
+     版面の幅 ≒ 紙の幅 - ノド - 小口、1 行の字数 ≒ 版面の幅 / (字の大きさ + 字間) */
+  --book-paper-scale:       1.0;      /* 用紙の比（A4 = 1.0） */
+  --book-font-size:         10.5pt;   /* 本文の字の大きさ */
+  --book-line-height:       15.75pt;  /* 行送り */
+  --book-letter-spacing:    0em;      /* 字間 */
+  --book-page-margin-top:    20mm;    /* 天 */
+  --book-page-margin-bottom: 20mm;    /* 地 */
+  --book-page-margin-inner:  26mm;    /* ノド（綴じ側） */
+  --book-page-margin-outer:  22mm;    /* 小口（外側） */
 
-  /* 章題・章リードの幅（heading-metrics-spec §1-2）。
-     著者は book.yml に「1 行の文字数」で書き、BookSettingsCss が
-     文字数 × 1 字の送り をリテラル mm へ解いてここを上書きする。
-     ここの既定値は文字数から解いた値（A4・8 字 / 20 字 相当）。 */
-  --frontispiece-heading-width: 103.7mm;
-  --frontispiece-lead-width: 88.9mm;
-  /* 章扉の見出しブロック（章番号〜リード）を下げる量
-     （config/book.yml の theme.frontispiece.heading_offset） */
-  --frontispiece-heading-offset: 0mm;
+  /* 柱とノンブル（config/book.yml の typography.folio により自動更新）
+     placement: center は中央に、sides は左ページの左下・右ページの右下に置く */
+  --book-folio-font-size:      calc(var(--book-font-size) * 0.75);
+  --book-folio-color:          #777;
+  --book-folio-center-content: none;
+  --book-folio-left-content:   counter(page);
+  --book-folio-right-content:  counter(page);
 
-  /* 節題の基準フォントサイズ（heading-metrics-spec §1-2）。
-     節絵の帯は版面幅いっぱいで固定なので、節題は箱幅ではなく
-     フォントサイズで「1 行の文字数」を決める（A4・14 字 相当）。 */
-  --section-title-font-size: 36Q;
+  /* 章と節の改ページ（config/book.yml の page.section_pagebreak・page.chapter_pagebreak により自動更新）。
+     テーマは改ページの値を直接書かず、この変数で書く（theme-contract-spec.md §3.5）。
+     section_pagebreak: false で節の 2 つが auto、chapter_pagebreak が any で page・verso で verso になる */
+  --book-section-break-before:      page;
+  --book-section-page-break-before: always; /* Kindle 向けの古い書き方（page-break-before）の値 */
+  --book-chapter-break-before:      recto;
+
+  /* 見出しの印（config/book.yml の theme.markers により自動更新） */
+  --book-marker-h3: "♣";
+  --book-marker-h4: "♦";
+
+  /* 章リードの字の大きさ（config/book.yml の theme.lead_size により自動更新。本文に対する倍率を百分率で。
+     em で書くと Vivliostyle が px に直すときに丸め、字の位置がずれる） */
+  --book-chapter-lead-size: 120%;
+
+  /* 会話の色 --book-talk-accent・--book-talk-bg は、話者の要素の上で決まるので
+     parts/talk.css の .talk で定義する。アバターの大きさ --book-talk-icon-size・
+     --book-talk-speaker-size は talk.yml の display.avatar_size から生成する */
+
+  /* 扉絵（config/book.yml の theme.frontispiece により自動更新）。画像の既定 none は、扉絵の機能を
+     使わないテーマのため（使うテーマでは book-settings.css が必ず定義する） */
+  --book-frontispiece-image: none;
+  --book-frontispiece-edge-inset: 10mm;  /* 扉絵の上下と紙の端の間の余白（左右は画像の縦横比で決まる） */
+  --book-frontispiece-background-size: auto calc(100% - 2 * var(--book-frontispiece-edge-inset));
+  --book-frontispiece-binding-offset: 2.00mm; /* ノドと小口の差による背景のずれ */
+  /* 章題・章リードの幅。book.yml には 1 行の文字数で書き、book-settings.css が
+     文字数 × 1 字の送りを mm に解いて上書きする（既定は A4・8 字 / 20 字） */
+  --book-frontispiece-heading-width: 103.7mm;
+  --book-frontispiece-lead-width: 88.9mm;
+  --book-frontispiece-lead-size: var(--book-chapter-lead-size); /* 章扉の章リードの字の大きさ */
+  --book-frontispiece-heading-offset: 0mm; /* 章扉の見出しの塊（章番号〜リード）を下げる量 */
+
+  /* 節絵（config/book.yml の theme.ornament により自動更新）。画像の既定 none は、節絵の機能を
+     使わないテーマのため（使うテーマでは book-settings.css が必ず定義する） */
+  --book-ornament-image: none;
+  --book-ornament-title-font-size: 36Q; /* 節題の字の大きさ（節絵の帯は版面の幅いっぱいなので、字の大きさで 1 行の文字数を決める。A4・14 字） */
 }

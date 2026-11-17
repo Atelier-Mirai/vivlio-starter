@@ -11,7 +11,7 @@ p {
   text-align: justify;
 }
 
-/* 字間。判型の letter_spacing（book.yml の *_custom プリセット）が --letter-spacing に入る。
+/* 字間。判型の letter_spacing（book.yml の *_custom プリセット）が --book-letter-spacing に入る。
    効かせるのは本文の段落・箇条書き・引用と、章・節のリード。letter-spacing は子へ継承
    されるので、中に入るコード・表・キャプションと、実行結果などの見本を見せる枠
    （.output・.diagram・.terminal）・段落の形の小見出しでは 0 に戻す。
@@ -21,7 +21,7 @@ p {
 p,
 li,
 blockquote {
-  letter-spacing: var(--letter-spacing);
+  letter-spacing: var(--book-letter-spacing);
 }
 
 pre,
@@ -74,7 +74,7 @@ blockquote {
   margin-inline: 0;
   padding: 0;
   padding-inline: 2em;
-  border-inline-start: solid 2mm var(--color-border-weak);
+  border-inline-start: solid 2mm var(--book-color-border-weak);
 }
 
 /* 強意（下線） */
@@ -82,7 +82,7 @@ em {
   font-style: normal;
   text-decoration: underline;
   text-decoration-thickness: 0.1em;
-  text-decoration-color: var(--color-em-underline);
+  text-decoration-color: var(--book-color-em-underline);
   text-underline-offset: 0.08em;
   text-decoration-skip-ink: auto;
 }
@@ -90,18 +90,18 @@ em {
 /* 強調（太字・色） */
 strong {
   font-weight: 900;
-  color: var(--color-strong);
+  color: var(--book-color-strong);
 }
 
 /* キーボードフォント（keyfont は EPUB/Kindle にも実体同梱される・epub_builder keyfont_asset?） */
 kbd {
-  font-family: keyfont, var(--font-code);
+  font-family: keyfont, var(--book-font-code);
 }
 
 /* リンク */
 a {
   text-decoration: none;
-  color: var(--color-link);
+  color: var(--book-color-link);
 }
 
 /* クロスリファレンス用リンク（図/表/リスト参照）は太字で表示 */

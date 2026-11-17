@@ -52,7 +52,7 @@ hr.pagebreak {
    記法の側の改ページに一本化する（page-break-control-spec.md §2.1-4）。h2 の改ページの
    規則（parts/image-header.css・parts/simple-header.css）は詳細度が高いが、utilities 層は
    parts 層より上なので、この規則が勝つ。settings 層の章扉の保護
-   （BookSettingsCss#chapter_frontispiece_guard_rule）は、この印の付いた h2 を除いて選ぶ。 */
+   （Theme::Features::Frontispiece.guard_rule）は、この印の付いた h2 を除いて選ぶ。 */
 h2.vs-break-merged {
   break-before: auto;
   page-break-before: auto;

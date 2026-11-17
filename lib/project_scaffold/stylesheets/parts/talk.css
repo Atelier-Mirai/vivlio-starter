@@ -9,15 +9,15 @@
    <div class="talk talk-style-chat"> … へ変換する。表示形式は 2 種類:
      chat   … 吹き出し（左右振り分け・話者列＝アバターの下に名前・尻尾つき）
      inline … 「名前：発話」を 1 段落で組む
-   話者色はクラス経由（--talk-accent。既定はテーマ色、話者ごとの色は生成 CSS が
+   話者色はクラス経由（--book-talk-accent。既定はテーマ色、話者ごとの色は生成 CSS が
    --talk-c-<key> で上書き）。Kindle は EpubBuilder が DOM を inline 形式へ組み替えるため、
    ここの inline 用ルールがそのまま Kindle の見た目になる。
    ===================================================================== */
 .talk {
   /* 話者色の既定はテーマアクセント色。話者ごとの色は .talk-c-<key> が差し替える。 */
-  --talk-accent: var(--theme-accent);
+  --book-talk-accent: var(--book-color-accent);
   /* 吹き出しの地色。尻尾の内側三角と必ず同じ色にする（別々に書くとずれる）。 */
-  --talk-bg: #fff;
+  --book-talk-bg: #fff;
 
   /* spacing */
   margin-block: 6mm;
@@ -60,25 +60,25 @@
   /* box-size */
   /* アバターより 2mm 広くして、下に積む名前の折り返しに余裕を持たせる。
      calc(var() + 2mm) は Vivliostyle が宣言ごと捨てることがあるため、
-     足した値は生成 CSS が --talk-speaker-size として mm で出す */
-  inline-size: var(--talk-speaker-size, 14mm);
+     足した値は生成 CSS が --book-talk-speaker-size として mm で出す */
+  inline-size: var(--book-talk-speaker-size, 14mm);
 
   /* spacing */
   gap: 1mm;
 }
 
 /* アバターは丸抜き。話者色の細枠で囲む。
-   直径は talk.yml の display.avatar_size が生成 CSS の :root に --talk-icon-size を置く
+   直径は talk.yml の display.avatar_size が生成 CSS の :root に --book-talk-icon-size を置く
    （talk-avatar-initial-spec.md §7）。.talk の側で宣言すると :root の値を覆い隠すので、
    既定の 12mm は var() の第 2 引数にだけ書く。 */
 .talk-icon {
   /* box-size */
-  width: var(--talk-icon-size, 12mm);
-  height: var(--talk-icon-size, 12mm);
+  width: var(--book-talk-icon-size, 12mm);
+  height: var(--book-talk-icon-size, 12mm);
 
   /* visual */
   object-fit: cover;
-  border: 1.5px solid var(--talk-accent);
+  border: 1.5px solid var(--book-talk-accent);
   border-radius: 50%;
 }
 
@@ -87,12 +87,12 @@
   display: block;
 
   /* typography */
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   font-weight: bold;
   line-height: 1.2;
 
   /* visual */
-  color: var(--talk-accent);
+  color: var(--book-talk-accent);
 }
 
 /* 話者列の名前（アバターの下に小さく添える） */
@@ -119,8 +119,8 @@
   padding: 2mm 3mm;
 
   /* visual */
-  background: var(--talk-bg);
-  border: 1.5px solid var(--talk-accent);
+  background: var(--book-talk-bg);
+  border: 1.5px solid var(--book-talk-accent);
   border-radius: 8px;
 }
 
@@ -133,10 +133,10 @@
 /* 発話内の強調は話者色に揃える（既定の strong 色＝テーマ色だと吹き出しの枠色とぶつかる）。
    主語を .talk-item にするのは chat（item > body > p）と inline（item > p）の
    両方へ届かせるため。特異度 (0,1,1) で parts/prose.css の `strong`（0,0,1）に勝つ。
-   --talk-accent は話者の要素の上の変数なので Kindle 用の CSS では値に解けず、この宣言は落ちる。
+   --book-talk-accent は話者の要素の上の変数なので Kindle 用の CSS では値に解けず、この宣言は落ちる。
    生成 CSS（book-settings.css）が話者ごとの strong に :root の変数で同じ色を当てる。 */
 .talk-item strong {
-  color: var(--talk-accent);
+  color: var(--book-talk-accent);
 }
 
 /* 尻尾（tail）: 枠色の三角（::before）と地色の三角（::after）を重ねて枠線付きにする。
@@ -153,19 +153,19 @@
 }
 .talk-style-chat .talk-left .talk-body::before {
   left: -2.6mm;
-  border-right: 2.6mm solid var(--talk-accent);
+  border-right: 2.6mm solid var(--book-talk-accent);
 }
 .talk-style-chat .talk-left .talk-body::after {
   left: -2.0mm;                                   /* 枠線ぶん内側へ寄せる */
-  border-right: 2.6mm solid var(--talk-bg);
+  border-right: 2.6mm solid var(--book-talk-bg);
 }
 .talk-style-chat .talk-right .talk-body::before {
   right: -2.6mm;
-  border-left: 2.6mm solid var(--talk-accent);
+  border-left: 2.6mm solid var(--book-talk-accent);
 }
 .talk-style-chat .talk-right .talk-body::after {
   right: -2.0mm;
-  border-left: 2.6mm solid var(--talk-bg);
+  border-left: 2.6mm solid var(--book-talk-bg);
 }
 
 /* ---------------------------------------------------------------------
@@ -189,11 +189,11 @@
 .talk-style-inline .talk-name {
   display: inline;          /* chat 側の縦積み指定を打ち消す */
   font-weight: bold;
-  color: var(--talk-accent);
+  color: var(--book-talk-accent);
 }
 
 .talk-style-inline .talk-sep {
-  color: var(--talk-accent);
+  color: var(--book-talk-accent);
 }
 
 .talk-style-inline p {

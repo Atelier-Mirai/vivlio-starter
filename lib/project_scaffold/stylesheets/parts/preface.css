@@ -19,45 +19,42 @@
    見出し
    ------------------------------------------------------------- */
 h1 {
-  font-family: var(--font-header);
-  font-size: clamp(16.8Q, calc(var(--paper-scale) * 24Q), 24Q);
+  font-family: var(--book-font-heading);
+  font-size: clamp(16.8Q, calc(var(--book-paper-scale) * 24Q), 24Q);
   font-weight: bold;
   letter-spacing: 0.1em;
-  color: var(--color-header);
   text-align: center;
-  margin-block-end: clamp(21pt, calc(var(--paper-scale) * 30pt), 30pt);
-  padding-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
-  border-block-end: 3px solid var(--color-preface-accent);
+  margin-block-end: clamp(21pt, calc(var(--book-paper-scale) * 30pt), 30pt);
+  padding-block: clamp(14pt, calc(var(--book-paper-scale) * 20pt), 20pt);
+  border-block-end: 3px solid var(--book-color-accent-preface);
   page-break-after: avoid;
 }
 
 h2 {
-  font-family: var(--font-header);
-  font-size: clamp(14Q, calc(var(--paper-scale) * 20Q), 20Q);
+  font-family: var(--book-font-heading);
+  font-size: clamp(14Q, calc(var(--book-paper-scale) * 20Q), 20Q);
   font-weight: bold;
-  color: var(--color-header);
-  margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt) clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  padding-block: clamp(5.6pt, calc(var(--paper-scale) * 8pt), 8pt);
-  padding-inline-start: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  border-inline-start: 3px solid var(--color-preface-accent);
+  margin-block: clamp(17.5pt, calc(var(--book-paper-scale) * 25pt), 25pt) clamp(10.5pt, calc(var(--book-paper-scale) * 15pt), 15pt);
+  padding-block: clamp(5.6pt, calc(var(--book-paper-scale) * 8pt), 8pt);
+  padding-inline-start: clamp(10.5pt, calc(var(--book-paper-scale) * 15pt), 15pt);
+  border-inline-start: 3px solid var(--book-color-accent-preface);
   background: linear-gradient(90deg, var(--color-preface-accent-glow-strong) 0%, var(--color-preface-accent-glow-weak) 50%, transparent 100%);
   page-break-after: avoid;
 }
 
 h3 {
-  font-family: var(--font-header);
-  font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
+  font-family: var(--book-font-heading);
+  font-size: clamp(11.2Q, calc(var(--book-paper-scale) * 16Q), 16Q);
   font-weight: bold;
-  color: var(--color-header);
-  margin-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt) clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt);
-  padding-block: clamp(3.5pt, calc(var(--paper-scale) * 5pt), 5pt);
-  border-block-end: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+  margin-block: clamp(14pt, calc(var(--book-paper-scale) * 20pt), 20pt) clamp(8.4pt, calc(var(--book-paper-scale) * 12pt), 12pt);
+  padding-block: clamp(3.5pt, calc(var(--book-paper-scale) * 5pt), 5pt);
+  border-block-end: 1px solid color-mix(in oklab, var(--book-color-border) 70%, transparent);
   page-break-after: avoid;
 }
 
 h3::before {
   content: var(--preface-h3-marker);
-  color: var(--color-preface-accent);
+  color: var(--book-color-accent-preface);
 }
 
 /* -------------------------------------------------------------
@@ -65,7 +62,7 @@ h3::before {
    （字下げ・字間・引用の中の段落は parts/prose.css の規則を使う）
    ------------------------------------------------------------- */
 p {
-  margin-block-end: clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt);
+  margin-block-end: clamp(8.4pt, calc(var(--book-paper-scale) * 12pt), 12pt);
 }
 
 ol,
@@ -75,8 +72,8 @@ ul {
 
 ol li,
 ul li {
-  margin-block: clamp(4.2pt, calc(var(--paper-scale) * 6pt), 6pt);
-  padding-inline-start: clamp(3.5pt, calc(var(--paper-scale) * 5pt), 5pt);
+  margin-block: clamp(4.2pt, calc(var(--book-paper-scale) * 6pt), 6pt);
+  padding-inline-start: clamp(3.5pt, calc(var(--book-paper-scale) * 5pt), 5pt);
 }
 
 ol li p,
@@ -85,18 +82,19 @@ ul li p {
 }
 
 a {
-  border-block-end: 1px dotted var(--color-link);
+  border-block-end: 1px dotted var(--book-color-link);
 }
 
 a:hover {
-  color: var(--color-preface-accent);
-  border-block-end-color: var(--color-preface-accent);
+  color: var(--book-color-accent-preface);
+  border-block-end-color: var(--book-color-accent-preface);
 }
 
+/* 前書きの強調は本文の字の色（parts/prose.css の強調の色を打ち消す） */
 strong,
 b {
   font-weight: bold;
-  color: var(--color-header);
+  color: inherit;
 }
 
 ruby {
@@ -105,14 +103,14 @@ ruby {
 
 rt {
   font-size: 0.6em;
-  color: var(--color-text);
+  color: var(--book-color-text);
 }
 
 hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent);
-  margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt);
+  background: linear-gradient(90deg, transparent, var(--book-color-border) 20%, var(--book-color-border) 80%, transparent);
+  margin-block: clamp(17.5pt, calc(var(--book-paper-scale) * 25pt), 25pt);
 }
 
 /* 改ページ（`---` 記法）。改ページの指定そのものは utilities/pagebreak.css が持つ。
@@ -125,21 +123,20 @@ hr.pagebreak {
 }
 
 section {
-  margin-block-end: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
+  margin-block-end: clamp(14pt, calc(var(--book-paper-scale) * 20pt), 20pt);
 }
 
 blockquote {
-  margin-block: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  margin-inline: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
-  padding-block: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
-  padding-inline: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  border-inline-start: 3px solid var(--color-preface-accent);
-  background: var(--color-surface);
+  margin-block: clamp(10.5pt, calc(var(--book-paper-scale) * 15pt), 15pt);
+  margin-inline: clamp(14pt, calc(var(--book-paper-scale) * 20pt), 20pt);
+  padding-block: clamp(7pt, calc(var(--book-paper-scale) * 10pt), 10pt);
+  padding-inline: clamp(10.5pt, calc(var(--book-paper-scale) * 15pt), 15pt);
+  border-inline-start: 3px solid var(--book-color-accent-preface);
 }
 
 blockquote p {
   margin: 0;
-  color: var(--color-text);
+  color: var(--book-color-text);
 }
 
 /* 表のセルは本文の両端揃え（body の justify）を継がない。章と同じく行頭へ寄せる。

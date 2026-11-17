@@ -7,12 +7,6 @@ body {
   break-before: recto;
 }
 
-/* マーカー変数（book.ymlのtheme.markersで自動更新） */
-:root {
-  --h3-marker: "♣";
-  --h4-marker: "♦";
-}
-
 /* -------------------------------------------------------------
    見出し
    ------------------------------------------------------------- */
@@ -22,7 +16,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   text-spacing: no-autospace;
 }
 
@@ -86,19 +80,19 @@ h3::before {
   inline-size: auto;
   margin-inline-end: 1.5mm;
   font-size: 5mm;
-  color: var(--color-mark);
+  color: var(--book-color-mark);
 }
 
 /* 目見出し（h4）。上の段落に付いて見えないよう、上に半行あける。囲み枠（.output・
    .memo など）の下余白とは相殺するので、枠の直後では間がほとんど増えない */
 h4 {
   margin-block-start: 0.5rlh;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
 }
 
 h4::before {
-  content: var(--h4-marker, "◆");
-  color: var(--color-mark);
+  content: var(--book-marker-h4, "◆");
+  color: var(--book-color-mark);
   font-size: 4mm;
   margin-inline-end: 1mm;
 }
@@ -106,13 +100,13 @@ h4::before {
 /* 号見出し（h5） */
 h5 {
   margin-block-end: 2mm;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
 }
 
 /* 補助見出し（h6） */
 h6 {
   margin-block-end: 2mm;
-  font-size: var(--base-font-size);
+  font-size: var(--book-font-size);
 }
 
 /* 改ページ直後の h3 マージン抑制 */
@@ -131,7 +125,7 @@ section:has(hr:last-child) + section > h3:first-child {
   margin-block: 0.5rlh;
   margin-inline: auto;
   font-weight: 500;
-  font-size: larger;
+  font-size: var(--book-chapter-lead-size);
   line-height: 1.7;
   text-align: justify;
   text-indent: 1em;

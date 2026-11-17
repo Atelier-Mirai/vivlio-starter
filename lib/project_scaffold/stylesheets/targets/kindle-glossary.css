@@ -8,7 +8,7 @@
 
 /* 下線。pages/glossary.css の線は KFX が解さない形を含むので、ここで描き直す */
 body.vs-kindle .glossary-title {
-  border-bottom: 2px solid var(--theme-accent, #333);
+  border-bottom: 2px solid var(--book-color-accent, #333);
 }
 
 /* Kindle では語と語の間が広がりすぎる。EPUB は見出しごとに <dl> を分けるので
@@ -19,9 +19,9 @@ body.vs-kindle .glossary-group-header {
   margin-bottom: 0.1em;
   padding: 0 0.5em;
   /* pages/glossary.css の帯は linear-gradient で、KFX は描かない。単色にする */
-  color: var(--theme-accent, #333);
-  border-left-color: var(--theme-accent, #333);
-  background: var(--color-column-bg, #f5f5f5);
+  color: var(--book-color-accent, #333);
+  border-left-color: var(--book-color-accent, #333);
+  background: var(--book-color-column-bg, #f5f5f5);
 }
 
 body.vs-kindle .glossary-term {
@@ -47,5 +47,5 @@ body.vs-kindle .glossary-backlinks {
 }
 
 body.vs-kindle .glossary-h4 {
-  color: var(--theme-accent, #333);
+  color: var(--book-color-accent, #333);
 }

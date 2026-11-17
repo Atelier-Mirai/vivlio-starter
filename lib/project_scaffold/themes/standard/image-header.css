@@ -145,7 +145,7 @@ body.vs-header-image .section-topic + * {
 body.vs-header-image .section-topic h2 {
   font-family: var(--book-font-heading);
   font-weight: 900;
-  break-before: page;
+  break-before: var(--book-section-break-before);
   margin: 0;
   font-size: var(--book-ornament-title-font-size);
   /* 3 行の節題でも飾りの枠に収まるよう行送りは詰め気味にする（§3 の帯の高さと対で決まる） */

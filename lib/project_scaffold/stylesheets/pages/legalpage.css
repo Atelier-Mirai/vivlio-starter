@@ -28,8 +28,8 @@
      @page :left / :right は実際の表裏で左右を入れ替えるが、名前付きページは
      Paged Media の詳細度でそれに勝つため、何ページ目に組まれてもぶれない
      （front-back-matter-single-render-spec.md §2.4）。 */
-  margin-left: var(--page-margin-outer);
-  margin-right: var(--page-margin-inner);
+  margin-left: var(--book-page-margin-outer);
+  margin-right: var(--book-page-margin-inner);
 
   /* 柱。本文の末尾に置くと直前の章のタイトルが string() に残ったまま出る。 */
   @top-right     { content: none; }
@@ -56,7 +56,7 @@ body {
   padding: 0;                 /* フル幅・余白なし */
 
   /* typography */
-  font-family: var(--font-main-text);
+  font-family: var(--book-font-body);
   line-height: 1.5; /* 行間を詰める */
 
   /* visual */
@@ -68,10 +68,10 @@ body {
 
 /* 見出し */
 h2 {
-  font-family: var(--font-header);
-  font-size: clamp(7.392pt, calc(var(--paper-scale) * 10.56pt), 10.56pt); /* 13.2pt の 0.8倍（<small>相当スケールに調整） */
+  font-family: var(--book-font-heading);
+  font-size: clamp(7.392pt, calc(var(--book-paper-scale) * 10.56pt), 10.56pt); /* 13.2pt の 0.8倍（<small>相当スケールに調整） */
   font-weight: 700;
-  margin-block: clamp(1.4rem, calc(var(--paper-scale) * 2rem), 2rem) clamp(0.35rem, calc(var(--paper-scale) * 0.5rem), 0.5rem);
+  margin-block: clamp(1.4rem, calc(var(--book-paper-scale) * 2rem), 2rem) clamp(0.35rem, calc(var(--book-paper-scale) * 0.5rem), 0.5rem);
 }
 
 /* セクション間余白 */
@@ -82,9 +82,9 @@ h2 {
 
 /* 段落 */
 p {
-  font-size: clamp(6.72pt, calc(var(--paper-scale) * 9.6pt), 9.6pt); /* <small>相当: 12pt の 0.8倍 */
+  font-size: clamp(6.72pt, calc(var(--book-paper-scale) * 9.6pt), 9.6pt); /* <small>相当: 12pt の 0.8倍 */
   text-indent: 1em;
-  margin-block: clamp(0.35rem, calc(var(--paper-scale) * 0.5rem), 0.5rem) 0;
+  margin-block: clamp(0.35rem, calc(var(--book-paper-scale) * 0.5rem), 0.5rem) 0;
 }
 
 /* 商標ブロック内の2段落目は上マージンを詰める */

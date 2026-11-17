@@ -6,71 +6,9 @@
    値に解く（css-layer-restructure-spec.md §4.4）。:is()・:where() も展開されるが、KFX で確かめた
    書き方（並べた選択子）を保つ。
    どのページの種類がどれを読むかは Css::EntryWriter::TARGET_IMPORTS。中の規則は、移す前の
-   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5） */
-
-/* --- parts/simple-header.css --- */
-
-/* =============================================================
-   Kindle 専用フォールバック（付録など simple スタイルの章/節見出し）
-   -------------------------------------------------------------
-   Kindle KFX は display:grid / clamp() / ::before(absolute) / linear-gradient を解さず、
-   parts/simple-header.css の装飾が崩れて素テキスト化する（kindle_epub_debug.md）。
-   body.vs-header-simple.vs-kindle 配下に、KFX が解す形の装飾を与え、付録の章/節見出しにも
-   枠付きの装飾を施す。枠の色は --heading-accent（付録は pages/appendix.css が付録の色にする）。
-   画像版（vs-header-image）や PDF はこの規則の影響を受けない。
-   ============================================================= */
-body.vs-header-simple.vs-kindle h1::before,
-body.vs-header-simple.vs-kindle h1::after {
-  content: none;
-}
-
-body.vs-header-simple.vs-kindle h1 {
-  display: block;
-  overflow: visible;
-  border: 2px solid var(--heading-accent);
-  border-radius: 4px;
-  background: #f4f1ea;
-  margin: 1em 0;
-  padding: 0.8em 0.6em;
-  text-align: center;
-  font-size: 1.6em;
-  line-height: 1.4;
-  page-break-before: always;
-  break-before: page;
-}
-
-body.vs-header-simple.vs-kindle h1 .chapter-number {
-  display: block;
-  margin-bottom: 0.3em;
-  font-size: 0.7em;
-  font-weight: 700;
-  color: var(--heading-accent);
-}
-
-body.vs-header-simple.vs-kindle h2 {
-  display: block;
-  border: 1px solid var(--heading-accent);
-  border-left: 4px solid var(--heading-accent);
-  border-radius: 3px;
-  background: #f4f1ea;
-  margin: 1.2em 0 0.6em;
-  padding: 0.4em 0.6em;
-  font-size: 1.3em;
-  font-weight: 800;
-  /* page.section_pagebreak: false のとき、book-settings.css が両方の変数を auto にする */
-  page-break-before: var(--section-page-break-before, always);
-  break-before: var(--section-break-before, page);
-}
-
-body.vs-header-simple.vs-kindle h2 .section-number {
-  display: inline-block;
-  margin-right: 0.5em;
-  padding: 0 0.4em;
-  background: var(--heading-accent);
-  border-radius: 2px;
-  color: #fff;
-  font-weight: 900;
-}
+   ファイルの読み込みの順と、ファイルの中の順を保つ（css-layer-restructure-spec.md §5）。
+   選択子が vs-header-* を含む規則は、見出しの 2 枚と同じ themes/standard/ にある
+   （theme-contract-spec.md §4。テーマの出力先の CSS） */
 
 /* --- parts/code.css --- */
 
@@ -224,20 +162,20 @@ body.vs-kindle kbd {
   font-family: keyfont, monospace;
 }
 
-/* 強調の色。詳細度を上げ、前書きの strong（--color-header）などの規則より強調の色を優先する
+/* 強調の色。詳細度を上げ、前書きの strong（color: inherit）などの規則より強調の色を優先する
    （1.x の BookSettingsCss が Kindle に焼いていた規則と同じ選択子と値） */
 body.vs-kindle strong {
-  color: var(--color-strong);
+  color: var(--book-color-strong);
 }
 
 body.vs-kindle em {
-  text-decoration-color: var(--color-em-underline);
+  text-decoration-color: var(--book-color-em-underline);
 }
 
 /* --- parts/heading.css --- */
 
 body.vs-kindle .subsection-marker {
-  color: var(--color-mark);
+  color: var(--book-color-mark);
 }
 
 /* h4 の印。Previewer 4 は ::before の content を本文へ差し込む（kindle-css-compatibility-notes.md §2.2）。
@@ -246,8 +184,8 @@ body.vs-kindle .subsection-marker {
    本文と付録に限るのは、用語集の h4 など parts/heading.css の外には印が無いため */
 body.chapter.vs-kindle h4::before,
 body.appendix.vs-kindle h4::before {
-  content: var(--h4-marker, "◆") !important;
-  color: var(--color-mark);
+  content: var(--book-marker-h4, "◆") !important;
+  color: var(--book-color-mark);
 }
 
 /* --- parts/list.css --- */
@@ -330,22 +268,22 @@ body.vs-kindle .note {
 /* 枠の色。PDF の部品（parts/box.css）と同じ変数で塗る。custom.css でこれらの変数を変えると、
    Kindle の枠にも届く。付録の束では pages/appendix.css が変数を付録の色にする（改善案 #132） */
 body.vs-kindle .tip {
-  border-color: var(--theme-accent);
+  border-color: var(--book-color-accent);
 }
 
-/* .tip は --theme-accent を直に読むので、付録の色は pages/appendix.css の .tip と同じく別に当てる */
+/* .tip は --book-color-accent を直に読むので、付録の色は pages/appendix.css の .tip と同じく別に当てる */
 body.appendix.vs-kindle .tip {
-  border-color: var(--appendix-accent-color);
+  border-color: var(--book-color-accent-appendix);
 }
 
 body.vs-kindle .memo,
 body.vs-kindle .column {
-  border-color: var(--color-column-border);
+  border-color: var(--book-color-column-border);
 }
 
 body.vs-kindle .note,
 body.vs-kindle .notice {
-  border-color: var(--color-mark);
+  border-color: var(--book-color-mark);
 }
 
 /* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
@@ -360,9 +298,9 @@ body.vs-kindle .note {
    （【OUTPUT】/【TERMINAL】）を見せる。注入ラベル用に上余白を確保する。 */
 body.vs-kindle .output {
   padding-block-start: 4mm;
-  /* 色は parts/box.css と同じ変数で、custom.css の --color-output-border が届く。
+  /* 色は parts/box.css と同じ変数で、custom.css の --book-color-output-border が届く。
      太さは端末で見える 1px にする */
-  border: 1px solid var(--color-output-border);
+  border: 1px solid var(--book-color-output-border);
   margin-top: 1.5em;
   margin-bottom: 1.5em;
 }
@@ -370,7 +308,7 @@ body.vs-kindle .output {
 /* .diagram（テキストの図・アスキーアート）の枠。色と太さは .output と同じ。
    ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
 body.vs-kindle .diagram {
-  border: 1px solid var(--color-output-border);
+  border: 1px solid var(--book-color-output-border);
   margin-top: 1.5em;
   margin-bottom: 1.5em;
 }
@@ -413,19 +351,19 @@ body.vs-kindle .vs-adm-label {
 
 /* 囲みのラベルの色。PDF の角のタブと同じ変数で塗る（.note・.notice は PDF にタブが無いので線の色） */
 body.vs-kindle .tip .vs-adm-label {
-  color: var(--theme-accent);
+  color: var(--book-color-accent);
 }
 
 body.appendix.vs-kindle .tip .vs-adm-label {
-  color: var(--appendix-accent-color);
+  color: var(--book-color-accent-appendix);
 }
 
 body.vs-kindle .memo .vs-adm-label,
 body.vs-kindle .column .vs-adm-label {
-  color: var(--color-column-border);
+  color: var(--book-color-column-border);
 }
 
 body.vs-kindle .note .vs-adm-label,
 body.vs-kindle .notice .vs-adm-label {
-  color: var(--color-mark);
+  color: var(--book-color-mark);
 }

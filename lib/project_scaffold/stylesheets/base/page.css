@@ -5,56 +5,14 @@
 @charset "utf-8";
 
 :root {
-  /* 参考: 版面サイズ（余白から自動計算される）
-    版面幅  = page-width - margin-inner - margin-outer
-    版面高  = page-height - margin-top - margin-bottom
-    文字数  ≒ 版面幅 / (base-font-size + letter-spacing)
-    行数    ≒ 版面高 / base-line-height
-  */
+  /* 公開する変数（版面・書体・柱とノンブル）の既定値は tokens.css にある。
+     ここに置くのは vs の内部の変数だけ（book.yml の page から book-settings.css が上書きする） */
 
-  /* 基本体裁（A4 縦） */
-  --page-width:  210mm; /* 幅 */
-  --page-height: 297mm; /* 高さ */
-  /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
-  --paper-scale: 1.0;
-  /* .align-* 配置時の最大行長（A4=40em, B5=36em, A5=26em。前処理から上書き） */
+  /* 紙の大きさ（A4 縦） */
+  --page-width:  210mm;
+  --page-height: 297mm;
+  /* .align-* 配置時の最大行長（A4=40em, B5=36em, A5=26em） */
   --align-max-width: 40em;
-
-  /* タイポグラフィ設定 */
-  --base-font-size:   10.5pt;    /* 基準文字サイズ */
-  --base-line-height: 15.75pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
-  --letter-spacing:   0em;     /* 字間調整 */
-
-  /* 版面の余白（見開き対応） */
-  --page-margin-top:    20mm;  /* 天（上余白） */
-  --page-margin-bottom: 20mm;  /* 地（下余白） */
-  --page-margin-inner:  26mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
-  --frontispiece-binding-offset: 2.00mm; /* ノド/小口差分による背景オフセット */
-
-  /* フォント指定
-     末尾の generic family（serif/sans-serif/monospace）は EPUB をフォント非埋め込みで
-     配布する際のフォールバック。指定書体が無いリーダーでも 明朝=serif / ゴシック=sans-serif /
-     コード=monospace の category が保たれる。PDF では実体フォントが常に在るため不発（無害）。 */
-  --font-main-text: "Noto Serif JP", "HackGen35 Console NF", serif;          /* メイン本文フォント */
-  --font-body:      "Noto Serif JP", "HackGen35 Console NF", serif;          /* 本文フォント（--font-main-text の別名） */
-  --font-title:     "Noto Sans JP", sans-serif;   /* タイトルフォント */
-  --font-header:    "Noto Sans JP", "HackGen35 Console NF", sans-serif;   /* 見出しフォント */
-  --font-column:    "Zen Maru Gothic", "HackGen35 Console NF", sans-serif;    /* コラムフォント */
-  --font-code:      "HackGen35 Console NF", monospace;           /* コードフォント */
-  --font-folio:     "Noto Sans JP", "HackGen35 Console NF", sans-serif;   /* ノンブル(ページ番号)フォント */
-
-  /* ノンブル（ページ番号）設定 */
-  --folio-font-size: calc(var(--base-font-size) * 0.75);
-  --folio-color: #777;
-
-  /* ノンブル配置（book.yml の typography.folio.placement により自動設定）
-     center: 中央配置
-     sides:  左右配置（左ページは左下、右ページは右下）
-  */
-  --folio-center-content: none;
-  --folio-left-content:   counter(page);
-  --folio-right-content:  counter(page);
 
   /* その他の指定 */
   /* stylelint-disable-next-line property-no-unknown */
@@ -62,9 +20,9 @@
   widows: 2;             /* 最後の行を次のページに移動させない（2行以上残す） */
   orphans: 2;            /* 最初の行を前のページに移動させない（2行以上送る） */
 
-  font-size:   var(--base-font-size);
-  line-height: var(--base-line-height);
-  font-family: var(--font-main-text);
+  font-size:   var(--book-font-size);
+  line-height: var(--book-line-height);
+  font-family: var(--book-font-body);
   font-weight: 400;
 }
 
@@ -76,17 +34,17 @@
      正規表現で書き換えていたが、P3 で生成方式へ移行して以降は書き換わらない——
      ここを編集しても判型は変わらないので、変えるなら book.yml の page.use を変えること。 */
   size: 210mm 297mm;
-  margin-top: var(--page-margin-top);
-  margin-bottom: var(--page-margin-bottom);
+  margin-top: var(--book-page-margin-top);
+  margin-bottom: var(--book-page-margin-bottom);
 
   /* ノンブル（中央配置時） */
   @bottom-center {
-    content:     var(--folio-center-content);
+    content:     var(--book-folio-center-content);
     text-align:  center;
-    font-family: var(--font-folio);
-    font-size:   var(--folio-font-size);
+    font-family: var(--book-font-folio);
+    font-size:   var(--book-folio-font-size);
     font-weight: 300;
-    color:       var(--folio-color);
+    color:       var(--book-folio-color);
   }
 
   /* 脚注エリア: Vivliostyle が float:footnote 要素を収める ol の番号を非表示 */
@@ -98,43 +56,43 @@
 }
 
 @page :left {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   /* 左ページ: [小口（outer）] 版面 [ノド（inner）] */
-  margin-left: var(--page-margin-outer);
-  margin-right: var(--page-margin-inner);
+  margin-left: var(--book-page-margin-outer);
+  margin-right: var(--book-page-margin-inner);
 
   /* ノンブル（左右配置時：左ページ） */
   @bottom-left {
-    content:     var(--folio-left-content);
+    content:     var(--book-folio-left-content);
     text-align:  left;
-    font-family: var(--font-folio);
-    font-size:   var(--folio-font-size);
+    font-family: var(--book-font-folio);
+    font-size:   var(--book-folio-font-size);
     font-weight: 300;
-    color:       var(--folio-color);
+    color:       var(--book-folio-color);
   }
 }
 
 @page :right {
-  font-family: var(--font-header);
+  font-family: var(--book-font-heading);
   /* 右ページ: [ノド（inner）] 版面 [小口（outer）] */
-  margin-left: var(--page-margin-inner);
-  margin-right: var(--page-margin-outer);
+  margin-left: var(--book-page-margin-inner);
+  margin-right: var(--book-page-margin-outer);
 
   /* ノンブル（左右配置時：右ページ） */
   @bottom-right {
-    content:     var(--folio-right-content);
+    content:     var(--book-folio-right-content);
     text-align:  right;
-    font-family: var(--font-folio);
-    font-size:   var(--folio-font-size);
+    font-family: var(--book-font-folio);
+    font-size:   var(--book-folio-font-size);
     font-weight: 300;
-    color:       var(--folio-color);
+    color:       var(--book-folio-color);
   }
 
   /* タイトル */
   @top-right {
     content:     string(chapter-number, first) " " string(chapter-title, first);
     text-align:  right;
-    font-family: var(--font-main-text);
+    font-family: var(--book-font-body);
     font-size:   9Q;
   }
 }
@@ -157,10 +115,10 @@
 @page front:left {
   @bottom-left {
     content: counter(page, lower-roman);
-    font-family: var(--font-folio);
-    font-size: var(--folio-font-size);
+    font-family: var(--book-font-folio);
+    font-size: var(--book-folio-font-size);
     font-weight: 300;
-    color: var(--folio-color);
+    color: var(--book-folio-color);
   }
   @bottom-center { content: none; }
   @bottom-right { content: none; }
@@ -170,10 +128,10 @@
 @page front:right {
   @bottom-right {
     content: counter(page, lower-roman);
-    font-family: var(--font-folio);
-    font-size: var(--folio-font-size);
+    font-family: var(--book-font-folio);
+    font-size: var(--book-folio-font-size);
     font-weight: 300;
-    color: var(--folio-color);
+    color: var(--book-folio-color);
   }
   @bottom-center { content: none; }
   @bottom-left { content: none; }
