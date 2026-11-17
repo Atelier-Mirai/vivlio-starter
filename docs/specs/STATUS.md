@@ -19,6 +19,7 @@
 | `css-layer-restructure-spec.md` | CSS を `@layer` で作り直す。層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成・Kindle の規則の集約 | 実装済み（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1・S3-2・S3-3a・S3-3b・S3-4 は 2026-11-15 に完了・実装記録は §10） |
 | `v2-migration-plan.md` | 2.0 の段階 S0〜S11 の順序・共通の確かめ方（基準と比較の道具）・既存の本の移行（`vs upgrade`）・1.x との並行 | 実装中（S0〜S5・S6-1〜S6-9 完了・実装記録は §8。段階の表は 2026-11-17 に引き直した。残りは S6 の残り・S7a・S7b・S8〜S10・S8b・S8c・S11a〜S11d） |
 | `novel-vertical-spec.md` | 縦書きの小説。縦書きの経路・テーマ `novel`・判型のプリセット（文庫・B6・新書・四六）・傍点と縦中横・投稿サイトの記法・小説の lint・雛形 `scaffolds/novel/` | 仕様済み・着手待ち（段階 S8。S7a の後） |
+| `cover-size-independence-spec.md` | 表紙を判型に依らない作りにする。表紙のコードの判型の表を無くして寸法を判型のプリセットから引く・比の違う画像の扱い・同梱の SVG のひな形を縦長の判型に合わせる・下敷きの画像 | 仕様済み・着手待ち（段階 S8-3 の中で行う。S9-1 でも通る） |
 | `cover-spread-spec.md` | 背表紙とくるみ表紙（表 4・背・表 1 を 1 枚に。背幅・背の中身・左右の綴じ） | 骨格だけ（段階 S8b の最初に書き足す） |
 | `furigana-spec.md` | `vs furigana`（半自動の振り仮名。`furigana:auto` → `furigana:apply` の 2 段） | 骨格だけ（段階 S8c の最初に書き足す） |
 | `picture-book-spec.md` | 絵本（固定レイアウト）。原稿の形（`@page`・`@spread`・文字の箱）・寸法と見開き・四つの出力先（Kindle は閲覧用 PDF のページの画像）・テーマ `picture-book`・雛形 `scaffolds/picture_book/` | 仕様済み・着手待ち（段階 S9。S9-0 の KDP の確かめは S8 の間に行える） |
