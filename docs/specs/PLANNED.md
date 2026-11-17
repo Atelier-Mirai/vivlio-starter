@@ -32,6 +32,7 @@
 
 ## ビルド / 出力
 
+- [High] **表紙を判型に依らない作りにする（2.0 の S8-3 の前提）**: 表紙のコード（`cover.rb` の `SIZES`）と同梱のひな形（`covers/templates/`）は A4・B5・A5 の 3 判型だけを知っている。小説の文庫・B6・新書・四六（S8-3）と絵本の横長・正方形（S9-1）を足すと、そのままでは表紙が作れない。判型を 1 つずつ足すより、ひな形の SVG を判型の比から組む形に直す。くるみ表紙（S8b）も同じ寸法の計算に乗る。`v2-s8b-s8c-consultation.md` §4.1・`cover-spread-spec.md`
 - [Low] **画像の width 属性自動補完**: `![](foo.png)` のように幅指定なしでも、実寸やクラス指定に応じて `width=100%` 等を自動補う（大判図をページ送りにせず収めるため）。
 - [Medium] **「表1＋背＋表4 を 1 枚にくるみ表紙」の形**: 入稿先の慣習でくるみ表紙を求められる場合も有るが、結合処理を伴う別機能になるため、現状は非対応。2.0 の段階 S8b で作る（`cover-spread-spec.md`。骨格だけ）。
 - [Low] **索引の重複除去の後、巻末だけを組み直して差し替える**: `dedup-rerender-skip-spec.md` §3 の案 B。先回り（案 A）が外れたときと初回のビルドでも、2 回目の組版の約 50 秒を巻末の 4 秒ほどにできる。索引のページ番号を文字で書き込み、差し替えたページへ本文からのリンクと宛先を付け直す必要がある。最終形を案 C とする三段の三段目にあたり、案 A を入れた後、外れる頻度を実際の執筆で見てから決める。進むときは、ノンブルの再現と差し替えのページ付けを小さな試作で確かめてから。
@@ -170,6 +171,7 @@
 
 ## EPUB / Kindle
 
+- [Medium] **読者の端末での見え方を 1 コマンドで撮る（`vs preview:shots` の案）**: Kindle Previewer と Apple Books で、章扉・表・コード・奥付などの決まった箇所の画面を撮って並べる。今は基準のディレクトリの使い捨ての道具（`kindle_shot.rb`・`books_shot.rb`）で、開発の確かめにだけ使っている。縦書きと絵本では、PDF と端末の見え方の差が技術書より大きいので、著者が入稿の前に確かめられる形で製品に入れる。Kindle の Location は CSS で変わるので、着いた頁を文字で確かめる手順（`v2-migration-plan.md` §8.10）も一緒に持ち込む。
 - [Medium] **Kindle Previewer 3 の検出と更新の案内を削除する（2027 年 1 月のバージョンアップ）**: 2026-12-25 に公開予定の Ruby 4.1.0 への対応と同じバージョンアップで行う。Amazon が必須としているのは 4 で、KPF の変換は 4 だけで行っている。削除後の 3 は、インストールされていないものとして扱う（Kindle を選んだ本なら `vs doctor --fix` が 4 をインストールする）。
   - `lib/vivlio_starter/cli/doctor.rb`: `KINDLE_PREVIEWER_3_APP`・`kindle_previewer_outdated?`・`report_kindle_previewer_outdated`・`kindlepreviewer_wrapper_outdated?` と、それらの呼び出し
   - `lib/vivlio_starter/cli/build/epub/kpf.rb`: `kindle_previewer_3?` と `convert_epub_to_kpf!` の中の判定（`DoctorCommands` を使わなくなるので、`require_relative '../doctor'` も外す）
@@ -201,6 +203,9 @@
 
 ## 開発者体験 / CLI UX
 
+- [Medium] **索引のレビューのファイルを、編集中に上書きしない**: 著者が `_index_glossary_review.md` を直している最中に `vs index:auto` を走らせ直すと、編集が消える（2026-10-02 に実際に起きた）。`vs furigana` に入れる守り（生成したときの中身の要約値を末尾に書き、直した後のファイルは 🔴 で止めて `--force` を案内する。`v2-s8b-s8c-consultation.md` §4.3）を、索引にも入れる。不具合の修正に当たるので、1.x にも入れられる。
+- [Medium] **移行を本に触れずに試す（`vs upgrade --trial` の案）**: 本を別のディレクトリへ写し、写しに 2.0 への移行を掛けて組み、1.x で組んだ PDF と全ページの画素を比べて、変わるページを示す。S11a の予行（`v2-migration-plan.md` §4.3）は開発者が 6 冊で行う作業として計画しているが、道具（`scripts/build_copy.rb`・`scripts/pdf_pixel_diff.rb`）はあるので、著者にも開く。移行の前に「どのページが変わるか」が分かる。
+- [Medium] **2.0 の作りの要約を 1 本書く（S11b と同じ時期）**: 2.0 の仕様書は 9 本で、実装記録を含めると数千行あり、相談の経緯と「今の作りの説明」が混ざっている。段階が終わって archives へ移す時期に、開発者向けの要約（層・契約 HTML・テーマ・出力先の宣言・判断の線）を 1 本にまとめる。次に手を入れる人が、9 本を読まずに着手できるようにする。`NOTES.md` から指す。
 - [Medium] **大きなファイルと長いメソッドを分ける（1.0.0 の後）**: 読み通せない大きさになっている。`build/epub_builder.rb`（3,771 行）は 2.0 の S4 で分けた（`v2-architecture-spec.md` §4.3）。残りで大きいのは `doctor.rb`（1,697 行）・`index/unified_index_manager.rb`（1,604 行）。メソッドでは `execute_doctor`（400 行）・`apply_markdown_review!`（229 行）・`process_cross_references_for_files`（169 行）・`execute_post_process`（141 行）・`wrap_sideimage_blocks!`（129 行）。分けるときは Kindle Previewer の確認をやり直す（EPUB・Kindle の出力は `rake test` では確かめきれない）。`Label`・`Heading` の `Struct` も `Data.define` へ移す。
 - [Low] **小さなリファクタリングの残り（1.0.0 の後）**: 2026-11-07 の洗い出しで、出力やテストに影響するため 1.0.0 の前には手を付けなかったもの。
   - **HTML エスケープの手書きを `CGI.escapeHTML` へ寄せる**: `escape_attr`・`escape_text`・`escape_html`・`escape_html_text` が 8 ファイルに 11 個ある（`code_line_blocks.rb`・`markdown_transformer.rb`・`mermaid_transformer.rb`・`showcase_svg_builder.rb`・`showcase_transformer.rb`・`unified_page_builder.rb`・`math_text_renderer.rb`・`heading_image_composer.rb`）。`CGI.escapeHTML` は `'` も `&#39;` にするので出力のバイト列が変わる。表示は変わらないが、文字列を突き合わせるテストの期待値を確かめ直す。
