@@ -165,7 +165,8 @@ Kindle は、変換の後の表示を機械で比べられない。次の三つ�
 | Kindle Previewer と Apple Books の 10 か所の画面の見比べ | S6-7 の後の 1 回。最後の比べで Kindle の中間生成物と EPUB が S6-7 の後と同じなら、画面は見比べ直さない（r3 を作るときに撮り直す） |
 | B2（`theme.style: simple`）の PDF | 上の 3 回のほかに、S6-4・S6-5（見出しの 2 枚を動かす小段階） |
 | B4 の EPUB の `InversionCheck` | 上の 3 回のほかに、S6-4・S6-6（規則の読む順が変わる小段階） |
-| `rake test:layout` | S6-5 の後と最後。走らせている間は雛形を同期しない |
+| B2（`simple`）のクリーン EPUB | S6-9b の前後に 1 回ずつ組み、計算値が差 0。後の側を Apple Books で開き、節の改ページを見る（`v2-s6-10-consultation.md` §4.5 の決め 1） |
+| `rake test:layout` | S6-5 の後・S6-9b の後・最後。走らせている間は雛形を同期しない |
 | `rake test:standard` | S6-7 の後と最後 |
 | `rake test:release` | 最後の 1 回（1 段ずつ・記録はファイルへ）。r3 を作る前に通す |
 

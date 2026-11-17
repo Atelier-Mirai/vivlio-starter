@@ -327,6 +327,9 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 機能を使うテーマは、その機能のオプションを自分の `options:` に並べずに使える（機能の側が宣言を持つ。`lib/vivlio_starter/cli/theme/features/<名前>.rb`）。
 - 機能を使わないテーマでは、その機能の段は走らず、オプションは `theme:` 節に書けない（書いてあれば §3.3 の「このテーマには無い設定」の 🟡）。
 - **扉絵の `@page :nth(1)` の規則は、vs の `stylesheets/pages/chapter.css` に置く（機能 `frontispiece` の骨格。`v2-s6-consultation.md` §4.2 の決め 3）。** テーマの `styles:` は全部の種類の入口に入り、`@page` は `body` のクラスで絞れない。テーマに置くと、付録・前書き・目次の最初のページにも扉絵が出る。テーマは変数（`--book-frontispiece-*`）で値を入れる。機能を使わないテーマのために、`stylesheets/tokens.css` に `--book-frontispiece-image: none;` の既定値を置く。
+- **扉絵の効くページの種類は `chapter` だけで、機能の側に定数で持つ（`v2-s6-10-consultation.md` §4.4）。** `Theme::Features::Frontispiece::PAGE_KINDS = %i[chapter]`。「このページは扉絵の章扉か」は、機能が有効（`BuildPlan.features.frontispiece`）かつ `body` のクラスに `chapter` がある、で判定する。窓口は機能の側に 1 つ（`Theme::Features::Frontispiece.page?(body_classes)`）。テーマのクラス（`vs-header-image`）は読まない。`PageBreakNormalizer#breaking_h2_scope` と `ChapterLeadCheck#collect_leads` はこの窓口を使う。
+- **章扉の保護（`section_pagebreak: false` のとき、全面の扉絵のページに本文を流し込まない規則）は、機能 `frontispiece` が settings 層に書く。** 選択子は `body.chapter`。出す条件は `section_pagebreak: false` かつ機能が有効。テーマの CSS に置かないのは、扉絵を使うテーマの全部に要る骨格だからである。settings 層に置くのは、theme 層の `var()`（値は `auto`）に PDF で勝つためで、`:not(.vs-epub)`・`:not(.vs-break-merged)` は今のまま付ける。
+- 機能が効くページの種類を `theme.yml` で宣言する形は作らない。効く場所は vs の CSS の置き場で決まっていて、テーマが変えられないため。`ornament` には判定を読むコードが無いので、定数を置かない。
 - `standard` の今の 15 個のキーを「`options:`」「`frontispiece`」「`ornament`」に分けた表は、S6-7 の最初に作ってここに書く。どれにも入らないキー（Ruby が読むが、扉絵にも節絵にも属さないもの。`markers.*` と `lead_size` が候補）が出たら、実装を止めて相談する。3 つ目の機能を足すかは、その表を見て決める。
 
 **`standard` の 15 個のキーの振り分け（2026-11-17・S6-7 の最初。46186ddd のコードで数えた）。**
@@ -375,6 +378,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - どちらでも、書体の値は総称の名前（`serif`・`sans-serif`・`monospace`）だけとし、`--book-font-size`・`--book-line-height` は書かない。
 - `vs theme:check` が、それ以外の値を 🟡 で示す（「Kindle では読者が選ぶ値です」と示し、消すことを案内する）。ビルドは止めない。
 - 著者の `custom.css` の `body.vs-kindle { … }` は、何でも書ける。著者は自分の本と自分の端末で確かめられるので、知らせない。
+
+- **章と節の改ページは、公開する変数で書く（`v2-s6-10-consultation.md` §4.3）。** テーマの CSS は `break-before: var(--book-chapter-break-before)`・`var(--book-section-break-before)`（Kindle 向けの古い書き方は `page-break-before: var(--book-section-page-break-before)`）と書き、値を直接書かない。`page.section_pagebreak`・`page.chapter_pagebreak` の設定は、settings 層がこの変数の値を書くことで効く。値を直接書いた規則は、§7.2 の検査が 🟡 で示す。
 
 `vs theme:check <名前>`（§7.2）が、この範囲を検査して報告する。
 
@@ -447,6 +452,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 柱とノンブル | `--book-folio-font-size`・`-color`・`--book-folio-left-content`・`-right-content`・`-center-content` | `--folio-*` | `settings` | 届かない（Kindle に紙面が無い） |
 | 見出しの印 | `--book-marker-h3`・`--book-marker-h4` | `--h4-marker` ほか | `settings`（テーマのオプション） | 届く |
 | 章リード | `--book-chapter-lead-size`（S6-7 の前段で新設。§3.4 の決め 3） | （無し。`book-settings.css` がリテラルの規則を書いていた） | `settings`（テーマのオプション） | 届く |
+| 章と節の改ページ | `--book-section-break-before`（既定 `page`）・`--book-section-page-break-before`（既定 `always`。Kindle 向けの古い書き方の値）・`--book-chapter-break-before`（既定 `recto`）。既定値は `stylesheets/tokens.css`（`v2-s6-10-consultation.md` §4.3。S6-9b で新設） | （無し。v2 の途中の `--section-break-before` は 1.x に無いので別名を置かない） | `settings`（`page.section_pagebreak: false` で `auto`、`page.chapter_pagebreak` が `any` で `page`・`verso` で `verso`。書かない条件では宣言しない） | 届く |
 | 会話 | `--book-talk-accent`・`-bg`・`-icon-size`・`-speaker-size` | `--talk-*` | `settings`・テーマ | 届く |
 
 - 扉絵・節絵の変数（`--frontispiece-*`・`--section-bg-image`・`--section-title-font-size`）は、組み込みの機能（§3.4）が値を入れる変数で、名前は `--book-frontispiece-*`・`--book-ornament-*` とする（`--section-bg-image` は `--book-ornament-image`、`--section-title-font-size` は `--book-ornament-title-font-size`）。
@@ -581,6 +587,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 4. 本の `themes/<名前>/` が既にあれば、置き換わるファイルの一覧を見せて確認を取る。「いいえ」なら何も変えない。
 5. `extends:` の先が本の `themes/` に無ければ、同梱のテーマなら一緒に入れ、そうでなければ無いと知らせる（§3.2）。
 
+`vs theme:check` は、改ページを値で書いた規則も 🟡 で示す（`v2-s6-10-consultation.md` §4.3）。テーマの `styles:` の CSS で、最後の複合選択子が `h1` か `h2` の規則に `var()` を使わない `break-before`（`avoid`・`auto` を除く）があるもの。出力先の CSS（`epub*.css`・`kindle*.css`）では `h2` だけを見る（章の改丁は PDF だけの設定）。文面は「`page.section_pagebreak`（または `chapter_pagebreak`）の設定が、このテーマでは効きません」と、書き直した 1 行を示す。`vs theme:new` の組版のテーマの雛形の注釈にも、変数で書く例を入れる。
+
 `vs theme:check` は、テーマの CSS の中の外部の URL（`url(http…)`・`@import url(http…)`）も 🟡 で示す。組むたびにネットワークへ取りにいくテーマを、入れた時点で知らせるためである。
 
 ### 7.3 `vs upgrade` と著者のファイル
@@ -592,6 +600,17 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 著者が入れたテーマ（`scaffold.lock` に記録が無い） | 触らない。契約の版が今の vs に合わないときだけ 🟡 で知らせる |
 | `vs theme:add` で入れた同梱のテーマ | `scaffold.lock` に記録し、雛形から来たテーマと同じに扱う |
 | `stylesheets/` の土台と部品 | 今と同じ |
+
+**雛形から消えたテーマのファイル（`v2-s6-10-consultation.md` §4.7。S6-10 で作る）。** テーマのディレクトリは置いたファイルが読まれる（出力先の CSS）ので、`vs upgrade` が消す。範囲は `themes/` の下だけ。
+
+| 本の側のファイル | 扱い |
+| :--- | :--- |
+| lock に記録のあるテーマの、lock に記録のあるファイルで、今の雛形に無く、本の中身が lock の記録と同じ | 計画に「削除」として出し、全体の確認が「はい」なら `.vs-backup/upgrade/` へ退避してから消す。lock の記録も消す |
+| 同、本の中身が lock の記録と違う（著者が変えた） | 消さない。lock の記録は消す。最後に 🟡「雛形から無くなったファイルですが、変更があるので残しました」とパスを示す。出力先の CSS なら「置いてあるかぎり読まれます。要らなければ削除してください」、それ以外は「読まれません」を添える |
+| lock に記録の無いファイル（著者が足したもの） | 触らない。知らせない |
+| lock に記録の無いテーマ | 触らない |
+
+`--dry-run` は「削除」の行を見せるだけ。`--yes` は確認なしで消す（退避があるため）。
 
 著者が同梱のテーマを直して使いたい場合は、`vs theme:new mytheme --extends standard` で自分のテーマを作り、そちらに書くよう案内する。同梱のテーマを直接直すと、`vs upgrade` のたびにマージが起きる。
 
@@ -630,7 +649,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 最初に入れるもの（寸法をテーマへ移す前）: `LiteralResolver` が `clamp()`・`min()`・`max()` を含む宣言を、理由（`:paper_dimension`）を付けて落とす（`css-layer-restructure-spec.md` §4.4）。
 - 完了の条件:
   1. `stylesheets/parts/simple-header.css`・`parts/image-header.css`・`stylesheets/images/bundled/` が無くなり、`themes/standard/` にある（§4 の表）。
-  2. `BodyClassInjector` と `BookSettingsCss` に、`standard` テーマに固有の名前（`vs-header-image`・`--frontispiece-*` など）を直接書いた箇所が無い（`theme.yml` と機能の宣言から来る）。
+  2. `lib/vivlio_starter` の Ruby に（注釈と、テストの材料を除く）、`standard` テーマに固有の名前（`vs-header-image`・`--frontispiece-*` など）を直接書いた箇所が無い（`theme.yml` と機能の宣言から来る）。
   3. 本書の四つの出力先の出力が、その時点の基準（r2。`v2-migration-plan.md` §3.2）と比べて、PDF は全ページの画素が一致、EPUB は下の「EPUB の比べ」の表のとおり、Kindle は中間生成物が差 0 で Kindle Previewer の画面が見比べて同じ。
   4. 配色のテーマの見本（`standard-mono`。`extends: standard` と `tokens:`・`kindle_tokens:` だけ。材料は `test/vivlio_starter/fixtures/themes/standard-mono/` に置き、写しの本の `themes/` へ複製して使う。同梱しない）で、`book.yml` の `theme.color`・`preface_color`・`appendix_color` を空欄にした本書を組み（§3.2）、色だけが変わる（PDF の文字の位置が `standard` と一致する。`pdftotext -bbox` の座標の比較）。Kindle でも色が変わる。
   5. 1.x の `custom.css`（今の名前の変数を使ったもの）を置いた写しで、色の変更が効く。
@@ -656,7 +675,8 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | S6-7 オプションと機能の宣言 | `theme.yml` の `options:`、`Theme::Features::Frontispiece`・`Ornament` の宣言、`ConfigKeys::KEYS` から `theme.*`（`name` を除く）を外す、`Common.load_config` の 3（`v2-architecture-spec.md` §5.3）、`BookSettingsCss` が `token:` から書き出す、`BodyClassInjector` が `body_class:` から付ける、値の検査を宣言から行う（`ThemeValidator` の置き換え）、`HtmlContract` の `theme_option` を宣言から引く、`BuildPlan.features` に `frontispiece`・`ornament`、`theme:` 節の宣言に無いキーの 🟡（§3.3） | 完了の条件の 2。B1・B2・B3 の設定で、`Common::CONFIG` の書き出しと `.cache/vs/book-settings.css` が前後でバイト単位で同じ。契約 HTML がバイト単位で同じ。段の一覧が同じ。`theme.color` などに読めない値を書いた材料で、🟡 の文面が前後で同じ。その後、全部の比べと画面。`rake test:standard` |
 | S6-8 コマンド | `vs theme`・`vs theme:add`（§7.2 の S6 の経路）・`vs theme:check`・`vs theme:new` | `themes/standard/` に `vs theme:check` を掛けて 🟡 が 0 件。`vs theme:new x --extends standard` の出力が `vs theme:check` を通る。zip の検査（§7.2 の複製の決まりの 3）のテスト |
 | S6-9 `vs upgrade` | §7.3 の表（`scaffold.lock` に記録のあるテーマの更新・`vs theme:add` で入れた同梱のテーマの記録・著者のテーマの契約の版の 🟡）と、`custom.css` の今の名前の置き換え（`css-layer-restructure-spec.md` §7.2） | 写しの本での実行。`ToolUpgrader.run!` を差し替えて走らせる（道具の更新がマシンに効かないようにする）。置き換える行を全部見せ、「いいえ」で何も変わらないこと |
-| S6-10 配色のテーマと `kindle_tokens:` | `kindle_tokens:` の書き出し（target 層の 2 番目）。材料の `standard-mono`。S6 の完了の確かめ | 完了の条件の 4・10。全部の比べ。`rake test:layout`・`rake test:standard`・`rake test:release` |
+| S6-9b 改ページを変数で読む（`v2-s6-10-consultation.md` §4.5） | `tokens.css` に 3 つの変数（§5.2）。`themes/standard/` の 4 か所（`simple-header.css` の h1・h2、`image-header.css` の `.section-topic h2`、`kindle.css` の `body.vs-header-simple.vs-kindle h2` の変数の名前。`kindle.css` の `var()` の予備の値は外す）。`BookSettingsCss` の定数からテーマの選択子を消し、変数を書く（vs 自身の選択子の打ち消しは残す）。章扉の保護を `Theme::Features::Frontispiece` へ（§3.4）。`PAGE_KINDS` と判定の窓口、`PageBreakNormalizer`・`ChapterLeadCheck` の置き換え。`vs theme:check` の検査と `vs theme:new` の注釈（§7.2） | `lib/vivlio_starter` に `vs-header-` を書いた行（注釈を除く）が 0。B1 の四つの出力先、B2 と B3 の `pdf` を組む。PDF は r2 と全ページの画素が一致。契約 HTML は前後でバイト単位で同じ。`book-settings.css` の差が改ページの節だけ。EPUB の計算値と Kindle の中間生成物が差 0。`InversionCheck` が 0 組。`themes/standard/` に `vs theme:check` で 🟡 0。B2 の設定のクリーン EPUB を前後で組み、計算値が差 0。後の側を Apple Books で開き、`false` と `true` の写しで節の改ページを 2〜3 か所見る（働かなければ、`simple-header.css` の h2 に予備の `break-before: page;` を前の行に足す形を試し、結果をユーザーに示す）。`break-before` の計算値に差が出たら、直さずに記録してユーザーに示す。`any` で消える `page-break-before: always` の分で Kindle の中間生成物に差が出たら、中身を記録してユーザーに示す。`rake test`・`rake test:layout` |
+| S6-10 配色のテーマと `kindle_tokens:` | `kindle_tokens:` の書き出し（target 層の 2 番目）。材料の `standard-mono`。S6 の完了の確かめ | 完了の条件の 4・10。全部の比べ。`rake test:layout`・`rake test:standard`・`rake test:release` | §7.3 の「雛形から消えたテーマのファイル」（`upgrade_commands_test.rb` に 3 件。写しの本で、1 ファイルを抜いた材料の雛形に `--dry-run` と本番を走らせ、退避と lock を見る） |
 
 S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7）、`BookProfile` の `theme.name`（S8。`v2-architecture-spec.md` §2.2）、1.x の本の `stylesheets/` を 2.0 の配置へ移す手順（`v2-migration-plan.md` §5.3 の 2〜4・6・7。S11）、原稿の中の変数の名前（S11）、vs の内部の変数の改名（§5.1）、見出しの 2 枚のほかの規則を theme 層へ移すこと（§4）。
 
@@ -691,7 +711,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 
 ### S7 公式テーマの取り込み
 
-- 入口の実験（実装の前に行う）: 本書の章を 2 つ選び、`role` 属性の付いた契約 HTML に、`theme-bunko` と `theme-base` を §6.2 の形（`theme` 層・`bridge.css`）で当てて、Vivliostyle で PDF と EPUB を組む。確かめる点は次の四つ。(a) 縦書き・右綴じで組める。(b) 見出し・段落・ルビが `theme-bunko` の見た目になる。(c) vs の部品（脚注・囲み・図）が崩れない。(d) 判型が vs の `page.use` の値になる。結果を `v2-feasibility-notes.md` に追記する。
+- 入口の実験（実装の前に行う）: 本書の章を 2 つ選び、`role` 属性の付いた契約 HTML に、`theme-bunko` と `theme-base` を §6.2 の形（`theme` 層・`bridge.css`）で当てて、Vivliostyle で PDF と EPUB を組む。確かめる点は次の四つ。(a) 縦書き・右綴じで組める。(b) 見出し・段落・ルビが `theme-bunko` の見た目になる。(c) vs の部品（脚注・囲み・図）が崩れない。(d) 判型が vs の `page.use` の値になる。あわせて、実験の本の EPUB で、層を外すと勝ち負けが変わる組（要素ごとの判定）の数と中身を記録する（`v2-s6-10-consultation.md` §4.6）。結果を `v2-feasibility-notes.md` に追記する。
 - 実験で (a)〜(d) のどれかが成り立たない場合: 取り込みを「CSS を写すだけで、結果は保証しない」に下げ、`vs theme:add` の npm の経路は 2.0 に含めない、という判断をユーザーに仰ぐ。小説の既定のテーマは vs が書く（§6.4）ので、2.0 の小説の出力はこの実験の結果に左右されない。
 - 作るもの: `vs theme:add` の git の URL の経路（入口の実験の結果に依らず作る）と npm の経路、§6.2 の変換、§6.3 の `bridge.css` の生成。どちらの経路も、取得した後は §7.2 の複製の決まりを通る。
 - git の経路の確かめ方（`v2-s6-consultation.md` §4.8）:
@@ -710,9 +730,9 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | S8 の仕様 | 2.0 では `theme-bunko` だけを確かめる |
 | 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8（`bunko` を書くとき） | S6 では見出しの 2 枚だけを移す。`bunko` で打ち消しが要った規則を移す。いちばんの候補は前書きの見た目（`parts/preface.css`） |
-| 6 | 改ページの打ち消し（`page.section_pagebreak`・`page.chapter_pagebreak`）が写すテーマの選択子を、テーマの側からどう宣言させるか | S6-10 まで（完了の条件 2） | 今は `BookSettingsCss` が `standard` の選択子（`vs-header-*`）を持つ（§11.11 の 6） |
-| 7 | `vs build` が、著者が入れたテーマの層の勝ち負けの組を、要素ごとの判定で 🟡 にする（`css-layer-restructure-spec.md` §4.3 の「扱い（S6 以降）」）のを、どの小段階で入れるか | S7（`theme:add` で外のテーマを入れられるようになる時点）まで | S6-8 では作っていない。今は `--log=debug` のときだけ出す（§11.12 の 2） |
-| 8 | 雛形から消えたテーマのファイル（とくに置けば読まれる出力先の CSS）を、`vs upgrade` が本から消すか | 同梱のテーマからファイルを消す変更をするとき（S8 の `bunko` まで） | 今は消さない。lock から記録が消えるだけ（§11.13 の 6） |
+| 6 | 改ページの打ち消しが写すテーマの選択子 | 決定済み（2026-11-17） | 公開する変数で読む（§3.5・§5.2。`v2-s6-10-consultation.md` §4.3） |
+| 7 | 著者が入れたテーマの層の勝ち負けの組を知らせる形 | S7 の入口の実験 | `vs build` では 🟡 にしない（`--log=debug` のときだけ）。S7 の入口の実験で公式テーマの組の数を記録し、多くて取り込みの変換で直せないと分かったときに限り、「`vs theme:add` が入れた時点で 1 回知らせる」形を S7 の仕様で決める（`v2-s6-10-consultation.md` §4.6） |
+| 8 | 雛形から消えたテーマのファイル | 決定済み（2026-11-17） | `vs upgrade` が消す（§7.3。S6-10。`v2-s6-10-consultation.md` §4.7） |
 
 ---
 

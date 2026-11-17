@@ -216,6 +216,10 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 
 ---
 
+### 2.24 `break-before` は `var()` で書いても働く（層をまたいでも）
+
+使える書き方の記録（2026-11-17・Vivliostyle cli 11.3.3・core 2.45.1。`v2-s6-10-consultation.md` §4.2）。tokens 層の `:root` に既定値、theme 層に `body.x h2 { break-before: var(--book-section-break-before); }`、settings 層の `:root` に値を置いた 1 枚の HTML で、`page`・`auto`・`recto`・`verso` のどれも改ページに使われた（白紙を挟む `recto`・偶数ページの `verso` も）。テーマに改ページを値で書かせず、公開する変数で読ませる形（`theme-contract-spec.md` §3.5）はこれに拠る。クリーン EPUB の Apple Books（WebKit）で働くかは、S6-9b で確かめる。
+
 ## 3. 今回確立した実装パターン
 
 | パターン | 実装箇所 | 用途 |
