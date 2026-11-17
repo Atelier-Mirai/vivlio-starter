@@ -5,7 +5,7 @@
 /* =============================================================
    扉絵（h1）・節絵（h2）の合成 SVG（EPUB 専用・math-frontispiece-svg-spec §B）
    -------------------------------------------------------------
-   EpubBuilder が PDF 完成後に <h1 class="vs-image-heading-epub"> 等を注入する。
+   Transforms::Shared::InjectHeadingImages が PDF 完成後に <h1 class="vs-image-heading-epub"> 等を注入する。
    PDF 経路にはこのマークアップが存在しないため、これらのルールは PDF では不発で無害。
    image-header.css の固定寸法グリッド（h1 grid / .section-topic 150px 行）を
    EPUB のリフローに合わせて解除し、合成 SVG を段幅いっぱいに表示する。

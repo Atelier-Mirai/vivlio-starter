@@ -34,7 +34,7 @@ ul ul ul { list-style-type: "・"; }      /* ・ */
 
    鉤は :checked の背景画像（インライン SVG）で描く。読めない環境でも
    background-color の塗りつぶしが残るので「済み」は伝わる。
-   Kindle は appearance を解さないため、EpubBuilder が □ / ■ の文字へ差し替える。
+   Kindle は appearance を解さないため、Transforms::Kindle::DecorateListMarkers が □ / ■ の文字へ差し替える。
    markdown-notation-collision-spec.md §4 */
 ul.contains-task-list {
   list-style: none;

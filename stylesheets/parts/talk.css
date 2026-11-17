@@ -10,7 +10,7 @@
      chat   … 吹き出し（左右振り分け・話者列＝アバターの下に名前・尻尾つき）
      inline … 「名前：発話」を 1 段落で組む
    話者色はクラス経由（--book-talk-accent。既定はテーマ色、話者ごとの色は生成 CSS が
-   --talk-c-<key> で上書き）。Kindle は EpubBuilder が DOM を inline 形式へ組み替えるため、
+   --talk-c-<key> で上書き）。Kindle は Transforms::Kindle::DecorateTalk が DOM を inline 形式へ組み替えるため、
    ここの inline 用ルールがそのまま Kindle の見た目になる。
    ===================================================================== */
 .talk {

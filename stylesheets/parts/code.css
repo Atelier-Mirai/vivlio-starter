@@ -178,11 +178,11 @@ figure[class*=" language-"] > figcaption + pre {
    EPUB 共通 コード行ブロック（epub-code-line-numbers-spec.md F 案）
    -------------------------------------------------------------
    リフロー EPUB では Prism の .line-numbers-rows（position:absolute ガター）が
-   長行折返しで番号とずれ、Kindle はそもそも描けない。EpubBuilder が
+   長行折返しで番号とずれ、Kindle はそもそも描けない。Transforms::Kindle::InjectCodeLineNumbers が
    pre.line-numbers を「1 論理行 = 1 div.vs-code-line」の容器 div.vs-code-epub へ
    変換し（両フレーバ共通）、折返しはぶら下げインデントで番号の右へ揃える。
    行番号はクリーン EPUB では CSS カウンタ（::before）、Kindle では実テキスト
-   span.vs-code-ln（EpubBuilder が注入）で出す。
+   span.vs-code-ln（Transforms::Kindle::InjectCodeLineNumbers が注入）で出す。
    Kindle(KFX) が var()・論理プロパティを解さないため、共通部は物理プロパティ・
    具体値のみで書く。この div は EPUB 経路でしか生成されず PDF には現れない。
    ============================================================= */

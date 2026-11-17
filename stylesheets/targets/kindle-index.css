@@ -11,7 +11,7 @@ body.vs-kindle .index h1 {
   border-bottom: 2px solid var(--book-color-accent, #333);
 }
 
-/* Kindle は段組みを解さないので、EpubBuilder が語を横に 2 つずつ並ぶ形へ組み替える
+/* Kindle は段組みを解さないので、Transforms::Kindle::LayoutIndexColumns が語を横に 2 つずつ並ぶ形へ組み替える
    （layout_index_columns_for_kindle!）。表にしないのは、KFX の表は一度拡大しないと
    リンクをたどれないため。語を主役にして、章の名前は小さく薄くする。 */
 body.vs-kindle .index-section {

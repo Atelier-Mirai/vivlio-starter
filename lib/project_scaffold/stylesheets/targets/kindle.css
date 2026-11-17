@@ -91,7 +91,7 @@ body.vs-kindle .text3-img > figure {
 
 /* --- parts/sideimage.css --- */
 
-/* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
+/* sideimage 系も Grid 解除（画像の幅・float は Transforms::Kindle::ConstrainLayoutImages が inline で付与する） */
 body.vs-kindle .sideimage,
 body.vs-kindle .sideimage-left,
 body.vs-kindle .sideimage-right {
@@ -115,7 +115,7 @@ body.vs-kindle .sideimage-right > figure {
 
 /* =============================================================
    EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2・§3）
-   body.vs-kindle は EpubBuilder が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。
+   body.vs-kindle は Transforms::Kindle::MarkBody が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。
    Kindle は CSS Grid を解さず、grid 前提の book-card 画像が全幅化するため、
    単列フロー前提で画像に上限を課し、本文を回り込ませる。
    ============================================================= */
@@ -136,7 +136,7 @@ body.vs-kindle .book-meta { margin-block: 0 0.8em; }
 
 /* --- parts/math.css --- */
 
-/* 数式: ex→em は EpubBuilder が inline style を変換する。ここは万一 inline style が
+/* 数式: ex→em は Transforms::Kindle::ConvertMathUnits が inline style を変換する。ここは万一 inline style が
    無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */
 body.vs-kindle img.vs-math-inline { max-height: 1.8em; width: auto; }
 
@@ -192,7 +192,7 @@ body.appendix.vs-kindle h4::before {
 
 /* =============================================================
    Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
-   番号は EpubBuilder が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
+   番号は Transforms::Kindle::DecorateListMarkers が先頭注入する実体マーカー <span class="vs-li-marker"> で出す。
    ネイティブマーカーとの二重表示を防ぐため list-style を消す。Previewer 4 は ::before の
    content も本文へ差し込むので、それも止める（`(1) (1) 項目` になる）。
    :is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
@@ -236,7 +236,7 @@ body.vs-kindle figure.align-right {
 /* =============================================================
    Kindle 専用 コラム・注記枠ラベル（tip / memo / column / notice / note）（epub-kindle-target-split-spec.md §1-5）
    Kindle(KFX) は ::before(position:absolute) のラベル帯を解さない。そこで Kindle
-   ビルド（body.vs-kindle）でのみ ::before ラベルを抑止し、EpubBuilder が先頭注入する実体
+   ビルド（body.vs-kindle）でのみ ::before ラベルを抑止し、Transforms::Kindle::DecorateAdmonitions が先頭注入する実体
    ラベル <p class="vs-adm-label"> を枠上に通常表示する。
    notice / note は PDF では枠タブを持たない（左/上下アクセント線）が、Kindle ではラベルを
    載せるので、tip/memo/column と同じ「囲み枠＋ラベル」へ劣化させる。
@@ -294,7 +294,7 @@ body.vs-kindle .note {
 }
 
 /* .output / .terminal の Kindle 劣化（§5 と同方針）。PDF・クリーン EPUB ではラベルなしの
-   素枠だが、Kindle では EpubBuilder が先頭注入する実体ラベル <p class="vs-adm-label">
+   素枠だが、Kindle では Transforms::Kindle::DecorateAdmonitions が先頭注入する実体ラベル <p class="vs-adm-label">
    （【OUTPUT】/【TERMINAL】）を見せる。注入ラベル用に上余白を確保する。 */
 body.vs-kindle .output {
   padding-block-start: 4mm;
@@ -335,7 +335,7 @@ body.vs-kindle .terminal pre {
 /* =============================================================
    Kindle 専用 会話文（.talk）劣化（talk-display-options-spec.md §2.5）
    Kindle(KFX) は flex・::before/::after・var()・丸抜き画像を解さない。吹き出しを CSS で
-   近似するのではなく、EpubBuilder が DOM を inline 形式（名前＋区切り＋発話の 1 段落）へ
+   近似するのではなく、Transforms::Kindle::DecorateTalk が DOM を inline 形式（名前＋区切り＋発話の 1 段落）へ
    組み替え、容器のクラスを talk-style-inline に差し替える。以降は parts/talk.css の
    inline 用ルールがそのまま効くため、ここに Kindle 専用の体裁は要らない。
    話者色は、生成 CSS（book-settings.css）が .talk-c-<key> の .talk-name / .talk-sep / strong に
