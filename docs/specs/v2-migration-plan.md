@@ -97,7 +97,7 @@ brief の叩き台の順序（HTML の構造 → 層 → Kindle 用の CSS → �
 | 2 | 縦の文書と横の文書（奥付）が 1 冊に混ざって組めない | ページの進む向きか、奇数ページの側が奥付で変わる | S8-4 の最初 | 奥付と権利ページも縦に組み、英数字の箱だけを横にする（決定済み） | Opus |
 | 3 | Kindle が論理方向の CSS を解さない | S8-1 か S8-4 の Kindle の中間生成物で、余白や枠の側が変わる | S8-1・S8-4 | 手で書き直す箇所が 20 以下なら `targets/kindle.css` に物理方向で書く。20 を超えたら、`LiteralResolver` で論理方向を物理方向に書き直す（相談しない）。縦書きの本では、組方向から物理方向を決める表を `LiteralResolver` に持たせる。どちらを選んだかと数を記録する | Opus |
 | 4 | KDP が絵本の EPUB を受け付けない | S9-0 の A・B のどちらも通らない | S9-0（S8 の間に行える） | `picture-book-spec.md` §9.1 の表。最後は §4.4 の「い」 | ユーザー |
-| 5 | Apple Books が `break-before` の `var()` を解かない | S6-9b の B2 の EPUB で、節の改ページが効かない | S6-9b | `theme-contract-spec.md` の S6-9b の手（`v2-s6-10-consultation.md` §4.5） | Opus |
+| 5 | Apple Books が `break-before` の `var()` を解かない | S6-9b の B2 の EPUB で、節の改ページが効かない | S6-9b | `theme-contract-spec.md` の S6-9b の手（`v2-s6-10-consultation.md` §4.5） | Opus（2026-11-17・S6-9b で確かめ、起きなかった。`theme-contract-spec.md` §11.14） |
 | 6 | Kobo・Google Play Books での表示が確かめられない | 手元に端末が無い | 公開まで | 確かめない。平らな CSS と規格どおりの EPUB（EPUBCheck が 0）を渡すことを保証の線にする。マニュアルに、確かめたリーダー（Apple Books・Kindle Previewer）を書く | Opus（マニュアルの文面はユーザーが見る） |
 | 7 | 移行の不具合が公開の直前に分かる | 6 冊のどれかの PDF に説明のつかない差 | S11a（予行） | S11a の予行で基盤の不具合を出し、`v2` で直す | Opus（見た目の判断はユーザー） |
 | 8 | 原稿の更新が S11b に集まる | 送った書き換えの一覧が長くなる | 各段階 | 送るたびに §4.5 の一覧に 1 行足す。S11b はその一覧を上から片付ける | Opus |

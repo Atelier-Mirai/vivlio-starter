@@ -1234,4 +1234,4 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | EPUBCheck | B1 のクリーン・Kindle 用、B2 の `false`・`true` とも致命・エラー・警告 0 |
 | `vs theme:check standard` | 🔴・🟡 とも 0 |
 | テスト | `rake test` 4,486 件が通った（S6-9 の後の 4,483 件に、足した 3 件。スキップ 1 は前からのもの）。`rake test:layout` 7 件が通った。変えたファイルに `rubocop` を掛け、違反 0 |
-| Apple Books（B2 の `false`・`true` の写し） | **未実施（2026-11-17）。** 書名を `vs-test s6-9b false`・`true` で始めた写しを `r2/check/s6-9b/` に作った（EPUBCheck 0 件）。画面を操作し、ライブラリへ取り込む確かめなので、ユーザーの了承を得てから行う |
+| Apple Books（B2 の `false`・`true` の写し。書名を `vs-test s6-9b` で始めた写し・1024×768 の見開き） | 第 2 章（表紙から「次の章」4 回）から → で 3 回送って見た。`false` は、節見出し「2-2」が囲みのすぐ後に（p30）、「2-3」が段落のすぐ後に（p32）同じページで続く。`true` は、「2-2」（p33）・「2-3」（p35）とも新しいページの頭から始まる。Apple Books も `break-before` の `var()` を解く（`v2-migration-plan.md` §2.4 の危険の 5 は起きなかった）。予備の `break-before: page;` は足していない。撮った画面は `r2/check/s6-9b/screens-books/`。写しは撮った後に、「名称変更…」で書名を確かめてからライブラリから削除した |
