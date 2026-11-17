@@ -44,7 +44,7 @@
 | **S3** | 平らな CSS の生成。Kindle と EPUB の規則を集める（S3-1〜S3-4。S3-3 は a・b に分けた） | `css-layer-restructure-spec.md` §4・§5・§8 | S2 | PDF は同じ。EPUB と Kindle は CSS の形が変わり、表示は同じ | 完了の後に **r2**（作成済み・§8.11） |
 | **S4** | 出力先の宣言。`epub_builder.rb` の分割 | `v2-architecture-spec.md` §4・§8 | S3 | 同じ | |
 | **S5** | 種類・軸・`BuildPlan`・設定のキー | `v2-architecture-spec.md` §2・§3・§5・§6・§8 | S0（S2〜S4 とは独立） | 同じ | |
-| **S6** | テーマの仕組み。今の見た目を `standard` テーマに切り出す。変数の名前。残りは S6-9b（改ページを公開する変数で読む）・S6-10（配色のテーマ・`kindle_tokens:`・完了の確かめ） | `theme-contract-spec.md` §3〜§5・§7〜§9 | S1・S3・S5 | 同じ | 完了の後に **r3**（B1〜B5） |
+| **S6** | テーマの仕組み。今の見た目を `standard` テーマに切り出す。変数の名前。2026-11-17 に完了（`theme-contract-spec.md` §11.15） | `theme-contract-spec.md` §3〜§5・§7〜§9 | S1・S3・S5 | 同じ | 完了の後に **r3**（B1〜B5） |
 | （区切り） | 節リードの判断（`image` の見出しの EPUB）。ユーザーに前後の画面を見せて決める | 本書 §4.1 | r3 | 決定しだい（変えるなら r3 に取り込んでから版を確定する） | |
 | **S11a** | 1.x の本を 2.0 へ移す `vs upgrade`・移行の見本・移していない本を止める 🔴・写しでの予行（§4.3） | 本書 §5 | S6 | 同じ | |
 | **S7a** | 公式テーマの入口の実験 | `theme-contract-spec.md` §9 の S7 | S6 | 同じ（製品のコードを足さない） | |

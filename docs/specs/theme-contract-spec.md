@@ -618,7 +618,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `vs theme:add` で入れた同梱のテーマ | `scaffold.lock` に記録し、雛形から来たテーマと同じに扱う |
 | `stylesheets/` の土台と部品 | 今と同じ |
 
-**雛形から消えたテーマのファイル（`v2-s6-10-consultation.md` §4.7。S6-10 で作る）。** テーマのディレクトリは置いたファイルが読まれる（出力先の CSS）ので、`vs upgrade` が消す。範囲は `themes/` の下だけ。
+**雛形から消えたテーマのファイル（`v2-s6-10-consultation.md` §4.7。S6-10 で作った。§11.15）。** テーマのディレクトリは置いたファイルが読まれる（出力先の CSS）ので、`vs upgrade` が消す。範囲は `themes/` の下だけ。
 
 | 本の側のファイル | 扱い |
 | :--- | :--- |
@@ -1184,7 +1184,7 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 3. **注釈の中の名前も置き換える。** `LegacyTokens.rename`（S6-2）の決まりのまま。置き換える行は全部見せるので、注釈の行も確認の前に分かる。雛形の `custom.css` の「使い方の例」も新しい名前で書いてある。
 4. **本が使うテーマは `Common::CONFIG` でなく `book.yml` を直接読む。** `vs upgrade` は廃止キーの残った `book.yml` でも動き、設定を読み込んだ時点と作業ディレクトリが合うとも限らないため。
 5. **著者のテーマの 🟡 の案内は `vs upgrade` 用に書き換える。** `Contract` の案内（「vs upgrade で vs を新しくしてください」）は、`vs upgrade` の最後では次の手にならない。版の事実（読める契約の版）だけを残し、「著者が入れたテーマなので更新していない」「この vs に合う版のテーマを `vs theme:add` で入れ直す」を示す。
-6. **雛形から消えたテーマのファイルは、本から消さない。** 今の雛形の更新と同じ（lock から記録が消えるだけ）。テーマの出力先の CSS（`epub.css` など）は置けば読まれるので、雛形がそれを消したときは本に残って効く。同梱のテーマからファイルを消す変更をするときに、消す扱いを足す（S8 で `bunko` を書くときに見直す）。
+6. **雛形から消えたテーマのファイルは、本から消さない。** 今の雛形の更新と同じ（lock から記録が消えるだけ）。テーマの出力先の CSS（`epub.css` など）は置けば読まれるので、雛形がそれを消したときは本に残って効く。同梱のテーマからファイルを消す変更をするときに、消す扱いを足す（S8 で `bunko` を書くときに見直す）。→ S6-10 で、消す扱いを足した（§7.3・§11.15）。
 
 #### 確かめた結果
 
@@ -1235,3 +1235,44 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | `vs theme:check standard` | 🔴・🟡 とも 0 |
 | テスト | `rake test` 4,486 件が通った（S6-9 の後の 4,483 件に、足した 3 件。スキップ 1 は前からのもの）。`rake test:layout` 7 件が通った。変えたファイルに `rubocop` を掛け、違反 0 |
 | Apple Books（B2 の `false`・`true` の写し。書名を `vs-test s6-9b` で始めた写し・1024×768 の見開き） | 第 2 章（表紙から「次の章」4 回）から → で 3 回送って見た。`false` は、節見出し「2-2」が囲みのすぐ後に（p30）、「2-3」が段落のすぐ後に（p32）同じページで続く。`true` は、「2-2」（p33）・「2-3」（p35）とも新しいページの頭から始まる。Apple Books も `break-before` の `var()` を解く（`v2-migration-plan.md` §2.4 の危険の 5 は起きなかった）。予備の `break-before: page;` は足していない。撮った画面は `r2/check/s6-9b/screens-books/`。写しは撮った後に、「名称変更…」で書名を確かめてからライブラリから削除した |
+
+### 11.15 S6-10 配色のテーマと `kindle_tokens:`・S6 の完了（2026-11-17）
+
+決定の経緯は `v2-s6-10-consultation.md` §4.7（雛形から消えたテーマのファイル）。
+
+#### 作ったもの
+
+- **`kindle_tokens:` の書き出し**（`Css::EntryWriter`）: 選ばれたテーマの `kindle_tokens:`（土台 → 自分の順に重ねる。`Theme::Resolved#kindle_tokens`）を、`.cache/vs/theme-kindle-tokens.css` に `body.vs-kindle { --book-…: …; }` として書き出す。Kindle の束の target 層の 2 番目（`targets/kindle-tokens.css` の後・vs の `targets/` の前。`css-layer-restructure-spec.md` §5）で読む。クリーン EPUB と PDF は読まない。`kindle_tokens:` が空なら書かず（前のビルドの残りは消す）、入口にも入れない。`standard` は `kindle_tokens:` を持たないので、本書の出力は変わらない。
+- **`Theme::Manifest`**: `kindle_tokens:` を `tokens:` と同じ決まり（`--book-` を除いた名前・`;` `{` `}` を含まない 1 つの値）で検査する。外れたら 🔴（`Theme::Error`）。Kindle で書ける値の範囲（§3.5）は、今までどおり `vs theme:check` が 🟡 で示す。
+- **配色のテーマの見本** `test/vivlio_starter/fixtures/themes/standard-mono/theme.yml`: `extends: standard` と `tokens:`（`color-accent: "#555"`・`color-link: "#333"`）と `kindle_tokens:`（`font-heading: serif`・`color-link: "#222"`）だけ。同梱しない。
+- **`vs upgrade` が、雛形から消えたテーマのファイルを消す**（§7.3。`UpgradeCommands#plan_theme_removals`・`report_kept_theme_files`）: lock に記録のある `themes/` の下のファイルで、今の雛形に無いものを探す。本の中身が lock の記録と同じなら、計画に「削除（雛形から無くなったファイル）」の行を出し、全体の確認（`--yes` なら確認なし）の後、`.vs-backup/upgrade/` へ退避してから消す。著者が変えていれば残し、`vs upgrade` の最後（外部ツールの出力の後）に 🟡 でパスを示す（出力先の CSS なら「置いてあるかぎり読まれます。要らなければ削除してください」、それ以外は「読まれません」）。どちらも lock の記録は消える（`record_lock!` が雛形に無いファイルとして落とす）ので、次の `vs upgrade` では知らせない。`--dry-run` は「削除」の行と件数を見せるだけ。§11.13 の決め 6 は、これで覆った。
+- **雛形の同期**（`0aa202cd`）: S6-2 の後、雛形の `stylesheets/` は旧い変数の名前のまま、`themes/standard/` だけが新しい名前で写されていた（`vs new` の本は、テーマの変数が解けない組み合わせになっていた）。`ruby scripts/copy_to_scaffold.rb` で直下の正典を写した（`stylesheets/images/bundled/`・`parts/simple-header.css`・`parts/image-header.css` が消え、`tokens-legacy.css` が入る）。
+- **テスト**: `entry_writer_test.rb` に 2 件（書き出しと target 層の順・書き出せない名前の 🔴）、`theme_commands_test.rb` に 1 件（`standard-mono` が `vs theme:check` を通り、`tokens:` の色が `theme.color` の既定値になる）、`upgrade_commands_test.rb` に 3 件（変えていないファイルの削除と退避・変えたファイルを残す 🟡・`--dry-run`）。
+
+#### 仕様に無かったので決めたこと
+
+1. **`kindle_tokens:` の書き出しは、`tokens:` と同じ `write_theme_tokens!` が行う。** `vs theme:check` の Kindle の束の組み立て（`Theme::Check#prepare_workspace`）も同じ口を通るので、検査する束にも `kindle_tokens:` が入る（検査の対象はテーマ自身のファイルだけで、書き出したファイルは見ない）。
+2. **見本の `kindle_tokens:` には、見出しの書体のほかにリンクの色も書いた。** §3.1 の使い道の 2 つ（見出しを明朝に・リンクを `#222` に）を両方通すためである。完了の条件 10 の「Kindle の見出しだけが明朝」は、書体の変わる要素が見出しだけであることとして確かめた。
+3. **残したファイルの 🟡 で「出力先の CSS」と見なすのは、テーマのディレクトリの直下の `epub*.css`・`kindle*.css`。** 読まれるかどうかが置き場で決まるのはこれだけである（`styles:` の CSS は `theme.yml` が並べたものだけが読まれ、`theme.yml` も雛形から更新される）。
+4. **雛形の同期は S6 の完了に含め、別のコミットにした。** `v2-migration-plan.md` §4.1 の「`stylesheets/`・`themes/` を変えたら同期する」を S6-2 から行っていなかったため。ビルドの経路は変えない（本書は直下の `stylesheets/` を読む）。
+
+#### 確かめた結果
+
+全部の比べ（`v2-migration-plan.md` §3.6 の S6 の最後）と、配色のテーマの見本の 2 通り（`kindle_tokens:` あり・なし）を、S6-10 のコミット（`86f070a2`）を置いた別の worktree から組んだ（台本は基準の `r2/runs/s6-10.sh`、出力は `r2/check/s6-10/`）。どの組み上がりも終了コード 0、🔴 は 0、🟡 は B4 の 7 件だけ（§11.10 と同じ）。
+
+| 確かめ | 結果 |
+| :--- | :--- |
+| PDF の画素（r2 と） | B1 の閲覧用 p83・印刷用 p82、B2 p80、B3 p125 の日付の行だけ（`pdftotext` で「16 日」→「17 日」）。B4 は p316（§11.5 の既知の差）だけ。ほかの全ページは一致 |
+| EPUB（`epub_diff.rb`。B1 は S6-9b の後の出力と） | B1 のクリーン 339 ファイル・Kindle 用 261 ファイルとも違い 0 件 |
+| EPUB（B4。S6-7 の後の出力と。S6-9b では B4 を組んでいない） | 7 件。どれも `styles/*.css` で、変わった行は S6-9b の改ページの変数（`tokens.css` の 3 つ・テーマの 4 か所の `var()`・`book-settings.css` の改ページの節）だけ。B4 の改ページの設定（`section_pagebreak: false`・`chapter_pagebreak: any`・`style: image`）は、S6-9b で計算値の差 0 を確かめた B1 と同じ |
+| 入口の CSS 11 枚・`book-settings.css`・`book-fonts.css`（B1 の写しの、S6-9b の後と） | バイト単位で同じ。`theme-tokens.css`・`theme-kindle-tokens.css` は書かれない |
+| 契約 HTML・EPUB と Kindle の枝の HTML（B1 の写しの、S6-9b の後と。156 文書） | 写しごとに変わる画像の名前（`_epub_assets/` の下・`pictures-` の付くものを含む）と、showcase の SVG の生成日時を除いて同じ |
+| Kindle の中間生成物（`kindle_record_diff.rb`。B1 の S6-9b の後と） | 36 件・26,405 要素で `computedstyle`・`style` とも差 0。Enhanced Typesetting: Supported・Success・エラー 0・品質の問題 0 |
+| `InversionCheck` の要素ごとの判定（`--log=debug`） | B1 の EPUB と Kindle の 16 種類、B4 の 14 種類、`standard-mono` の 2 通りの各 16 種類とも 0 組 |
+| EPUBCheck | B1 のクリーン・Kindle 用、B4、`standard-mono` のクリーン・Kindle 用とも致命・エラー・警告 0 |
+| 単章（`bin/vs build 21`）・`vs preflight`（別の写し） | 終了コード 0・🟡 0。preflight は「良好な状態です」 |
+| 完了の条件 4（`standard-mono`。`theme.name: standard-mono`、`theme.color`・`preface_color`・`appendix_color` を空欄） | `book-settings.css` に `--book-color-accent`・`-preface`・`-appendix` とも `#555`（`tokens:` の値がオプションの既定値になる）。PDF は B1 と比べて 257 ページで画素が違い、`pdftotext -bbox` の語と頁の 26,346 行は全部同じ位置。並べて見た 3 ページ（前書き p4・本文 p25・付録 p227）で、前書きの節見出しの帯・本文の見出しの印・用語集の印など、テーマ色で塗ったところが灰色になっていた。Kindle の中間生成物は、`style` の差が色だけ（緑・青緑・水色 → `#555`、リンク `#000` → `#333`、コラムの地の混色）で、`computedstyle` の差 0。クリーン EPUB の差は、CSS の色の値・テーマ色で塗った節見出しの合成画像（108 枚。名前が中身のハッシュで変わる）・見出しの印の画像 2 枚と、それを指す XHTML と OPF の行だけ |
+| 完了の条件 10（`kindle_tokens:` あり・なしの `standard-mono`） | PDF は 284 ページとも画素が一致（文字の位置も同じ）。クリーン EPUB は違い 0 件。Kindle 用 EPUB は、`styles/*.css` 8 枚に書き出した `body.vs-kindle { … }` と、そのリテラル化の分だけ。Kindle の中間生成物の `style` の差は、見出し（h1〜h4）と図のキャプション（どちらも `--book-font-heading` を読む）の `font-family: sans-serif → serif` の 610 件と、リンクの `color: #333 → #222` の 445 件だけ。`computedstyle` の差は、見出しの字形が変わって後ろの要素が 1px ずつ下がった位置（`contentTop`・`contentBottom` など）だけで、本文の書体は変わらない。`kindle_tokens:` の `font-size` と総称の名前でない書体の 🟡 は、`theme_commands_test.rb`（S6-8）で確かめている |
+| 雛形から消えたテーマのファイル（写しの本。B4 の素材 `r2/src/ai_web_starter/`・lock は 1.0.0） | 先に今の雛形で `vs upgrade --yes`（競合は「いいえ」）を掛け、`themes/standard/` を入れた（lock に 17 個の記録）。次に、`themes/standard/kindle.css` と `epub.css` を抜いた材料の雛形を作り、本の `epub.css` に 1 行足して走らせた。`--dry-run`: 「削除 themes/standard/kindle.css（雛形から無くなったファイル）」と「削除 1 件」が出て、ファイル・lock・退避とも変わらない。本番（`--yes`）: `kindle.css` が消え、`.vs-backup/upgrade/<日時>/themes/standard/kindle.css` に元と同じ中身で退避され、lock から `kindle.css`・`epub.css` の記録が消えた。`epub.css` は残り、最後に 🟡「themes/standard/epub.css は雛形から無くなったファイルですが、変更があるので残しました」「置いてあるかぎり読まれます。要らなければ削除してください」。もう一度走らせると、「削除」も 🟡 も出ない。`ToolUpgrader.run!` と `run_gem_command` は差し替えて走らせた |
+| テスト | `rake test` 4,492 件が通った（S6-9b の後の 4,486 件に、足した 6 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
+| `rake test:release`（1 段ずつ。記録は `r2/check/s6-10/release/`） | 全段が通った（19:58〜20:57）。`test` と `test:standard` 4,492 件（スキップ 1）・`test:layout` 7 件・`test:targets` 19 件・`test:notation` 7 件・`test:manual` 14 件・`test:package` 4 件 |
