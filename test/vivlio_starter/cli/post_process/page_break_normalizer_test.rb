@@ -25,16 +25,18 @@ class PageBreakNormalizerTest < Minitest::Test
   # 節の改ページ設定は明示的に与える。プロジェクト自身の book.yml を読ませると、
   # 著者が page.section_pagebreak を false にした瞬間にテストが落ちる
   # （正規化は h2 が改ページする前提でのみ働くため）。
-  # body クラスは CSS が実際に見る印（vs-header-image / vs-header-simple）。
-  # section_pagebreak: false のとき対象範囲がこれで変わる（breaking_h2_scope）。
-  def normalize(body, section_pagebreak: true, body_class: nil)
+  # section_pagebreak: false のとき、対象範囲は扉絵の機能（frontispiece:）と body のページの種類の
+  # クラスで変わる（breaking_h2_scope）。機能の有効もプロジェクトの設定から読ませず、明示的に与える。
+  def normalize(body, section_pagebreak: true, body_class: nil, frontispiece: false)
     body_tag = body_class ? %(<body class="#{body_class}">) : '<body>'
     PBN.stub(:section_pagebreak_enabled?, section_pagebreak) do
-      Tempfile.create(['vs_pbn_', '.html']) do |f|
-        f.write("<html>#{body_tag}\n#{body}\n</body></html>")
-        f.flush
-        count = PBN.normalize!(f.path)
-        return [File.read(f.path, encoding: 'utf-8'), count]
+      PBN.stub(:frontispiece_active?, frontispiece) do
+        Tempfile.create(['vs_pbn_', '.html']) do |f|
+          f.write("<html>#{body_tag}\n#{body}\n</body></html>")
+          f.flush
+          count = PBN.normalize!(f.path)
+          return [File.read(f.path, encoding: 'utf-8'), count]
+        end
       end
     end
   end
@@ -197,7 +199,7 @@ class PageBreakNormalizerTest < Minitest::Test
   def test_should_normalize_only_the_first_section_marker_when_disabled_in_image_style
     body = chaptered(first_marker: '<hr class="pagebreak" id="before-first">',
                      second_marker: '<hr class="pagebreak" id="before-second">')
-    out, count = normalize(body, section_pagebreak: false, body_class: 'chapter vs-header-image')
+    out, count = normalize(body, section_pagebreak: false, body_class: 'chapter vs-header-image', frontispiece: true)
 
     assert_equal 1, count
     # 章扉保護で改ページする最初の節 → マーカーは冗長なので落とす
@@ -210,6 +212,16 @@ class PageBreakNormalizerTest < Minitest::Test
   def test_should_keep_all_markers_when_disabled_in_simple_style
     body = chaptered(first_marker: '<hr class="pagebreak" id="before-first">', second_marker: '')
     out, count = normalize(body, section_pagebreak: false, body_class: 'chapter vs-header-simple')
+
+    assert_equal 0, count
+    assert_includes out, 'id="before-first"'
+  end
+
+  # 付録は扉絵の機能が有効な本でも章扉にならない（扉絵の効くページの種類は chapter だけ）ので、
+  # 章扉の保護が働かず、最初の節の前のマーカーも著者の改ページとして残す
+  def test_should_keep_all_markers_on_appendix_even_when_frontispiece_is_active
+    body = chaptered(first_marker: '<hr class="pagebreak" id="before-first">', second_marker: '')
+    out, count = normalize(body, section_pagebreak: false, body_class: 'appendix vs-header-simple', frontispiece: true)
 
     assert_equal 0, count
     assert_includes out, 'id="before-first"'

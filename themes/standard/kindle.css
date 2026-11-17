@@ -57,8 +57,8 @@ body.vs-header-simple.vs-kindle h2 {
   font-size: 1.3em;
   font-weight: 800;
   /* page.section_pagebreak: false のとき、book-settings.css が両方の変数を auto にする */
-  page-break-before: var(--section-page-break-before, always);
-  break-before: var(--section-break-before, page);
+  page-break-before: var(--book-section-page-break-before);
+  break-before: var(--book-section-break-before);
 }
 
 body.vs-header-simple.vs-kindle h2 .section-number {

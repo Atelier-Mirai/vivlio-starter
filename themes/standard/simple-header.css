@@ -18,7 +18,7 @@
    ------------------------------------------------------------- */
 body.vs-header-simple h1 {
   /* layout */
-  break-before: recto;
+  break-before: var(--book-chapter-break-before);
   position: relative;
 
   /* appearance */
@@ -124,7 +124,7 @@ body.vs-header-simple h2 {
   max-inline-size: clamp(120mm, calc(var(--book-paper-scale) * 170mm), 185mm);
 
   /* pagination */
-  break-before: page;
+  break-before: var(--book-section-break-before);
 
   /* typography */
   font-size: clamp(25Q, calc(var(--book-paper-scale) * 33Q), 34Q);

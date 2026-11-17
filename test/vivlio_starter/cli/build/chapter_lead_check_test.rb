@@ -122,7 +122,7 @@ class TestChapterLeadCheck < Minitest::Test
 
   # --- 組んだ HTML からリードを取る ---
 
-  # 章扉のある章（vs-header-image）だけ。付録（vs-header-simple）とリードの無い章は取らない
+  # 章扉のある章（ページの種類が chapter）だけ。付録とリードの無い章は取らない
   def test_should_collect_leads_only_from_chapters_with_frontispiece
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
@@ -134,7 +134,7 @@ class TestChapterLeadCheck < Minitest::Test
           段落です。</p></div></body></html>
         HTML
         File.write(File.join(html_dir, '90-b.html'), <<~HTML)
-          <html><body class="chapter vs-header-simple"><h1>付録</h1><div class="chapter-lead"><p>付録のリード。</p></div></body></html>
+          <html><body class="appendix vs-header-simple"><h1>付録</h1><div class="chapter-lead"><p>付録のリード。</p></div></body></html>
         HTML
         File.write(File.join(html_dir, '20-c.html'), '<html><body class="chapter vs-header-image"><h1>C</h1><p>本文</p></body></html>')
 

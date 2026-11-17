@@ -22,7 +22,7 @@
 #   - hr.pagebreak / div.vs-break-page … マーカーを削除（h2 自身の改ページに一本化）
 #   - div.vs-break-recto / :verso      … マーカーを残し h2 側を無効化（recto 指定が勝つ）
 #
-# 対象範囲は page.section_pagebreak と theme.style で変わる（breaking_h2_scope）。
+# 対象範囲は page.section_pagebreak と、扉絵の機能（frontispiece）で変わる（breaking_h2_scope）。
 # 「h2 が改ページする」ことが前提の処理なので、改ページしない h2 の前のマーカーは
 # 著者が書いた正当な改ページとしてそのまま残す。
 # ================================================================
@@ -30,6 +30,8 @@
 require 'nokogiri'
 require_relative '../common'
 require_relative 'html_parser'
+require_relative '../build/plan'
+require_relative '../theme/features'
 
 module VivlioStarter
   module CLI
@@ -67,19 +69,19 @@ module VivlioStarter
         # 前提なので、この範囲の外にあるマーカーは著者の意図どおり残す。
         #
         #   :all                 … 既定（section_pagebreak: true）。全 h2 が改ページする
-        #   :first_section_only  … false かつ image スタイル。章扉を全面の扉絵で成立させる
+        #   :first_section_only  … false で、扉絵の章扉のページ。章扉を全面の扉絵で成立させる
         #                          ため章の最初の節だけ改ページが残る
-        #                          （BookSettingsCss#chapter_frontispiece_guard_rule と対）
-        #   :none                … false かつ simple スタイル。どの h2 も改ページしない
+        #                          （Theme::Features::Frontispiece.guard_rule と対）
+        #   :none                … false で、それ以外のページ。どの h2 も改ページしない
         #
-        # image スタイルの判定は config ではなく body クラスで行う——付録は
-        # theme.style: image でも常に vs-header-simple なので、CSS が実際に見るものと
-        # 同じ印を見るのが唯一ずれない方法（BodyClassInjector#header_mode_class）。
+        # 扉絵の章扉かは、機能が有効かと、body のページの種類のクラスで判定する（付録は扉絵の
+        # 機能が有効でも章扉にならない）。テーマのクラス（standard の vs-header-image）は読まない
+        # （theme-contract-spec.md §3.4）。
         def breaking_h2_scope(doc)
           return :all if section_pagebreak_enabled?
 
           body_classes = doc.at_css('body')&.[]('class').to_s.split
-          body_classes.include?('vs-header-image') ? :first_section_only : :none
+          Theme::Features::Frontispiece.page?(body_classes, active: frontispiece_active?) ? :first_section_only : :none
         end
 
         # 章（section.level1）の最初の節かどうか。章扉保護の CSS セレクタ
@@ -170,6 +172,9 @@ module VivlioStarter
         # （明示的に false と書かれたときだけ無効）。原稿の記法チェックも同じ判定を
         # 要するため、実体は Common へ集約してある。
         def section_pagebreak_enabled? = Common.section_pagebreak_enabled?
+
+        # 扉絵の機能が有効か（standard の style: image）
+        def frontispiece_active? = BuildPlan.current.features.frontispiece
       end
     end
   end

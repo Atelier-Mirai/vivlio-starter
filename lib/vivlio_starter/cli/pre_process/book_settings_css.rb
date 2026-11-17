@@ -120,7 +120,7 @@ module VivlioStarter
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
-            #{section_pagebreak_rule(page_cfg)}
+            #{section_pagebreak_rule(page_cfg, frontispiece: frontispiece_active?(cfg, theme))}
             #{chapter_pagebreak_rule(page_cfg)}
             #{heading_numbering_rule(page_cfg)}
             #{section_lead_width_rule(page_cfg)}
@@ -239,6 +239,13 @@ module VivlioStarter
           active = theme.active_features(cfg)
           theme.features.map { Theme::Features[it].page_rule(page_cfg, active: active.include?(it)) }
                .reject(&:empty?).join("\n")
+        end
+
+        # 扉絵の機能が有効か（章扉の保護を書くかの判定。active_features はテーマの features: に絞った後の値）
+        def frontispiece_active?(cfg, theme)
+          return false unless theme
+
+          theme.active_features(cfg).include?(Theme::Features::Frontispiece::NAME)
         end
 
         # ================================================================
@@ -419,61 +426,42 @@ module VivlioStarter
         # ================================================================
         # 節（h2）の改ページ（page-break-control-spec.md §2.2）
         # ================================================================
-        # 節でページを改める既存ルールの元セレクタ。打ち消しは「元セレクタをそのまま
-        # 複製」する必要がある——book-settings.css は後段読込なので同特異度なら後勝ち
-        # できるが、セレクタがずれると特異度負けして効かない。
+        # テーマの節見出しの改ページは、公開する変数 --book-section-break-before・
+        # --book-section-page-break-before で書かれている（theme-contract-spec.md §3.5）。ここでは変数の値だけを
+        # 書き、テーマの選択子を知らない（テーマを替えても、設定がそのまま効く）。
+        #
+        # vs 自身の部品の改ページだけは、規則で打ち消す。vs が自分の選択子を知っているのは契約の内側で、
+        # 打ち消しは「元の選択子をそのまま写す」必要がある——平らな CSS（EPUB・Kindle）では詳細度で
+        # 勝ち負けが決まり、settings 層は後に読まれるので同じ詳細度なら勝てるが、ずれると負ける。
         SECTION_PAGEBREAK_SELECTORS = [
-          'body.vs-header-image .section-topic h2',  # image-header.css（PDF / EPUB）
-          'body.vs-header-simple h2',                # simple-header.css（PDF / EPUB）
-          'article.vs-section-topic-epub'            # parts/epub-reflow.css（EPUB の節絵 article）
+          'article.vs-section-topic-epub' # parts/epub-reflow.css（EPUB の節絵 article）
         ].freeze
 
-        # page.section_pagebreak: false のときだけ打ち消し規則を出す。
-        # true・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
+        # page.section_pagebreak: false のときだけ書く。
+        # true・未設定では何も書かず、tokens.css の既定（page・always）がそのまま生きる
         # （P3 の「書かない条件では宣言しない」セマンティクス）。
-        # 打ち消しだけでは章扉に最初の節が流れ込むため、章扉の保護を続けて出す。
+        # 打ち消しだけでは章扉に最初の節が流れ込むため、扉絵の機能が有効なら章扉の保護を続けて書く
+        # （Theme::Features::Frontispiece.guard_rule。扉絵を使うテーマ全部に要る機能の骨格）。
         #
         # かつては「節絵の箱が固定 150px 行からはみ出して直前の本文に重なる」是正も
         # ここで出していたが、heading-metrics-spec §3・§4 で image-header.css 側の
         # 行を実寸（auto）にしたため不要になった（はみ出し自体が消えた）。
-        def section_pagebreak_rule(page_cfg)
+        # @param frontispiece [Boolean] 扉絵の機能が有効か
+        def section_pagebreak_rule(page_cfg, frontispiece: false)
           return '' unless section_pagebreak_disabled?(page_cfg)
 
-          # Kindle の簡素な節見出し（themes/standard/kindle.css の body.vs-header-simple.vs-kindle h2）は、
-          # 下の選択子より詳細度が高いので、規則では打ち消せない。変数で値を渡す
           <<~CSS.chomp
             /* page.section_pagebreak: false — 節（h2）でページを改めない。
                Kindle KFX 向けの legacy page-break-before も併せて打ち消す。 */
+            :root {
+              --book-section-break-before: auto;
+              --book-section-page-break-before: auto;
+            }
             #{SECTION_PAGEBREAK_SELECTORS.join(",\n")} {
               break-before: auto;
               page-break-before: auto;
             }
-            :root {
-              --section-break-before: auto;
-              --section-page-break-before: auto;
-            }
-            #{chapter_frontispiece_guard_rule}
-          CSS
-        end
-
-        # 章扉（h1 のページ）だけは節の改ページを止めても独立させる。
-        #
-        # image スタイルの章扉は @page :nth(1) の全面背景（扉絵）で成立しているので、
-        # 最初の節が同ページへ流れ込むと扉絵の上に本文と節絵が重なる（pdf_h1.png 実測）。
-        # EPUB/Kindle の扉絵は通常フローの合成 SVG 画像で全面背景ではないため保護不要
-        # ——body.vs-epub（クリーン・Kindle 共通マーカー）を除外して PDF に限定する。
-        # section.level2:first-of-type は section.level1 直下の最初の節。h1 と
-        # .chapter-lead は section 要素でないので :first-of-type の数に入らない。
-        # `@pagebreak:recto` の直後で記法の側の改ページに一本化した h2（vs-break-merged）は除く。
-        # 一本化の規則は utilities 層にあり、settings 層のこの規則には負けるので、選ぶ対象の側で
-        # 外す（css-layer-restructure-spec.md §2.4）。
-        def chapter_frontispiece_guard_rule
-          <<~CSS.chomp
-            /* 章扉は全面の扉絵で成立するページなので、最初の節だけは次ページから始める。 */
-            body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2:not(.vs-break-merged) {
-              break-before: page;
-              page-break-before: always;
-            }
+            #{Theme::Features::Frontispiece.guard_rule(active: frontispiece)}
           CSS
         end
 
@@ -489,17 +477,18 @@ module VivlioStarter
         # ================================================================
         # 章の改丁（chapter-pagebreak-spec.md §2.2）
         # ================================================================
-        # 章・目次・部扉・付録・用語集・後書き・索引を右ページ始まりにする既存ルールの
-        # 元セレクタ。7 ファイルに散っているが、chapter-common / glossary / index /
-        # postface の 4 つはいずれも素の body なので、相異なるセレクタは 5 つで足りる。
+        # 章・目次・部扉・付録・用語集・後書き・索引を右ページ始まりにする vs 自身のルールの
+        # 元セレクタ。6 ファイルに散っているが、chapter-common / glossary / index /
+        # postface の 4 つはいずれも素の body なので、相異なるセレクタは 4 つで足りる。
         # 打ち消しは「元セレクタをそのまま複製」する必要がある——book-settings.css は
         # 後段読込なので同特異度なら後勝ちできるが、ずれると特異度負けして効かない。
+        # テーマの章見出しの改丁は、公開する変数 --book-chapter-break-before で書かれているので、
+        # 変数の値を書くだけでよい（theme-contract-spec.md §3.5）。
         CHAPTER_PAGEBREAK_SELECTORS = [
-          'body',                     # parts/heading.css / pages/glossary.css / pages/index.css / pages/postface.css
-          'body.toc',                 # toc.css
-          'body.whole_toc',           # toc.css（分冊の全巻目次）
-          'body.vs-header-simple h1', # simple-header.css
-          '.part-title'               # part-title.css
+          'body',           # parts/heading.css / pages/glossary.css / pages/index.css / pages/postface.css
+          'body.toc',       # toc.css
+          'body.whole_toc', # toc.css（分冊の全巻目次）
+          '.part-title'     # part-title.css
         ].freeze
 
         # 素の body の改丁から外すページ（スパインの末尾に相乗りし、改ページが要らない）
@@ -514,7 +503,7 @@ module VivlioStarter
         # （P3 の「書かない条件では宣言しない」セマンティクス）。
         #
         # any の置換先を auto ではなく page にするのは、.part-title と
-        # body.vs-header-simple h1 が**文書内の要素**であり、auto にすると直前の内容へ
+        # テーマの章見出し（standard の body.vs-header-simple h1）が**文書内の要素**であり、auto にすると直前の内容へ
         # 流れ込んでしまうため。body への page は分割フローの先頭なので実害が無い。
         # verso には legacy page-break-before の対応値が無いので併記しない
         # （KFX はいずれにせよ recto/verso を解さない）。
@@ -540,6 +529,9 @@ module VivlioStarter
             /* page.chapter_pagebreak — 章・目次・部扉・付録・用語集・後書き・索引を#{note}。
                原稿中の @pagebreak:recto / :verso（.vs-break-*）はここでは触らないため、
                局所の明示指定が本設定より優先される。 */
+            :root {
+              --book-chapter-break-before: #{value};
+            }
             #{CHAPTER_PAGEBREAK_SELECTORS.join(",\n")} {
               #{declarations.join("\n  ")}
             }

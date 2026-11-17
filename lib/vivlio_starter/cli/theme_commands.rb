@@ -336,7 +336,12 @@ module VivlioStarter
 
             /* テーマ #{name} の CSS（theme 層）。
                値を変えるときは stylesheets/tokens.css の公開する変数（--book-*）を使います。
-               Kindle に届かない書き方は vs theme:check #{name} が示します。 */
+               Kindle に届かない書き方は vs theme:check #{name} が示します。
+
+               章見出し（h1）と節見出し（h2）の改ページは、値ではなく公開する変数で書きます。
+               config/book.yml の page.chapter_pagebreak・page.section_pagebreak が効くようになります。
+                 h1 { break-before: var(--book-chapter-break-before); }
+                 h2 { break-before: var(--book-section-break-before); } */
           CSS
         end
       end

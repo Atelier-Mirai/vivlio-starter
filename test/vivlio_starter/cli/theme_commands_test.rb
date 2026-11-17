@@ -85,6 +85,28 @@ module VivlioStarter
         end
       end
 
+      # 見出しの改ページを値で書いた規則は、page.chapter_pagebreak・section_pagebreak が効かない（§3.5）。
+      # 出力先の CSS では章見出しを見ない（章の改丁は PDF だけの設定）
+      def test_should_report_heading_breaks_written_as_values
+        with_book do |root|
+          write_theme(root, 'breaks', { 'extends' => 'standard', 'styles' => %w[theme.css] },
+                      'theme.css' => <<~CSS,
+                        body.chapter h1 { break-before: recto; }
+                        .section-topic h2 { break-before: page; }
+                        h2.vs-break-merged { break-before: auto; }
+                        body.chapter h2 { break-before: var(--book-section-break-before); }
+                      CSS
+                      'kindle.css' => "body.vs-kindle h1 { break-before: page; }\nbody.vs-kindle h2 { break-before: page; }\n")
+
+          messages = Theme::Check.run('breaks', root:).warnings.map(&:message)
+
+          assert_includes messages, 'themes/breaks/theme.css:1 の break-before: recto では、config/book.yml の page.chapter_pagebreak が効きません'
+          assert_includes messages, 'themes/breaks/theme.css:2 の break-before: page では、config/book.yml の page.section_pagebreak が効きません'
+          assert_includes messages, 'themes/breaks/kindle.css:2 の break-before: page では、config/book.yml の page.section_pagebreak が効きません'
+          assert_equal 3, messages.count { it.include?('break-before') }, '値が auto・var() の規則と、出力先の CSS の h1 は出さない'
+        end
+      end
+
       # 写すのは許可の表のファイルだけ。土台が本に無ければ同梱のものを一緒に入れる。book.yml は変えない
       def test_should_copy_only_allowed_files_and_bring_the_bundled_base
         with_book(themes: false) do |root|

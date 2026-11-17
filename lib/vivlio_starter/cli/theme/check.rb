@@ -13,6 +13,8 @@
 #   🟡 契約 HTML に無いクラス・vs の内部のクラスを選んでいる規則（ContainerClassCheck の逆向き）
 #   🟡 層の中の !important・入れ子の規則（css-layer-restructure-spec.md §2.4・§3.5 の表）
 #   🟡 外部の URL（url(http…)・@import）。組むたびにネットワークへ取りにいく
+#   🟡 章見出し（h1）・節見出し（h2）の改ページを、公開する変数でなく値で書いた規則。
+#      page.chapter_pagebreak・page.section_pagebreak が効かない（theme-contract-spec.md §3.5・§7.2）
 #   Kindle に対応するテーマ（supports.targets に kindle）だけ（§3.5）:
 #     💡 紙の寸法（clamp()・min()・max()）で Kindle に届かない宣言の数。意図した書き方で、直す対象ではない
 #     🟡 それ以外で Kindle に届かない宣言（深い要素の変数・:has()・単位の混ざる calc() など）
@@ -63,6 +65,15 @@ module VivlioStarter
 
         # 外部の URL（url(http…)・url(//…)・@import "http…"）
         EXTERNAL_URL = %r{(?:url\(\s*['"]?|@import\s+['"])(?:https?:)?//}i
+
+        # 見出しの改ページを読む設定と、テーマが使う公開する変数（--book- を除いた名前）
+        PAGEBREAK_TOKENS = {
+          'h1' => ['page.chapter_pagebreak', 'chapter-break-before'],
+          'h2' => ['page.section_pagebreak', 'section-break-before']
+        }.freeze
+
+        # 改ページを起こさない値。これらは設定と取り合わないので、値で書いてよい
+        NON_BREAKING_VALUES = /\A(?:auto|avoid)/
 
         module_function
 
@@ -122,8 +133,37 @@ module VivlioStarter
             findings << Finding.new(level: :warning, message: "#{place(file, number)} は、組むたびにネットワークからファイルを読みます",
                                     detail: '→ ファイルをテーマのディレクトリに置き、相対パスで指してください')
           end
-          findings
+          findings.concat(pagebreak_findings(file, css, lines))
         end
+
+        # 章見出し・節見出しの改ページを値で書いた規則。設定（book-settings.css）は公開する変数の値だけを
+        # 書くので、値で書いた改ページには効かない（theme-contract-spec.md §3.5）。
+        # 出力先の CSS（epub*.css・kindle*.css）では h2 だけを見る——章の改丁は PDF だけの設定で、
+        # Kindle の章見出しは値で固定してよい
+        def pagebreak_findings(file, css, lines)
+          headings = File.basename(file).start_with?('epub', 'kindle') ? %w[h2] : %w[h1 h2]
+          Crass.parse(css).filter_map do |node|
+            next unless node[:node] == :style_rule
+
+            selector = node[:selector][:value]
+            heading = selector.split(',').filter_map { heading_of(it) }.find { headings.include?(it) }
+            declaration = Array(node[:children]).find { it[:node] == :property && it[:name] == 'break-before' }
+            next unless heading && declaration
+
+            value = declaration[:value].to_s.strip
+            next if value.include?('var(') || value.match?(NON_BREAKING_VALUES)
+
+            setting, token = PAGEBREAK_TOKENS.fetch(heading)
+            start = line_index(lines, selector.split(',').first.strip) || 1
+            number = lines.drop(start - 1).index { it.include?('break-before') }&.then { start + it }
+            Finding.new(level: :warning,
+                        message: "#{place(file, number)} の break-before: #{value} では、config/book.yml の #{setting} が効きません",
+                        detail: "→ break-before: var(--book-#{token}); と書いてください")
+          end
+        end
+
+        # 選択子が選ぶ要素が h1・h2 なら、その名前（最後の複合選択子の要素名）
+        def heading_of(selector) = selector.strip.split(/[\s>+~]+/).last.to_s[/\Ah[12](?![\w-])/]
 
         # ================================================================
         # 入口に組んだ CSS

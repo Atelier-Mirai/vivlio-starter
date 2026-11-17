@@ -24,6 +24,10 @@ module VivlioStarter
         module Frontispiece
           NAME = 'frontispiece'
 
+          # 扉絵が効くページの種類。扉絵の @page :nth(1) は章だけが読む stylesheets/pages/chapter.css に
+          # あるので、効く場所は vs の CSS の置き場で決まる（テーマは変えられない。theme-contract-spec.md §3.4）
+          PAGE_KINDS = %i[chapter].freeze
+
           # オプションの宣言（theme.frontispiece.*）。値の検査は値を読むコード
           # （FrontmatterGenerator・ThemeValidator）が行う
           OPTIONS = [
@@ -98,6 +102,44 @@ module VivlioStarter
             return '' if offset.empty? || offset == '0mm'
 
             "@page :nth(1) { background-position: calc(50% + #{offset}) center; }"
+          end
+
+          # このページは扉絵の章扉か。機能が有効で、body に扉絵の効くページの種類のクラスがあるとき。
+          # テーマのクラス（standard の vs-header-image）は読まない——standard では同じページを選ぶが、
+          # テーマごとに違う印を vs のコードが知ることになる（theme-contract-spec.md §3.4）
+          # @param body_classes [Array<String>] 組んだ HTML の body のクラス
+          # @param active [Boolean] 機能が有効か（BuildPlan.features.frontispiece）
+          def page?(body_classes, active:)
+            active && PAGE_KINDS.any? { body_classes.include?(it.to_s) }
+          end
+
+          # 章扉の保護。page.section_pagebreak: false でも、章の最初の節だけは次のページから始める
+          # （BookSettingsCss#section_pagebreak_rule が続けて書く）。
+          #
+          # 扉絵の章扉は @page :nth(1) の全面背景で成り立つので、最初の節が同じページへ流れ込むと扉絵の
+          # 上に本文と節絵が重なる（pdf_h1.png 実測）。扉絵を使うテーマの全部に要る骨格なので、テーマの
+          # CSS ではなく機能が書く。settings 層に書くのは、theme 層の break-before: var(…)（値は auto）に
+          # PDF で勝つため。
+          # - EPUB と Kindle の扉絵は通常のフローの合成 SVG 画像で全面背景ではないので、body.vs-epub
+          #   （クリーンと Kindle の共通の印）を除いて PDF に限る。
+          # - section.level2:first-of-type は section.level1 の直下の最初の節。h1 と .chapter-lead は
+          #   section 要素でないので :first-of-type の数に入らない。
+          # - `@pagebreak:recto` の直後で記法の側の改ページに一本化した h2（vs-break-merged）は除く。
+          #   一本化の規則は utilities 層にあり、settings 層のこの規則には負けるので、選ぶ対象の側で
+          #   外す（css-layer-restructure-spec.md §2.4）。
+          def guard_rule(active:)
+            return '' unless active
+
+            selectors = PAGE_KINDS.map do
+              "body.#{it}:not(.vs-epub) section.level2:first-of-type > .section-topic h2:not(.vs-break-merged)"
+            end
+            <<~CSS.chomp
+              /* 章扉は全面の扉絵で成立するページなので、最初の節だけは次ページから始める。 */
+              #{selectors.join(",\n")} {
+                break-before: page;
+                page-break-before: always;
+              }
+            CSS
           end
         end
       end

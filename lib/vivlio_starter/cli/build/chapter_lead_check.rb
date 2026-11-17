@@ -15,7 +15,7 @@
 #   直し方の案は、どちらも FrontispieceEstimate で倍率と字数の組を試して選ぶ。
 #
 # PDF の調べ方:
-#   1. 組んだ HTML から、章扉のある章（body.vs-header-image）のリードの段落を取る
+#   1. 組んだ HTML から、章扉のある章（扉絵の効くページの種類。Theme::Features::Frontispiece.page?）のリードの段落を取る
 #   2. PDF を pdftotext で 1 回読み、リードの頭のページに尾が無ければ、はみ出しの候補にする
 #      （899 ページの合本で 2.1 秒）
 #   3. 候補の 2 ページだけを -bbox-layout で読み、リードの字が通る行を、章扉のページと次の
@@ -29,6 +29,7 @@ require 'nokogiri'
 require 'open3'
 require_relative 'frontispiece_estimate'
 require_relative '../pre_process/issue_registry'
+require_relative '../theme/features'
 
 module VivlioStarter
   module CLI
@@ -106,15 +107,15 @@ module VivlioStarter
         # 章扉の扉絵の機能が有効か（standard の style: image）
         def image_style? = BuildPlan.current.features.frontispiece
 
-        # 組んだ HTML から、章扉のある章のリードを取る。付録は image の本でも vs-header-simple
-        # なので入らない
+        # 組んだ HTML から、章扉のある章のリードを取る。付録は扉絵の効くページの種類でないので入らない。
+        # 機能が有効かは呼び出し元（image_style?）で確かめてあるので、ここではページの種類だけを見る
         def collect_leads(entries)
           entries.filter_map do |entry|
             html = File.join(Common::BUILD_HTML_DIR, "#{entry.basename}.html")
             next unless File.exist?(html)
 
             doc = Nokogiri::HTML(File.read(html, encoding: 'utf-8'))
-            next unless doc.at_css('body')&.[]('class').to_s.split.include?('vs-header-image')
+            next unless Theme::Features::Frontispiece.page?(doc.at_css('body')&.[]('class').to_s.split, active: true)
 
             lead = doc.at_css('.chapter-lead') or next
             blocks = (lead.css('p').empty? ? [lead] : lead.css('p')).reject { it.text.strip.empty? }

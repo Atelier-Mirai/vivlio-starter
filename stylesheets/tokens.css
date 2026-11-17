@@ -91,6 +91,13 @@
   --book-folio-left-content:   counter(page);
   --book-folio-right-content:  counter(page);
 
+  /* 章と節の改ページ（config/book.yml の page.section_pagebreak・page.chapter_pagebreak により自動更新）。
+     テーマは改ページの値を直接書かず、この変数で書く（theme-contract-spec.md §3.5）。
+     section_pagebreak: false で節の 2 つが auto、chapter_pagebreak が any で page・verso で verso になる */
+  --book-section-break-before:      page;
+  --book-section-page-break-before: always; /* Kindle 向けの古い書き方（page-break-before）の値 */
+  --book-chapter-break-before:      recto;
+
   /* 見出しの印（config/book.yml の theme.markers により自動更新） */
   --book-marker-h3: "♣";
   --book-marker-h4: "♦";

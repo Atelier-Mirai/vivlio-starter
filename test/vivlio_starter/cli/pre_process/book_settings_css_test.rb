@@ -383,12 +383,12 @@ class BookSettingsCssPageTest < Minitest::Test
 
   # --- page.section_pagebreak（page-break-control-spec.md §2.2） ---
 
-  # false のときだけ、h2 改ページの元セレクタ一式を打ち消す規則を出す
+  # false のときだけ書く。テーマの節見出しは公開する変数で改ページを読むので値だけを書き、
+  # テーマの選択子は書かない（theme-contract-spec.md §3.5）。vs 自身の EPUB の節絵は規則で打ち消す
   def test_should_emit_section_pagebreak_negation_when_disabled
     css = BSC.section_pagebreak_rule({ section_pagebreak: false })
 
-    assert_includes css, 'body.vs-header-image .section-topic h2'
-    assert_includes css, 'body.vs-header-simple h2'
+    refute_includes css, 'vs-header-', 'テーマのクラスは vs のコードに書かない'
     assert_includes css, 'article.vs-section-topic-epub'
     refute_includes css, 'vs-kindle', 'Kindle の規則は targets/kindle.css に置く'
     assert_includes css, 'break-before: auto;'
@@ -396,24 +396,33 @@ class BookSettingsCssPageTest < Minitest::Test
     assert_includes css, 'page-break-before: auto;'
   end
 
-  # Kindle の簡素な節見出し（themes/standard/kindle.css）は詳細度が高く規則では打ち消せないので、
-  # 変数で値を渡す。Kindle 用の CSS では Css::LiteralResolver が値に解く
-  def test_should_pass_section_pagebreak_to_kindle_through_variables
+  # テーマの節見出し（PDF・EPUB・Kindle とも）は、公開する変数で改ページを読む。
+  # Kindle 用の CSS では Css::LiteralResolver が値に解く
+  def test_should_pass_section_pagebreak_through_public_variables
     disabled = BSC.section_pagebreak_rule({ section_pagebreak: false })
 
-    assert_includes disabled, ":root {\n  --section-break-before: auto;\n  --section-page-break-before: auto;\n}"
+    assert_includes disabled, ":root {\n  --book-section-break-before: auto;\n  --book-section-page-break-before: auto;\n}"
     assert_equal '', BSC.section_pagebreak_rule({ section_pagebreak: true })
   end
 
   # 章扉は @page :nth(1) の全面背景（扉絵）で成立するページなので、節の改ページを
   # 止めても最初の節だけは次ページから始める（pdf_h1.png）。PDF 限定。
+  # 扉絵の機能の骨格なので、機能が有効なときだけ書き、選ぶのはページの種類のクラス（chapter）
   def test_should_keep_chapter_frontispiece_page_dedicated_when_disabled
-    css = BSC.section_pagebreak_rule({ section_pagebreak: false })
+    css = BSC.section_pagebreak_rule({ section_pagebreak: false }, frontispiece: true)
 
-    assert_includes css, 'body.vs-header-image:not(.vs-epub) section.level2:first-of-type > ' \
+    assert_includes css, 'body.chapter:not(.vs-epub) section.level2:first-of-type > ' \
                          '.section-topic h2:not(.vs-break-merged)'
     assert_includes css, 'break-before: page;'
     assert_includes css, 'page-break-before: always;'
+  end
+
+  # 扉絵を使わない本（standard の style: simple・扉絵の機能を持たないテーマ）では、章扉の保護を書かない
+  def test_should_not_emit_frontispiece_guard_without_the_feature
+    css = BSC.section_pagebreak_rule({ section_pagebreak: false }, frontispiece: false)
+
+    refute_includes css, 'section.level2:first-of-type'
+    refute_includes css, 'break-before: page;'
   end
 
   # 既定（true）・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
@@ -437,12 +446,14 @@ class BookSettingsCssPageTest < Minitest::Test
   end
 
   # any は「改ページはするが面は問わない」。auto ではなく page にするのは
-  # .part-title / body.vs-header-simple h1 が文書内の要素で、auto だと
-  # 直前の内容へ流れ込むため（§2.2）。
+  # .part-title やテーマの章見出し（standard の body.vs-header-simple h1）が文書内の要素で、auto だと
+  # 直前の内容へ流れ込むため（§2.2）。テーマの章見出しには公開する変数で値を渡す
   def test_should_relax_chapter_pagebreak_to_any_side
     css = BSC.chapter_pagebreak_rule({ chapter_pagebreak: 'any' })
 
     BSC::CHAPTER_PAGEBREAK_SELECTORS.each { assert_includes css, it }
+    assert_includes css, ":root {\n  --book-chapter-break-before: page;\n}"
+    refute_includes css, 'vs-header-'
     assert_includes css, 'break-before: page;'
     # Kindle KFX 用の legacy 併記
     assert_includes css, 'page-break-before: always;'
@@ -455,6 +466,7 @@ class BookSettingsCssPageTest < Minitest::Test
 
     BSC::CHAPTER_PAGEBREAK_SELECTORS.each { assert_includes rule, it }
     assert_includes rule, 'break-before: verso;'
+    assert_includes css, '--book-chapter-break-before: verso;'
     refute_includes rule, 'page-break-before:'
   end
 
@@ -562,7 +574,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     disabled = Common::CONFIG.with(page: Common::CONFIG.page.with(section_pagebreak: false))
     enabled  = Common::CONFIG.with(page: Common::CONFIG.page.with(section_pagebreak: true))
 
-    assert_includes BSC.render(disabled), 'body.vs-header-simple h2'
+    assert_includes BSC.render(disabled), '--book-section-break-before: auto;'
     refute_includes BSC.render(enabled), 'page.section_pagebreak: false'
   end
 
@@ -621,8 +633,9 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   end
 
   # 章の改丁も同じ理由でセレクタの実在を固定する（chapter-pagebreak-spec.md §4-2）。
-  # break-before: recto を持つのは 7 ファイルだが、parts/heading / pages/glossary / pages/index /
-  # pages/postface はいずれも素の body なので、相異なるセレクタは 5 つで足りる。
+  # break-before: recto を持つのは 6 ファイルだが、parts/heading / pages/glossary / pages/index /
+  # pages/postface はいずれも素の body なので、相異なるセレクタは 4 つで足りる。テーマの章見出しは
+  # 公開する変数（--book-chapter-break-before）で読むので、ここに入らない。
   def test_should_mirror_selectors_that_actually_start_on_a_recto_page
     recto_sources = Dir.glob(CSS_GLOB)
                        .map { File.read(it) }
@@ -642,8 +655,9 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
     recto_selectors = Dir.glob(CSS_GLOB).flat_map do |path|
       css = File.read(path).gsub(%r{/\*.*?\*/}m, '')
       css.scan(/([^{}]+)\{([^{}]*)\}/).filter_map do |selector, body|
-        # 直前の @import など（; で終わる文）はセレクタではないので落とす
-        selector.split(';').last.split(',').map(&:strip) if body.match?(/break-before:\s*recto/)
+        # 直前の @import など（; で終わる文）はセレクタではないので落とす。
+        # 変数の定義（tokens.css の --book-chapter-break-before: recto）は改丁の規則ではないので数えない
+        selector.split(';').last.split(',').map(&:strip) if body.match?(/(?<![-\w])break-before:\s*recto/)
       end.flatten
     end
 
