@@ -66,6 +66,9 @@ module VivlioStarter
         # tokens 層に入る値（`--book-` を除いた名前 → 値）。自分の値が土台の値に勝つ
         def tokens = chain.map(&:tokens).reduce({}, :merge)
 
+        # Kindle だけで変える値（kindle_tokens:。土台 → 自分の順で重ねる。theme-contract-spec.md §3.1）
+        def kindle_tokens = chain.map(&:kindle_tokens).reduce({}, :merge)
+
         # target 層に入る出力先の CSS（css-layer-restructure-spec.md §5 の 4・5）
         def target_files(kind, target) = chain.flat_map { it.target_files(kind, target) }
 

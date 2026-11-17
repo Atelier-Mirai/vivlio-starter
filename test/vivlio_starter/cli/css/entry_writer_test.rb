@@ -228,6 +228,40 @@ module VivlioStarter
           end
         end
 
+        # kindle_tokens: は body.vs-kindle の --book-* にして書き出し、Kindle の target 層の 2 番目
+        # （kindle-tokens.css の後・vs の targets/ の前）で読む。クリーン EPUB と PDF は読まない（theme-contract-spec.md §3.1・
+        # css-layer-restructure-spec.md §5）。kindle_tokens: が無いテーマでは書かず、読まない
+        def test_should_write_kindle_tokens_and_import_them_second_in_the_kindle_target_layer
+          with_theme_book(kindle_tokens: { 'font-heading' => 'serif', 'color-link' => '#222' }) do |theme, root|
+            Dir.chdir(root) do
+              FileUtils.mkdir_p(Common::CACHE_DIR)
+              EntryWriter.write_theme_tokens!(theme)
+              css = File.read(File.join(Common::CACHE_DIR, EntryWriter::THEME_KINDLE_TOKENS))
+              targets = lambda do |target|
+                EntryWriter.render('chapter', target:, theme:).scan(/@import url\("([^"]+)"\) layer\(target\)/).flatten
+              end
+
+              assert_includes css, "body.vs-kindle {\n  --book-font-heading: serif;\n  --book-color-link: #222;\n}"
+              assert_equal %w[../../stylesheets/targets/kindle-tokens.css theme-kindle-tokens.css
+                              ../../stylesheets/targets/epub.css ../../stylesheets/targets/kindle.css
+                              ../../themes/base/epub.css ../../themes/mono/kindle-chapter.css],
+                           targets.call(:kindle)
+              refute_includes targets.call(:epub), 'theme-kindle-tokens.css'
+              refute_includes EntryWriter.render('chapter', theme:), 'theme-kindle-tokens.css'
+
+              EntryWriter.write_theme_tokens!(Theme.resolve('standard', root: REPO_ROOT))
+              refute File.exist?(File.join(Common::CACHE_DIR, EntryWriter::THEME_KINDLE_TOKENS)), '前のビルドの残りを消す'
+            end
+          end
+        end
+
+        # kindle_tokens: の値も、tokens: と同じく書き出せる形だけを受け付ける
+        def test_should_reject_kindle_tokens_that_cannot_be_written
+          with_theme_book(kindle_tokens: { '--book-font-heading' => 'serif' }) { flunk '読めてはいけない' }
+        rescue Theme::Error => e
+          assert_includes e.message, 'kindle_tokens: の名前 --book-font-heading は、--book- を除いた名前で書いてください'
+        end
+
         # テーマの CSS も、層を外すと 1 枚の CSS の、その層の位置に入る
         def test_should_flatten_the_theme_stylesheets_into_their_layers
           with_theme_book do |theme, root|
@@ -249,11 +283,12 @@ module VivlioStarter
         REPO_ROOT = File.expand_path('../../../..', __dir__)
 
         # 土台（base）と配色のテーマ（mono）を置いた本。中の CSS は、平らにした後の位置を探せる規則 1 つだけ
-        def with_theme_book
+        def with_theme_book(kindle_tokens: nil)
           Dir.mktmpdir('vs-css-theme') do |root|
             { 'base' => [{ 'styles' => %w[head.css], 'tokens' => { 'color-accent' => '#111', 'color-link' => '#222' } },
                          %w[head.css epub.css]],
-              'mono' => [{ 'extends' => 'base', 'styles' => %w[mono.css], 'tokens' => { 'color-accent' => '#555' } },
+              'mono' => [{ 'extends' => 'base', 'styles' => %w[mono.css], 'tokens' => { 'color-accent' => '#555' },
+                         'kindle_tokens' => kindle_tokens }.compact,
                          %w[mono.css kindle-chapter.css]] }.each do |name, (extra, files)|
               dir = File.join(root, 'themes', name)
               FileUtils.mkdir_p(dir)

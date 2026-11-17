@@ -13,7 +13,8 @@
 #     開いた場合に止めないため。知らせるのは Guards::TraitCombinationCheck（build と preflight）。
 #
 # options: は Theme::Option の並び、features: は組み込みの機能（Theme::Features）の名前の並びにする
-# （§3.3・§3.4）。kindle_tokens: は形（表）だけを見て、そのまま持つ（使い方は S6-10）。
+# （§3.3・§3.4）。kindle_tokens: は tokens: と同じ書き方で検査する（Kindle で書ける値の範囲 §3.5 は
+# vs theme:check が 🟡 で示す。ビルドは止めない）。
 # ================================================================
 
 require 'yaml'
@@ -100,8 +101,8 @@ module VivlioStarter
               extends: extends_name(raw, label),
               supports: supports(raw, label),
               features: features(raw, label),
-              tokens: tokens(raw, label),
-              kindle_tokens: typed(raw, 'kindle_tokens', Hash, {}, label),
+              tokens: tokens(raw, 'tokens', label),
+              kindle_tokens: tokens(raw, 'kindle_tokens', label),
               options: OptionParser.parse(typed(raw, 'options', Hash, {}, label), label:, feature_names: Features.names),
               styles: styles(raw, path, label),
               dir:, path:,
@@ -165,15 +166,16 @@ module VivlioStarter
             end
           end
 
-          def tokens(raw, label)
-            typed(raw, 'tokens', Hash, {}, label).to_h do |key, value|
-              name = key.to_s
+          # tokens: と kindle_tokens:（書き方は同じ。theme-contract-spec.md §3.1）
+          def tokens(raw, key, label)
+            typed(raw, key, Hash, {}, label).to_h do |token, value|
+              name = token.to_s
               unless name.match?(TOKEN_NAME)
-                raise Error.new("#{label} の tokens: の名前 #{name} は、--book- を除いた名前で書いてください",
+                raise Error.new("#{label} の #{key}: の名前 #{name} は、--book- を除いた名前で書いてください",
                                 detail: '例: color-accent: "#555"（--book-color-accent に入ります）')
               end
               unless (value.is_a?(String) || value.is_a?(Numeric)) && !value.to_s.match?(TOKEN_FORBIDDEN)
-                raise Error.new("#{label} の tokens.#{name} の値を CSS に書き出せません: #{value.inspect}",
+                raise Error.new("#{label} の #{key}.#{name} の値を CSS に書き出せません: #{value.inspect}",
                                 detail: '値は 1 つの文字列か数で書き、; { } を含めないでください')
               end
 

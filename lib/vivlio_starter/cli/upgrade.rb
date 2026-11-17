@@ -77,8 +77,9 @@ module VivlioStarter
 
       # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）。
       # summary は最後のまとめの行に載せる一言（例: "追加 6・更新 30"）。雛形の段を飛ばしたときは nil
-      SyncResult = Data.define(:code, :new_keys, :aborted, :renames, :summary) do
-        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil) = super
+      # kept_theme_files は、雛形から無くなったが著者が変えたので残したテーマのファイル（最後に 🟡 で示す）
+      SyncResult = Data.define(:code, :new_keys, :aborted, :renames, :summary, :kept_theme_files) do
+        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil, kept_theme_files: []) = super
       end
 
       # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
@@ -209,6 +210,7 @@ module VivlioStarter
         # --- Phase: 改名と足した設定・読めない著者のテーマの案内（③の長い出力で流れないよう、いちばん最後に出す）---
         report_renames(sync.renames)
         report_contract_mismatches(theme_mismatches)
+        report_kept_theme_files(sync.kept_theme_files)
         ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
 
         code = [self_result == :failed ? 1 : 0, sync.code, tools_code].max
@@ -268,20 +270,24 @@ module VivlioStarter
         # --- Phase: 分類（三者比較） ---
         Common.log_summary("雛形との差分を確認しています…（gem #{VivlioStarter::VERSION} の雛形）")
         lock = ScaffoldLock.read
-        scaffold_digests = managed_theme_digests(ScaffoldLock.digest_scaffold(scaffold_source), lock)
+        scaffold_all = ScaffoldLock.digest_scaffold(scaffold_source)
+        scaffold_digests = managed_theme_digests(scaffold_all, lock)
         warn_missing_lock if lock.nil?
         tidy = plan_tidy(lock)
         renames = plan_renames
+        removed, kept = plan_theme_removals(scaffold_all, lock)
         # 改名の先のファイルは、改名で用意されるので雛形からは足さない（足すと空の辞書で塞がる）
         plan = build_plan(scaffold_digests, lock).reject { renames.moved.value?(it.relative) }
-        plan = with_rename_rows(with_tidy_rows(plan, tidy), renames)
+        plan = with_rename_rows(with_tidy_rows(plan, tidy), renames) + removed
 
         # --- Phase: 計画表示（改名と著者データの整理も、確認の前に見せる） ---
         display_plan(plan, tidy_details(tidy).merge(rename_details(renames)))
         if plan.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
-          save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
-          return SyncResult.new(new_keys: tidy.new_keys, summary: '最新')
+          return SyncResult.new(new_keys: tidy.new_keys, summary: '最新') if cmd.options[:dry_run]
+
+          save_lock_and_base!(scaffold_digests, lock, applied: [])
+          return SyncResult.new(new_keys: tidy.new_keys, summary: '最新', kept_theme_files: kept)
         end
         if cmd.options[:dry_run]
           finish_dry_run(plan)
@@ -296,7 +302,7 @@ module VivlioStarter
         save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
         backup_dir, new_keys = apply_tidy(tidy, lock, backup_dir)
         summary = print_summary(plan, applied, skipped, backup_dir)
-        SyncResult.new(new_keys:, renames:, summary:)
+        SyncResult.new(new_keys:, renames:, summary:, kept_theme_files: kept)
       end
 
       private
@@ -610,6 +616,30 @@ module VivlioStarter
         nil
       end
 
+      # 雛形から無くなったテーマのファイル（theme-contract-spec.md §7.3）。テーマのディレクトリは置いた
+      # ファイルが読まれる（出力先の CSS）ので、残すと消えたはずの規則が効き続ける。対象は lock に記録の
+      # あるファイル（＝雛形から来たテーマのファイル）だけで、著者が足したファイルと著者のテーマは見ない。
+      # 本の中身が lock の記録と同じなら削除の行にし、著者が変えていれば残して最後に知らせる。
+      # lock の記録は、どちらも record_lock! が「雛形に無いファイル」として落とす
+      # @param scaffold_all [Hash{String => String}] 今の雛形の全ファイル（テーマで絞る前）
+      # @return [Array(Array<PlanItem>, Array<String>)] 削除の行と、残すファイル
+      def plan_theme_removals(scaffold_all, lock)
+        gone = (lock&.dig(:files) || {}).select do |relative, _|
+          relative.start_with?("#{Theme::DIR}/") && !scaffold_all.key?(relative) && File.file?(relative)
+        end
+        removed, kept = gone.partition { |relative, digest| ScaffoldLock.file_digest(relative) == digest }
+        [removed.map { |relative, _| PlanItem.new(relative:, status: :remove) }, kept.map(&:first).sort]
+      end
+
+      # 出力先の CSS（epub*.css・kindle*.css。テーマのディレクトリの直下）は、置いてあるかぎり読まれる
+      def report_kept_theme_files(paths)
+        paths.each do |path|
+          read = File.dirname(path).count('/') == 1 && File.basename(path).match?(/\A(?:epub|kindle)[\w-]*\.css\z/)
+          Common.log_warn("#{path} は雛形から無くなったファイルですが、変更があるので残しました",
+                          detail: read ? '置いてあるかぎり読まれます。要らなければ削除してください' : '読まれません')
+        end
+      end
+
       # 著者が入れたテーマ（lock に記録が無い）のうち、この vs が契約の版か requires_vs: で読めないもの。
       # 著者のテーマは更新しないので、合わないことだけを知らせる。theme.yml の書き方の誤りは vs theme:check と
       # vs build が示すので、ここでは挙げない
@@ -751,6 +781,7 @@ module VivlioStarter
         update: ['更新', '著者は未変更'],
         merge: ['合流', '別の場所を変更 → 両立'],
         conflict: ['競合', '同じ場所を変更 → 確認'],
+        remove: ['削除', '雛形から無くなったファイル'],
         tidy: ['整理', nil],
         rename: ['改名', nil]
       }.freeze
@@ -763,7 +794,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[rename add add_empty update merge conflict tidy]
+        order = %i[rename add add_empty update merge conflict remove tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
@@ -780,6 +811,7 @@ module VivlioStarter
                   "・更新 #{counts[:update] || 0} 件"
         message += "・合流 #{merged} 件" if merged.positive?
         message += "・競合 #{counts[:conflict] || 0} 件"
+        message += "・削除 #{counts[:remove]} 件" if counts[:remove]
         message += "・整理 #{counts[:tidy]} 件" if counts[:tidy]
         message += "・改名 #{counts[:rename]} 件" if counts[:rename]
         Common.log_always("#{message}）")
@@ -795,13 +827,14 @@ module VivlioStarter
         conflicts = plan.select { it.status == :conflict }
         tidied    = plan.select { it.status == :tidy }
         renamed   = plan.select { it.status == :rename }
+        removals  = plan.select { it.status == :remove }
         applied = []
         skipped = []
         backup_dir = nil
 
         # --- Phase: 改名＋追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
-        if (adds.any? || updates.any? || merges.any? || tidied.any? || renamed.any?) && !cmd.options[:yes]
-          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied, renamed)}")
+        if [adds, updates, merges, tidied, renamed, removals].any?(&:any?) && !cmd.options[:yes]
+          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied, renamed, removals)}")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
@@ -833,6 +866,14 @@ module VivlioStarter
           applied << item
         end
 
+        # 雛形から無くなったテーマのファイルは、退避してから消す（中身は lock の記録と同じなので、
+        # 退避は雛形の前の版の写しになる）
+        removals.each do |item|
+          backup_dir = backup!(item.relative, backup_dir)
+          FileUtils.rm(item.relative)
+          applied << item
+        end
+
         # --- Phase: 競合の個別確認（--yes でも必ず確認する） ---
         conflicts.each do |item|
           if confirm_conflict?(item)
@@ -849,9 +890,10 @@ module VivlioStarter
       end
 
       # 全体確認の文言。合流は 0 件のことが多いので、あるときだけ足す
-      def bulk_summary(adds, updates, merges, tidied, renamed)
+      def bulk_summary(adds, updates, merges, tidied, renamed, removals)
         summary = "追加 #{adds.size} 件・更新 #{updates.size} 件"
         summary += "・合流 #{merges.size} 件" if merges.any?
+        summary += "・削除 #{removals.size} 件" if removals.any?
         summary += "・整理 #{tidied.size} 件" if tidied.any?
         summary += "・改名 #{renamed.size} 件" if renamed.any?
         summary
@@ -964,6 +1006,8 @@ module VivlioStarter
         counts = "追加 #{add_count}・更新 #{update_count}"
         tidy_count   = plan.count { it.status == :tidy }
         counts += "・合流 #{merge_count}" if merge_count.positive?
+        remove_count = applied.count { it.status == :remove }
+        counts += "・削除 #{remove_count}" if remove_count.positive?
         counts += "・整理 #{tidy_count}" if tidy_count.positive?
         rename_count = plan.count { it.status == :rename }
         counts += "・改名 #{rename_count}" if rename_count.positive?

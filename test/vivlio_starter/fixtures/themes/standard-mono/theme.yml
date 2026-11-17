@@ -1,0 +1,19 @@
+# 配色のテーマの見本（theme-contract-spec.md §3.2・§9 の S6 の完了の条件 4・10）。同梱しない。
+# 確かめでは、写しの本の themes/ へ複製し、book.yml の theme.name を standard-mono に、
+# theme.color・preface_color・appendix_color を空欄にして組む。
+#
+# - tokens: の color-accent は、standard の color の既定値になる（前書き・付録の色は default_from: color で従う）。
+# - kindle_tokens: は Kindle だけで変える値。見出しを明朝にし、リンクを Kindle で指定どおりに描かれる #222 にする。
+name: standard-mono
+title: 標準（墨一色）
+version: 1.0.0
+contract: 1
+extends: standard
+
+tokens:
+  color-accent: "#555"
+  color-link: "#333"
+
+kindle_tokens:
+  font-heading: serif
+  color-link: "#222"

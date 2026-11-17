@@ -56,6 +56,20 @@ module VivlioStarter
         end
       end
 
+      # 配色のテーマの見本 standard-mono（§3.2・§9 の S6 の完了の条件 4・10）は theme:check を通り、
+      # tokens: の色が standard の color の既定値になる。kindle_tokens: は Kindle の束だけに入る
+      def test_should_accept_the_standard_mono_color_theme
+        with_book do |root|
+          FileUtils.cp_r(File.join(REPO_ROOT, 'test/vivlio_starter/fixtures/themes/standard-mono'), File.join(root, 'themes'))
+          theme = Theme.resolve('standard-mono', root:)
+
+          assert_equal [], Theme::Check.run('standard-mono', root:).findings.reject { it.level == :hint }.map(&:message)
+          assert_equal '#555', theme.config_specs.fetch(%i[theme color]).default
+          assert_equal({ 'font-heading' => 'serif', 'color-link' => '#222' }, theme.kindle_tokens)
+          assert_empty theme.styles - Theme.resolve('standard', root:).styles, 'CSS を持たない'
+        end
+      end
+
       # テーマ自身のファイルだけを見て、§3.5・§7.2 の範囲の外の書き方を示す
       def test_should_report_what_the_theme_writes_outside_the_contract
         with_book do |root|

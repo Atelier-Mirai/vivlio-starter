@@ -41,6 +41,9 @@ module VivlioStarter
         # テーマの tokens: を書き出した CSS（theme-contract-spec.md §3.1）。tokens 層の最後に読む。
         # tokens: が空なら書かず、入口でも読まない（テーマの無い入口と同じ字面になる）
         THEME_TOKENS = 'theme-tokens.css'
+        # テーマの kindle_tokens: を body.vs-kindle { … } で書き出した CSS（同 §3.1）。Kindle の target 層の
+        # 2 番目に読む。空なら書かず、読まない
+        THEME_KINDLE_TOKENS = 'theme-kindle-tokens.css'
 
         # どのページも読む土台（判型・余白の箱の骨格と、公開する変数の既定値）
         FOUNDATION = { 'base' => %w[base/reset.css base/elements.css base/page.css],
@@ -143,16 +146,22 @@ module VivlioStarter
           end
         end
 
-        # テーマの tokens: を :root の変数にして書き出す。空なら前のビルドの残りを消す
+        # テーマの tokens: を :root の変数に、kindle_tokens: を body.vs-kindle の変数にして書き出す。
+        # 空なら前のビルドの残りを消す
         def write_theme_tokens!(theme)
-          path = File.join(Common::CACHE_DIR, THEME_TOKENS)
-          tokens = theme&.tokens || {}
+          write_token_file(THEME_TOKENS, ':root', theme, :tokens)
+          write_token_file(THEME_KINDLE_TOKENS, 'body.vs-kindle', theme, :kindle_tokens)
+        end
+
+        def write_token_file(file, selector, theme, key)
+          path = File.join(Common::CACHE_DIR, file)
+          tokens = theme&.public_send(key) || {}
           return FileUtils.rm_f(path) if tokens.empty?
 
           declarations = tokens.map { |name, value| "  --book-#{name}: #{value};" }
           File.write(path, <<~CSS, encoding: 'utf-8')
-            /* 自動生成: テーマ #{theme.name} の tokens:（手編集しない。生成器: VivlioStarter::CLI::Css::EntryWriter） */
-            :root {
+            /* 自動生成: テーマ #{theme.name} の #{key}:（手編集しない。生成器: VivlioStarter::CLI::Css::EntryWriter） */
+            #{selector} {
             #{declarations.join("\n")}
             }
           CSS
@@ -188,11 +197,14 @@ module VivlioStarter
             'theme' => theme.styles.map { "#{CACHE_TO_ROOT}#{it}" } }
         end
 
-        # target 層の順（css-layer-restructure-spec.md §5）: 1. kindle-tokens.css → 3. vs の targets/ →
-        # 4・5. 土台とテーマの出力先の CSS。2 の kindle_tokens: は S6-10 で足す
+        # target 層の順（css-layer-restructure-spec.md §5）: 1. kindle-tokens.css → 2. テーマの kindle_tokens: →
+        # 3. vs の targets/ → 4・5. 土台とテーマの出力先の CSS。2 は 1 の端末任せの値の後に読み、
+        # テーマの kindle.css の body.vs-kindle（5）には負ける
         def target_hrefs(name, target, theme)
-          own = [*TARGET_FOUNDATION.fetch(target, []), *TARGET_IMPORTS.fetch(name, {}).fetch(target, [])]
-          [*own.map { "#{CACHE_TO_STYLESHEETS}#{it}" },
+          kindle_tokens = target == :kindle && theme && !theme.kindle_tokens.empty? ? [THEME_KINDLE_TOKENS] : []
+          [*TARGET_FOUNDATION.fetch(target, []).map { "#{CACHE_TO_STYLESHEETS}#{it}" },
+           *kindle_tokens,
+           *TARGET_IMPORTS.fetch(name, {}).fetch(target, []).map { "#{CACHE_TO_STYLESHEETS}#{it}" },
            *(theme&.target_files(name, target) || []).map { "#{CACHE_TO_ROOT}#{it}" }]
         end
 

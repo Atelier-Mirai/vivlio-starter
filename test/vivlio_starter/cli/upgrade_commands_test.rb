@@ -28,6 +28,7 @@
 # テーマと custom.css（theme-contract-spec.md §7.3・css-layer-restructure-spec.md §7.2。S6-9）:
 #   - lock に記録のあるテーマだけを更新し、著者のテーマは触らない・使うテーマだけを足す
 #   - 著者のテーマの契約の版が合わなければ 🟡
+#   - 雛形から無くなったテーマのファイルは、変えていなければ退避して削除・変えていれば残して最後に 🟡（S6-10）
 #   - custom.css の 1.x の変数の名前は、行を全部見せて尋ね、いいえなら何も変えない
 #
 # テスト環境:
@@ -1554,6 +1555,71 @@ module VivlioStarter
           refute_includes out, 'vs upgrade で vs を新しく'
           refute_includes out, 'テーマ fine'
           assert_operator out.index('外部ツールの出力'), :<, out.index('テーマ future'), 'ツールの出力で流れないよう最後に出す'
+        end
+      end
+
+      # 雛形から無くなったテーマのファイル（§7.3。S6-10）は、本の中身が lock の記録と同じなら、
+      # 計画に「削除」と出し、退避してから消す。lock の記録も消す
+      def test_should_remove_theme_files_gone_from_the_scaffold_with_backup
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/kindle.css', OLD_CSS)
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_match(%r{削除\s+themes/standard/kindle\.css\s+（雛形から無くなったファイル）}, out)
+          assert_includes out, '削除 1'
+          refute_path_exists 'themes/standard/kindle.css'
+          assert_equal [OLD_CSS], Dir.glob('.vs-backup/upgrade/*/themes/standard/kindle.css').map { File.read(it) }
+          refute ScaffoldLock.read('.')[:files].key?('themes/standard/kindle.css')
+        end
+      end
+
+      # 著者が変えたファイルは残し、lock の記録だけを消して、最後に 🟡 で示す。著者が足したファイル
+      # （lock に記録が無い）は触らず、知らせない
+      def test_should_keep_changed_theme_files_gone_from_the_scaffold_and_warn_at_the_end
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/epub.css', OLD_CSS)
+          write('.', 'themes/standard/images/old.svg', '<svg/>')
+          write_lock
+          write('.', 'themes/standard/epub.css', CUSTOM_CSS)
+          write('.', 'themes/standard/images/old.svg', '<svg id="mine"/>')
+          write('.', 'themes/standard/extra.css', CUSTOM_CSS)
+
+          out, = capture_io { run_upgrade(scaffold, yes: true, tool_output: '外部ツールの出力') }
+
+          assert_equal CUSTOM_CSS, File.read('themes/standard/epub.css')
+          assert_path_exists 'themes/standard/images/old.svg'
+          assert_includes out, 'themes/standard/epub.css は雛形から無くなったファイルですが、変更があるので残しました'
+          assert_match(/epub\.css は.*\n.*置いてあるかぎり読まれます。要らなければ削除してください/, out)
+          assert_match(%r{images/old\.svg は.*\n.*読まれません}, out)
+          assert_operator out.index('外部ツールの出力'), :<, out.index('themes/standard/epub.css は'), 'ツールの出力で流れないよう最後に出す'
+          refute_includes out, 'extra.css'
+          assert_equal CUSTOM_CSS, File.read('themes/standard/extra.css')
+          assert_empty ScaffoldLock.read('.')[:files].keys.grep(%r{epub\.css|old\.svg}), '次からは知らせない'
+        end
+      end
+
+      # --dry-run は「削除」の行を見せるだけで、ファイルも lock も変えない
+      def test_should_only_show_theme_removals_on_dry_run
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/theme.yml', THEME_YML)
+          write('.', 'themes/standard/kindle.css', OLD_CSS)
+          write_lock
+          lock_before = ScaffoldLock.read('.')
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_match(%r{削除\s+themes/standard/kindle\.css}, out)
+          assert_includes out, '削除 1 件'
+          assert_path_exists 'themes/standard/kindle.css'
+          assert_equal lock_before, ScaffoldLock.read('.')
+          refute_path_exists '.vs-backup'
         end
       end
 
