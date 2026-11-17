@@ -21,6 +21,8 @@
 | `novel-vertical-spec.md` | 縦書きの小説。縦書きの経路・テーマ `novel`・判型のプリセット（文庫・B6・新書・四六）・傍点と縦中横・投稿サイトの記法・小説の lint・雛形 `scaffolds/novel/` | 仕様済み・着手待ち（段階 S8。S7a の後） |
 | `cover-spread-spec.md` | 背表紙とくるみ表紙（表 4・背・表 1 を 1 枚に。背幅・背の中身・左右の綴じ） | 骨格だけ（段階 S8b の最初に書き足す） |
 | `furigana-spec.md` | `vs furigana`（半自動の振り仮名。`furigana:auto` → `furigana:apply` の 2 段） | 骨格だけ（段階 S8c の最初に書き足す） |
+| `picture-book-spec.md` | 絵本（固定レイアウト）。原稿の形（`@page`・`@spread`・文字の箱）・寸法と見開き・四つの出力先（Kindle は閲覧用 PDF のページの画像）・テーマ `picture-book`・雛形 `scaffolds/picture_book/` | 仕様済み・着手待ち（段階 S9。S9-0 の KDP の確かめは S8 の間に行える） |
+| `video-spec.md` | 動画（どの種類の本でも使う記法と、出力先ごとの置き換え） | 骨組みだけ（段階 S10 の最初に中身を書く） |
 
 新しく仕様書を書いたら、ここへ 1 行足してください。
 
@@ -45,8 +47,8 @@
   | `novel-vertical-spec.md` | 縦書きの経路・テーマ `novel`・小説の記法と lint・雛形 | S8 の小段階と完了の条件 |
   | `cover-spread-spec.md`（骨格） | 背表紙とくるみ表紙 | S8b |
   | `furigana-spec.md`（骨格） | `vs furigana`（対象の水準は `furigana-level-spec.md`） | S8c |
-  | `picture-book-spec.md`（S9 の最初に書く） | 固定レイアウトの経路・原稿の形・テーマ `picture-book`・雛形 | S9 の小段階と完了の条件 |
-  | `video-spec.md`（同） | 動画の記法と、出力先ごとの置き換え | S10 |
+  | `picture-book-spec.md` | 固定レイアウトの経路・原稿の形・テーマ `picture-book`・雛形 | S9 の小段階と完了の条件 |
+  | `video-spec.md`（骨組み） | 動画の記法と、出力先ごとの置き換え | S10 |
 
 - 残りの着手の順は S6-9b → S6-10 → r3 → 節リードの判断 → S11a → S7a → S8 → S7b → S8b・S8c（S8 の後、S11b の前ならどこでも）→ S9 → S10 → S11b → S11c → S11d。
 - 実装記録は仕様書から分けない。仕様書は、その段階が全部終わったら archives へ移る（`theme-contract-spec.md` は S7b の後）。

@@ -163,13 +163,27 @@ S1 で、保証するクラスの全数の表を `lib/vivlio_starter/cli/html_co
 | 扉絵・節絵の画像の用意（`prepare theme images`）と、EPUB の見出しの画像（`inject_heading_images`）が常に走る | テーマが `features:` で使うと宣言したときだけ走る（§3.4）。EPUB の見出しの画像は L4 の変換なので、契約 HTML には影響しない | なし |
 | 見出しの印の字（`theme.markers`） | 今も CSS の変数で渡しており、HTML には入らない。変えない | なし |
 
-### 2.7 固定レイアウトの契約 HTML（枠だけ）
+### 2.7 固定レイアウトの契約 HTML
 
-`traits.fixed?` の本では、1 ページが 1 枚の HTML になる。
+`traits.fixed?` の本では、1 ページが 1 枚の HTML になる（2026-11-17・`picture-book-spec.md` §3）。
 
-- `body` に `vs-fixed` と、ページの種類のクラスを付ける。
-- `head` に、ページの寸法の `viewport` を書く。
-- ページの中の要素（全面の画像・重ねる文字の箱・動画）のクラスは、絵本の仕様で決め、契約の表に足す。契約の版は上げない（足すだけなので、既存のテーマは壊れない）。
+```html
+<body class="vs-fixed vs-page-picture" data-vs-page="3">
+  <div class="vs-page-art"><img class="vs-page-image" src="images/p01.jpg" alt="…"></div>
+  <div class="vs-text bottom" style="--vs-x: 10%; --vs-y: 70%; --vs-w: 80%"><p>…</p></div>
+</body>
+```
+
+| 要素・クラス | 保証 |
+| :--- | :--- |
+| `body.vs-fixed` と、ページの種類のクラス | `vs-page-picture`（絵のあるページ）・`vs-page-text`（文字だけ）・`vs-page-spread-left`・`vs-page-spread-right`・`vs-page-colophon`・`vs-page-blank` |
+| `div.vs-page-art > img.vs-page-image` | ページいっぱいの絵。見開きでは、同じ画像を左右のページが半分ずつ見せる（`vs-page-art` が幅 200% の絵を切る） |
+| `div.vs-text` | 文字の箱。名前の位置はクラス（`top`・`bottom`・`center`・`left`・`right`）、割合は `style` の `--vs-x`・`--vs-y`・`--vs-w` |
+| `head` の `viewport` | `width=<px>, height=<px>`（判型を 96dpi の px に直した値。`picture-book-spec.md` §4.1） |
+| `figure.vs-video` | 動画（S10。`video-spec.md`）。位置の決め方は文字の箱と同じ |
+
+- 位置を `style` の変数で渡す理由は `picture-book-spec.md` §3。
+- 契約の版は上げない（足すだけなので、既存のテーマは壊れない）。`HtmlContract` に、この表のクラスを足す（S9-2）。
 
 ### 2.8 契約を変えるとき
 
@@ -421,7 +435,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | :--- | :--- | :--- |
 | `techbook` | `standard` | 今の見た目 |
 | `novel` | `novel` | 縦書き。文庫・B6・新書・四六の判型で使う。`novel-vertical-spec.md` §3 |
-| `picture_book` | `picture`（仮の名前） | 固定レイアウト。絵本の仕様で決める |
+| `picture_book` | `picture-book` | 固定レイアウト。位置と寸法は vs の `base/fixed.css`、見た目だけをテーマが書く。`picture-book-spec.md` §7 |
 
 ---
 
@@ -549,7 +563,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 置き場 | 中身 | 誰が管理するか |
 | :--- | :--- | :--- |
 | 本の `themes/<名前>/` | その本が使えるテーマ。ビルドが読むのはここだけ | 雛形から来たものは `vs upgrade`、それ以外は著者 |
-| gem の雛形（`lib/project_scaffold/themes/`） | 同梱のテーマ（`standard`・`novel`・`picture`）。正典はリポジトリの直下の `themes/` | vs の開発（`ruby scripts/copy_to_scaffold.rb` で同期） |
+| gem の雛形（`lib/project_scaffold/themes/`） | 同梱のテーマ（`standard`・`novel`・`picture-book`）。正典はリポジトリの直下の `themes/` | vs の開発（`ruby scripts/copy_to_scaffold.rb` で同期） |
 | 本の `stylesheets/` | vs の土台と部品（`css-layer-restructure-spec.md` §3）と `custom.css` | 雛形・`custom.css` だけ著者 |
 
 - `vs new` は、選んだ種類の既定のテーマだけを `themes/` に置く。ほかの同梱のテーマは `vs theme:add <名前>` で足す。
@@ -729,7 +743,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 
 | # | 論点 | 答えが要る時点 | 設計での扱い |
 | :--- | :--- | :--- | :--- |
-| 1 | 小説と絵本の既定のテーマの名前 | 決定済み（2026-11-17） | `novel`・`picture-book`。公式テーマを取り込んだものは `vivliostyle-<名前>`（`v2-s8-novel-consultation.md` §4.5・`v2-s9-picture-book-consultation.md` §4.9・`v2-plan-review-consultation.md` §4.6 の 5）。この仕様書の中の `bunko` は `novel` へ直した（2026-11-17。実装記録の中は当時の名前のまま）。`picture` は S9 の仕様書を書くときに直す |
+| 1 | 小説と絵本の既定のテーマの名前 | 決定済み（2026-11-17） | `novel`・`picture-book`。公式テーマを取り込んだものは `vivliostyle-<名前>`（`v2-s8-novel-consultation.md` §4.5・`v2-s9-picture-book-consultation.md` §4.9・`v2-plan-review-consultation.md` §4.6 の 5）。この仕様書の中の `bunko`・`picture` は `novel`・`picture-book` へ直した（2026-11-17。実装記録の中は当時の名前のまま） |
 | 2 | 対応表（`bridge.css`）に載せる変数の一覧 | S7b | S7a の結果を見て、S7b で Opus が決める。軸: 公式テーマと vs の両方が定義し、判型・余白・書体・本文の字の大きさと行送りに効くものだけ。色と飾りは載せない。20 を超えるなら、載せすぎを疑う（`v2-plan-review-consultation.md` §4.6 の 6） |
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | 決定済み（2026-11-17） | 同梱しない（`v2-plan-review-consultation.md` §4.6 の 5） |

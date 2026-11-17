@@ -59,7 +59,7 @@
 | **S11d** | 公開の関門（`rake test:release`・全部の Ruby の版・1.x の本の固定の確かめ・`CHANGELOG.md`・公開） | 本書 §4.3 | S11c | — | |
 
 - 表は着手する順に並べた。S8b・S8c は「先に終えている必要がある段階」が少ないが、着手は S8 の完了の後とする（§2.2）。
-- 仕様書のうち `novel-vertical-spec.md`・`cover-spread-spec.md`・`furigana-spec.md` は、2026-11-17 に Fable の答え（`v2-s8-novel-consultation.md` §4）から書き起こした（後の 2 本は骨格だけで、S8b・S8c の最初に書き足す）。`picture-book-spec.md`・`video-spec.md` は、`v2-s9-picture-book-consultation.md` §4 から書き起こす。
+- 仕様書のうち `novel-vertical-spec.md`・`cover-spread-spec.md`・`furigana-spec.md` は、2026-11-17 に Fable の答え（`v2-s8-novel-consultation.md` §4）から書き起こした（後の 2 本は骨格だけで、S8b・S8c の最初に書き足す）。`picture-book-spec.md`・`video-spec.md` も同日に `v2-s9-picture-book-consultation.md` §4 から書き起こした（`video-spec.md` は骨組みだけで、S10 の最初に中身を書く）。
 - N1（小説の雛形の本）・P1（絵本の雛形の本）は、S8・S9 で足す基準である。B1〜B5 と同じ版の番号で持つ。
 
 brief の叩き台の順序（HTML の構造 → 層 → Kindle 用の CSS → テーマ → 公式テーマ → 小説 → 絵本と動画）と同じ並びである。足したのは、基準を作る S0、出力先の分割の S4、種類と軸の S5、移行と公開の S11 の四つ。2026-11-17 に、S7 と S11 を分け、S11a を前倒しし、S8 の 5 件のうち 2 件を S8b・S8c として独立させた（`v2-plan-review-consultation.md` §4.2・§4.3）。
@@ -96,7 +96,7 @@ brief の叩き台の順序（HTML の構造 → 層 → Kindle 用の CSS → �
 | 1 | S7a の実験が通らない | `theme-contract-spec.md` §9 の S7 の (a)〜(d) のどれかが成り立たない | S7a | 取り込みを「CSS を写すだけで、結果は保証しない」に下げ、npm の経路を 2.0 に含めない。小説は `novel` で組めるので S8 は止まらない | ユーザー（Opus は結果と勧めを示す） |
 | 2 | 縦の文書と横の文書（奥付）が 1 冊に混ざって組めない | ページの進む向きか、奇数ページの側が奥付で変わる | S8-4 の最初 | 奥付と権利ページも縦に組み、英数字の箱だけを横にする（決定済み） | Opus |
 | 3 | Kindle が論理方向の CSS を解さない | S8-1 か S8-4 の Kindle の中間生成物で、余白や枠の側が変わる | S8-1・S8-4 | 手で書き直す箇所が 20 以下なら `targets/kindle.css` に物理方向で書く。20 を超えたら、`LiteralResolver` で論理方向を物理方向に書き直す（相談しない）。縦書きの本では、組方向から物理方向を決める表を `LiteralResolver` に持たせる。どちらを選んだかと数を記録する | Opus |
-| 4 | KDP が絵本の EPUB を受け付けない | S9-0 の A・B のどちらも通らない | S9-0（S8 の間に行える） | `picture-book-spec.md` の入口の確かめの表（`v2-s9-picture-book-consultation.md` §4.3）。最後は §4.4 の「い」 | ユーザー |
+| 4 | KDP が絵本の EPUB を受け付けない | S9-0 の A・B のどちらも通らない | S9-0（S8 の間に行える） | `picture-book-spec.md` §9.1 の表。最後は §4.4 の「い」 | ユーザー |
 | 5 | Apple Books が `break-before` の `var()` を解かない | S6-9b の B2 の EPUB で、節の改ページが効かない | S6-9b | `theme-contract-spec.md` の S6-9b の手（`v2-s6-10-consultation.md` §4.5） | Opus |
 | 6 | Kobo・Google Play Books での表示が確かめられない | 手元に端末が無い | 公開まで | 確かめない。平らな CSS と規格どおりの EPUB（EPUBCheck が 0）を渡すことを保証の線にする。マニュアルに、確かめたリーダー（Apple Books・Kindle Previewer）を書く | Opus（マニュアルの文面はユーザーが見る） |
 | 7 | 移行の不具合が公開の直前に分かる | 6 冊のどれかの PDF に説明のつかない差 | S11a（予行） | S11a の予行で基盤の不具合を出し、`v2` で直す | Opus（見た目の判断はユーザー） |
@@ -107,7 +107,7 @@ brief の叩き台の順序（HTML の構造 → 層 → Kindle 用の CSS → �
 | 12 | 決定の置き場が分かれる | 同じことが相談文・仕様書・実装記録にある | 今 | 相談文は、答えを仕様書へ移したら archives へ移す。仕様書に移した後は、仕様書だけが正典（相談文は経緯の記録）。仕様書の役目は `STATUS.md` の「メモ」の表 | Opus |
 | 13 | 道具の版が途中で上がる（Vivliostyle・Chromium・Kindle Previewer・macOS） | 何も変えていないのに、基準と画素が合わない | いつでも | まず同じコミットで基準を組み直して、差が道具によるものかを見る（§3.2）。道具による差なら、その道具の版で基準を作り直して版を上げ、`VERSIONS.md` に書く。段階の途中で道具を上げない（`vs upgrade` を手元で走らせない。`npm`・`brew` の更新は小段階の区切りで） | Opus |
 | 14 | 固定レイアウトの EPUB に同梱する書体の利用の条件 | 著者の選んだ書体が、同梱を許していない | S9-4 | vs は条件を判定しない。雛形の既定の書体（Noto）は同梱できる。マニュアルに「固定レイアウトの EPUB には書体が入る」と書き、ビルドの出力の一覧に同梱した書体の名前を示す | Opus（マニュアルの文面はユーザーが見る） |
-| 15 | 絵本の経路が Vivliostyle か Apple Books で組めない | S9-2 の最初の材料の本・S9-4 の画面 | S9-2・S9-4 | `picture-book-spec.md` の危険の手（`v2-s9-picture-book-consultation.md` §4.12 の 2・3）。二つ以上当たったら §4.4 の「う」をユーザーに示す | Opus（「う」はユーザー） |
+| 15 | 絵本の経路が Vivliostyle か Apple Books で組めない | S9-2 の最初の材料の本・S9-4 の画面 | S9-2・S9-4 | `picture-book-spec.md` §10 の 2・3。二つ以上当たったら §4.4 の「う」をユーザーに示す | Opus（「う」はユーザー） |
 | 16 | 会話が切り替わって、決めたことが失われる | 前の会話で決めたことを、次の会話が知らない | いつでも | 小段階の完了ごとに、実装記録（仕様書）と記憶（進み具合の 1 件）を更新してからコミットする。了承を待っている点は、記憶の「了承待ち」の一覧に載せる（§4.1） | Opus |
 | 17 | 移していない 1.x の本を、2.0 の `vs` で組んでしまう | `stylesheets/` の配置が違うので、CSS が読まれずに崩れた本ができる | 公開の後（利用者の手元） | §5.7（🔴 で止めて、二つの道を示す）。S11a で作る | Opus |
 
@@ -136,6 +136,7 @@ master の、`v2` を切った時点のコミットで、次の本を組み、�
 | B4 | 分冊の確かめに使った本（`multivolume-spec.md` の確かめの本）の 1 巻 | `pdf`・`epub` |
 | B5 | B1 を `VIVLIO_PDF_PLUGIN=disable` で | `pdf` |
 | N1 | 小説の雛形の本（`scaffolds/novel/`）。r4 から（`novel-vertical-spec.md` §8.3） | `pdf`・`print_pdf`・`epub`・`kindle`（Kindle の記録と画面を含む） |
+| P1 | 絵本の雛形の本（`scaffolds/picture_book/`）。r5 から（`picture-book-spec.md` §9.4）。Kindle の中間生成物の比べは使わず、Kindle 用の EPUB を `epub_diff.rb` で比べる | `pdf`・`print_pdf`・`epub`・`kindle`（画面を含む） |
 
 - B1 の Kindle は、KPF に加えて、Kindle 用の EPUB（`--no-clean` で残す）・変換の記録・変換の中間生成物の `computedstyle`（`scripts/kfx_probe.rb` の読み方。`kindle-css-compatibility-notes.md` §2.1）・Kindle Previewer の画面（章扉・節見出し・囲み・コード・表・索引・用語集・前書き・付録・奥付の 10 か所）を残す。
 - B1 の EPUB は、Apple Books の画面を同じ 10 か所で残す（開き方と消し方は `v2-feasibility-notes.md` §7）。
@@ -513,7 +514,7 @@ S11a の確かめに使う本を、テストの素材（`test/vivlio_starter/fix
 | 1 | 2.0.0 の前に、途中の版（プレリリース）を RubyGems に出すか | 決定済み（2026-11-14） | 出さない。確かめは作業ツリーの `bin/vs` と、手元で作った gem で行う |
 | 6 | `v2` で整理した CSS を 1.x へ取り込むか（ユーザーの意向・2026-11-14）。§6.1 の「master → `v2` の一方向」の例外になる。著者の本の `stylesheets/` が全部入れ替わる更新になる点（`css-layer-restructure-spec.md` §8）と、平らな CSS の生成（Ruby の側）も一緒に要る点を、取り込む時点で判断する | 決定済み（2026-11-15） | 取り込まない。CSS は 2.0 の完成まで待つ（理由は `v2-post-s3-consultation.md` §5.7）。1.x の不具合の #132（付録の色）だけ master にも入れ、1.0.1 で出す |
 | 2 | 2.0.0 の公開の時期 | ユーザーが決める | 本書は日付を置かない。条件は §4.3 |
-| 3 | KDP が固定レイアウトの EPUB を受け付けるか（`v2-architecture-spec.md` §9 の 1） | S9-0（S8 の間に行える） | S9-0 でユーザーが確かめる（`v2-s9-picture-book-consultation.md` §4.3）。受け付けない場合は §2.4 の 4・§4.4 の「い」 |
+| 3 | KDP が固定レイアウトの EPUB を受け付けるか（`v2-architecture-spec.md` §9 の 1） | S9-0（S8 の間に行える） | S9-0 でユーザーが、手で作る 2 つの EPUB（A: 実体の文字・B: ページの画像）を KDP のプレビューで確かめる（`picture-book-spec.md` §9.1）。受け付けない場合は §2.4 の 4・§4.4 の「い」 |
 | 4 | S7（公式テーマの取り込み）の入口の実験で、組めなかった場合の範囲 | S7a | §2.4 の 1 |
 | 5 | 1.x の保守の期間の間に、1.x へ入れる修正の基準（不具合のうち、どこまでを直すか） | 決定済み（2026-11-17） | §6.3 の「1.x に入れる修正の基準」 |
 

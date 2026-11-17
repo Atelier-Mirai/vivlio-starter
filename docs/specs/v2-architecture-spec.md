@@ -77,8 +77,9 @@ module VivlioStarter::CLI::BookProfile
     },
     picture_book: {
       %i[page layout]             => 'fixed',
+      %i[page use]                => 'b5_standard',
       %i[page heading_numbering]  => 'none',
-      %i[theme name]              => 'picture',
+      %i[theme name]              => 'picture-book',
       %i[index_glossary enabled]  => false,
       %i[lint ruleset]            => 'minimal',
       %i[metrics use]             => 'none'
@@ -89,8 +90,8 @@ end
 
 - 値の解決の順は「`ConfigKeys` の既定値 → 種類の既定値 → `book.yml` に書いた値」とする（§5.3）。
 - `book.type` が無い `book.yml`（1.x の本）は `techbook` として読む。1.x の本は何も書き足さずに今と同じ値で組める。
-- 表の中身（判型の名前・テーマの名前）は、小説と絵本の個別の仕様で確定する。小説は `novel-vertical-spec.md` §4.3 で確定した（2026-11-17。節の改ページの 2 行を足し、テーマは `novel`）。絵本の行は、絵本の仕様で確定するまで形を示すためのものである。
-- **`theme.name` の行は、そのテーマを同梱する段階で足す（`v2-s6-consultation.md` §4.6）。** `novel` のテーマ `novel` は S8-5（`page.use` と改ページの 2 行は S8-3）、`picture_book` の `picture` は S9 である。それまで `book.type: novel` の本は既定の `standard` で読まれ、`standard` が横書きだけに対応する（`supports.writing_mode: [horizontal]`）ので、S6 から S8 まで §2.5 の検査が 🔴 で止める。`book_profile_test.rb` に「`PROFILES` の `theme.name` の値が、どれも同梱のテーマにある」を足し、名前だけが先に入らないようにする。
+- 表の中身（判型の名前・テーマの名前）は、小説と絵本の個別の仕様で確定する。小説は `novel-vertical-spec.md` §4.3、絵本は `picture-book-spec.md` §4.1・§7 で確定した（2026-11-17。小説は節の改ページの 2 行を足し、テーマは `novel`。絵本は判型 `b5_standard`、テーマは `picture-book`）。
+- **`theme.name` の行は、そのテーマを同梱する段階で足す（`v2-s6-consultation.md` §4.6）。** `novel` のテーマ `novel` は S8-5（`page.use` と改ページの 2 行は S8-3）、`picture_book` のテーマ `picture-book` と判型は S9-1 である。それまで `book.type: novel` の本は既定の `standard` で読まれ、`standard` が横書きだけに対応する（`supports.writing_mode: [horizontal]`）ので、S6 から S8 まで §2.5 の検査が 🔴 で止める。`book_profile_test.rb` に「`PROFILES` の `theme.name` の値が、どれも同梱のテーマにある」を足し、名前だけが先に入らないようにする。
 - テスト（`book_profile_test.rb`）で次を検査する。(1) 表のキーがすべて `ConfigKeys::KEYS` にある。(2) 種類ごとの雛形の `book.yml` に書かれた値が、その種類の解決後の既定値と一致する（`config_keys_test.rb` が今の雛形に対して行っている検査を、種類ごとに行う）。
 
 ### 2.3 コードは種類を読まない
@@ -210,8 +211,9 @@ end
 | `check chapter leads` | pdf | テーマが扉絵の機能を使う | |
 | `print pdf` | pdf | 導出の条件に「動画が無い」を足す（§4.5） | |
 | `generate epub` | epub | 変えない | 中身は `OutputTarget` ごとの流れになる（§4） |
-| **`build page spreads`**（新） | shared | `traits.fixed?` | 絵本のページの HTML を作る（§3.5） |
-| **`build cover spread`**（新） | pdf | 背表紙とくるみ表紙の仕様で決める | `traits.binding` とページ数から背幅を求める |
+| **`build page spreads`**（新） | shared | `traits.fixed?` | 絵本のページの HTML を作る（§3.5）。`preprocess sections`・`convert sections html`・後処理に替わる |
+| 前付（本扉・権利ページ）の生成・回転した表の画像 | — | `!traits.fixed?` | 固定レイアウトの本で載らない段の一覧は `picture-book-spec.md` §6。`index scan and build`・`backlink dedup` は上の行の `features.index` のまま（固定レイアウトでは索引を作らない。§2.5）。`prepare theme images`・`check chapter leads` は、`picture-book` が `features:` を持たないので上の行の条件で載らない |
+| **`build cover spread`**（新） | pdf | 表紙の形のキーが「くるみ」（`cover-spread-spec.md`） | `traits.binding` とページ数から背幅を求める。結合の後に走る |
 
 縦書きで増える処理（縦中横の自動判定など）は、段を足さずに L3 の後処理の中の一段として入れる（§7.1）。
 
@@ -239,10 +241,10 @@ STEPS = [
 
 | 層 | リフロー | 固定レイアウト |
 | :--- | :--- | :--- |
-| L1 | `TokenResolver`（章の番号の範囲で種類を決める） | ページの並びを読む（1 ファイルに複数ページか、1 ファイル 1 ページかは絵本の仕様で決める） |
+| L1 | `TokenResolver`（章の番号の範囲で種類を決める） | ページの並びを読む。1 ファイルに複数ページで、行頭の `@page`・`@spread` で区切る。`catalog.yml` は `CHAPTERS:` だけ（`picture-book-spec.md` §2） |
 | L2・L3 | 前処理 → VFM → 後処理 | `build page spreads`: ページごとに、寸法の決まった 1 枚の HTML を作る |
 | 契約 HTML | 章ごとの HTML | ページごとの HTML（`body` に `vs-fixed` と、ページの種類のクラス。`theme-contract-spec.md` §2.7） |
-| L4 | 出力先の変換 | 同じ仕組み。変換の並びは固定レイアウト用 |
+| L4 | 出力先の変換 | 同じ仕組み。変換の並びは固定レイアウト用。`kindle` は HTML を使わず、閲覧用 PDF のページを画像にする（`picture-book-spec.md` §2.4） |
 | L5 | Vivliostyle の PDF・EPUB | PDF は Vivliostyle（判型＝ページの寸法）。EPUB は vs が自分で梱包する（Vivliostyle CLI の EPUB 出力はリフロー型を前提にするため。`v2-feasibility-notes.md` §4 で Ruby から最小の固定レイアウト EPUB を組めることは確認済み） |
 
 章の番号の範囲（`00`・`01–89`・`90–98`・`99`）はリフローの本だけの決まりとし、固定レイアウトには持ち込まない。小説はリフローなので、今の番号の範囲をそのまま使う。
@@ -262,7 +264,7 @@ OutputTarget = Data.define(
   :workspace,   # 出力先の HTML と CSS を置くディレクトリ
   :body_classes,# body に足すクラス（['vs-epub'] など）
   :transforms,  # 1 ページの契約 HTML だけを見て書き換える段の並び（§4.3）
-  :css_form,    # :layered / :flat / :flat_literal（css-layer-restructure-spec.md §4）
+  :css_form,    # :layered / :flat / :flat_literal / :none（css-layer-restructure-spec.md §4。:none は固定レイアウトの kindle。CSS を持たない）
   :finalizers,  # 本の全部のページと CSS を見る段の並び（変換の後・梱包の前。§4.3）
   :assets,      # 素材の方針（使える画像の形式・SVG を同梱できるか・動画の扱い）
   :packager     # 梱包の方法
@@ -273,7 +275,7 @@ OutputTarget = Data.define(
 - **`finalizers` は S3 の後に足した（2026-11-15・`v2-post-s3-consultation.md` §5.5）。** S3 で、ページごとの変換の後に、本の全部のページと CSS を見て書き直す段が三つ入った（`custom.css` を平らな CSS でも勝たせる・異体字の 1 字書体・層を外すと勝ち負けが変わる組の報告）。
   - `transforms` に入れない理由: 変換は「1 ページだけを見る」ことを決まりにする。この決まりがあるから、`runner.rb` は 1 ページを一度読んで一度書く形にでき、後でページごとに並べて走らせる余地も残る。本全体を見る段を混ぜると、決まりが崩れる。
   - `css_form` に付けない理由: 三つのうち一つ（異体字の 1 字書体）は CSS の形と関係が無く、一つ（`custom.css` を勝たせる）は HTML も書き直す。
-- `transforms`・`finalizers`・`assets`・`packager` は `traits` によって変わる。宣言は `OutputTarget.for(id, traits)` で引き、リフローと固定レイアウトで別の値を返す。固定レイアウトの `finalizers` は S9 で決める。
+- `transforms`・`finalizers`・`assets`・`packager` は `traits` によって変わる。宣言は `OutputTarget.for(id, traits)` で引き、リフローと固定レイアウトで別の値を返す。固定レイアウトの宣言は `picture-book-spec.md` §5.1（`epub` の `finalizers` は `AuthorPriority` → `InversionReport`、`kindle` は無し。`packager` に `:fixed_epub`・`:fixed_epub_images` を足す）。
 
 ### 4.2 四つの出力先
 
@@ -283,13 +285,13 @@ OutputTarget = Data.define(
 | `print_pdf` | `pdf` と同じ | 層あり | なし | そのまま（本文の画像の CMYK への変換は未実装。表紙だけ変換する） | サムネイルと QR コード | `pdf` から導出するか、組み直す |
 | `epub`（リフロー） | 共通の 10 段 | 平ら | `AuthorPriority` → `InversionReport` | WebP | `<video>` と、再生できない読者向けの代わりの表示 | Vivliostyle の EPUB |
 | `kindle`（リフロー） | 共通の 10 段 ＋ Kindle の 17 段 | 平ら・リテラル | `AuthorPriority` → `VariantGlyphFonts` → `InversionReport` | JPEG・PNG（SVG と WebP は同梱しない） | サムネイルに動画へのリンク | Vivliostyle の EPUB → KPF |
-| `epub`（固定） | 固定レイアウト用 | 平ら | S9 で決める | JPEG・PNG・WebP | `<video>` | vs が梱包 |
-| `kindle`（固定） | 固定レイアウト用 ＋ 動画の置き換え | 平ら・リテラル | S9 で決める | JPEG・PNG | サムネイルに動画へのリンク | vs が梱包。KPF にせず EPUB を出力する |
+| `epub`（固定） | 固定レイアウト用（S9 では `MarkBody` に当たる 1 段。動画の段は S10） | 平ら | `AuthorPriority` → `InversionReport` | WebP（見開きは長辺 4096px まで） | `<video>` | vs が梱包（`:fixed_epub`）。文字の箱の書体を同梱する |
+| `kindle`（固定） | なし（閲覧用 PDF のページを画像にする） | なし（`:none`） | なし | ページの画像（長辺 1920px の JPEG） | ポスター画像が PDF のページに焼かれて届く。リンクは `video-spec.md` | vs が梱包（`:fixed_epub_images`）。KPF にせず EPUB を出力する |
 
 - 段の数は、S3 の完了の後（2026-11-16）に `EpubBuilder#prepare_entries` の呼び出しを数え直した値である。共通の 10 段は `mark_body`・`strip_inline_footnote_ids`・`rewrite_table_align`・`restore_plain_emoji`・`inject_heading_images`・`localize_showcase_images`・`shrink_side_by_side_figures`・`convert_code_blocks`・`decorate_footnotes`・`post_process_index_glossary`。Kindle の 17 段は `decorate_talk`・`transcode_webp_images`・`strip_webp_inline_styles`・`mark_body`（`vs-kindle`）・`restore_h3_markers`・`constrain_layout_images`・`compose_pictures`・`textify_simple_math`・`rasterize_display_math`・`convert_math_units`・`keep_cell_math_inline`・`align_code_cells`・`inject_code_line_numbers`・`decorate_admonitions`・`decorate_list_markers`・`layout_index_columns`・`replace_rotate_tables`。平らな CSS を書いて `link` を付け替える段（`bundle_flat_css_for_epub!`）は `css_form` の処理で、変換の数に入れない。
 - 本全体の段の順は、今の順のままである。`AuthorPriority` は CSS を書き直すので、異体字の規則を CSS の末尾へ足す `VariantGlyphFonts` より前に置く。`InversionReport` は、書き直した後の CSS を見る。
 - クリーン EPUB にも平らな CSS を渡す。Kobo と Google Play Books が `@layer` を解するかは確かめられていない（`v2-feasibility-notes.md` §6.2）が、層を外した CSS はどのリーダーでも同じに読まれるので、対応の有無を調べる必要も、著者に選ばせるキーも要らなくなる。層を外す仕組みは Kindle のために作るので、追加の実装は無い。
-- 固定レイアウトの `kindle` の出力ファイルは `<名前>-kindle.epub` とする。KDP へはこの EPUB を出す（`v2-feasibility-notes.md` §4.1）。KDP が受け付けて正しく表示するかは未確認で、S9 の入口で確かめる（§9）。
+- 固定レイアウトの `kindle` の出力ファイルは `<名前>-kindle.epub` とする。KDP へはこの EPUB を出す（`v2-feasibility-notes.md` §4.1）。KDP が受け付けて正しく表示するかは未確認で、S9-0 でユーザーが確かめる（`picture-book-spec.md` §9.1）。固定レイアウトの行は 2026-11-17 に `picture-book-spec.md` §5 に合わせて直した。
 
 ### 4.3 `epub_builder.rb` の分割
 
@@ -400,7 +402,8 @@ Kindle の囲みの 3 点の型（`.claude/CLAUDE.md` の「Kindle degradation c
 - `pdf` と `print_pdf` で紙面が違うので、動画のある本では `print_pdf` を `pdf` から導出できない。`derive_print?` の条件に「契約 HTML に `figure.vs-video` が無い」を足し、ある場合は組み直す。
 - `data-vs-url` が無い動画（配布先の URL を持たない）は、`pdf`・`kindle`・`print_pdf` ではポスター画像だけになる。`vs build` と `vs preflight` が 🟡 で知らせる（原稿の場所を指す）。
 - EPUB の大きさが 100 MB（Kobo の上限。`v2-feasibility-notes.md` §5.2）を超えたら、`generate epub` の後で 🟡 を出す。上限は定数とする（著者が変える理由が無い）。
-- ポスター画像を動画から切り出すか、著者が用意するかは、動く絵本の仕様で決める。切り出す場合は外部の道具が要るので、`notation-implementation-guide.md` §5 の型（生成資産・`GeneratedAssetCache`・doctor への登録）に載せる。
+- ポスター画像は、著者の `poster=` の指定が先で、無ければ ffmpeg で最初のこまを切り出す（`video-spec.md` §0。2026-11-17）。切り出しは `notation-implementation-guide.md` §5 の型（生成資産・`GeneratedAssetCache`・doctor への登録）に載せる。ffmpeg は必須にしない。
+- 動画はどの種類の本でも使える（`video-spec.md`）。固定レイアウトの `kindle` は閲覧用 PDF のページを画像にするので、動画の置き換えを別に書かない（ポスター画像が PDF の紙面のまま届く）。
 
 ### 4.6 Web 出力
 
@@ -615,8 +618,9 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 
 ### S9・S10 絵本と動画（本書に関わる部分）
 
+- 絵本の仕様は `picture-book-spec.md`（小段階は同 §9.2 の S9-0〜S9-7）、動画の仕様は `video-spec.md`（S10-1〜S10-5）。
 - 作るもの: §3.5 の経路、§4.2 の固定レイアウトの二行、§4.5。
-- 完了の条件: `scaffolds/picture_book/` の本が四つの出力先で組め、EPUB が EPUBCheck でエラー・警告とも 0。動画のある本で、`pdf`・`print_pdf`・`epub`・`kindle` の動画の表示が §4.5 の表のとおりになる。
+- 完了の条件: `scaffolds/picture_book/` の本が四つの出力先で組め、EPUB が EPUBCheck でエラー・警告とも 0（紙面の条件は `picture-book-spec.md` §9.3）。動画のある本で、`pdf`・`print_pdf`・`epub`・`kindle` の動画の表示が §4.5 の表のとおりになる。
 
 ---
 
