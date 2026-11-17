@@ -59,7 +59,7 @@
 | **S11d** | 公開の関門（`rake test:release`・全部の Ruby の版・1.x の本の固定の確かめ・`CHANGELOG.md`・公開） | 本書 §4.3 | S11c | — | |
 
 - 表は着手する順に並べた。S8b・S8c は「先に終えている必要がある段階」が少ないが、着手は S8 の完了の後とする（§2.2）。
-- 仕様書のうち `novel-vertical-spec.md`・`cover-spread-spec.md`・`furigana-spec.md`・`picture-book-spec.md`・`video-spec.md` は、2026-11-17 の Fable の答え（`v2-s8-novel-consultation.md` §4・`v2-s9-picture-book-consultation.md` §4）から書き起こす。
+- 仕様書のうち `novel-vertical-spec.md`・`cover-spread-spec.md`・`furigana-spec.md` は、2026-11-17 に Fable の答え（`v2-s8-novel-consultation.md` §4）から書き起こした（後の 2 本は骨格だけで、S8b・S8c の最初に書き足す）。`picture-book-spec.md`・`video-spec.md` は、`v2-s9-picture-book-consultation.md` §4 から書き起こす。
 - N1（小説の雛形の本）・P1（絵本の雛形の本）は、S8・S9 で足す基準である。B1〜B5 と同じ版の番号で持つ。
 
 brief の叩き台の順序（HTML の構造 → 層 → Kindle 用の CSS → テーマ → 公式テーマ → 小説 → 絵本と動画）と同じ並びである。足したのは、基準を作る S0、出力先の分割の S4、種類と軸の S5、移行と公開の S11 の四つ。2026-11-17 に、S7 と S11 を分け、S11a を前倒しし、S8 の 5 件のうち 2 件を S8b・S8c として独立させた（`v2-plan-review-consultation.md` §4.2・§4.3）。
@@ -135,6 +135,7 @@ master の、`v2` を切った時点のコミットで、次の本を組み、�
 | B3 | 本書で `page.section_pagebreak: true`・`chapter_pagebreak: recto`・`page.use: b5_standard` | `pdf` |
 | B4 | 分冊の確かめに使った本（`multivolume-spec.md` の確かめの本）の 1 巻 | `pdf`・`epub` |
 | B5 | B1 を `VIVLIO_PDF_PLUGIN=disable` で | `pdf` |
+| N1 | 小説の雛形の本（`scaffolds/novel/`）。r4 から（`novel-vertical-spec.md` §8.3） | `pdf`・`print_pdf`・`epub`・`kindle`（Kindle の記録と画面を含む） |
 
 - B1 の Kindle は、KPF に加えて、Kindle 用の EPUB（`--no-clean` で残す）・変換の記録・変換の中間生成物の `computedstyle`（`scripts/kfx_probe.rb` の読み方。`kindle-css-compatibility-notes.md` §2.1）・Kindle Previewer の画面（章扉・節見出し・囲み・コード・表・索引・用語集・前書き・付録・奥付の 10 か所）を残す。
 - B1 の EPUB は、Apple Books の画面を同じ 10 か所で残す（開き方と消し方は `v2-feasibility-notes.md` §7）。

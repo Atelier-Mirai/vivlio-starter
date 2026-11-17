@@ -66,8 +66,10 @@ module VivlioStarter::CLI::BookProfile
     novel: {
       %i[page writing_mode]       => 'vertical',
       %i[page use]                => 'a6_standard',
+      %i[page section_pagebreak]  => false,
+      %i[page chapter_pagebreak]  => 'any',
       %i[page heading_numbering]  => 'none',
-      %i[theme name]              => 'bunko',
+      %i[theme name]              => 'novel',
       %i[index_glossary enabled]  => false,
       %i[lint ruleset]            => 'novel',
       %i[metrics use]             => 'none',
@@ -87,8 +89,8 @@ end
 
 - 値の解決の順は「`ConfigKeys` の既定値 → 種類の既定値 → `book.yml` に書いた値」とする（§5.3）。
 - `book.type` が無い `book.yml`（1.x の本）は `techbook` として読む。1.x の本は何も書き足さずに今と同じ値で組める。
-- 表の中身（判型の名前・テーマの名前）は、小説と絵本の個別の仕様で確定する。上の表は形を示すためのものである。
-- **`theme.name` の行は、そのテーマを同梱する段階で足す（`v2-s6-consultation.md` §4.6）。** `novel` の `bunko` は S8、`picture_book` の `picture` は S9 である。それまで `book.type: novel` の本は既定の `standard` で読まれ、`standard` が横書きだけに対応する（`supports.writing_mode: [horizontal]`）ので、S6 から S8 まで §2.5 の検査が 🔴 で止める。`book_profile_test.rb` に「`PROFILES` の `theme.name` の値が、どれも同梱のテーマにある」を足し、名前だけが先に入らないようにする。
+- 表の中身（判型の名前・テーマの名前）は、小説と絵本の個別の仕様で確定する。小説は `novel-vertical-spec.md` §4.3 で確定した（2026-11-17。節の改ページの 2 行を足し、テーマは `novel`）。絵本の行は、絵本の仕様で確定するまで形を示すためのものである。
+- **`theme.name` の行は、そのテーマを同梱する段階で足す（`v2-s6-consultation.md` §4.6）。** `novel` のテーマ `novel` は S8-5（`page.use` と改ページの 2 行は S8-3）、`picture_book` の `picture` は S9 である。それまで `book.type: novel` の本は既定の `standard` で読まれ、`standard` が横書きだけに対応する（`supports.writing_mode: [horizontal]`）ので、S6 から S8 まで §2.5 の検査が 🔴 で止める。`book_profile_test.rb` に「`PROFILES` の `theme.name` の値が、どれも同梱のテーマにある」を足し、名前だけが先に入らないようにする。
 - テスト（`book_profile_test.rb`）で次を検査する。(1) 表のキーがすべて `ConfigKeys::KEYS` にある。(2) 種類ごとの雛形の `book.yml` に書かれた値が、その種類の解決後の既定値と一致する（`config_keys_test.rb` が今の雛形に対して行っている検査を、種類ごとに行う）。
 
 ### 2.3 コードは種類を読まない
@@ -138,6 +140,7 @@ end
 | :--- | :--- |
 | テーマが対応しない組方向・レイアウト（テーマの `supports:`・`theme-contract-spec.md` §3） | 🔴 で止める。対応するテーマの名前を、本の `themes/` と同梱のテーマから探して示す。無ければ「縦書きに対応するテーマは、まだ同梱されていません」の形で示す（S8 まではこの文面になる。探す作りにしておけば、S8 で文面のコードを変えずに済む） |
 | `page.layout: fixed` と `index_glossary.enabled: true` | 🟡。固定レイアウトでは索引と用語集のページを作らない、と示す |
+| `page.writing_mode: vertical` と `index_glossary.enabled: true` | 🟡。「縦書きでは索引と用語集のページを作りません」と示し、段を止める（固定レイアウトの行と同じ形。`novel-vertical-spec.md` §2.2）。S8-4 で作る |
 | `page.layout: fixed` と `targets` の `kindle` | 警告はしない。KPF に変換せず EPUB を出力する、と出力の一覧に示す（§4.2） |
 | 動画のある本で `targets` が `print_pdf` を含む | 警告はしない。閲覧用 PDF からの導出をやめ、組み直す（§4.5） |
 
@@ -519,11 +522,11 @@ theme:
 | :--- | :--- | :--- | :--- |
 | 傍点 | D | `[文字]{.sesame}` → `span.sesame` | クラス名は公式テーマと同じ `sesame` にする（`theme-contract-spec.md` §2.5） |
 | 縦中横（手で指定） | D | `[12]{.tcy}` → `span.tcy` | 同じく公式テーマと同じ `tcy` |
-| 縦中横（自動） | L3 の後処理の一段 | 条件は `traits.vertical?`。本文の中の半角の数字 1〜2 桁と `!?`・`!!` を `span.tcy` で包む。コード・数式・ルビの読み・`span.tcy` の中は対象にしない | 桁数の上限と対象の字は小説の仕様で確定する |
-| 小説投稿サイトの記法（`\|漢字《かんじ》`・`《《…》》`） | B | 前処理の一段 `transform_web_novel_marks!`。条件は `features.web_novel`。ルビは vs の `{漢字\|かんじ}` へ、傍点は `[…]{.sesame}` へ置き換える | **前処理で受ける。`vs import` にはしない。** 投稿サイトと本の両方へ同じ原稿を出す著者が対象で、原稿を書き換えると二つの原稿を持つことになるため |
-| 小説の表記の lint | （記法ではない） | `lint.ruleset: novel`（§6） | |
-| `vs furigana` | （コマンド） | 原稿を書き換えるコマンド。ビルドの段ではない | 対象の水準は `furigana-level-spec.md`。本書の枠では、ルビの記法が今の `{漢字\|よみ}` のままであることだけを前提にする |
-| 背表紙とくるみ表紙 | （出力） | `build cover spread` の段（§3.3） | 背幅はページ数と紙の厚さから求める。紙の厚さは著者が答えを持つ値なので `book.yml` のキーにする。個別の仕様で決める |
+| 縦中横（自動） | L3 の後処理の一段 | 条件は `traits.vertical?`。本文の中の半角の数字 1〜2 桁と、半角の `!?`・`?!`・`!!`・`??` を `span.tcy` で包む。コード・数式・ルビの読み・`span.tcy` の中・URL・横組みの箱・奥付と権利ページは対象にしない | 確定した（`novel-vertical-spec.md` §5.3）。3 桁以上は包まず、lint が知らせる |
+| 小説投稿サイトの記法（`\|漢字《かんじ》`・`《《…》》`） | B | 前処理の一段 `transform_web_novel_marks!`。条件は `features.web_novel`。ルビは vs の `{漢字\|かんじ}` へ、傍点は `[…]{.sesame}` へ置き換える | **前処理で受ける。`vs import` にはしない。** 投稿サイトと本の両方へ同じ原稿を出す著者が対象で、原稿を書き換えると二つの原稿を持つことになるため。受ける範囲は `novel-vertical-spec.md` §5.4 |
+| 小説の表記の lint | （記法ではない） | `lint.ruleset: novel`（§6） | 規則は `novel-vertical-spec.md` §6.2 |
+| `vs furigana` | （コマンド） | 原稿を書き換えるコマンド。ビルドの段ではない | 対象の水準は `furigana-level-spec.md`。本書の枠では、ルビの記法が今の `{漢字\|よみ}` のままであることだけを前提にする。仕様は `furigana-spec.md`（段階 S8c） |
+| 背表紙とくるみ表紙 | （出力） | `build cover spread` の段（§3.3） | 背幅はページ数と紙の厚さから求める。紙の厚さは著者が答えを持つ値なので `book.yml` のキーにする。仕様は `cover-spread-spec.md`（段階 S8b） |
 | 絵本のページの区切り | （原稿の構造） | L1 の固定レイアウトの読み込み（§3.5） | 記法の型には入れない |
 | 動画 | E ＋ C | `figure.vs-video`（§4.5） | |
 
@@ -606,8 +609,9 @@ S5 の範囲に入れないもの: `theme.name` とテーマの宣言（S6）、
 
 ### S8 縦書きの小説（本書に関わる部分）
 
-- 作るもの: §2.4 の表の残り（OPF・`@page`）、§7.1 の D 型・縦中横・投稿サイトの記法、`scaffolds/novel/`、`lint.ruleset: novel` の 4 規則。
-- 完了の条件: `scaffolds/novel/` の本が四つの出力先で組め、Kindle が KPF になる（Enhanced Typesetting が Supported）。紙面の条件は小説の仕様に書く。
+- 小説の仕様は `novel-vertical-spec.md`。小段階は同 §8.1（S8-1〜S8-7）。
+- 作るもの: §2.4 の表の残り（OPF・`@page`）、§7.1 の D 型・縦中横・投稿サイトの記法、`scaffolds/novel/`、`lint.ruleset: novel` の規則（6 つ。`novel-vertical-spec.md` §6.2）、§2.5 の縦書きと索引の行。背表紙とくるみ表紙は S8b（`cover-spread-spec.md`）、`vs furigana` は S8c（`furigana-spec.md`）へ分けた。
+- 完了の条件: `scaffolds/novel/` の本が四つの出力先で組め、Kindle が KPF になる（Enhanced Typesetting が Supported）。紙面の条件は `novel-vertical-spec.md` §8.2。
 
 ### S9・S10 絵本と動画（本書に関わる部分）
 

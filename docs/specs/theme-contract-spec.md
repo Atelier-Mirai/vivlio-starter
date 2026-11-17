@@ -147,6 +147,8 @@ S1 で、保証するクラスの全数の表を `lib/vivlio_starter/cli/html_co
 | ルビ | `<ruby>漢字<rt>かんじ</rt></ruby>`（今と同じ・VFM の出力） | |
 | 動画 | `<figure class="vs-video"><video …></video><figcaption>…</figcaption></figure>` | `v2-architecture-spec.md` §4.5 |
 | 行内の属性 | `<span class="…">…</span>`（`[文字]{.class}`） | `v2-architecture-spec.md` §7.1 の D 型 |
+| 括弧で始まる段落の印 | `<p class="vs-open-bracket">「…</p>` | 付く条件: 縦書き（`traits.vertical?`）。テーマが字下げを 0 にする（`novel-vertical-spec.md` §6.1）。横書きの本にも要ると分かったら、条件を外す（足すだけの変更） |
+| 全面の挿絵 | `<figure class="vs-full-page">…</figure>`（`![題](x.png){.full-page}`） | どのテーマ・どの組方向でも働く vs の部品（`parts/figure.css`）。クラス名は S8-2 で確定する（`novel-vertical-spec.md` §5.2） |
 
 `tcy` と `sesame` は `vs-` を付けない。公式テーマと、電書協の様式で書かれた既存の CSS が、そのまま当たるようにするためである。
 
@@ -395,7 +397,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `stylesheets/images/bundled/`（扉絵・節絵の 12 枚） | `themes/standard/images/` | |
 | `stylesheets/targets/epub.css`・`kindle.css` の、選択子が `vs-header-*` を含む規則 | `themes/standard/epub.css`・`kindle.css`（§3.1） | 劣化させる相手の部品がテーマへ移る（下の「`targets/` の規則の線引き」） |
 | `book.yml` の `theme:` 節のキー | `themes/standard/theme.yml` の `options:` と、`features:` の機能の宣言 | §3.3・§3.4 |
-| `stylesheets/tokens.css`（公開する変数の既定値） | 残す。`--book-*` の一覧の正典（§5.2） | `standard` の `tokens:` は空。テーマに依らない中立の既定値と `standard` の値を分けるのは、2 つ目の組版のテーマ（`bunko`・S8）が値を決めるとき |
+| `stylesheets/tokens.css`（公開する変数の既定値） | 残す。`--book-*` の一覧の正典（§5.2） | `standard` の `tokens:` は空。テーマに依らない中立の既定値と `standard` の値を分けるのは、2 つ目の組版のテーマ（`novel`・S8）が値を決めるとき。`novel` は中立の既定値を動かさず、違う値だけを `tokens:` に書く（`novel-vertical-spec.md` §3.3） |
 | `pages/chapter.css` の `@page :nth(1)`（扉絵） | 残す | §3.4 |
 | `pages/appendix.css`・`pages/preface.css` の `:root` の付け替え | 残す | 付録の色・前書きの色は公開する変数（`--book-color-accent-appendix`・`-preface`）で、どのテーマでも働く仕組みである |
 | `parts/heading.css`・`prose.css`・`box.css`・`preface.css` などの、色・書体・余白・飾りの規則 | 残す | 下の「部品に残す飾り」 |
@@ -405,7 +407,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 
 - 部品の色と書体は、すでに公開する変数を読んでいる。テーマは変数で変えられる。規則で変えたいテーマは theme 層に書けば、PDF では詳細度に関係なく勝つ。規則を移さなくても、テーマにできることは減らない。
 - 規則を parts 層から theme 層へ移すたびに、詳細度が同じ組で勝つ側が入れ替わりうる。組版のテーマが `standard` の 1 つしか無い時点では、どの規則が「どのテーマにも要る骨格」で、どれが「`standard` だけの飾り」かを確かめる相手が無い。「迷う規則は部品の側に置く」（同 §3.2）に合う。
-- 残した規則のうち、`bunko`（S8）を書くときに打ち消しが要ったものを、S8 の中で `standard` へ移す（§10 の論点 5）。前書きの見た目（`parts/preface.css`）が、いちばんの候補である。
+- 残した規則のうち、`novel`（S8）を書くときに打ち消しが要ったものを、S8 の中で `standard` へ移す（§10 の論点 5）。前書きの飾り（`parts/preface.css`）は S8-5 で移すと決めた（`novel-vertical-spec.md` §3.4）。
 
 **`targets/` の規則の線引き（`v2-post-s3-consultation.md` §5.4）。**
 
@@ -418,7 +420,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 種類 | 既定のテーマ | 中身 |
 | :--- | :--- | :--- |
 | `techbook` | `standard` | 今の見た目 |
-| `novel` | `bunko`（仮の名前） | 縦書き・文庫の体裁。§6.4 |
+| `novel` | `novel` | 縦書き。文庫・B6・新書・四六の判型で使う。`novel-vertical-spec.md` §3 |
 | `picture_book` | `picture`（仮の名前） | 固定レイアウト。絵本の仕様で決める |
 
 ---
@@ -487,6 +489,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 項目 | 決定 | 理由 |
 | :--- | :--- | :--- |
 | 層の位置 | 公式テーマの CSS は、ほかのテーマと同じく `theme` 層に入れる。vs の部品（`parts` 層）はその下にある | 本文・見出し・表など共通の要素の見た目はテーマが決め、vs に固有の部品（索引・用語集・囲み・行番号・相互参照など。公式テーマは触れない）は vs の部品の規則が効く |
+| 名前 | パッケージの名前 `@vivliostyle/theme-<x>` から `vivliostyle-<x>` を作る（`theme-bunko` は `vivliostyle-bunko`）。`theme.yml` の `name:` もこの名前にする | 同梱の `novel` と、本の `themes/` の中で名前がぶつからない（`novel-vertical-spec.md` §3.1） |
 | 取り込みの時点 | `vs theme:add @vivliostyle/theme-bunko` で、本の `themes/` へ複製するときに変換する。ビルドのたびに npm から解決しない | `v2-architecture-spec.md` §7.2 の「本の中に実体を置く」。ビルドがそのマシンの `node_modules` の中身に左右されない |
 | 取り込みのときの変換 | (1) `@import '@vivliostyle/theme-base…'` を、複製した先の相対パスに書き換える。(2) `theme.yml` を生成する（`contract: 1`・`supports:` は下の表・`license:` は `package.json` から）。(3) 変数の対応表（§6.3）を `bridge.css` として生成する | |
 | 対応する出力先 | `supports.targets: [pdf, print_pdf, epub]`。**`kindle` は含めない** | `:is()` と `:has()` を使った規則は KFX が捨てる（`kindle-css-compatibility-notes.md` §2）。`:has()` は生成でも展開できない |
@@ -512,7 +515,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 代わりに、取り込みのときに、vs の値を公式テーマの変数へ渡す対応表を生成する。
 
 ```css
-/* themes/bunko-official/bridge.css（生成物） */
+/* themes/vivliostyle-bunko/bridge.css（生成物） */
 :root {
   --vs-font-family: var(--book-font-body);
   --vs-font-size: var(--book-font-size);
@@ -535,7 +538,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 - 目指す紙面は、Vivliostyle の公式の縦書きの作例に、ときどき挿絵を入れた形（`v2-design-research-brief.md` §5）。
 - 挿絵は `writing-mode: horizontal-tb` の `figure` に入れる（`v2-feasibility-notes.md` §3.1。縦書きの中で寸法の指定が入れ替わるのを避ける）。
 - 余白の箱（柱とノンブル）には `writing-mode: horizontal-tb` を指定する（同上）。
-- 紙面の寸法と部品の一覧は、小説の仕様に書く。
+- 紙面の寸法と部品の一覧は、小説の仕様に書く（`novel-vertical-spec.md` §3・§4）。テーマの名前は `novel`。
 
 ---
 
@@ -546,7 +549,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | 置き場 | 中身 | 誰が管理するか |
 | :--- | :--- | :--- |
 | 本の `themes/<名前>/` | その本が使えるテーマ。ビルドが読むのはここだけ | 雛形から来たものは `vs upgrade`、それ以外は著者 |
-| gem の雛形（`lib/project_scaffold/themes/`） | 同梱のテーマ（`standard`・`bunko`・`picture`）。正典はリポジトリの直下の `themes/` | vs の開発（`ruby scripts/copy_to_scaffold.rb` で同期） |
+| gem の雛形（`lib/project_scaffold/themes/`） | 同梱のテーマ（`standard`・`novel`・`picture`）。正典はリポジトリの直下の `themes/` | vs の開発（`ruby scripts/copy_to_scaffold.rb` で同期） |
 | 本の `stylesheets/` | vs の土台と部品（`css-layer-restructure-spec.md` §3）と `custom.css` | 雛形・`custom.css` だけ著者 |
 
 - `vs new` は、選んだ種類の既定のテーマだけを `themes/` に置く。ほかの同梱のテーマは `vs theme:add <名前>` で足す。
@@ -726,7 +729,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 
 | # | 論点 | 答えが要る時点 | 設計での扱い |
 | :--- | :--- | :--- | :--- |
-| 1 | 小説と絵本の既定のテーマの名前 | 決定済み（2026-11-17） | `novel`・`picture-book`。公式テーマを取り込んだものは `vivliostyle-<名前>`（`v2-s8-novel-consultation.md` §4.5・`v2-s9-picture-book-consultation.md` §4.9・`v2-plan-review-consultation.md` §4.6 の 5）。この仕様書の中の `bunko`・`picture` は、S8・S9 の仕様書を書くときに読み替える |
+| 1 | 小説と絵本の既定のテーマの名前 | 決定済み（2026-11-17） | `novel`・`picture-book`。公式テーマを取り込んだものは `vivliostyle-<名前>`（`v2-s8-novel-consultation.md` §4.5・`v2-s9-picture-book-consultation.md` §4.9・`v2-plan-review-consultation.md` §4.6 の 5）。この仕様書の中の `bunko` は `novel` へ直した（2026-11-17。実装記録の中は当時の名前のまま）。`picture` は S9 の仕様書を書くときに直す |
 | 2 | 対応表（`bridge.css`）に載せる変数の一覧 | S7b | S7a の結果を見て、S7b で Opus が決める。軸: 公式テーマと vs の両方が定義し、判型・余白・書体・本文の字の大きさと行送りに効くものだけ。色と飾りは載せない。20 を超えるなら、載せすぎを疑う（`v2-plan-review-consultation.md` §4.6 の 6） |
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | 決定済み（2026-11-17） | 同梱しない（`v2-plan-review-consultation.md` §4.6 の 5） |
