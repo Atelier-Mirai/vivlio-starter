@@ -51,5 +51,5 @@
   | `picture-book-spec.md` | 固定レイアウトの経路・原稿の形・テーマ `picture-book`・雛形 | S9 の小段階と完了の条件 |
   | `video-spec.md`（骨組み） | 動画の記法と、出力先ごとの置き換え | S10 |
 
-- 残りの着手の順は S6-10 → r3 → 節リードの判断 → S11a → S7a → S8 → S7b → S8b・S8c（S8 の後、S11b の前ならどこでも）→ S9 → S10 → S11b → S11c → S11d。
+- 残りの着手の順は S11a → S7a → S8 → S7b → S8b・S8c（S8 の後、S11b の前ならどこでも）→ S9 → S10 → S11b → S11c → S11d。
 - 実装記録は仕様書から分けない。仕様書は、その段階が全部終わったら archives へ移る（`theme-contract-spec.md` は S7b の後）。

@@ -7,11 +7,19 @@
 
 /* --- simple-header.css --- */
 
-/* 節リードの上下の余白は simple の見出しのときだけ。image の見出しでは、image-header.css の
-   `body.vs-header-image .section-topic .section-lead` の 0 を使う（1.x では両方に重要度の
-   指定があり、詳細度で image の側が勝っていた。その結果を、選ぶ対象で明示した。
-   css-layer-restructure-spec.md §2.4）。simple の見出しの PDF 用の余白
-   （simple-header.css）には、target 層で勝つ。 */
+/* 節リードは見出しに近づけ、後ろに 1 字分ほど空ける（上 0.3em・下 1em。PDF の節リードの
+   後ろの空きに合わせる）。simple の見出しの PDF 用の余白（simple-header.css）には、target 層で勝つ。 */
 body.vs-epub:not(.vs-header-image) .section-lead {
+  margin-block: 0.3em 1em;
+}
+
+/* image の見出しにも同じ余白を当てる（r3 の節リードの判断・v2-migration-plan.md §5.4）。
+   1.x では image-header.css の `body.vs-header-image .section-topic .section-lead` の 0 が
+   詳細度で勝っていた。EPUB の平らな CSS では層が無くなるので、選択子に .section-topic を
+   含めて、その規則より詳細度を上げる。Kindle は margin-block を読まないので、
+   margin-top・margin-bottom も書く */
+body.vs-epub.vs-header-image .section-topic .section-lead {
+  margin-top: 0.3em;
+  margin-bottom: 1em;
   margin-block: 0.3em 1em;
 }
