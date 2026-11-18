@@ -20,6 +20,7 @@
 ### Fixed
 - コードブロックの見出しに空白を書くと（`ruby:field.rb（arrive に足したところ）`）、空白のところで切れていたのを直した。
 - 頒布用の PDF を Adobe Acrobat Reader で開くと、キーの書体（Keyboard-JP）を抽出できないと表示され、技術書典の審査で差し戻されていたのを直した。
+- 図（数式の日本語・showcase・mermaid）の字の一部が、Adobe Acrobat Reader で抜けていたのを直した。
 
 ## [1.0.1] - 2026-11-15
 

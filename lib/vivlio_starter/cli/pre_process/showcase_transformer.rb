@@ -222,7 +222,8 @@ module VivlioStarter
             Digest::SHA256.file(source).hexdigest,
             block.crop.join(','),
             JSON.generate(block.annotations.map(&:to_h)),
-            SvgFontEmbedder.configured_heading_font
+            SvgFontEmbedder.configured_heading_font,
+            SvgFontEmbedder::SUBSET_REVISION
           ].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end
