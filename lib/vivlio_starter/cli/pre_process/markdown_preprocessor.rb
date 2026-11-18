@@ -124,6 +124,7 @@ module VivlioStarter
           transform_talk!
           process_code_includes!
           normalize_code_languages!
+          protect_code_caption_spaces!
           detect_plain_math!
           transform_math!
           normalize_html_block_boundaries!
@@ -423,6 +424,13 @@ module VivlioStarter
         # Prism が色分けできない言語名（zsh・sh）を bash へ読み替える。
         def normalize_code_languages!
           context.content = MarkdownTransformer.normalize_code_languages(context.content)
+        end
+
+        # コードブロックの見出し（`ruby:field.rb（arrive に足したところ）`）が VFM で空白のところで
+        # 切れないよう、空白を改行しない空白にして渡す。include: が作るフェンスも対象にするため、
+        # process_code_includes! より後に置く。
+        def protect_code_caption_spaces!
+          context.content = MarkdownTransformer.protect_code_caption_spaces(context.content)
         end
 
         # バッククォートで書かれた数式を `$…$` / `$$…$$` へ起こす

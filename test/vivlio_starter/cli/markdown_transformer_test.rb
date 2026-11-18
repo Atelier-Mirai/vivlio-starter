@@ -1228,6 +1228,64 @@ module VivlioStarter
         end
 
         # =================================================================
+        # protect_code_caption_spaces（改善案 #137）
+        # -----------------------------------------------------------------
+        # VFM は `言語名:見出し` を空白で切るので、見出しの空白を改行しない空白にして渡す。
+        # =================================================================
+
+        def test_should_turn_caption_spaces_into_no_break_spaces
+          md = <<~MD
+            ```ruby:field.rb（arrive に足したところ）
+            elsif tile == "👸"
+            ```
+
+            ~~~html:light.html（body の中）
+            <p>a b</p>
+            ~~~
+          MD
+
+          result = MarkdownTransformer.protect_code_caption_spaces(md)
+
+          assert_includes result, "```ruby:field.rb（arrive に足したところ）\n"
+          assert_includes result, "~~~html:light.html（body の中）\n", '行末の空白は見出しに入れない'
+          assert_includes result, "elsif tile == \"👸\"\n", 'コードの中は変えない'
+          assert_includes result, "<p>a b</p>\n"
+        end
+
+        def test_should_keep_captions_without_spaces_and_other_openers
+          md = <<~MD
+            ```ruby:hello.rb
+            puts 1
+            ```
+
+            ```sh {.small}
+            ls -la
+            ```
+
+            ```ruby 説明
+            puts 2
+            ```
+
+            ````markdown
+            ```ruby:field.rb（arrive に足したところ）
+            ```
+            ````
+          MD
+
+          result = MarkdownTransformer.protect_code_caption_spaces(md)
+
+          assert_equal md, result
+        end
+
+        def test_should_keep_start_line_marker_at_caption_end
+          md = "```ruby:prime.rb（prime? の定義）#L22-L25\nputs 1\n```\n"
+
+          result = MarkdownTransformer.protect_code_caption_spaces(md)
+
+          assert_includes result, "```ruby:prime.rb（prime? の定義）#L22-L25\n"
+        end
+
+        # =================================================================
         # convert_terminal_blocks
         # -----------------------------------------------------------------
         # :::{.terminal} は「端末の逐語転写」であり、中身は Markdown ではない。

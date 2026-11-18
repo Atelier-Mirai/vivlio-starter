@@ -2,6 +2,7 @@
 
 require 'nokogiri'
 require_relative 'post_process/html_parser'
+require_relative 'pre_process/markdown_transformer'
 
 module VivlioStarter
   module CLI
@@ -51,6 +52,7 @@ module VivlioStarter
       # Prism.jsの行番号を追加する処理
       def add_prism_line_numbers(input_file, output_file = nil)
         document = parse_html(input_file)
+        restore_caption_spaces!(document)
         highlight_alert_comments!(document)
         document.css('pre').each do |pre|
           next if line_number_exempt?(pre)
@@ -60,6 +62,21 @@ module VivlioStarter
         target = output_file || input_file
         PostProcessCommands::HtmlParser.save_html_document(target, document)
         log_result(input_file, target)
+      end
+
+      # コードの見出しの空白を戻す（改善案 #137）。前処理（MarkdownTransformer.protect_code_caption_spaces）が
+      # VFM で切れないよう改行しない空白にしたものを、普通の空白へ戻す。戻さないと、見出しが長いとき
+      # その空白で行を折れない。対象はコードの <figure> の figcaption だけ（図の figcaption は前処理を通らない）。
+      # 著者が見出しに書いた改行しない空白も、ここで普通の空白になる。
+      def restore_caption_spaces!(document)
+        space = PreProcessCommands::MarkdownTransformer::CAPTION_SPACE
+        document.css('figure > figcaption').each do |figcaption|
+          next unless figcaption.parent.at_css('> pre')
+
+          figcaption.xpath('.//text()').each do |node|
+            node.content = node.content.tr(space, ' ') if node.content.include?(space)
+          end
+        end
       end
 
       # HTMLファイルを Nokogiri ドキュメントに変換（HtmlParser に委譲）
