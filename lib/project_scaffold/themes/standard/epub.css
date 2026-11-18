@@ -8,8 +8,11 @@
 /* --- simple-header.css --- */
 
 /* 節リードは見出しに近づけ、後ろに 1 字分ほど空ける（上 0.3em・下 1em。PDF の節リードの
-   後ろの空きに合わせる）。simple の見出しの PDF 用の余白（simple-header.css）には、target 層で勝つ。 */
+   後ろの空きに合わせる）。simple の見出しの PDF 用の余白（simple-header.css）には、target 層で勝つ。
+   Kindle は margin-block を読まないので、margin-top・margin-bottom も書く */
 body.vs-epub:not(.vs-header-image) .section-lead {
+  margin-top: 0.3em;
+  margin-bottom: 1em;
   margin-block: 0.3em 1em;
 }
 
