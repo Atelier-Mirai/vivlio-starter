@@ -211,7 +211,7 @@ S7b の取り込みが作る形を、手で作った。
 | :--- | :--- | :--- |
 | (a) 縦書き・右綴じで組める | **成り立つ**（PDF）。奇数ページが左で、見開きは右から左へ進む。EPUB の CSS も `html` が `vertical-rl` になる（Chromium の計算値）。ただし EPUB の `spine` は `page-progression-direction="ltr"` のまま（OPF を書くのは S8-1 の縦書きの経路で、テーマではない） | PDF の柱とノンブルの位置・Chromium の計算値・OPF |
 | (b) 見出し・段落・ルビが `theme-bunko` の見た目になる | **PDF では成り立つ**。章題は明朝の太字で字間が空き、段落は 1 字下げ・両端揃え、ルビは本文の右に付く。柱は横組みで、左ページの上に「ノンブル＋章題」が出る（`theme-bunko` の `@page :left`）。**EPUB では見出しの規則が外れる**: `theme-base` の `basic.css` は `h1`〜`h6`・`ul`・`ol`・`dd`・`pre`・`th`・`td` など 14 の規則を入れ子（`h1 { & { … } }`）で書いており、vs の平らな CSS の生成はこれを読めずに外す（ビルドの 🟡 が 14 件）。**2026-11-18 に vs が入れ子を開くよう直した**（`css-layer-restructure-spec.md` §10.11） | PDF の紙面・ビルドの記録 |
-| (c) vs の部品（脚注・囲み・図）が崩れない | **成り立たない**（PDF）。理由は二つある。(1) **層の位置**: `theme-base` の `reset.css`（`* { border-width: 0 }`・`pre { margin-block: 0 }` など）と `basic.css` の要素の規則が `theme` 層にあり、PDF では詳細度に関係なく `parts`・`pages` 層の vs の規則に勝つ。囲み（`.memo`・`.column`・`.tip`・`.output`）・表・図の枠が全部消え、`p { font-size }` が book-card や奥付の字の大きさを、`a { color }` が索引のリンクの色を上書きする。EPUB は平らな CSS で詳細度が勝ち負けを決めるので、vs の部品の規則が勝ち、枠が出る。**PDF と EPUB で見た目が割れる。** (2) **vs の部品の物理方向**: 公式テーマに依らず、vs の部品が縦書きを想定していない箇所がある（§8.4） | PDF の紙面・要素ごとの判定（§8.3） |
+| (c) vs の部品（脚注・囲み・図）が崩れない | **§6.2 の置き方では成り立たない**（PDF。`bridge.css` で部品を読み直すと、本文のページでは戻る。§8.6）。理由は二つある。(1) **層の位置**: `theme-base` の `reset.css`（`* { border-width: 0 }`・`pre { margin-block: 0 }` など）と `basic.css` の要素の規則が `theme` 層にあり、PDF では詳細度に関係なく `parts`・`pages` 層の vs の規則に勝つ。囲み（`.memo`・`.column`・`.tip`・`.output`）・表・図の枠が全部消え、`p { font-size }` が book-card や奥付の字の大きさを、`a { color }` が索引のリンクの色を上書きする。EPUB は平らな CSS で詳細度が勝ち負けを決めるので、vs の部品の規則が勝ち、枠が出る。**PDF と EPUB で見た目が割れる。** (2) **vs の部品の物理方向**: 公式テーマに依らず、vs の部品が縦書きを想定していない箇所がある（§8.4） | PDF の紙面・要素ごとの判定（§8.3） |
 | (d) 判型が vs の `page.use` の値になる | **成り立つ**（対応表を直した後）。A5（419.53 × 595.28 pt）で、本文の版面の余白は実測でノド 22 mm・小口 18 mm・天地 21〜22 mm（`a5_standard` の値）。`@page { size }` は vs の settings 層が書くので、テーマの `@page { width; height }` があっても紙の寸法は vs の値になる | `pdfinfo`・`pdftotext -bbox` |
 
 ### 8.3 層を外すと勝ち負けが変わる組（要素ごとの判定）
@@ -266,3 +266,29 @@ S8 の材料（`novel-vertical-spec.md` §3.4 の「部品の 3 段」）。ど�
 **対応表の落とし穴。** 最初の版は `--vs-page--width` に紙の幅（vs の内部の変数 `--page-width`）を渡し、本文が紙の外へはみ出した。`theme-base` の `@page { width; height }` は、紙ではなく版面（ページの内容の箱）の寸法である。`theme-bunko` は行数と字数から版面を求め、余白は `auto`（中央に寄せる）にしている。vs の値を渡すときは、版面 = 紙 − 余白（`calc(var(--page-width) - var(--book-page-margin-inner) - var(--book-page-margin-outer))`）を渡し、余白は `@page :left`・`:right` ごとに `--vs-page--margin-left`・`--vs-page--margin-right` へノドと小口を渡す（`@page` の中の変数の定義は Vivliostyle が読んだ）。紙の寸法は公開する変数（`--book-*`）に無いので、S7b で対応表を作るなら、公開する変数を足すか、内部の変数を読むかを決める必要がある。
 
 **本の設定の 🟡。** `standard` のオプション（`theme.color`・`theme.style` など 8 つ）を書いた本で `theme.name` を替えると、`TraitCombinationCheck` が「テーマ vivliostyle-bunko には無い設定です」の 🟡 を 8 件出す。仕様どおりの動きだが、S7b の完了の条件「`theme.name` を替えるだけで組める」は、🟡 が出る状態で組めることになる。
+
+### 8.6 `bridge.css` で vs の部品を読み直す（2026-11-18・S7a の追加）
+
+§8.3 の (c) の原因（`theme-base` の土台の規則が、PDF で層の順によって vs の部品に勝つ）を、製品のコードと層の順を変えずに直せるかを試した。CSS の入れ子を vs が開くようにした後（`css-layer-restructure-spec.md` §10.11。d5d28a74）で、置き方 A も組み直した。
+
+**やり方。** `bridge.css` の先頭で、vs の部品の CSS（`stylesheets/parts/*.css`）をもう一度 `@import` する。`bridge.css` は `theme` 層の最後に読まれるので、読み直した部品の規則は公式テーマと同じ層に入る。同じ層の中では詳細度で勝ち負けが決まるので、クラスで書いた vs の部品の規則が、要素で書いた `theme-base` の規則（`* { border-width: 0 }`・`p { font-size }` など）に勝つ。平らな CSS（EPUB）と同じ決まり方になるので、PDF と EPUB の差も縮む。
+
+| 置き方 | 読み直す部品 | 組 | PDF の紙面 |
+| :--- | :--- | ---: | :--- |
+| A（§6.2 のとおり。入れ子を開いた後） | なし | 337 | 囲み・出力例・横並びの枠が消える。見出しと段落は `theme-bunko` の見た目 |
+| D | vs だけの部品 13（`prism`・`code`・`layout`・`sideimage`・`side-by-side`・`book-card`・`footnote`・`math`・`epub-reflow`・`talk`・`reference`・`figure`・`box`） | 138 | 枠が戻る。表・リストの vs のクラス（`.def-list`・`.table-caption`・`.long-table`・タスクリスト）は公式テーマの値のまま |
+| **D2** | D に `table`・`list` を足した 15（見出し `heading` と段落 `prose` だけを公式テーマに任せる） | **104** | 枠・表の見出しの網掛け・リストの印が vs の見た目に戻り、見出し・段落・ルビ・柱は `theme-bunko` の見た目のまま |
+
+A の組が §8.3（301）より増えたのは、入れ子で書かれていた見出しなどの規則 14 件が EPUB にも届くようになり、判定の対象に入ったためである。
+
+**D2 で残る 104 組の内訳。**
+
+| 組 | 数 | 扱い |
+| :--- | ---: | :--- |
+| `theme-base` と、用語集・索引・奥付のページの CSS（`pages` 層） | 89 | `bridge.css` では直せない。テーマの CSS はページの種類によらず同じものが読まれ、`pages/*.css` は `body` などを種類で絞らずに書いているので、全部のページで読み直すと別のページを崩す。紙面は縦に読める形で出た（字の大きさ・リンクの色・定義リストの余白に公式テーマの値が当たる）。直すなら、ページの種類ごとに読む口が要る（S7b で決める） |
+| `theme-base` と、段落（`prose`）・見出し（`heading`）の部品 | 8 | 公式テーマに任せた部分（`.chapter-lead p` の字下げなど） |
+| `theme-base` の `html` と、vs の `:root` の書体と字の大きさ | 7 | `bridge.css` で同じ値を渡しているので、見た目は変わらない |
+
+章と付録のページだけで数えると、D2 の組は 15 と 13 だった（A は 162 と 171）。
+
+**読み直しで起きうること。** 読み直した部品の規則は `pages` 層より上に入るので、`pages/chapter.css` などが部品の規則を上書きしている箇所があれば、その上書きが PDF で負ける。D と D2 の判定では、読み直した部品とページの CSS の組は 0 だった（本書の 2 章の範囲）。
