@@ -20,6 +20,7 @@
 | Apple Books は EPUB の動画を再生するか | **する**（H.264・HEVC とも。ポスター画像と再生ボタンが出て、再生できた） | Books の画面 |
 | EPUB の大きさの上限 | Kobo 100 MB・KDP 650 MB・Apple Books と Google Play Books 2 GB（§5.2） | 各ストアのヘルプ |
 | Kobo・Google Play Books の `@layer` の対応 | **未確認**（公開された資料が見つからない・手元に無い） | Web の調べ |
+| `theme-bunko` を vs の契約 HTML に `theme` 層で当てて組めるか（S7a） | **(a)・(b)・(d) は成り立ち、(c) は成り立たない**。`theme-base` の reset.css の `* { border-width: 0 }` などが、PDF で vs の部品（囲み・表・図の枠）を打ち消す。層を外すと勝ち負けが変わる組は 301 組（§8） | PDF の紙面・寸法の実測・ビルドの要素ごとの判定 |
 
 ---
 
@@ -178,3 +179,90 @@ KDP は、リフロー型と固定レイアウトのどちらの本も受け付�
 - EPUB: `mimetype` を無圧縮で先頭に置き（`zip -X0`）、残りを `zip -Xr9D` で足す。EPUBCheck を通してから変換する
 - Apple Books は `open -a Books <epub>` で開く（ライブラリに取り込まれ、iCloud の同期が有効ならほかの端末にも出るので、書名を `vs-test` で始め、確かめた後に消す）。窓の位置の取り方は Kindle Previewer と同じ。ページ送りは System Events の `key code 124`、再生ボタンは CGEvent のクリック
 - Kindle Previewer の画面は、アプリを開いて `CGWindowListCopyWindowInfo`（JXA。`ObjC.castRefToObject` で包んでから `deepUnwrap`）で窓の位置を取り、`screencapture -x -R` で撮る。別の本を見るときはアプリを終了してから開き直す
+
+---
+
+## 8. 公式テーマの入口の実験（S7a）
+
+`theme-contract-spec.md` §9 の S7 の入口の実験。`theme-bunko` と `theme-base` を、§6.2 の形（`theme` 層・`bridge.css`）で vs の契約 HTML に当て、`vs build` で PDF と EPUB を組んだ。製品のコードは変えていない。
+
+- 調べた日: 2026-11-18（`v2` の 9a54a56d）
+- 環境: `@vivliostyle/cli` 11.3.3・`@vivliostyle/core` 2.45.1・Chromium 156（EPUB の XHTML の描画）
+- 公式テーマ: `@vivliostyle/theme-bunko` 3.1.1・`@vivliostyle/theme-base` 3.1.0（どちらも 2026-11-14 の公開で、この時点の最新。§6.1 で調べた 3.1.0・3.0.1 からは、`theme-bunko` は依存の版だけ、`theme-base` は 12 ファイルが変わっている）
+- 実験の本: 本書の写し。`catalog.yml` を 21 章（ルビ・脚注・囲み・コード・表）と付録 95（ルビ・脚注・囲み・図・会話文・サイドイメージ）の 2 つにした。`book.yml` は `theme.name: vivliostyle-bunko`・`page.writing_mode: vertical`・`page.use: a5_standard`・`output.targets: [pdf, epub]`。本扉・権利ページ・目次・用語集・索引・奥付も組まれる
+- 検証用の本はリポジトリに入れていない。作り方は §8.5 に書いた
+
+### 8.1 テーマの置き方
+
+S7b の取り込みが作る形を、手で作った。
+
+| ファイル | 中身 |
+| :--- | :--- |
+| `themes/vivliostyle-bunko/theme.yml` | `name: vivliostyle-bunko`・`contract: 1`・`license: CC0-1.0`・`supports: { writing_mode: [vertical], layout: [reflowable], targets: [pdf, print_pdf, epub] }`・`features: []`・`styles: [theme.css, bridge.css]` |
+| `themes/vivliostyle-bunko/theme.css` | `theme-bunko` の `theme.css`。先頭の 15 行の `@import '@vivliostyle/theme-base…'` を、`theme-base` の `package.json` の `exports` で解いて `@import url('base/css/…/index.css')` に書き換えた |
+| `themes/vivliostyle-bunko/base/` | `theme-base` の `theme.css`・`css/`・`LICENSE` |
+| `themes/vivliostyle-bunko/bridge.css` | §8.3 の対応表 |
+
+`vs` の入口は、テーマの `styles:` を `theme` 層に読む。入れ子の `@import` は、PDF（Vivliostyle）も EPUB（`Css::Flattener`）も解いた。
+
+### 8.2 四つの点の結果
+
+| 点 | 結果 | 見たもの |
+| :--- | :--- | :--- |
+| (a) 縦書き・右綴じで組める | **成り立つ**（PDF）。奇数ページが左で、見開きは右から左へ進む。EPUB の CSS も `html` が `vertical-rl` になる（Chromium の計算値）。ただし EPUB の `spine` は `page-progression-direction="ltr"` のまま（OPF を書くのは S8-1 の縦書きの経路で、テーマではない） | PDF の柱とノンブルの位置・Chromium の計算値・OPF |
+| (b) 見出し・段落・ルビが `theme-bunko` の見た目になる | **PDF では成り立つ**。章題は明朝の太字で字間が空き、段落は 1 字下げ・両端揃え、ルビは本文の右に付く。柱は横組みで、左ページの上に「ノンブル＋章題」が出る（`theme-bunko` の `@page :left`）。**EPUB では見出しの規則が外れる**: `theme-base` の `basic.css` は `h1`〜`h6`・`ul`・`ol`・`dd`・`pre`・`th`・`td` など 14 の規則を入れ子（`h1 { & { … } }`）で書いており、vs の平らな CSS の生成はこれを読めずに外す（ビルドの 🟡 が 14 件） | PDF の紙面・ビルドの記録 |
+| (c) vs の部品（脚注・囲み・図）が崩れない | **成り立たない**（PDF）。理由は二つある。(1) **層の位置**: `theme-base` の `reset.css`（`* { border-width: 0 }`・`pre { margin-block: 0 }` など）と `basic.css` の要素の規則が `theme` 層にあり、PDF では詳細度に関係なく `parts`・`pages` 層の vs の規則に勝つ。囲み（`.memo`・`.column`・`.tip`・`.output`）・表・図の枠が全部消え、`p { font-size }` が book-card や奥付の字の大きさを、`a { color }` が索引のリンクの色を上書きする。EPUB は平らな CSS で詳細度が勝ち負けを決めるので、vs の部品の規則が勝ち、枠が出る。**PDF と EPUB で見た目が割れる。** (2) **vs の部品の物理方向**: 公式テーマに依らず、vs の部品が縦書きを想定していない箇所がある（§8.4） | PDF の紙面・要素ごとの判定（§8.3） |
+| (d) 判型が vs の `page.use` の値になる | **成り立つ**（対応表を直した後）。A5（419.53 × 595.28 pt）で、本文の版面の余白は実測でノド 22 mm・小口 18 mm・天地 21〜22 mm（`a5_standard` の値）。`@page { size }` は vs の settings 層が書くので、テーマの `@page { width; height }` があっても紙の寸法は vs の値になる | `pdfinfo`・`pdftotext -bbox` |
+
+### 8.3 層を外すと勝ち負けが変わる組（要素ごとの判定）
+
+`vs build --log=debug` の EPUB の要素ごとの判定（`Css::InversionCheck.inversions`）の数。種類ごとの数（章 140・付録 169・用語集 44・索引 23・奥付 26）は重なりを含み、重なりを除くと **301 組**である。どれも「PDF では公式テーマの規則が勝ち、EPUB では vs の規則が勝つ」組で、PDF と EPUB の見た目の違いの数になる。
+
+| 層ありで勝つ規則（公式テーマ） | 平らな CSS で勝つ規則（vs） | 組 |
+| :--- | :--- | ---: |
+| `theme-base` の `basic.css`（要素の規則） | `parts` 層 | 110 |
+| `theme-base` の `reset.css` | `parts` 層 | 67 |
+| `theme-base` の `basic.css` | `pages` 層（用語集・索引・奥付） | 51 |
+| `theme-bunko` の `theme.css`（`figure` の余白など） | `parts` 層 | 32 |
+| `theme-base` の `reset.css` | `pages` 層 | 28 |
+| `theme-base` の `basic.css` | `base` 層（`:root` の書体と字の大きさ） | 7 |
+| `theme-base` の `footnote/index.css` | `parts` 層（脚注） | 6 |
+
+プロパティでは、`margin-top`（36）・枠の 3 つ（`border-right-*` が各 23）・`font-size`（15）が多い。vs の側は `parts/box.css`（46）・`pages/glossary.css`（37）・`parts/talk.css`（31）・`parts/figure.css`・`parts/code.css`（各 24）の順である。
+
+`theme-base` の土台の 2 ファイルを vs の部品より下の層に置いた場合も試した（vs の製品のコードを変えずに試すため、写しの `stylesheets/base/page.css` の先頭で `@import` した。`base` 層の最後に入る）。
+
+| 置き方 | 組 | PDF の紙面 |
+| :--- | ---: | :--- |
+| A: §6.2 のとおり、全部 `theme` 層 | 301 | 囲み・表・図の枠が消える。見出しは `theme-bunko` の見た目 |
+| C: `reset.css` だけを `base` 層へ | 206 | 枠は出る。`basic.css` の要素の規則（字の大きさ・リンクの色・余白）は vs の部品に勝ったまま |
+| B: `reset.css` と `basic.css` を `base` 層へ | 47 | vs の部品は 1.x と同じ見た目に戻る。章題は vs の見出しの見た目（ゴシック）になり、`theme-bunko` の見出しの見た目は失われる。残る 47 組は `theme-bunko` の `theme.css`（32）・脚注（6）と、`base` 層の `basic.css` と vs の部品の組（9） |
+
+`vs theme:check vivliostyle-bunko`（A の置き方）は、🟡 が 49 件（契約 HTML に無いクラス 33・入れ子の書き方 14・vs の内部のクラス `.footnote-ref` 2）、静的な組の 💡 が 2,269 組だった。
+
+### 8.4 vs の部品が縦書きで崩れた箇所（公式テーマに依らない）
+
+S8 の材料（`novel-vertical-spec.md` §3.4 の「部品の 3 段」）。どの置き方（A・B・C）でも、EPUB（Chromium）でも同じに出た。
+
+| 箇所 | 崩れ方 | 原因の見当 |
+| :--- | :--- | :--- |
+| 権利ページ | 内容が出ず、白紙が 12 ページ続く | `pages/legalpage.css` の `body { min-block-size: 100vh; display: grid; align-content: end; }`。縦書きでは `block-size` が横の長さになる。`theme-bunko` が `:root` の `--vs-writing-mode` を `vertical-rl` にするので、vs が横に組むつもりのページ（権利ページ・奥付。`novel-vertical-spec.md` §2.2）も縦になる |
+| 前付けのノンブル | 本扉・権利ページの上に、130 番台のノンブルが出る（本文と別に組む前付けの PDF の通し番号） | `theme-base` の `@page` の余白の箱（上の小口）が、vs が前付けで消している箱（下）と別の位置にあり、打ち消されない |
+| 節の見出しと節リード | 重なる（PDF・EPUB とも） | 節の見出しの部品の配置が物理方向 |
+| 囲みのラベル（MEMO・COLUMN） | 本文の上に重なる | ラベルの位置が物理方向（`top`・`left`） |
+| サイドイメージ | 絵と説明が離れ、絵が次のページへ送られる | 横に並べる部品（`novel-vertical-spec.md` §3.4 の「縦書きでは使えない」の候補） |
+| 相互参照のリンクの下線 | 縦の行を横切る線になる | `border-bottom` |
+| 章題（EPUB） | 2 行に分けた章題の 2 行目が 1 行目に重なる | 見出しの `line-height` か `<br>` の扱い。PDF では重ならない |
+
+脚注（PDF は版面の左に区切りの線と注の行が出る）・ルビ・表・図（`figure` は `theme-bunko` が `horizontal-tb` にする）・会話文・コラムの本文は、縦に読める形で出た。
+
+### 8.5 作り直すときの手順
+
+1. `npm pack @vivliostyle/theme-bunko@3.1.1 @vivliostyle/theme-base@3.1.0` を一時ディレクトリで行い、展開する。
+2. 本書の素材（`scripts/build_copy.rb` の `MATERIALS`）を写し、§8.1 のとおりテーマを置き、`catalog.yml` を 2 章にする。
+3. `ruby scripts/build_copy.rb --book <写し> --out <組む先> --no-clean --targets pdf,epub --set theme.name=vivliostyle-bunko --set page.writing_mode=vertical --set page.use=a5_standard -- --log=debug`。要素ごとの判定は記録の `層を外すと勝ち負けが変わる組` の行。
+4. 版面は `pdftotext -bbox -f N -l N` の文字の箱の最小と最大から余白を求める。EPUB は展開した XHTML を Chromium で開き、`getComputedStyle(document.documentElement).writingMode` と画面を見る。
+
+**対応表の落とし穴。** 最初の版は `--vs-page--width` に紙の幅（vs の内部の変数 `--page-width`）を渡し、本文が紙の外へはみ出した。`theme-base` の `@page { width; height }` は、紙ではなく版面（ページの内容の箱）の寸法である。`theme-bunko` は行数と字数から版面を求め、余白は `auto`（中央に寄せる）にしている。vs の値を渡すときは、版面 = 紙 − 余白（`calc(var(--page-width) - var(--book-page-margin-inner) - var(--book-page-margin-outer))`）を渡し、余白は `@page :left`・`:right` ごとに `--vs-page--margin-left`・`--vs-page--margin-right` へノドと小口を渡す（`@page` の中の変数の定義は Vivliostyle が読んだ）。紙の寸法は公開する変数（`--book-*`）に無いので、S7b で対応表を作るなら、公開する変数を足すか、内部の変数を読むかを決める必要がある。
+
+**本の設定の 🟡。** `standard` のオプション（`theme.color`・`theme.style` など 8 つ）を書いた本で `theme.name` を替えると、`TraitCombinationCheck` が「テーマ vivliostyle-bunko には無い設定です」の 🟡 を 8 件出す。仕様どおりの動きだが、S7b の完了の条件「`theme.name` を替えるだけで組める」は、🟡 が出る状態で組めることになる。

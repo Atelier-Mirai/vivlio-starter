@@ -1276,3 +1276,13 @@ B1（`pdf`・`epub`・`kindle`、Kindle の記録つき・`--log=debug`）・B2�
 | 雛形から消えたテーマのファイル（写しの本。B4 の素材 `r2/src/ai_web_starter/`・lock は 1.0.0） | 先に今の雛形で `vs upgrade --yes`（競合は「いいえ」）を掛け、`themes/standard/` を入れた（lock に 17 個の記録）。次に、`themes/standard/kindle.css` と `epub.css` を抜いた材料の雛形を作り、本の `epub.css` に 1 行足して走らせた。`--dry-run`: 「削除 themes/standard/kindle.css（雛形から無くなったファイル）」と「削除 1 件」が出て、ファイル・lock・退避とも変わらない。本番（`--yes`）: `kindle.css` が消え、`.vs-backup/upgrade/<日時>/themes/standard/kindle.css` に元と同じ中身で退避され、lock から `kindle.css`・`epub.css` の記録が消えた。`epub.css` は残り、最後に 🟡「themes/standard/epub.css は雛形から無くなったファイルですが、変更があるので残しました」「置いてあるかぎり読まれます。要らなければ削除してください」。もう一度走らせると、「削除」も 🟡 も出ない。`ToolUpgrader.run!` と `run_gem_command` は差し替えて走らせた |
 | テスト | `rake test` 4,492 件が通った（S6-9b の後の 4,486 件に、足した 6 件。スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0 |
 | `rake test:release`（1 段ずつ。記録は `r2/check/s6-10/release/`） | 全段が通った（19:58〜20:57）。`test` と `test:standard` 4,492 件（スキップ 1）・`test:layout` 7 件・`test:targets` 19 件・`test:notation` 7 件・`test:manual` 14 件・`test:package` 4 件 |
+
+### 11.16 S7a 入口の実験（2026-11-18）
+
+結果と作り直す手順は `v2-feasibility-notes.md` §8。製品のコードは変えていない。
+
+- `theme-bunko` 3.1.1・`theme-base` 3.1.0 を §6.2 の形で当て、本書の 21 章と付録 95 を縦書き・A5 で組んだ。**(a)・(b)・(d) は成り立ち、(c) は成り立たなかった。** `theme-base` の `reset.css`・`basic.css` の要素の規則が `theme` 層にあるため、PDF では vs の部品（`parts`・`pages` 層）の規則に層の順で勝ち、囲み・表・図の枠が消える。EPUB は平らな CSS なので vs の部品が勝ち、PDF と EPUB で見た目が割れる。要素ごとの判定の組は 301 組。
+- `basic.css` の見出しなど 14 の規則は入れ子の書き方で、EPUB の CSS から外れる（ビルドの 🟡 が 14 件）。
+- §6.3 の対応表の `--vs-page--width`・`--vs-page--height` は、紙でなく版面の寸法を渡す必要がある（紙 − 余白）。紙の寸法は公開する変数に無い。
+- §2.4 の 1（`v2-migration-plan.md`）に当たったので、取り込みの範囲（§9 の S7 の「実験が通らない場合」）をユーザーに仰ぐ。
+- §10 の論点 7: 公式テーマの組は 301 組（重なりを除く）。多く、`reset.css` と `basic.css` を部品より下の層に置く変換で 47 組まで減る（`v2-feasibility-notes.md` §8.3）。知らせる形は、取り込みの範囲が決まってから S7b で決める。
