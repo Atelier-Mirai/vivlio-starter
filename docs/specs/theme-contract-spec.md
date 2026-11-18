@@ -378,7 +378,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
 | `var()`・`color-mix()`・単位のそろった `calc()` | 使ってよい（生成がリテラルに解く） |
 | `:is()`・`:where()` | 選ぶ対象の並びとして使う場合は、生成が並びに展開する。入れ子の深い使い方は避ける |
 | `:has()` | Kindle では解けない。使った規則は Kindle に届かない |
-| CSS の入れ子（`&`） | 使わない（2.0 の生成は入れ子を展開しない） |
+| CSS の入れ子（`&`） | 使ってよい。CSS を読むときに vs が開く（`Css::Nesting`。Kindle は入れ子の中の宣言を捨てるので、開いた規則を渡す。2026-11-18 に改めた・`css-layer-restructure-spec.md` §10.11） |
 | 層の中の `!important` | 使わない（`css-layer-restructure-spec.md` §2.4） |
 | 部品の見た目を変える規則 | 変数で変える。規則で変えるときは、部品の規則と同じ選択子で書く（EPUB と Kindle は層を外した平らな CSS を読み、詳細度で勝ち負けが決まるため。`css-layer-restructure-spec.md` §2.1・§4.3） |
 | `display: grid`・`flex`・疑似要素の位置指定 | 使ってよいが、Kindle では `block` になる。崩れる部品は `kindle.css` に代わりの組み方を書く（`kindle-css-compatibility-notes.md` §2） |

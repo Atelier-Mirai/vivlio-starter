@@ -70,22 +70,25 @@ module VivlioStarter
           end
         end
 
-        def test_should_warn_once_about_nested_rules
+        # 著者の custom.css の入れ子は正当な CSS なので、開いて EPUB と Kindle に届け、著者には何も知らせない
+        # （Kindle は入れ子の中の宣言を捨てる。kindle-css-compatibility-notes.md §2）
+        def test_should_unfold_nested_rules_for_epub_and_kindle_without_warning
           with_project do
             write('stylesheets/custom.css', %(.box { color: red; & p { color: blue; } }\n.ok { color: green; }\n))
             warnings = []
 
             Common.stub(:log_warn, ->(message, **) { warnings << message }) do
-              written = Bundle.write_epub!({ 'chapter' => [], 'appendix' => [] }, target: :epub,
-                                                                                  styles_dir: 'pkg/styles', embed_fonts: false)
+              %i[epub kindle].each do |target|
+                written = Bundle.write_epub!({ 'chapter' => [] }, target:, styles_dir: "pkg-#{target}/styles", embed_fonts: false)
+                css = File.read(written.fetch('chapter').dest)
 
-              refute_includes File.read(written.fetch('chapter').dest), '.box'
-              assert_includes File.read(written.fetch('chapter').dest), '.ok { color: green; }'
+                assert_includes css, '.box p {', target.to_s
+                refute_includes css, '&', target.to_s
+                assert_includes css, '.ok {', target.to_s
+              end
             end
 
-            assert_equal 1, warnings.size, '種類をまたいで一度だけ知らせる'
-            assert_includes warnings.first, 'stylesheets/custom.css'
-            assert_includes warnings.first, '入れ子'
+            assert_empty warnings
           end
         end
 

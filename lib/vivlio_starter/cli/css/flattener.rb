@@ -20,10 +20,6 @@
 #   下位の層より後に置く（下位の層に勝つ）。
 #   詳細度が違う規則の取り合いは並べ方では保てない。その検査は InversionCheck（§4.3）が行う。
 #
-# 入れ子の規則:
-#   crass は CSS の入れ子（`&`）を読めない。読めない規則は nested の印を付けて列に残し、
-#   render は出力しない。どの規則を落としたかは呼び出し側（Bundle）が著者に知らせる。
-#
 # url() の引き直し:
 #   規則の中の相対の url() は、その規則を書いたファイルの位置から解いた絶対パスを
 #   `rebase` に渡し、返った文字列に置き換える。出力の置き場（EPUB のパッケージの中など）は
@@ -38,9 +34,9 @@ module VivlioStarter
     module Css
       # 層を外した 1 枚の CSS を作る
       module Flattener
-        # 平らにした規則 1 つ。layer は層の名前の列（層の外なら空の列）、source は書かれたファイル、
-        # nested は入れ子（読めない宣言）を含むか
-        Piece = Data.define(:layer, :text, :source, :nested)
+        # 平らにした規則 1 つ。layer は層の名前の列（層の外なら空の列）、source は書かれたファイル。
+        # CSS の入れ子は読むときに開いてある（Stylesheet）
+        Piece = Data.define(:layer, :text, :source)
 
         # 層の外の規則と、層に直に書いた規則の並びの位置（どの下位の層よりも後）
         DIRECT = Float::INFINITY
@@ -59,12 +55,11 @@ module VivlioStarter
         # @return [String]
         def flatten(entry_path, rebase:) = render(pieces(entry_path, rebase:))
 
-        # 規則の列を 1 枚の CSS にする。入れ子の規則は出力しない
+        # 規則の列を 1 枚の CSS にする
         # @param pieces [Array<Piece>]
         # @return [String]
         def render(pieces)
-          body = pieces.reject(&:nested)
-                       .chunk_while { |a, b| a.source == b.source && a.layer == b.layer }
+          body = pieces.chunk_while { |a, b| a.source == b.source && a.layer == b.layer }
                        .map { "#{source_comment(it.first)}\n#{it.map(&:text).join("\n")}" }
           ["@charset \"utf-8\";\n", *body].join("\n") << "\n"
         end
@@ -118,9 +113,8 @@ module VivlioStarter
               layered = context + name.to_s.split('.')
               declare(layered, order)
               walk(inner, path, layered, order, collected, rebase, visiting)
-            in Stylesheet::Rule[text:, nested:]
-              collected << Piece.new(layer: context, text: rebase_urls(text, File.dirname(path), rebase),
-                                     source: path, nested:)
+            in Stylesheet::Rule[text:]
+              collected << Piece.new(layer: context, text: rebase_urls(text, File.dirname(path), rebase), source: path)
             end
           end
         end

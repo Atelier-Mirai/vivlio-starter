@@ -327,7 +327,7 @@ module VivlioStarter
             Css::EntryWriter::IMPORTS.keys.flat_map do |kind|
               pieces = Css::Bundle.flat_pieces(kind, target: :kindle, dest: File.join(tmp, 'styles', "#{kind}.css"),
                                                      package_root: tmp, embed_fonts: false)
-              result = Css::LiteralResolver.resolve(pieces.reject(&:nested), scope: Css::Bundle.kindle_scope([]))
+              result = Css::LiteralResolver.resolve(pieces, scope: Css::Bundle.kindle_scope([]))
               result.dropped.select { it.source.include?('/stylesheets/targets/') }
                     .map { "#{kind}: #{it.selector} { #{it.declaration} }（#{it.reason}）" }
             end

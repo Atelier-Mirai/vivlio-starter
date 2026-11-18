@@ -148,22 +148,27 @@ module VivlioStarter
           end
         end
 
-        # 入れ子の規則（crass が読めない）は印を付けて列に残し、render は出力しない
-        def test_should_mark_nested_rules_and_leave_them_out_of_the_output
-          files = { 'entry.css' => <<~CSS }
-            .box { color: red; & p { color: blue; } }
-            @media print { .print { color: gray; & span { color: black; } } }
+        # 入れ子の規則は開いて、同じ層・同じ順のまま平らな CSS に入れる（@media の中の入れ子も）
+        def test_should_unfold_nested_rules_in_place_keeping_their_layer
+          files = { 'entry.css' => <<~CSS, 'theme.css' => <<~THEME }
+            @layer parts, theme;
+            @import url("theme.css") layer(theme);
             .plain { color: green; }
           CSS
+            h1 { & { font-size: 2em; } }
+            .box { color: red; & p { color: blue; } }
+            @media print { .print { color: gray; & span { color: black; } } }
+          THEME
 
           with_files(files) do
             pieces = Flattener.pieces('entry.css', rebase: ->(path) { path })
-            css = Flattener.render(pieces)
 
-            assert_equal [true, true, false], pieces.map(&:nested)
-            refute_includes css, '.box'
-            refute_includes css, '.print'
-            assert_includes css, '.plain { color: green; }'
+            assert_equal ['h1 { font-size: 2em; }', '.box { color: red; }', '.box p { color: blue; }'],
+                         pieces.first(3).map(&:text)
+            assert_equal [%w[theme]] * 4, pieces.first(4).map(&:layer)
+            assert_match(/\A@media print \{\s*\.print \{ color: gray; \}\s*\.print span \{ color: black; \}\s*\}\z/, pieces[3].text)
+            assert_equal ['.plain { color: green; }', []], [pieces.last.text, pieces.last.layer]
+            refute_includes Flattener.render(pieces), '&'
           end
         end
 

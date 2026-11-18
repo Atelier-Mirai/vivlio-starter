@@ -98,7 +98,7 @@ module VivlioStarter
         end
 
         # 層の外の、宣言を持ちうる規則（書体の定義は宣言を取り合わない）
-        def author_piece?(piece) = piece.layer.empty? && !piece.nested && !piece.text.match?(/\A\s*@font-face/i)
+        def author_piece?(piece) = piece.layer.empty? && !piece.text.match?(/\A\s*@font-face/i)
 
         # 層の外の、!important の無い宣言（付ける候補）
         def author?(decl) = decl.rank == Cascade::UNLAYERED && !decl.important
@@ -109,7 +109,7 @@ module VivlioStarter
         def collect_contests(sheets, keys, docs, contests, clashes)
           node_of = {}.compare_by_identity
           pieces = keys.flat_map do |key|
-            sheets.fetch(key).each_with_index.reject { |piece, _| piece.nested }.map { |piece, index| [piece, [key, index]] }
+            sheets.fetch(key).each_with_index.map { |piece, index| [piece, [key, index]] }
           end
           decls, = Cascade.collect(pieces.map(&:first))
           decls.each { node_of[it] = [*pieces[it.order.first].last, it.pos] }

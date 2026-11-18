@@ -15,15 +15,17 @@
 #   - LayerBlock     `@layer a { ... }`（中身も同じ 4 種類の列）
 #   - Rule           それ以外の規則（style rule・@font-face・@page・@media など）
 #
-# CSS の入れ子（`&`）は crass では読めず、入れ子の規則は宣言の位置の :error になる。
-# vs とテーマの CSS では入れ子を使わない決まり（theme-contract-spec.md §3.5）なので、
-# 読めない規則には nested の印を付け、平らにする側が落として知らせる。
+# CSS の入れ子（`&`）は、読むときに Nesting が開く。crass は入れ子より前の仕様で作られていて、
+# 規則の中身を宣言として読むと入れ子を読めない字句にしてしまうので、規則の中身を字句のまま返す
+# 口（consume_rules）で読み、入れ子のある規則だけを開いてから読み直す。以降の段に渡る規則には
+# 入れ子が無い。
 #
 # `@charset` とコメントは捨てる。平らにした CSS は 1 枚に 1 つの `@charset` を
 # 先頭に置けば足り、コメントは出力の大きさを増やすだけだからである。
 # ================================================================
 
 require 'crass'
+require_relative 'nesting'
 
 module VivlioStarter
   module CLI
@@ -36,41 +38,36 @@ module VivlioStarter
         LayerStatement = Data.define(:names)
         # @layer a { ... } — items は中身の項目の列
         LayerBlock = Data.define(:name, :items)
-        # それ以外の規則。text は書かれたとおりの文字列。nested は入れ子（読めない宣言）を含むか
-        Rule = Data.define(:text, :nested)
+        # それ以外の規則。text は書かれたとおりの文字列（入れ子は開いた後のもの）
+        Rule = Data.define(:text)
 
         module_function
 
         # @param css [String]
         # @return [Array<Import, LayerStatement, LayerBlock, Rule>]
-        def parse(css) = items_of(Crass.parse(css))
+        def parse(css) = items_of(Nesting.rules_of(css))
 
         # crass の節の列を項目の列にする。@layer の囲みは中をもう一度読む
-        # （crass は囲みの中身を字句の列のまま返す）。
+        # （crass は囲みの中身を字句の列のまま返す）。入れ子のある規則は開いてから読み直す
+        # （開いた結果に @layer の囲みが出ることがあるので、項目の列として読む）。
         def items_of(nodes)
-          nodes.filter_map do |node|
+          nodes.flat_map do |node|
             case node
-            in { node: :at_rule, name: /\Acharset\z/i } then nil
-            in { node: :at_rule, name: /\Aimport\z/i, prelude: } then import_of(prelude)
+            in { node: :at_rule, name: /\Acharset\z/i } then []
+            in { node: :at_rule, name: /\Aimport\z/i, prelude: } then [import_of(prelude)].compact
             in { node: :at_rule, name: /\Alayer\z/i, prelude:, block: Array => block }
-              LayerBlock.new(name: layer_names(prelude).first, items: items_of(Crass::Parser.parse_rules(block)))
-            in { node: :at_rule, name: /\Alayer\z/i, prelude: } then LayerStatement.new(names: layer_names(prelude))
-            in { node: :at_rule | :style_rule }
-              Rule.new(text: Crass::Parser.stringify([node]).strip, nested: nested?(node))
-            else nil # 空白・コメント・読めなかった字句
+              [LayerBlock.new(name: layer_names(prelude).first, items: items_of(Nesting.rules_of(block)))]
+            in { node: :at_rule, name: /\Alayer\z/i, prelude: } then [LayerStatement.new(names: layer_names(prelude))]
+            in { node: :qualified_rule } if Nesting.nested?(node) then items_of(Nesting.rules_of(Nesting.expand(node)))
+            in { node: :qualified_rule } then [rule(Nesting.parser.create_style_rule(node))]
+            in { node: :at_rule } if Nesting.nested_inside?(node) then [Rule.new(text: Nesting.expand_inside(node).strip)]
+            in { node: :at_rule } then [rule(node)]
+            else [] # 空白・コメント・読めなかった字句
             end
           end
         end
 
-        # 規則が入れ子（crass の :error）を含むか。@media・@supports の中も見る
-        def nested?(node)
-          case node
-          in { node: :style_rule, children: } then children.any? { it[:node] == :error }
-          in { node: :at_rule, name: /\A(?:media|supports)\z/i, block: Array => block }
-            Crass::Parser.parse_rules(block).any? { nested?(it) }
-          else false
-          end
-        end
+        def rule(node) = Rule.new(text: Crass::Parser.stringify([node]).strip)
 
         # @import の前置き（url と layer()）を読む。
         # 名前の無い `layer`（無名の層）は vs の CSS では使わないので、層の外として扱う。

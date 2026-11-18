@@ -7,8 +7,7 @@
 #   出力先とページの種類を受けて、平らな CSS を作って書き出す
 #   （css-layer-restructure-spec.md §4.1 の bundle.rb・§4.2）。
 #     入口（EntryWriter.render・出力先の target 層つき）
-#       → Flattener.pieces（読み込み・並べ替え）
-#       → 入れ子の規則を知らせる
+#       → Flattener.pieces（読み込み・入れ子を開く・並べ替え）
 #       → TargetFilter（出力先が扱えない規則を落とす）
 #       → LiteralResolver（Kindle だけ。var()・calc()・color-mix()・:is() を解く）
 #       → Flattener.render
@@ -74,10 +73,9 @@ module VivlioStarter
           return [] unless ENV[FORM_ENV] == 'flat'
 
           Common.log_info("[css] #{FORM_ENV}=flat: PDF に平らにした CSS を読ませます")
-          reported = {}
           EntryWriter::IMPORTS.each_key.map do |kind|
             dest = EntryWriter.path_for(kind)
-            pieces = flat_pieces(kind, target: :pdf, dest:, reported:)
+            pieces = flat_pieces(kind, target: :pdf, dest:)
             File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
             dest
           end
@@ -93,8 +91,7 @@ module VivlioStarter
           reported = {}
           html_by_kind.to_h do |kind, html_files|
             dest = File.join(styles_dir, "#{kind}.css")
-            pieces = flat_pieces(kind, target:, dest:, package_root: File.dirname(styles_dir), embed_fonts:,
-                                       reported:)
+            pieces = flat_pieces(kind, target:, dest:, package_root: File.dirname(styles_dir), embed_fonts:)
             pieces = literalize(pieces, target:, scope: kindle_scope(html_files), reported:) if target == :kindle
             FileUtils.mkdir_p(styles_dir)
             File.write(dest, Flattener.render(pieces), encoding: 'utf-8')
@@ -155,7 +152,6 @@ module VivlioStarter
           dest = File.join(styles_dir, source)
           rebase = package_rebase(dest, File.dirname(styles_dir))
           pieces = Flattener.pieces(source, rebase:)
-          report_nested(pieces, {})
           pieces = TargetFilter.apply(pieces, target:, embed_fonts:)
           if target == :kindle
             # 章が足した CSS は単独では変数をほとんど定義しないので、本文の束の変数も表に入れて解く
@@ -171,11 +167,10 @@ module VivlioStarter
         # @param dest [String] 書き出す先（url() をここから見た位置へ引き直す）
         # @param package_root [String, nil] EPUB のパッケージのルート（消費者 dir）。nil なら
         #   作業ディレクトリのファイルをそのまま指す（PDF）
-        def flat_pieces(kind, target:, dest:, package_root: nil, embed_fonts: true, reported: {})
+        def flat_pieces(kind, target:, dest:, package_root: nil, embed_fonts: true)
           entry = EntryWriter.path_for(kind)
           rebase = package_root ? package_rebase(dest, package_root) : workspace_rebase(dest)
           pieces = Flattener.pieces(entry, rebase:, css: EntryWriter.render(kind, target: target == :pdf ? nil : target))
-          report_nested(pieces, reported)
           TargetFilter.apply(pieces, target:, embed_fonts:)
         end
 
@@ -187,7 +182,7 @@ module VivlioStarter
         # @param base [Array<Flattener::Piece>] 変数の表にだけ使う規則
         # @param author [Boolean] pieces が全部著者の CSS か（章が足した CSS）
         def literalize(pieces, target:, scope:, reported:, base: [], author: false)
-          result = LiteralResolver.resolve(pieces.reject(&:nested), scope:, base: base.reject(&:nested))
+          result = LiteralResolver.resolve(pieces, scope:, base:)
           result.dropped.each do |dropped|
             key = [:literal, dropped.source, dropped.selector, dropped.declaration]
             next if reported[key]
@@ -235,31 +230,18 @@ module VivlioStarter
           ->(absolute) { Pathname(absolute).relative_path_from(from).to_s }
         end
 
-        # 入れ子の規則は平らな CSS から外れる。同じ規則を種類ごとに何度も知らせない
-        def report_nested(pieces, reported)
-          pieces.select(&:nested).each do |piece|
-            key = [piece.source, piece.text]
-            next if reported[key]
-
-            reported[key] = true
-            selector = piece.text[/\A[^{]*/].strip
-            Common.log_warn("#{relative(piece.source)} の「#{selector}」は入れ子の書き方のため、EPUB と Kindle の CSS から外しました",
-                            detail: ["→ 入れ子を開いて書いてください（例: .box { & p { … } } → .box p { … }）"])
-          end
-        end
-
         # 層を外すと勝ち負けが変わる組と、層の中の !important を一覧にする。
         # vs とテーマの CSS は css_layer_test.rb がテストで確かめるので、ビルドでは開発者向けの
         # 情報にとどめる（§4.5）
         def report_inversions(kind, target, pieces, html_files)
           require 'nokogiri'
-          decls, = Cascade.collect(pieces.reject(&:nested))
+          decls, = Cascade.collect(pieces)
           decls.select { it.important && it.rank != Cascade::UNLAYERED }.each do |decl|
             Common.log_debug("[css] #{kind}（#{target}）: 層の中の !important: #{decl.selector} { #{decl.property} } — #{relative(decl.source)}")
           end
 
           documents = html_files.map { Nokogiri::HTML5(File.read(it, encoding: 'utf-8'), max_errors: 0) }
-          pairs, unreadable = InversionCheck.inversions(pieces.reject(&:nested), documents)
+          pairs, unreadable = InversionCheck.inversions(pieces, documents)
           Common.log_debug("[css] #{kind}（#{target}）: 層を外すと勝ち負けが変わる組 #{pairs.size}")
           pairs.each { Common.log_debug("[css]   #{InversionCheck.describe(it)}") }
           unreadable.each { Common.log_debug("[css]   判定できない選択子（当たらないものとして扱った）: #{it}") }

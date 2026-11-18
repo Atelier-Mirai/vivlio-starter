@@ -233,7 +233,7 @@ Ruby で書く。置き場は `lib/vivlio_starter/cli/css/`。
 - `crass` は CSS Syntax Level 3 の読み取りだけを行う gem で、MIT・純 Ruby・依存なしである。2026-11-14 に、`@layer` の宣言・`@layer` のブロック・`@import url() layer()` が、それぞれ規則として読めることを確かめた（ブロックの中は `Crass::Parser.parse_rules` でもう一度読む）。`vivlio-starter.gemspec` に依存を足す。
 - lightningcss は層を外す変換を持たない。PostCSS の `@csstools/postcss-cascade-layers` は、層の順を `:not(#\#)` を重ねた詳細度に置き換える方式で、KFX がこの選択子を解するかが分からない（KFX は `:is()` を含む規則を捨てる）。変数を解く PostCSS のプラグインも、`:root` の定義しか見ない。
 - 必要な変換（層の順に並べる・`body.<種類>` の変数を解く・出力先で規則を落とす）は vs に固有で、道具を組み合わせても自前の処理が残る。Ruby なら、色の計算（`ThemeColor`）と相対パスの引き直し（`BookSettingsCss.rebase_relative`）を再利用でき、著者の本の `package.json` に依存を足さずに済む。
-- CSS の入れ子（`&`）は、`crass` では読めない。`stylesheets/` は今入れ子を使っていない（2026-11-14 に確認）。vs の CSS とテーマの CSS では入れ子を使わない決まりにする（`theme-contract-spec.md` §3.5）。入れ子を見つけたら、その規則を落として 🟡 で知らせる。
+- CSS の入れ子（`&`）は、`crass` では読めない。`stylesheets/` は今入れ子を使っていない（2026-11-14 に確認）。vs の CSS とテーマの CSS では入れ子を使わない決まりにする（`theme-contract-spec.md` §3.5）。入れ子を見つけたら、その規則を落として 🟡 で知らせる。**2026-11-18 に改めた: 入れ子は読むときに vs が開く（§10.11）。著者とテーマの正当な CSS を、vs の道具の都合で書き直させない。**
 
 ### 4.2 三つの形と処理の順
 
@@ -853,3 +853,23 @@ S3-3a の出力（`check/s3-3a-b1/`）と比べた。出力は `runs/apx-b1`・`
 | クリーン EPUB の CSS | `styles/` の 8 枚とも S3-3b と同一 |
 | EPUBCheck | EPUB・Kindle 用 EPUB とも、エラー・警告 0 |
 | B1 のビルド（`--log=debug`） | 🔴 0・🟡 0。要素ごとの判定で残る組は、EPUB・Kindle の全部の種類で 0。層の中の `!important` は h4 の印の 1 規則（§10.7 の 4） |
+
+### 10.11 CSS の入れ子を開く（2026-11-18・S7a の後）
+
+S7a（`v2-feasibility-notes.md` §8）で、`theme-base` の `basic.css` の入れ子の規則 14 件（`h1 { & { … } }` など）が EPUB から外れた。§4.1 の決まり（入れ子を落として 🟡）は、著者とテーマが書いた正当な CSS を vs の道具の都合で書き直させるもので、誤りだった（ユーザーの指摘）。Kindle は入れ子の中の宣言を捨てる（`kindle-css-compatibility-notes.md` §2。2026-11-18 に `scripts/kfx_probe.rb` の `nest-*` で測った）ので、EPUB と Kindle には開いた規則を渡す。
+
+#### 作ったもの
+
+- `css/nesting.rb`（`Css::Nesting`）: crass の `consume_rules` が返す、中身を字句のまま持つ規則から、入れ子を開いた CSS を作る。開き方は CSS Nesting Module Level 1 と p_css の `CSS.desugar` に合わせた（`&` を親で置き換える・`&` の無い入れ子は前に `& ` を補う・入れ子の `@media` などは親の規則を条件の中に置く・入れ子の後の宣言は順を保って別の規則にする）。字句の上で置き換えるので、文字列と属性の値の中の `&` は置き換えない。
+- `css/stylesheet.rb`: `Crass.parse` をやめ、`consume_rules` で読み、入れ子のある規則（と、中に入れ子のある `@media` など）だけを `Nesting` で開いてから読み直す。`Rule`・`Flattener::Piece` から `nested` の印を外し、`Bundle` と `vs theme:check` の「入れ子の書き方のため外しました」の 🟡 を消した。
+- テスト: `css/nesting_test.rb`（8 件）。`flattener_test.rb` と `bundle_test.rb` の入れ子の 2 件は、開いて届く（著者に何も知らせない）ことを確かめる形に書き直した。
+
+#### 仕様に無かったので決めたこと
+
+1. **親の選択子を埋め込むか `:is()` にまとめるか。** 親が一つの複合選択子なら埋め込み、並びなら `:is()` にまとめる（p_css と同じ）。結合子を含む親（`.a .b`）は、`&` が選択子の先頭に一つだけあるとき（`& .c`・`&.y`・`&` を書かない子孫）は埋め込み、それ以外（`.x &`）は `:is()` にする。先頭の `&` は祖先の側の端なので、埋め込んでも選ぶ要素は変わらない。Kindle では `:is()` を `LiteralResolver` で開く手間が要るので、埋め込める形は埋め込む。
+2. **開くのは読み取りの段（`Stylesheet`）で、出力先に依らない。** PDF（Vivliostyle）は入れ子を読めるが、`VS_CSS_FORM=flat` の PDF も、要素ごとの判定（`InversionCheck`）も、`AuthorPriority` も、同じ規則の列を見るので、一か所で開く。
+
+#### 確かめた結果
+
+- 本書の入口をページの種類（11）× 出力先（PDF・EPUB・Kindle）の 33 通りで平らにした CSS が、変更の前後で字単位で同じ（入れ子が無いので）。
+- `rake test` 4,516 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0。

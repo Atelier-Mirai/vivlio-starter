@@ -178,7 +178,7 @@ module VivlioStarter
                 end
                 # Kindle が読むのはリテラル化した CSS（:has() の規則は落ちている）
                 if target == :kindle
-                  bundled = LiteralResolver.resolve(bundled.reject(&:nested), scope: Bundle.kindle_scope([])).pieces
+                  bundled = LiteralResolver.resolve(bundled, scope: Bundle.kindle_scope([])).pieces
                 end
                 InversionCheck.pairs(bundled).each do |pair|
                   next if allowed?(pair)
@@ -287,7 +287,7 @@ module VivlioStarter
                 File.write(html, %(<html><body class="#{KINDLE_BODY_CLASSES.fetch(kind, kind)}"></body></html>))
                 pieces = Bundle.flat_pieces(kind, target: :kindle, dest: File.join(dir, 'styles', "#{kind}.css"),
                                                   package_root: dir, embed_fonts: false)
-                LiteralResolver.resolve(pieces.reject(&:nested), scope: Bundle.kindle_scope([html])).dropped.each do |dropped|
+                LiteralResolver.resolve(pieces, scope: Bundle.kindle_scope([html])).dropped.each do |dropped|
                   rule = dropped.declaration ? "#{dropped.selector} { #{dropped.declaration} }" : dropped.selector
                   drops[[dropped.reason, dropped.source.delete_prefix("#{dir}/"), rule]] << kind
                 end

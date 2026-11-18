@@ -106,10 +106,10 @@ module VivlioStarter
 
         private
 
-        def vs(text) = Flattener::Piece.new(layer: ['parts'], text:, source: 'stylesheets/parts/x.css', nested: false)
+        def vs(text) = Flattener::Piece.new(layer: ['parts'], text:, source: 'stylesheets/parts/x.css')
 
         def author(text, source: 'stylesheets/custom.css')
-          Flattener::Piece.new(layer: [], text:, source:, nested: false)
+          Flattener::Piece.new(layer: [], text:, source:)
         end
 
         def document(html, path: 'a.html', sheets: ['chapter'])

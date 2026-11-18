@@ -26,7 +26,7 @@ module VivlioStarter
         # 章の body のクラスで解く
         def resolve(css, body_classes: %w[chapter vs-epub vs-kindle], scoped: [], language: 'ja', layer: ['target'])
           scope = LiteralResolver.scope_for([body_classes], target_classes: [], language:, scoped:)
-          piece = Flattener::Piece.new(layer: layer, text: css, source: 'test.css', nested: false)
+          piece = Flattener::Piece.new(layer: layer, text: css, source: 'test.css')
           LiteralResolver.resolve(Stylesheet.parse(css).map { piece.with(text: it.text) }, scope:)
         end
 

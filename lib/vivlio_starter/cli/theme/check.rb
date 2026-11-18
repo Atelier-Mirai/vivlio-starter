@@ -11,7 +11,7 @@
 #   🔴 theme.yml の誤り・契約の版・requires_vs:・extends: の先が無い（Theme.resolve の誤り）
 #   🟡 theme.yml の知らないキー
 #   🟡 契約 HTML に無いクラス・vs の内部のクラスを選んでいる規則（ContainerClassCheck の逆向き）
-#   🟡 層の中の !important・入れ子の規則（css-layer-restructure-spec.md §2.4・§3.5 の表）
+#   🟡 層の中の !important（css-layer-restructure-spec.md §2.4・§3.5 の表）
 #   🟡 外部の URL（url(http…)・@import）。組むたびにネットワークへ取りにいく
 #   🟡 章見出し（h1）・節見出し（h2）の改ページを、公開する変数でなく値で書いた規則。
 #      page.chapter_pagebreak・page.section_pagebreak が効かない（theme-contract-spec.md §3.5・§7.2）
@@ -90,7 +90,7 @@ module VivlioStarter
           # --- Phase: ファイルごとの字面の検査 ---
           own.each { findings.concat(file_findings(theme, it, root)) }
 
-          # --- Phase: 入口に組んだ CSS の検査（Kindle に届くか・入れ子・層の勝ち負け） ---
+          # --- Phase: 入口に組んだ CSS の検査（Kindle に届くか・層の勝ち負け） ---
           findings.concat(bundle_findings(theme, own, root, config))
           findings.concat(kindle_token_findings(theme, own, root)) if kindle?(theme)
 
@@ -176,7 +176,6 @@ module VivlioStarter
           return [] if targets.empty?
 
           settings = PreProcessCommands::BookSettingsCss.render(config)
-          nested = {}
           drops = {}
           pairs = {}
           Dir.mktmpdir('vs-theme-check') do |tmp|
@@ -186,8 +185,6 @@ module VivlioStarter
               Css::EntryWriter::IMPORTS.each_key do |kind|
                 targets.each do |target|
                   pieces = bundle_pieces(kind, target, theme)
-                  pieces.select { it.nested && own?(it.source, dir, own) }.each { nested[[relative(it.source, dir), it.text[/\A[^{]*/].strip]] = true }
-                  pieces = pieces.reject(&:nested)
                   if target == :kindle
                     result = Css::LiteralResolver.resolve(pieces, scope: kindle_scope(kind, theme, config))
                     result.dropped.each { drops[[it.reason, relative(it.source, dir), it.selector, it.declaration]] = true if own?(it.source, dir, own) }
@@ -204,7 +201,7 @@ module VivlioStarter
               end
             end
           end
-          [*nested_findings(nested.keys, root), *drop_findings(drops.keys, root), *inversion_findings(pairs.keys, own, root)]
+          [*drop_findings(drops.keys, root), *inversion_findings(pairs.keys, own, root)]
         end
 
         def prepare_workspace(dir, root, settings, theme)
@@ -230,14 +227,6 @@ module VivlioStarter
           classes = [PAGE_BODY_CLASSES.fetch(kind, kind), *theme.body_classes(kind, config)]
           Css::LiteralResolver.scope_for([classes], target_classes: Css::Bundle::KINDLE_BODY_CLASSES,
                                                     language: Common.book_language)
-        end
-
-        def nested_findings(nested, root)
-          nested.map do |file, selector|
-            Finding.new(level: :warning,
-                        message: "#{place(file, line_in(root, file, selector))} の「#{selector}」は入れ子の書き方のため、EPUB と Kindle の CSS から外れます",
-                        detail: '→ 入れ子を開いて書いてください（例: .box { & p { … } } → .box p { … }）')
-          end
         end
 
         # 紙の寸法は数だけ（💡）、ほかは場所ごとに 🟡
