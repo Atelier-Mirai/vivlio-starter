@@ -248,7 +248,7 @@ S8 の材料（`novel-vertical-spec.md` §3.4 の「部品の 3 段」）。ど�
 | :--- | :--- | :--- |
 | 権利ページ | 内容が出ず、白紙が 12 ページ続く | `pages/legalpage.css` の `body { min-block-size: 100vh; display: grid; align-content: end; }`。縦書きでは `block-size` が横の長さになる。`theme-bunko` が `:root` の `--vs-writing-mode` を `vertical-rl` にするので、vs が横に組むつもりのページ（権利ページ・奥付。`novel-vertical-spec.md` §2.2）も縦になる |
 | 前付けのノンブル | 本扉・権利ページの上に、130 番台のノンブルが出る（本文と別に組む前付けの PDF の通し番号） | `theme-base` の `@page` の余白の箱（上の小口）が、vs が前付けで消している箱（下）と別の位置にあり、打ち消されない |
-| 節の見出しと節リード | 重なる（PDF・EPUB とも） | 節の見出しの部品の配置が物理方向 |
+| 節の見出しと節リード | 重なる（PDF・EPUB とも） | **縦書きに依らない**（§8.7 で横書きの公式テーマでも重なった）。`parts/heading.css` の `.section-lead { margin-block: -15mm 1.5rlh }` が、`standard` の見出しの形を前提に節リードを上へずらしている。`standard` は見出しの CSS（`image-header.css`・`simple-header.css`）で打ち消しているが、ほかのテーマは打ち消さない。部品からテーマへ移す候補（`theme-contract-spec.md` §10 の論点 5・S8-5） |
 | 囲みのラベル（MEMO・COLUMN） | 本文の上に重なる | ラベルの位置が物理方向（`top`・`left`） |
 | サイドイメージ | 絵と説明が離れ、絵が次のページへ送られる | 横に並べる部品（`novel-vertical-spec.md` §3.4 の「縦書きでは使えない」の候補） |
 | 相互参照のリンクの下線 | 縦の行を横切る線になる | `border-bottom` |
@@ -292,3 +292,33 @@ A の組が §8.3（301）より増えたのは、入れ子で書かれていた
 章と付録のページだけで数えると、D2 の組は 15 と 13 だった（A は 162 と 171）。
 
 **読み直しで起きうること。** 読み直した部品の規則は `pages` 層より上に入るので、`pages/chapter.css` などが部品の規則を上書きしている箇所があれば、その上書きが PDF で負ける。D と D2 の判定では、読み直した部品とページの CSS の組は 0 だった（本書の 2 章の範囲）。
+
+### 8.7 ほかの公式テーマ（2026-11-19・S7a の追加）
+
+ユーザーの提案で、bunko のほかの公式テーマでも同じ実験をした。公開されている公式テーマは 7 つ（`theme-base`・`theme-bunko`・`theme-techbook`・`theme-academic`・`theme-gutenberg`・`theme-epub3j`・`theme-slide`）。本の形でない `theme-slide` と、土台の `theme-base` を除いた 4 つを、§8.6 の置き方 A と D2 で組んだ。どれも横書き（epub3j の縦書きは HTML の `.vrtl` クラスで切り替える作りで、vs の HTML には無い）。比べる相手は、同じ 2 章を `standard` で組んだもの（92 ページ・組 0）。
+
+| テーマ | 版 | 土台 | A の組 | D2 の組 | D2 の PDF |
+| :--- | :--- | :--- | ---: | ---: | :--- |
+| `theme-techbook` | 3.1.1 | `theme-base` 3.1.0 | 332 | 105 | 106 ページ |
+| `theme-academic` | 3.1.1 | `theme-base` 3.1.0 | 324 | 105 | 87 ページ |
+| `theme-gutenberg` | 3.1.1 | `theme-base` 3.1.0 | 323 | 105 | 120 ページ |
+| `theme-epub3j` | 2.1.0 | なし（電書協の制作ガイドの CSS） | 149 | 51 | 90 ページ |
+
+D2 では 4 つとも、囲み・出力例・表の枠が戻り、見出しと段落はそのテーマの見た目になった（gutenberg の飾りの頭文字など）。`theme-base` を使う 3 つの D2 の 105 組の内訳は bunko と同じ形（用語集・索引・奥付の `pages` 層が大半）。
+
+**対応表で直したこと（どれも S7b の `bridge.css` の生成に入れる）。**
+
+1. **`--vs-line-height` には倍率を渡す。** 最初は `--book-line-height`（17pt の長さ）を渡し、academic と gutenberg の組版が止まった（Vivliostyle の待ち時間切れ 300 秒 × 3 回）。`theme-base` の `--vs-spacing-rlh: calc(var(--vs-line-height) * 1rem)` が長さ × 長さの無効な計算になり、脚注の部品（`css/footnote/index.css`）を読み込んだときに組版が終わらなくなる（読み込みを一つずつ外して特定した）。bunko は `--vs-spacing-rlh: 0` を自分で書いているので止まらず、techbook は止まらなかったが 413 ページに膨らんでいた。倍率（実験では `a5_standard` の 1.7 を直に書いた）を渡すと、どれも 1 分前後で組めた。**vs の公開する変数には行送りの倍率が無い**（`--book-line-height` は長さ）ので、S7b で足すか決める。
+2. **`theme-base` の番号を出さない。** 付録・節・図・表などの番号の表示（`--vs-appendix--marker-display`・`--vs-section--marker-display` など 8 つ）を `none` にする。番号は vs が契約 HTML に書くので、出すと「付録A　付録A」と二重になる（techbook・academic・gutenberg）。bunko は日本語のときに自分で消している。
+3. **見出しとコードの書体も渡す**（`--vs--heading-font-family`・`--vs--monospace-font-family`）。academic は見出しを Hiragino Kaku Gothic ProN にしていて、54 ページで字が Type 3 になった。
+4. **変数を持たないテーマには、書体を規則で渡す。** epub3j は本文を `serif-ja, serif`（電書協のガイドの総称の名前）で組むので、PC では本の書体が使われず、87 ページで Type 3 になった。`bridge.css` に `html, body`・見出し・コードの `font-family` の規則を書くと 0 になった。
+
+直した後の D2 で、Type 3 の 🟡 は 4 つとも 0。
+
+**残ったもの。**
+
+| 箇所 | テーマ | 扱い |
+| :--- | :--- | :--- |
+| 節リードが見出しに重なる | techbook・academic・gutenberg（bunko も） | vs の部品の側の問題（§8.4 の表を直した）。S8-5 で `novel` を書くときに部品からテーマへ移す |
+| 柱とノンブルが二重に出る | epub3j | epub3j の `@media print` の `@page`（上に題名・下にノンブル）と、vs の余白の箱が別の位置にある。取り込みのときに打ち消すか、S7b で決める |
+| 用語集・索引・奥付の 89 組 | `theme-base` の 3 つ | §8.6 のとおり。ページの種類ごとに読み直す口が要る |
