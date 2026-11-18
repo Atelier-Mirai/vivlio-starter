@@ -185,11 +185,14 @@ ul {
   font-weight: normal;
 }
 
-/* 章リードは本文と同じ字で組む。章は parts/heading.css で大きく太めにする */
+/* 章リードは本文と同じ太さ・配置で組み、字の大きさだけ章と同じ theme.lead_size の倍率にする。
+   章は parts/heading.css で太めにして中央に置く。1.x は lead_size が既定（1.2）と違うときだけ
+   倍率を前書きにも当てていたが、書いた記法は反映する方針で、既定のときも当てる
+   （S11a の予行・v2-migration-plan.md §8.17。2026-11-18 ユーザー決定） */
 .chapter-lead {
   margin-block: 0;
   margin-inline: 0;
-  font-size: inherit;
+  font-size: var(--book-chapter-lead-size);
   font-weight: inherit;
   line-height: inherit;
   text-indent: 0;
