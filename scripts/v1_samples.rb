@@ -4,10 +4,14 @@
 # scripts/v1_samples.rb — 移行の見本（1.x の本 4 冊）を作る
 # ================================================================
 # 使い方:
-#   ruby scripts/v1_samples.rb --out DIR [--v1 VERSION]
+#   ruby scripts/v1_samples.rb --out DIR [--tag TAG]
 #
 #   --out DIR     見本を作る場所（既にあれば消してから作る）
-#   --v1 VERSION  vs new に使う 1.x の gem の版（既定: 1.0.0）
+#   --tag TAG     vs new に使う 1.x の版のタグ（既定: v1.0.0）
+#
+# vs new は、インストール済みの gem ではなく、このリポジトリのタグから取り出したソースの bin/vs で行う。
+# 手元の gem は、公開の後に同じ版の番号のまま作り直されていることがあり（S11a の時点の 1.0.0 は、
+# 公開した 1.0.0 と 13 ファイル違った）、それで作ると「その版の vs new で作った本」にならない。
 #
 # v2-migration-plan.md §5.5 の 4 冊を、1.x の gem の vs new から作る。
 #   plain         … 雛形のまま
@@ -24,14 +28,18 @@
 require 'fileutils'
 require 'open3'
 require 'optparse'
+require 'rbconfig'
+require 'shellwords'
 
-options = { v1: '1.0.0' }
+ROOT = File.expand_path('..', __dir__)
+
+options = { tag: 'v1.0.0' }
 OptionParser.new do |o|
-  o.banner = 'usage: ruby scripts/v1_samples.rb --out DIR [--v1 VERSION]'
+  o.banner = 'usage: ruby scripts/v1_samples.rb --out DIR [--tag TAG]'
   o.on('--out DIR') { options[:out] = File.expand_path(it) }
-  o.on('--v1 VERSION') { options[:v1] = it }
+  o.on('--tag TAG') { options[:tag] = it }
 end.parse!(ARGV)
-abort 'usage: ruby scripts/v1_samples.rb --out DIR [--v1 VERSION]' unless options[:out]
+abort 'usage: ruby scripts/v1_samples.rb --out DIR [--tag TAG]' unless options[:out]
 
 CUSTOM_CSS = <<~CSS
 
@@ -55,9 +63,15 @@ def sh!(*command, chdir:, stdin: nil)
   output
 end
 
+# --- Phase: タグのソースを取り出す（見本を作り終えたら消す） ---
+source = File.join(out, ".source-#{options[:tag]}")
+FileUtils.mkdir_p(source)
+sh!('sh', '-c', "git -C #{ROOT.shellescape} archive #{options[:tag].shellescape} | tar -x -C #{source.shellescape}", chdir: out)
+at_exit { FileUtils.rm_rf(source) }
+
 %w[plain custom components frontispiece].each do |name|
   # --- Phase: 1.x の vs new（確認には既定で答える） ---
-  sh!('vs', "_#{options[:v1]}_", 'new', name, chdir: out, stdin: "\n" * 10)
+  sh!(RbConfig.ruby, File.join(source, 'bin', 'vs'), 'new', name, chdir: out, stdin: "\n" * 10)
   book = File.join(out, name)
 
   # --- Phase: 見本ごとの手入れ ---
@@ -84,6 +98,6 @@ end
   sh!('git', 'init', '-q', chdir: book)
   sh!('git', 'add', '-A', chdir: book)
   sh!('git', '-c', 'user.name=v1-samples', '-c', 'user.email=v1-samples@example.invalid',
-      'commit', '-qm', "移行の見本: #{name}（vs #{options[:v1]} の vs new）", chdir: book)
+      'commit', '-qm', "移行の見本: #{name}（#{options[:tag]} の vs new）", chdir: book)
   puts "[v1_samples] #{book}"
 end
