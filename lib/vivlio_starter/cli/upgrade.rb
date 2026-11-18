@@ -30,6 +30,11 @@
 #   合流の共通祖先は ScaffoldBase が調達する（upgrade-three-way-merge-spec.md）。
 #   祖先が得られないファイルは従来どおり競合として著者に尋ねる。
 #
+# 1.x の配置からの移行（v2-migration-plan.md §5.3。V1Migration）:
+#   1.x の雛形の CSS と画像は、著者が変えていなければ削除し、変えていれば stylesheets/_v1/ へ移す。
+#   2.0 の配置（stylesheets/ の新しい分け方と themes/standard/）は、ほかの雛形のファイルと同じに追加する。
+#   移す前に Git の作業ツリーがきれいかを確かめ、--yes でも全体の確認を尋ねる。
+#
 # custom.css の 1.x の変数の名前（css-layer-restructure-spec.md §7.2）:
 #   雛形追従の後で、置き換える行を全部見せてから尋ねる（--yes でも尋ねる）。いいえなら何も変えない。
 #
@@ -55,6 +60,7 @@ require_relative 'token_resolver'
 require_relative 'index/unified_terms_manager'
 require_relative 'new'
 require_relative 'theme'
+require_relative 'v1_migration'
 require_relative 'doctor'
 require_relative '../version'
 
@@ -78,8 +84,12 @@ module VivlioStarter
       # 雛形追従の結果。aborted は全体の確認で「いいえ」と答えたとき（以後の書き換えもしない）。
       # summary は最後のまとめの行に載せる一言（例: "追加 6・更新 30"）。雛形の段を飛ばしたときは nil
       # kept_theme_files は、雛形から無くなったが著者が変えたので残したテーマのファイル（最後に 🟡 で示す）
-      SyncResult = Data.define(:code, :new_keys, :aborted, :renames, :summary, :kept_theme_files) do
-        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil, kept_theme_files: []) = super
+      # retired は 1.x の配置から移したときに stylesheets/_v1/ へ移した CSS、retired_diff はその差分を見るコマンド、
+      # inline_hits は 2.0 で行内の属性として読まれる原稿の箇所（どれも最後に 🟡 で示す）
+      SyncResult = Data.define(:code, :new_keys, :aborted, :renames, :summary, :kept_theme_files,
+                               :retired, :retired_diff, :inline_hits) do
+        def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil, kept_theme_files: [],
+                       retired: [], retired_diff: nil, inline_hits: []) = super
       end
 
       # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
@@ -189,6 +199,8 @@ module VivlioStarter
         if gem_repository?
           Common.log_always('💡 vivlio-starter の開発リポジトリのため、雛形の追従はスキップします（書籍プロジェクトの直下で実行すると適用できます）。')
         elsif File.exist?(File.join('config', 'book.yml'))
+          return 1 if uncommitted_before_migration?(options)
+
           move_legacy_backups!(options)
           sync = sync_scaffold!(cmd)
           unless sync.aborted
@@ -211,6 +223,8 @@ module VivlioStarter
         report_renames(sync.renames)
         report_contract_mismatches(theme_mismatches)
         report_kept_theme_files(sync.kept_theme_files)
+        report_retired_stylesheets(sync.retired, sync.retired_diff)
+        report_inline_attribute_hits(sync.inline_hits)
         ScaffoldUpdates.report_new_book_keys(sync.new_keys, scaffold_source:, dry_run: options[:dry_run])
 
         code = [self_result == :failed ? 1 : 0, sync.code, tools_code].max
@@ -280,8 +294,17 @@ module VivlioStarter
         plan = build_plan(scaffold_digests, lock).reject { renames.moved.value?(it.relative) }
         plan = with_rename_rows(with_tidy_rows(plan, tidy), renames) + removed
 
+        # --- Phase: 1.x の配置からの移行（v2-migration-plan.md §5.3 の 2・4・7、§5.2 の走査） ---
+        migrating = V1Migration.legacy?(scaffold_source:)
+        v1_items = migrating ? V1Migration.plan(lock&.dig(:files) || {}, scaffold_digests, ScaffoldBase.installed_scaffold_dirs) : []
+        plan += v1_items.map { PlanItem.new(relative: it.relative, status: it.action) }
+        retired = v1_items.select { it.action == :retire }.map(&:relative)
+        retired_diff = V1Migration.diff_command(retired, lock&.dig(:files) || {}, ScaffoldBase.installed_scaffold_dirs)
+        inline_hits = migrating ? V1Migration.inline_attribute_hits(V1Migration.manuscript_paths) : []
+
         # --- Phase: 計画表示（改名と著者データの整理も、確認の前に見せる） ---
-        display_plan(plan, tidy_details(tidy).merge(rename_details(renames)))
+        Common.log_always('📦 この本を 1.x の配置から 2.0 の配置へ移します（1.x の雛形の CSS を片付け、2.0 の CSS とテーマを置きます）') if migrating
+        display_plan(plan, tidy_details(tidy).merge(rename_details(renames)).merge(retire_details(retired)))
         if plan.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
           return SyncResult.new(new_keys: tidy.new_keys, summary: '最新') if cmd.options[:dry_run]
@@ -291,18 +314,18 @@ module VivlioStarter
         end
         if cmd.options[:dry_run]
           finish_dry_run(plan)
-          return SyncResult.new(new_keys: tidy.new_keys, summary: "変更できるもの #{plan.size} 件")
+          return SyncResult.new(new_keys: tidy.new_keys, summary: "変更できるもの #{plan.size} 件", inline_hits:)
         end
 
         # --- Phase: 適用（改名 → 追加・更新・合流 → 競合の個別確認） ---
-        applied, skipped, backup_dir = apply_plan(cmd, plan, renames)
+        applied, skipped, backup_dir = apply_plan(cmd, plan, renames, migrating:)
         return SyncResult.new(aborted: true, summary: '適用しませんでした') if applied.nil? # 全体確認で中止
 
         # --- Phase: lock・基準の更新 → 著者データの整理 → 完了報告 ---
         save_lock_and_base!(scaffold_digests, lock, applied:, skipped:)
         backup_dir, new_keys = apply_tidy(tidy, lock, backup_dir)
         summary = print_summary(plan, applied, skipped, backup_dir)
-        SyncResult.new(new_keys:, renames:, summary:, kept_theme_files: kept)
+        SyncResult.new(new_keys:, renames:, summary:, kept_theme_files: kept, retired:, retired_diff:, inline_hits:)
       end
 
       private
@@ -674,6 +697,72 @@ module VivlioStarter
       end
 
       # ================================================================
+      # 1.x の配置からの移行（v2-migration-plan.md §5.3。V1Migration）
+      # ================================================================
+
+      # 1.x の配置から移す前に、Git の作業ツリーがきれいかを確かめる（§5.3 の最後）。
+      # 移行の変更が著者の作業中の変更と混ざると、移行だけを見直す・戻すことができない。
+      # --dry-run は何も書かないので確かめない
+      # @return [Boolean] 止めたら true
+      def uncommitted_before_migration?(options)
+        return false if options[:dry_run] || !V1Migration.legacy?(scaffold_source:)
+
+        changes = V1Migration.uncommitted_changes
+        return false if changes.empty?
+
+        shown = changes.first(5).map { "  #{it.strip}" }
+        shown << "  ほか #{changes.size - 5} 件" if changes.size > 5
+        Common.log_error('この本を 2.0 の配置へ移す前に、コミットしていない変更をコミットしてください',
+                         detail: ['コミットしていない変更:', *shown,
+                                  '→ git add -A && git commit -m "2.0 へ移す前の状態" の後に、vs upgrade をもう一度実行してください',
+                                  '移行の変更が 1 つのコミットにまとまり、git diff で見直し、git checkout で戻せます'])
+        Common.log_result('vs upgrade を中止しました（何も変更していません）', status: :failure)
+        true
+      end
+
+      # 移す CSS の行の下に、移す先を示す
+      def retire_details(retired) = retired.to_h { [it, ["→ #{V1Migration.retired_path(it)}（2.0 では読みません）"]] }
+
+      # 著者が変えた 1.x の雛形の CSS を stylesheets/_v1/ へ移す。中身は変えないので退避は取らない
+      def retire!(relative)
+        FileUtils.mkdir_p(V1Migration::RETIRE_DIR)
+        FileUtils.mv(relative, V1Migration.retired_path(relative))
+      end
+
+      # 1.x の雛形の画像を消して空いたディレクトリ（stylesheets/images/bundled/ など）を消す
+      def prune_empty_image_dirs
+        return unless File.directory?(V1Migration::IMAGES_DIR)
+
+        Dir.glob('**/', base: V1Migration::IMAGES_DIR).sort_by { -it.count('/') }.each do |relative|
+          dir = File.join(V1Migration::IMAGES_DIR, relative)
+          Dir.rmdir(dir) if Dir.empty?(dir)
+        end
+      end
+
+      # 移したファイルと、次にすること（§5.3 の 7）。計画の表は外部ツールの更新の出力で流れるので、最後に出す
+      def report_retired_stylesheets(retired, diff_command)
+        return if retired.empty?
+
+        detail = retired.map { V1Migration.retired_path(it) }
+        detail << '2.0 では、これらのファイルは読み込まれません'
+        detail << '変更した規則を stylesheets/custom.css へ写してください（custom.css は、ほかのどの CSS よりも優先されます）'
+        detail << "雛形との違いは次のコマンドで見られます: #{diff_command}" if diff_command
+        Common.log_warn("雛形の CSS のうち、変更のあった #{retired.size} ファイルを #{V1Migration::RETIRE_DIR}/ へ移しました",
+                        detail:)
+      end
+
+      # 2.0 で行内の属性として読まれる原稿の箇所（v2-migration-plan.md §5.2）。
+      # 文面は仮のもので、行内の属性を作る S8-2 で確定する
+      def report_inline_attribute_hits(hits)
+        return if hits.empty?
+
+        places = hits.first(10).map { "#{it.path}:#{it.lineno} - #{it.line}" }
+        places << "ほか #{hits.size - 10} か所" if hits.size > 10
+        Common.log_warn("原稿に「]{.」の並びが #{hits.size} か所あります。2.0 では [文字]{.class} を行内の属性として読むので、組まれ方が変わります",
+                        detail: [*places, '属性のつもりでなければ、] と { の間に空白を入れてください'])
+      end
+
+      # ================================================================
       # custom.css の 1.x の変数の名前（css-layer-restructure-spec.md §7.2）
       # ================================================================
 
@@ -782,6 +871,7 @@ module VivlioStarter
         merge: ['合流', '別の場所を変更 → 両立'],
         conflict: ['競合', '同じ場所を変更 → 確認'],
         remove: ['削除', '雛形から無くなったファイル'],
+        retire: ['退避', '変更あり → stylesheets/_v1/'],
         tidy: ['整理', nil],
         rename: ['改名', nil]
       }.freeze
@@ -794,7 +884,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[rename add add_empty update merge conflict remove tidy]
+        order = %i[rename add add_empty update merge conflict remove retire tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
@@ -812,6 +902,7 @@ module VivlioStarter
         message += "・合流 #{merged} 件" if merged.positive?
         message += "・競合 #{counts[:conflict] || 0} 件"
         message += "・削除 #{counts[:remove]} 件" if counts[:remove]
+        message += "・退避 #{counts[:retire]} 件" if counts[:retire]
         message += "・整理 #{counts[:tidy]} 件" if counts[:tidy]
         message += "・改名 #{counts[:rename]} 件" if counts[:rename]
         Common.log_always("#{message}）")
@@ -820,7 +911,8 @@ module VivlioStarter
       # 追加・更新の一括適用と、競合の個別確認を行う。
       # @return [Array(Array<PlanItem>, Array<PlanItem>, String?), Array(nil, nil, nil)]
       #   applied / skipped / バックアップ先（全体確認で中止した場合は applied が nil）
-      def apply_plan(cmd, plan, renames)
+      # migrating は 1.x の配置から移すとき。著者のファイルを消し、移すので、--yes でも全体の確認を尋ねる
+      def apply_plan(cmd, plan, renames, migrating: false)
         adds      = plan.select { %i[add add_empty].include?(it.status) }
         updates   = plan.select { it.status == :update }
         merges    = plan.select { it.status == :merge }
@@ -828,13 +920,14 @@ module VivlioStarter
         tidied    = plan.select { it.status == :tidy }
         renamed   = plan.select { it.status == :rename }
         removals  = plan.select { it.status == :remove }
+        retires   = plan.select { it.status == :retire }
         applied = []
         skipped = []
         backup_dir = nil
 
         # --- Phase: 改名＋追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
-        if [adds, updates, merges, tidied, renamed, removals].any?(&:any?) && !cmd.options[:yes]
-          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied, renamed, removals)}")
+        if [adds, updates, merges, tidied, renamed, removals, retires].any?(&:any?) && (migrating || !cmd.options[:yes])
+          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges, tidied, renamed, removals, retires)}")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
@@ -873,6 +966,12 @@ module VivlioStarter
           FileUtils.rm(item.relative)
           applied << item
         end
+        prune_empty_image_dirs if migrating
+
+        retires.each do |item|
+          retire!(item.relative)
+          applied << item
+        end
 
         # --- Phase: 競合の個別確認（--yes でも必ず確認する） ---
         conflicts.each do |item|
@@ -890,10 +989,11 @@ module VivlioStarter
       end
 
       # 全体確認の文言。合流は 0 件のことが多いので、あるときだけ足す
-      def bulk_summary(adds, updates, merges, tidied, renamed, removals)
+      def bulk_summary(adds, updates, merges, tidied, renamed, removals, retires)
         summary = "追加 #{adds.size} 件・更新 #{updates.size} 件"
         summary += "・合流 #{merges.size} 件" if merges.any?
         summary += "・削除 #{removals.size} 件" if removals.any?
+        summary += "・退避 #{retires.size} 件" if retires.any?
         summary += "・整理 #{tidied.size} 件" if tidied.any?
         summary += "・改名 #{renamed.size} 件" if renamed.any?
         summary
@@ -1008,6 +1108,8 @@ module VivlioStarter
         counts += "・合流 #{merge_count}" if merge_count.positive?
         remove_count = applied.count { it.status == :remove }
         counts += "・削除 #{remove_count}" if remove_count.positive?
+        retire_count = applied.count { it.status == :retire }
+        counts += "・退避 #{retire_count}" if retire_count.positive?
         counts += "・整理 #{tidy_count}" if tidy_count.positive?
         rename_count = plan.count { it.status == :rename }
         counts += "・改名 #{rename_count}" if rename_count.positive?

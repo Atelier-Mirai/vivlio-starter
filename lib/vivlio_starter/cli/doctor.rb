@@ -10,6 +10,8 @@
 #   （実体を失った .app を指し exit 126）や dylib 切れ等の「在るのに動かない」も検出する。
 #   あわせて config/ 配下の設定ファイルを診断し、--fix 時は scaffold から
 #   復元する（doctor-restore-and-plugin-tools-spec.md Phase 5）。
+#   書籍プロジェクトの中では、本が 2.0 の vs で組める状態か（1.x の配置のままでないか・theme.name の
+#   テーマがあり、契約の版が合うか）も示す（v2-migration-plan.md §5.7 の後）。
 #
 # 診断対象ツール:
 #   - Xcode Command Line Tools (macOS): ビルドツールチェーン
@@ -47,6 +49,7 @@
 #   - npm: Node.js パッケージ管理
 # ================================================================
 
+require 'date'
 require 'rbconfig'
 require 'fileutils'
 require 'net/http'
@@ -60,6 +63,8 @@ require 'json'
 require 'yaml'
 
 require_relative 'guards'
+require_relative 'theme'
+require_relative 'v1_migration'
 require_relative 'doctor/config_salvager'
 require_relative 'doctor/tool_upgrader'
 require_relative 'build/targets'
@@ -176,6 +181,7 @@ module VivlioStarter
 
         # --- Phase: 設定ファイル診断・復元（書籍プロジェクト内のみ）---
         diagnose_config_files!(options)
+        diagnose_book_layout!(options)
 
         # --- Phase: 外部ツール診断 ---
         # macOS では Xcode Command Line Tools が多くのビルドツールの前提条件
@@ -803,6 +809,38 @@ module VivlioStarter
         missing_dirs.each  { restore_scaffold_dir!(it) }
       rescue StandardError => e
         Common.log_warn("設定ファイルの診断・復元に失敗しました: #{e.class}: #{e.message}")
+      end
+
+      # 本が 2.0 の vs で組める状態かを示す（v2-migration-plan.md §5.7 の後）。どれも止めずに示す。
+      #   - 1.x の配置のまま: vs build などが 🔴 で止めるのと同じ判定・同じ文面を 🟡 で
+      #   - theme.name のテーマが本の themes/ に無い・契約の版や requires_vs: が合わない: vs build が
+      #     🔴 で止める誤り（Theme.resolve が上げる Theme::Error）を 🟡 で
+      # 1.x の配置の本は themes/ を持たないので、テーマの誤りは重ねて出さない
+      def diagnose_book_layout!(options)
+        return unless File.file?(File.join(Common::CONFIG_DIR, 'book.yml'))
+
+        if V1Migration.legacy?
+          message, detail = V1Migration.unmigrated_notice
+          Common.log_warn(message, detail:)
+          return
+        end
+
+        name = book_theme_name
+        Theme.resolve(name, root: Dir.pwd)
+        report_ok("✅ テーマ #{name}: OK", options)
+      rescue Theme::Error => e
+        Common.log_warn(e.message, detail: e.detail)
+      end
+
+      # book.yml の theme.name（書いていなければ既定）。doctor は設定の読み込みに依らず動くので、
+      # Common::CONFIG ではなくファイルを直に読む
+      def book_theme_name
+        book = YAML.safe_load_file(File.join(Common::CONFIG_DIR, 'book.yml'), permitted_classes: [Date, Time], aliases: true)
+        theme = book['theme'] if book.is_a?(Hash)
+        name = (theme['name'] if theme.is_a?(Hash)).to_s.strip
+        name.empty? ? Theme::DEFAULT_NAME : name
+      rescue StandardError
+        Theme::DEFAULT_NAME
       end
 
       # 書籍プロジェクトの中かどうか（復元対象の config/ か、プロジェクトの

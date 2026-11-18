@@ -31,6 +31,11 @@
 #   - 雛形から無くなったテーマのファイルは、変えていなければ退避して削除・変えていれば残して最後に 🟡（S6-10）
 #   - custom.css の 1.x の変数の名前は、行を全部見せて尋ね、いいえなら何も変えない
 #
+# 1.x の配置からの移行（v2-migration-plan.md §5.2・§5.3。S11a）:
+#   - 変えていない 1.x の CSS・画像は削除し、変えた CSS は stylesheets/_v1/ へ移す・著者の画像は残す
+#   - --yes でも尋ね、いいえなら何も変えない・Git の作業ツリーが汚れていれば止める
+#   - 1.x の gem が残っていれば差分のコマンドを示す・原稿の `]{.` を示す
+#
 # テスト環境:
 #   - Dir.mktmpdir にミニ雛形とプロジェクトを組み、scaffold_source を DI で差し替え
 #   - ネットワーク・外部コマンドは tool_deps（Deps）を DI で差し替えて遮断
@@ -1692,6 +1697,204 @@ module VivlioStarter
           assert_includes out, '--dry-run のため置き換えません'
           refute_includes out, '書き換えますか？'
           assert_equal LEGACY_CUSTOM_CSS, File.read('stylesheets/custom.css')
+        end
+      end
+
+      # ================================================================
+      # 1.x の配置からの移行（v2-migration-plan.md §5.2・§5.3。S11a）
+      # ================================================================
+
+      V1_THEME_CSS = ":root { --theme-accent: green; }\n"
+      V1_COMPONENTS_CSS = ".column { border: 1px solid; }\n"
+      AUTHOR_COMPONENTS_CSS = ".column { border: 2px dashed; }\n"
+
+      # 1.x の雛形から作った本と、2.0 の配置のミニ雛形を組む。
+      # theme.css は雛形のまま・components.css は著者が直した・雛形の扉絵 2 枚（うち 1 枚は著者が差し替え）・
+      # 著者が足した画像 1 枚。lock は 1.x の雛形の中身を記録する
+      def v1_project(scaffold, lock: true)
+        write('.', 'stylesheets/theme.css', V1_THEME_CSS)
+        write('.', 'stylesheets/components.css', AUTHOR_COMPONENTS_CSS)
+        write('.', 'stylesheets/images/bundled/sakura.webp', "雛形の桜\n")
+        write('.', 'stylesheets/images/bundled/ume.webp', "著者が差し替えた梅\n")
+        if lock
+          write_lock(scaffold_overrides: { 'stylesheets/components.css' => V1_COMPONENTS_CSS,
+                                           'stylesheets/images/bundled/ume.webp' => "雛形の梅\n" })
+        end
+        # 著者が足した画像は lock に記録が無い（write_lock はその時点の全ファイルを雛形として記録する）
+        write('.', 'stylesheets/images/my-door.webp', "著者の扉絵\n")
+        write(scaffold, 'stylesheets/parts/box.css', ".column { border: 1px solid var(--book-color-accent); }\n")
+        write(scaffold, 'themes/standard/theme.yml', "name: standard\ncontract: 1\n")
+        write(scaffold, 'themes/standard/images/sakura.webp', "テーマの桜\n")
+      end
+
+      # --- 変えていない 1.x の CSS・画像は消し、変えた CSS は _v1/ へ移し、2.0 の配置を置く ---
+      def test_should_migrate_v1_stylesheets_to_the_new_layout
+        within_project do |scaffold|
+          v1_project(scaffold)
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, '1.x の配置から 2.0 の配置へ移します'
+          assert_match(%r{削除\s+stylesheets/theme\.css}, out)
+          assert_match(%r{退避\s+stylesheets/components\.css}, out)
+          refute_path_exists 'stylesheets/theme.css'
+          assert_equal AUTHOR_COMPONENTS_CSS, File.read('stylesheets/_v1/components.css'), '著者の変更は中身ごと移すべき'
+          refute_path_exists 'stylesheets/components.css'
+          refute_path_exists 'stylesheets/images/bundled/sakura.webp'
+          assert_equal "著者が差し替えた梅\n", File.read('stylesheets/images/bundled/ume.webp'), '差し替えた画像は残すべき'
+          assert_equal "著者の扉絵\n", File.read('stylesheets/images/my-door.webp'), '著者が足した画像は残すべき'
+          assert_path_exists 'stylesheets/parts/box.css'
+          assert_path_exists 'themes/standard/theme.yml'
+
+          lock = ScaffoldLock.read('.')
+          refute lock[:files].key?('stylesheets/theme.css'), '1.x の雛形のファイルは lock から外すべき'
+          assert lock[:files].key?('stylesheets/parts/box.css')
+          assert_includes out, '変更のあった 1 ファイルを stylesheets/_v1/ へ移しました'
+          assert_includes out, 'stylesheets/custom.css へ写してください'
+          refute_includes out, 'diff -u', '1.x の gem が無ければ差分のコマンドは示さない'
+          refute V1Migration.legacy?, '移した後は 1.x の本と見なさない'
+        end
+      end
+
+      # --- 雛形の画像を全部消したら、空いたディレクトリも消す ---
+      def test_should_remove_emptied_image_directories
+        within_project do |scaffold|
+          write('.', 'stylesheets/theme.css', V1_THEME_CSS)
+          write('.', 'stylesheets/images/bundled/sakura.webp', "雛形の桜\n")
+          write_lock
+          write(scaffold, 'stylesheets/parts/box.css', ".column {}\n")
+
+          with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          refute_path_exists 'stylesheets/images/bundled'
+        end
+      end
+
+      # --- 確認に「いいえ」と答えると、何も変えない（§4.3 の完了の条件 2） ---
+      def test_should_change_nothing_when_the_migration_is_declined
+        within_project do |scaffold|
+          v1_project(scaffold)
+          before = Dir.glob('**/*', File::FNM_DOTMATCH).select { File.file?(it) }.to_h { [it, File.read(it)] }
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          after = Dir.glob('**/*', File::FNM_DOTMATCH).select { File.file?(it) }.to_h { [it, File.read(it)] }
+          assert_includes out, '中止しました（ファイルは変更していません）'
+          assert_equal before, after
+        end
+      end
+
+      # --- 1.x からの移行は、--yes でも全体の確認を尋ねる ---
+      def test_should_ask_before_migrating_even_with_yes
+        within_project do |scaffold|
+          v1_project(scaffold)
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold, yes: true) } }
+
+          assert_includes out, '適用しますか？'
+          assert_path_exists 'stylesheets/theme.css'
+          refute_path_exists 'stylesheets/parts/box.css'
+        end
+      end
+
+      # --- --dry-run は削除と退避を計画に載せ、何も書かない ---
+      def test_should_show_the_migration_in_dry_run_without_writing
+        within_project do |scaffold|
+          v1_project(scaffold)
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_match(%r{退避\s+stylesheets/components\.css\s+（変更あり → stylesheets/_v1/）}, out)
+          assert_includes out, '→ stylesheets/_v1/components.css（2.0 では読みません）'
+          assert_includes out, '削除 2 件・退避 1 件'
+          assert_path_exists 'stylesheets/theme.css'
+          refute_path_exists 'stylesheets/_v1'
+        end
+      end
+
+      # --- lock の無い本でも、インストール済みの 1.x の gem の雛形と同じなら変えていないと見なす ---
+      def test_should_treat_files_matching_an_installed_v1_scaffold_as_unchanged
+        within_project do |scaffold|
+          v1_project(scaffold, lock: false)
+          gem_home = File.join(Dir.tmpdir, "vs-v1-gem-#{Process.pid}")
+          write_gem_base(gem_home, 'stylesheets/theme.css', V1_THEME_CSS)
+          write_gem_base(gem_home, 'stylesheets/images/bundled/sakura.webp', "雛形の桜\n")
+
+          begin
+            with_stdin("y\n") { capture_io { run_upgrade(scaffold, gem_paths: [gem_home]) } }
+          ensure
+            FileUtils.rm_rf(gem_home)
+          end
+
+          refute_path_exists 'stylesheets/theme.css'
+          refute_path_exists 'stylesheets/images/bundled/sakura.webp'
+          assert_path_exists 'stylesheets/_v1/components.css', 'どの雛形とも違うファイルは移すべき'
+        end
+      end
+
+      # --- 1.x の gem が残っていれば、移したファイルと元の雛形の差分を見るコマンドを示す ---
+      def test_should_show_how_to_diff_retired_stylesheets_against_the_v1_scaffold
+        within_project do |scaffold|
+          v1_project(scaffold)
+          write('.', 'stylesheets/table.css', "table { width: 90%; }\n")
+          write_lock(scaffold_overrides: { 'stylesheets/components.css' => V1_COMPONENTS_CSS,
+                                           'stylesheets/table.css' => "table {}\n",
+                                           'stylesheets/images/bundled/ume.webp' => "雛形の梅\n" })
+          gem_home = File.join(Dir.tmpdir, "vs-v1-diff-#{Process.pid}")
+          write_gem_base(gem_home, 'stylesheets/components.css', V1_COMPONENTS_CSS)
+          write_gem_base(gem_home, 'stylesheets/table.css', "table {}\n")
+
+          out, = begin
+            with_stdin("y\n") { capture_io { run_upgrade(scaffold, gem_paths: [gem_home]) } }
+          ensure
+            FileUtils.rm_rf(gem_home)
+          end
+
+          original = File.join(gem_home, 'gems', 'vivlio-starter-0.9.0', 'lib', 'project_scaffold', 'stylesheets')
+          assert_includes out, "for f in components.css table.css; do diff -u #{original}/$f stylesheets/_v1/$f; done"
+        end
+      end
+
+      # --- Git の作業ツリーにコミットしていない変更があれば、移す前に止める ---
+      def test_should_stop_migrating_when_the_git_tree_has_uncommitted_changes
+        within_project do |scaffold|
+          v1_project(scaffold)
+          git = ->(*args) { Open3.capture2e('git', *args) }
+          git.('init', '-q')
+          git.('add', '-A')
+          git.('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'init')
+          write('.', 'stylesheets/theme.css', ":root { --theme-accent: red; }\n")
+
+          code = nil
+          out, = with_stdin("y\n") { capture_io { code = run_upgrade(scaffold) } }
+
+          assert_equal 1, code
+          assert_includes out, 'コミットしていない変更をコミットしてください'
+          assert_includes out, 'M stylesheets/theme.css'
+          refute_path_exists 'stylesheets/parts/box.css'
+        end
+      end
+
+      # --- 2.0 で行内の属性として読まれる `]{.` を、コードの外だけから探して示す（§5.2） ---
+      def test_should_report_inline_attribute_sequences_outside_code
+        within_project do |scaffold|
+          v1_project(scaffold)
+          write('.', 'contents/10-intro.md', <<~MD)
+            # はじめに
+
+            [注意]{.red} と書いた行
+            `[コード]{.x}` の中は数えない
+
+            ```
+            [フェンス]{.x}
+            ```
+          MD
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, '原稿に「]{.」の並びが 1 か所あります'
+          assert_includes out, 'contents/10-intro.md:3 - [注意]{.red} と書いた行'
+          refute_includes out, 'フェンス]'
         end
       end
 

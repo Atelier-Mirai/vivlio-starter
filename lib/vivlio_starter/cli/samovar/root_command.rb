@@ -140,7 +140,20 @@ module VivlioStarter
           # vs upgrade は廃止キーを計画に載せて直すので、「vs upgrade で消せます」と案内しない
           return Common.ensure_configured!(retired_notice: false) if target.is_a?(UpgradeCommand)
 
+          stop_unmigrated_book!
           Common.ensure_configured!
+        end
+
+        # 1.x の配置のままの本は、2.0 の vs では CSS が読まれず、エラーも出ずに崩れた本ができる
+        # （v2-migration-plan.md §5.7）。本を読むコマンドは最初に止めて、二つの道を示す。
+        # vs upgrade・vs doctor・vs help は上で抜けるので止めない。設定の読み込みより先に止めるのは、
+        # 廃止キーなどの 🟡（どれも vs upgrade が直す）を 🔴 の前に並べないため
+        def stop_unmigrated_book!
+          return unless V1Migration.legacy?
+
+          message, detail = V1Migration.unmigrated_notice
+          Common.log_error(message, detail:)
+          exit 1
         end
       end
     end
