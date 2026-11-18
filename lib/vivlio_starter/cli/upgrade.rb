@@ -743,9 +743,16 @@ module VivlioStarter
       def report_retired_stylesheets(retired, diff_command)
         return if retired.empty?
 
-        detail = retired.map { V1Migration.retired_path(it) }
+        detail = retired.map do |relative|
+          scope = V1Migration.page_scope(relative)
+          scope ? "#{V1Migration.retired_path(relative)}（1.x で読んでいたページ: #{scope}）" : V1Migration.retired_path(relative)
+        end
         detail << '2.0 では、これらのファイルは読み込まれません'
         detail << '変更した規則を stylesheets/custom.css へ写してください（custom.css は、ほかのどの CSS よりも優先されます）'
+        if retired.any? { V1Migration.page_scope(it) }
+          example = retired.filter_map { V1Migration.page_scope(it) }.first
+          detail << "custom.css はすべてのページで読まれるので、写す規則の選択子の前に、読んでいたページを付けてください（例: #{example} .book-title）"
+        end
         detail << "雛形との違いは次のコマンドで見られます: #{diff_command}" if diff_command
         Common.log_warn("雛形の CSS のうち、変更のあった #{retired.size} ファイルを #{V1Migration::RETIRE_DIR}/ へ移しました",
                         detail:)

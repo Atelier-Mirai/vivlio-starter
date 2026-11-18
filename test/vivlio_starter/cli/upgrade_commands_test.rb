@@ -1751,6 +1751,8 @@ module VivlioStarter
           assert lock[:files].key?('stylesheets/parts/box.css')
           assert_includes out, '変更のあった 1 ファイルを stylesheets/_v1/ へ移しました'
           assert_includes out, 'stylesheets/custom.css へ写してください'
+          assert_includes out, 'stylesheets/_v1/components.css（1.x で読んでいたページ: :is(body.chapter, body.appendix, body.preface, body.postface)）'
+          assert_includes out, '選択子の前に、読んでいたページを付けてください（例: :is(body.chapter, body.appendix, body.preface, body.postface) .book-title）'
           refute_includes out, 'diff -u', '1.x の gem が無ければ差分のコマンドは示さない'
           refute V1Migration.legacy?, '移した後は 1.x の本と見なさない'
         end

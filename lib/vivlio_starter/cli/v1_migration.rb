@@ -42,6 +42,27 @@ module VivlioStarter
                   preface.css prism.css replace-list.css simple-header.css spacing.css
                   table.css theme.css titlepage.css toc.css].freeze
 
+      # 本文のページ（章・付録・前書き・後書き）の body のクラス
+      BODY_PAGES = %w[chapter appendix preface postface].freeze
+
+      # 1.x でそのファイルを読んでいたページ（body のクラス。theme-contract-spec.md §2.2 のページの種類）。
+      # 1.0.1 の雛形の @import をたどった結果で、載っていないファイル（base.css・theme.css・page-settings.css）は
+      # すべてのページが読んでいた。2.0 の custom.css はすべてのページで読まれるので、移した規則を写すときに
+      # ページを絞る前置きとして示す。絞らずに写すと、同じクラスを使うほかのページ（扉と奥付の .book-title など）
+      # にも効く（S11a の予行で、components.css の書名の色が扉と奥付にも出た）
+      V1_PAGES = {
+        'components.css' => BODY_PAGES, 'prism.css' => BODY_PAGES, 'code.css' => BODY_PAGES,
+        'table.css' => BODY_PAGES, 'layout-utils.css' => BODY_PAGES, 'replace-list.css' => BODY_PAGES,
+        'pagebreak.css' => BODY_PAGES,
+        'spacing.css' => %w[chapter appendix], 'chapter-common.css' => %w[chapter appendix],
+        'simple-header.css' => %w[chapter appendix], 'image-header.css' => %w[chapter],
+        'chapter.css' => %w[chapter], 'appendix.css' => %w[appendix],
+        'preface.css' => %w[preface postface], 'postface.css' => %w[postface],
+        'titlepage.css' => %w[titlepage], 'colophon.css' => %w[colophon], 'legalpage.css' => %w[legalpage],
+        'part-title.css' => %w[part-title], 'toc.css' => %w[toc], 'index.css' => %w[index-page],
+        'glossary.css' => %w[glossary-page]
+      }.freeze
+
       # 1.x の雛形が扉絵・節絵を置いた場所。2.0 ではテーマの images/ に置き換わる
       IMAGES_DIR = File.join(STYLESHEETS, 'images')
 
@@ -116,6 +137,13 @@ module VivlioStarter
 
       # stylesheets/_v1/ へ移した先のパス
       def retired_path(relative) = File.join(RETIRE_DIR, File.basename(relative))
+
+      # 1.x でそのファイルを読んでいたページだけを選ぶ前置き。すべてのページが読んでいたファイルは nil
+      # @return [String, nil] 例: ":is(body.chapter, body.appendix)"
+      def page_scope(relative)
+        pages = V1_PAGES[File.basename(relative)] or return nil
+        pages.one? ? "body.#{pages.first}" : ":is(#{pages.map { "body.#{it}" }.join(', ')})"
+      end
 
       # 移したファイルと、もとの雛形との差分を見るコマンド（1 行）。もとの雛形（lock の記録と同じ中身）を
       # 全部持っている 1.x の gem が無ければ nil（§5.3 の「1.x の gem が残っていない場合は、示さない」）
