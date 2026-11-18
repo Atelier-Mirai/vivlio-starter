@@ -136,6 +136,33 @@ FEATURES = {
     '<p id="t-link-target">LINK-TARGET リンクの行き先</p>',
     nil
   ],
+  # CSS の入れ子（`&`）。theme-base の形（`h1 { & { … } }`）・子孫・`&` を書かない子孫・
+  # 入れ子の @media・入れ子と同じ規則に書いた素の宣言。どれも通れば赤
+  'nest-amp' => [
+    '.t-nest-amp { & { color: #c2185b; } }',
+    '<p class="t-nest-amp">NEST-AMP-PROBE &amp; だけの入れ子</p>',
+    ['t-nest-amp', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
+  'nest-child' => [
+    '.t-nest-p { & .t-nest-child { color: #c2185b; } }',
+    '<div class="t-nest-p"><p class="t-nest-child">NEST-CHILD-PROBE &amp; の子孫</p></div>',
+    ['t-nest-child', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
+  'nest-implicit' => [
+    '.t-nest-q { .t-nest-implicit { color: #c2185b; } }',
+    '<div class="t-nest-q"><p class="t-nest-implicit">NEST-IMPLICIT-PROBE &amp; を書かない子孫</p></div>',
+    ['t-nest-implicit', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
+  'nest-media' => [
+    '.t-nest-media { @media screen { color: #c2185b; } }',
+    '<p class="t-nest-media">NEST-MEDIA-PROBE 入れ子の @media</p>',
+    ['t-nest-media', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
+  'nest-outer' => [
+    '.t-nest-outer { color: #c2185b; & .t-nest-none { color: #1a73e8; } }',
+    '<p class="t-nest-outer">NEST-OUTER-PROBE 入れ子と同じ規則の素の宣言</p>',
+    ['t-nest-outer', /color:\s*rgb\(194,\s*24,\s*91\)/]
+  ],
   'webp' => [
     '.t-webp img { width: 40%; }',
     '<p class="t-webp">WEBP-PROBE <img src="probe.webp" alt="webp"/></p>',
