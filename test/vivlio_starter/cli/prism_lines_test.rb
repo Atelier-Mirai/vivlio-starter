@@ -193,6 +193,34 @@ module VivlioStarter
         refute_includes out, 'counter-reset'
         assert_includes out, '<figcaption>prime.rb</figcaption>', '不正でもマーカーは表示から除去される'
       end
+
+      # =============================================================
+      # コードの見出しの空白（改善案 #137）
+      # 前処理が改行しない空白にして VFM へ渡したものを、普通の空白へ戻す。
+      # =============================================================
+
+      def test_should_restore_spaces_in_code_caption
+        nbsp = "\u00A0"
+        out = process(<<~HTML)
+          <figure class="language-ruby"><figcaption>field.rb（arrive#{nbsp}に足したところ）</figcaption>
+          <pre class="language-ruby"><code class="language-ruby">puts 1</code></pre></figure>
+          <figure><img src="a.png" alt=""><figcaption>図の#{nbsp}見出し</figcaption></figure>
+        HTML
+
+        assert_includes out, '<figcaption>field.rb（arrive に足したところ）</figcaption>'
+        assert_includes out, '<figcaption>図の&nbsp;見出し</figcaption>', '図の見出しは前処理を通らないので触らない'
+      end
+
+      def test_should_consume_start_line_marker_after_restoring_spaces
+        nbsp = " "
+        out = process(<<~HTML)
+          <figure class="language-ruby"><figcaption>prime.rb（prime?#{nbsp}の定義）#L22-L25</figcaption>
+          <pre class="language-ruby"><code class="language-ruby">puts 1</code></pre></figure>
+        HTML
+
+        assert_includes out, '<figcaption>prime.rb（prime? の定義）</figcaption>'
+        assert_includes out, %(data-start="22")
+      end
     end
   end
 end

@@ -24,6 +24,7 @@
 
 require 'ttfunk'
 require 'ttfunk/subset'
+require_relative '../pre_process/svg_font_embedder'
 
 module VivlioStarter
   module CLI
@@ -91,7 +92,10 @@ module VivlioStarter
           original = TTFunk::File.open(path)
           subset = RemappedSubset.new(original, glyphs)
           glyphs.each_key { subset.use(it) }
-          RenamedEncoder.new(original, subset, family:, notices: copied_names(File.binread(path))).encode
+          data = RenamedEncoder.new(original, subset, family:, notices: copied_names(File.binread(path))).encode
+          # ttfunk は maxp の点・輪郭の最大値を実際より小さく書く（改善案 #139）。Kindle Previewer 4 では
+          # 字が抜けなかったが、maxp を信じて字を読む処理系（Adobe Acrobat）では抜けるので、図の字の組と同じく直す。
+          PreProcessCommands::SvgFontEmbedder.with_source_maxp(data, path)
         end
 
         # --- 以下は cmap / name テーブルの読み書き ---

@@ -307,10 +307,77 @@ module VivlioStarter
 
           subset = TTFunk::Subset.for(TTFunk::File.open(path), :unicode)
           chars.each { subset.use(it.ord) }
-          subset.encode
+          with_source_maxp(subset.encode, path)
         rescue StandardError => e
           Common.log_debug("[svg-font] サブセットを作れませんでした: #{path} (#{e.message})")
           nil
+        end
+
+        # 字の組の作り方の版。字の組を抱いた SVG のキャッシュの鍵（mermaid・showcase・派生 SVG）に入れ、
+        # 作り方を直したら古い字の組を抱いた SVG を使い回さないようにする。
+        # maxp-source: maxp の最大値を元の書体の値で書き直す（改善案 #139）。
+        SUBSET_REVISION = 'maxp-source'
+
+        # TrueType の maxp（版 1.0）の、最大値の欄の位置と長さ（maxPoints〜maxComponentDepth）。
+        MAXP_LIMITS_OFFSET = 6
+        MAXP_LIMITS_LENGTH = 26
+        TRUETYPE_MAXP_VERSION = 0x00010000
+        # head の checkSumAdjustment を求める定数（OpenType の仕様）。
+        CHECKSUM_MAGIC = 0xB1B0AFBA
+
+        # 字の組の maxp の最大値を、元の書体の値で書き直す（改善案 #139）。
+        # ttfunk 1.8.0 の Subset は、maxp の点・輪郭の最大値を実際より小さく書く（「楕円の周の長さ」の
+        # 6 字で、輪郭は 13 本あるのに 5 本と書く）。Chrome はこの表を写したまま字の組を PDF に埋め込み、
+        # Adobe Acrobat は maxp を超える字を描かずに「埋め込みフォントを抽出できません」と出す。
+        # macOS のプレビューと Chrome は maxp を見ないので、PDF を目で見ても気づけない。
+        # maxp の最大値は上限なので、元の書体の値（字の組のどの字よりも大きい）を写せば正しくなる。
+        def with_source_maxp(data, path)
+          source = File.open(path, 'rb') { read_table(it, 'maxp') }
+          maxp = table_record(data, 'maxp')
+          return data unless source&.unpack1('N') == TRUETYPE_MAXP_VERSION
+          return data unless maxp && data[maxp[:offset], 4].unpack1('N') == TRUETYPE_MAXP_VERSION
+
+          fixed = data.b
+          fixed[maxp[:offset] + MAXP_LIMITS_OFFSET, MAXP_LIMITS_LENGTH] = source[MAXP_LIMITS_OFFSET, MAXP_LIMITS_LENGTH]
+          fixed[maxp[:record] + 4, 4] = [table_checksum(fixed[maxp[:offset], maxp[:length]])].pack('N')
+          restamp_checksum_adjustment(fixed)
+        end
+
+        # 書体のファイルから、指定した表だけを読む（和文の書体は数 MB あるので、全体は読まない）。
+        def read_table(file, tag)
+          header = file.read(12)
+          record = table_record(header + file.read(header.unpack1('x4n') * 16), tag)
+          return nil unless record
+
+          file.seek(record[:offset])
+          file.read(record[:length])
+        end
+
+        # テーブルディレクトリから、指定した表の位置（:record はディレクトリの中の行の位置）を返す。
+        def table_record(data, tag)
+          count = data[4, 2].unpack1('n')
+          count.times do |i|
+            record = 12 + (i * 16)
+            name, _checksum, offset, length = data[record, 16].unpack('a4NNN')
+            return { record:, offset:, length: } if name == tag
+          end
+          nil
+        end
+
+        def table_checksum(bytes)
+          padded = bytes + ("\0" * (-bytes.bytesize % 4))
+          padded.unpack('N*').sum & 0xFFFFFFFF
+        end
+
+        # head の表の検査合計と、ファイル全体の checkSumAdjustment を付け直す。
+        def restamp_checksum_adjustment(data)
+          head = table_record(data, 'head')
+          return data unless head
+
+          data[head[:offset] + 8, 4] = [0].pack('N')
+          data[head[:record] + 4, 4] = [table_checksum(data[head[:offset], head[:length]])].pack('N')
+          data[head[:offset] + 8, 4] = [(CHECKSUM_MAGIC - table_checksum(data)) & 0xFFFFFFFF].pack('N')
+          data
         end
 
         # SVG のテキストノードに現れる実体参照を戻す（サブセットの対象文字を取り違えないため）。

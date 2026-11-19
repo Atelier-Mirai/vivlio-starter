@@ -146,7 +146,7 @@ module VivlioStarter
           # mmdc 設定を変えたら旧キャッシュを無効化するためスキーマ版を上げる
           # （v2: htmlLabels:false・v3: wrappingWidth）。
           payload = ['v3', Digest::SHA256.hexdigest(source), font_family.to_s,
-                     MermaidRenderer::DEFAULT_THEME, version].join('|')
+                     MermaidRenderer::DEFAULT_THEME, version, SvgFontEmbedder::SUBSET_REVISION].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end
 

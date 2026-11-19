@@ -96,6 +96,31 @@ module VivlioStarter
         end
 
         # =================================================================
+        # コードブロックの見出し（`言語名:見出し`）の空白
+        # =================================================================
+
+        # 見出しの空白の代わりに VFM へ渡す字。後処理（PrismLinesCommands.restore_caption_spaces!）が
+        # figcaption の中で普通の空白へ戻す。戻し損ねても紙面では空白に見えるよう、改行しない空白を使う。
+        CAPTION_SPACE = " "
+
+        # フェンスの開始行の `言語名:見出し`。キャプチャ 1 = 見出しの前まで、キャプチャ 2 = 見出し。
+        CAPTIONED_FENCE_OPENER = /\A([ \t]*(?:`{3,}|~{3,})[ \t]*[^\s:`{]+:)([^\n]*?)[ \t]*$/
+
+        # 見出しの空白を CAPTION_SPACE に置き換える（改善案 #137）。
+        # VFM 2.7.2 は情報文字列の最初の語（空白まで）だけを `言語名:見出し` と読み、残りを捨てるので、
+        # `ruby:field.rb（arrive に足したところ）` の見出しが「field.rb（arrive」で切れる。
+        # `title="…"` へ書き換える案は、VFM が見出しの中の `"`・`=` でも切るので採らない。
+        # 空白の無い `言語名:見出し` なら、VFM は `"`・`=`・`{…}`・`#L22-L25` もそのまま figcaption に残す。
+        # 最上位のフェンスだけを見るので、記法の説明（```markdown の中のフェンス）は書き換えない。
+        def protect_code_caption_spaces(content)
+          Masking.replace_top_level_fences(content) do |block, _lineno|
+            block.sub(CAPTIONED_FENCE_OPENER) do
+              "#{::Regexp.last_match(1)}#{::Regexp.last_match(2).tr(" \t", CAPTION_SPACE * 2)}"
+            end
+          end
+        end
+
+        # =================================================================
         # 会話文（対話）記法 :::{.talk}
         # characters-dialogue-spec.md §2.2 / talk-display-options-spec.md §2.2-2.3
         # =================================================================

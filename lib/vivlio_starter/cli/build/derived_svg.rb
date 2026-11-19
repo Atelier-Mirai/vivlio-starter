@@ -259,7 +259,7 @@ module VivlioStarter
         # 「対策が効いている」ように見えて検証まで歪む（notes §5.1 の showcase と同じ取りこぼし）。
         def fingerprint(svg)
           payload = [SCHEMA, svg, Embedder.configured_heading_font,
-                     Embedder.configured_body_font, Embedder.configured_code_font].join('|')
+                     Embedder.configured_body_font, Embedder.configured_code_font, Embedder::SUBSET_REVISION].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end
 
