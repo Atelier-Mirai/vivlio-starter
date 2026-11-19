@@ -26,6 +26,7 @@
 
 require 'cgi'
 require_relative 'math_delimiters'
+require_relative 'pre_process/inline_span_transformer'
 
 module VivlioStarter
   module CLI
@@ -41,17 +42,18 @@ module VivlioStarter
       #   (?!\()   リンク・画像記法 `[text](url)` … `]` の直後が `(`
       #   (?<!\^)  インライン脚注 `^[本文]`       … `[` の直前が `^`
       #   INLINE_ATTRIBUTE_AHEAD  行内の属性 `[文字]{.class}` … `]` の直後が `{.`
-      #            （PreProcessCommands::InlineSpanTransformer。行末の段落の寄せ `[用語]{.text-right}` は
-      #            段落の記法なので、索引語のまま読む）
+      #            （PreProcessCommands::InlineSpanTransformer。行末の `[用語]{.text-right}`・`[用語]{.aki}` など
+      #            は段落に付けるクラスの記法なので、索引語のまま読む。クラスの並びは PARAGRAPH_CLASSES）
       #
       # 参照脚注 `[^id]` は「ブラケットの中身」で見分けるのでパターンでは弾かず、
       # skip_term? が落とす。ブラケットの外と中で担当が分かれている。
 
+      # 行内の属性の `{.`（行末の、段落に付けるクラスを除く）。下の 3 つのパターンが `]` の直後で見る
+      INLINE_ATTRIBUTE_AHEAD =
+        /\{\.(?!(?:#{PreProcessCommands::InlineSpanTransformer::PARAGRAPH_CLASSES.join('|')})\}[ \t]*$)/
+
       # 索引マークアップ全体（`[用語]` と `[用語|読み]` の双方に一致し、
       # 読みの分離は利用側が行う）。前処理・索引スキャナが使う。
-      # 行内の属性の `{.`（行末の段落の寄せを除く）。下の 3 つのパターンが `]` の直後で見る
-      INLINE_ATTRIBUTE_AHEAD = /\{\.(?!(?:right|text-right|text-center|text-left)\}[ \t]*$)/
-
       TERM_PATTERN = /(?<!\^)\[([^\[\]\n]+)\](?!\(|#{INLINE_ATTRIBUTE_AHEAD})/
 
       # 読み付き `[用語|読み]`。辞書登録が読みを取り出すために使う。

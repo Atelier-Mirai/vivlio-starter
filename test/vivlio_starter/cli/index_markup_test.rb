@@ -40,7 +40,7 @@ module VivlioStarter
         assert_empty '[公式](https://example.com)と ![図](img.png)'.scan(IndexMarkup::TERM_PATTERN)
       end
 
-      # 行内の属性 `[文字]{.class}` は索引語にしない（3 つのパターンとも）。行末の段落の寄せ
+      # 行内の属性 `[文字]{.class}` は索引語にしない（3 つのパターンとも）。行末の、段落に付けるクラス
       # `[用語]{.text-right}` は段落の記法なので、索引語のまま読む
       def test_should_not_detect_inline_attribute_but_keep_paragraph_align
         line = '[傍点]{.sesame}と[漢字|かんじ]{.tcy}と[用語]'
@@ -49,6 +49,8 @@ module VivlioStarter
         assert_equal [['用語']], line.scan(IndexMarkup::TERM_ONLY_PATTERN)
         assert_empty line.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN)
         assert_equal [['用語']], '右に寄せる[用語]{.text-right}'.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], '下を空ける[用語]{.aki}'.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], '小さく組む[用語]{.small}'.scan(IndexMarkup::TERM_ONLY_PATTERN)
         assert_equal [['用語']], '[用語]\{.x} は 1.x と同じに読む'.scan(IndexMarkup::TERM_PATTERN)
       end
 

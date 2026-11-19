@@ -1878,7 +1878,7 @@ module VivlioStarter
       end
 
       # --- 2.0 で行内の属性として読まれる `[文字]{.class}` を、コードの外だけから探して示す（§5.2）。
-      #     行末の段落の寄せ（`…[用語]{.text-right}`）は 1.x と同じに組まれるので数えない ---
+      #     行末の、段落に付けるクラス（`…[用語]{.text-right}`・`…[用語]{.aki}`）は 1.x と同じに組まれるので数えない ---
       def test_should_report_inline_attribute_sequences_outside_code
         within_project do |scaffold|
           v1_project(scaffold)
@@ -1888,6 +1888,7 @@ module VivlioStarter
             [注意]{.red} と書いた行
             `[コード]{.x}` の中は数えない
             右に寄せる段落の[用語]{.text-right}
+            下を空ける段落の[用語]{.aki}
 
             ```
             [フェンス]{.x}

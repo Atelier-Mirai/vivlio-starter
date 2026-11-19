@@ -42,7 +42,7 @@ module VivlioStarter
         end
       end
 
-      # 行内の属性 `[文字]{.class}` も同じ許可リストで照合する。コードの中と行末の段落の寄せは見ない
+      # 行内の属性 `[文字]{.class}` も同じ許可リストで照合する。コードの中と、行末の段落に付けるクラスは見ない
       def test_should_warn_on_unknown_inline_attribute_class
         css = ".sesame { text-emphasis-style: filled sesame; }\n"
         with_temp_project(css:) do

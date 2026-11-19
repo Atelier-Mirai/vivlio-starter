@@ -9,7 +9,7 @@
 #
 # 検証内容:
 #   - 傍点・縦中横・複数のクラス・索引語を中に入れた形を span にする
-#   - コード・画像・インライン脚注・`\[`・クラス以外の属性・行末の段落の寄せは読まない
+#   - コード・画像・インライン脚注・`\[`・クラス以外の属性・行末の、段落に付けるクラスは読まない
 #   - 原稿を読む検査（each_span）は、変換と同じ箇所を拾う
 #   - 中を Kramdown で組む段（会話）より前に走り、会話の中でも span になる
 # ================================================================
@@ -45,9 +45,13 @@ module VivlioStarter
           assert_equal source, InlineSpanTransformer.transform(source)
         end
 
-        # 行末の `{.text-right}` などは段落の寄せの記法（transform_text_right_inlines!）
-        def test_should_leave_paragraph_align_at_line_end
-          assert_equal "右に寄せる[用語]{.text-right}\n", InlineSpanTransformer.transform("右に寄せる[用語]{.text-right}\n")
+        # 行末の `{.text-right}`・`{.aki}`・`{.small}` などは、段落に付けるクラスの記法（1.x から）
+        def test_should_leave_paragraph_classes_at_line_end
+          %w[right text-right text-center text-left aki aki2 small references].each do |klass|
+            source = "段落の終わりの[用語]{.#{klass}}\n"
+
+            assert_equal source, InlineSpanTransformer.transform(source), klass
+          end
           assert_equal "途中の<span class=\"text-right\">語</span>は span\n",
                        InlineSpanTransformer.transform("途中の[語]{.text-right}は span\n")
         end

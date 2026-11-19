@@ -14,8 +14,8 @@
 #   - `[…]` の中は 1 段まで角かっこを入れ子にできる。`[[用語]]{.sesame}` は、索引語に傍点を付ける。
 #   - 画像（`![…]`）・インライン脚注（`^[…]`）・`\[` で始まるものは読まない。
 #   - コードの中は置き換えない（Masking）。
-#   - 行末の `{.text-right}` などは段落の寄せ（transform_text_right_inlines!）の記法なので読まない。
-#     `…[用語]{.text-right}` は、1.x と同じく段落を右に寄せる。
+#   - 行末の `{.text-right}`・`{.aki}`・`{.small}` などは、段落に付けるクラスの記法（1.x から）なので
+#     読まない。`…[用語]{.aki}` は、1.x と同じく段落の下を空ける（PARAGRAPH_CLASSES）。
 #
 # 索引の `[用語]` は `]` の直後に `{.` が続くものを読まない（IndexMarkup の除外）。
 # CSS に無いクラスは Guards::ContainerClassCheck が 🟡 で示す。
@@ -38,8 +38,12 @@ module VivlioStarter
           \{(?<classes>[ \t]*\.#{CLASS_NAME}(?:[ \t]+\.#{CLASS_NAME})*[ \t]*)\}
         /x
 
-        # 行末の段落の寄せ（`…{.text-right}`）。MarkdownPreprocessor#transform_text_right_inlines! と同じクラス
-        PARAGRAPH_ALIGN = /\{\.(?:right|text-right|text-center|text-left)\}[ \t]*\z/
+        # 段落の末尾に書いて段落に付けるクラス（1.x からの記法）。寄せは前処理の
+        # MarkdownPreprocessor#transform_text_right_inlines!、空き・小さい字・出典は後処理の
+        # ReplacementRules::SPACING_CLASS_RULES・PARAGRAPH_CLASS_RULES が読む。`…[用語]{.aki}` の
+        # `{.aki}` は段落のクラスなので、行内の属性として読まない
+        PARAGRAPH_CLASSES = %w[right text-right text-center text-left aki aki2 small references].freeze
+        PARAGRAPH_ATTRIBUTE = /\{\.(?:#{PARAGRAPH_CLASSES.join('|')})\}[ \t]*\z/
 
         # 行内の属性の 1 か所。classes はクラス名の並び、source は原稿の字面
         Span = Data.define(:text, :classes, :source)
@@ -54,7 +58,7 @@ module VivlioStarter
           protected_text, spans = Masking.protect_code(content)
           converted = protected_text.gsub(PATTERN) do
             match = ::Regexp.last_match
-            next match[0] if paragraph_align?(match)
+            next match[0] if paragraph_attribute?(match)
 
             %(<span class="#{classes_of(match[:classes]).join(' ')}">#{match[:text]}</span>)
           end
@@ -69,7 +73,7 @@ module VivlioStarter
           prose = Masking.strip_inline_code(line.chomp)
           prose.to_enum(:scan, PATTERN).filter_map do
             match = ::Regexp.last_match
-            next if paragraph_align?(match)
+            next if paragraph_attribute?(match)
 
             Span.new(text: match[:text], classes: classes_of(match[:classes]), source: match[0])
           end
@@ -77,8 +81,10 @@ module VivlioStarter
 
         def classes_of(text) = text.scan(CLASS_TOKEN).flatten
 
-        # 行末の段落の寄せ（`…[用語]{.text-right}` の `{.text-right}`）か
-        def paragraph_align?(match) = match[0].match?(PARAGRAPH_ALIGN) && match.post_match[/\A[^\n]*/].strip.empty?
+        # 行末の、段落に付けるクラス（`…[用語]{.aki}` の `{.aki}`）か
+        def paragraph_attribute?(match)
+          match[0].match?(PARAGRAPH_ATTRIBUTE) && match.post_match[/\A[^\n]*/].strip.empty?
+        end
       end
     end
   end

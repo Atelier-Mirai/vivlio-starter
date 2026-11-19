@@ -425,7 +425,7 @@ module VivlioStarter
 
         # 行内の属性 `[文字]{.class}` を span にする（v2-architecture-spec.md §7.1 の D 型）。
         # 中の Markdown を Kramdown で HTML にする段（会話・寄せ・fancy list・book-card）より前に置く。
-        # Kramdown は `{.class}` を知らず、文字のまま紙面に出すため。行末の段落の寄せ
+        # Kramdown は `{.class}` を知らず、文字のまま紙面に出すため。行末の、段落に付けるクラス
         # （`…{.text-right}`）は読まないので、transform_text_right_inlines! より前でよい
         def transform_inline_spans!
           context.content = InlineSpanTransformer.transform(context.content)

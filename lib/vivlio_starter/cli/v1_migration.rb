@@ -161,7 +161,7 @@ module VivlioStarter
       end
 
       # 2.0 で行内の属性（`[文字]{.class}`）として読まれる並びを、原稿のコードの外から探す（§5.2）。
-      # 読み方は前処理と同じ（PreProcessCommands::InlineSpanTransformer）。行末の段落の寄せ
+      # 読み方は前処理と同じ（PreProcessCommands::InlineSpanTransformer）。行末の、段落に付けるクラス
       # （`…{.text-right}`）は 1.x と同じに組まれるので数えない
       # @param paths [Array<String>] 原稿のパス
       # @return [Array<Hit>]

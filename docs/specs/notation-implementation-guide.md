@@ -229,9 +229,9 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 `[文字]{.class}` を `<span class="class">文字</span>` にする（Pandoc の bracketed span と同じ書き方）。変換は前処理の一段 `transform_inline_spans!`（`PreProcessCommands::InlineSpanTransformer`）が全部の本で行う。新しい飾りを足すのに Ruby のコードは要らず、**CSS にクラスを書くだけ**でよい。
 
 - **受ける形。** `{…}` の中はクラスだけ（`{.a .b}`）。`#id`・`key=value` は読まない。角かっこの中は 1 段まで入れ子にでき、`[[用語]]{.sesame}` は索引語に傍点を付ける。画像 `![…]`・インライン脚注 `^[…]`・`\[` は読まない。コードの中は置き換えない（`Masking.protect_code`）。
-- **行末の段落の寄せと分ける。** 行末の `{.right}`・`{.text-right}`・`{.text-center}`・`{.text-left}` は段落の寄せの記法（`transform_text_right_inlines!`）なので、行内の属性として読まない（`InlineSpanTransformer::PARAGRAPH_ALIGN`）。
+- **段落に付けるクラスと分ける。** 行末の `{.right}`・`{.text-right}`・`{.text-center}`・`{.text-left}`（段落の寄せ。`transform_text_right_inlines!`）と `{.aki}`・`{.aki2}`・`{.small}`・`{.references}`（後処理の `ReplacementRules`）は、1.x からの段落に付けるクラスの記法なので、行内の属性として読まない（`InlineSpanTransformer::PARAGRAPH_CLASSES`）。段落の末尾に書くクラスを足したら、この並びにも足す。
 - **段の位置。** 中の Markdown を Kramdown で HTML にする段（会話・寄せ・fancy list・book-card）より前。Kramdown は `{.class}` を知らず、字のまま紙面に出す。
-- **索引との区別。** `IndexMarkup::INLINE_ATTRIBUTE_AHEAD` が、`]` の直後の `{.` を索引の印から外す（行末の段落の寄せは外さない）。`[…]` と綴る記法を足したときの §2 の決まりのとおり。
+- **索引との区別。** `IndexMarkup::INLINE_ATTRIBUTE_AHEAD` が、`]` の直後の `{.` を索引の印から外す（行末の、段落に付けるクラスは外さない）。`[…]` と綴る記法を足したときの §2 の決まりのとおり。
 - **未知のクラス。** `ContainerClassCheck` が `:::{.class}` と同じ許可リスト（`stylesheets/**/*.css` のクラス）で照合し、🟡 で場所と候補を示す。原稿をそのまま読む検査は `InlineSpanTransformer.each_span` を使う（`vs upgrade` の走査も同じ）。
 - **CSS の置き場。** 字の飾りは `stylesheets/parts/inline.css`（本文のページと目次が読む）。縦中横・傍点のように EPUB の閲覧ソフトが接頭辞つきの書き方を要るものは、標準の書き方の前の行に書く（`novel-vertical-spec.md` §2.4）。
 - **契約 HTML。** vs が CSS を持つクラスは `HtmlContract` の表に足す。著者が `custom.css` に書いたクラスは表に載せない（`:::{.class}` と同じ）。
