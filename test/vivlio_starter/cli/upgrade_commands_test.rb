@@ -1899,7 +1899,7 @@ module VivlioStarter
 
           assert_includes out, '原稿に「[文字]{.class}」の形が 1 か所あります'
           assert_includes out, 'contents/10-intro.md:3 - [注意]{.red} と書いた行'
-          assert_includes out, '1.x と同じに組むには、{ の前に \ を書いてください（例: [用語]{.x} → [用語]\{.x}）'
+          refute_includes out, '1.x と同じに組むには'
           refute_includes out, 'フェンス]'
         end
       end
