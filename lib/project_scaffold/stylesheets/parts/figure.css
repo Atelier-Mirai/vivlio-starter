@@ -84,6 +84,33 @@ figure p {
   text-indent: 0;
 }
 
+/* 全面の挿絵（`![題](x.png){.full-page}` → figure.vs-full-page・novel-vertical-spec.md §5.2）。
+   前後で改ページし、1 ページの版面の中央に、縦横比を保って収める。版面より小さい画像は
+   引き伸ばさない（解像度の足りない画像がぼやけるため）。寸法は物理方向の 100vw・100vh
+   （Vivliostyle では版面の幅と高さ）で書く。論理方向（inline-size・block-size）で書くと、
+   縦書きでは幅と高さが入れ替わり、横長の画像の縦横比が崩れる（v2-feasibility-notes.md §3.1）。
+   Kindle は flex を解さず block に潰れるので、画像はページの上に寄る（縮むだけで崩れない）。
+   古い改ページの書き方は Kindle のために併記する（kindle-css-compatibility-notes.md §2）。
+   挿絵には既定の枠を付けない。border=on（下の .vs-bordered）は同じ詳細度で後ろにあるので勝つ */
+figure.vs-full-page {
+  break-before: page;
+  break-after: page;
+  page-break-before: always;
+  page-break-after: always;
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+figure.vs-full-page :is(img, svg) {
+  max-width: 100%;
+  max-height: 100%;
+  border: none;
+}
+
 /* 画像の枠の有無（`![](x.webp){border=on}` / `{border=off}`）。前処理が属性を
    下のクラスへ読み替える（クラスは内部のもので、著者は書かない）。
    単独の画像は、キャプションの有無によらず VFM が figure で包むので、上の規則で

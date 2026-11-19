@@ -1,0 +1,22 @@
+@charset "utf-8";
+
+/* 行内の属性（[文字]{.class}）で付ける字の飾り。parts 層。章・付録・前書き・後書き・目次が読む。
+   クラス名は公式テーマ（theme-bunko・theme-epub3j）と同じ名前にする（theme-contract-spec.md §2.5）。
+   EPUB の閲覧ソフトと Kindle 向けの接頭辞つきの書き方を、標準の書き方の前の行に書く
+   （novel-vertical-spec.md §2.4。書き方は theme-epub3j の電書協の CSS と同じ）。 */
+
+/* 縦中横。縦書きの行の中で、半角の数字 2 桁などを 1 字分の幅に横に並べて立てる。
+   横書きの本では何も変わらない */
+.tcy {
+  -webkit-text-combine: horizontal;
+  -webkit-text-combine-upright: all;
+  -epub-text-combine: horizontal;
+  text-combine-upright: all;
+}
+
+/* 傍点（ゴマ点）。縦書きでは字の右、横書きでは字の上に付く。点の色は字の色 */
+.sesame {
+  -webkit-text-emphasis-style: filled sesame;
+  -epub-text-emphasis-style: filled sesame;
+  text-emphasis-style: filled sesame;
+}
