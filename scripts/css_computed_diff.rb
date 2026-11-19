@@ -114,7 +114,9 @@ def prepare_css(source, workspace, book_cache, kindle_htmls, settings = book_cac
         pieces = f.pieces(entry, rebase:, css: w.render(kind, target:))
         if literal && target == :kindle
           scope = VivlioStarter::CLI::Css::Bundle.kindle_scope(kindle_htmls.select { kind_of.call(it) == kind })
-          pieces = VivlioStarter::CLI::Css::LiteralResolver.resolve(pieces.reject(&:nested), scope:).pieces
+          # 入れ子の印（nested）は d5d28a74 で無くした（入れ子は読むときに開く）。前の版を比べるときのために残す
+          pieces = pieces.reject { it.respond_to?(:nested) && it.nested }
+          pieces = VivlioStarter::CLI::Css::LiteralResolver.resolve(pieces, scope:).pieces
         end
         css = f.render(pieces)
         File.write(File.join(workspace, 'flat', "\#{flavor}-\#{kind}.css"), css)

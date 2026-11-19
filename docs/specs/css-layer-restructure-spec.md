@@ -359,6 +359,8 @@ KFX は `var()`・`calc()`・`color-mix()` を解さず、`:is()` を含む規�
 
 KFX は `margin-inline: auto` を 0 に解く（`kindle-css-compatibility-notes.md` §2）。論理方向へ直すときは、`auto` を使う箇所を `targets/kindle.css` で物理方向に書き直す（今の回避策と同じ）。
 
+**S8-1 で見直した（2026-11-19）。** 直したのは 3 か所で、ほかは分類して変えなかった（§10.12）。
+
 ---
 
 ## 7. 既存の本との互換
@@ -873,3 +875,44 @@ S7a（`v2-feasibility-notes.md` §8）で、`theme-base` の `basic.css` の入�
 
 - 本書の入口をページの種類（11）× 出力先（PDF・EPUB・Kindle）の 33 通りで平らにした CSS が、変更の前後で字単位で同じ（入れ子が無いので）。
 - `rake test` 4,516 件が通った（スキップ 1 は前からのもの）。変えたファイルに `rubocop` を掛け、違反 0。
+
+### 10.12 S8-1 物理方向を論理方向へ（2026-11-19）
+
+`novel-vertical-spec.md` §8.1 の S8-1。§6 の表の「部品の中の物理方向」を、縦書きの本が読む部品について見直した。
+
+#### 数えたもの
+
+`stylesheets/` と `themes/` の CSS（コメントを除く）で、物理方向の宣言（`margin`・`padding`・`border` の `-left`・`-right`、`text-align: left`・`right`、位置の `left:`・`right:`、`float`・`clear` の `left`・`right`）は 73 か所あった（`clear: both` の 7 か所は方向を持たないので除いた）。縦で保証する部品の入口が読むファイルについては、`-top`・`-bottom`・`top:`・`bottom:` と `width`・`height` も（`@page` の中を除いて）数えた。直したのは 3 か所で、残りは次の分類で変えなかった。
+
+| 分類 | 場所 | 扱い | 理由 |
+| :--- | :--- | :--- | :--- |
+| `@page :left`・`:right` の余白と余白の箱 | `base/page.css`・`pages/titlepage.css`・`colophon.css`・`legalpage.css` | 変えない | §6 の表の 1・2 行目 |
+| 論理方向で書き、物理方向は `@supports not` の予備 | `utilities/align.css` の `float`・`clear`（5）・`parts/layout.css` の `float`（2） | 変えない | 予備は Kindle のために要る。Kindle は `float: inline-*` を落とす（`kindle-css-compatibility-notes.md` §2） |
+| `text-align: left`・`right` | `utilities/align.css`（4）・`parts/layout.css`（1）ほか | 変えない | 縦書きでは `left`・`right` は行の上端（line-left）・下端（line-right）を指す（CSS Text 3）。`start`・`end` と同じ意味で、縦書きの `.text-right` は地付きになる |
+| 横組みの箱の中 | `parts/box.css`・`code.css`・`prism.css`・`table.css`・`targets/epub.css` のコードの行番号 | 変えない | 箱に `writing-mode: horizontal-tb` を当てる（`novel-vertical-spec.md` §3.4）。箱の中では物理方向と論理方向が同じになる。論理方向のプロパティは要素自身の組方向で解かれるので、箱の要素そのものの宣言も同じ |
+| 縦書きでは使えない部品 | `parts/talk.css`・`table.css` の `.rotate-table`・`side-by-side.css`・`book-card.css` | 変えない | §6 の表の 5 行目（使えない部品の CSS は直さない） |
+| 縦書きでは作らないページ・横に組むページ | `pages/glossary.css`・`index.css`・`chapter.css` の `.glossary-link`・`targets/kindle-glossary.css`・`kindle-index.css`・`pages/colophon.css` | 変えない | `novel-vertical-spec.md` §2.2 |
+| Kindle だけの規則・横書きだけのテーマ | `targets/kindle.css`・`kindle-preface.css`・`themes/standard/`（`supports.writing_mode: [horizontal]`） | 変えない | 横書きの本の Kindle と `standard` のための規則。縦書きの Kindle は S8-4 で本を組んで見る |
+| **直した** | `targets/epub.css` の脚注（`margin-top`・`margin-bottom`・`padding-left`・`border-left` → `margin-block-*`・`padding-inline-start`・`border-inline-start`）・`parts/prose.css` の `.vs-hspace`（`width` → `inline-size`）・後処理の `@vspace`・`@hspace` が書く `style`（`margin-top` → `margin-block-start`・`margin-left` → `margin-inline-start`。`post_process/replacement_rules.rb` の 4 規則） | 論理方向へ | 縦で保証する部品（脚注・`@vspace`・`@hspace`）で、縦書きでは向きが変わる |
+
+`:nth()` で奇数・偶数を書いた規則は無かった（`:nth(1)` は最初のページで、向きに依らない）。
+
+#### Kindle の論理方向（§9 の論点 2 の前半）
+
+横書きの EPUB で、`margin-inline-start`・`margin-block-start`・`padding-inline-start`・`border-inline-start`・`inline-size`・`text-align: end` が中間生成物で物理方向の値に解かれることを測った（CSS の規則と `style` 属性の両方。`scripts/kfx_probe.rb` に `logical-*`・`text-align-end`・`float-inline` を足した）。`float: inline-end` だけが落ちる。S8-1 で Kindle に物理方向で書き直した箇所は 0 か所（§2.5 の数え方）。縦書きの本での解き方は S8-4 で見る。
+
+#### S8-4 へ渡すこと
+
+- **横組みの箱の前後の空き。** 縦の本文の中に横組みの箱を置くと、箱の前後（行の並ぶ向き。縦書きでは左右）の空きは、箱の `margin-block-*`（箱自身の組方向で上下に解かれる）でも `margin-top`・`margin-bottom` でも取れない。`base/vertical.css` で、箱の `margin-left`・`margin-right`（縦書きの行の並ぶ向き）を別に書く。Kindle の `targets/kindle.css` の囲みの `margin-top`・`margin-bottom` も同じ。
+- **`Css::Cascade` は論理方向を横書きとして物理方向と組にする**（要素ごとの判定）。縦書きの本では組み合わせが変わるので、S8-4 で縦書きの本の判定を見るときに、組方向で表を切り替えるかを決める。
+
+#### 確かめた結果
+
+比べる相手は r3 ではなく、直す前のコミット（`c73b2ccb`）で組んだ B1 にした。r3 の後に S11a・S7a・入れ子を開く変更・1.0.1 の取り込み（22 章の原稿など）が入っていて、r3 と比べるとそれらの差が混ざるためである（どれもその時点で確かめ済み）。直す前と後を、同じ素材から `scripts/build_copy.rb`（4 つの出力先・`--no-clean --kindle-record`）で組んだ。
+
+- PDF: 閲覧用（283 ページ）・印刷用（281 ページ）とも、違うページ 0。
+- EPUB・Kindle 用 EPUB: 違いは 7 件ずつで、平らな CSS の 4 ファイルの直した宣言と、`@vspace`・`@hspace` を使う 3 章（22・94・99）の `style` だけ。計算値（`scripts/css_computed_diff.rb`。PDF・EPUB・Kindle の 117 文書・312 組）は差 0。EPUBCheck は 0。
+- Kindle の中間生成物（`scripts/kindle_record_diff.rb`）: 要素 26,409 で `computedstyle`・`style` とも差 0。変換は Supported・Success・エラー 0。
+- `rake test` 4,525 件が通った。
+
+ほかに、ビルドなしで HTML を比べる道具を `scripts/pages_snapshot.rb`・`scripts/pages_diff.rb` に移した（`v2-migration-plan.md` §3.6）。`scripts/css_computed_diff.rb` が、d5d28a74 で無くした `Flattener::Piece#nested` を読んでいたのを直した。

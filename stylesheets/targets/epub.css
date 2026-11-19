@@ -101,17 +101,18 @@ body.vs-kindle .table-text > .table-text-table {
    参照した段落の直後にそのまま残る。素のままだと .page-footnote の
    display:inline がそのまま効き、番号も区切りも無い本文と地続きの文字列に
    見えてしまう（どこからが脚注か読者に分からない）。一回り小さい注記ブロック
-   として、左の罫で本文と切り分ける。
+   として、行頭の側の罫（横書きでは左・縦書きでは上）で本文と切り分ける。
    番号は Transforms::Shared::DecorateFootnotes が実テキスト
    （span.vs-fn-num）で注入する —— Kindle(KFX) が ::before を解さないため。
-   Kindle 互換のため物理プロパティ・具体値のみで書く（論理プロパティ・var() 不可）。
+   Kindle 互換のため具体値で書く（var() は不可）。論理方向のプロパティは Kindle も解するので、
+   縦書きの本でも同じ意味になるよう論理方向で書く（kindle-css-compatibility-notes.md §2）。
    --------------------------------------------------------------- */
 body.vs-epub aside.page-footnote {
   display: block;
-  margin-top: 0.5em;
-  margin-bottom: 0.2em;
-  padding-left: 0.8em;
-  border-left: 2px solid #ccc;
+  margin-block-start: 0.5em;
+  margin-block-end: 0.2em;
+  padding-inline-start: 0.8em;
+  border-inline-start: 2px solid #ccc;
   font-size: 0.85em;
   line-height: 1.5;
   color: #555;

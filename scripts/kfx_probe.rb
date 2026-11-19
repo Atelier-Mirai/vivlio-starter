@@ -163,6 +163,48 @@ FEATURES = {
     '<p class="t-nest-outer">NEST-OUTER-PROBE 入れ子と同じ規則の素の宣言</p>',
     ['t-nest-outer', /color:\s*rgb\(194,\s*24,\s*91\)/]
   ],
+  # 論理方向のプロパティ（横書きの EPUB。縦書きは novel-vertical-spec.md の S8-4 で本を組んで見る）
+  'logical-margin' => [
+    '.t-lmargin { margin-inline-start: 2em; }',
+    '<p class="t-lmargin">LOGICAL-MARGIN-PROBE margin-inline-start</p>',
+    ['t-lmargin', /margin-left:\s*[1-9]/]
+  ],
+  'logical-margin-block' => [
+    '.t-lmblock { margin-block-start: 3em; }',
+    '<p class="t-lmblock">LOGICAL-MARGIN-BLOCK-PROBE margin-block-start</p>',
+    ['t-lmblock', /margin-top:\s*[1-9]/]
+  ],
+  # 前処理が style 属性に書く形（@vspace・@hspace）
+  'logical-style-attr' => [
+    '',
+    '<p class="t-lstyle" style="margin-inline-start:2em; margin-block-start:3em">LOGICAL-STYLE-ATTR-PROBE style 属性</p>',
+    ['t-lstyle', /margin-left:\s*[1-9].*margin-top:\s*[1-9]|margin-top:\s*[1-9].*margin-left:\s*[1-9]/]
+  ],
+  'logical-padding' => [
+    '.t-lpad { padding-inline-start: 2em; }',
+    '<p class="t-lpad">LOGICAL-PADDING-PROBE padding-inline-start</p>',
+    ['t-lpad', /padding-left:\s*[1-9]/]
+  ],
+  'logical-border' => [
+    '.t-lborder { border-inline-start: 3px solid #c2185b; }',
+    '<p class="t-lborder">LOGICAL-BORDER-PROBE border-inline-start</p>',
+    ['t-lborder', /border-left[^;]*rgb\(194,\s*24,\s*91\)/]
+  ],
+  'logical-size' => [
+    '.t-lsize { inline-size: 50%; }',
+    '<p class="t-lsize">LOGICAL-SIZE-PROBE inline-size</p>',
+    ['t-lsize', /(?<![-\w])width:\s*[1-9]/]
+  ],
+  'text-align-end' => [
+    '.t-tend { text-align: end; }',
+    '<p class="t-tend">TEXT-ALIGN-END-PROBE text-align: end</p>',
+    ['t-tend', /text-align:\s*(?:end|right)/]
+  ],
+  'float-inline' => [
+    '.t-lfloat { float: inline-end; inline-size: 30%; }',
+    '<p class="t-lfloat">FLOAT-INLINE-PROBE float: inline-end</p>',
+    ['t-lfloat', /float:\s*(?:inline-end|right)/]
+  ],
   'webp' => [
     '.t-webp img { width: 40%; }',
     '<p class="t-webp">WEBP-PROBE <img src="probe.webp" alt="webp"/></p>',

@@ -52,6 +52,8 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | リンク（`<a>`）の `color` | △ | 指定なしと、`#000`・`#111` の黒に近い色は、Kindle のリンクの青（`#0000ff` 前後）で描かれる。`#222` から先と、灰色・色・親から継いだ色は指定どおりに描かれる。本の中へのリンクも外へのリンクも同じ。中間生成物の `style` には、どの色も指定どおりに出る（2026-11-15・Previewer 4.0.4・Tablet） | 黒に近いリンクにしたいときは `#222` 以上で書く。vs の既定（`--book-color-link: #000`）は、Kindle では青のリンクになる |
 | CSS の入れ子（`&`・`&` を書かない子孫・入れ子の `@media`） | ❌ | 入れ子の中の宣言が全部捨てられる（`.a { & { … } }`・`.a { & .b { … } }`・`.a { .b { … } }`・`.a { @media screen { … } }` の 4 形とも）。入れ子と同じ規則に書いた素の宣言（`.a { color: …; & .b { … } }` の `color`）は残る。中間生成物で判定（Previewer 4.0.4・2026-11-18・`scripts/kfx_probe.rb` の `nest-*`）。中間生成物の要素に書き戻された宣言に無いので、描画にも届かない（画面は見ていない） | Kindle 用の CSS では入れ子を開いて渡す（`Css::Flattener`）。`theme-base` は `basic.css` の 14 の規則（`h1`〜`h6` など）を入れ子で書いている |
 | リンクの `text-decoration: none` | ❌ | 下線が消えない。Kindle はリンクに必ず下線を引く（同上） | 下線の有無でリンクを見分ける組み方はしない |
+| 論理方向のプロパティ（`margin-inline-start`・`margin-block-start`・`padding-inline-start`・`border-inline-start`・`inline-size`・`text-align: end`。CSS の規則と `style` 属性の両方） | ✅ | 中間生成物で物理方向の値（`margin-left` など）に解かれている（横書きの EPUB・Previewer 4.0.4・2026-11-19・`scripts/kfx_probe.rb` の `logical-*`・`text-align-end`）。`auto` だけは別で、上の `margin-inline: auto` の行のとおり 0 に解かれる。縦書きの本での解き方は、`novel-vertical-spec.md` の S8-4 で本を組んで見る | 論理方向で書いてよい（`auto` を除く） |
+| `float: inline-start`・`inline-end` | ❌ | 宣言が落ちる（同上の `float-inline`） | `@supports not (float: inline-start)` で `float: left` などの予備を書く（`utilities/align.css`・`parts/layout.css` の形） |
 
 > ❌＝非対応（解されない）、△＝不安定（端末/状況で挙動が変わる）。
 

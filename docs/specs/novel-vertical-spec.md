@@ -1,7 +1,7 @@
 # 縦書きの小説（縦書きの経路・テーマ `novel`・判型・記法・lint・雛形）
 
 > 作成日: 2026-11-17
-> ステータス: **仕様済み・着手待ち**（段階 S8。着手は S7a の後）
+> ステータス: **実装中**（段階 S8。S8-1 は 2026-11-19 に完了。実装記録は `css-layer-restructure-spec.md` §10.12）
 > 対象: 縦書きの小説を `pdf`・`print_pdf`・`epub`・`kindle` の四つで組むための、縦書きの経路・既定のテーマ `novel`・判型のプリセット・記法・小説の lint・雛形 `scaffolds/novel/`
 > 出自: `v2-s8-novel-consultation.md` §4（2026-11-17・Fable）。段階の順と判断の線は `v2-plan-review-consultation.md` §4 で調整した（§2.5 の Kindle の論理方向）
 > 組になる仕様書: `v2-architecture-spec.md`（種類と軸・`BookProfile`・記法の型）・`theme-contract-spec.md`（テーマの形・契約 HTML）・`css-layer-restructure-spec.md`（§6 の物理方向）・`v2-migration-plan.md`（段階の順・基準・判断の線）。S8 から分けた背表紙・くるみ表紙は `cover-spread-spec.md`（S8b）、`vs furigana` は `furigana-spec.md`（S8c）

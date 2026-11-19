@@ -18,7 +18,7 @@
 | `theme-contract-spec.md` | テーマの契約。vs が保証する HTML・`theme.yml`・公開する変数（`--book-*`）・公式テーマの取り込み・テーマの置き場と `vs theme:*` | 実装中（S1 は 2026-11-14、S6（S6-1〜S6-10）は 2026-11-17 に完了・実装記録は §11。S7a（入口の実験）は 2026-11-18 に実施・(c) が成り立たず取り込みの範囲をユーザーに仰ぐ。残りは S7b） |
 | `css-layer-restructure-spec.md` | CSS を `@layer` で作り直す。層の順序・ファイルの分け方・EPUB と Kindle 用の平らな CSS の生成・Kindle の規則の集約 | 実装済み（S2-1〜S2-3 は 2026-11-14、S2-4・S3-1・S3-2・S3-3a・S3-3b・S3-4 は 2026-11-15 に完了・実装記録は §10） |
 | `v2-migration-plan.md` | 2.0 の段階 S0〜S11 の順序・共通の確かめ方（基準と比較の道具）・既存の本の移行（`vs upgrade`）・1.x との並行 | 実装中（S0〜S6・基準 r3・S11a・S7a 完了（2026-11-18）・実装記録は §8。段階の表は 2026-11-17 に引き直した。残りは S7b・S8〜S10・S8b・S8c・S11b〜S11d） |
-| `novel-vertical-spec.md` | 縦書きの小説。縦書きの経路・テーマ `novel`・判型のプリセット（文庫・B6・新書・四六）・傍点と縦中横・投稿サイトの記法・小説の lint・雛形 `scaffolds/novel/` | 仕様済み・着手待ち（段階 S8。S7a は 2026-11-18 に済み） |
+| `novel-vertical-spec.md` | 縦書きの小説。縦書きの経路・テーマ `novel`・判型のプリセット（文庫・B6・新書・四六）・傍点と縦中横・投稿サイトの記法・小説の lint・雛形 `scaffolds/novel/` | 実装中（段階 S8。S8-1 は 2026-11-19 に完了） |
 | `cover-size-independence-spec.md` | 表紙を判型に依らない作りにする。表紙のコードの判型の表を無くして寸法を判型のプリセットから引く・比の違う画像の扱い・同梱の SVG のひな形を縦長の判型に合わせる・下敷きの画像 | 仕様済み・着手待ち（段階 S8-3 の中で行う。S9-1 でも通る） |
 | `cover-spread-spec.md` | 背表紙とくるみ表紙（表 4・背・表 1 を 1 枚に。背幅・背の中身・左右の綴じ） | 骨格だけ（段階 S8b の最初に書き足す） |
 | `furigana-spec.md` | `vs furigana`（半自動の振り仮名。`furigana:auto` → `furigana:apply` の 2 段） | 骨格だけ（段階 S8c の最初に書き足す） |
@@ -44,7 +44,7 @@
   | `v2-migration-plan.md` | 段階の順・共通の確かめ方・基準の版・移行・1.x との並行 | 段階の番号と順序（§2）・全段階に共通の決まりと判断の線（§4.1）・「S11b で直す原稿」の一覧（§4.5） |
   | `v2-architecture-spec.md` | 本の種類と軸・パイプライン・出力先の宣言・設定 | 軸と `BookProfile`・`OutputTarget`・段の表の条件・キーの増減 |
   | `theme-contract-spec.md` | 契約 HTML・テーマの形・公開する変数・公式テーマ | 保証するクラス・`theme.yml`・`--book-*`・`vs theme:*`・S6 と S7 の小段階 |
-  | `css-layer-restructure-spec.md` | 層・ファイルの分け方・平らな CSS | 層の順・Kindle 用の CSS の作り方（実装済み。S8-1 の物理方向の表だけが残る） |
+  | `css-layer-restructure-spec.md` | 層・ファイルの分け方・平らな CSS | 層の順・Kindle 用の CSS の作り方（実装済み。S8-1 の物理方向の見直しは 2026-11-19 に済み・§10.12） |
   | `novel-vertical-spec.md` | 縦書きの経路・テーマ `novel`・小説の記法と lint・雛形 | S8 の小段階と完了の条件 |
   | `cover-spread-spec.md`（骨格） | 背表紙とくるみ表紙 | S8b |
   | `furigana-spec.md`（骨格） | `vs furigana`（対象の水準は `furigana-level-spec.md`） | S8c |

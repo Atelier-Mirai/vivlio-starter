@@ -68,26 +68,26 @@ module VivlioStarter
         def test_should_expand_vspace_with_unit_before_bare
           out = apply('<p>@vspace:1.5lh の余白。</p>')
 
-          assert_includes out, '<div style="margin-top:1.5lh"></div>'
+          assert_includes out, '<div style="margin-block-start:1.5lh"></div>'
         end
 
         def test_should_complete_mm_for_bare_vspace
           out = apply('<p>@vspace:10 の余白。</p>')
 
-          assert_includes out, '<div style="margin-top:10mm"></div>'
+          assert_includes out, '<div style="margin-block-start:10mm"></div>'
         end
 
         def test_should_expand_negative_vspace
           out = apply('<p>@vspace:-2lh を詰める。</p>')
 
-          assert_includes out, '<div style="margin-top:-2lh"></div>'
+          assert_includes out, '<div style="margin-block-start:-2lh"></div>'
         end
 
         # @nega/@posi（後方互換別名）・@comment/@commend（編集者コメント）は廃止済みで変換されない
         def test_should_not_expand_retired_macros
           out = apply('<p>@nega:5 と @posi:5 と @comment:メモ@commend。</p>')
 
-          refute_includes out, 'margin-top:-5mm'
+          refute_includes out, 'margin-block-start:-5mm'
           refute_includes out, 'hen-comment'
           assert_includes out, '@nega:5'
           assert_includes out, '@comment:メモ@commend'
@@ -101,7 +101,7 @@ module VivlioStarter
           out = apply(html)
 
           assert_includes out, '@vspace:10'
-          refute_includes out, 'margin-top:10mm'
+          refute_includes out, 'margin-block-start:10mm'
         end
 
         # =============================================================
@@ -112,26 +112,26 @@ module VivlioStarter
         def test_should_complete_em_for_bare_hspace
           out = apply('<p>@hspace:2 ここから字下げ。</p>')
 
-          assert_includes out, '<span class="vs-hspace" style="margin-left:2em"></span>'
+          assert_includes out, '<span class="vs-hspace" style="margin-inline-start:2em"></span>'
         end
 
         def test_should_expand_hspace_with_unit_before_bare
           out = apply('<p>@hspace:10mm の水平アキ。</p>')
 
-          assert_includes out, '<span class="vs-hspace" style="margin-left:10mm"></span>'
+          assert_includes out, '<span class="vs-hspace" style="margin-inline-start:10mm"></span>'
         end
 
         def test_should_expand_negative_hspace
           out = apply('<p>@hspace:-0.5 で詰める。</p>')
 
-          assert_includes out, '<span class="vs-hspace" style="margin-left:-0.5em"></span>'
+          assert_includes out, '<span class="vs-hspace" style="margin-inline-start:-0.5em"></span>'
         end
 
         # 前後の半角空白は紙面に残さない。残すと指定した量に約半字の空きが足される
         def test_should_drop_spaces_around_hspace
           out = apply('<p>文字 @hspace:1 の間。</p>')
 
-          assert_includes out, '文字<span class="vs-hspace" style="margin-left:1em"></span>の間。'
+          assert_includes out, '文字<span class="vs-hspace" style="margin-inline-start:1em"></span>の間。'
         end
 
         def test_should_not_expand_hspace_inside_pre
@@ -368,7 +368,7 @@ module VivlioStarter
           out = apply('<h3 data-heading="余白 @vspace:10">本文の @vspace:10。</h3>')
 
           assert_includes out, 'data-heading="余白 @vspace:10"'
-          assert_includes out, '本文の <div style="margin-top:10mm"></div>。'
+          assert_includes out, '本文の <div style="margin-block-start:10mm"></div>。'
         end
 
         # =============================================================

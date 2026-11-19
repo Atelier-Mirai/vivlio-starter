@@ -46,12 +46,14 @@ module VivlioStarter
         # @nega / @posi（後方互換別名）・@comment / @commend（編集者コメント）は廃止済み。
         # @hspace は前後の半角空白ごと置き換える。原稿では `値 @hspace:1 で` と空白で区切って書くが、
         # 空白を残すと紙面にも空きとして出て、指定した量より約半字ずれる（-0.5 なら打ち消し合って何も起きない）
+        # 余白は論理方向で書く（@vspace は行の並ぶ向き・@hspace は行の中の向き）。縦書きの本でも同じ意味になり、
+        # 横書きでは margin-top・margin-left と同じ結果になる（novel-vertical-spec.md §8.1 の S8-1）
         SPACING_MACRO_RULES = [
-          Rule.new(%r{@vspace:(-?[\d.]+(?:lh|rem|em|mm|cm|pt|px))}m, '<div style="margin-top:$1"></div>', :text_only),
-          Rule.new(%r{@vspace:(-?[\d.]+)}m, '<div style="margin-top:$1mm"></div>', :text_only),
+          Rule.new(%r{@vspace:(-?[\d.]+(?:lh|rem|em|mm|cm|pt|px))}m, '<div style="margin-block-start:$1"></div>', :text_only),
+          Rule.new(%r{@vspace:(-?[\d.]+)}m, '<div style="margin-block-start:$1mm"></div>', :text_only),
           Rule.new(%r{[ \t]*@hspace:(-?[\d.]+(?:lh|rem|em|mm|cm|pt|px))[ \t]*}m,
-                   '<span class="vs-hspace" style="margin-left:$1"></span>', :text_only),
-          Rule.new(%r{[ \t]*@hspace:(-?[\d.]+)[ \t]*}m, '<span class="vs-hspace" style="margin-left:$1em"></span>', :text_only),
+                   '<span class="vs-hspace" style="margin-inline-start:$1"></span>', :text_only),
+          Rule.new(%r{[ \t]*@hspace:(-?[\d.]+)[ \t]*}m, '<span class="vs-hspace" style="margin-inline-start:$1em"></span>', :text_only),
           # 引数付きを先に。裸形の否定先読み (?!:) は必須——これが無いと不正引数
           # （@pagebreak:left 等）の @pagebreak 部分だけが置換され ":left" が紙面に残る。
           # 不正形は丸ごと素通しし、前処理（MarkdownPreprocessor）の検知に委ねる。

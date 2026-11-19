@@ -115,11 +115,11 @@ a.cross-ref-number {
 }
 
 /* @hspace:N の水平アキ（@vspace の水平版・at-directive-tier1-spec §1.5）。
-   実体は margin-left を持つ空 span。inline-block にしないと空要素の margin が
+   実体は margin-inline-start を持つ空 span。inline-block にしないと空要素の margin が
    潰れて字下げにならない。 */
 .vs-hspace {
   display: inline-block;
-  width: 0;
+  inline-size: 0;
 }
 
 /* @qr:URL が挿入する QR コード（at-directive-tier1-spec §1.4）。
