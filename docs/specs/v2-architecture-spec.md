@@ -514,7 +514,7 @@ theme:
 
 ### 7.1 記法の型
 
-`notation-implementation-guide.md` §1 の三つの型（A: CSS 型・B: 前処理変換型・C: 生成資産型）に、二つを足す。S8 の着手時に同ガイドへ節を足す。
+`notation-implementation-guide.md` §1 の三つの型（A: CSS 型・B: 前処理変換型・C: 生成資産型）に、二つを足す。同ガイドの §10（D）・§11（E）に手順を書いた（S8-2）。
 
 - **D: 行内の属性の型** — `[文字]{.class}` を `<span class="class">文字</span>` にする（Pandoc の bracketed span と同じ書き方）。`PLANNED.md` の「文字の色を変えるインライン記法」と同じ仕組みで、前処理の一段（`transform_inline_spans!`）が受ける。使えるクラスは、CSS にあるクラスだけとし、それ以外は 🟡（`ContainerClassCheck` と同じ判定を行内にも当てる）。コードの中は置き換えない（`Masking`）。索引の `[用語]` との区別は `]` の直後の `{` で行い、`IndexMarkup` に除外を足す。
 - **E: 出力先で形が変わる素材の型** — 契約 HTML に最も豊かな形を出し、出力先の変換（L4）が置き換える（§4.5）。`img[data-vs-raster]` はこの型の最初の例である。新しい素材を足すときは、(1) 契約 HTML の形、(2) 出力先ごとの置き換えの表、(3) 置き換えの変換（`build/transforms/common/` か各出力先）を決める。

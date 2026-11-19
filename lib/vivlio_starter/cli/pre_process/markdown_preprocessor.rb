@@ -34,6 +34,7 @@ require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'image_trimmer'
 require_relative 'markdown_transformer'
+require_relative 'inline_span_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
 require_relative 'math_letter_wrapper'
@@ -134,6 +135,7 @@ module VivlioStarter
           [:transform_showcases!,             :transform, nil],
           [:delimit_bare_urls!,               :transform, nil],
           [:transform_mermaid!,               :transform, nil],
+          [:transform_inline_spans!,          :transform, nil],
           [:transform_talk!,                  :transform, nil],
           [:process_code_includes!,           :transform, nil],
           [:normalize_code_languages!,        :transform, nil],
@@ -419,6 +421,14 @@ module VivlioStarter
             source_filename: context.filename
           )
           Common.log_success('mermaid 図を生成しました') if context.content != before
+        end
+
+        # 行内の属性 `[文字]{.class}` を span にする（v2-architecture-spec.md §7.1 の D 型）。
+        # 中の Markdown を Kramdown で HTML にする段（会話・寄せ・fancy list・book-card）より前に置く。
+        # Kramdown は `{.class}` を知らず、文字のまま紙面に出すため。行末の段落の寄せ
+        # （`…{.text-right}`）は読まないので、transform_text_right_inlines! より前でよい
+        def transform_inline_spans!
+          context.content = InlineSpanTransformer.transform(context.content)
         end
 
         # 会話文記法 :::{.talk} を会話文 HTML へ変換する（characters-dialogue-spec.md §2.2 /

@@ -114,8 +114,10 @@ module VivlioStarter
           [:wrap_img_text_blocks,    ->(html, _) { wrap_img_text_blocks!(html) }, [:error, 'img-text ラップ中にエラー'], nil],
           # `:::{.text-table}`・`:::{.table-text}` の div ができた（組み込み置換ルールの）後に行う
           [:wrap_text_table_blocks,  ->(html, _) { wrap_text_table_blocks!(html) }, [:error, 'text-table ラップ中にエラー'], nil],
+          # 全面の挿絵は幅を使わないので、文中の画像の幅を style にする段より前に figure へそろえる
+          [:mark_full_page_figures,  ->(html, _) { mark_full_page_figures!(html) }, [:error, '全面の挿絵の処理中にエラー'], nil],
           # sideimage / image-group が img の width を読んで消したあとに行う
-          [:apply_inline_image_widths, ->(html, _) { apply_inline_image_widths!(html) }, [:error, '文中の画像の幅の反映中にエラー'], nil],
+          [:apply_inline_image_widths,->(html, _) { apply_inline_image_widths!(html) }, [:error, '文中の画像の幅の反映中にエラー'], nil],
           [:split_kbd_combinations,  ->(html, _) { split_kbd_combinations!(html) }, [:error, 'キーの組み合わせの分割中にエラー'], nil],
           [:convert_endnotes,        ->(html, _) { convert_endnotes_to_page_footnotes!(html) }, nil, nil],
           [:process_sideimage_footnotes, ->(html, _) { process_sideimage_footnotes!(html) }, [:error, 'sideimage 脚注処理中にエラー'], nil],
@@ -1005,6 +1007,47 @@ module VivlioStarter
         HtmlParser.save_html_document(html_file, doc)
       end
       module_function :apply_inline_image_widths!
+
+      # ================================================================
+      # 全面の挿絵（`![題](x.png){.full-page}`・novel-vertical-spec.md §5.2）
+      # ================================================================
+      # VFM は `{.full-page}` を img の class にし、説明文があれば figure と figcaption で包み、
+      # 無ければ段落の中に置く。どちらも、契約 HTML の `figure.vs-full-page` に 1 枚の img だけを
+      # 入れた形にそろえる。キャプションは出さない（説明文は img の alt に残る）。1 ページを使う図なので、
+      # 著者の書いた幅（`width=50%`）は使わない。段落の中でほかの字と並んだ img は、行の中の画像の
+      # ままにする（1 ページを使えない）。
+      FULL_PAGE_SOURCE_CLASS = 'full-page'
+      FULL_PAGE_CLASS = 'vs-full-page'
+
+      def mark_full_page_figures!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        return unless content.include?(FULL_PAGE_SOURCE_CLASS)
+
+        doc = HtmlParser.parse_html_document(content)
+        images = doc.css("img.#{FULL_PAGE_SOURCE_CLASS}, figure.#{FULL_PAGE_SOURCE_CLASS} > img")
+        changed = images.count { full_page_figure!(it) }
+        HtmlParser.save_html_document(html_file, doc) if changed.positive?
+      end
+      module_function :mark_full_page_figures!
+
+      # img を包む figure（無ければ段落を置き換えて作る）を figure.vs-full-page にする。
+      # @return [Boolean] 置き換えたか
+      def full_page_figure!(img)
+        holder = img.parent
+        return false unless %w[figure p].include?(holder.name)
+        return false if holder.name == 'p' && holder.children.any? { it != img && !(it.text? && it.text.strip.empty?) }
+
+        figure = holder.name == 'figure' ? holder : holder.replace(img.document.create_element('figure'))
+        figure.children.each { it.unlink unless it == img }
+        figure.add_child(img) unless img.parent == figure
+        figure.remove_attribute('style')
+        figure['class'] = ((figure['class'].to_s.split - [FULL_PAGE_SOURCE_CLASS]) | [FULL_PAGE_CLASS]).join(' ')
+        img['class'] = (img['class'].to_s.split - [FULL_PAGE_SOURCE_CLASS]).join(' ')
+        img.remove_attribute('class') if img['class'].empty?
+        %w[width height style].each { img.remove_attribute(it) }
+        true
+      end
+      module_function :full_page_figure!
 
       # ================================================================
       # 組み合わせのキーを 1 つずつのキーキャップに分ける（改善案.md #9）

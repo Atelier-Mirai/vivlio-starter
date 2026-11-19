@@ -759,14 +759,17 @@ module VivlioStarter
       end
 
       # 2.0 で行内の属性として読まれる原稿の箇所（v2-migration-plan.md §5.2）。
-      # 文面は仮のもので、行内の属性を作る S8-2 で確定する
+      # 1.x では `[文字]` が索引の印として読まれ（索引の無い本では角かっこを外し）、`{.class}` は字のまま
+      # 紙面に出ていた。2.0 では `[文字]` が class の付いた span になり、索引語にならない。1.x と同じに組むには
+      # `{` の前に `\` を書く（行内の属性として読まず、VFM が `\{` を `{` にする）
       def report_inline_attribute_hits(hits)
         return if hits.empty?
 
         places = hits.first(10).map { "#{it.path}:#{it.lineno} - #{it.line}" }
         places << "ほか #{hits.size - 10} か所" if hits.size > 10
-        Common.log_warn("原稿に「]{.」の並びが #{hits.size} か所あります。2.0 では [文字]{.class} を行内の属性として読むので、組まれ方が変わります",
-                        detail: [*places, '属性のつもりでなければ、] と { の間に空白を入れてください'])
+        Common.log_warn("原稿に「[文字]{.class}」の形が #{hits.size} か所あります。2.0 ではこの形を行内の属性として読み、" \
+                        '[文字] を class の付いた span で組みます（索引語にはなりません）',
+                        detail: [*places, '1.x と同じに組むには、{ の前に \\ を書いてください（例: [用語]{.x} → [用語]\\{.x}）'])
       end
 
       # ================================================================

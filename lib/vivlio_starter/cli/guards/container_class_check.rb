@@ -3,11 +3,13 @@
 require 'did_you_mean'
 require_relative 'container_scanner'
 require_relative 'manuscript_scope'
+require_relative '../pre_process/inline_span_transformer'
 
 module VivlioStarter
   module CLI
     module Guards
-      # contents/*.md の `:::{.class}` に未知のクラス名が使われていないかを検出して警告する。
+      # contents/*.md の `:::{.class}` と行内の属性 `[文字]{.class}` に、未知のクラス名が
+      # 使われていないかを検出して警告する（行内は v2-architecture-spec.md §7.1 の D 型）。
       #
       # なぜ黙殺されるのか:
       #   `:::{.class}` の div 化には二経路ある。Ruby 前処理（convert_container_blocks）が扱う
@@ -48,11 +50,37 @@ module VivlioStarter
         private
 
         def check_file(path)
-          ContainerScanner.scan(path).select { it.kind == :open }.flat_map do |directive|
+          containers = ContainerScanner.scan(path).select { it.kind == :open }.flat_map do |directive|
             directive.classes
                      .reject { known_classes.include?(it) }
                      .map { unknown_class_warning(path, directive, it) }
           end
+          containers + inline_warnings(path)
+        end
+
+        # 行内の属性 `[文字]{.class}` の未知のクラス。コードの中は見ない（Masking.each_prose_line）
+        def inline_warnings(path)
+          Masking.each_prose_line(File.read(path, encoding: 'utf-8')).flat_map do |line, lineno|
+            PreProcessCommands::InlineSpanTransformer.each_span(line).flat_map do |span|
+              span.classes.reject { known_classes.include?(it) }.map { unknown_inline_warning(path, lineno, span, it) }
+            end
+          end
+        end
+
+        def unknown_inline_warning(path, lineno, span, klass)
+          candidates = suggest(klass)
+          detail = ["現状: #{span.source}"]
+          unless candidates.empty?
+            detail << "候補: #{candidates.map { |candidate| inline_source(span, klass, candidate) }.join(', ')}"
+          end
+          detail << '→ CSS が当たらないため、飾りの無い字のまま組まれます'
+          detail << '→ 意図したクラスであれば stylesheets/custom.css に定義を追加してください'
+          warning("#{path}:#{lineno} - 未知の行内のクラス '.#{klass}' を検出しました", detail:)
+        end
+
+        # 誤りのクラスだけを候補で差し替えた行内の属性
+        def inline_source(span, klass, candidate)
+          "[#{span.text}]{#{span.classes.map { ".#{it == klass ? candidate : it}" }.join(' ')}}"
         end
 
         # 行番号を持つ警告は `path:line - 内容` の形にする（LinkImageValidator と同形。

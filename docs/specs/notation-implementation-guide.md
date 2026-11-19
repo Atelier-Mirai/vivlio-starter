@@ -21,11 +21,15 @@
 │    → 【A: CSS 型】 §3   例: .memo .tip .note .diagram .align-*
 ├─ Markdown/HTML の変換が要るか？（構造を組み替える・生 HTML を出す）
 │    → 【B: 前処理変換型】 §4   例: fancy list, 定義リスト, book-card, terminal, text-*
-└─ 外部ツールで画像等の資産を焼くか？
-     → 【C: 生成資産型】 §5   例: math(SVG), showcase(合成SVG+ラスター), mermaid(SVG+PNG)
+├─ 外部ツールで画像等の資産を焼くか？
+│    → 【C: 生成資産型】 §5   例: math(SVG), showcase(合成SVG+ラスター), mermaid(SVG+PNG)
+├─ 行の中の字にクラスを付けるだけか？（`[文字]{.class}`）
+│    → 【D: 行内の属性の型】 §10   例: 傍点 .sesame, 縦中横 .tcy
+└─ 出力先ごとに素材の形を変えるか？（PDF は SVG・Kindle は画像、など）
+     → 【E: 出力先で形が変わる素材の型】 §11   例: img[data-vs-raster], 動画 figure.vs-video
 ```
 
-複合型もある（terminal = B の変換 + A の CSS）。その場合は各節を重ねて適用する。
+複合型もある（terminal = B の変換 + A の CSS）。その場合は各節を重ねて適用する。D と E は 2.0 で足した型（`v2-architecture-spec.md` §7.1）。
 
 ## 2. 共通基盤（再実装禁止リスト）
 
@@ -210,6 +214,34 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 [ ] Epub::Workspace.localized_image? に SVG 除外 subdir を追加
 [ ] doctor 4 箇所（checks×2・--fix/ラベル/DESC・ToolUpgrader::TOOLS）
 [ ] SVG 落とし穴（foreignObject / @font-face / intrinsic size）を確認
+【D: 行内の属性の型】
+[ ] クラスの CSS を stylesheets/parts/inline.css（字の飾り）か該当の部品に書いた（ContainerClassCheck が自動で許可する）
+[ ] 縦書きでも働かせるなら、EPUB 向けの接頭辞つきの書き方を標準の書き方の前の行に書いた
+[ ] HtmlContract の表にクラスを足した（契約の版は上げない）
+【E: 出力先で形が変わる素材の型】
+[ ] 契約 HTML の形・出力先ごとの置き換えの表・置き換えの変換の 3 つを決めた
 【原稿】
 [ ] 22 章リファレンス節・90 章早見表・（基本記法なら）21 章
 ```
+
+## 10.【D】行内の属性の型の手順
+
+`[文字]{.class}` を `<span class="class">文字</span>` にする（Pandoc の bracketed span と同じ書き方）。変換は前処理の一段 `transform_inline_spans!`（`PreProcessCommands::InlineSpanTransformer`）が全部の本で行う。新しい飾りを足すのに Ruby のコードは要らず、**CSS にクラスを書くだけ**でよい。
+
+- **受ける形。** `{…}` の中はクラスだけ（`{.a .b}`）。`#id`・`key=value` は読まない。角かっこの中は 1 段まで入れ子にでき、`[[用語]]{.sesame}` は索引語に傍点を付ける。画像 `![…]`・インライン脚注 `^[…]`・`\[` は読まない。コードの中は置き換えない（`Masking.protect_code`）。
+- **行末の段落の寄せと分ける。** 行末の `{.right}`・`{.text-right}`・`{.text-center}`・`{.text-left}` は段落の寄せの記法（`transform_text_right_inlines!`）なので、行内の属性として読まない（`InlineSpanTransformer::PARAGRAPH_ALIGN`）。
+- **段の位置。** 中の Markdown を Kramdown で HTML にする段（会話・寄せ・fancy list・book-card）より前。Kramdown は `{.class}` を知らず、字のまま紙面に出す。
+- **索引との区別。** `IndexMarkup::INLINE_ATTRIBUTE_AHEAD` が、`]` の直後の `{.` を索引の印から外す（行末の段落の寄せは外さない）。`[…]` と綴る記法を足したときの §2 の決まりのとおり。
+- **未知のクラス。** `ContainerClassCheck` が `:::{.class}` と同じ許可リスト（`stylesheets/**/*.css` のクラス）で照合し、🟡 で場所と候補を示す。原稿をそのまま読む検査は `InlineSpanTransformer.each_span` を使う（`vs upgrade` の走査も同じ）。
+- **CSS の置き場。** 字の飾りは `stylesheets/parts/inline.css`（本文のページと目次が読む）。縦中横・傍点のように EPUB の閲覧ソフトが接頭辞つきの書き方を要るものは、標準の書き方の前の行に書く（`novel-vertical-spec.md` §2.4）。
+- **契約 HTML。** vs が CSS を持つクラスは `HtmlContract` の表に足す。著者が `custom.css` に書いたクラスは表に載せない（`:::{.class}` と同じ）。
+
+## 11.【E】出力先で形が変わる素材の型の手順
+
+契約 HTML には最も豊かな形（PDF が使う形）を出し、出力先の変換（L4。`build/transforms/`）が出力先に合う形へ置き換える（`v2-architecture-spec.md` §4.5）。最初の例は `img[data-vs-raster]`（PDF は SVG、EPUB と Kindle は画像。§5.4）。
+
+新しい素材を足すときは、次の 3 つを先に決める。
+
+1. **契約 HTML の形。** `HtmlContract` に載せるクラスと属性（例: `figure.vs-video > video`）。テーマの CSS が選ぶのはこの形だけにする。
+2. **出力先ごとの置き換えの表。** `pdf`・`print_pdf`・`epub`・`kindle` のそれぞれで、何に置き換えるか（置き換えないか）。届かない出力先（Kindle の動画など）は、代わりに何を見せるかまで決める。
+3. **置き換えの変換。** 全出力先で同じなら `build/transforms/shared/`、出力先に固有なら各出力先の下に置く。前処理・後処理（契約 HTML を作る段）では出力先で分岐しない。

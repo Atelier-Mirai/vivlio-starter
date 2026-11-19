@@ -1,7 +1,7 @@
 # 縦書きの小説（縦書きの経路・テーマ `novel`・判型・記法・lint・雛形）
 
 > 作成日: 2026-11-17
-> ステータス: **実装中**（段階 S8。S8-1 は 2026-11-19 に完了。実装記録は `css-layer-restructure-spec.md` §10.12）
+> ステータス: **実装中**（段階 S8。S8-1・S8-2 は 2026-11-19 に完了。実装記録は §10）
 > 対象: 縦書きの小説を `pdf`・`print_pdf`・`epub`・`kindle` の四つで組むための、縦書きの経路・既定のテーマ `novel`・判型のプリセット・記法・小説の lint・雛形 `scaffolds/novel/`
 > 出自: `v2-s8-novel-consultation.md` §4（2026-11-17・Fable）。段階の順と判断の線は `v2-plan-review-consultation.md` §4 で調整した（§2.5 の Kindle の論理方向）
 > 組になる仕様書: `v2-architecture-spec.md`（種類と軸・`BookProfile`・記法の型）・`theme-contract-spec.md`（テーマの形・契約 HTML）・`css-layer-restructure-spec.md`（§6 の物理方向）・`v2-migration-plan.md`（段階の順・基準・判断の線）。S8 から分けた背表紙・くるみ表紙は `cover-spread-spec.md`（S8b）、`vs furigana` は `furigana-spec.md`（S8c）
@@ -215,7 +215,8 @@ D 型の前処理 `transform_inline_spans!`（`v2-architecture-spec.md` §7.1）
 | `![題](images/x.png)`（今と同じ） | 今の `figure` | 横組みの箱として行の間に置く。幅の指定（`width=50%`）は箱の中の横幅として働く |
 | `![題](images/x.png){.full-page}` | `figure.vs-full-page` | 1 ページを使う。前後で改ページし、版面の中央に、縦横比を保って収める（`object-fit: contain`）。キャプションは出さず、代替テキストにする |
 
-- `figure.vs-full-page` は vs の部品（`parts/figure.css`）に置き、どのテーマでも働く。横書きの本でも使える。クラス名は、S8-2 で今のクラスと衝突しないことを確かめて確定する（著者から見える名前なので、了承待ちの一覧に載せる）。
+- `figure.vs-full-page` は vs の部品（`parts/figure.css`）に置き、どのテーマでも働く。横書きの本でも使える。クラス名は S8-2 で確かめ、`full-page`・`vs-full-page` とも CSS・コード・原稿に使われていなかったので、この名前にした（了承待ちの一覧に載せた）。
+- **組み方（S8-2 で決めた）。** VFM は `{.full-page}` を img の class にし、説明文があれば figure と figcaption で包み、無ければ段落に置く。後処理 `mark_full_page_figures!` が、どちらも `figure.vs-full-page > img` だけの形にする（figcaption を外し、著者の書いた幅を使わない）。字と並んだ行の中の画像は 1 ページを使えないので、そのままにする。CSS は寸法を物理方向の `100vw`・`100vh` で書き、`display: flex` で中央に置く（論理方向で書くと、縦書きで横長の画像の縦横比が崩れる）。版面より小さい画像は引き伸ばさない（`object-fit: contain` で拡大すると、解像度の足りない画像がぼやけるため。縮めるのは `max-width`・`max-height` で行う）。横書き・縦書きの見本の文書で、前後の改ページ・中央への配置・縦横比を確かめた。
 - 塗り足しまで使う全面の挿絵（裁ち落とし）は 2.0 では作らない。絵本の固定レイアウト（S9）の領分である。
 
 ### 5.3 縦中横の自動
@@ -353,8 +354,54 @@ S8 の中の決まり:
 | 3 | 縦書きで使えない部品の一覧 | S7a と S8-4 | 「崩れずに読める」なら横組みの箱の段、崩れるなら 🟡 の段（§3.4）。Opus が決めて記録する |
 | 4 | プリセットの値 | S8-3 で求め、S8-5 でユーザーが確定 | §4.1 の目安とノド 13mm |
 | 5 | `novel` のオプション | S8-5 | 迷う項目は足さない（§3.2）。足したら了承待ちの一覧へ |
-| 6 | `figure.vs-full-page` のクラス名 | S8-2 | 今のクラスと衝突しないこと。了承待ちの一覧へ |
+| 6 | `figure.vs-full-page` のクラス名 | S8-2（済み） | 衝突しないことを確かめて `vs-full-page` にした（§5.2）。了承待ちの一覧へ載せた |
 | 7 | 雛形の作品 | S8-7 の前にユーザーが確かめる | §7 |
 | 8 | 書体の埋め込みのオプション | 2.0 の後（`PLANNED.md`） | PDF は今も書体を埋め込む。EPUB と Kindle は読者が書体を選ぶので、`novel` は総称の明朝で組む。EPUB に書体を埋め込む要望が出たら、書体のライセンスの扱いと一緒に決める |
 | 9 | 行数と字数で版面を指定するキー | 要望が出たら（`PLANNED.md`） | §4.2 |
 | 10 | 横書きに対応した `novel` | 2.0 の後（`PLANNED.md`） | `supports.writing_mode` に足すだけで済むよう、CSS を論理方向で書いておく |
+
+---
+
+## 10. 実装記録
+
+### 10.1 S8-1 物理方向を論理方向へ（2026-11-19）
+
+記録は `css-layer-restructure-spec.md` §10.12。
+
+### 10.2 S8-2 行内の属性・傍点・縦中横・全面の挿絵（2026-11-19）
+
+#### 作ったもの
+
+- `pre_process/inline_span_transformer.rb`（`InlineSpanTransformer`）と前処理の段 `transform_inline_spans!`。`[文字]{.class}` を `<span class="class">文字</span>` にする（§5.1）。受ける形と段の位置の理由は `notation-implementation-guide.md` §10。
+- `IndexMarkup::INLINE_ATTRIBUTE_AHEAD`: 索引の 3 つのパターンが、`]` の直後の `{.` を索引の印から外す。
+- `ContainerClassCheck`: 行内の属性のクラスも、`:::{.class}` と同じ許可リストで照合して 🟡（場所・候補・`custom.css` への導線）。
+- `stylesheets/parts/inline.css`（`.tcy`・`.sesame`。EPUB 向けの接頭辞つきの書き方を前の行に）。本文のページと目次の入口が読む（`EntryWriter`）。
+- 全面の挿絵: 後処理 `mark_full_page_figures!` と `parts/figure.css` の `figure.vs-full-page`（§5.2 の「組み方」）。`HtmlContract` に `vs-full-page`（`tcy`・`sesame` は S6 で表にあった）。
+- `vs upgrade` の原稿の走査（`V1Migration.inline_attribute_hits`）を `InlineSpanTransformer.each_span` に替え、🟡 の文面を確定した（`v2-migration-plan.md` §5.2）。
+- `notation-implementation-guide.md` §10（D 型）・§11（E 型）。
+- テスト 12 件（`inline_span_transformer_test.rb` 6・`full_page_figure_test.rb` 4・`index_markup_test.rb` 1・`container_class_check_test.rb` 1）と、`upgrade_commands_test.rb` の文面の期待値。
+
+#### 仕様に無かったので決めたこと
+
+1. **行末の段落の寄せは行内の属性として読まない。** `…[用語]{.text-right}` は 1.x では段落の寄せ（`transform_text_right_inlines!`）で、索引語も残る。行の途中の `[語]{.text-right}` だけを span にする。1.x の原稿の組まれ方を変えないためである（`vs upgrade` の走査も数えない）。
+2. **`{…}` の中はクラスだけを受ける。** `#id`・`key=value` は読まない（広げるのは後からできる）。
+3. **段の位置は会話（`transform_talk!`）の前。** 中を Kramdown で HTML にする段より前でないと、会話・寄せ・fancy list の中で `{.class}` が字のまま出る。
+4. **`vs upgrade` の直し方は「`{` の前に `\` を書く」。** 1.x では `[文字]` が索引の印になり（索引の無い本では角かっこを外し）、`{.class}` は字のまま紙面に出ていた（VFM で確かめた）。`\{` にすると 2.0 でも同じに組まれる。§5.2 の案（`]` と `{` の間に空白）は、空白が紙面に出るので採らなかった。
+5. **全面の挿絵は、版面より小さい画像を引き伸ばさない**（§5.2 の「組み方」）。`object-fit: contain` で拡大すると、解像度の足りない画像がぼやける。
+6. **全面の挿絵には既定の枠を付けない。** `border=on` を書けば付く。
+
+#### 確かめた結果
+
+比べる相手は S8-1 と同じく、直す前のコミット（`993c007c`）で組んだ B1。
+
+- 本書の原稿に `[文字]{.class}` の形は 0 か所（`InlineSpanTransformer.each_span` で数えた。`]{.` の並びも 0）。
+- 契約 HTML（`.cache/vs/build/html`）: HTML はバイト単位で同じ。違ったのは showcase の SVG 2 枚だけで、埋め込んだ書体の部分が組むたびに変わるもの（S8-1 の前後の 4 回の組でも 4 通りだった）。
+- PDF: 閲覧用（283 ページ）・印刷用（281 ページ）とも、違うページ 0。
+- EPUB・Kindle 用 EPUB: 違いは平らな CSS の 4 ファイル（`inline.css` と全面の挿絵の規則が増えた）だけ。計算値（117 文書・312 組）は差 0。EPUBCheck は 0。Kindle の中間生成物は要素 26,409 で差 0。変換は Supported・Success。
+- 見本の本（横書き・1 章）: `span.sesame`・`span.tcy`・`figure.vs-full-page` が契約 HTML と EPUB に出た。未知のクラス `.sesami` で 🟡（候補 `.sesame`）。行末の `[用語]{.text-right}` は段落の寄せと索引語のまま。PDF で傍点が字の上に付き、全面の挿絵は前後で改ページして版面の中央に縦横比を保って収まった。EPUBCheck は 0。
+- `rake test` 4,537 件が通った。
+
+#### S8-4 へ渡すこと
+
+- 全面の挿絵の Kindle の見え方（`100vh`・`flex` を解さないときの寄り）は、S8-4 の縦書きの材料の本で Kindle の記録を取って見る。
+- 縦中横・傍点の Kindle の解し方（接頭辞つきの書き方）も同じ。

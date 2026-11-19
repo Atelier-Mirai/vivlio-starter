@@ -148,7 +148,7 @@ S1 で、保証するクラスの全数の表を `lib/vivlio_starter/cli/html_co
 | 動画 | `<figure class="vs-video"><video …></video><figcaption>…</figcaption></figure>` | `v2-architecture-spec.md` §4.5 |
 | 行内の属性 | `<span class="…">…</span>`（`[文字]{.class}`） | `v2-architecture-spec.md` §7.1 の D 型 |
 | 括弧で始まる段落の印 | `<p class="vs-open-bracket">「…</p>` | 付く条件: 縦書き（`traits.vertical?`）。テーマが字下げを 0 にする（`novel-vertical-spec.md` §6.1）。横書きの本にも要ると分かったら、条件を外す（足すだけの変更） |
-| 全面の挿絵 | `<figure class="vs-full-page">…</figure>`（`![題](x.png){.full-page}`） | どのテーマ・どの組方向でも働く vs の部品（`parts/figure.css`）。クラス名は S8-2 で確定する（`novel-vertical-spec.md` §5.2） |
+| 全面の挿絵 | `<figure class="vs-full-page"><img …></figure>`（`![題](x.png){.full-page}`。figcaption は付けない） | どのテーマ・どの組方向でも働く vs の部品（`parts/figure.css`）。クラス名は S8-2 で、今のクラスと衝突しないことを確かめて `vs-full-page` にした（著者が書くのは `{.full-page}`。了承待ち。`novel-vertical-spec.md` §5.2） |
 
 `tcy` と `sesame` は `vs-` を付けない。公式テーマと、電書協の様式で書かれた既存の CSS が、そのまま当たるようにするためである。
 

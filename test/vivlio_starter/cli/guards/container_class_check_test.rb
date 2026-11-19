@@ -42,6 +42,24 @@ module VivlioStarter
         end
       end
 
+      # 行内の属性 `[文字]{.class}` も同じ許可リストで照合する。コードの中と行末の段落の寄せは見ない
+      def test_should_warn_on_unknown_inline_attribute_class
+        css = ".sesame { text-emphasis-style: filled sesame; }\n"
+        with_temp_project(css:) do
+          File.write('contents/11-install.md', <<~MD)
+            [傍点]{.sesame}と[傍点]{.sesami}
+            `[コード]{.x}` と右に寄せる[用語]{.text-right}
+          MD
+
+          violations = Guards::ContainerClassCheck.new.validate
+
+          assert_equal ["contents/11-install.md:1 - 未知の行内のクラス '.sesami' を検出しました"], violations.map(&:message)
+          assert_predicate violations.first, :warn?
+          assert_includes violations.first.detail, '現状: [傍点]{.sesami}'
+          assert_includes violations.first.detail, '候補: [傍点]{.sesame}'
+        end
+      end
+
       # 複数の候補は Jaro-Winkler 類似度の降順（DidYouMean の並び）で列挙する
       def test_should_list_multiple_candidates_best_first
         css = ".column { color: red; }\n.col-num { color: red; }\n"

@@ -23,6 +23,7 @@ require 'shellwords'
 
 require_relative 'common'
 require_relative 'masking'
+require_relative 'pre_process/inline_span_transformer'
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
 
@@ -68,9 +69,6 @@ module VivlioStarter
 
       # 著者が変えた 1.x の雛形の CSS の退避先。2.0 のビルドは読まない
       RETIRE_DIR = File.join(STYLESHEETS, '_v1')
-
-      # 2.0 で行内の属性（[文字]{.class}）として読まれる並び（§5.2）
-      INLINE_ATTRIBUTE = /\]\{\./
 
       # 移行の計画の 1 行。action は :remove（著者が変えていない）/ :retire（変えたので _v1/ へ移す）
       Item = Data.define(:relative, :action)
@@ -162,15 +160,16 @@ module VivlioStarter
         "for f in #{names.join(' ')}; do diff -u #{original}/$f #{RETIRE_DIR}/$f; done"
       end
 
-      # 2.0 で行内の属性として読まれる `]{.` の並びを、原稿のコードの外から探す（§5.2）。
-      # 走査だけを S11a で作り、🟡 の文面は行内の属性を作る S8-2 で確定する
+      # 2.0 で行内の属性（`[文字]{.class}`）として読まれる並びを、原稿のコードの外から探す（§5.2）。
+      # 読み方は前処理と同じ（PreProcessCommands::InlineSpanTransformer）。行末の段落の寄せ
+      # （`…{.text-right}`）は 1.x と同じに組まれるので数えない
       # @param paths [Array<String>] 原稿のパス
       # @return [Array<Hit>]
       def inline_attribute_hits(paths)
         paths.sort.flat_map do |path|
           text = File.read(path, encoding: 'utf-8')
           Masking.each_prose_line(text).filter_map do |line, lineno|
-            Hit.new(path:, lineno:, line: line.strip) if Masking.strip_inline_code(line).match?(INLINE_ATTRIBUTE)
+            Hit.new(path:, lineno:, line: line.strip) if PreProcessCommands::InlineSpanTransformer.each_span(line).any?
           end
         rescue StandardError
           []

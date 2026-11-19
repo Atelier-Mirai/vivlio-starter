@@ -56,7 +56,7 @@ module VivlioStarter
                         parts/layout.css parts/sideimage.css parts/side-by-side.css
                         parts/book-card.css parts/footnote.css parts/math.css parts/epub-reflow.css
                         parts/talk.css parts/reference.css
-                        parts/heading.css parts/prose.css parts/list.css
+                        parts/heading.css parts/prose.css parts/inline.css parts/list.css
                         parts/figure.css parts/box.css].freeze
         # 前書き・後書きは、部品の最後に前書きの見た目を読む。部品の記法の規則と詳細度で
         # 競わせるため、pages 層でなく parts 層に置く（parts/preface.css の冒頭の説明）
@@ -79,7 +79,8 @@ module VivlioStarter
                          'utilities' => BODY_UTILITIES },
           'postface' => { 'parts' => PREFACE_PARTS, 'pages' => %w[pages/preface.css pages/postface.css],
                           'utilities' => BODY_UTILITIES },
-          'toc' => { 'pages' => %w[pages/toc.css pages/whole-toc.css] },
+          # 目次は見出しの字の飾り（縦中横・傍点）を読む（novel-vertical-spec.md §5.3）
+          'toc' => { 'parts' => %w[parts/inline.css], 'pages' => %w[pages/toc.css pages/whole-toc.css] },
           'index' => { 'pages' => %w[pages/index.css] },
           'glossary' => { 'pages' => %w[pages/glossary.css] },
           'colophon' => { 'pages' => %w[pages/colophon.css] },
