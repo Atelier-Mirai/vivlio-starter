@@ -66,6 +66,20 @@ module VivlioStarter
         assert_equal original.raw, glyph.raw, '異体の輪郭がそのまま入っている'
       end
 
+      # ttfunk は maxp の点・輪郭の最大値を実際より小さく書く（禰󠄀 は輪郭 19 本なのに 5 本）。
+      # 元の書体の値で書き直し、字の組のどの字も maxp を超えないようにする（改善案 #139）。
+      def test_should_not_understate_points_or_contours_in_maxp
+        skip '同梱書体が無い環境では検証できない' unless File.file?(NOTO_SERIF)
+
+        variant = Font.read(NOTO_SERIF).lookup(NE, 0xE0100)
+        font = TTFunk::File.new(Font.encode(NOTO_SERIF, { NE => variant }, family: 'VS Variant Glyphs 1'))
+        maxp = font.maximum_profile
+        outlines = (0...maxp.num_glyphs).filter_map { font.glyph_outlines.for(it) }.reject(&:compound?)
+
+        assert_operator maxp.max_contours, :>=, outlines.map(&:number_of_contours).max
+        assert_operator maxp.max_points, :>=, outlines.map { it.end_point_of_last_contour + 1 }.max
+      end
+
       # name テーブルは作り直す。予約名（Noto Sans JP の `Source`）を名乗らず、
       # 著作権表示とライセンスの URL は元の書体から写す（OFL 第 2 条・第 3 条）。
       def test_should_rename_the_font_and_keep_the_license_notices
