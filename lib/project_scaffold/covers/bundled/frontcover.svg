@@ -41,6 +41,10 @@
         {{title-scale}}    書名を欄に収める縮小率（収まるなら 1）
         {{subtitle-scale}} サブタイトルを欄に収める縮小率
         {{author-mark}}    著者があれば「[著]」、空なら空文字
+
+    ■ 判型の高さに合わせる印（cover-size-independence-spec.md §4.2）
+        幅は 595 のまま、高さを判型の比に合わせ、増えた高さ（Δ）を印のある要素へ割り振ります。
+        data-vs-anchor="middle"／"bottom" は Δ の半分／Δ だけ下へ動かし、data-vs-stretch="y"／"half" は高さを Δ／Δ の半分だけ伸ばします。
   -->
   <defs>
     <style>
@@ -64,7 +68,7 @@
          userSpaceOnUse + spreadMethod="pad" により、トリム外（塗り足し帯）へ
          はみ出した背景矩形の領域では上下端の色がそのまま padding される。 -->
     <linearGradient id="bg-grad" gradientUnits="userSpaceOnUse" spreadMethod="pad"
-                    x1="0" y1="0" x2="0" y2="842">
+                    x1="0" y1="0" x2="0" y2="842" data-vs-stretch="y">
       <stop offset="0%"   stop-color="{{bg-from}}"/>
       <stop offset="100%" stop-color="{{bg-to}}"/>
     </linearGradient>
@@ -100,7 +104,7 @@
 
     <!-- グリッド表示エリアのクリップパス -->
     <clipPath id="top-clip">
-      <rect x="0" y="0" width="595" height="560"/>
+      <rect x="0" y="0" width="595" height="560" data-vs-stretch="half"/>
     </clipPath>
   </defs>
 
@@ -108,10 +112,10 @@
   <!-- トリム(595×842)より外側まで描画して塗り足し帯を埋める。print 版は
        expand_svg_viewbox_for_bleed が拡張 viewBox でクリップするのでトンボ代へはみ出さず、
        pdf 版は rsvg が viewBox で自動クリップして見た目不変。 -->
-  <rect x="-60" y="-60" width="715" height="962" fill="url(#bg-grad)"/>
+  <rect x="-60" y="-60" width="715" height="962" fill="url(#bg-grad)" data-vs-stretch="y"/>
 
   <!-- === グリッドオーバーレイ（上部エリアのみ） === -->
-  <rect width="595" height="560" fill="url(#grid)" opacity="0.3" clip-path="url(#top-clip)"/>
+  <rect width="595" height="560" fill="url(#grid)" opacity="0.3" clip-path="url(#top-clip)" data-vs-stretch="half"/>
 
   <!-- === ゴールドフレームアクセント === -->
   <!-- 上下の太バーは塗り足し帯まで伸ばす（トリム外を含めて描き、print 版はクリップで
@@ -120,19 +124,22 @@
   <!-- 上部太ゴールドバー（上＋左右の塗り足しへ拡張・y の下端 4 は不変） -->
   <rect x="-60" y="-60" width="715" height="64" fill="#c9a43a"/>
   <!-- 下部太ゴールドバー（下＋左右の塗り足しへ拡張・y の上端 838 は不変） -->
-  <rect x="-60" y="838" width="715" height="64" fill="#c9a43a"/>
+  <rect x="-60" y="838" width="715" height="64" fill="#c9a43a" data-vs-anchor="bottom"/>
   <!-- 左縦細ゴールドアクセント（横位置 x=28 は内側のまま・上下だけ塗り足しへ） -->
-  <rect x="28" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5"/>
+  <rect x="28" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5" data-vs-stretch="y"/>
   <!-- 右縦細ゴールドアクセント（横位置 x=565 は内側のまま・上下だけ塗り足しへ） -->
-  <rect x="565" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5"/>
+  <rect x="565" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5" data-vs-stretch="y"/>
 
   <!-- === 斜め幾何学アクセントライン（テック回路感） === -->
+  <g data-vs-anchor="middle">
   <line x1="-20" y1="380" x2="595" y2="60"  stroke="var(--vs-grid-stroke)" stroke-width="0.8"/>
   <line x1="-20" y1="500" x2="595" y2="160" stroke="var(--vs-grid-stroke)" stroke-width="0.6"/>
   <line x1="0"   y1="620" x2="595" y2="280" stroke="var(--vs-grid-stroke)" stroke-width="0.5"/>
   <line x1="0"   y1="740" x2="595" y2="420" stroke="var(--vs-grid-stroke)" stroke-width="0.4"/>
+  </g>
 
   <!-- === タイトルブロック（上1/3 ≒ y:60〜300） === -->
+  <g data-vs-anchor="middle">
   <!-- タイトル上部の細ゴールド罫線 -->
   <rect x="50" y="68" width="495" height="1" fill="url(#gold-thin)"/>
 
@@ -174,8 +181,10 @@
 
   <!-- 著者とグラフィックゾーンを分ける細ゴールド罫線 -->
   <rect x="50" y="288" width="495" height="1" fill="url(#gold-thin)"/>
+  </g>
 
   <!-- === 中央グラフィック: 抽象回路 / ウェブネットワーク（中心 cy=530） === -->
+  <g data-vs-anchor="middle">
   <!-- 外環（淡い） -->
   <circle cx="297" cy="530" r="195" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
   <!-- 中環 -->
@@ -229,8 +238,10 @@
   <circle cx="159" cy="667" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
   <circle cx="297" cy="725" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
   <circle cx="435" cy="667" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  </g>
 
   <!-- === 出版情報ブロック === -->
+  <g data-vs-anchor="bottom">
   <!-- 出版情報上部の細ゴールド罫線 -->
   <rect x="50" y="752" width="495" height="1" fill="url(#gold-thin)"/>
 
@@ -249,4 +260,5 @@
         font-size="12"
         fill="var(--vs-text-label)"
         letter-spacing="1">{{release}}</text>
+  </g>
 </svg>
