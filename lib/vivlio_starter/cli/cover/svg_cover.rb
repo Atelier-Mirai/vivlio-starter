@@ -123,6 +123,7 @@ module VivlioStarter
         def render_svg(source, side, theme, bundled:, trim: nil)
           # コメントを先に落とす。残すと説明の中の {{title}} に書名が入り、`--` を含む書名で XML が壊れる
           svg = File.read(source, encoding: 'utf-8').gsub(/<!--.*?-->/m, '')
+          svg = fit_template_height(svg, trim) if bundled && trim
           svg = apply_palette(svg, theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE) if bundled
           svg = replace_spaces_with_gaps(expand_css_custom_properties(apply_text_replacements(svg)))
           svg = fit_to_trim(svg, trim, source) if trim && !bundled
@@ -131,6 +132,50 @@ module VivlioStarter
           FileUtils.mkdir_p(File.dirname(output))
           File.write(output, svg, encoding: 'utf-8')
           output
+        end
+
+        # 同梱のひな形の高さを判型の比に合わせる（cover-size-independence-spec.md §4）。幅（595）は変えず、
+        # 字の大きさ・欄の幅・収まりの計算（fit_scale）をどの判型でも同じにする。増えた高さ Δ は、
+        # ひな形の印へ割り振る:
+        #   data-vs-anchor="middle" / "bottom" … Δ の半分 / Δ だけ下へ動かす（transform を前に足す）
+        #   data-vs-stretch="y" / "half"       … 高さを Δ / Δ の半分だけ伸ばす（rect の height・グラデーションの y2）
+        # 差が高さの 1% 以下（A 列・B 列）なら何も書き換えない。今の判型の表紙を変えないため。
+        def fit_template_height(svg, trim)
+          root = svg.match(/<svg\b[^>]*>/m)
+          view_box = root&.[](0)&.match(/viewBox\s*=\s*"0 0 ([\d.]+) ([\d.]+)"/)
+          return svg unless view_box
+
+          vb_w, vb_h = view_box.captures.map(&:to_f)
+          delta = (vb_w * trim.height_mm / trim.width_mm) - vb_h
+          return svg if delta.abs <= vb_h * CoverCommands::ASPECT_TOLERANCE
+
+          height = format_number(vb_h + delta)
+          svg = svg.sub(root[0]) do |tag|
+            tag.sub(/viewBox\s*=\s*"[^"]*"/, %(viewBox="0 0 #{format_number(vb_w)} #{height}"))
+               .sub(/\bheight\s*=\s*"[^"]*"/, %(height="#{height}"))
+          end
+          svg.gsub(/<[a-zA-Z]+\b[^>]*\bdata-vs-(?:anchor|stretch)="[^"]*"[^>]*>/) { apply_height_mark(it, delta) }
+        end
+
+        # 印の付いた開きタグ 1 つに、Δ の割り振りを当てる
+        def apply_height_mark(tag, delta)
+          share = { 'middle' => 0.5, 'bottom' => 1.0, 'y' => 1.0, 'half' => 0.5 }
+          if (anchor = tag[/data-vs-anchor="([^"]*)"/, 1])
+            shift = format_number(delta * share.fetch(anchor))
+            return tag.sub(/\btransform="/, %(transform="translate(0 #{shift}) )) if tag.match?(/\btransform="/)
+
+            return tag.sub(/\A<[a-zA-Z]+/) { %(#{it} transform="translate(0 #{shift})") }
+          end
+
+          amount = delta * share.fetch(tag[/data-vs-stretch="([^"]*)"/, 1])
+          attribute = tag.start_with?('<linearGradient') ? 'y2' : 'height'
+          tag.sub(/\b#{attribute}="([\d.-]+)"/) { %(#{attribute}="#{format_number(::Regexp.last_match(1).to_f + amount)}") }
+        end
+
+        # 座標の書き方（小数 2 桁。整数なら小数点を付けない）
+        def format_number(value)
+          rounded = value.round(2)
+          rounded == rounded.round ? rounded.round.to_s : rounded.to_s
         end
 
         # 著者の SVG の viewBox の比が判型と違えば、判型の比の <svg> で包む（cover-size-independence-spec.md §3.2）。

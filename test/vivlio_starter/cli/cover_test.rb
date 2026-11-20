@@ -124,7 +124,7 @@ module VivlioStarter
 
       # 判型の表に無い size: は、今までのように黙って B5 で組まず、寸法が決まらないとする（§2.3）
       def test_should_not_fall_back_to_b5_for_an_unknown_size
-        assert_nil CoverCommands.trim_size(size: 'B6')
+        assert_nil CoverCommands.trim_size(size: 'B4')
         assert_nil CoverCommands.trim_size({})
       end
 
@@ -132,7 +132,7 @@ module VivlioStarter
       def test_should_not_make_covers_when_the_trim_size_is_unknown
         within_temp_dir do
           setup_config
-          File.write('config/page_presets.yml', { 'b5_standard' => { 'size' => 'B6' } }.to_yaml)
+          File.write('config/page_presets.yml', { 'b5_standard' => { 'size' => 'B4' } }.to_yaml)
           Common.reload_configuration!(silent: true)
 
           made = nil

@@ -120,7 +120,7 @@ module VivlioStarter
 
         FileUtils.mkdir_p(Common.cover_cache_dir)
         %w[front back].map do |side|
-          case resolve_source(side, theme)
+          case resolve_source(side, theme, trim)
           in { type: :raster, path: }
             write_raster_outputs!(side, path, theme, trim, targets)
             true
@@ -133,9 +133,32 @@ module VivlioStarter
         end.any?
       end
 
+      # 同梱のひな形が使える判型の比（高さ ÷ 幅）の下限（cover-size-independence-spec.md §4.4）。
+      # 縦長の面の構図を、高さの割り振りで保てるのは縦長の判型まで。
+      TEMPLATE_MIN_RATIO = 1.35
+
+      # 同梱のひな形がこの判型で組めるか（縦長の判型なら組める）
+      def bundled_template_fits?(trim) = trim.height_mm.to_f / trim.width_mm >= TEMPLATE_MIN_RATIO
+
+      # 横長・正方形の判型では、同梱のひな形を使わずに 🔴 で著者の画像へ案内する（§4.4）。
+      # 横長の面に縦長の構図を収めると、欄の幅も字の大きさも作り直しになるため。
+      # @return [Hash] { type: :missing }
+      def refuse_bundled_template(side, theme, trim)
+        master = "#{side}cover_master.png"
+        underlay = File.join(Common.covers_dir, 'templates', "#{side}cover_#{trim.name}.png")
+        detail = "表紙の画像を置いて、#{Common.cover_setting_label} を master にしてください\n" \
+                 "#{File.join(Common.covers_dir, master)}（#{trim.width} × #{trim.height} px）"
+        detail += "\n下敷きは #{underlay} にあります" if File.exist?(underlay)
+        side_label = side == 'front' ? '表紙' : '裏表紙'
+        Common.log_error("同梱の#{side_label}（#{theme}）は、横長・正方形の判型（#{trim_description(trim)}）では作れません",
+                         detail:)
+        { type: :missing }
+      end
+
       # 片面の元の画像を、画像（PNG・JPEG・WebP）→ 著者の SVG → 同梱テンプレートの順に探す（改善案.md #65）。
+      # @param trim [TrimSize, nil] 本の判型。同梱のひな形が組めるかを見る（nil なら見ない）
       # @return [Hash] { type: :raster, path: } / { type: :svg, path:, bundled: } / { type: :missing }
-      def resolve_source(side, theme)
+      def resolve_source(side, theme, trim = nil)
         covers_dir = Common.covers_dir
         raster = Common.cover_raster_path("#{side}cover_#{theme}")
         return { type: :raster, path: raster } if raster
@@ -150,6 +173,7 @@ module VivlioStarter
         bundled = File.join(covers_dir, 'bundled', "#{side}cover.svg")
         candidates = [File.join(covers_dir, "#{side}cover_#{theme}.png（.jpg・.webp も可）"), svg]
         if %w[light dark].include?(theme)
+          return refuse_bundled_template(side, theme, trim) unless trim.nil? || bundled_template_fits?(trim)
           return { type: :svg, path: bundled, bundled: true } if File.exist?(bundled)
 
           candidates << bundled
