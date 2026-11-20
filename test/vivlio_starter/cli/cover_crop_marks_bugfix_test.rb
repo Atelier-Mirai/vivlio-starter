@@ -57,7 +57,7 @@ module VivlioStarter
           create_dummy_master_files(covers_dir)
 
           # print_pdf ターゲットで表紙・裏表紙PDFを生成
-          base_size = CoverCommands::SIZES[:b5]
+          base_size = CoverCommands.trim_size(size: 'B5')
           front_input = File.join(covers_dir, 'frontcover_master.png')
           front_output = File.join(covers_dir, 'frontcover_master_b5_cmyk.pdf')
           back_input = File.join(covers_dir, 'backcover_master.png')
@@ -128,7 +128,7 @@ module VivlioStarter
           create_dummy_master_files(covers_dir)
 
           # pdf ターゲットで表紙・裏表紙PDFを生成（トンボなし）
-          base_size = CoverCommands::SIZES[:b5]
+          base_size = CoverCommands.trim_size(size: 'B5')
           front_input = File.join(covers_dir, 'frontcover_master.png')
           front_output = File.join(covers_dir, 'frontcover_master_b5_rgb.pdf')
           back_input = File.join(covers_dir, 'backcover_master.png')
@@ -250,7 +250,7 @@ module VivlioStarter
               create_dummy_master_files(covers_dir)
 
               # pdf ターゲットで表紙PDFを生成（トンボなし）
-              base_size = CoverCommands::SIZES[page_size]
+              base_size = CoverCommands.trim_size(size: page_size.to_s.upcase)
               front_input = File.join(covers_dir, 'frontcover_master.png')
               front_output = File.join(covers_dir, "frontcover_master_#{page_size}_rgb.pdf")
 
@@ -264,8 +264,8 @@ module VivlioStarter
               assert File.exist?(front_output), "PDFが生成されるべきです: #{front_output}"
 
               # 検証2: ページサイズが「仕上がり + 2 × bleed」であること
-              trim_w_mm = base_size[:mm][0]
-              trim_h_mm = base_size[:mm][1]
+              trim_w_mm = base_size.width_mm
+              trim_h_mm = base_size.height_mm
               expected_w_mm = trim_w_mm + 2 * bleed_mm
               expected_h_mm = trim_h_mm + 2 * bleed_mm
 

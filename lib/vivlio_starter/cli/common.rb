@@ -847,12 +847,14 @@ module VivlioStarter
       # Page Size Utilities
       # ================================================================
 
+      # 判型の寸法。本文の @page も表紙（CoverCommands.trim_size）もここから引く。
+      # label は著者向けの文面に出す判型の名前（表紙の解像度の警告など）。
       PAGE_SIZES = {
-        'A4' => { width: '210mm', height: '297mm' },
-        'A5' => { width: '148mm', height: '210mm' },
+        'A4' => { width: '210mm', height: '297mm', label: 'A4' },
+        'A5' => { width: '148mm', height: '210mm', label: 'A5' },
         # 'B5' は技術書慣習により JIS 寸法（182×257）の別名。ISO B5（176×250）は非サポート。
-        'B5' => { width: '182mm', height: '257mm' },
-        'JIS-B5' => { width: '182mm', height: '257mm' }
+        'B5' => { width: '182mm', height: '257mm', label: 'B5' },
+        'JIS-B5' => { width: '182mm', height: '257mm', label: 'B5' }
       }.freeze
 
       # ページサイズを解決する（シンボルキーの Hash 前提）

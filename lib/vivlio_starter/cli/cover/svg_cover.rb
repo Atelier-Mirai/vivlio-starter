@@ -91,27 +91,28 @@ module VivlioStarter
         # @param side [String] 'front' / 'back'
         # @param source [String] 元の SVG（同梱テンプレートか著者の SVG）
         # @param bundled [Boolean] 同梱テンプレートか（パレットを当てるか）
-        def write_outputs!(side, source, theme, page_size, targets, bundled:)
+        # @param trim [CoverCommands::TrimSize] 表紙の寸法
+        def write_outputs!(side, source, theme, trim, targets, bundled:)
           # --- Phase: SVG の組み立て（常に作り直す。book.yml とテンプレートの変更を拾うため） ---
           svg = render_svg(source, side, theme, bundled:)
-          trim_w_mm, trim_h_mm = CoverCommands::SIZES.fetch(page_size)[:mm]
+          trim_w_mm, trim_h_mm = trim.mm
           cache_dir = Common.cover_cache_dir
 
           # --- Phase: 成果物 ---
           if targets.include?('pdf')
-            pdf = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf")
+            pdf = File.join(cache_dir, "#{side}cover_#{theme}_#{trim.name}_rgb.pdf")
             convert_svg_to_pdf(svg, pdf, trim_w_mm, trim_h_mm) && Common.log_info("カバーを生成しました: #{File.basename(pdf)}")
           end
 
           if targets.include?('print_pdf')
-            pdf = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
+            pdf = File.join(cache_dir, "#{side}cover_#{theme}_#{trim.name}_cmyk.pdf")
             convert_svg_to_pdf_with_crop_marks(svg, pdf, trim_w_mm, trim_h_mm)
             CoverCommands.publish_print_cover!(side, pdf)
           end
 
           return unless side == 'front' && CoverCommands.ebook_target?(targets)
 
-          write_ebook_cover(svg, File.join(cache_dir, "cover_#{theme}.jpg"), page_size)
+          write_ebook_cover(svg, File.join(cache_dir, "cover_#{theme}.jpg"), trim)
         end
 
         # 表紙の SVG を組み立ててキャッシュに書き、そのパスを返す。
@@ -218,10 +219,9 @@ module VivlioStarter
 
         # 電子書籍用の JPEG を作る（ebook-cover-jpeg-spec.md §3）。判型の比のまま縦 2,560 px の
         # PNG に焼き、あとは PNG の表紙と同じ作り方（CoverCommands.write_ebook_cover!）に渡す。
-        def write_ebook_cover(svg_path, jpg_path, page_size)
-          trim_w_mm, trim_h_mm = CoverCommands::SIZES.fetch(page_size, CoverCommands::SIZES[:b5])[:mm]
+        def write_ebook_cover(svg_path, jpg_path, trim)
           h_px = CoverCommands::EPUB_SIZE[:height]
-          w_px = (h_px * trim_w_mm / trim_h_mm.to_f).round
+          w_px = (h_px * trim.width_mm / trim.height_mm.to_f).round
 
           Dir.mktmpdir('ebook-cover') do |tmp|
             png = File.join(tmp, 'cover.png')

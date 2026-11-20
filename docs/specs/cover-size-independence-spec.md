@@ -225,3 +225,15 @@ S8-3（判型のプリセットと `BookProfile`）の中で、次の順に行�
 | 4 | 比の違う画像を切るときの、寄せる向きのキー | 要望が出たら | 置かない（§3.1） |
 | 5 | 横長・正方形のための同梱のひな形 | 2.0 の後 | 絵本の著者から要望が出たら、1 枚を別に作る（`PLANNED.md`） |
 | 6 | 小説のための同梱の表紙（文字だけの、縦書きの題名） | S8-5 か 2.0 の後 | 今のひな形は横書きの題名である。小説の雛形の表紙をどうするかは、`novel` の紙面を見るとき（S8-5）に、ユーザーに選んでもらう（今のひな形をそのまま使う・縦書きの題名のひな形を 1 枚足す）。2.0 の範囲を変える話なので、止めて選んでもらう扱い |
+
+---
+
+## 8. 実装の記録
+
+### 8.1 §6 の 1 寸法の窓口（2026-11-20）
+
+- 窓口は `CoverCommands.trim_size(page)`。返すのは `CoverCommands::TrimSize`（`width_mm`・`height_mm`・350dpi の `width`・`height`・ファイル名の `name`・文面の `label`）。既定の引数は `Common::CONFIG.page`（判型のプリセットを当てた後）。mm は整数で割り切れるとき Integer にする（rsvg-convert へ渡す `210mm` の字面を変えないため）。
+- 判型の名前の表示（`label`）は `Common::PAGE_SIZES` の各行に `label:` として足した。表紙の側に判型の表を持たない（§2.1）。
+- 寸法が決まらないときは `book_trim_size` が 🔴 を出して nil を返し、`generate!` も `vs cover` も表紙を作らない。`SIZES`・`detect_page_size`・`book_page_size` は無くした。`vs import` の `ImageProcessor::MASTER_WIDTH`・`MASTER_HEIGHT` も窓口の A4 から引く。
+- 確かめ: 直す前（HEAD の worktree）と後のコードで、A4（`a4_custom`）・B5・A5 × `light`・`guide` の 6 通りに `vs cover`（targets: pdf, print_pdf, epub）を走らせ、生成キャッシュと直下の表紙 8 つずつ（計 48）を比べた。ファイル名・PDF の全ページの画素（150dpi）・JPEG の画素・ログとも一致。
+- 本文の側の `Common.resolve_page_size` は、表に無い `size:` を今も黙って B5 として読む（表紙の側だけが 🔴 で止まる）。§2.3 の「設定の検査が先に止めるはず」は、今の本文には無い。

@@ -31,8 +31,7 @@ module VivlioStarter
       module ImageProcessor
         module_function
 
-        MASTER_WIDTH = CoverCommands::SIZES[:a4][:width]
-        MASTER_HEIGHT = CoverCommands::SIZES[:a4][:height]
+        MASTER_WIDTH, MASTER_HEIGHT = CoverCommands.trim_size(size: 'A4').then { [it.width, it.height] }
 
         # 画像を WebP に変換してコピーする
         #

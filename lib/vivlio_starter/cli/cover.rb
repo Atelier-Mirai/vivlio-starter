@@ -36,14 +36,16 @@ module VivlioStarter
       FRONTCOVER_MASTER = 'frontcover_master.png'
       BACKCOVER_MASTER = 'backcover_master.png'
 
-      # 判型ごとの仕上がりサイズ（350 dpi の画素数と mm。塗り足しを含まない）
-      SIZES = {
-        a4: { width: 2894, height: 4093, mm: [210, 297] },
-        b5: { width: 2508, height: 3541, mm: [182, 257] },
-        a5: { width: 2039, height: 2894, mm: [148, 210] }
-      }.freeze
-
       DPI = 350
+
+      # 表紙の仕上がりの寸法（塗り足しを含まない。cover-size-independence-spec.md §2.1）。
+      #   width_mm・height_mm … 仕上がりの mm（整数で割り切れるときは Integer。rsvg-convert へ渡す字面を変えないため）
+      #   width・height       … 350dpi の画素数
+      #   name                … 生成物のファイル名の判型の部分（a4・b5・120x180）
+      #   label               … 著者向けの文面に出す判型の名前（A4・B5）
+      TrimSize = Data.define(:width_mm, :height_mm, :width, :height, :name, :label) do
+        def mm = [width_mm, height_mm]
+      end
 
       # 印刷に使える実効解像度の下限（PNG の画素数と判型から求める）
       MIN_PRINT_DPI = 300
@@ -93,14 +95,14 @@ module VivlioStarter
 
         Common.log_info '📚 カバー画像の生成を開始します'
         targets = target_list(Common::CONFIG)
-        unless generate!(targets:)
+        trim = book_trim_size
+        unless trim && generate!(targets:, trim:)
           Common.log_warn('カバーを作れませんでした（上のメッセージを確かめてください）')
           return false
         end
 
         # 閲覧用だけのときは成果品の行（📚）が出ないので、作ったものを既定のログでも 1 行で報告する
-        page_label = book_page_size.to_s.upcase
-        labels = { 'pdf' => "閲覧用 PDF（#{page_label}・RGB）", 'print_pdf' => "入稿用 PDF（#{page_label}・CMYK）" }
+        labels = { 'pdf' => "閲覧用 PDF（#{trim.label}・RGB）", 'print_pdf' => "入稿用 PDF（#{trim.label}・CMYK）" }
                  .filter_map { |target, label| label if targets.include?(target) }
         labels << '電子書籍用 JPEG' if ebook_target?(targets)
         Common.log_result("表紙を生成しました: #{labels.join('、')}", status: :success)
@@ -109,7 +111,10 @@ module VivlioStarter
 
       # 表と裏の表紙を作る。
       # @return [Boolean] 片面でも作れたか
-      def generate!(targets: target_list(Common::CONFIG), page_size: book_page_size)
+      # @param trim [TrimSize, nil] 表紙の寸法（既定は本の判型。決まらなければ作らない）
+      def generate!(targets: target_list(Common::CONFIG), trim: book_trim_size)
+        return false unless trim
+
         theme = Common.cover_theme
         return false if theme == 'master' && !check_master_files(Common.covers_dir)
 
@@ -117,10 +122,10 @@ module VivlioStarter
         %w[front back].map do |side|
           case resolve_source(side, theme)
           in { type: :raster, path: }
-            write_raster_outputs!(side, path, theme, page_size, targets)
+            write_raster_outputs!(side, path, theme, trim, targets)
             true
           in { type: :svg, path:, bundled: }
-            SvgCover.write_outputs!(side, path, theme, page_size, targets, bundled:)
+            SvgCover.write_outputs!(side, path, theme, trim, targets, bundled:)
             true
           in { type: :missing }
             false
@@ -168,15 +173,40 @@ module VivlioStarter
       # 電子書籍（EPUB・Kindle）のターゲットがあるか。あれば表紙の JPEG を作る。
       def ebook_target?(targets) = targets.intersect?(EBOOK_TARGETS)
 
-      # book.yml の判型（page.use）から表紙の判型を決める。
-      def book_page_size = detect_page_size(Common::CONFIG.page&.use || 'b5_standard')
+      # 表紙の仕上がりの寸法を、本文の @page と同じ出どころ（判型のプリセットの size: と
+      # page.width・page.height）から求める。表紙の側に判型の表を持たないのは、判型を足したときに
+      # 表紙だけが取り残されて別の寸法で組まれるのを防ぐため（cover-size-independence-spec.md §2）。
+      # @param page [Hash] 判型のプリセットを当てた後の page の設定（シンボルのキー）
+      # @return [TrimSize, nil] 寸法が決まらない（size: が表に無く、幅と高さも無い）ときは nil
+      def trim_size(page = Common::CONFIG&.page.to_h)
+        size = page[:size].to_s.strip.upcase
+        preset = Common::PAGE_SIZES[size]
+        width_mm, height_mm = %i[width height].map do |key|
+          mm = Units.length_to_mm(page[key]) || Units.length_to_mm(preset&.fetch(key))
+          mm && (mm == mm.round ? mm.round : mm)
+        end
+        return nil unless width_mm&.positive? && height_mm&.positive?
 
-      # 判型のプリセット名（a4_custom・b5_standard など）を :a4 / :b5 / :a5 にする。
-      def detect_page_size(page_use)
-        case page_use.to_s.downcase[0..1]
-        in 'a4' then :a4
-        in 'a5' then :a5
-        else :b5
+        # プリセットの寸法のままなら判型の名前、幅と高さを直接書いて違えば「幅x高さ」（§2.2）
+        if preset && [width_mm, height_mm] == %i[width height].map { Units.length_to_mm(preset[it]) }
+          name = size.downcase.delete_prefix('jis-').delete('-')
+          label = preset[:label]
+        else
+          name = "#{width_mm.round}x#{height_mm.round}"
+          label = "#{width_mm} × #{height_mm} mm"
+        end
+        TrimSize.new(width_mm:, height_mm:, name:, label:,
+                     width: (width_mm / Units::MM_PER_INCH * DPI).round,
+                     height: (height_mm / Units::MM_PER_INCH * DPI).round)
+      end
+
+      # 本の判型の表紙の寸法。決まらなければ 🔴 で知らせて nil（今までの「黙って B5 で組む」はしない）。
+      def book_trim_size
+        trim_size || begin
+          Common.log_error('表紙の寸法が決まりません。config/book.yml の page.use を確かめてください',
+                           detail: "→ 判型のプリセットの size: に #{Common::PAGE_SIZES.keys.join('・')} のどれかを書くか、" \
+                                   'page.width と page.height を書いてください')
+          nil
         end
       end
 
@@ -200,17 +230,16 @@ module VivlioStarter
       # ================================================================
 
       # 片面の画像（PNG・JPEG・WebP）から、targets に応じた成果物を作る（SvgCover.write_outputs! と対になる）。
-      def write_raster_outputs!(side, image, theme, page_size, targets)
+      def write_raster_outputs!(side, image, theme, trim, targets)
         cache_dir = Common.cover_cache_dir
-        size = SIZES.fetch(page_size)
 
         if targets.include?('pdf')
-          generate_rgb_pdf_single(image, File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf"), size)
+          generate_rgb_pdf_single(image, File.join(cache_dir, "#{side}cover_#{theme}_#{trim.name}_rgb.pdf"), trim)
         end
 
         if targets.include?('print_pdf')
-          warn_low_print_resolution(image, page_size)
-          write_print_cover!(side, image, theme, page_size)
+          warn_low_print_resolution(image, trim)
+          write_print_cover!(side, image, theme, trim)
         end
 
         return unless side == 'front' && ebook_target?(targets)
@@ -220,12 +249,11 @@ module VivlioStarter
 
       # PNG の画素数が判型に対して足りなければ知らせる。PNG に書かれた dpi の値は見ない
       # （画像ソフトが 72dpi と書くことが多く、画素が足りていても足りなく見えるため）。
-      def warn_low_print_resolution(png, page_size)
+      def warn_low_print_resolution(png, trim)
         width, height = Common.image_size(png)
         return unless width
 
-        trim_w_mm, trim_h_mm = SIZES.fetch(page_size)[:mm]
-        dpi = [width / (trim_w_mm / Units::MM_PER_INCH), height / (trim_h_mm / Units::MM_PER_INCH)].min.floor
+        dpi = [width / (trim.width_mm / Units::MM_PER_INCH), height / (trim.height_mm / Units::MM_PER_INCH)].min.floor
         return if dpi >= MIN_PRINT_DPI
 
         # 1 ビルドの中で表紙の生成は何度か走りうるので、同じ画像につき 1 回だけ知らせる
@@ -233,26 +261,25 @@ module VivlioStarter
         return if @warned_low_resolution[png]
 
         @warned_low_resolution[png] = true
-        size = SIZES.fetch(page_size)
         Common.log_warn(
-          "#{File.basename(png)} の解像度が印刷には足りません（#{page_size.upcase} で #{dpi}dpi・最低 #{MIN_PRINT_DPI}dpi）",
+          "#{File.basename(png)} の解像度が印刷には足りません（#{trim.label} で #{dpi}dpi・最低 #{MIN_PRINT_DPI}dpi）",
           detail: "いまの画像: #{width} × #{height} px\n" \
-                  "→ #{size[:width]} × #{size[:height]} px 以上の画像に差し替えてください（#{page_size.upcase} を #{DPI}dpi で刷る寸法）"
+                  "→ #{trim.width} × #{trim.height} px 以上の画像に差し替えてください（#{trim.label} を #{DPI}dpi で刷る寸法）"
         )
       end
 
       # 入稿用（CMYK・塗り足し・トンボ）の表紙を作り、直下へ複製する。
-      def write_print_cover!(side, png, theme, page_size)
+      def write_print_cover!(side, png, theme, trim)
         cover_bleed = (Common::CONFIG.dig(:output, :print_pdf, :cover_bleed) || 'scale').to_s
         source, fill = resolve_print_cover_input(png, cover_bleed)
-        cache_pdf = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
-        generate_pdfx_single(source, cache_pdf, SIZES.fetch(page_size),
+        cache_pdf = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}_#{trim.name}_cmyk.pdf")
+        generate_pdfx_single(source, cache_pdf, trim,
                              bleed_mm: Build::NombreStamper.bleed_mm_from_config, crop_marks: true, fill:)
         publish_print_cover!(side, cache_pdf)
       end
 
       # 閲覧用の PDF（RGB・仕上がりサイズ）
-      def generate_rgb_pdf_single(input_png, output_pdf, size)
+      def generate_rgb_pdf_single(input_png, output_pdf, trim)
         return unless File.exist?(input_png)
 
         convert_cmd = imagemagick_convert_command
@@ -264,7 +291,7 @@ module VivlioStarter
         Common.log_info "  生成中: #{File.basename(output_pdf)}"
         cmd = convert_cmd + [
           input_png,
-          '-resize', "#{size[:width]}x#{size[:height]}!",
+          '-resize', "#{trim.width}x#{trim.height}!",
           '-density', DPI.to_s,
           '-units', 'PixelsPerInch',
           output_pdf
@@ -334,11 +361,11 @@ module VivlioStarter
       #
       # @param input_png  [String]  入力 PNG パス
       # @param output_pdf [String]  出力 PDF パス
-      # @param size       [Hash]    仕上がりサイズ { width: px, height: px, mm: [w, h] }
+      # @param trim       [TrimSize] 仕上がりの寸法（trim_size）
       # @param bleed_mm   [Float]   塗り足し幅（mm）
       # @param crop_marks [Boolean] トンボを付与するか
       # @param fill       [Symbol]  充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）
-      def generate_pdfx_single(input_png, output_pdf, size, bleed_mm:, crop_marks: false, fill: :bleed)
+      def generate_pdfx_single(input_png, output_pdf, trim, bleed_mm:, crop_marks: false, fill: :bleed)
         return unless File.exist?(input_png)
 
         convert_cmd = imagemagick_convert_command
@@ -349,8 +376,8 @@ module VivlioStarter
 
         Common.log_info "  生成中: #{File.basename(output_pdf)}"
 
-        trim_w_px = size[:width]
-        trim_h_px = size[:height]
+        trim_w_px = trim.width
+        trim_h_px = trim.height
         px_per_mm = DPI / Units::MM_PER_INCH
 
         if crop_marks

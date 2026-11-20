@@ -106,28 +106,41 @@ module VivlioStarter
         end
       end
 
-      # ページサイズ判定（B5）のテスト
-      def test_detect_page_size_b5
-        size = CoverCommands.detect_page_size('b5_standard')
-        assert_equal :b5, size, 'b5_standardからB5を判定すべきです'
+      # 表紙の寸法は、本文と同じ判型の表（Common::PAGE_SIZES）から引く（cover-size-independence-spec.md §2.1）。
+      # 名前は生成物のファイル名に出るので、今の a4・b5・a5 から変えない（JIS-B5 も b5）
+      def test_should_take_the_trim_size_from_the_page_size_table
+        assert_pattern { CoverCommands.trim_size(size: 'A4') => { width_mm: 210, height_mm: 297, name: 'a4', label: 'A4' } }
+        assert_pattern { CoverCommands.trim_size(size: 'A5') => { width_mm: 148, height_mm: 210, name: 'a5', label: 'A5' } }
+        assert_pattern { CoverCommands.trim_size(size: 'B5') => { width_mm: 182, height_mm: 257, name: 'b5', label: 'B5' } }
+        assert_pattern { CoverCommands.trim_size(size: 'JIS-B5') => { width_mm: 182, height_mm: 257, name: 'b5', label: 'B5' } }
       end
 
-      # ページサイズ判定（A5）のテスト
-      def test_detect_page_size_a5
-        size = CoverCommands.detect_page_size('a5_standard')
-        assert_equal :a5, size, 'a5_standardからA5を判定すべきです'
+      # page.width・page.height を直接書いて判型と違う本は「幅x高さ」の名前（§2.2）
+      def test_should_name_a_custom_trim_size_by_its_dimensions
+        trim = CoverCommands.trim_size(size: 'B5', width: '120mm', height: '180.4mm')
+
+        assert_pattern { trim => { width_mm: 120, height_mm: 180.4, name: '120x180', width: 1654, height: 2486 } }
       end
 
-      # ページサイズ判定（A4）のテスト
-      def test_detect_page_size_a4
-        size = CoverCommands.detect_page_size('a4_standard')
-        assert_equal :a4, size, 'a4_standardからA4を判定すべきです'
+      # 判型の表に無い size: は、今までのように黙って B5 で組まず、寸法が決まらないとする（§2.3）
+      def test_should_not_fall_back_to_b5_for_an_unknown_size
+        assert_nil CoverCommands.trim_size(size: 'B6')
+        assert_nil CoverCommands.trim_size({})
       end
 
-      # ページサイズ判定（デフォルト）のテスト
-      def test_detect_page_size_default
-        size = CoverCommands.detect_page_size('unknown_preset')
-        assert_equal :b5, size, '不明なプリセットではデフォルトでB5を返すべきです'
+      # 寸法が決まらない本では表紙を作らず、🔴 で page.use を確かめるよう案内する
+      def test_should_not_make_covers_when_the_trim_size_is_unknown
+        within_temp_dir do
+          setup_config
+          File.write('config/page_presets.yml', { 'b5_standard' => { 'size' => 'B6' } }.to_yaml)
+          Common.reload_configuration!(silent: true)
+
+          made = nil
+          out, err = capture_io { made = CoverCommands.generate!(targets: ['pdf']) }
+
+          refute made
+          assert_match(/表紙の寸法が決まりません。config\/book.yml の page.use を確かめてください/, out + err)
+        end
       end
 
       # RGB PDF生成のテスト（ImageMagickが必要）
@@ -143,7 +156,7 @@ module VivlioStarter
 
           create_dummy_png(input_png, width: 2894, height: 4092)
 
-          size = CoverCommands::SIZES[:a4]
+          size = CoverCommands.trim_size(size: 'A4')
           CoverCommands.generate_rgb_pdf_single(input_png, output_pdf, size)
 
           assert File.exist?(output_pdf), 'RGB PDFが生成されるべきです'
@@ -345,7 +358,7 @@ module VivlioStarter
           SVG
           output = File.join(Common.cover_cache_dir, 'cover_light.jpg')
 
-          assert CoverCommands::SvgCover.write_ebook_cover('front.svg', output, :a4)
+          assert CoverCommands::SvgCover.write_ebook_cover('front.svg', output, CoverCommands.trim_size(size: 'A4'))
 
           assert_equal '1600x2560 95', jpeg_facts(output, '%wx%h %Q')
           assert File.exist?(Common.generate_cover_output_filename('front', ext: 'jpg'))
@@ -524,11 +537,11 @@ module VivlioStarter
       def test_should_provide_cover_templates_for_each_page_size
         templates = File.expand_path('../../../covers/templates', __dir__)
 
-        CoverCommands::SIZES.each do |size, spec|
+        %w[A4 B5 A5].map { CoverCommands.trim_size(size: it) }.each do |trim|
           %w[front back].each do |side|
-            name = "#{side}cover_#{size}.png"
+            name = "#{side}cover_#{trim.name}.png"
             width, height = File.binread(File.join(templates, name), 24).unpack('@16NN')
-            assert_equal [spec[:width], spec[:height]], [width, height], name
+            assert_equal [trim.width, trim.height], [width, height], name
           end
         end
       end
@@ -840,7 +853,7 @@ module VivlioStarter
           output_pdf = File.join(covers_dir, 'frontcover_master_b5_cmyk.pdf')
           create_dummy_png(input_png)
 
-          base_size = CoverCommands::SIZES[:b5]
+          base_size = CoverCommands.trim_size(size: 'B5')
           CoverCommands.generate_pdfx_single(
             input_png, output_pdf, base_size,
             bleed_mm: BLEED_MM, crop_marks: true
@@ -874,7 +887,7 @@ module VivlioStarter
           output_pdf = File.join(covers_dir, 'frontcover_master_b5_rgb.pdf')
           create_dummy_png(input_png)
 
-          base_size = CoverCommands::SIZES[:b5]
+          base_size = CoverCommands.trim_size(size: 'B5')
           CoverCommands.generate_pdfx_single(
             input_png, output_pdf, base_size,
             bleed_mm: BLEED_MM, crop_marks: false
@@ -906,7 +919,7 @@ module VivlioStarter
           create_dummy_master_files(covers_dir)
 
           # Common::CONFIG はルートの book.yml のままなので、テーマだけを固定する
-          Common.stub(:cover_theme, 'master') { CoverCommands.generate!(targets: ['print_pdf'], page_size: :b5) }
+          Common.stub(:cover_theme, 'master') { CoverCommands.generate!(targets: ['print_pdf'], trim: CoverCommands.trim_size(size: 'B5')) }
 
           # 生成は生成キャッシュ・入稿用の成果品はルート直下へ複製（移設仕様 §2/§3.4）
           assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_b5_cmyk.pdf')),
@@ -921,21 +934,23 @@ module VivlioStarter
       end
 
       # 判型ごとの画素数は、仕上がりの mm を 350dpi にした値（四捨五入）と一致する。
-      # A4 の高さが 4091 px（正しくは 4093 px）で、A4 の表紙が本文より 0.18mm 低かった
+      # 値は窓口を作る前の表（CoverCommands::SIZES）のもので、1px でも違うと今の本の表紙が変わる
+      # （cover-size-independence-spec.md §2.1）。A4 の高さが 4091 px（正しくは 4093 px）で、
+      # A4 の表紙が本文より 0.18mm 低かったこともある
       def test_should_match_sizes_to_trim_at_350dpi
-        CoverCommands::SIZES.each do |name, size|
-          expected = size[:mm].map { (it / Units::MM_PER_INCH * CoverCommands::DPI).round }
-          assert_equal expected, [size[:width], size[:height]], "#{name} の画素数"
+        { 'A4' => [2894, 4093], 'B5' => [2508, 3541], 'A5' => [2039, 2894] }.each do |size, pixels|
+          trim = CoverCommands.trim_size(size:)
+          assert_equal pixels, [trim.width, trim.height], "#{size} の画素数"
         end
       end
 
-      # 入稿用の表紙は仕上がりサイズ（SIZES）を generate_pdfx_single へ渡すことを確認する
+      # 入稿用の表紙は仕上がりサイズ（trim_size）を generate_pdfx_single へ渡すことを確認する
       # crop_marks: true 時は generate_pdfx_single 内でサイズ拡張が行われる
       def test_should_pass_trim_size_not_bleed_size_to_generate_pdfx_single
-        base_size = CoverCommands::SIZES[:b5]
-        assert_equal 2508, base_size[:width],  'B5 仕上がり幅は 2508px であるべきです'
-        assert_equal 3541, base_size[:height], 'B5 仕上がり高さは 3541px であるべきです'
-        assert_equal [182, 257], base_size[:mm], 'B5 仕上がりサイズは 182×257mm であるべきです'
+        base_size = CoverCommands.trim_size(size: 'B5')
+        assert_equal 2508, base_size.width,  'B5 仕上がり幅は 2508px であるべきです'
+        assert_equal 3541, base_size.height, 'B5 仕上がり高さは 3541px であるべきです'
+        assert_equal [182, 257], base_size.mm, 'B5 仕上がりサイズは 182×257mm であるべきです'
       end
 
       # CROP_MARK_OFFSET_MM 定数が cover.rb に定義されていることを確認する
