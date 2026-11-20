@@ -94,7 +94,7 @@ module VivlioStarter
         # @param trim [CoverCommands::TrimSize] 表紙の寸法
         def write_outputs!(side, source, theme, trim, targets, bundled:)
           # --- Phase: SVG の組み立て（常に作り直す。book.yml とテンプレートの変更を拾うため） ---
-          svg = render_svg(source, side, theme, bundled:)
+          svg = render_svg(source, side, theme, bundled:, trim:)
           trim_w_mm, trim_h_mm = trim.mm
           cache_dir = Common.cover_cache_dir
 
@@ -119,16 +119,53 @@ module VivlioStarter
         # covers/ に書かないのは、著者の SVG（covers/<side>cover_<theme>.svg）と同じ名前になり、
         # 生成物をソースと取り違えるため（generated-assets 移設仕様 §3.5）。
         # rsvg-convert は CSS の var() を読まないので、どちらの SVG も変数を展開してから書く。
-        def render_svg(source, side, theme, bundled:)
+        # @param trim [CoverCommands::TrimSize, nil] 表紙の寸法。著者の SVG の比を判型と突き合わせる（nil なら見ない）
+        def render_svg(source, side, theme, bundled:, trim: nil)
           # コメントを先に落とす。残すと説明の中の {{title}} に書名が入り、`--` を含む書名で XML が壊れる
           svg = File.read(source, encoding: 'utf-8').gsub(/<!--.*?-->/m, '')
           svg = apply_palette(svg, theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE) if bundled
           svg = replace_spaces_with_gaps(expand_css_custom_properties(apply_text_replacements(svg)))
+          svg = fit_to_trim(svg, trim, source) if trim && !bundled
 
           output = File.join(Common.cover_cache_dir, bundled ? "#{side}cover_#{theme}.svg" : "#{side}cover_#{theme}_rendered.svg")
           FileUtils.mkdir_p(File.dirname(output))
           File.write(output, svg, encoding: 'utf-8')
           output
+        end
+
+        # 著者の SVG の viewBox の比が判型と違えば、判型の比の <svg> で包む（cover-size-independence-spec.md §3.2）。
+        # rsvg-convert は幅と高さを両方渡すと preserveAspectRatio を見ずに引き伸ばすので、元の <svg> を
+        # 内側の viewport にして、著者の preserveAspectRatio（既定は切らずに収める）で置かせる。
+        # 元の viewBox と中身は書き換えない。外側の <defs> は、入稿用の塗り足しのクリップを差す所。
+        def fit_to_trim(svg, trim, source)
+          root = svg.match(/<svg\b[^>]*>/m)
+          view_box = root&.[](0)&.match(/viewBox\s*=\s*"\s*-?[\d.]+[\s,]+-?[\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/)
+          return svg unless view_box
+
+          vb_w, vb_h = view_box.captures.map(&:to_f)
+          return svg unless vb_w.positive? && vb_h.positive?
+
+          trim_ratio = trim.height_mm.to_f / trim.width_mm
+          return svg if (((vb_h / vb_w) / trim_ratio) - 1).abs <= CoverCommands::ASPECT_TOLERANCE
+
+          warn_svg_aspect_mismatch(source, trim)
+          w, h = trim.mm
+          inner = root[0].gsub(/\s(?:x|y|width|height)\s*=\s*"[^"]*"/, '')
+                         .sub(/\A<svg\b/, %(<svg x="0" y="0" width="#{w}" height="#{h}"))
+          outer = %(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ) +
+                  %(width="#{w}mm" height="#{h}mm" viewBox="0 0 #{w} #{h}"><defs></defs>)
+          "#{root.pre_match}#{outer}#{inner}#{root.post_match}</svg>"
+        end
+
+        # 1 ビルドの中で表紙の生成は何度か走りうるので、同じ SVG につき 1 回だけ知らせる
+        def warn_svg_aspect_mismatch(source, trim)
+          @warned_aspect ||= {}
+          return if @warned_aspect[source]
+
+          @warned_aspect[source] = true
+          w, h = trim.mm.map { CoverCommands.format_mm(it) }
+          Common.log_warn("#{source} の縦横比が、判型（#{CoverCommands.trim_description(trim)}）と違います",
+                          detail: "→ viewBox を判型と同じ比（例: viewBox=\"0 0 #{w} #{h}\"）にすると、判型いっぱいに使えます")
         end
 
         # パレットを当てる。CSS 変数は "--vs-xxx: <値>;" の値を差し替え、
@@ -220,12 +257,17 @@ module VivlioStarter
         # 電子書籍用の JPEG を作る（ebook-cover-jpeg-spec.md §3）。判型の比のまま縦 2,560 px の
         # PNG に焼き、あとは PNG の表紙と同じ作り方（CoverCommands.write_ebook_cover!）に渡す。
         def write_ebook_cover(svg_path, jpg_path, trim)
-          h_px = CoverCommands::EPUB_SIZE[:height]
-          w_px = (h_px * trim.width_mm / trim.height_mm.to_f).round
+          # 長い辺を 2,560 px にする（横長の判型は横が長い。§3.3）
+          long = CoverCommands::EPUB_SIZE[:height]
+          w_px, h_px = if trim.height_mm > trim.width_mm
+                         [(long * trim.width_mm / trim.height_mm.to_f).round, long]
+                       else
+                         [long, (long * trim.height_mm / trim.width_mm.to_f).round]
+                       end
 
           Dir.mktmpdir('ebook-cover') do |tmp|
             png = File.join(tmp, 'cover.png')
-            rasterize_svg_to_png(svg_path, png, w_px, h_px) && CoverCommands.write_ebook_cover!(png, jpg_path)
+            rasterize_svg_to_png(svg_path, png, w_px, h_px) && CoverCommands.write_ebook_cover!(png, jpg_path, trim:)
           end
         end
 

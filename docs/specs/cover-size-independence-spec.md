@@ -237,3 +237,10 @@ S8-3（判型のプリセットと `BookProfile`）の中で、次の順に行�
 - 寸法が決まらないときは `book_trim_size` が 🔴 を出して nil を返し、`generate!` も `vs cover` も表紙を作らない。`SIZES`・`detect_page_size`・`book_page_size` は無くした。`vs import` の `ImageProcessor::MASTER_WIDTH`・`MASTER_HEIGHT` も窓口の A4 から引く。
 - 確かめ: 直す前（HEAD の worktree）と後のコードで、A4（`a4_custom`）・B5・A5 × `light`・`guide` の 6 通りに `vs cover`（targets: pdf, print_pdf, epub）を走らせ、生成キャッシュと直下の表紙 8 つずつ（計 48）を比べた。ファイル名・PDF の全ページの画素（150dpi）・JPEG の画素・ログとも一致。
 - 本文の側の `Common.resolve_page_size` は、表に無い `size:` を今も黙って B5 として読む（表紙の側だけが 🔴 で止まる）。§2.3 の「設定の検査が先に止めるはず」は、今の本文には無い。
+
+### 8.2 §6 の 2 画像と SVG の比（2026-11-20）
+
+- 画像（§3.1）: `crop_to_fit?` が比の差を測り、1% を超えれば `fit_args` が `-resize WxH^ -gravity center -extent WxH`（覆うように縮めて中央で切る）にする。比べる相手は、閲覧用と入稿用（`scale`）では仕上がり、`*_bleed` の画像では「仕上がり＋塗り足し」。入稿用の `scale` で仕上がりの画像を塗り足しの大きさへ広げるときの比の違い（A5 で 1.15%）は、今までどおり引き伸ばす（相手を仕上がりにしているので切らない）。🟡 は同じ画像につき 1 回。
+- SVG（§3.2）: rsvg-convert（2.63.4）は `-w` と `-h` を両方渡すと `preserveAspectRatio` を見ずに引き伸ばす（`preserveAspectRatio="none"` と同じ画素になることを確かめた）。比の差が 1% を超える著者の SVG だけ、組み立てた写し（`render_svg`）を判型の比の外側の `<svg>` で包み、元の `<svg>` を内側の viewport（`x`・`y`・`width`・`height` だけを付け替える）にした。元の viewBox と中身は書き換えない。外側に空の `<defs>` を置くので、入稿用の塗り足しのクリップ（`expand_svg_viewbox_for_bleed`）もそのまま働く。同梱のひな形は §6 の 4 で扱うので、ここでは包まない。
+- 電子書籍の表紙（§3.3）: 横長・正方形の判型では、判型の比のまま横 2,560 px にする（`write_ebook_cover!` の `trim:`）。縦長は今のまま（縦 2,560 px・中央の 1,600 px）。あわせて、透明な所を白で塗るようにした（JPEG は透明を持てず、包んだ SVG の余りが黒になっていた。PDF では紙の白に見える所）。
+- 確かめ: §8.1 と同じ 6 通り × 8 枚が、直す前とファイル名・画素とも一致（不透明な今の表紙では白で塗る段も画素を変えない）。新しい振る舞いは `cover_test.rb` の 5 本（正方形の画像を B5 へ・比の近い画像は黙って合わせる・`*_bleed` の比べる相手・比の違う SVG・横長の電子書籍の表紙）。

@@ -193,7 +193,7 @@ module VivlioStarter
           label = preset[:label]
         else
           name = "#{width_mm.round}x#{height_mm.round}"
-          label = "#{width_mm} × #{height_mm} mm"
+          label = "#{format_mm(width_mm)} × #{format_mm(height_mm)} mm"
         end
         TrimSize.new(width_mm:, height_mm:, name:, label:,
                      width: (width_mm / Units::MM_PER_INCH * DPI).round,
@@ -234,7 +234,8 @@ module VivlioStarter
         cache_dir = Common.cover_cache_dir
 
         if targets.include?('pdf')
-          generate_rgb_pdf_single(image, File.join(cache_dir, "#{side}cover_#{theme}_#{trim.name}_rgb.pdf"), trim)
+          crop = crop_to_fit?(image, trim.width_mm, trim.height_mm, trim)
+          generate_rgb_pdf_single(image, File.join(cache_dir, "#{side}cover_#{theme}_#{trim.name}_rgb.pdf"), trim, crop:)
         end
 
         if targets.include?('print_pdf')
@@ -244,7 +245,68 @@ module VivlioStarter
 
         return unless side == 'front' && ebook_target?(targets)
 
-        write_ebook_cover!(image, File.join(cache_dir, "cover_#{theme}.jpg"))
+        write_ebook_cover!(image, File.join(cache_dir, "cover_#{theme}.jpg"), trim:)
+      end
+
+      # 画像の縦横比を「違う」とみなす差（cover-size-independence-spec.md §3.1）。A 列の絵を B 列の本に
+      # 使う（差 0.2%）ような小さな違いは、今までどおり判型の画素数へ合わせる。
+      ASPECT_TOLERANCE = 0.01
+
+      # 画像を、合わせる先（w_mm × h_mm）へ引き伸ばさずに中央で切るか。比の差が ASPECT_TOLERANCE を
+      # 超えれば切る。引き伸ばすと絵が歪み、著者が気づかないまま入稿されるため（§3.1）。
+      # @param bleed [Boolean] 合わせる先が塗り足しを含む寸法か（*_bleed の画像）
+      def crop_to_fit?(image, w_mm, h_mm, trim, bleed: false)
+        iw, ih = Common.image_size(image)
+        return false unless iw&.positive? && ih&.positive?
+
+        image_ratio = ih.to_f / iw
+        return false if ((image_ratio / (h_mm.to_f / w_mm)) - 1).abs <= ASPECT_TOLERANCE
+
+        warn_aspect_mismatch(image, image_ratio, w_mm, h_mm, trim, bleed:)
+        true
+      end
+
+      # 切る向きと量、切らずに使える画素数を 🟡 で知らせる。閲覧用と入稿用で同じ画像を 2 回測るので、1 回だけ。
+      def warn_aspect_mismatch(image, image_ratio, w_mm, h_mm, trim, bleed:)
+        @warned_aspect ||= {}
+        return if @warned_aspect[image]
+
+        @warned_aspect[image] = true
+        # 覆うように縮めたとき、はみ出す向きの片側の量
+        cut = if image_ratio > h_mm.to_f / w_mm
+                "上下を #{format_mm(((w_mm * image_ratio) - h_mm) / 2)}mm ずつ"
+              else
+                "左右を #{format_mm(((h_mm / image_ratio) - w_mm) / 2)}mm ずつ"
+              end
+        target = "判型（#{trim_description(trim)}）"
+        target += "に塗り足しを足した寸法（#{format_mm(w_mm)} × #{format_mm(h_mm)} mm）" if bleed
+        px = [w_mm, h_mm].map { (it / Units::MM_PER_INCH * DPI).round }
+        Common.log_warn(
+          "#{image} の縦横比が、#{target}と違います",
+          detail: "#{cut}切り落として使いました\n" \
+                  "→ #{px.join(' × ')} px の画像に差し替えると、切らずに使えます" \
+                  "（#{bleed ? '塗り足しを含めて' : ''}#{trim.label} を #{DPI}dpi で刷る寸法）"
+        )
+      end
+
+      # 文面の判型の書き方（「新書・103 × 182 mm」）。幅と高さを直接書いた本は寸法だけ。
+      def trim_description(trim)
+        dims = "#{format_mm(trim.width_mm)} × #{format_mm(trim.height_mm)} mm"
+        trim.label == dims ? dims : "#{trim.label}・#{dims}"
+      end
+
+      # mm の値を文面へ（小数 1 桁。整数なら小数点を付けない）
+      def format_mm(value)
+        rounded = value.to_f.round(1)
+        rounded == rounded.round ? rounded.round.to_s : rounded.to_s
+      end
+
+      # 画像を w_px × h_px へ合わせる ImageMagick の引数。crop なら覆うように縮めて中央で切り、
+      # でなければ比の小さな違いを引き伸ばして合わせる。
+      def fit_args(w_px, h_px, crop:)
+        return ['-resize', "#{w_px}x#{h_px}!"] unless crop
+
+        ['-resize', "#{w_px}x#{h_px}^", '-gravity', 'center', '-extent', "#{w_px}x#{h_px}"]
       end
 
       # PNG の画素数が判型に対して足りなければ知らせる。PNG に書かれた dpi の値は見ない
@@ -272,14 +334,21 @@ module VivlioStarter
       def write_print_cover!(side, png, theme, trim)
         cover_bleed = (Common::CONFIG.dig(:output, :print_pdf, :cover_bleed) || 'scale').to_s
         source, fill = resolve_print_cover_input(png, cover_bleed)
+        bleed_mm = Build::NombreStamper.bleed_mm_from_config
+        # 塗り足し込みの画像（*_bleed）は「仕上がり＋塗り足し」の比と比べる（§3.1）
+        crop = if source == png
+                 crop_to_fit?(png, trim.width_mm, trim.height_mm, trim)
+               else
+                 crop_to_fit?(source, trim.width_mm + (2 * bleed_mm), trim.height_mm + (2 * bleed_mm), trim, bleed: true)
+               end
         cache_pdf = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}_#{trim.name}_cmyk.pdf")
-        generate_pdfx_single(source, cache_pdf, trim,
-                             bleed_mm: Build::NombreStamper.bleed_mm_from_config, crop_marks: true, fill:)
+        generate_pdfx_single(source, cache_pdf, trim, bleed_mm:, crop_marks: true, fill:, crop:)
         publish_print_cover!(side, cache_pdf)
       end
 
       # 閲覧用の PDF（RGB・仕上がりサイズ）
-      def generate_rgb_pdf_single(input_png, output_pdf, trim)
+      # @param crop [Boolean] 比の違う画像を引き伸ばさずに中央で切るか（crop_to_fit?）
+      def generate_rgb_pdf_single(input_png, output_pdf, trim, crop: false)
         return unless File.exist?(input_png)
 
         convert_cmd = imagemagick_convert_command
@@ -291,7 +360,7 @@ module VivlioStarter
         Common.log_info "  生成中: #{File.basename(output_pdf)}"
         cmd = convert_cmd + [
           input_png,
-          '-resize', "#{trim.width}x#{trim.height}!",
+          *fit_args(trim.width, trim.height, crop:),
           '-density', DPI.to_s,
           '-units', 'PixelsPerInch',
           output_pdf
@@ -365,7 +434,8 @@ module VivlioStarter
       # @param bleed_mm   [Float]   塗り足し幅（mm）
       # @param crop_marks [Boolean] トンボを付与するか
       # @param fill       [Symbol]  充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）
-      def generate_pdfx_single(input_png, output_pdf, trim, bleed_mm:, crop_marks: false, fill: :bleed)
+      # @param crop       [Boolean] 比の違う画像を引き伸ばさずに中央で切るか（crop_to_fit?）
+      def generate_pdfx_single(input_png, output_pdf, trim, bleed_mm:, crop_marks: false, fill: :bleed, crop: false)
         return unless File.exist?(input_png)
 
         convert_cmd = imagemagick_convert_command
@@ -412,7 +482,7 @@ module VivlioStarter
             # Step 1: 画像を充填サイズへリサイズ→白背景の全紙サイズへ中央配置→PDF
             cmd_convert = convert_cmd + [
               input_png,
-              '-resize', "#{content_w_px}x#{content_h_px}!",
+              *fit_args(content_w_px, content_h_px, crop:),
               '-background', 'white',
               '-gravity', 'center',
               '-extent', "#{total_w_px}x#{total_h_px}",
@@ -452,7 +522,7 @@ module VivlioStarter
 
           cmd_convert = convert_cmd + [
             input_png,
-            '-resize', "#{bleed_w_px}x#{bleed_h_px}!",
+            *fit_args(bleed_w_px, bleed_h_px, crop:),
             '-colorspace', 'CMYK',
             '-density', DPI.to_s,
             '-units', 'PixelsPerInch',
@@ -481,26 +551,34 @@ module VivlioStarter
       # 電子書籍用の表紙の JPEG を作る（ebook-cover-jpeg-spec.md §3）。表紙の元が PNG でも SVG でも、
       # 電子書籍用の JPEG はここでだけ作る（SVG は呼び出し側で PNG に焼いてから渡す）。
       #
-      # 縦 2,560 px に縮めて中央の横 1,600 px を切り出し、色を sRGB に直して品質 95 で書く。
-      # 書けたら、KDP へ上げる成果品としてプロジェクトの直下へも写す。
+      # 縦長の判型は、縦 2,560 px に縮めて中央の横 1,600 px を切り出す。横長・正方形の判型は、
+      # 判型の比のまま横 2,560 px にする（cover-size-independence-spec.md §3.3）。色を sRGB に直して
+      # 品質 95 で書き、KDP へ上げる成果品としてプロジェクトの直下へも写す。
       #
       # @param source [String] 元の画像（PNG）
       # @param output [String] 書き出す JPEG（生成キャッシュ側。EPUB へ入れる元）
+      # @param trim [TrimSize, nil] 本の判型（nil は縦長として扱う）
       # @return [Boolean] 書けたか
-      def write_ebook_cover!(source, output)
+      def write_ebook_cover!(source, output, trim: nil)
         convert_cmd = imagemagick_convert_command
         unless convert_cmd
           Common.log_error 'ImageMagick（magick/convert）が見つかりません'
           return false
         end
 
+        geometry = if trim.nil? || trim.height_mm > trim.width_mm
+                     ['-resize', "x#{EPUB_SIZE[:height]}", '-gravity', 'center',
+                      '-crop', "#{EPUB_SIZE[:width]}x#{EPUB_SIZE[:height]}+0+0", '+repage']
+                   else
+                     long = EPUB_SIZE[:height]
+                     fit_args(long, (long * trim.height_mm / trim.width_mm.to_f).round, crop: true)
+                   end
         Common.log_info "  生成中: #{File.basename(output)}"
+        # 透明な所は白で塗る（JPEG は透明を持てず、塗らないと黒になる。PDF の表紙では紙の白に見える所）
         cmd = convert_cmd + [
           source, *srgb_profile_args,
-          '-resize', "x#{EPUB_SIZE[:height]}",
-          '-gravity', 'center',
-          '-crop', "#{EPUB_SIZE[:width]}x#{EPUB_SIZE[:height]}+0+0",
-          '+repage',
+          '-background', 'white', '-alpha', 'remove', '-alpha', 'off',
+          *geometry,
           '-quality', EBOOK_COVER_QUALITY.to_s,
           output
         ]

@@ -365,6 +365,111 @@ module VivlioStarter
         end
       end
 
+      # 比の違う著者の画像（正方形の絵を B5 の本に）は、引き伸ばさずに中央で切り、🟡 で切った量と
+      # 切らずに使える画素数を示す（cover-size-independence-spec.md §3.1）。左端の緑の帯は、
+      # 引き伸ばせば残り、左右を切れば落ちる
+      def test_should_crop_an_image_of_another_aspect_instead_of_stretching_it
+        skip 'ImageMagick と pdftoppm が必要です' unless imagemagick_available? && command_in_path?('pdftoppm')
+
+        within_temp_dir do
+          setup_config(targets: 'pdf')
+          FileUtils.mkdir_p('covers')
+          system(*imagemagick_convert_command, '-size', '1000x1000', 'xc:red', '-fill', 'green',
+                 '-draw', 'rectangle 0,0 99,999', 'covers/frontcover_master.png')
+
+          out, err = capture_io { CoverCommands.generate!(targets: ['pdf']) }
+
+          pdf = File.join(Common.cover_cache_dir, 'frontcover_master_b5_rgb.pdf')
+          system('pdftoppm', '-r', '20', '-png', '-singlefile', pdf, 'page')
+          left_edge_green = IO.popen([*imagemagick_convert_command, 'page.png', '-format', '%[fx:int(255*p{1,70}.g)]', 'info:'], &:read)
+          assert_operator left_edge_green.to_i, :<, 30, '左端の緑の帯が切り落とされているべきです'
+          assert_match(%r{covers/frontcover_master.png の縦横比が、判型（B5・182 × 257 mm）と違います}, out + err)
+          assert_match(/左右を 37.5mm ずつ切り落として使いました/, out + err)
+          assert_match(/→ 2508 × 3541 px の画像に差し替えると、切らずに使えます（B5 を 350dpi で刷る寸法）/, out + err)
+        end
+      end
+
+      # 比の差が 1% 以内（A 列の絵を B 列の本に）なら、今までどおり判型へ合わせ、何も言わない
+      def test_should_fit_an_image_of_nearly_the_same_aspect_silently
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config(targets: 'pdf')
+          FileUtils.mkdir_p('covers')
+          create_dummy_png('covers/frontcover_master.png', width: 2894, height: 4093)
+
+          out, err = capture_io { CoverCommands.generate!(targets: ['pdf']) }
+
+          refute_match(/縦横比/, out + err)
+        end
+      end
+
+      # 塗り足し込みの画像（*_bleed）は「仕上がり＋塗り足し」の比と比べる（§3.1）。
+      # B5 の仕上がり＋3mm の比の画像は、仕上がりの比とは 1% 近く違っても切らない
+      def test_should_compare_a_bleed_image_with_the_bleed_box
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config(targets: 'print_pdf')
+          FileUtils.mkdir_p('covers')
+          create_dummy_png('covers/frontcover_master.png', width: 2508, height: 3541)
+          create_dummy_png('covers/frontcover_master_bleed.png', width: 2591, height: 3624)
+          create_dummy_png('covers/backcover_master.png', width: 2508, height: 3541)
+          create_dummy_png('covers/backcover_master_bleed.png', width: 1000, height: 1000)
+
+          out, err = capture_io { CoverCommands.generate!(targets: ['print_pdf']) }
+
+          refute_match(/frontcover_master_bleed.png の縦横比/, out + err)
+          assert_match(/backcover_master_bleed.png の縦横比が、判型（B5・182 × 257 mm）に塗り足しを足した寸法（188 × 263 mm）と違います/,
+                       out + err)
+          assert_match(/→ 2591 × 3624 px の画像に差し替えると、切らずに使えます（塗り足しを含めてB5 を 350dpi で刷る寸法）/, out + err)
+        end
+      end
+
+      # 比の違う著者の SVG は、引き伸ばさずに preserveAspectRatio（既定は切らずに収める）で置き、
+      # 🟡 で判型の比の viewBox を示す（§3.2）。正方形の絵の上下には地が残る
+      def test_should_place_an_svg_of_another_aspect_by_its_preserve_aspect_ratio
+        skip 'ImageMagick と rsvg-convert が必要です' unless imagemagick_available? && command_in_path?('rsvg-convert')
+
+        within_temp_dir do
+          setup_config(targets: 'epub', theme: 'floral')
+          FileUtils.mkdir_p('covers')
+          File.write('covers/frontcover_floral.svg', <<~SVG)
+            <svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+              <rect width="100" height="100" fill="#ff0000"/>
+            </svg>
+          SVG
+
+          out, err = capture_io { CoverCommands.generate!(targets: ['epub']) }
+
+          jpg = File.join(Common.cover_cache_dir, 'cover_floral.jpg')
+          top = IO.popen([*imagemagick_convert_command, jpg, '-format', '%[fx:int(255*p{800,40}.g)]', 'info:'], &:read)
+          middle = IO.popen([*imagemagick_convert_command, jpg, '-format', '%[fx:int(255*p{800,1280}.g)]', 'info:'], &:read)
+          # 透明な所は紙と同じ白で塗る（JPEG は透明を持てない）。赤で塗られていれば緑が 0、黒なら 0
+          assert_operator top.to_i, :>, 225, '上の端は紙の白のまま（赤や黒で塗られていない）であるべきです'
+          assert_operator middle.to_i, :<, 30, '中央は SVG の赤であるべきです'
+          assert_match(%r{covers/frontcover_floral.svg の縦横比が、判型（B5・182 × 257 mm）と違います}, out + err)
+          assert_match(/→ viewBox を判型と同じ比（例: viewBox="0 0 182 257"）にすると、判型いっぱいに使えます/, out + err)
+        end
+      end
+
+      # 横長の判型の電子書籍の表紙は、判型の比のまま横 2,560 px にする（§3.3）
+      def test_should_make_a_landscape_ebook_cover_2560_wide
+        skip 'ImageMagickが必要です' unless imagemagick_available?
+
+        within_temp_dir do
+          setup_config
+          FileUtils.mkdir_p(Common.cover_cache_dir)
+          create_dummy_png('landscape.png', width: 3541, height: 2508)
+          output = File.join(Common.cover_cache_dir, 'cover_master.jpg')
+          trim = CoverCommands.trim_size(width: '257mm', height: '182mm')
+
+          assert CoverCommands.write_ebook_cover!('landscape.png', output, trim:)
+
+          assert_equal '2560x1813', jpeg_facts(output, '%wx%h')
+        end
+      end
+
       private
 
       def jpeg_facts(path, format)
