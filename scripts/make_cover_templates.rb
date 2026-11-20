@@ -3,26 +3,26 @@
 
 # scripts/make_cover_templates.rb
 # 表紙を自作する著者へ配る雛形の画像を covers/templates/ に作る。
-# 判型ごとに表と裏の 2 枚ずつ（A4・B5・A5 で 6 枚）。
+# 判型ごとに表と裏の 2 枚ずつ。判型は本文と表紙が使う表（Common::PAGE_SIZES）から引くので、
+# 判型を足すと下敷きも増える（cover-size-independence-spec.md §5）。
 #
 # 使い方: ruby scripts/make_cover_templates.rb
 
 require 'fileutils'
 require 'tmpdir'
+require_relative '../lib/vivlio_starter/cli/cover'
 
 # 複製元はプロジェクトルート（scripts/ の一つ上）。どこから起動しても同じ結果になる。
 ROOT = File.expand_path('..', __dir__)
 OUTPUT_DIR = File.join(ROOT, 'covers', 'templates')
 
-# CoverCommands::SIZES と同じ値（cover_test.rb が突き合わせる）。
-# lib を読むと book.yml まで読み込むので、ここへ写している。
-SIZES = {
-  a4: { width: 2894, height: 4093, mm: [210, 297] },
-  b5: { width: 2508, height: 3541, mm: [182, 257] },
-  a5: { width: 2039, height: 2894, mm: [148, 210] }
-}.freeze
+# 判型ごとの仕上がりの寸法（CoverCommands::TrimSize）。JIS-B5 は B5 と同じ名前になるので 1 枚にまとめる
+PAGES = VivlioStarter::CLI::Common::PAGE_SIZES.keys
+                                            .map { VivlioStarter::CLI::CoverCommands.trim_size(size: it) }
+                                            .uniq(&:name)
+                                            .freeze
 
-DPI = 350
+DPI = VivlioStarter::CLI::CoverCommands::DPI
 MM_PER_INCH = 25.4
 
 # 裁ち落とされる幅（output.print_pdf.bleed の既定値）
@@ -32,8 +32,11 @@ BLEED_MM = 3
 SAFE_MM = 5
 
 # 電子書籍の表紙の縦横比（CoverCommands::EPUB_SIZE）。高さをそろえて左右を切るので、
-# この比より横に広い判型は左右の帯が見えなくなる。
+# この比より横に広い判型は左右の帯が見えなくなる。新書のように細長い判型は左右が切れないので、帯を描かない。
 EBOOK_ASPECT = 1600.0 / 2560
+
+# 字の大きさを高さで決める判型の比の上限（高さ ÷ 幅）。これより細長い判型は幅で決める
+TEXT_ASPECT_LIMIT = 1.45
 
 BLEED_COLOR = '#fbdcdc'
 EBOOK_COLOR = '#dcebfb'
@@ -57,23 +60,28 @@ end
 # 雛形 1 枚の SVG を組み立てる。数値の単位はすべて画素。
 def template_svg(page, side)
   # --- Phase: 寸法 ---
-  width, height = page.values_at(:width, :height)
-  trim_w, trim_h = page[:mm]
+  width = page.width
+  height = page.height
+  trim_w, trim_h = page.mm
   bleed = mm_to_px(BLEED_MM)
   safe = mm_to_px(SAFE_MM)
   ebook_band = ((width - (height * EBOOK_ASPECT)) / 2).round
+  ebook = side[:ebook] && ebook_band.positive?
   bleed_w = mm_to_px(trim_w + (BLEED_MM * 2))
   bleed_h = mm_to_px(trim_h + (BLEED_MM * 2))
   unit = height / 100.0
+  # 字と見本の大きさの単位。高さの 100 分の 1 だが、新書のように細長い判型では幅で抑える
+  # （高さで決めると、使い方の行が左右の端まで届く）。A 列・B 列は高さのまま
+  text_unit = [height, width * TEXT_ASPECT_LIMIT].min / 100.0
   center = width / 2
   swatch_x = (width * 0.2).round
-  label_x = swatch_x + (unit * 5).round
-  swatch_w = (unit * 3.6).round
-  swatch_h = (unit * 1.8).round
+  label_x = swatch_x + (text_unit * 5).round
+  swatch_w = (text_unit * 3.6).round
+  swatch_h = (text_unit * 1.8).round
 
   # --- Phase: 目安の線と帯 ---
   bands = []
-  if side[:ebook]
+  if ebook
     bands << %(<rect x="0" y="0" width="#{ebook_band}" height="#{height}" fill="#{EBOOK_COLOR}"/>)
     bands << %(<rect x="#{width - ebook_band}" y="0" width="#{ebook_band}" height="#{height}" fill="#{EBOOK_COLOR}"/>)
   end
@@ -86,16 +94,16 @@ def template_svg(page, side)
 
   # --- Phase: 見出しと寸法 ---
   lines = [
-    text_tag("#{side[:label]}の雛形", center, (unit * 24).round, (unit * 4.2).round, weight: 700),
-    text_tag("#{page[:name]}（#{trim_w} × #{trim_h} mm）", center, (unit * 30).round, (unit * 2.6).round),
-    text_tag("#{with_comma(width)} × #{with_comma(height)} px", center, (unit * 38).round, (unit * 4.6).round, weight: 700),
-    text_tag("#{DPI} dpi", center, (unit * 42).round, (unit * 2).round)
+    text_tag("#{side[:label]}の雛形", center, (unit * 24).round, (text_unit * 4.2).round, weight: 700),
+    text_tag("#{page.label}（#{trim_w} × #{trim_h} mm）", center, (unit * 30).round, (text_unit * 2.6).round),
+    text_tag("#{with_comma(width)} × #{with_comma(height)} px", center, (unit * 38).round, (text_unit * 4.6).round, weight: 700),
+    text_tag("#{DPI} dpi", center, (unit * 42).round, (text_unit * 2).round)
   ]
 
   # --- Phase: 凡例 ---
   legend = [["裁ち落とされる範囲（#{BLEED_MM} mm）", BLEED_COLOR]]
   ebook_mm = (ebook_band / unit * trim_h / 100).round
-  legend << ["電子書籍では切れる範囲（左右 #{ebook_mm} mm ずつ）", EBOOK_COLOR] if side[:ebook]
+  legend << ["電子書籍では切れる範囲（左右 #{ebook_mm} mm ずつ）", EBOOK_COLOR] if ebook
   legend << ["文字はこの線の内側へ（端から #{SAFE_MM} mm）", nil]
   legend.each_with_index do |(label, color), index|
     y = (unit * (50 + (index * 4))).round
@@ -106,7 +114,7 @@ def template_svg(page, side)
                %(<line x1="#{swatch_x}" y1="#{y - (swatch_h / 2)}" x2="#{swatch_x + swatch_w}" y2="#{y - (swatch_h / 2)}" ) +
                  %(stroke="#{SAFE_COLOR}" stroke-width="#{stroke}" stroke-dasharray="#{dash / 2} #{dash / 2}"/>)
              end
-    lines << text_tag(label, label_x, y, (unit * 1.9).round, anchor: 'start')
+    lines << text_tag(label, label_x, y, (text_unit * 1.9).round, anchor: 'start')
   end
 
   # --- Phase: 使い方 ---
@@ -116,7 +124,7 @@ def template_svg(page, side)
     ["塗り足しまで描くときは #{side[:master]}_bleed.png", 76.6],
     ["（#{with_comma(bleed_w)} × #{with_comma(bleed_h)} px）で保存します。", 80],
     ['仕上げるときは、この文字と線を消してください。', 85.2]
-  ].each { |text, row| lines << text_tag(text, center, (unit * row).round, (unit * 1.9).round) }
+  ].each { |text, row| lines << text_tag(text, center, (unit * row).round, (text_unit * 1.9).round) }
 
   <<~SVG
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 #{width} #{height}" width="#{width}" height="#{height}">
@@ -144,10 +152,10 @@ def write_png(svg, output)
 end
 
 FileUtils.mkdir_p(OUTPUT_DIR)
-SIZES.each do |size, page|
+PAGES.each do |page|
   SIDES.each do |side_name, side|
-    output = File.join(OUTPUT_DIR, "#{side_name}cover_#{size}.png")
-    write_png(template_svg(page.merge(name: size.to_s.upcase), side), output)
+    output = File.join(OUTPUT_DIR, "#{side_name}cover_#{page.name}.png")
+    write_png(template_svg(page, side), output)
     puts "WRITE covers/templates/#{File.basename(output)}（#{File.size(output) / 1024} KB）"
   end
 end

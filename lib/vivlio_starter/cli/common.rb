@@ -1205,9 +1205,16 @@ module VivlioStarter
 
         "config/catalog.yml の#{volume.name}の cover"
       end
-      # master の画像が足りないときの次の一手。雛形は判型ごとに covers/templates/ にある
+      # master の画像が足りないときの次の一手。下敷きは判型ごとにあるので、その本の判型のものを名指す
+      # （cover-size-independence-spec.md §5）。判型が決まらない本では置き場だけを示す
       def master_cover_guidance
-        "→ covers/templates/ の雛形を下敷きに画像を作って置くか、#{cover_setting_label} を light にしてください"
+        name = CoverCommands.trim_size&.name
+        underlay = if name
+                     "#{File.join(covers_dir, 'templates', "frontcover_#{name}.png")}（裏表紙は backcover_#{name}.png）"
+                   else
+                     "#{File.join(covers_dir, 'templates')}/ の雛形"
+                   end
+        "→ #{underlay}を下敷きに画像を作って置くか、#{cover_setting_label} を light にしてください"
       end
       # 表紙の元の画像（PNG・JPEG・WebP）のうち、最初に見つかったもののパス。無ければ nil
       # @param base [String] 拡張子を除いた名前（frontcover_master・frontcover_master_bleed）

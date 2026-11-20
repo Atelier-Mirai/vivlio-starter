@@ -68,6 +68,13 @@ module VivlioStarter
         Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
       end
 
+      # 縦横比の 🟡 は「同じ画像につき 1 回」で、その覚えはプロセスに残る。別のテストが同じ名前の画像
+      # （covers/frontcover_master.png）で先に知らせると、後のテストで 🟡 が出ないので、テストごとに消す
+      def setup
+        CoverCommands.instance_variable_set(:@warned_aspect, nil)
+        CoverCommands::SvgCover.instance_variable_set(:@warned_aspect, nil)
+      end
+
       # マスターファイルが存在しない場合、false を返すことを確認
       def test_check_master_files_returns_false_when_missing
         within_temp_dir do
@@ -642,7 +649,8 @@ module VivlioStarter
       def test_should_provide_cover_templates_for_each_page_size
         templates = File.expand_path('../../../covers/templates', __dir__)
 
-        %w[A4 B5 A5].map { CoverCommands.trim_size(size: it) }.each do |trim|
+        # 判型の表（Common::PAGE_SIZES）の全部の判型。判型を足すと、下敷きの作り直しを促す
+        Common::PAGE_SIZES.keys.map { CoverCommands.trim_size(size: it) }.uniq(&:name).each do |trim|
           %w[front back].each do |side|
             name = "#{side}cover_#{trim.name}.png"
             width, height = File.binread(File.join(templates, name), 24).unpack('@16NN')

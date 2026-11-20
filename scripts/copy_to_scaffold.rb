@@ -62,6 +62,14 @@ if Dir.exist?(covers_dir)
   guide_covers = Dir.glob(File.join(covers_dir, '*cover_guide.*'))
   guide_covers.each { FileUtils.rm_f(it) }
   puts "PRUNE 本書の表紙 #{guide_covers.size} 件を除去"
+
+  # 表紙の下敷きは、技術書が選べる判型（A4・A5・B5）のぶんだけを配る。小説の判型のぶん（文庫・B6・
+  # 新書・四六）は、種類ごとの雛形を作るとき（S8-7）に小説の雛形へ分ける（cover-size-independence-spec.md §5）
+  techbook_sizes = %w[a4 a5 b5].freeze
+  other_underlays = Dir.glob(File.join(covers_dir, 'templates', '*cover_*.png'))
+                       .reject { techbook_sizes.include?(File.basename(it, '.png').split('_').last) }
+  other_underlays.each { FileUtils.rm_f(it) }
+  puts "PRUNE 技術書の判型でない下敷き #{other_underlays.size} 件を除去"
 end
 
 # ================================================================

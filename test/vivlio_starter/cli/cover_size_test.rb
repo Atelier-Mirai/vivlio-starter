@@ -61,6 +61,19 @@ module VivlioStarter
         assert_match(%r{covers/frontcover_master.png（3541 × 2508 px）}, out + err)
       end
 
+      # 4. 下敷きの画像が covers/templates/ にある（scripts/make_cover_templates.rb が判型の表から作る。§5）
+      def test_should_provide_an_underlay_for_every_preset
+        templates = File.expand_path('../../../covers/templates', __dir__)
+
+        presets.each do |name, preset|
+          trim = CoverCommands.trim_size(preset)
+          %w[front back].each do |side|
+            assert File.exist?(File.join(templates, "#{side}cover_#{trim.name}.png")),
+                   "#{name} の下敷き #{side}cover_#{trim.name}.png が無い（ruby scripts/make_cover_templates.rb で作る）"
+          end
+        end
+      end
+
       # 本文の @page と表紙が同じ寸法になる（本文と表紙が別の表を持たない。§2.1）
       def test_should_give_the_cover_and_the_body_the_same_size
         presets.each do |name, preset|
