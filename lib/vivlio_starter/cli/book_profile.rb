@@ -28,7 +28,7 @@ module VivlioStarter
       PROFILES = {
         techbook: {},
         novel: {
-          %i[page use]               => 'a6_standard',
+          %i[page use]               => 'bunko_standard',
           %i[page section_pagebreak] => false,
           %i[page chapter_pagebreak] => 'any',
           %i[page writing_mode]      => 'vertical',

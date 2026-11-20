@@ -911,7 +911,8 @@ module VivlioStarter
         'B5' => { width: '182mm', height: '257mm', label: 'B5' },
         'JIS-B5' => { width: '182mm', height: '257mm', label: 'B5' },
         # 小説の判型（novel-vertical-spec.md §4.1）。B6 も B5 と同じく JIS の寸法
-        'A6' => { width: '105mm', height: '148mm', label: 'A6' },
+        # 文庫判は A6 と同じ寸法だが、小説を書く人の呼び方で選べるよう BUNKO と名付ける
+        'BUNKO' => { width: '105mm', height: '148mm', label: '文庫' },
         'B6' => { width: '128mm', height: '182mm', label: 'B6' },
         'SHINSHO' => { width: '103mm', height: '182mm', label: '新書' },
         'SHIROKU' => { width: '127mm', height: '188mm', label: '四六' }

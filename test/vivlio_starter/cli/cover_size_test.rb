@@ -86,7 +86,7 @@ module VivlioStarter
       # 小説の判型（novel-vertical-spec.md §4.1）の寸法と、生成物のファイル名に出る名前
       def test_should_size_the_novel_presets
         expected = {
-          a6_standard: [[105, 148], 'a6'], b6_standard: [[128, 182], 'b6'],
+          bunko_standard: [[105, 148], 'bunko'], b6_standard: [[128, 182], 'b6'],
           shinsho_standard: [[103, 182], 'shinsho'], shiroku_standard: [[127, 188], 'shiroku']
         }
         expected.each do |name, (mm, file_name)|
@@ -99,7 +99,7 @@ module VivlioStarter
       # 版面の字数と行数が §4.1 の目安になるよう、余白を字の大きさの整数倍で決めてある。
       # 縦書きでは字数が天地、行数がノドと小口の間に入る
       def test_should_fit_the_target_characters_and_lines_in_the_novel_presets
-        { a6_standard: [38, 16], b6_standard: [42, 17], shinsho_standard: [44, 15], shiroku_standard: [43, 17] }
+        { bunko_standard: [38, 16], b6_standard: [42, 17], shinsho_standard: [44, 15], shiroku_standard: [43, 17] }
           .each do |name, (chars, lines)|
             preset = presets.fetch(name)
             width, height = Common.resolve_page_size(preset).map { Units.length_to_mm(it) }

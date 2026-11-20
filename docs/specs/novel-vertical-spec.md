@@ -21,7 +21,7 @@
 | 7 | ページの種類 | 奥付と権利ページは横組み、ほかは縦組み。縦書きでは索引と用語集を作らない（🟡） | §2.2 |
 | 8 | 節の改ページ | `BookProfile` の `novel` に `page.section_pagebreak: false`・`page.chapter_pagebreak: any`。テーマの `tokens:` には書かない | §4.3 |
 | 9 | `theme-epub3j` | 同梱しない | §3.5 |
-| 10 | 判型 | 文庫（A6）・B6・新書・四六の 4 つを足す。既定は `a6_standard`。版面の決め方は今の形のまま。行数と字数のキーは足さない | §4 |
+| 10 | 判型 | 文庫（A6）・B6・新書・四六の 4 つを足す。既定は `bunko_standard`。版面の決め方は今の形のまま。行数と字数のキーは足さない | §4 |
 | 11 | 縦中横の自動 | 半角の数字 1〜2 桁と、半角の `!?`・`?!`・`!!`・`??`。3 桁以上は包まず、lint が知らせる | §5.3 |
 | 12 | 投稿サイトの記法 | 縦棒あり（半角・全角）・縦棒なし（読みが仮名だけのとき）・`《《…》》`・`|《` の打ち消しを受ける。括弧のルビは受けない | §5.4 |
 | 13 | 字下げ | CSS が字下げする。投稿サイトの記法を読む前処理が、段落の頭の全角空白 1 つを落とす。括弧で始まる段落には vs が印を付け、テーマが字下げを 0 にする | §6.1 |
@@ -162,12 +162,12 @@ styles:
 
 | プリセット | 判型 | 寸法 | 目安（字数 × 行数。縦書き） |
 | :--- | :--- | :--- | :--- |
-| `a6_standard`・`a6_custom` | 文庫（A6） | 105 × 148 mm | 9pt・38 字 × 15〜16 行 |
+| `bunko_standard`・`bunko_custom` | 文庫（A6 と同じ寸法） | 105 × 148 mm | 9pt・38 字 × 15〜16 行 |
 | `b6_standard`・`b6_custom` | B6 | 128 × 182 mm | 9.5pt・42 字 × 17 行前後 |
 | `shinsho_standard` | 新書 | 103 × 182 mm | 9pt・2 段にしない。44 字 × 15 行前後 |
 | `shiroku_standard` | 四六 | 127 × 188 mm | 9.5pt・43 字 × 17 行前後 |
 
-- `novel` の既定は `a6_standard`。同人誌の小説でいちばん多い判型で、`v2-architecture-spec.md` §2.2 の仮の値のままである。
+- `novel` の既定は `bunko_standard`。同人誌の小説でいちばん多い判型で、`v2-architecture-spec.md` §2.2 の仮の値のままである。
 - 値（字の大きさ・行送り・四つの余白）は、S8-3 で Opus が上の目安から求め、S8-5 で `novel` を当てた紙面をユーザーが見て確定する。
   - 求め方は「天と地の余白の和 ＝ 紙の高さ − 字の大きさ × 字数」「ノドと小口の和 ＝ 紙の幅 −（行送り ×（行数 − 1）＋ 字の大きさ）」で、版面が字の大きさの整数倍になるように余白を決める。
   - ノドは 13mm 以上にする（無線綴じで読める幅）。
@@ -188,7 +188,7 @@ styles:
 ### 4.3 `BookProfile` の `novel` に足す行
 
 ```ruby
-%i[page use]                => 'a6_standard',
+%i[page use]                => 'bunko_standard',
 %i[page section_pagebreak]  => false,
 %i[page chapter_pagebreak]  => 'any',
 %i[theme name]              => 'novel',
@@ -412,10 +412,10 @@ S8 の中の決まり:
 
 #### 作ったもの
 
-- `Common::PAGE_SIZES` に `A6`（105×148）・`B6`（128×182。B5 と同じく JIS）・`SHINSHO`（103×182）・`SHIROKU`（127×188）。各行に文面の名前（`label:`。`A6`・`B6`・`新書`・`四六`）。生成物のファイル名の判型の部分は `a6`・`b6`・`shinsho`・`shiroku`。
-- `config/page_presets.yml` に `a6_standard`・`a6_custom`・`b6_standard`・`b6_custom`・`shinsho_standard`・`shiroku_standard`（§4.1）。
+- `Common::PAGE_SIZES` に `BUNKO`（105×148。A6 と同じ寸法）・`B6`（128×182。B5 と同じく JIS）・`SHINSHO`（103×182）・`SHIROKU`（127×188）。各行に文面の名前（`label:`。`文庫`・`B6`・`新書`・`四六`）。生成物のファイル名の判型の部分は `bunko`・`b6`・`shinsho`・`shiroku`。
+- `config/page_presets.yml` に `bunko_standard`・`bunko_custom`・`b6_standard`・`b6_custom`・`shinsho_standard`・`shiroku_standard`（§4.1）。
 - `Epub::Config.resolve_page_size`: 足した 4 判型は寸法で Vivliostyle へ渡す（`VIVLIOSTYLE_SIZE_NAMES` は今の 4 つだけ）。
-- `BookProfile` の `novel` に `page.use: a6_standard`・`section_pagebreak: false`・`chapter_pagebreak: any`（§4.3）。
+- `BookProfile` の `novel` に `page.use: bunko_standard`・`section_pagebreak: false`・`chapter_pagebreak: any`（§4.3）。
 - テスト: `cover_size_test.rb`（判型のプリセットを全部回す。窓口が寸法を返す・名前の字・本文と表紙が同じ寸法・小説の 4 判型の寸法と名前・字数と行数とノド 13mm）・`book_profile_test.rb` 1・`page_layout_test.rb` 1。
 
 #### プリセットの値（S8-5 でユーザーが紙面を見て確定する）
@@ -424,7 +424,7 @@ S8 の中の決まり:
 
 | プリセット | 字・行送り | 天・地 | ノド・小口 | 字数 × 行数 |
 | :--- | :--- | :--- | :--- | :--- |
-| `a6_standard` | 9pt・1.65（14.85pt） | 15・12.35mm | 13・10mm | 38 × 16 |
+| `bunko_standard` | 9pt・1.65（14.85pt） | 15・12.35mm | 13・10mm | 38 × 16 |
 | `b6_standard` | 9.5pt・1.7（16.15pt） | 22・19.24mm | 17・16mm | 42 × 17 |
 | `shinsho_standard` | 9pt・1.7（15.3pt） | 23・19.3mm | 14・10mm | 44 × 15 |
 | `shiroku_standard` | 9.5pt・1.7（16.15pt） | 23・20.89mm | 17・15mm | 43 × 17 |
@@ -443,7 +443,8 @@ S8 の中の決まり:
 
 #### 気づいたこと（11/21 に直した）
 
-- **知らない `page.use` を書くと、本文は黙って B5 で組まれる。** `apply_page_preset` はプリセットが無ければ何もせず、`Common.resolve_page_size` は表に無い `size:` を B5 として読む。確かめの最初の 1 回で、雛形の `page_presets.yml`（まだ同期していない）に無い `a6_standard` を選んだ本が、🔴 を表紙の 1 つだけ出して、本文を B5 で組んだ。`cover-size-independence-spec.md` §2.3 は「本文のビルドでも設定の検査が先に止めるはず」としていたが、その検査は無い。1.x の本を 2.0 の `vs` で組み、`book.yml` に小説の判型を書いて `page_presets.yml` を更新していない著者が踏む。
+- **知らない `page.use` を書くと、本文は黙って B5 で組まれる。** `apply_page_preset` はプリセットが無ければ何もせず、`Common.resolve_page_size` は表に無い `size:` を B5 として読む。確かめの最初の 1 回で、雛形の `page_presets.yml`（まだ同期していない）に無い `a6_standard`（今の `bunko_standard`）を選んだ本が、🔴 を表紙の 1 つだけ出して、本文を B5 で組んだ。`cover-size-independence-spec.md` §2.3 は「本文のビルドでも設定の検査が先に止めるはず」としていたが、その検査は無い。1.x の本を 2.0 の `vs` で組み、`book.yml` に小説の判型を書いて `page_presets.yml` を更新していない著者が踏む。
   - 直し（11/21・ユーザーの判断「組めない旨を示して止める」）: `RootCommand#stop_unknown_page_preset!` が、本を読むコマンドを 🔴 で止める（`stop_unmigrated_book!` の次）。判定は `Common.find_unknown_page_preset`（`book.yml` をその場で読み直し、`page.use` か本の種類の既定のプリセットが `page_presets.yml` に無いか）。gem の雛形にある名前なら「`vs upgrade` で `config/page_presets.yml` を新しくすると、この判型で組めます」、無い名前なら選べる名前を並べる。`vs upgrade` と `vs doctor` は止めない（doctor は同じ文面を 🟡）。
+  - 11/21: 文庫判のプリセットを `a6_*` から `bunko_standard`・`bunko_custom` へ、判型の表の名前を `A6` から `BUNKO`（文面は「文庫」・生成物と下敷きは `bunko`）へ改めた（ユーザーの判断。小説を書く人は「A6」でなく「文庫」と呼ぶ。`shinsho`・`shiroku` と同じく日本語の呼び方の名前にそろえる）。`A6` の名前は残さない（1.x に無く、まだ公開していない）。
   - 1.x の `vs` は A4・B5・A5 だけに対応のまま（ユーザーの判断）。小説の判型を 1.x へ戻して入れない。
   - `page.size:` に表に無い名前を直に書いた本（プリセットを使わない）は、本文は今も B5 で読み、表紙が 🔴 で止まる。

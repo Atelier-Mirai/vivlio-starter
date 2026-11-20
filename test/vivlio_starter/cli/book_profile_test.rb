@@ -174,7 +174,7 @@ module VivlioStarter
         cfg = load('book' => { 'type' => 'novel' })
         written = load('book' => { 'type' => 'novel' }, 'page' => { 'use' => 'b6_standard', 'section_pagebreak' => true })
 
-        assert_equal %w[a6_standard A6 any], [cfg.page.use, cfg.page.size, cfg.page.chapter_pagebreak]
+        assert_equal %w[bunko_standard BUNKO any], [cfg.page.use, cfg.page.size, cfg.page.chapter_pagebreak]
         assert_equal false, cfg.page.section_pagebreak
         assert_equal ['B6', true], [written.page.size, written.page.section_pagebreak]
       end
@@ -182,17 +182,17 @@ module VivlioStarter
       # page_presets.yml に無い判型を選んだ本は止める（本文が黙って B5 で組まれるのを防ぐ）。
       # gem の雛形にある名前なら本の page_presets.yml が古いだけなので vs upgrade を、無い名前なら選べる名前を示す
       def test_should_stop_a_book_whose_page_preset_is_missing
-        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a6_standard' } }.to_yaml)
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'bunko_standard' } }.to_yaml)
         message, detail = Common.unknown_page_preset_notice
 
-        assert_equal 'config/book.yml の page.use: a6_standard は config/page_presets.yml にない判型のため、本を組めません', message
+        assert_equal 'config/book.yml の page.use: bunko_standard は config/page_presets.yml にない判型のため、本を組めません', message
         assert_equal '→ vs upgrade で config/page_presets.yml を新しくすると、この判型で組めます', detail
 
         File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a5_standrad' } }.to_yaml)
         assert_equal '→ config/book.yml の page.use に、次のどれかを書いてください: a5_standard', Common.unknown_page_preset_notice.last
 
         File.write(Common::CONFIG_FILE, { 'book' => { 'type' => 'novel' } }.to_yaml)
-        assert_match(/\Abook\.type: novel の既定の判型 a6_standard は/, Common.unknown_page_preset_notice.first)
+        assert_match(/\Abook\.type: novel の既定の判型 bunko_standard は/, Common.unknown_page_preset_notice.first)
 
         File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a5_standard' } }.to_yaml)
         assert_nil Common.unknown_page_preset_notice
@@ -202,14 +202,14 @@ module VivlioStarter
 
       # 本を読むコマンドは止め、page_presets.yml を新しくする vs upgrade は止めない
       def test_should_stop_book_commands_but_not_upgrade_on_a_missing_page_preset
-        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a6_standard' } }.to_yaml)
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'bunko_standard' } }.to_yaml)
         build = SamovarCommands::RootCommand.new(%w[build])
         upgrade = SamovarCommands::RootCommand.new(%w[upgrade])
 
         out, = capture_io do
           assert_raises(SystemExit) { build.send(:ensure_project_context!, build.command) }
         end
-        assert_includes out, '🔴 config/book.yml の page.use: a6_standard は'
+        assert_includes out, '🔴 config/book.yml の page.use: bunko_standard は'
 
         out, = capture_io do
           Common.stub(:ensure_configured!, nil) { upgrade.send(:ensure_project_context!, upgrade.command) }

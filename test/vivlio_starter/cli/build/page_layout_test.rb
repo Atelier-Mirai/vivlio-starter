@@ -66,7 +66,7 @@ module VivlioStarter
         assert_equal '128mm 182mm', resolve.('B6')
         assert_equal '103mm 182mm', resolve.('SHINSHO')
         assert_equal '127mm 188mm', resolve.('SHIROKU')
-        assert_equal '105mm 148mm', resolve.('A6')
+        assert_equal '105mm 148mm', resolve.('BUNKO')
         assert_equal 'LETTER', resolve.('Letter'), 'vs の表に無い名前は今までどおりそのまま渡す'
       end
 
