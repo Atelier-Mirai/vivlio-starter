@@ -854,7 +854,12 @@ module VivlioStarter
         'A5' => { width: '148mm', height: '210mm', label: 'A5' },
         # 'B5' は技術書慣習により JIS 寸法（182×257）の別名。ISO B5（176×250）は非サポート。
         'B5' => { width: '182mm', height: '257mm', label: 'B5' },
-        'JIS-B5' => { width: '182mm', height: '257mm', label: 'B5' }
+        'JIS-B5' => { width: '182mm', height: '257mm', label: 'B5' },
+        # 小説の判型（novel-vertical-spec.md §4.1）。B6 も B5 と同じく JIS の寸法
+        'A6' => { width: '105mm', height: '148mm', label: 'A6' },
+        'B6' => { width: '128mm', height: '182mm', label: 'B6' },
+        'SHINSHO' => { width: '103mm', height: '182mm', label: '新書' },
+        'SHIROKU' => { width: '127mm', height: '188mm', label: '四六' }
       }.freeze
 
       # ページサイズを解決する（シンボルキーの Hash 前提）

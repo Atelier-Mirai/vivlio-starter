@@ -164,6 +164,18 @@ module VivlioStarter
         assert_nil written.dig(:page, :size), 'book.yml の page.use（ここでは無いプリセット）が勝つ'
       end
 
+      # 小説は、page.use を書かなければ文庫判で組み、節で改ページせず、章は面を問わず改ページする
+      # （novel-vertical-spec.md §4.3）。book.yml に書いた値が勝つ
+      def test_should_give_a_novel_the_bunko_preset_and_its_page_breaks
+        FileUtils.cp(File.expand_path('../../../config/page_presets.yml', __dir__), 'config/page_presets.yml')
+        cfg = load('book' => { 'type' => 'novel' })
+        written = load('book' => { 'type' => 'novel' }, 'page' => { 'use' => 'b6_standard', 'section_pagebreak' => true })
+
+        assert_equal %w[a6_standard A6 any], [cfg.page.use, cfg.page.size, cfg.page.chapter_pagebreak]
+        assert_equal false, cfg.page.section_pagebreak
+        assert_equal ['B6', true], [written.page.size, written.page.section_pagebreak]
+      end
+
       def test_should_keep_an_unknown_type_readable
         cfg = load('book' => { 'type' => 'novle' })
 

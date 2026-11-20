@@ -58,6 +58,18 @@ module VivlioStarter
         assert_equal 'A4', size
       end
 
+      # 小説の判型（novel-vertical-spec.md §4.1）は寸法で渡す。新書・四六は Vivliostyle が知らず、
+      # Vivliostyle の B6 は ISO の 125×176mm で、vs の B6（JIS の 128×182mm）と違うため
+      def test_should_pass_the_novel_sizes_by_dimensions
+        resolve = ->(size) { Build::Epub::Config.resolve_page_size(Common.wrap_config(page: { size: })) }
+
+        assert_equal '128mm 182mm', resolve.('B6')
+        assert_equal '103mm 182mm', resolve.('SHINSHO')
+        assert_equal '127mm 188mm', resolve.('SHIROKU')
+        assert_equal '105mm 148mm', resolve.('A6')
+        assert_equal 'LETTER', resolve.('Letter'), 'vs の表に無い名前は今までどおりそのまま渡す'
+      end
+
       # 注: ルート vivliostyle.config.js の size 検証は手動フロー撤去
       # （vivlioverso-manual-flow-removal-spec.md）に伴い削除。生成 config の
       # size は vivliostyle_config_writer_test.rb が検証する。

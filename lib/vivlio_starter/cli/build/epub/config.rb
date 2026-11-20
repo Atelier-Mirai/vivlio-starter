@@ -214,6 +214,10 @@ end
           "  cover: './covers/#{esc.call(File.basename(cover_image))}',\n"
         end
 
+        # 判型の名前のまま Vivliostyle へ渡す判型。ほかの判型は寸法で渡す——新書・四六は Vivliostyle が
+        # 知らず、Vivliostyle の B6 は ISO の 125×176mm で、vs の B6（JIS の 128×182mm）と違うため。
+        VIVLIOSTYLE_SIZE_NAMES = %w[A4 A5 B5 JIS-B5].freeze
+
         # book.yml のページ設定から Vivliostyle CLI 用サイズ文字列を解決する
         #
         # @param config [Object] Common::CONFIG
@@ -224,7 +228,9 @@ end
 
           # 版面キーはプリセット由来で存在保証がないため [] で参照する
           size_name = page_cfg[:size].to_s.strip.upcase
-          return size_name unless size_name.empty?
+          # vs の表（Common::PAGE_SIZES）に無い名前は、今までどおりそのまま渡す
+          known = Common::PAGE_SIZES.key?(size_name)
+          return size_name if VIVLIOSTYLE_SIZE_NAMES.include?(size_name) || (!size_name.empty? && !known)
 
           w, h = Common.resolve_page_size(page_cfg.to_h)
           "#{w} #{h}"

@@ -405,3 +405,42 @@ S8 の中の決まり:
 
 - 全面の挿絵の Kindle の見え方（`100vh`・`flex` を解さないときの寄り）は、S8-4 の縦書きの材料の本で Kindle の記録を取って見る。
 - 縦中横・傍点の Kindle の解し方（接頭辞つきの書き方）も同じ。
+
+### 10.3 S8-3 判型のプリセットと `BookProfile`（2026-11-20）
+
+表紙の寸法の窓口と比の扱い（`cover-size-independence-spec.md` §6 の 1・2）を先に済ませた。記録は同 §8。
+
+#### 作ったもの
+
+- `Common::PAGE_SIZES` に `A6`（105×148）・`B6`（128×182。B5 と同じく JIS）・`SHINSHO`（103×182）・`SHIROKU`（127×188）。各行に文面の名前（`label:`。`A6`・`B6`・`新書`・`四六`）。生成物のファイル名の判型の部分は `a6`・`b6`・`shinsho`・`shiroku`。
+- `config/page_presets.yml` に `a6_standard`・`a6_custom`・`b6_standard`・`b6_custom`・`shinsho_standard`・`shiroku_standard`（§4.1）。
+- `Epub::Config.resolve_page_size`: 足した 4 判型は寸法で Vivliostyle へ渡す（`VIVLIOSTYLE_SIZE_NAMES` は今の 4 つだけ）。
+- `BookProfile` の `novel` に `page.use: a6_standard`・`section_pagebreak: false`・`chapter_pagebreak: any`（§4.3）。
+- テスト: `cover_size_test.rb`（判型のプリセットを全部回す。窓口が寸法を返す・名前の字・本文と表紙が同じ寸法・小説の 4 判型の寸法と名前・字数と行数とノド 13mm）・`book_profile_test.rb` 1・`page_layout_test.rb` 1。
+
+#### プリセットの値（S8-5 でユーザーが紙面を見て確定する）
+
+§4.1 の求め方で、天地の余白を版面の高さが字の大きさのちょうど整数倍になるように決め、行数はノドと小口の間に余り 0.5mm 以下で収まるようにした。
+
+| プリセット | 字・行送り | 天・地 | ノド・小口 | 字数 × 行数 |
+| :--- | :--- | :--- | :--- | :--- |
+| `a6_standard` | 9pt・1.65（14.85pt） | 15・12.35mm | 13・10mm | 38 × 16 |
+| `b6_standard` | 9.5pt・1.7（16.15pt） | 22・19.24mm | 17・16mm | 42 × 17 |
+| `shinsho_standard` | 9pt・1.7（15.3pt） | 23・19.3mm | 14・10mm | 44 × 15 |
+| `shiroku_standard` | 9.5pt・1.7（16.15pt） | 23・20.89mm | 17・15mm | 43 × 17 |
+
+#### 仕様に無かったので決めたこと
+
+1. **「`ConfigKeys` の `page.use` の値の一覧」は作らない。** `ConfigKeys` はキーごとの既定値・著者が埋めるキー・廃止キーだけを持ち、値の一覧を持つ仕組みが無い。種類ごとに選べるプリセットは、その種類の雛形の `book.yml` が `# use:` の行で並べる（技術書は今の並び。小説は S8-7 の `scaffolds/novel/config/book.yml`）。
+2. **Vivliostyle へ名前で渡す判型は今の 4 つ（`A4`・`A5`・`B5`・`JIS-B5`）だけ。** 新書・四六は Vivliostyle が知らず、Vivliostyle の `B6` は ISO の 125×176mm で vs の B6 と違う。`A6` は ISO と同じ寸法だが、足した判型は一律に寸法で渡す。vs の表に無い名前（`Letter` など）は今までどおりそのまま渡す。
+3. **`*_custom` は、今の `a5_custom` などと同じく全部の行を書き出す**（YAML の `<<:` で写さない）。著者がそこを直して使うため。
+
+#### 確かめた結果
+
+- 本書の `Common::CONFIG`（4,852 バイト）と `BookSettingsCss.render` の出力（4,861 バイト）が、直す前（`c0fd6419`）のコードと同じ。
+- 6 つのプリセットで 1 章だけの本（`vs new` の雛形から、技術書のまま `page.use` だけを替えた）を組み、`pdfinfo` の紙の寸法が 105×148・128×182・103×182・127×188 mm。🟡 は扉絵の字数（`theme.frontispiece.heading_chars`・`lead_chars` が小さい版面に収まらない）で、技術書の既定のテーマを小さい判型に当てたため。S8-5 の `novel` で扱う。
+- `rake test` は手順 5 の後でまとめて走らせる。
+
+#### 気づいたこと（直していない）
+
+- **知らない `page.use` を書くと、本文は黙って B5 で組まれる。** `apply_page_preset` はプリセットが無ければ何もせず、`Common.resolve_page_size` は表に無い `size:` を B5 として読む。確かめの最初の 1 回で、雛形の `page_presets.yml`（まだ同期していない）に無い `a6_standard` を選んだ本が、🔴 を表紙の 1 つだけ出して、本文を B5 で組んだ。`cover-size-independence-spec.md` §2.3 は「本文のビルドでも設定の検査が先に止めるはず」としていたが、その検査は無い。1.x の本を 2.0 の `vs` で組み、`book.yml` に小説の判型を書いて `page_presets.yml` を更新していない著者が踏む。

@@ -20,11 +20,17 @@ module VivlioStarter
       # 種類ごとに、ConfigKeys の既定値と違うキーだけを書く。
       #
       # 載せるのは ConfigKeys::KEYS にあるキーだけ（book_profile_test.rb が検査する）。
-      # テーマの名前（theme.name）は S6、小説と絵本の判型のプリセット（page.use）は S8 で足す
-      # （v2-architecture-spec.md §8 の S5 の決め 1）。
+      # テーマの名前（theme.name）は、そのテーマを同梱する段階で足す（小説の novel は S8-5・
+      # 絵本は S9-1。v2-architecture-spec.md §2.2）。絵本の判型のプリセット（page.use）は S9-1 で足す。
+      #
+      # 小説の節は改ページしない。テーマの tokens: でなく種類の既定値で決めるので、著者が book.yml に
+      # section_pagebreak: true と書けばそれが勝つ（novel-vertical-spec.md §4.3）
       PROFILES = {
         techbook: {},
         novel: {
+          %i[page use]               => 'a6_standard',
+          %i[page section_pagebreak] => false,
+          %i[page chapter_pagebreak] => 'any',
           %i[page writing_mode]      => 'vertical',
           %i[page heading_numbering] => 'none',
           %i[index_glossary enabled] => false,
