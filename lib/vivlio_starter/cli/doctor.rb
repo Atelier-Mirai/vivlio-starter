@@ -825,6 +825,10 @@ module VivlioStarter
           return
         end
 
+        # 知らない判型を選んだ本（vs build などは 🔴 で止まる）。doctor は止めずに同じ文面を 🟡 で示す
+        message, detail = Common.unknown_page_preset_notice
+        Common.log_warn(message, detail:) if message
+
         name = book_theme_name
         Theme.resolve(name, root: Dir.pwd)
         report_ok("✅ テーマ #{name}: OK", options)

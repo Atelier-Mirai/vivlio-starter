@@ -441,6 +441,9 @@ S8 の中の決まり:
 - 6 つのプリセットで 1 章だけの本（`vs new` の雛形から、技術書のまま `page.use` だけを替えた）を組み、`pdfinfo` の紙の寸法が 105×148・128×182・103×182・127×188 mm。🟡 は扉絵の字数（`theme.frontispiece.heading_chars`・`lead_chars` が小さい版面に収まらない）で、技術書の既定のテーマを小さい判型に当てたため。S8-5 の `novel` で扱う。
 - `rake test` は手順 5 の後でまとめて走らせる。
 
-#### 気づいたこと（直していない）
+#### 気づいたこと（11/21 に直した）
 
 - **知らない `page.use` を書くと、本文は黙って B5 で組まれる。** `apply_page_preset` はプリセットが無ければ何もせず、`Common.resolve_page_size` は表に無い `size:` を B5 として読む。確かめの最初の 1 回で、雛形の `page_presets.yml`（まだ同期していない）に無い `a6_standard` を選んだ本が、🔴 を表紙の 1 つだけ出して、本文を B5 で組んだ。`cover-size-independence-spec.md` §2.3 は「本文のビルドでも設定の検査が先に止めるはず」としていたが、その検査は無い。1.x の本を 2.0 の `vs` で組み、`book.yml` に小説の判型を書いて `page_presets.yml` を更新していない著者が踏む。
+  - 直し（11/21・ユーザーの判断「組めない旨を示して止める」）: `RootCommand#stop_unknown_page_preset!` が、本を読むコマンドを 🔴 で止める（`stop_unmigrated_book!` の次）。判定は `Common.find_unknown_page_preset`（`book.yml` をその場で読み直し、`page.use` か本の種類の既定のプリセットが `page_presets.yml` に無いか）。gem の雛形にある名前なら「`vs upgrade` で `config/page_presets.yml` を新しくすると、この判型で組めます」、無い名前なら選べる名前を並べる。`vs upgrade` と `vs doctor` は止めない（doctor は同じ文面を 🟡）。
+  - 1.x の `vs` は A4・B5・A5 だけに対応のまま（ユーザーの判断）。小説の判型を 1.x へ戻して入れない。
+  - `page.size:` に表に無い名前を直に書いた本（プリセットを使わない）は、本文は今も B5 で読み、表紙が 🔴 で止まる。

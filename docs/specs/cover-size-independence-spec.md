@@ -237,6 +237,7 @@ S8-3（判型のプリセットと `BookProfile`）の中で、次の順に行�
 - 寸法が決まらないときは `book_trim_size` が 🔴 を出して nil を返し、`generate!` も `vs cover` も表紙を作らない。`SIZES`・`detect_page_size`・`book_page_size` は無くした。`vs import` の `ImageProcessor::MASTER_WIDTH`・`MASTER_HEIGHT` も窓口の A4 から引く。
 - 確かめ: 直す前（HEAD の worktree）と後のコードで、A4（`a4_custom`）・B5・A5 × `light`・`guide` の 6 通りに `vs cover`（targets: pdf, print_pdf, epub）を走らせ、生成キャッシュと直下の表紙 8 つずつ（計 48）を比べた。ファイル名・PDF の全ページの画素（150dpi）・JPEG の画素・ログとも一致。
 - 本文の側の `Common.resolve_page_size` は、表に無い `size:` を今も黙って B5 として読む（表紙の側だけが 🔴 で止まる）。§2.3 の「設定の検査が先に止めるはず」は、今の本文には無い。
+  - 11/21: 知らない `page.use`（`page_presets.yml` に無いプリセット）は、本を読むコマンドの入口で 🔴 で止めるようにした（`novel-vertical-spec.md` §10.3）。表に無い `size:` を直に書いた本は、今も表紙の側だけが止める。
 
 ### 8.2 §6 の 2 画像と SVG の比（2026-11-20）
 

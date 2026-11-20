@@ -141,7 +141,18 @@ module VivlioStarter
           return Common.ensure_configured!(retired_notice: false) if target.is_a?(UpgradeCommand)
 
           stop_unmigrated_book!
+          stop_unknown_page_preset!
           Common.ensure_configured!
+        end
+
+        # page_presets.yml に無い判型を選んだ本は、本文が既定の B5 で組まれ、判型の違う本ができる。
+        # 本を読むコマンドは最初に止める。vs upgrade（page_presets.yml を新しくする）・vs doctor は上で抜けるので止めない
+        def stop_unknown_page_preset!
+          message, detail = Common.unknown_page_preset_notice
+          return unless message
+
+          Common.log_error(message, detail:)
+          exit 1
         end
 
         # 1.x の配置のままの本は、2.0 の vs では CSS が読まれず、エラーも出ずに崩れた本ができる

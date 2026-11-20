@@ -330,7 +330,7 @@ module VivlioStarter
         cfg = cfg.merge(page: {}) if fallback_use && !cfg[:page].is_a?(Hash)
         case cfg
         in { page: { **page_cfg } }
-          preset_name = page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).find { _1 } || fallback_use
+          preset_name = page_preset_name(page_cfg, fallback_use)
           return cfg if blank?(preset_name)
 
           presets = load_page_presets
@@ -345,6 +345,61 @@ module VivlioStarter
         else
           cfg
         end
+      end
+
+      # 選ばれた判型のプリセットの名前。book.yml の page.use（旧名 preset・preset_name）、無ければ本の種類の既定値
+      def page_preset_name(page_cfg, fallback_use)
+        page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).find { it } || fallback_use
+      end
+
+      # page_presets.yml に無いプリセットが選ばれていれば、その名前と、どこで選ばれたか。
+      # 知らない名前のままだと apply_page_preset は何も当てず、本文の版面は既定（B5）で組まれ、
+      # 表紙だけが別の判型を探して止まる。本を読むコマンドの入口（RootCommand）が、この結果を見て止める。
+      # 状態を持たないよう、book.yml をその場で読み直す（load_config を呼ぶテストの値を持ち越さない）
+      # @return [Hash, nil] { name:, source: :book_yml | :book_type, type: }
+      def find_unknown_page_preset(raw_config = load_raw_book_config)
+        return nil unless raw_config.is_a?(Hash) && File.file?(PAGE_PRESETS_FILE)
+
+        type = BookProfile.type_of(raw_config)
+        page_cfg = raw_config[:page].is_a?(Hash) ? raw_config[:page] : {}
+        name = page_preset_name(page_cfg, BookProfile.defaults_for(type).dig(:page, :use)).to_s.strip
+        return nil if name.empty? || load_page_presets.key?(name.to_sym)
+
+        { name:, source: page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).any? ? :book_yml : :book_type, type: }
+      end
+
+      def load_raw_book_config
+        return unless File.file?(CONFIG_FILE)
+
+        # 発行日（date: 2026-11-20）が Date で読まれるので許す（doctor の book_theme_name と同じ）
+        YAML.safe_load_file(CONFIG_FILE, permitted_classes: [Date, Time], aliases: true, symbolize_names: true)
+      rescue StandardError
+        nil
+      end
+
+      # 知らない判型のプリセットを選んだ本の 🔴 の文面（無ければ nil）。
+      # gem の雛形にその名前があるなら、本の page_presets.yml が古いだけなので vs upgrade を示す
+      # @return [Array(String, String), nil] [message, detail]
+      def unknown_page_preset_notice(unknown = find_unknown_page_preset)
+        return nil unless unknown
+
+        unknown => { name:, source:, type: }
+        where = source == :book_yml ? "config/book.yml の page.use: #{name}" : "book.type: #{type} の既定の判型 #{name}"
+        known = load_page_presets.keys.map(&:to_s)
+        fix = if scaffold_page_preset_names.include?(name)
+                '→ vs upgrade で config/page_presets.yml を新しくすると、この判型で組めます'
+              else
+                "→ config/book.yml の page.use に、次のどれかを書いてください: #{known.join('・')}"
+              end
+        ["#{where} は config/page_presets.yml にない判型のため、本を組めません", fix]
+      end
+
+      # gem の雛形の page_presets.yml にあるプリセットの名前（本の page_presets.yml が古いかを見分ける）
+      def scaffold_page_preset_names
+        path = File.join(NewCommands::SCAFFOLD_SOURCE, PAGE_PRESETS_FILE)
+        File.file?(path) ? YAML.safe_load_file(path, aliases: true).keys : []
+      rescue StandardError
+        []
       end
 
       # safe_load_file に統一（ensure_required_yaml_files! の検証経路と同一ポリシー）。
@@ -1321,6 +1376,8 @@ module VivlioStarter
                       :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename, :output_basename,
                       :images_dir, :data_dir, :load_config, :load_page_presets, :log_action,
+                      :page_preset_name, :find_unknown_page_preset, :unknown_page_preset_notice,
+                      :scaffold_page_preset_names, :load_raw_book_config,
                       :emit, :confirm?, :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,
                       :normalize_line_height, :normalize_page_size!,

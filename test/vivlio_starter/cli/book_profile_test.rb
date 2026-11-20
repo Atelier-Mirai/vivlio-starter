@@ -10,6 +10,7 @@
 #   - book.type の読み方（無い・知らない名前は techbook）
 #   - 解決の順: ConfigKeys の既定値 < 種類の既定値 < 判型のプリセット < book.yml に書いた値
 #   - book.type は分冊の巻では上書きできない（§5.4）
+#   - page_presets.yml に無い判型を選んだ本は、本を読むコマンドを 🔴 で止める（cover-size-independence-spec.md §8）
 #
 # 種類ごとの雛形の book.yml との照合（§2.2 の検査の (2)）は、雛形ができる S8 で足す。
 # ================================================================
@@ -18,7 +19,9 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'yaml'
+require 'samovar'
 require 'vivlio_starter/cli/common'
+require 'vivlio_starter/cli/samovar'
 
 module VivlioStarter
   module CLI
@@ -174,6 +177,44 @@ module VivlioStarter
         assert_equal %w[a6_standard A6 any], [cfg.page.use, cfg.page.size, cfg.page.chapter_pagebreak]
         assert_equal false, cfg.page.section_pagebreak
         assert_equal ['B6', true], [written.page.size, written.page.section_pagebreak]
+      end
+
+      # page_presets.yml に無い判型を選んだ本は止める（本文が黙って B5 で組まれるのを防ぐ）。
+      # gem の雛形にある名前なら本の page_presets.yml が古いだけなので vs upgrade を、無い名前なら選べる名前を示す
+      def test_should_stop_a_book_whose_page_preset_is_missing
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a6_standard' } }.to_yaml)
+        message, detail = Common.unknown_page_preset_notice
+
+        assert_equal 'config/book.yml の page.use: a6_standard は config/page_presets.yml にない判型のため、本を組めません', message
+        assert_equal '→ vs upgrade で config/page_presets.yml を新しくすると、この判型で組めます', detail
+
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a5_standrad' } }.to_yaml)
+        assert_equal '→ config/book.yml の page.use に、次のどれかを書いてください: a5_standard', Common.unknown_page_preset_notice.last
+
+        File.write(Common::CONFIG_FILE, { 'book' => { 'type' => 'novel' } }.to_yaml)
+        assert_match(/\Abook\.type: novel の既定の判型 a6_standard は/, Common.unknown_page_preset_notice.first)
+
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a5_standard' } }.to_yaml)
+        assert_nil Common.unknown_page_preset_notice
+        File.write(Common::CONFIG_FILE, { 'book' => { 'main_title' => '題' } }.to_yaml)
+        assert_nil Common.unknown_page_preset_notice, 'page.use を書かない技術書はプリセットを選んでいない'
+      end
+
+      # 本を読むコマンドは止め、page_presets.yml を新しくする vs upgrade は止めない
+      def test_should_stop_book_commands_but_not_upgrade_on_a_missing_page_preset
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'a6_standard' } }.to_yaml)
+        build = SamovarCommands::RootCommand.new(%w[build])
+        upgrade = SamovarCommands::RootCommand.new(%w[upgrade])
+
+        out, = capture_io do
+          assert_raises(SystemExit) { build.send(:ensure_project_context!, build.command) }
+        end
+        assert_includes out, '🔴 config/book.yml の page.use: a6_standard は'
+
+        out, = capture_io do
+          Common.stub(:ensure_configured!, nil) { upgrade.send(:ensure_project_context!, upgrade.command) }
+        end
+        refute_includes out, 'page.use'
       end
 
       def test_should_keep_an_unknown_type_readable
