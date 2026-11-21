@@ -280,6 +280,21 @@ class ImageTrimmerTest < Minitest::Test
     end
   end
 
+  # 直し方の行では、画像の説明文を … に縮める（改善案 #142）。長い説明文が 2 回並ばない
+  def test_should_shorten_alt_text_in_the_suggestion
+    in_project do
+      File.write('images/11-workflow/workflow.svg', WORKFLOW_SVG)
+
+      log = hints_for("![作業の流れ。原稿を書き、組み、確かめる](workflow.svg){width=60% align=center}\n",
+                      WORKFLOW_BOX)
+
+      assert_equal '        → ![…](workflow.svg){width=60% align=center} を ' \
+                   '![…](workflow.svg){width=60% align=center trim=on} に直してください。', log[1]
+      assert_equal '          余白を残すときは {trim=off} と書いてください。', log[2]
+      refute_match(/作業の流れ/, log.join("\n"))
+    end
+  end
+
   def test_should_not_hint_images_already_decided_or_not_trimmable
     in_project do
       File.write('images/11-workflow/workflow.svg', WORKFLOW_SVG)

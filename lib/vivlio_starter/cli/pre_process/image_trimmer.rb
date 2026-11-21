@@ -404,17 +404,20 @@ module VivlioStarter
           end
         end
 
+        # 直し方の行では、画像の説明文を `…` に縮める（改善案 #142）。直すのは `{…}` だけで、
+        # 場所は行番号とファイル名で分かる。説明文の長い本では、同じ文が 2 回並んで読みにくかった
         def warn_wide_margin(uses, measurement)
           first = uses.first
           others = uses.size > 1 ? "（ほか #{uses.size - 1} か所）" : ''
           message = "#{File.basename(first.source)} は、絵が画像の幅の #{(measurement.usage * 100).floor}% しか" \
                     "使っていません。余白を詰めると約 #{format('%.2f', measurement.scale)} 倍で載ります#{others}"
-          before = first.attributes ? "#{first.markdown}{#{first.attributes}}" : first.markdown
-          after = "#{first.markdown}{#{[first.attributes, 'trim=on'].compact.join(' ').strip}}"
+          image = first.markdown.sub(/\A!\[[^\]]+\]/, '![…]')
+          before = first.attributes ? "#{image}{#{first.attributes}}" : image
+          after = "#{image}{#{[first.attributes, 'trim=on'].compact.join(' ').strip}}"
           Common.log_warn(
             "#{first.chapter}:#{first.line} - #{message}",
             detail: "→ #{before} を #{after} に直してください。\n" \
-                    '  余白を意図して残すときは {trim=off} と書くと、この指摘は出なくなります。'
+                    '  余白を残すときは {trim=off} と書いてください。'
           )
           IssueRegistry.record(chapter: first.chapter, line: first.line, severity: :warn, category: :image, message:)
         end
