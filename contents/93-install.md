@@ -33,7 +33,7 @@ Ruby は、今使っている Ruby に合わせて用意します。
 | オプション | 説明 |
 | :--- | :--- |
 | `-y` | 確認をスキップしてインストール |
-| `-v 4.0.9` | 指定した版の Ruby を rbenv でインストール |
+| `-v 4.0.10` | 指定した版の Ruby を rbenv でインストール |
 
 次の例は、確認をスキップしてインストールします。
 
@@ -65,8 +65,8 @@ source ~/.zprofile
 brew install rbenv ruby-build
 echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
 source ~/.zprofile
-rbenv install 4.0.9
-rbenv global 4.0.9
+rbenv install 4.0.10
+rbenv global 4.0.10
 ```
 
 Intel の Mac では、2 行目の `/opt/homebrew` を `/usr/local` に読み替えます。
