@@ -263,6 +263,7 @@ module VivlioStarter
         # ImageGenerator は images root からの相対サブパスを保って生成するため、
         # bundled 由来は theme-images/bundled/ に、ユーザー画像由来はルート直下に出る。
         def find_cached_theme_variant(base_slug, variant)
+          ImageGenerator.discard_outdated_variants!
           %W[#{base_slug}_#{variant}.webp bundled/#{File.basename(base_slug)}_#{variant}.webp].uniq.each do |candidate|
             path = File.join(theme_images_cache_root, candidate)
             return path if File.exist?(path) && cached_variant_current?(path, variant)

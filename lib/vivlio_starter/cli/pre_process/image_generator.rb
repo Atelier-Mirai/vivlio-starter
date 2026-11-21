@@ -39,7 +39,29 @@ module VivlioStarter
         FRONTISPIECE_TARGET_WIDTH = 2880 # frontispiece推奨横幅
         FRONTISPIECE_WEBP_QUALITY = 90
 
+        # 扉絵・節絵の作り方の版。作り方を変えて、作った絵が変わるときに上げる。
+        # 2: 透過を透過のまま運ぶ（改善案 #140）
+        VARIANT_REVISION = 2
+        VARIANT_REVISION_STAMP = '.variant-revision'
+
         module_function
+
+        # 作り方の版が生成キャッシュの版と違えば、生成キャッシュの扉絵・節絵を捨てる。
+        # 作り直すかは元の絵の更新日時でも決めるが、作り方を変えても元の絵の日時は
+        # 変わらない。版を見ないと、利用者の絵から作った古い扉絵が使われ続ける。
+        # 確かめるのはキャッシュの置き場ごとに 1 プロセス 1 回（テストは置き場を差し替える）。
+        def discard_outdated_variants!
+          root = ThemeImageResolver.theme_images_cache_root
+          return if @revision_checked_root == root
+
+          @revision_checked_root = root
+          stamp = File.join(root, VARIANT_REVISION_STAMP)
+          return if File.exist?(stamp) && File.read(stamp).strip == VARIANT_REVISION.to_s
+
+          FileUtils.rm_f(Dir.glob(File.join(root, '**', '*_{portrait,landscape}.webp')))
+          FileUtils.mkdir_p(root)
+          File.write(stamp, "#{VARIANT_REVISION}\n")
+        end
 
         def frontispiece_variants
           portrait_ratio = ThemeImageResolver.binding_safe_portrait_ratio
@@ -59,6 +81,7 @@ module VivlioStarter
           relative = source_path.sub(%r{\A#{Regexp.escape(images_root)}/}, '')
           return nil if relative.empty?
 
+          discard_outdated_variants!
           base = relative.sub(/\.[^.]+\z/, '')
           target = File.join(ThemeImageResolver.theme_images_cache_root, "#{base}_#{variant}.webp")
           return target if File.exist?(target) && ThemeImageResolver.cached_variant_current?(target, variant)
@@ -194,27 +217,26 @@ module VivlioStarter
           top_path = output_png.sub(/\.png\z/, '_top.png')
           bottom_path = output_png.sub(/\.png\z/, '_bottom.png')
 
+          # 透過は透過のまま運ぶ（改善案 #140）。白で塗ってから白を抜くと、絵の中の白
+          # （白い花びら）まで透明になり、半透明の縁は白く塗られて不透明に残る。
+          # 三角形は元の絵のアルファに三角形の形を掛けて切り出す（DstIn）。
           top_cmd = [
             'magick', input_png,
-            '-background', 'white', '-flatten',
             '(', '-size', "#{width}x#{height}", 'xc:none', '-fill', 'white', '-draw', "polygon 0,0 #{width},0 0,#{height}", ')',
-            '-compose', 'CopyAlpha', '-composite', "PNG32:#{top_path}"
+            '-compose', 'DstIn', '-composite', "PNG32:#{top_path}"
           ]
           bottom_cmd = [
             'magick', input_png,
-            '-background', 'white', '-flatten',
             '(', '-size', "#{width}x#{height}", 'xc:none', '-fill', 'white', '-draw', "polygon #{width},#{height} #{width},0 0,#{height}", ')',
-            '-compose', 'CopyAlpha', '-composite', "PNG32:#{bottom_path}"
+            '-compose', 'DstIn', '-composite', "PNG32:#{bottom_path}"
           ]
           composite_cmd = [
             'magick',
             '-size', "#{new_width}x#{new_height}",
-            'xc:white',
-            '-alpha', 'set',
+            'xc:none',
             '+repage',
             top_path, '-geometry', '+0+0', '-compose', 'Over', '-composite',
             bottom_path, '-geometry', "+#{bottom_x_offset}+#{bottom_y_offset}", '-compose', 'Over', '-composite',
-            '-transparent', 'white',
             "PNG32:#{output_png}"
           ]
 
@@ -269,9 +291,11 @@ module VivlioStarter
               label: "アルファ拡大 (#{variant_label})"
             )
 
+            # alpha_scaled_path は PNG32 で書いたので、不透明のアルファを持つ。CopyAlpha は
+            # 重ねる画像にアルファがあるとそれを写すため、外して濃淡を透過として写す。
             run_command!(
-              ['magick', color_path, alpha_scaled_path, '-compose', 'CopyAlpha', '-composite',
-               "PNG32:#{merged_path}"],
+              ['magick', color_path, '(', alpha_scaled_path, '-alpha', 'off', ')',
+               '-compose', 'CopyAlpha', '-composite', "PNG32:#{merged_path}"],
               label: "アルファ再適用 (#{variant_label})"
             )
 
@@ -279,13 +303,13 @@ module VivlioStarter
           end
         end
 
-        # 画像（PNG 等）を最終的な WebP（透過・指定幅・品質）へ変換して target_path に書き出す
+        # 画像（PNG 等）を最終的な WebP（透過・指定幅・品質）へ変換して target_path に書き出す。
+        # 白を透過にはしない（絵の中の白まで抜ける・改善案 #140）。透過は入力のアルファのまま。
         def convert_to_webp(source_path, target_path, target_width:, webp_quality:, label:)
           convert_cmd = [
             'magick', source_path,
             '-alpha', 'set',
             '-background', 'none',
-            '-transparent', 'white',
             '-resize', "#{target_width}x",
             '-quality', webp_quality.to_s,
             target_path
