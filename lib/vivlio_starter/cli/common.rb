@@ -1324,7 +1324,9 @@ module VivlioStarter
       # （index-markup-plain-fallback-spec.md §2.1）。IndexCommands.index_enabled? も
       # ここへ委譲する。前処理から IndexCommands を参照すると index/* → pre_process/* の
       # 逆向き依存と噛み合って読み込み順が壊れるため、述語だけを共通の置き場へ出す。
-      def index_enabled?     = CONFIG&.index_glossary&.enabled == true
+      # 縦書きの本は、索引と用語集のページを作らない（novel-vertical-spec.md §2.2）。
+      # 設定に true とあっても偽を返し、Guards::TraitCombinationCheck が 🟡 で示す
+      def index_enabled?     = CONFIG&.index_glossary&.enabled == true && !traits.vertical?
       # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
       def kindle_embed?      = CONFIG&.output&.kindle&.embed == true
       # 本文にフチなし（塗り足しまで届く）要素があるか。true の本は閲覧用 PDF から

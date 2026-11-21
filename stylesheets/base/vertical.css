@@ -1,0 +1,16 @@
+@charset "utf-8";
+
+/* 縦書きの本の組方向。base 層。page.writing_mode: vertical の本の、縦に組むページの種類
+   （章・付録・前書き・後書き・本扉・部扉・目次）の入口だけが読む（novel-vertical-spec.md §2.1・§2.2）。
+   奥付と権利ページは読まず、横に組まれる。横書きの本はどのページも読まない。
+
+   組方向を書くのは vs で、テーマではない（テーマは theme.yml の supports: で対応を宣言するだけ）。
+   EPUB の閲覧ソフトと Kindle 向けの接頭辞つきの書き方を、標準の書き方の前の行に書く
+   （書き方は theme-epub3j の電書協の CSS と同じ）。
+   横組みの箱として置く部品は parts/vertical.css（部品の大きさと余白に勝つため、parts 層の最後に読む）。 */
+
+:root {
+  -webkit-writing-mode: vertical-rl;
+  -epub-writing-mode: vertical-rl;
+  writing-mode: vertical-rl;
+}

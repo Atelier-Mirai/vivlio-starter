@@ -1,7 +1,7 @@
 # 縦書きの小説（縦書きの経路・テーマ `novel`・判型・記法・lint・雛形）
 
 > 作成日: 2026-11-17
-> ステータス: **実装中**（段階 S8。S8-1・S8-2 は 2026-11-19 に完了。実装記録は §10）
+> ステータス: **実装中**（段階 S8。S8-1・S8-2 は 2026-11-19、S8-3 は 2026-11-20、S8-4 は 2026-11-21 に完了。実装記録は §10）
 > 対象: 縦書きの小説を `pdf`・`print_pdf`・`epub`・`kindle` の四つで組むための、縦書きの経路・既定のテーマ `novel`・判型のプリセット・記法・小説の lint・雛形 `scaffolds/novel/`
 > 出自: `v2-s8-novel-consultation.md` §4（2026-11-17・Fable）。段階の順と判断の線は `v2-plan-review-consultation.md` §4 で調整した（§2.5 の Kindle の論理方向）
 > 組になる仕様書: `v2-architecture-spec.md`（種類と軸・`BookProfile`・記法の型）・`theme-contract-spec.md`（テーマの形・契約 HTML）・`css-layer-restructure-spec.md`（§6 の物理方向）・`v2-migration-plan.md`（段階の順・基準・判断の線）。S8 から分けた背表紙・くるみ表紙は `cover-spread-spec.md`（S8b）、`vs furigana` は `furigana-spec.md`（S8c）
@@ -59,6 +59,7 @@
 
 - **組方向を書くのは vs で、テーマではない。** テーマは `supports:` で対応する組方向を宣言するだけにする。組方向は軸（`page.writing_mode`）で、テーマを替えても変わらない値だからである。
 - **書く場所は `stylesheets/base/vertical.css`（base 層）で、`EntryWriter` が、`traits.vertical?` の本の「縦に組むページの種類」（§2.2）の入口にだけ入れる。** 中身は `:root { writing-mode: vertical-rl; }` と、EPUB 向けの接頭辞つきの同じ宣言（`-webkit-writing-mode`・`-epub-writing-mode`）である。
+- 横組みの箱（§3.4）の規則は `stylesheets/parts/vertical.css` に置き、本文の部品を読む種類の入口の parts 層の最後で読む（S8-4 で決めた。§10.4 の「仕様に無かったので決めたこと」の 1）。
 - `book-settings.css` に書かないのは、全部の種類が同じ 1 枚を読み、settings 層がページの CSS（pages 層）に勝つので、横に組むページで打ち消せないためである。入口は種類ごとに作っているので、入れる・入れないで分けるのがいちばん単純で、詳細度の取り合いが起きない。
 
 ### 2.2 ページの種類ごとの組方向
@@ -69,7 +70,7 @@
 | 奥付・権利ページ | 横 | URL・英数字・版の表記が中心で、縦書きの本でも横に組むのが普通である。今の CSS がそのまま使える |
 | 索引・用語集 | 作らない | 縦書きの本の索引は、横組みにして巻末から逆向きに綴じる形が要り、2.0 では扱わない。`page.writing_mode: vertical` と `index_glossary.enabled: true` の組み合わせは、`TraitCombinationCheck` が 🟡 で「縦書きでは索引と用語集のページを作りません」と示し、段を止める（固定レイアウトの行と同じ形） |
 
-- **確かめが要る点。** `v2-feasibility-notes.md` §3.1 の実験は `html { writing-mode }` で行った。1 冊の中に縦の文書と横の文書（奥付）が混ざる形は確かめていない。S8-4 の最初に、材料の本で、奥付が横に組まれ、ページの進む向きと奇数ページの側が前後の文書と同じであることを見る。崩れる場合は、奥付と権利ページも縦に組み、中の英数字の箱だけを `horizontal-tb` にする（Opus が決めてよい。`v2-migration-plan.md` §2.4 の 2）。
+- **確かめた（S8-4）。** 1 冊の中に縦の文書と横の文書（奥付・権利ページ）が混ざる形は、そのまま組める。材料の本で、権利ページが横に組まれ、ページは右から左へ進み（PDF の `Direction` は `R2L`）、奇数ページのノンブルが左に来た（§10.4）。
 
 ### 2.3 余白の箱
 
@@ -141,8 +142,8 @@ styles:
 | 段 | 部品 | 扱い |
 | :--- | :--- | :--- |
 | 縦で保証する | 段落・見出し・ルビ・傍点・縦中横・強調・リンク・引用・区切り線・箇条書き・脚注・`@pagebreak`・相互参照の印・章リード・節リード | S8-1 で論理方向へ直し、S8-5 で `novel` の見た目を決める。§8.2 の目で見る箇所に入れる |
-| 横組みの箱として置く | 図と挿絵・表・コード・数式（ブロック）・Mermaid の図・囲み（`.note` など）・出力例 | 箱に `writing-mode: horizontal-tb` を指定する（`stylesheets/base/vertical.css` にまとめて書く）。保証は「箱の中が横組みで崩れずに読める」まで。箱の幅と高さの上限は版面に合わせる。行内のコードと行内の数式は、横倒しのまま（欧文と同じ扱い） |
-| 縦書きでは使えない | 左右に並べる記法（side-by-side）・会話のアバター・book-card・表の回転・行番号つきのコードの折り返しの印 | 原稿に書いてあれば 🟡 で場所を示す（原稿の場所を指す指摘）。組み上がりは保証しない。一覧は S7a と S8-4 の材料の本で確かめて確定し、この表を直す（Opus が決める。判断の軸: 「崩れずに読める」なら横組みの箱の段、崩れるなら 🟡 の段） |
+| 横組みの箱として置く | 図と挿絵・表・コード・数式（ブロック）・Mermaid の図・囲み（`.note` など）・出力例 | 箱に `writing-mode: horizontal-tb` を指定する（`stylesheets/parts/vertical.css` にまとめて書く）。保証は「箱の中が横組みで崩れずに読める」まで。箱の幅は版面の幅から前後の空きを引いた値に定める（幅を中身に合わせると、Vivliostyle が次のページへ送らない。§10.4）。著者が挿絵に幅を書けば、その幅になる。版面の高さを超える箱は下が切れる。行内のコードと行内の数式は、横倒しのまま（欧文と同じ扱い） |
+| 縦書きでは使えない | 左右に並べる記法（side-by-side）・book-card・表の回転 | 原稿に書いてあれば 🟡 で場所を示す（`Guards::VerticalPartsCheck`。原稿の場所を指す指摘）。組み上がりは保証しない。一覧は S8-4 の材料の本で確かめて確定した（判断の軸: 「崩れずに読める」か。会話のアバター・行番号つきのコードの折り返しの印・サイドイメージ・画像と字を並べる記法は崩れずに読めたので、🟡 にしない。§10.4） |
 
 - **脚注**は、Vivliostyle の `float: footnote` のまま使う。縦書きではページの左端（行の進む先の端）に組まれる。合印と注番号は縦中横にする（`theme-bunko` と同じ）。EPUB と Kindle は今の脚注の変換のまま。S8-4 の材料の本で、3 つの出力先の脚注を見る。
 - **前書きの飾り（`parts/preface.css`）は `standard` へ移す**（S8-5。`theme-contract-spec.md` §10 の論点 5）。小説の前書きと後書きは本文と同じ見た目で組むので、部品に残すと `novel` が全部を打ち消すことになる。移すのは飾りの規則だけで、構造の規則（S2-4 でそろえた部分）は部品に残す。ほかの部品の飾りは、`novel` を書いて打ち消しが要ったものだけを移す。移した規則は、この節に表で記録する。移すたびに本書を基準と比べる。
@@ -349,9 +350,9 @@ S8 の中の決まり:
 
 | # | 点 | 決める時点 | 判断の軸と扱い（`v2-migration-plan.md` §4.1） |
 | :--- | :--- | :--- | :--- |
-| 1 | 縦の文書と横の文書（奥付）が 1 冊に混ざって組めるか | S8-4 の最初 | 崩れたら、奥付も縦に組み、英数字の箱だけを横にする（§2.2）。Opus が決めて記録する |
-| 2 | Kindle の論理方向 | S8-1・S8-4 | 手を決めた（§2.5）。相談しない |
-| 3 | 縦書きで使えない部品の一覧 | S7a と S8-4 | 「崩れずに読める」なら横組みの箱の段、崩れるなら 🟡 の段（§3.4）。Opus が決めて記録する |
+| 1 | 縦の文書と横の文書（奥付）が 1 冊に混ざって組めるか | S8-4（済み） | 混ざってもそのまま組めた（§2.2・§10.4） |
+| 2 | Kindle の論理方向 | S8-1・S8-4（済み） | Kindle は論理方向を縦書きの向きで正しく解く。手で書き直したのは 1 規則（`targets/kindle.css`。§10.4 の決めたことの 8） |
+| 3 | 縦書きで使えない部品の一覧 | S7a と S8-4（済み） | side-by-side・book-card・表の回転の 3 つ（§3.4・§10.4 の決めたことの 4） |
 | 4 | プリセットの値 | S8-3 で求め、S8-5 でユーザーが確定 | §4.1 の目安とノド 13mm |
 | 5 | `novel` のオプション | S8-5 | 迷う項目は足さない（§3.2）。足したら了承待ちの一覧へ |
 | 6 | `figure.vs-full-page` のクラス名 | S8-2（済み） | 衝突しないことを確かめて `vs-full-page` にした（§5.2）。了承待ちの一覧へ載せた |
@@ -449,3 +450,63 @@ S8 の中の決まり:
   - 1.x の `vs` は A4・B5・A5 だけに対応のまま（ユーザーの判断）。小説の判型を 1.x へ戻して入れない。
   - 11/21（ユーザーの判断「途中で止まるより、最初の vs preflight・build で止める」）: プリセットを当てた後の `size:` が判型の表に無く、`page.width`・`page.height` も無い本も、同じ入口で 🔴 で止める（`Common.find_unknown_page_size`・`page_size_notice`。入口は `RootCommand#stop_unknown_page_size!`）。`size:` が `book.yml` か、どのプリセットから来たかを示す。
   - 同じ日に、S8-3 で入れた違いを直した: `page:` を書いていない本（`size:` が無い）は、本文が B5 で組まれるのに、表紙の寸法の窓口が nil を返して表紙だけ 🔴 で止まっていた。窓口も本文の `resolve_page_size` と同じく B5 にした（S8-3 の前の表紙も B5）。
+
+### 10.4 S8-4 縦書きの経路（2026-11-21）
+
+#### 作ったもの
+
+- `stylesheets/base/vertical.css`（`:root` の `writing-mode: vertical-rl` と接頭辞つきの書き方）。`EntryWriter` が、縦書きの本の章・付録・前書き・後書き・目次・本扉・部扉の入口の base 層の最後に足す（`VERTICAL_KINDS`）。奥付・権利ページ・索引・用語集は足さない。
+- `stylesheets/parts/vertical.css`（横組みの箱。§3.4 の 2 段目）。本文の部品を読む種類（章・付録・前書き・後書き）の入口の parts 層の最後に足す。
+- 余白の箱: `base/page.css` の、中身のある 6 つの箱（ノンブルと柱）に `writing-mode: horizontal-tb`。
+- body のクラス `vs-vertical`（`BodyClassInjector.trait_classes`。目次の生成も読む）。奥付と権利ページにも付ける（本の軸なので）。
+- OPF: EPUB の設定の `readingProgression` を `traits.binding` から書く（Vivliostyle が `spine` の `page-progression-direction` に書く。今までは `ltr` の決め打ち）。Kindle 用の EPUB にだけ `<meta name="primary-writing-mode" content="vertical-rl"/>` を足す（`Epub::Opf.mark_primary_writing_mode!`）。
+- 後処理の段 `mark_vertical_text`（`PostProcessCommands::VerticalText`。条件は `traits.vertical?`）: 縦中横の自動（§5.3）と括弧の段落の印 `p.vs-open-bracket`（§6.1）。目次の生成（`TocCommands`）も縦中横の自動をかける。`HtmlContract` に `vs-open-bracket`。
+- 索引: `Common.index_enabled?` が縦書きの本では偽を返す（索引の段・ページ・dedup が止まる）。`TraitCombinationCheck` が 🟡「縦書きの本では、索引と用語集のページを作りません」。
+- `Guards::VerticalPartsCheck`（原稿の検査。build と preflight）: 縦書きの本の原稿の `:::{.side-by-side}`・`:::{.book-card}`・`:::{.rotate-table}` を 🟡 で場所とともに示す。
+- `Build::TextGridNotice`: 縦書きの本で、`vs build --log` と `vs preflight` の終わりに 💡「版面: 42 字 × 17 行」。字数の端数が 0.2 字以上なら、天地の余白の直し方を同じ行に添える（§4.2）。
+- 落とし穴の記録: `vivliostyle-css-pitfalls-notes.md` §2.25。
+- テスト 11 件（`entry_writer_test.rb` 1・`epub_builder_sanitize_test.rb` 1・`vertical_text_test.rb` 4・`vertical_parts_check_test.rb` 3・`body_class_injector_test.rb` 1・`trait_combination_check_test.rb` 1）と、既存の 4 件の期待値（縦書きの本の索引の 🟡・原稿の検査の並び）。
+
+#### 仕様に無かったので決めたこと
+
+1. **横組みの箱の規則は `parts/vertical.css` に置く**（§2.1 は `base/vertical.css` にまとめるとしていた）。箱の幅と前後の空きは、部品（parts 層）の `inline-size: 100%`・`margin-inline: auto` などに勝つ必要があり、base 層では負ける。`!important` は著者の `custom.css` にも勝ってしまうので使わない。`base/vertical.css` には本の組方向だけを残した。
+2. **横組みの箱の幅は `calc(100% - 2em)` に定める。** 幅を中身に合わせる（`fit-content`）と、Vivliostyle 11.3 は、ページの残りに入らない箱を次のページへ送らず、紙の外へはみ出させた（材料の本で、段落と数式の図が紙の外へ出て消えた。最小の文書で再現し、`display` を変えても直らず、幅を定めると直った。`vivliostyle-css-pitfalls-notes.md` §2.25）。小さな表や短いコードも版面の幅を 1 つ使うので、ページは増える。著者が挿絵に `{width=50%}` と書けばその幅になり、正しく送られる。前後の行との空きは 1em。
+3. **番号つきのキャプションごと包む箱は、`div:has(> :is(.table-caption, .code-caption))` で選ぶ。** 包む `div` のクラス（`.cross-ref-table`・`.cross-ref-list`）は契約 HTML の内部のクラスで、vs の CSS も選ばない決まり（`html_contract_test.rb`）。
+4. **縦書きでは使えない部品は、side-by-side・book-card・表の回転の 3 つ**（§3.4 の表を直した）。材料の本で、side-by-side は箱が紙の外へはみ出した。book-card は画像と字が縦の流れに並び、カードの形にならなかった。表の回転は、横書きの版面のために表を回す記法で、縦書きでは向きが合わない。会話のアバター（吹き出しが縦に組まれ、アバターが下に付く）・行番号つきのコードの折り返しの印（横組みの箱の中で横書きと同じに出る）・サイドイメージ・画像と字を並べる記法・表と本文を並べる記法は、崩れずに読めたので 🟡 にしない。
+5. **縦中横の自動の対象外**には、仕様の表に加えて `kbd`・`samp`・`svg`・`math` と、横組みの箱（`parts/vertical.css` と同じ並び）を入れた。URL を字にしたリンクは、リンクの字が `http://`・`https://`・`www.` で始まるものとした。段落の頭の全角空白の後の開き括弧には、括弧の段落の印を付けない（投稿サイトの記法を読む前処理が空白を落とすのは S8-6）。
+6. **`vs build` の 💡 は `--log` のときだけ**（§4.2 のとおり）。`vs preflight` は常に出す。横書きの本には出さない。
+7. **縦書きの本で索引を止める場所は `Common.index_enabled?`** にした。前処理・索引の段・ページの並び・dedup が同じ述語を読むので、1 か所で全部が止まる。`vs index:*` も、縦書きの本では索引が無効の扱いになる。
+8. **Kindle の横組みの箱の前後の空きは、`targets/kindle.css` に物理方向で書いた**（§2.5 の数え方で、手で書き直した箇所は 1 規則・宣言 2 つ）。Kindle は論理方向のプロパティを縦書きの向きで正しく解いた（箇条書きの `padding-inline-start` が `padding-top`、引用の `border-inline-start` が `border-top` に）。崩れたのは、`targets/kindle.css` が横書きを前提に物理方向で書いた囲みの `margin-top`・`margin-bottom` で、縦の流れの前後（左右）の空きが 0 になっていた。`body.vs-kindle.vs-vertical section > :is(pre, table, …)` に `margin-left`・`margin-right` を足した。`figure` は、写真を並べる記法の `figure` の規則と、平らな CSS で勝ち負けが入れ替わる（`css_layer_test.rb`）ので外した。
+9. **`Css::Cascade` の論理方向と物理方向の組（横書きの前提）は、S8-4 では変えない。** 使うのはテーマの検査（`InversionCheck`）と著者の CSS の優先の処理で、縦書きの本の判定が要るのは、縦書きのテーマを検査する S8-5（`vs theme:check novel`）である。そこで組方向で表を切り替えるかを決める。
+
+#### 確かめた結果
+
+本書を守る確かめは、直す前のコミット（`e22f1321`）と作業ツリーで、同じ素材から B1 を組んで比べた（`scripts/build_copy.rb`・4 つの出力先・`--no-clean`）。
+
+- PDF: 閲覧用（283 ページ）・印刷用（281 ページ）とも、違うページ 0。
+- 入口の CSS（`.cache/vs/entry-*.css`）: 差 0（横書きの本は `vertical.css` を読まない）。
+- 契約 HTML: 違ったのは showcase の SVG だけ（組むたびに変わる。§10.2 と同じ）。
+- EPUB・Kindle 用 EPUB: 違いは画像の名前（showcase の SVG と、写真を並べる記法で合成した画像。合成した画像はバイト単位で同じ）と更新日時だけ。CSS は同じ。`spine` は `ltr` のまま。Kindle の記録は、EPUB の中身が同じなので取らなかった。
+- `targets/kindle.css` の規則は、Kindle の確かめの後に足した。縦書きの本の `body` にしか当たらない（`vs-vertical`）。
+
+縦書きは、S5 の材料のテーマ（`standard` を継いで `supports.writing_mode: [horizontal, vertical]` を足した `vtest`・`theme.style: simple`・`b6_standard`）で、前書き・4 章・付録（雛形の見本の章）・後書きの本を組んだ（§8.1 の決まり 3 のとおり `novel` は使わない）。§8.2 の機械の条件の 1〜5:
+
+1. 4 つの出力先とも終了コード 0、🔴 は 0。🟡 は、縦書きで使えない部品の 3 件（狙いどおり）・材料の原稿の参照の誤り 3 件・扉絵の字数 1 件（S8-3 で見た、小さい判型と技術書のテーマの組み合わせ。`style: simple` で扉絵を使わない本でも出る。S8-5 で扱う）。EPUBCheck は EPUB・Kindle 用 EPUB とも 0。Kindle の変換は Supported・Success・エラー 0（注意は `box-shadow` と表紙の W14016 だけ）。
+2. 紙の寸法は 128 × 182mm（`pdfinfo` で 362.8 × 515.9pt）。
+3. PDF の `ViewerPreferences` の `Direction` は `R2L`。OPF の `spine` は EPUB・Kindle 用 EPUB とも `rtl`。Kindle 用 EPUB には `primary-writing-mode` の meta がある。奇数ページのノンブルが左（`pdftotext -bbox`）。印刷用 PDF の隠しノンブルは、奇数ページ（左）で右端、偶数ページ（右）で左端＝ノド。
+4. 本文・前書き・後書き・目次・本扉・部扉が縦に組まれ、権利ページは横に組まれた（§2.2 の論点 1。混ざっても、ページの進む向きと奇数ページの側は前後の文書と同じ）。柱とノンブルは横に組まれた。
+5. 1 行の字数は 42 字（💡「版面: 42 字 × 17 行」と同じ）。行の間隔は 16pt で、行送り 16.15pt と合う。材料の本は段落の間に空きがあり、17 行がそろったページは無かった（小説のテーマでは段落の間の空きを 0 にする。S8-5）。
+
+ほかに見たもの:
+
+- 縦中横の自動は、契約 HTML で数字 1〜2 桁と `!?` を包んだ（`3.5`・`2026`・`100`・コードの中は包まない）。目次の生成も同じ。括弧で始まる段落に `vs-open-bracket` が付いた。Kindle は縦中横（`text-combine-upright: all`）と傍点（`-webkit-text-emphasis-style`）を読んだ。PDF で、ルビ・傍点・縦中横・脚注（版面の左端）が正しく組まれた。
+- 縦書きで使えない部品の見極め（決めたことの 4）と、横組みの箱が紙の外へはみ出す件（決めたことの 2）は、材料の本の全ページを画像にして見た。直した後、紙の端に掛かる字は、使えない部品の side-by-side の 1 か所と付録の 1 か所だけになった。
+- `rake test` 4,565 件が通った。
+
+#### S8-5 へ渡すこと
+
+- 括弧の段落の字下げ 0（`p.vs-open-bracket`）・段落の間の空き 0・見出しの形は `novel` で決める（材料の本では `standard` の見た目のまま）。
+- 節見出しの番号（`1-1`）は、数字ごとに縦中横になる。小説の既定は `heading_numbering: none` なので、番号のある縦書きの本で要るかは後で見る。
+- `vs theme:check novel` で、`Css::Cascade` の組を組方向で切り替えるか（決めたことの 9）。
+- Kindle Previewer の画面で、全面の挿絵（中間生成物の `figure.vs-full-page` に前後の改ページが無い）と、横組みの箱の幅（Kindle は `calc(100% - 2em)` を落とす）を見る。S8-7 の目で見る 12 か所に入る。
+- `style: simple`（扉絵を使わない）の本で、扉絵の字数の 🟡 が出る。

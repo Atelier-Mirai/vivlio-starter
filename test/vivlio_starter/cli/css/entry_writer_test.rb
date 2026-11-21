@@ -42,6 +42,29 @@ module VivlioStarter
                  '層の順の宣言は @import より前'
         end
 
+        # 縦書きの本は、縦に組むページの種類にだけ組方向を足し、本文の部品を読む種類には横組みの箱を
+        # parts 層の最後に足す。奥付と権利ページは横に組む（novel-vertical-spec.md §2.1・§2.2）
+        def test_should_add_the_vertical_writing_mode_only_to_vertical_pages_of_a_vertical_book
+          vertical = BookTraits.new(writing_mode: :vertical, layout: :reflowable)
+          base = '@import url("../../stylesheets/base/vertical.css") layer(base);'
+          parts = '@import url("../../stylesheets/parts/vertical.css") layer(parts);'
+
+          chapter = EntryWriter.render('chapter', traits: vertical).lines.map(&:strip)
+          assert_includes chapter, base
+          assert_equal parts, chapter.grep(/layer\(parts\)/).last, '横組みの箱は部品の最後'
+          assert_equal base, chapter.grep(/layer\(base\)/).last, '組方向は base 層の最後'
+
+          toc = EntryWriter.render('toc', traits: vertical).lines.map(&:strip)
+          assert_includes toc, base
+          refute_includes toc, parts, '本文の部品を読まない種類には箱を足さない'
+
+          %w[colophon legalpage index].each do |kind|
+            refute_match(/vertical\.css/, EntryWriter.render(kind, traits: vertical), "#{kind} は横に組む")
+          end
+          refute_match(/vertical\.css/, EntryWriter.render('chapter', traits: BookTraits.new(writing_mode: :horizontal, layout: :reflowable)),
+                       '横書きの本の入口は変えない')
+        end
+
         # 本文以外のページは、土台・自分のページの CSS・テーマ（standard の見出しの 2 枚）・設定だけを読む
         def test_should_give_generated_pages_only_the_foundation_and_their_own_css
           imports = EntryWriter.render('index').scan(/@import url\("([^"]+)"\)/).flatten

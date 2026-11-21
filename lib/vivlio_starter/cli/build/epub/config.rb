@@ -69,8 +69,9 @@ module VivlioStarter
           # 表紙画像の埋め込み設定を取得（kindle は二重表紙回避のため embed:false 固定・§1-6）
           cover_line = build_cover_config_line(config, esc, flavor:)
 
-          # 横書き固定（将来の縦書き対応に備えてハードコーディング）
-          reading_progression = 'ltr'
+          # ページの進む向き。Vivliostyle が OPF の spine の page-progression-direction に書く
+          # （縦書きの本は rtl。novel-vertical-spec.md §2.4）
+          reading_progression = Common.traits.binding.to_s
 
           config_content = <<~JS
             import entries from './#{EPUB_ENTRIES_FILE}';

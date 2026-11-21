@@ -163,6 +163,23 @@ module VivlioStarter
         assert_includes result, 'href="00-preface.xhtml"', 'href は変更しないべき'
       end
 
+      # 縦書きの本の Kindle 用の EPUB は、metadata に primary-writing-mode の meta を足す
+      # （novel-vertical-spec.md §2.4）。二度かけても重ならない
+      def test_should_add_primary_writing_mode_meta_once
+        opf = <<~XML
+          <package><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <dc:title>t</dc:title>
+            </metadata><spine page-progression-direction="rtl"></spine></package>
+        XML
+        epub = build_epub_with_css('EPUB/content.opf' => opf)
+
+        2.times { Build::Epub::Opf.mark_primary_writing_mode!(epub) }
+
+        result = read_css_from_epub(epub, 'EPUB/content.opf')
+        assert_equal 1, result.scan('<meta name="primary-writing-mode" content="vertical-rl"/>').size
+        assert_operator result.index('primary-writing-mode'), :<, result.index('</metadata>')
+      end
+
       # 目次の文書（nav）の中で自分自身を指すリンクに、章の印 #ch-… を付ける。
       # Kindle の変換はファイル名だけの自己リンクを解決できず W14001 を出していた。
       # ほかの文書へのリンクと、nav の外のリンクは変えない

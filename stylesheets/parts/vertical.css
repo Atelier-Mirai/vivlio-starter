@@ -1,0 +1,55 @@
+@charset "utf-8";
+
+/* 縦書きの本の、横組みの箱として置く部品（novel-vertical-spec.md §3.4 の表の 2 段目）。parts 層。
+   縦書きの本の、本文を組むページの種類の入口だけが、部品の最後に読む（横書きの本は読まない）。
+   部品の大きさと余白の規則に勝つため、base 層でなく parts 層の最後に置く。
+
+   箱の中は横書きの本と同じに組まれる。保証は「箱の中が横組みで崩れずに読める」まで。
+   図と挿絵（全面の挿絵を含む）・コード・表・数式（ブロック）・Mermaid の図・囲み・出力例。
+   番号つきのキャプションのある表とコードは、キャプションごと包む箱（キャプションを子に持つ div）を横にする。
+   行内のコードと行内の数式は箱にしない（欧文と同じく横倒しのまま組まれる）。
+
+   縦の流れの中の横組みの箱は、横幅が流れの向き（行の進む向き）の長さになる。幅は、版面の幅から
+   前後の空きを引いた値に定める。幅を中身に合わせる（fit-content・表の自動の幅）と、Vivliostyle
+   （11.3）は、ページの残りに入らない箱を次のページへ送らず、紙の外へはみ出させる（幅を % や長さで
+   定めた箱は正しく送る）。そのため小さな表や短いコードも、版面の幅を 1 つ使う。挿絵に著者が
+   幅を書いた（![題](x.png){width=50%}）ときは、その幅に従う（style 属性が勝つ）。
+   箱は行の向き（縦）には分けられないので、版面の高さを超える箱（長いコード・行の多い表）は下が切れる。 */
+
+figure,
+pre,
+table,
+.long-table,
+div:has(> :is(.table-caption, .code-caption)),
+.memo,
+.tip,
+.note,
+.notice,
+.column,
+.output,
+.terminal,
+.diagram {
+  -webkit-writing-mode: horizontal-tb;
+  -epub-writing-mode: horizontal-tb;
+  writing-mode: horizontal-tb;
+}
+
+/* 大きさ。:root を前に付けて、部品の詳細度（figure[class*=" language-"] など）に勝たせる。
+   全面の挿絵は寸法を自分で決める（parts/figure.css の figure.vs-full-page）ので外す */
+:root :is(figure:not(.vs-full-page), pre, table, .long-table, div:has(> :is(.table-caption, .code-caption)),
+          .memo, .tip, .note, .notice, .column, .output, .terminal, .diagram) {
+  box-sizing: border-box;
+  inline-size: calc(100% - 2em);
+  max-inline-size: none;
+  /* 前後の行との空き。横書きの本の左右の余白（.note などの auto）は、縦の流れでは前後の空きになる */
+  margin-inline: 1em;
+}
+
+/* 箱の中の箱（キャプションつきのコードの pre・出力例の中のコードなど）には前後の空きを付けない */
+:root :is(figure, pre, table, .long-table, div:has(> :is(.table-caption, .code-caption)),
+          .memo, .tip, .note, .notice, .column, .output, .terminal, .diagram)
+      :is(figure, pre, table, .long-table, div:has(> :is(.table-caption, .code-caption)),
+          .memo, .tip, .note, .notice, .column, .output, .terminal, .diagram) {
+  inline-size: 100%;
+  margin-inline: 0;
+}

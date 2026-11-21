@@ -26,6 +26,9 @@
   font-weight: 400;
 }
 
+/* 中身のある余白の箱（柱とノンブル）には writing-mode: horizontal-tb を書く。余白の箱の字は
+   ページの組方向で組まれるので、縦書きの本でも柱とノンブルを横に組むため
+   （novel-vertical-spec.md §2.3。横書きの本では何も変わらない） */
 @page {
   /* 判型は book.yml の page.use（プリセット）から BookSettingsCss が
      book-settings.css へ @page { size } をリテラルで書き出し、後段読込で上書きする。
@@ -39,6 +42,7 @@
 
   /* ノンブル（中央配置時） */
   @bottom-center {
+    writing-mode: horizontal-tb;
     content:     var(--book-folio-center-content);
     text-align:  center;
     font-family: var(--book-font-folio);
@@ -63,6 +67,7 @@
 
   /* ノンブル（左右配置時：左ページ） */
   @bottom-left {
+    writing-mode: horizontal-tb;
     content:     var(--book-folio-left-content);
     text-align:  left;
     font-family: var(--book-font-folio);
@@ -80,6 +85,7 @@
 
   /* ノンブル（左右配置時：右ページ） */
   @bottom-right {
+    writing-mode: horizontal-tb;
     content:     var(--book-folio-right-content);
     text-align:  right;
     font-family: var(--book-font-folio);
@@ -90,6 +96,7 @@
 
   /* タイトル */
   @top-right {
+    writing-mode: horizontal-tb;
     content:     string(chapter-number, first) " " string(chapter-title, first);
     text-align:  right;
     font-family: var(--book-font-body);
@@ -114,6 +121,7 @@
 /* ローマ数字ノンブル: 偶数ページ=左下、奇数ページ=右下 */
 @page front:left {
   @bottom-left {
+    writing-mode: horizontal-tb;
     content: counter(page, lower-roman);
     font-family: var(--book-font-folio);
     font-size: var(--book-folio-font-size);
@@ -127,6 +135,7 @@
 
 @page front:right {
   @bottom-right {
+    writing-mode: horizontal-tb;
     content: counter(page, lower-roman);
     font-family: var(--book-font-folio);
     font-size: var(--book-folio-font-size);

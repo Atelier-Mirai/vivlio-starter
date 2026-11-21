@@ -111,6 +111,15 @@ module VivlioStarter
         # （Css::LiteralResolver）、PDF 向けの本文の字の大きさと行送りのトークンを端末の既定へ置き換える
         TARGET_FOUNDATION = { kindle: %w[targets/kindle-tokens.css] }.freeze
 
+        # 縦書きの本で縦に組むページの種類（novel-vertical-spec.md §2.2）。base 層の最後に組方向を読む。
+        # 奥付と権利ページは横に組む。索引と用語集は縦書きの本では作らない（Guards::TraitCombinationCheck）。
+        # book-settings.css（全種類が同じ 1 枚）に書かないのは、settings 層が pages 層に勝ち、
+        # 横に組むページで打ち消せないため（§2.1）
+        VERTICAL_KINDS = %w[chapter appendix preface postface toc titlepage part-title].freeze
+        VERTICAL = 'base/vertical.css'
+        # 横組みの箱として置く部品。部品の大きさと余白に勝つため、部品を読む種類の parts 層の最後に読む
+        VERTICAL_PARTS = 'parts/vertical.css'
+
         # 原稿の種類（Entry#kind・file_type）と入口の名前が違うもの
         KIND_ALIASES = { 'part_title' => 'part-title', 'whole_toc' => 'toc',
                          'indexpage' => 'index', 'glossarypage' => 'glossary' }.freeze
@@ -171,10 +180,12 @@ module VivlioStarter
         # 入口の CSS の全文（副作用なし）
         # @param target [Symbol, nil] :epub・:kindle なら target 層に出力先の CSS を足す
         # @param theme [Theme::Resolved, nil] 選ばれたテーマ（読めなければ nil で、テーマの分を足さない）
-        def render(kind, target: nil, theme: Theme.selected)
+        # @param traits [BookTraits] 本の軸の値（縦書きなら、縦に組む種類に組方向を足す）
+        def render(kind, target: nil, theme: Theme.selected, traits: Common.traits)
           name = entry_name(kind)
           layered = FOUNDATION.merge(IMPORTS.fetch(name)) { |_, a, b| a + b }
-                              .transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
+          layered = vertical_layers(layered) if vertical_page?(name, traits)
+          layered = layered.transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
           layered = layered.merge(theme_hrefs(theme)) { |_, a, b| a + b } if theme
           lines = LAYERS.flat_map { |layer| (layered[layer] || []).map { import(it, layer) } }
           lines << import(BOOK_SETTINGS, 'settings')
@@ -190,6 +201,15 @@ module VivlioStarter
             #{lines.join("\n")}
             @import url("#{CACHE_TO_STYLESHEETS}custom.css");
           CSS
+        end
+
+        # @param name [String] 入口の名前
+        def vertical_page?(name, traits) = traits.vertical? && VERTICAL_KINDS.include?(name)
+
+        # 組方向を base 層の最後に、横組みの箱を（本文の部品を読む種類だけ）parts 層の最後に足す
+        def vertical_layers(layered)
+          boxes = layered.fetch('parts', []).include?('parts/box.css') ? [VERTICAL_PARTS] : []
+          layered.merge('base' => [*layered['base'], VERTICAL], 'parts' => [*layered['parts'], *boxes])
         end
 
         # テーマの tokens: は tokens 層の最後、styles: は theme 層（土台 → 自分の順。theme-contract-spec.md §3.1）

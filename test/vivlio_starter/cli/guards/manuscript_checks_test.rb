@@ -25,8 +25,8 @@ module VivlioStarter
       def test_should_list_the_manuscript_checks
         classes = Guards.manuscript_checks.map(&:class)
 
-        assert_equal [Guards::CodeFenceCheck, Guards::StrayPageBreakCheck,
-                      Guards::ContainerFenceCheck, Guards::ContainerClassCheck, Guards::TextTableCheck], classes
+        assert_equal [Guards::CodeFenceCheck, Guards::StrayPageBreakCheck, Guards::ContainerFenceCheck,
+                      Guards::ContainerClassCheck, Guards::TextTableCheck, Guards::VerticalPartsCheck], classes
       end
 
       # 45 章の閉じ忘れは、12 章だけを調べるときには出さない。全原稿を調べるときは出す

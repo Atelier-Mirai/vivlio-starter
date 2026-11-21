@@ -3,6 +3,8 @@
 require 'cgi'
 require 'nokogiri'
 require_relative 'css/entry_writer'
+require_relative 'post_process/body_class_injector'
+require_relative 'post_process/vertical_text'
 module VivlioStarter
   module CLI
     # ================================================================
@@ -565,12 +567,22 @@ module VivlioStarter
         def finalize_html
           if File.exist?(html_path)
             content = File.read(html_path, encoding: 'utf-8')
-            content.sub!('<body>', '<body class="toc">')
+            classes = ['toc', *PostProcessCommands::BodyClassInjector.trait_classes]
+            content.sub!('<body>', %(<body class="#{classes.join(' ')}">))
+            content = vertical_text(content) if Common.traits.vertical?
             File.write(html_path, content, encoding: 'utf-8')
             Common.log_success('目次生成完了')
           else
             Common.log_warn('_toc.html の生成に失敗しました（VFM 実行エラー）')
           end
+        end
+
+        # 縦書きの本の目次の項目にも、本文と同じく縦中横の自動をかける（novel-vertical-spec.md §5.3）
+        def vertical_text(content)
+          doc = PostProcessCommands::HtmlParser.parse_html_document(content)
+          return content unless PostProcessCommands::VerticalText.wrap_tcy!(doc.at('body'))
+
+          PostProcessCommands::HtmlParser.render_html_document(doc)
         end
 
         # _toc.md のパスを返す

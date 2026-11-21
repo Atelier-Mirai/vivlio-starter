@@ -220,6 +220,14 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 
 使える書き方の記録（2026-11-17・Vivliostyle cli 11.3.3・core 2.45.1。`v2-s6-10-consultation.md` §4.2）。tokens 層の `:root` に既定値、theme 層に `body.x h2 { break-before: var(--book-section-break-before); }`、settings 層の `:root` に値を置いた 1 枚の HTML で、`page`・`auto`・`recto`・`verso` のどれも改ページに使われた（白紙を挟む `recto`・偶数ページの `verso` も）。テーマに改ページを値で書かせず、公開する変数で読ませる形（`theme-contract-spec.md` §3.5）はこれに拠る。クリーン EPUB の Apple Books（WebKit）でも、節見出しの `break-before: var(…)` が `auto`・`page` のどちらでも働いた（S6-9b・`theme-contract-spec.md` §11.14）。
 
+### 2.25 縦書きの流れの中の横組みの箱は、幅を中身に合わせると次のページへ送られない
+
+- **症状**（2026-11-21・Vivliostyle cli 11.3.3。S8-4 の材料の本）: `writing-mode: vertical-rl` の本文の中で、表・コード・囲みを `writing-mode: horizontal-tb` の箱にし、幅を `inline-size: fit-content; max-inline-size: 100%` にすると、ページの残りに入らない箱が次のページへ送られず、紙の左の外へはみ出した。続く段落と数式の図は紙の外へ出て消えた。
+- **切り分け**: 最小の文書（段落 9 行の後に横組みの箱 1 つ）で再現した。箱の `display` を `inline-block`・`flow-root`・`table`・`flex`・`grid` に変えても、`break-inside: avoid` を足しても同じ。幅を `98mm` や `100%` に定めると正しく送られた。幅が中身で決まる箱（`fit-content`・`max-inline-size` で縮めた幅・表の自動の幅・`img` の自然な幅で決まる `figure`）だけが誤る。
+- **扱い**: 縦書きの本の横組みの箱は、幅を `calc(100% - 2em)`（版面の幅から前後の空きを引いた値）に定める（`parts/vertical.css`）。小さな表や短いコードも版面の幅を 1 つ使うので、ページは増える。挿絵に著者が幅を書いたとき（`{width=50%}` が `style` 属性になる）はその幅に従い、正しく送られる。
+- **もう一つの性質**: 横組みの箱は、縦書きの流れでは行の向き（縦）に分けられない。版面の高さを超える箱（長いコード・行の多い表）は下が切れる。
+- **見つけ方**: `pdftotext -bbox` で、紙の端から 5pt 以内に掛かる語を数える（ページ数ではなく、はみ出しを直接数える）。
+
 ## 3. 今回確立した実装パターン
 
 | パターン | 実装箇所 | 用途 |

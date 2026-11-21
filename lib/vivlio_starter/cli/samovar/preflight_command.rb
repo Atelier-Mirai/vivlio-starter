@@ -28,6 +28,7 @@
 require_relative '../build'
 require_relative '../build/pipeline'
 require_relative '../build/kindle_previewer_notice'
+require_relative '../build/text_grid_notice'
 require_relative '../index'
 require_relative '../pre_process'
 require_relative '../token_resolver'
@@ -129,6 +130,7 @@ module VivlioStarter
           print_chapter_summary(entries)
           print_preflight_summary
           Build::KindlePreviewerNotice.report
+          Build::TextGridNotice.report # 縦書きの本の版面の字数と行数（novel-vertical-spec.md §4.2）
           ScaffoldUpdates.report if targets.empty? # build と同じく、章を指定したら言わない
 
           # 終了コードは 🔴 の有無だけで決める。画面に出た絵文字と CI の成否が一致し、

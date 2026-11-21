@@ -17,7 +17,14 @@ module VivlioStarter
       # - 最初の本文章には chapter-first クラスを追加（pageカウンタリセット用）
       # ================================================================
       module BodyClassInjector
+        # 縦書きの本の body に付けるクラス（契約 HTML の保証のクラス）
+        VERTICAL_CLASS = 'vs-vertical'
+
         module_function
+
+        # 本の軸から付く body のクラス（目次など、ここを通らないページの生成も読む）
+        # @return [Array<String>]
+        def trait_classes = Common.traits.vertical? ? [VERTICAL_CLASS] : []
 
         # HTMLファイルの <body> タグにファイルタイプクラスを付与
         # @param html_file [String] HTMLファイルのパス
@@ -37,6 +44,9 @@ module VivlioStarter
 
           # 最初の本文章には chapter-first クラスを追加
           classes << 'chapter-first' if entry.kind == :chapter && first_main_chapter?(html_file)
+
+          # 組方向（theme-contract-spec.md §2.2）。本の軸なので、横に組む奥付と権利ページにも付ける
+          classes.concat(trait_classes)
 
           class_attr = classes.join(' ')
 

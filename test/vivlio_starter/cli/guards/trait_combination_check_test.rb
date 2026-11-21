@@ -32,7 +32,7 @@ module VivlioStarter
 
       # 縦書きの本は、standard が横書きだけに対応するので止める。縦書きに対応するテーマはまだ同梱されていない
       def test_should_stop_a_vertical_book_because_standard_is_horizontal_only
-        violations = validate(page: { writing_mode: 'vertical', layout: 'reflowable' })
+        violations = validate(page: { writing_mode: 'vertical', layout: 'reflowable' }, index_glossary: { enabled: false })
 
         assert_equal 1, violations.size
         assert_predicate violations.first, :error?
@@ -51,14 +51,26 @@ module VivlioStarter
       # S5 の完了の条件の 4 の本（縦書きの最小の本）は、縦書きに対応する材料のテーマで組む
       def test_should_pass_a_vertical_book_with_a_theme_that_supports_vertical_writing
         with_themes('tate' => { 'supports' => { 'writing_mode' => %w[horizontal vertical] } }) do |root|
-          assert_empty validate({ theme: { name: 'tate' }, page: { writing_mode: 'vertical', layout: 'reflowable' } }, root)
+          assert_empty validate({ theme: { name: 'tate' }, page: { writing_mode: 'vertical', layout: 'reflowable' },
+                                  index_glossary: { enabled: false } }, root)
         end
       end
+
+# 縦書きの本は索引と用語集のページを作らない（novel-vertical-spec.md §2.2）。止めずに 🟡 で示す
+def test_should_warn_that_a_vertical_book_makes_no_index
+  with_themes('tate' => { 'supports' => { 'writing_mode' => %w[horizontal vertical] } }) do |root|
+    violations = validate({ theme: { name: 'tate' }, page: { writing_mode: 'vertical', layout: 'reflowable' },
+                            index_glossary: { enabled: true } }, root)
+
+    assert_equal %i[warn], violations.map(&:severity)
+    assert_equal '縦書きの本では、索引と用語集のページを作りません', violations.first.message
+  end
+end
 
       # 対応するテーマは、本の themes/ と同梱のテーマから探して示す
       def test_should_name_the_themes_that_support_the_requested_writing_mode
         with_themes('tate' => { 'supports' => { 'writing_mode' => %w[vertical] } }) do |root|
-          violations = validate({ page: { writing_mode: 'vertical', layout: 'reflowable' } }, root)
+          violations = validate({ page: { writing_mode: 'vertical', layout: 'reflowable' }, index_glossary: { enabled: false } }, root)
 
           assert_equal ['縦書きに対応するテーマ: tate（config/book.yml の theme.name に書きます）'], violations.first.detail
         end

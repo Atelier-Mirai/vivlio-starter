@@ -142,6 +142,34 @@ module VivlioStarter
           Common.log_warn("[EPUB] 目次の文書のリンクの修正に失敗: #{e.message}")
         end
 
+        # Kindle 用の EPUB の metadata に、本の組方向の meta を足す（縦書きの本だけ）。
+        # Kindle は spine の page-progression-direction だけでは縦書きの本と扱わず、この meta を読む
+        # （v2-feasibility-notes.md §3.2・novel-vertical-spec.md §2.4）。クリーン EPUB には書かない
+        # （EPUB 3 の meta の name は OPF 2 の書き方で、組方向は CSS と spine が決める）
+        PRIMARY_WRITING_MODE = '<meta name="primary-writing-mode" content="vertical-rl"/>'
+
+        def mark_primary_writing_mode!(epub_path)
+          abs_epub = File.expand_path(epub_path)
+
+          Dir.mktmpdir('vs-epub-wm') do |tmpdir|
+            system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir, out: File::NULL, err: File::NULL)
+            opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
+            return unless File.exist?(opf_path)
+
+            content = File.read(opf_path, encoding: 'UTF-8')
+            return if content.include?('name="primary-writing-mode"')
+
+            replaced = content.sub(%r{(\s*)</metadata>}) { "#{::Regexp.last_match(1)}  #{PRIMARY_WRITING_MODE}#{::Regexp.last_match(0)}" }
+            return if replaced == content
+
+            File.write(opf_path, replaced)
+            zip_into(abs_epub, ['EPUB/content.opf'], from: tmpdir)
+            Common.log_info('[EPUB] Kindle 用の EPUB に縦書きの meta（primary-writing-mode）を足しました')
+          end
+        rescue StandardError => e
+          Common.log_warn("[EPUB] 縦書きの meta の追加に失敗: #{e.message}")
+        end
+
         # プロジェクト名から決定的に算出した UUID を urn:uuid: に載せて返す。
         # プロジェクト名が未設定の場合は book.main_title を fallback とし、
         # それでも空なら nil を返す。

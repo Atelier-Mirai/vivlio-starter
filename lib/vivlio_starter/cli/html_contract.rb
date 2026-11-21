@@ -132,7 +132,7 @@ module VivlioStarter
             info-list copyright powered-by disclaimer trademark twemoji-credit]],
         [:generated_page, :guaranteed, :target, %w[vs-index-item vs-index-items vs-index-refs]],
         [:generated_page, :internal, :contract, %w[toc-label]],
-        [:new_part, :guaranteed, :contract, %w[tcy sesame vs-full-page vs-video]]
+        [:new_part, :guaranteed, :contract, %w[tcy sesame vs-full-page vs-video vs-open-bracket]]
       ].freeze
 
       CLASSES = GROUPS.each_with_object({}) do |(category, level, stage, names), table|

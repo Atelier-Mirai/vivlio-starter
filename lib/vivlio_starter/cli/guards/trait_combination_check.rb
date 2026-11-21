@@ -38,7 +38,7 @@ module VivlioStarter
           # S9 で fixed_layout を外すと、🟡 が出るようになる
           [unknown_type, unknown_value(:writing_mode, BookTraits::WRITING_MODES),
            unknown_value(:layout, BookTraits::LAYOUTS), fixed_layout || fixed_layout_with_index,
-           *theme_violations].compact
+           vertical_with_index, *theme_violations].compact
         end
 
         private
@@ -78,6 +78,16 @@ module VivlioStarter
           warning('固定レイアウトの本では、索引と用語集のページを作りません',
                   detail: 'config/book.yml の index_glossary.enabled を false にしてください')
         end
+
+        # 縦書きの本の索引は、横組みにして巻末から逆向きに綴じる形が要り、この版では扱わない
+        # （novel-vertical-spec.md §2.2）。索引の段は Common.index_enabled? が止める
+        def vertical_with_index
+          return unless traits.vertical? && Common.truthy?(@config.dig(:index_glossary, :enabled))
+
+          warning('縦書きの本では、索引と用語集のページを作りません',
+                  detail: 'config/book.yml の index_glossary.enabled を false にしてください')
+        end
+
         # テーマが読めない（無い・壊れている・契約の版が合わない）なら 🔴 だけを出す。
         # 読めたら、知らないキーの 🟡 と、テーマが対応しない組方向・レイアウト・出力先の 🔴
         # （v2-architecture-spec.md §2.5）。固定レイアウトは上で止めているので、レイアウトは重ねない

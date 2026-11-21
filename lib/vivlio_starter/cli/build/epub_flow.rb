@@ -154,6 +154,9 @@ module VivlioStarter
           # --- Phase: 目次の文書の自分自身へのリンクに飛び先を付ける（Kindle のみ） ---
           Epub::Opf.anchor_nav_self_link!(target_name) if to_kpf && File.exist?(target_name)
 
+          # --- Phase: 縦書きの本の組方向の meta（Kindle のみ） ---
+          Epub::Opf.mark_primary_writing_mode!(target_name) if to_kpf && Common.traits.vertical? && File.exist?(target_name)
+
           # --- Phase: EPUB identifier 安定化 ---
           Epub::Opf.stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 

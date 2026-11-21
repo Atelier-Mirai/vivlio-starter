@@ -23,6 +23,7 @@ require_relative '../build'
 require_relative '../build/build_lock'
 require_relative '../build/direct_build'
 require_relative '../build/kindle_previewer_notice'
+require_relative '../build/text_grid_notice'
 require_relative '../build/pipeline'
 require_relative '../build/output_helpers'
 require_relative '../pre_process'
@@ -472,6 +473,8 @@ module VivlioStarter
 
           # Kindle を選んだ本で Kindle Previewer が無ければ、ビルドの終わりに入れ方を添える
           Build::KindlePreviewerNotice.report
+          # 縦書きの本の版面の字数と行数（--log のときだけ。novel-vertical-spec.md §4.2）
+          Build::TextGridNotice.report(verbose: Common.current_log_level >= 2)
         end
       end
     end

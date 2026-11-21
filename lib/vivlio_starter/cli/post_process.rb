@@ -47,6 +47,7 @@ require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
 require_relative 'post_process/terminal_block_converter'
 require_relative 'post_process/definition_list_converter'
+require_relative 'post_process/vertical_text'
 require_relative 'prism_lines'
 require_relative 'build/plan'
 
@@ -140,6 +141,10 @@ module VivlioStarter
           [:inject_heading_markers,  ->(html, _) { inject_heading_markers!(html) }, [:warn, '見出しメタ付与に失敗'], nil],
           [:inject_heading_number_spans, ->(html, entry) { inject_heading_number_spans!(html, entry) },
            [:warn, '見出し番号スパン構築に失敗'], nil],
+          # 縦書きの本の縦中横の自動と括弧の段落の印（novel-vertical-spec.md §5.3・§6.1）。見出しの番号の
+          # span（inject_heading_number_spans）の後に行い、見出しの中の数字も包む
+          [:mark_vertical_text,      ->(html, _) { VerticalText.mark!(html) }, [:error, '縦書きの印の付与中にエラー'],
+           ->(plan) { plan.traits.vertical? }],
           # 最終クリーンアップ: Nokogiri 系のステップが <p><div>...</div></p> の
           # ねじれを正すときに残してしまう空の <p></p> などを除去する。
           [:final_cleanup,           ->(html, _) { final_cleanup!(html, count_replacements) }, nil, nil],
