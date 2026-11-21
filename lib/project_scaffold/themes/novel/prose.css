@@ -1,0 +1,34 @@
+@charset "utf-8";
+
+/* =====================================================================
+   novel テーマ: 段落・会話文・区切り・強調（theme 層）
+   ---------------------------------------------------------------------
+   組方向（縦）は vs が base/vertical.css で入れる。ここは見た目だけを書く。
+   選択子は本文のページ（章・付録・前書き・後書き）の body で絞る。styles: は全部の種類の入口に入り、
+   横に組む権利ページ・奥付や、本扉・目次の見た目に当てないため。
+   寸法は em で書く（Kindle は em をそのまま読む。紙の寸法の clamp() は Kindle に届かない）。
+   ===================================================================== */
+
+/* 行末の句読点をぶら下げる。PDF だけが読む（EPUB と Kindle では、ぶら下がらないだけで崩れない。
+   novel-vertical-spec.md §3.2） */
+body:is(.chapter, .appendix, .preface, .postface) {
+  hanging-punctuation: allow-end;
+}
+
+/* 開き括弧で始まる段落（会話文）は字下げしない。括弧の字は上半分が空いているので、見た目は
+   二分下げになる。印 p.vs-open-bracket は縦書きの本で vs が付ける（novel-vertical-spec.md §6.1） */
+body:is(.chapter, .appendix, .preface, .postface) p.vs-open-bracket {
+  text-indent: 0;
+}
+
+/* 強調は太字だけにする（色を変えない） */
+body:is(.chapter, .appendix, .preface, .postface) strong {
+  font-weight: bold;
+}
+
+/* 区切り（*** ・---）。線を引かず、前後に 1 行ずつ空ける */
+body:is(.chapter, .appendix, .preface, .postface) hr {
+  border: none;
+  block-size: 0;
+  margin-block: 1em;
+}
