@@ -327,7 +327,7 @@ body.vs-kindle .terminal {
    （novel-vertical-spec.md §2.5。手で書き直す箇所が 20 以下なので LiteralResolver に表を持たせない）。
    縦の流れに直に置かれた箱（section の子）だけに当てる。figure は写真を並べる記法の figure の規則と平らな CSS で勝ち負けが入れ替わるので外す（css_layer_test） */
 body.vs-kindle.vs-vertical section > :is(pre, table, .long-table, .memo, .tip, .note, .notice, .column,
-                                          .output, .terminal, .diagram) {
+                                          .output, .terminal, .diagram, .side-by-side) {
   margin-left: 1em;
   margin-right: 1em;
 }

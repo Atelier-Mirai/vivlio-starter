@@ -41,10 +41,9 @@ module VivlioStarter
       def test_should_point_at_unsupported_parts_in_a_vertical_book
         violations = check(MANUSCRIPT, writing_mode: 'vertical')
 
-        assert_equal %i[warn warn], violations.map(&:severity)
-        assert_equal ['contents/11-sample.md:3 - 縦書きの本では左右に並べる記法（:::{.side-by-side}）を使えません',
-                      'contents/11-sample.md:7 - 縦書きの本では本の紹介のカード（:::{.book-card}）を使えません'],
-                     violations.map(&:message), 'コードの中の記法と、縦書きで読める会話は示さない'
+        assert_equal %i[warn], violations.map(&:severity)
+        assert_equal ['contents/11-sample.md:7 - 縦書きの本では本の紹介のカード（:::{.book-card}）を使えません'],
+                     violations.map(&:message), '上下に積んで組む side-by-side・コードの中の記法・縦書きで読める会話は示さない'
       end
 
       def test_should_say_nothing_in_a_horizontal_book
