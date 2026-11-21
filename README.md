@@ -119,8 +119,8 @@ vs build  10-awesome        # その章だけ素早くビルドして確認
 プロジェクトを作らずに、手元の Markdown を 1 枚だけ組版することもできます。
 
 ```bash
-vs build myawesome.md                  # カレントディレクトリに myawesome.pdf を生成
-vs build ~/notes/idea.md --theme blue  # テーマカラーを指定
+vs build myawesome.md                  # 原稿と同じディレクトリに myawesome.pdf を生成
+vs build ~/notes/idea.md --theme blue  # ~/notes/idea.pdf を生成（テーマカラーを指定）
 ```
 
 `book.yml` も `catalog.yml` も使わない軽量経路です。出力は閲覧用 PDF のみ・装飾は画像なし（simple）固定で、コードインクルードやクロスリファレンス、索引・用語集は使えません。
