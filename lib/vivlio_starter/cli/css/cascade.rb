@@ -10,8 +10,9 @@
 # なぜ宣言をロングハンドに展開するか:
 #   取り合いはプロパティの名前でなく、値の入る場所で起きる。`margin` と
 #   `margin-block-start` は同じ場所（横書きでは margin-top）を取り合うので、
-#   ロングハンドへ展開した名前で組にする。論理方向は横書き（horizontal-tb・ltr）として
-#   物理方向へ読み替える。
+#   ロングハンドへ展開した名前で組にする。論理方向は、規則の列の組方向で物理方向へ読み替える。
+#   横書き（horizontal-tb・ltr）が既定で、列に base/vertical.css（縦書きの本の、縦に組むページの
+#   入口だけが読む）があれば縦書き（vertical-rl）として読む（novel-vertical-spec.md §10.5）。
 #
 # @page・@font-face などの選択子を持たない規則は宣言にしない（opaque として返す）。
 # ================================================================
@@ -42,6 +43,10 @@ module VivlioStarter
                   'block-start' => 'top', 'block-end' => 'bottom', 'inline-start' => 'left',
                   'inline-end' => 'right' }.freeze
         AXES = { 'block' => %w[top bottom], 'inline' => %w[left right] }.freeze
+        # 縦書き（vertical-rl）: 行は上から下へ、行の並びは右から左へ進む
+        VERTICAL_SIDES = SIDES.merge('block-start' => 'right', 'block-end' => 'left', 'inline-start' => 'top',
+                                     'inline-end' => 'bottom').freeze
+        VERTICAL_AXES = { 'block' => %w[right left], 'inline' => %w[top bottom] }.freeze
         ALL_SIDES = %w[top right bottom left].freeze
         BORDER_PARTS = %w[width style color].freeze
         SHORTHANDS = {
@@ -65,6 +70,13 @@ module VivlioStarter
           'text-wrap' => 'white-space', 'text-wrap-mode' => 'white-space', 'white-space-collapse' => 'white-space',
           '-webkit-appearance' => 'appearance'
         }.freeze
+        VERTICAL_ALIASES = ALIASES.merge(
+          'inline-size' => 'height', 'block-size' => 'width', 'max-inline-size' => 'max-height',
+          'max-block-size' => 'max-width', 'min-inline-size' => 'min-height', 'min-block-size' => 'min-width'
+        ).freeze
+
+        # 縦書きのページの入口が読む組方向の CSS（Css::EntryWriter::VERTICAL）
+        VERTICAL_SOURCE = "stylesheets/#{EntryWriter::VERTICAL}".freeze
 
         module_function
 
@@ -75,8 +87,9 @@ module VivlioStarter
           decls = []
           opaque = []
           seen = Hash.new(0)
+          vertical = vertical?(pieces)
           pieces.each_with_index do |piece, piece_index|
-            walk(Crass.parse(piece.text), [], piece, piece_index, decls, opaque, seen)
+            walk(Crass.parse(piece.text), [], piece, piece_index, decls, opaque, seen, vertical)
           end
           [decls, opaque]
         end
@@ -93,33 +106,39 @@ module VivlioStarter
         # 層を外して層の順に並べた CSS での強さ。層の位置は効かず、詳細度と並びの位置だけで決まる
         def flat_precedence(decl) = [decl.important ? 1 : 0, *decl.specificity, *decl.order]
 
+        # 規則の列が縦書きのページのものか（組方向の CSS を読んでいるか）
+        def vertical?(pieces) = pieces.any? { it.source.to_s.end_with?(VERTICAL_SOURCE) }
+
         def layer_rank(layer) = layer.empty? ? UNLAYERED : EntryWriter::LAYERS.index(layer.first) || UNLAYERED
 
         # プロパティの名前を、値の入る場所（ロングハンド）の名前の列にする
-        def longhands(property)
+        # @param vertical [Boolean] 論理方向を縦書きの向きで読むか
+        def longhands(property, vertical: false)
           name = property.downcase
-          name = ALIASES.fetch(name, name)
+          name = (vertical ? VERTICAL_ALIASES : ALIASES).fetch(name, name)
+          sides = vertical ? VERTICAL_SIDES : SIDES
+          axes = vertical ? VERTICAL_AXES : AXES
           case name
           when 'margin', 'padding', 'inset' then ALL_SIDES.map { side_name(name, it) }
           when /\A(margin|padding|inset)-(block|inline)\z/
             base = Regexp.last_match(1)
-            AXES.fetch(Regexp.last_match(2)).map { side_name(base, it) }
+            axes.fetch(Regexp.last_match(2)).map { side_name(base, it) }
           when /\A(margin|padding|inset)-(.+)\z/
-            [side_name(Regexp.last_match(1), SIDES.fetch(Regexp.last_match(2), Regexp.last_match(2)))]
+            [side_name(Regexp.last_match(1), sides.fetch(Regexp.last_match(2), Regexp.last_match(2)))]
           when 'top', 'right', 'bottom', 'left' then [name]
           when 'border' then ALL_SIDES.product(BORDER_PARTS).map { "border-#{it.join('-')}" }
           when /\Aborder-(block|inline)\z/
-            AXES.fetch(Regexp.last_match(1)).product(BORDER_PARTS).map { "border-#{it.join('-')}" }
+            axes.fetch(Regexp.last_match(1)).product(BORDER_PARTS).map { "border-#{it.join('-')}" }
           when /\Aborder-(width|style|color)\z/
             part = Regexp.last_match(1)
             ALL_SIDES.map { "border-#{it}-#{part}" }
           when /\Aborder-(block|inline)-(width|style|color)\z/
             part = Regexp.last_match(2)
-            AXES.fetch(Regexp.last_match(1)).map { "border-#{it}-#{part}" }
+            axes.fetch(Regexp.last_match(1)).map { "border-#{it}-#{part}" }
           when /\Aborder-([a-z-]+?)-(width|style|color)\z/
-            ["border-#{SIDES.fetch(Regexp.last_match(1), Regexp.last_match(1))}-#{Regexp.last_match(2)}"]
+            ["border-#{sides.fetch(Regexp.last_match(1), Regexp.last_match(1))}-#{Regexp.last_match(2)}"]
           when /\Aborder-(top|right|bottom|left|block-start|block-end|inline-start|inline-end)\z/
-            side = SIDES.fetch(Regexp.last_match(1))
+            side = sides.fetch(Regexp.last_match(1))
             BORDER_PARTS.map { "border-#{side}-#{it}" }
           when /radius/ then ['border-radius']
           else SHORTHANDS.fetch(name, [name])
@@ -129,7 +148,7 @@ module VivlioStarter
         def side_name(base, side) = base == 'inset' ? side : "#{base}-#{side}"
 
         # crass の節をたどる。@media・@supports の中は文脈を足して続ける
-        def walk(nodes, context, piece, piece_index, decls, opaque, seen)
+        def walk(nodes, context, piece, piece_index, decls, opaque, seen, vertical)
           nodes.each do |node|
             case node
             in { node: :style_rule, selector: { value: selector_list }, children: }
@@ -137,12 +156,12 @@ module VivlioStarter
               Selector.split_top(selector_list, ',').each do |raw|
                 selector = raw.gsub(/\s+/, ' ')
                 properties.each_with_index do |prop, decl_index|
-                  decls << decl_of(seen, context, selector, prop, piece, [piece_index, decl_index])
+                  decls << decl_of(seen, context, selector, prop, piece, [piece_index, decl_index], vertical)
                 end
               end
             in { node: :at_rule, name: /\A(media|supports)\z/i => name, prelude:, block: Array => block }
               inner = "@#{name.downcase} #{Crass::Parser.stringify(prelude).strip}"
-              walk(Crass::Parser.parse_rules(block), [*context, inner], piece, piece_index, decls, opaque, seen)
+              walk(Crass::Parser.parse_rules(block), [*context, inner], piece, piece_index, decls, opaque, seen, vertical)
             in { node: :at_rule }
               opaque << [layer_rank(piece.layer), Crass::Parser.stringify([node]).gsub(/\s+/, ' ').strip]
             else nil
@@ -152,10 +171,10 @@ module VivlioStarter
 
         # 鍵に !important を含めないのは、!important を外した宣言を別の版の列と同じ宣言として
         # 突き合わせ、外したことで勝ち負けが変わる組を数えるためである（S2-3）
-        def decl_of(seen, context, selector, prop, piece, order)
+        def decl_of(seen, context, selector, prop, piece, order, vertical)
           base = [context, selector, prop[:name].downcase, prop[:value].gsub(/\s+/, ' ')]
           Decl.new(key: [*base, seen[base] += 1], selector:, subject: Selector.subject_of(selector),
-                   specificity: Selector.specificity(selector), longhands: longhands(prop[:name]),
+                   specificity: Selector.specificity(selector), longhands: longhands(prop[:name], vertical:),
                    property: prop[:name].downcase, value: base[3], important: prop[:important],
                    rank: layer_rank(piece.layer), order:, source: piece.source, pos: value_end(prop))
         end

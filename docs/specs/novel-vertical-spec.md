@@ -1,7 +1,7 @@
 # 縦書きの小説（縦書きの経路・テーマ `novel`・判型・記法・lint・雛形）
 
 > 作成日: 2026-11-17
-> ステータス: **実装中**（段階 S8。S8-1・S8-2 は 2026-11-19、S8-3 は 2026-11-20、S8-4 は 2026-11-21 に完了。実装記録は §10）
+> ステータス: **実装中**（段階 S8。S8-1・S8-2 は 2026-11-19、S8-3 は 2026-11-20、S8-4 は 2026-11-21 に完了。S8-5 は 2026-11-22 に実装（プリセットの値と novel の紙面はユーザーの確認待ち）。実装記録は §10）
 > 対象: 縦書きの小説を `pdf`・`print_pdf`・`epub`・`kindle` の四つで組むための、縦書きの経路・既定のテーマ `novel`・判型のプリセット・記法・小説の lint・雛形 `scaffolds/novel/`
 > 出自: `v2-s8-novel-consultation.md` §4（2026-11-17・Fable）。段階の順と判断の線は `v2-plan-review-consultation.md` §4 で調整した（§2.5 の Kindle の論理方向）
 > 組になる仕様書: `v2-architecture-spec.md`（種類と軸・`BookProfile`・記法の型）・`theme-contract-spec.md`（テーマの形・契約 HTML）・`css-layer-restructure-spec.md`（§6 の物理方向）・`v2-migration-plan.md`（段階の順・基準・判断の線）。S8 から分けた背表紙・くるみ表紙は `cover-spread-spec.md`（S8b）、`vs furigana` は `furigana-spec.md`（S8c）
@@ -147,6 +147,14 @@ styles:
 
 - **脚注**は、Vivliostyle の `float: footnote` のまま使う。縦書きではページの左端（行の進む先の端）に組まれる。合印と注番号は縦中横にする（`theme-bunko` と同じ）。EPUB と Kindle は今の脚注の変換のまま。S8-4 の材料の本で、3 つの出力先の脚注を見る。
 - **前書きの飾り（`parts/preface.css`）は `standard` へ移す**（S8-5。`theme-contract-spec.md` §10 の論点 5）。小説の前書きと後書きは本文と同じ見た目で組むので、部品に残すと `novel` が全部を打ち消すことになる。移すのは飾りの規則だけで、構造の規則（S2-4 でそろえた部分）は部品に残す。ほかの部品の飾りは、`novel` を書いて打ち消しが要ったものだけを移す。移した規則は、この節に表で記録する。移すたびに本書を基準と比べる。
+
+  **移した規則（S8-5・2026-11-21）。** 前書きの見た目は、記法の規則と詳細度で競わせるために parts 層の最後に置いている（S2-4）。theme 層へ移すとこの競い方が崩れるので、テーマが parts 層の最後に CSS を足す `parts:`（`theme-contract-spec.md` §3.1）を作り、そこへ移した。読む順と詳細度は移す前と同じである。
+
+  | 移す前 | 移した先 | 規則 |
+  | :--- | :--- | :--- |
+  | `parts/preface.css` | `themes/standard/preface.css`（`parts:` の `preface`・`postface`） | 見出し（h1〜h3 と h3 の印）・段落の間・箇条書き・リンク・強調の色・ルビ・水平線と改ページの線の打ち消し・節・引用・節リードの上の余白・章の部品の打ち消し（見出しの字間・項見出しの高さ・箇条書きの太さ・章リード・図の余白と枠・幅を指定した図） |
+  | `targets/kindle-preface.css` | `themes/standard/kindle.css` | Kindle の前書きの見出しの下線・節見出しと引用の線・リンクの色。全部の種類の束に入るので、h1 の選択子に `body.preface`・`body.postface` を足した（前書きの h1 に当たるほかの target 層の規則は無く、勝ち負けは同じ） |
+  | （残した）`parts/preface.css` | — | 表の行頭寄せ（`table { text-align: start }`）。前書きのページの組み方（`pages/preface.css` の body の両端揃え）に付く規則で、どのテーマにも要る |
 - **目次**は縦に組み、ページ番号は算用数字を縦中横にする（3 桁まで 1 字分に収める。`text-combine-upright: all`）。相互参照が作る番号（「第 3 章」など）も同じにする。
 
 ### 3.5 `theme-epub3j` は同梱しない
@@ -511,3 +519,48 @@ S8 の中の決まり:
 - `vs theme:check novel` で、`Css::Cascade` の組を組方向で切り替えるか（決めたことの 9）。
 - Kindle Previewer の画面で、全面の挿絵（中間生成物の `figure.vs-full-page` に前後の改ページが無い）と、横組みの箱の幅（Kindle は `calc(100% - 2em)` を落とす）を見る。S8-7 の目で見る 12 か所に入る。
 - `style: simple`（扉絵を使わない）の本で、扉絵の字数の 🟡 が出る。
+
+### 10.5 S8-5 テーマ `novel`（2026-11-22）
+
+#### 作ったもの
+
+- **前書きの見た目を `standard` へ移した**（§3.4 の「移した規則」の表）。移す先として、テーマが parts 層の最後に CSS を足す `parts:` を `theme.yml` に足した（`Theme::Manifest`・`Theme::Resolved#parts_files`・`Css::EntryWriter.theme_hrefs`。`theme-contract-spec.md` §3.1）。縦書きの本の横組みの箱（`parts/vertical.css`）は `parts:` の後に読む。`targets/kindle-preface.css` は消し、規則を `themes/standard/kindle.css` へ移した。
+- **`themes/novel/`**: `theme.yml`（`supports.writing_mode: [vertical]`・`features: []`・`tokens:`・オプション無し）・`prose.css`（会話文の字下げ 0・行末のぶら下げ・強調は太字だけ・区切りは線を引かず 1 行空ける）・`headings.css`（章題は天から 3 字下げ・後ろを 2 行空ける・1.6 倍。節題は 5 字下げ・1.2 倍）・`page.css`（柱を明朝に）。`tokens:` は飾りの色を `#222` に、見出しの印を空に、章リードを本文と同じ大きさに。
+- `BookProfile` の `novel` に `theme.name: novel` と `typography.heading.font: Noto Serif JP`。
+- `Css::Cascade` が、規則の列に `base/vertical.css` があれば論理方向を縦書き（vertical-rl）の向きで物理方向へ読む（§10.4 の決めたことの 9 の答え）。`InversionCheck`（`vs theme:check` の 💡 と `--log=debug` の要素ごとの判定）と `AuthorPriority`（著者の `custom.css` を平らな CSS でも勝たせる。style 属性の読み方も）が同じ表を使う。
+- `vs theme:check` は、テーマが本の組方向に対応していなければ、テーマの対応する組方向で束を組んで判定する（縦書きだけの `novel` を技術書の本で検査しても、縦に組むページとして判定する）。
+- 直したこと: 扉絵の字数の 🟡 を、扉絵の機能が有効なときだけ出す（`style: simple`・小さい判型。§10.4 の持ち越し）。`theme.name` を書いていない小説の本で、`theme:` 節に `standard` のオプションの既定値が入り、「テーマ novel には無い設定です」の 🟡 が 8 件出ていた（`Common.load_config` が種類の既定のテーマの宣言を読むようにした）。`vs upgrade` は、`theme.name` を書いていない本に種類の既定のテーマ（小説は `novel`）を入れる（`BookProfile.default_for`）。
+- マージの持ち込み: master の `ImageGenerator.discard_outdated_variants!`（#140）を `ThemeImageResolver` が読まずに呼んでいた（全体のテストでは隠れ、単独のテストで落ちた）。ほかの呼び出しと同じく直前で読む。master も同じ形だが、本番は loader が全部を読むので 1.x の利用者には出ない。
+- テスト 9 件（`theme_test.rb` 2・`theme_commands_test.rb` 1・`author_priority_test.rb` 1・`book_profile_test.rb` 2・`upgrade_commands_test.rb` 1・`book_settings_css_test.rb` の追記 1・`trait_combination_check_test.rb` の書き直し 1）と、既存の期待値（同梱のテーマの一覧に `novel`・前書きの Kindle の規則の選択子・層の検査の許可表の置き場・`standard` の `vs theme:check` の 🟡）。
+
+#### 仕様に無かったので決めたこと
+
+1. **前書きの見た目は theme 層でなく parts 層の最後へ入れる（`parts:`）。** theme 層へ移すと、素の `p` などが `.tip p`・`.talk-body p` などの記法の規則に層で勝ち、S2-4 でそろえた前書きの記法が崩れる（`css-layer-restructure-spec.md` §10.4 の「仕様と違えたこと」の 2 の予告どおり）。キーの名前はテーマを作る人から見えるので、了承待ちの一覧に載せた。
+2. **部品に残したのは表の行頭寄せだけ。** 「章の部品の打ち消し」（箇条書き・図・章リード・見出しの字間）も、1.x の前書きの見た目を保つ `standard` の選択なので移した。`novel` の前書きは章と同じ見た目になる。
+3. **`standard` の `vs theme:check` に 🟡 が 2 件出る。** 前書きの見出しの地のぼかし（`linear-gradient`）と下線（oklab の `color-mix`）が Kindle に届かない。前は vs の部品の規則で、層の検査の許可表に載せていた。直すと Kindle の見た目が変わる（下線が出る）ので段階の中では直さず、テストに 2 件を書いた。直すかは段階の外でユーザーが決める（`v2-migration-plan.md` §4.1 の「段階の間に、見た目を変える変更を入れる決まり」）。
+4. **`novel` の規則は本文のページの body（`body:is(.chapter, .appendix, .preface, .postface)`）で絞る。** `styles:` は全部の種類の入口に入り、最初の材料では章題の規則が権利ページの見出しと本扉の書名に当たり、区切りの規則で奥付が 2 ページに割れた。
+5. **見出しの書体は `tokens:` でなく種類の既定値（`typography.heading.font`）で決める。** 書体の変数は settings 層の `book-settings.css` が book.yml の `typography` から必ず書き、tokens 層のテーマの値に勝つ（§3.3 の表の「見出しの書体」は `tokens:` の向きとしていた）。前書きの色（`pages/preface.css` の `:root` の付け替え）は、`novel` の前書きにはリンクと強調しか効かないので、打ち消さずに置いた。
+6. **縦書きの読み替えの判定は、規則の列に `base/vertical.css` があるか。** 縦書きの本でも奥付・権利ページは横に組む。組方向を決めるのはそのページの入口が `base/vertical.css` を読むかなので、同じ材料から判定し、呼び出し側に組方向を渡させない。
+7. **`vs new` は雛形の `themes/` を全部写すので、技術書の新しい本にも `themes/novel/` が入る。** 種類ごとの雛形（S8-7 の `vs new --type novel`・`copy_to_scaffold.rb` の種類ごとの複製）で、本が使うテーマだけを写す形にする（S8-7 へ持ち越し）。
+
+#### 確かめた結果
+
+本書を守る確かめは、マージのコミット（`ef8d5964`）の作業ツリーと移した後の作業ツリーで、同じ素材から B1（4 つの出力先・`--no-clean --kindle-record --log=debug`）と B4（`pdf`・`epub`。r3 の写しに各ツリーの `stylesheets/`・`themes/` を重ねた）を組んで比べた。
+
+- PDF: B1 の閲覧用（283 ページ）・印刷用（281 ページ）・B4（317 ページ）とも違うページ 0。
+- EPUB: 違いは平らな CSS だけ（B1 の EPUB は前書き・後書きの 2 ファイルで、表の行頭寄せの位置が `themes/standard/preface.css` の前へ動いた。Kindle 用 EPUB は 8 ファイルで、前書きの Kindle の規則が全部の種類の束に入った）。EPUBCheck は 3 本とも 0。計算値（`css_computed_diff.rb --before ef8d5964`）は 117 文書・312 組で差 0、章の HTML を前書きに付け替えた 12 文書・36 組も差 0。
+- Kindle: 中間生成物は 26,415 要素で `computedstyle`・`style` とも差 0。変換は Supported・Success。
+- 要素ごとの判定（`--log=debug` の「層を外すと勝ち負けが変わる組」）は、B1・B4 の 23 行が前後で同じ。
+- 前書きを移した後の `lib/` の変更（`Cascade` の読み替え・扉絵の字数の 🟡・`novel` の既定値）は、横書きの本では結果を変えない（読み替えは `base/vertical.css` を読むページだけ。🟡 は文面だけ）。
+
+`novel` は、自作の短い小説（前書き・3 章・後書き・行の間の挿絵・全面の挿絵・脚注・ルビ・傍点・縦中横）を、`book.type: novel` だけを書いた book.yml で組んで確かめた（材料の本は scratchpad の `nbook`。消える）。
+
+- 4 つの出力先とも終了コード 0。`vs preflight` は 🟡 0 で、💡「版面: 38 字 × 16 行」（`bunko_standard` の目安どおり）。PDF は 105 × 148mm・17 ページ。EPUBCheck は EPUB・Kindle 用 EPUB とも 0。Kindle の変換は Supported・Success・エラー 0。
+- `vs theme:check novel` は 🔴・🟡 とも 0（💡 の組の論理方向は縦の向きで読まれる。`theme_commands_test.rb`）。
+- 紙面: 章題・前書き・後書きの題は明朝の太字で天から 3 字下がり、会話文の段落は字下げ 0、地の文は 1 字下げ。権利ページ・奥付は横組みのまま、本扉と目次は vs の見た目のまま縦に組まれた。
+
+#### 残り（S8-5 の完了の条件のうち、ユーザーが決めるもの）
+
+- **プリセットの値と `novel` の紙面の確定**（§8.1 の S8-5 の行）。字の大きさ・行送り・余白（§10.3 の表）と、章題の大きさと下げ・柱・目次の項目の太さ（今は vs の目次の見た目のまま太字）を、材料の本の PDF でユーザーが見て決める。
+- `novel` のオプション（§3.2。候補は柱の中身）は、紙面を見て要ると決まったら足す。今は置いていない。
+- Kindle Previewer の画面（§10.4 の持ち越し）は S8-7 の目で見る 12 か所で撮る。

@@ -618,15 +618,21 @@ module VivlioStarter
       def recorded_theme?(dir, lock_files) = lock_files.each_key.any? { it.start_with?("#{dir}/") }
 
       # 本が使うテーマ（theme.name と、その extends: の 1 段）。Common::CONFIG は読まない——vs upgrade は
-      # 廃止キーの残った book.yml でも動き、CONFIG の読み込みの時点と作業ディレクトリが合うとも限らない
+      # 廃止キーの残った book.yml でも動き、CONFIG の読み込みの時点と作業ディレクトリが合うとも限らない。
+      # theme.name を書いていなければ、本の種類の既定のテーマ（小説は novel。BookProfile）
       # @return [Array<String>]
       def used_theme_names
         book = YAML.safe_load_file(File.join('config', 'book.yml'), permitted_classes: [Date, Time], aliases: true)
         written = (book.dig('theme', 'name') if book.is_a?(Hash) && book['theme'].is_a?(Hash)).to_s.strip
-        name = written.empty? ? Theme::DEFAULT_NAME : written
+        name = written.empty? ? type_theme_name(book) : written
         [name, theme_extends(name)].compact
       rescue StandardError
         [Theme::DEFAULT_NAME]
+      end
+
+      def type_theme_name(book)
+        raw = book.is_a?(Hash) ? book.to_h { |key, value| [key.to_sym, value.is_a?(Hash) ? value.transform_keys(&:to_sym) : value] } : {}
+        BookProfile.default_for(raw, %i[theme name]) || Theme::DEFAULT_NAME
       end
 
       # テーマの extends:。本のテーマを先に、無ければ雛形の同じ名前のテーマを読む

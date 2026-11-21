@@ -1,0 +1,25 @@
+name: novel
+title: 小説（縦書き）
+version: 2.0.0
+contract: 1
+license: MIT
+
+supports:
+  writing_mode: [vertical]
+  layout: [reflowable]
+
+features: []           # 扉絵・節絵は使わない（挿絵は CSS だけで組める。novel-vertical-spec.md §3.2）
+
+tokens:                # standard と違う値だけ（stylesheets/tokens.css の中立の既定値は動かさない。§3.3）
+  color-accent: "#222"          # 飾りの色を使わず、黒に近い色で組む
+  color-heading: "#222"
+  color-mark: "#222"
+  color-strong: inherit
+  marker-h3: '""'               # 見出しの印は使わない
+  marker-h4: '""'
+  chapter-lead-size: 100%       # 章リードは本文と同じ大きさ
+
+styles:
+  - prose.css          # 段落・会話文・区切り・強調
+  - headings.css       # 章題・節題の見た目
+  - page.css           # 柱とノンブルの見た目

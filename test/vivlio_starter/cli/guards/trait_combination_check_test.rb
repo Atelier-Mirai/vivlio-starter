@@ -30,22 +30,20 @@ module VivlioStarter
         assert_empty validate
       end
 
-      # 縦書きの本は、standard が横書きだけに対応するので止める。縦書きに対応するテーマはまだ同梱されていない
+      # 縦書きの本は、standard が横書きだけに対応するので止める。縦書きに対応するテーマ（同梱の novel）を示す
       def test_should_stop_a_vertical_book_because_standard_is_horizontal_only
         violations = validate(page: { writing_mode: 'vertical', layout: 'reflowable' }, index_glossary: { enabled: false })
 
         assert_equal 1, violations.size
         assert_predicate violations.first, :error?
         assert_equal 'テーマ standard は縦書き（page.writing_mode: vertical）に対応していません', violations.first.message
-        assert_equal ['縦書きに対応するテーマは、まだ同梱されていません'], violations.first.detail
+        assert_equal ['縦書きに対応するテーマ: novel（config/book.yml の theme.name に書きます）'], violations.first.detail
       end
 
-      def test_should_stop_a_novel_with_the_resolved_defaults_until_a_vertical_theme_exists
-        violations = validate(book: { type: 'novel' }, page: { writing_mode: 'vertical', layout: 'reflowable' },
-                              index_glossary: { enabled: false })
-
-        assert_equal %i[error], violations.map(&:severity)
-        assert_includes violations.first.message, '縦書き'
+      # 小説の種類の既定値（縦書き・テーマ novel・索引なし。BookProfile）の本は、そのまま組める
+      def test_should_pass_a_novel_with_the_resolved_defaults
+        assert_empty validate(book: { type: 'novel' }, theme: { name: 'novel' },
+                              page: { writing_mode: 'vertical', layout: 'reflowable' }, index_glossary: { enabled: false })
       end
 
       # S5 の完了の条件の 4 の本（縦書きの最小の本）は、縦書きに対応する材料のテーマで組む
@@ -72,7 +70,7 @@ end
         with_themes('tate' => { 'supports' => { 'writing_mode' => %w[vertical] } }) do |root|
           violations = validate({ page: { writing_mode: 'vertical', layout: 'reflowable' }, index_glossary: { enabled: false } }, root)
 
-          assert_equal ['縦書きに対応するテーマ: tate（config/book.yml の theme.name に書きます）'], violations.first.detail
+          assert_equal ['縦書きに対応するテーマ: novel・tate（config/book.yml の theme.name に書きます）'], violations.first.detail
         end
       end
 
@@ -82,7 +80,7 @@ end
         assert_equal 1, violations.size
         assert_predicate violations.first, :error?
         assert_equal 'config/book.yml の theme.name のテーマ standart が、本の themes/ にありません', violations.first.message
-        assert_equal '本にあるテーマ: standard（config/book.yml の theme.name に書きます）', violations.first.detail
+        assert_equal '本にあるテーマ: novel・standard（config/book.yml の theme.name に書きます）', violations.first.detail
       end
 
       def test_should_stop_a_theme_written_for_a_newer_contract

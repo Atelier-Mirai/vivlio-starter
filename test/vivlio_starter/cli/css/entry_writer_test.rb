@@ -78,21 +78,30 @@ module VivlioStarter
         end
 
         # 本文のページ（章・付録・前書き・後書き）は同じ部品と著者の指定を読む。前書き・後書きは
-        # 部品の最後に前書きの見た目を足し、違いはそれと pages/ のファイルだけ
-        # （css-layer-restructure-spec.md §3.3）
+        # 部品の最後に parts/preface.css を足し、違いはそれと pages/ のファイルだけ
+        # （css-layer-restructure-spec.md §3.3）。standard は前書きの見た目を、theme.yml の parts: で
+        # その後に足す（novel-vertical-spec.md §3.4）
         def test_should_give_every_body_page_the_same_parts_and_utilities
-          layered = %w[chapter appendix preface postface].to_h do |kind|
-            imports = EntryWriter.render(kind).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/)
-            [kind, imports.group_by(&:last).transform_values { it.map(&:first) }]
+          standard = Theme.resolve('standard', root: REPO_ROOT)
+          layered = lambda do |theme|
+            %w[chapter appendix preface postface].to_h do |kind|
+              imports = EntryWriter.render(kind, theme:).scan(/@import url\("([^"]+)"\) layer\((\w+)\)/)
+              [kind, imports.group_by(&:last).transform_values { it.map(&:first) }]
+            end
           end
-          chapter = layered.fetch('chapter')
+          bare = layered.call(nil)
+          themed = layered.call(standard)
+          chapter = bare.fetch('chapter')
 
-          assert_equal chapter['parts'], layered.fetch('appendix')['parts']
+          assert_equal chapter['parts'], bare.fetch('appendix')['parts']
+          assert_equal chapter['parts'], themed.fetch('chapter')['parts'], 'standard は章に parts: を足さない'
           %w[preface postface].each do |kind|
-            assert_equal [*chapter['parts'], '../../stylesheets/parts/preface.css'], layered.fetch(kind)['parts'],
+            assert_equal [*chapter['parts'], '../../stylesheets/parts/preface.css'], bare.fetch(kind)['parts'],
                          "#{kind} は章の部品の後に parts/preface.css を読む"
+            assert_equal [*chapter['parts'], '../../stylesheets/parts/preface.css', '../../themes/standard/preface.css'],
+                         themed.fetch(kind)['parts'], "#{kind} は vs の部品の後にテーマの parts: を読む"
           end
-          layered.each_value { assert_equal chapter['utilities'], it['utilities'] }
+          bare.each_value { assert_equal chapter['utilities'], it['utilities'] }
         end
 
         # standard の見出しの 2 枚は themes/standard/ にあり、theme.yml の styles: から、どの種類のページでも
@@ -192,7 +201,7 @@ module VivlioStarter
                           ../../stylesheets/targets/kindle.css],
                        targets.call('appendix', :kindle)
           assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/epub.css
-                          ../../stylesheets/targets/kindle.css ../../stylesheets/targets/kindle-preface.css],
+                          ../../stylesheets/targets/kindle.css],
                        targets.call('postface', :kindle)
           assert_equal %w[../../stylesheets/targets/kindle-tokens.css ../../stylesheets/targets/kindle-colophon.css],
                        targets.call('colophon', :kindle), '奥付の Kindle の規則は奥付だけが読む'

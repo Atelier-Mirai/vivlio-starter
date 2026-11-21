@@ -20,23 +20,27 @@ module VivlioStarter
       # 種類ごとに、ConfigKeys の既定値と違うキーだけを書く。
       #
       # 載せるのは ConfigKeys::KEYS にあるキーだけ（book_profile_test.rb が検査する）。
-      # テーマの名前（theme.name）は、そのテーマを同梱する段階で足す（小説の novel は S8-5・
+      # テーマの名前（theme.name）は、そのテーマを同梱する段階で足す（小説の novel は S8-5 で足した・
       # 絵本は S9-1。v2-architecture-spec.md §2.2）。絵本の判型のプリセット（page.use）は S9-1 で足す。
       #
       # 小説の節は改ページしない。テーマの tokens: でなく種類の既定値で決めるので、著者が book.yml に
-      # section_pagebreak: true と書けばそれが勝つ（novel-vertical-spec.md §4.3）
+      # section_pagebreak: true と書けばそれが勝つ（novel-vertical-spec.md §4.3）。
+      # 小説の見出しは本文と同じ明朝で組む。書体は book-settings.css（settings 層）が書き、テーマの tokens:
+      # （tokens 層）に勝つので、テーマでなく種類の既定値で決める（同 §3.3）
       PROFILES = {
         techbook: {},
         novel: {
-          %i[page use]               => 'bunko_standard',
-          %i[page section_pagebreak] => false,
-          %i[page chapter_pagebreak] => 'any',
-          %i[page writing_mode]      => 'vertical',
-          %i[page heading_numbering] => 'none',
-          %i[index_glossary enabled] => false,
-          %i[lint ruleset]           => 'novel',
-          %i[metrics use]            => 'none',
-          %i[notation web_novel]     => true
+          %i[page use]                => 'bunko_standard',
+          %i[page section_pagebreak]  => false,
+          %i[page chapter_pagebreak]  => 'any',
+          %i[page writing_mode]       => 'vertical',
+          %i[page heading_numbering]  => 'none',
+          %i[index_glossary enabled]  => false,
+          %i[lint ruleset]            => 'novel',
+          %i[metrics use]             => 'none',
+          %i[notation web_novel]      => true,
+          %i[theme name]              => 'novel',
+          %i[typography heading font] => 'Noto Serif JP'
         },
         picture_book: {
           %i[page layout]            => 'fixed',
@@ -94,6 +98,11 @@ module VivlioStarter
       #
       # @param type [Symbol]
       # @return [Hash]
+      # その本（book.yml の生の値）の種類の既定値のうち、path の値。種類が決めていなければ nil
+      # @param raw [Hash] book.yml を読んだそのままのハッシュ（シンボルのキー）
+      # @param path [Array<Symbol>] ConfigKeys::KEYS のキー
+      def default_for(raw, path) = PROFILES.fetch(type_of(raw))[path]
+
       def defaults_for(type)
         PROFILES.fetch(type).each_with_object({}) do |(path, value), tree|
           *parents, leaf = path

@@ -53,8 +53,6 @@ module VivlioStarter
           # 詳細度は移す前と同じなので、EPUB と Kindle の結果は移す前と変わらない
           { upper: /\Abody(?:\.vs-header-simple)?\.vs-kindle h[12]\z/, lower: /code\[class\*="language-"\] \*\z/,
             reason: '見出しはコードの中の要素にならない' },
-          { upper: /\Abody\.vs-kindle h1\z/, lower: /\A\.(?:output|text-table-body|table-text-body) > :last-child\z/,
-            reason: '前書きの h1 は題で、囲みや並べ方の中に置かない（targets/kindle-preface.css）' },
           { upper: /\Abody\.vs-kindle \.(?:img-text\d?|text\d?-img|sideimage(?:-left|-right)?) > figure\z/,
             lower: /\A\.pictures > figure:not\(/,
             reason: '写真の列（.pictures）と横並べ（.img-text・.sideimage など）は同じ箱に付けない' },
@@ -106,10 +104,10 @@ module VivlioStarter
           { reason: %i[calc variable], file: 'stylesheets/parts/layout.css', rule: /\A\.pictures > figure \{ flex: /,
             why: '写真の列の幅を画像の数で割る（数は後処理が style 属性に書くので要素ごとに違い、単位も混ざる）。' \
                  'KFX は flex も解さない' },
-          { reason: :color_mix, file: 'stylesheets/parts/preface.css',
+          { reason: :color_mix, file: 'themes/standard/preface.css',
             rule: /\Ah[23] \{ (?:background: linear-gradient|border-block-end: 1px solid color-mix\(in oklab)/,
             why: '前書きの見出しの地のぼかしと下線（oklab の混色は解かない）。Kindle の前書きの見出しの線は ' \
-                 'targets/kindle-preface.css が決める' },
+                 'themes/standard/kindle.css が決める' },
           { reason: :has, file: 'stylesheets/parts/code.css', rule: /\Ah6:has\(\+ pre\)\z/,
             why: 'コードの題（h6）の幅をコードに合わせる。Kindle では題が全幅になる' },
           { reason: :has, file: 'stylesheets/parts/heading.css', rule: /\Asection:has\(hr:last-child\) \+ section > h3:first-child\z/,

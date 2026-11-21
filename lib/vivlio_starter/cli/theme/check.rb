@@ -26,7 +26,8 @@
 # 見る範囲:
 #   検査するテーマ自身のファイルだけ。extends: の先のテーマと vs の部品は含めない（§7.2）。
 #   Kindle に届くかと層の勝ち負けは、本の stylesheets/ とテーマを入口の CSS に組んで判定する
-#   （一時ディレクトリに本の写しを作る。custom.css は空にする）。設定から作る book-settings.css は、
+#   （一時ディレクトリに本の写しを作る。custom.css は空にする）。組方向は、テーマが本の組方向に
+#   対応していなければ、テーマの対応する組方向で組む。設定から作る book-settings.css は、
 #   本の今の設定のものを使う。
 # ================================================================
 
@@ -217,9 +218,17 @@ module VivlioStarter
         end
 
         def bundle_pieces(kind, target, theme)
-          css = Css::EntryWriter.render(kind, target:, theme:)
+          css = Css::EntryWriter.render(kind, target:, theme:, traits: traits_for(theme))
           pieces = Css::Flattener.pieces(Css::EntryWriter.path_for(kind), rebase: ->(path) { path }, css:)
           Css::TargetFilter.apply(pieces, target:, embed_fonts: false)
+        end
+
+        # 束を組む本の軸。組方向は、テーマが対応していれば本のもの、対応していなければテーマの対応する
+        # ものにする（縦書きだけの novel を技術書の本で検査しても、縦に組むページとして判定する）
+        def traits_for(theme)
+          traits = Common.traits
+          modes = theme.supports.fetch(:writing_mode)
+          modes.include?(traits.writing_mode) ? traits : traits.with(writing_mode: modes.first)
         end
 
         # Kindle の束の変数の表を作る範囲。body のクラスは、ページの種類とテーマのオプションが付けるもの

@@ -90,8 +90,8 @@ module VivlioStarter
           end
 
           # --- Phase: 規則の文字列と、当たる要素の style 属性に !important を差し込む ---
-          restyled = promoted.keys.flat_map { clashes.fetch(it, []) }.filter_map do |document, element, longhands|
-            document if important_style!(element, longhands)
+          restyled = promoted.keys.flat_map { clashes.fetch(it, []) }.filter_map do |document, element, longhands, vertical|
+            document if important_style!(element, longhands, vertical)
           end
           Result.new(sheets: promote(sheets, promoted.keys), promoted: promoted.keys.map(&:first).tally,
                      unresolved: blocked.values, restyled: restyled.uniq)
@@ -112,6 +112,7 @@ module VivlioStarter
             sheets.fetch(key).each_with_index.map { |piece, index| [piece, [key, index]] }
           end
           decls, = Cascade.collect(pieces.map(&:first))
+          vertical = Cascade.vertical?(pieces.map(&:first))
           decls.each { node_of[it] = [*pieces[it.order.first].last, it.pos] }
           authors = decls.select { author?(it) }
           return if authors.empty?
@@ -123,8 +124,8 @@ module VivlioStarter
             authors.each do |author|
               pseudo = author.subject.pseudo_element
               (InversionCheck.matched(document.doc, author.selector, cache) || {}).each_key do |element|
-                fixed = pseudo ? [] : style_longhands(element)
-                (clashes[node_of[author]] ||= []) << [document, element, author.longhands] if fixed.intersect?(author.longhands)
+                fixed = pseudo ? [] : style_longhands(element, vertical)
+                (clashes[node_of[author]] ||= []) << [document, element, author.longhands, vertical] if fixed.intersect?(author.longhands)
                 author.longhands.each do |longhand|
                   next if fixed.include?(longhand)
 
@@ -184,21 +185,21 @@ module VivlioStarter
           subject.classes.all? { classes.include?(it) }
         end
 
-        # 要素の style 属性が指定しているロングハンド
-        def style_longhands(element)
+        # 要素の style 属性が指定しているロングハンド（論理方向は、要素を組む CSS の組方向で読む）
+        def style_longhands(element, vertical)
           style = element['style'].to_s
           return [] if style.empty?
 
-          style.scan(/(?:\A|;)\s*([-\w]+)\s*:/).flatten.flat_map { Cascade.longhands(it) }
+          style.scan(/(?:\A|;)\s*([-\w]+)\s*:/).flatten.flat_map { Cascade.longhands(it, vertical:) }
         end
 
         # style 属性のうち、ロングハンドが重なる宣言に !important を付ける。付けたら true
-        def important_style!(element, longhands)
+        def important_style!(element, longhands, vertical)
           changed = false
           declarations = Selector.split_top(element['style'].to_s, ';').map do |declaration|
             name = declaration[/\A\s*([-\w]+)\s*:/, 1]
             next declaration if name.nil? || declaration.match?(/!\s*important\s*\z/i)
-            next declaration unless Cascade.longhands(name).intersect?(longhands)
+            next declaration unless Cascade.longhands(name, vertical:).intersect?(longhands)
 
             changed = true
             "#{declaration}#{IMPORTANT}"

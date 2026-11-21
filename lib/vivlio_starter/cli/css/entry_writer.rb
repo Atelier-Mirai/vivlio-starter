@@ -94,14 +94,13 @@ module VivlioStarter
         # 入口のファイル（PDF が読む）には書かず、平らな CSS を作るときだけ足す（Bundle）。
         #
         # 種類ごとに分けるのは、移す前の規則が、そのページの種類が読むファイルにあったためである。
-        # 奥付の `body.vs-kindle { … }` や前書きの `body.vs-kindle h1` を 1 枚にまとめると、
-        # 本文のページにも当たる。中の規則は元のファイルの読み込みの順と、ファイルの中の順を保つ
+        # 奥付の `body.vs-kindle { … }` を 1 枚にまとめると、本文のページにも当たる。中の規則は元のファイルの
+        # 読み込みの順と、ファイルの中の順を保つ。前書き・後書きの Kindle の規則は、前書きの見た目と一緒に
+        # standard テーマへ移した（themes/standard/kindle.css。novel-vertical-spec.md §3.4）
         BODY_TARGETS = { epub: %w[targets/epub.css], kindle: %w[targets/epub.css targets/kindle.css] }.freeze
-        PREFACE_TARGETS = { epub: BODY_TARGETS[:epub],
-                            kindle: [*BODY_TARGETS[:kindle], 'targets/kindle-preface.css'] }.freeze
         TARGET_IMPORTS = {
           'chapter' => BODY_TARGETS, 'appendix' => BODY_TARGETS,
-          'preface' => PREFACE_TARGETS, 'postface' => PREFACE_TARGETS,
+          'preface' => BODY_TARGETS, 'postface' => BODY_TARGETS,
           'index' => { kindle: %w[targets/kindle-index.css] },
           'glossary' => { kindle: %w[targets/kindle-glossary.css] },
           'colophon' => { kindle: %w[targets/kindle-colophon.css] }
@@ -184,9 +183,9 @@ module VivlioStarter
         def render(kind, target: nil, theme: Theme.selected, traits: Common.traits)
           name = entry_name(kind)
           layered = FOUNDATION.merge(IMPORTS.fetch(name)) { |_, a, b| a + b }
-          layered = vertical_layers(layered) if vertical_page?(name, traits)
           layered = layered.transform_values { |files| files.map { "#{CACHE_TO_STYLESHEETS}#{it}" } }
-          layered = layered.merge(theme_hrefs(theme)) { |_, a, b| a + b } if theme
+          layered = layered.merge(theme_hrefs(theme, name)) { |_, a, b| a + b } if theme
+          layered = vertical_layers(layered) if vertical_page?(name, traits)
           lines = LAYERS.flat_map { |layer| (layered[layer] || []).map { import(it, layer) } }
           lines << import(BOOK_SETTINGS, 'settings')
           target_hrefs(name, target, theme).each { lines << import(it, 'target') }
@@ -206,15 +205,19 @@ module VivlioStarter
         # @param name [String] 入口の名前
         def vertical_page?(name, traits) = traits.vertical? && VERTICAL_KINDS.include?(name)
 
-        # 組方向を base 層の最後に、横組みの箱を（本文の部品を読む種類だけ）parts 層の最後に足す
+        # 組方向を base 層の最後に、横組みの箱を（本文の部品を読む種類だけ）parts 層の最後に足す。
+        # 横組みの箱はテーマの parts: の後に読む（テーマの飾りの余白に、箱の幅と前後の空きが勝つ）
         def vertical_layers(layered)
-          boxes = layered.fetch('parts', []).include?('parts/box.css') ? [VERTICAL_PARTS] : []
-          layered.merge('base' => [*layered['base'], VERTICAL], 'parts' => [*layered['parts'], *boxes])
+          parts = layered.fetch('parts', [])
+          boxes = parts.include?("#{CACHE_TO_STYLESHEETS}parts/box.css") ? ["#{CACHE_TO_STYLESHEETS}#{VERTICAL_PARTS}"] : []
+          layered.merge('base' => [*layered['base'], "#{CACHE_TO_STYLESHEETS}#{VERTICAL}"], 'parts' => [*parts, *boxes])
         end
 
-        # テーマの tokens: は tokens 層の最後、styles: は theme 層（土台 → 自分の順。theme-contract-spec.md §3.1）
-        def theme_hrefs(theme)
+        # テーマの tokens: は tokens 層の最後、parts: はその種類の parts 層の最後（vs の部品の後）、
+        # styles: は theme 層（どれも土台 → 自分の順。theme-contract-spec.md §3.1）
+        def theme_hrefs(theme, name)
           { 'tokens' => theme.tokens.empty? ? [] : [THEME_TOKENS],
+            'parts' => theme.parts_files(name).map { "#{CACHE_TO_ROOT}#{it}" },
             'theme' => theme.styles.map { "#{CACHE_TO_ROOT}#{it}" } }
         end
 

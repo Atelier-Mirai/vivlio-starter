@@ -1528,6 +1528,21 @@ module VivlioStarter
         end
       end
 
+      # theme.name を書いていない小説の本には、種類の既定のテーマ（novel）を足す（BookProfile）
+      def test_should_add_the_default_theme_of_the_book_type
+        within_project do |scaffold|
+          write(scaffold, 'themes/standard/theme.yml', THEME_YML)
+          write(scaffold, 'themes/novel/theme.yml', "name: novel\ncontract: 1\n")
+          File.write('config/book.yml', "book:\n  type: novel\n  main_title: \"わたしの本\"\n")
+          write_lock
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_path_exists 'themes/novel/theme.yml'
+          refute_path_exists 'themes/standard'
+        end
+      end
+
       # 著者のテーマの土台（extends:）が本に無ければ、同梱のものを足す
       def test_should_add_the_bundled_base_of_the_authors_theme
         within_project do |scaffold|

@@ -106,6 +106,26 @@ module VivlioStarter
 
         private
 
+        # 縦書きのページ（束に base/vertical.css がある）では、論理方向を縦の向きで読む。
+        # margin-block-start は右・margin-inline-start は上（novel-vertical-spec.md §10.5）
+        def test_should_read_logical_sides_in_the_vertical_writing_mode
+          vertical = Flattener::Piece.new(layer: ['base'], text: ':root { writing-mode: vertical-rl; }',
+                                          source: '/book/stylesheets/base/vertical.css')
+          html = '<body class="s"><h2>見出し</h2></body>'
+          sheets = lambda do |*pieces|
+            { 'chapter' => [*pieces, vs('body.s h2 { margin-block-start: 0; }'), author('h2 { margin-right: 2em; }')] }
+          end
+
+          promoted = AuthorPriority.apply(sheets.call(vertical), [document(html)]).sheets['chapter'].last.text
+          assert_equal 'h2 { margin-right: 2em !important; }', promoted, '縦書きでは同じ場所（右）を取り合う'
+          assert_equal 'h2 { margin-right: 2em; }',
+                       AuthorPriority.apply(sheets.call, [document(html)]).sheets['chapter'].last.text,
+                       '横書きでは上と右で、取り合わない'
+          assert_equal %w[margin-top], Cascade.longhands('margin-inline-start', vertical: true)
+          assert_equal %w[height], Cascade.longhands('inline-size', vertical: true)
+          assert_equal %w[border-right-width border-left-width], Cascade.longhands('border-block-width', vertical: true)
+        end
+
         def vs(text) = Flattener::Piece.new(layer: ['parts'], text:, source: 'stylesheets/parts/x.css')
 
         def author(text, source: 'stylesheets/custom.css')

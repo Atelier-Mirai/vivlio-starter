@@ -179,6 +179,28 @@ module VivlioStarter
         assert_equal ['B6', true], [written.page.size, written.page.section_pagebreak]
       end
 
+      # 小説は、テーマを書かなければ novel で組み、見出しを本文と同じ明朝にする（novel-vertical-spec.md §3.3・§4.3）。
+      # 書体は book-settings.css（settings 層）が書くので、テーマの tokens: でなく種類の既定値で決める
+      def test_should_give_a_novel_the_novel_theme_and_a_mincho_heading
+        cfg = load('book' => { 'type' => 'novel' })
+        written = load('book' => { 'type' => 'novel' }, 'theme' => { 'name' => 'standard' },
+                       'typography' => { 'heading' => { 'font' => 'Noto Sans JP' } })
+
+        assert_equal %w[novel Noto\ Serif\ JP], [cfg.theme.name, cfg.typography.heading.font]
+        assert_equal %w[standard Noto\ Sans\ JP], [written.theme.name, written.typography.heading.font]
+        assert_equal 'standard', load('book' => { 'type' => 'techbook' }).theme.name
+      end
+
+      # theme: を書いていない小説の本の theme: 節には、novel の宣言の既定値だけが入る（standard の
+      # color・style などが入ると、「テーマ novel には無い設定です」の 🟡 が出る）
+      def test_should_fill_the_theme_section_from_the_type_default_theme
+        FileUtils.cp_r(File.expand_path('../../../themes', __dir__), 'themes')
+        cfg = load('book' => { 'type' => 'novel' })
+
+        assert_nil cfg.theme.to_h[:color]
+        assert_equal 'green', load('book' => { 'type' => 'techbook' }).theme.color
+      end
+
       # page_presets.yml に無い判型を選んだ本は止める（本文が黙って B5 で組まれるのを防ぐ）。
       # gem の雛形にある名前なら本の page_presets.yml が古いだけなので vs upgrade を、無い名前なら選べる名前を示す
       def test_should_stop_a_book_whose_page_preset_is_missing

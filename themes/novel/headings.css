@@ -1,0 +1,35 @@
+@charset "utf-8";
+
+/* =====================================================================
+   novel テーマ: 章題・節題（theme 層）
+   ---------------------------------------------------------------------
+   章題は天から 3 字下げ、後ろを 2 行空ける。節題は天から 5 字下げ。書体は本文と同じ明朝で、
+   太さで区別する（明朝にするのは本の種類の既定値 typography.heading.font。BookProfile）。
+   前書き・後書きの題も同じ形で組む。選択子は本文のページの body で絞る（prose.css の冒頭）。
+   ===================================================================== */
+
+body:is(.chapter, .appendix, .preface, .postface) h1 {
+  margin-block: 0 2em;
+  margin-inline: 3em 0;
+  font-size: 1.6em;
+  font-weight: bold;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+}
+
+body:is(.chapter, .appendix, .preface, .postface) h2 {
+  margin-block: 1.5em 1em;
+  margin-inline: 5em 0;
+  font-size: 1.2em;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+body:is(.chapter, .appendix, .preface, .postface) h3 {
+  block-size: auto;
+  margin-block: 1em 0.5em;
+  margin-inline: 6em 0;
+  padding: 0;
+  font-size: 1em;
+  line-height: inherit;
+}

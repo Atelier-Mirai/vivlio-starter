@@ -317,7 +317,7 @@ module VivlioStarter
         def test_should_bring_preface_color_to_preface_lines
           css, = kindle_css('preface')
 
-          assert_equal '3px solid #0d9488', value_of(css, 'body.vs-kindle h1', 'border-bottom')
+          assert_equal '3px solid #0d9488', value_of(css, 'body.preface.vs-kindle h1', 'border-bottom')
           assert_equal '#0d9488', value_of(css, 'body.preface.vs-kindle a', 'color')
         end
 

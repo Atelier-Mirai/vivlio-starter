@@ -203,8 +203,10 @@ module VivlioStarter
         # 既定値をマージすると未知キーが落ちるので、著者の記述はここで記録する
         @authored_keys = collect_key_paths(raw_config)
         profile = BookProfile.defaults_for(BookProfile.type_of(raw_config))
-        # テーマのオプションの既定値（v2-architecture-spec.md §5.3 の 3）。theme.name を生の YAML から先に取り出す
-        @theme_specs = theme_specs_for(raw_config[:theme].is_a?(Hash) ? raw_config[:theme][:name] : nil)
+        # テーマのオプションの既定値（v2-architecture-spec.md §5.3 の 3）。theme.name を生の YAML から先に取り出す。
+        # 書いていなければ本の種類の既定のテーマ（小説は novel）の宣言を使う
+        written_theme = raw_config[:theme].is_a?(Hash) ? raw_config[:theme][:name] : nil
+        @theme_specs = theme_specs_for(blank?(written_theme) ? profile.dig(:theme, :name) : written_theme)
         cfg = apply_page_preset(raw_config, fallback_use: profile.dig(:page, :use))
         merge_hardcoded_defaults(cfg, profile)
       end

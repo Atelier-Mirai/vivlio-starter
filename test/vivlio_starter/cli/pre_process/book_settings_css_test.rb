@@ -129,6 +129,14 @@ class BookSettingsCssThemeTest < Minitest::Test
     assert_equal 1, warnings.size
     assert_includes warnings.first, 'theme.frontispiece.heading_chars: 16'
     assert_includes warnings.first, '最大 11 文字'
+
+    # 扉絵を使わない本（standard の style: simple）では知らせない。幅の宣言は書く
+    warnings.clear
+    lines = VivlioStarter::CLI::Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
+      FP.declarations({ heading_chars_value: 16 }, active: false, image_prefix: '', page_cfg: a5)
+    end
+    assert_empty warnings
+    assert(lines.any? { it.start_with?('--book-frontispiece-heading-width:') })
   end
 
   # 版面に収まる指定では警告を出さない（正常系を騒がせない）

@@ -171,7 +171,7 @@ stylesheets/
   targets/
     epub.css                 本文のページの body.vs-epub の規則（S3-2 で 21 規則＋2）
     kindle.css               本文のページの body.vs-kindle の規則（38 規則）
-    kindle-preface.css       前書き・後書きだけの body.vs-kindle の規則（1）
+    kindle-preface.css       前書き・後書きだけの body.vs-kindle の規則（1。S8-5 で themes/standard/kindle.css へ移した）
     kindle-index.css  kindle-glossary.css  kindle-colophon.css   そのページだけの規則（6・6・10）
 themes/standard/             theme-contract-spec.md §4（S6 で作る）
   theme.yml

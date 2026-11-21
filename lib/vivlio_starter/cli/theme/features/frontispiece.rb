@@ -58,13 +58,16 @@ module VivlioStarter
             if settings[:heading_offset_value]
               lines << "--book-frontispiece-heading-offset: #{settings[:heading_offset_value]};"
             end
-            lines.concat(metric_declarations(settings, page_cfg))
+            lines.concat(metric_declarations(settings, page_cfg, warn: active))
           end
 
           # 章題・章リードの幅と、章扉の章リードの大きさ（heading-metrics-spec §1-2）。
           # 著者は book.yml に「1 行の文字数」で書く。判型に追従する CSS の clamp() を calc() の中で
           # 掛け合わせると Vivliostyle が宣言ごと落とすため、換算は生成時に行いリテラルで焼き込む。
-          def metric_declarations(settings, page_cfg)
+          # 版面に収まらない字数の 🟡 は、機能が有効なときだけ出す（standard の style: simple・小さい判型の
+          # 本で、使わない扉絵の字数を知らせない。novel-vertical-spec.md §10.5）
+          # @param warn [Boolean] 版面に収まらない字数を知らせるか
+          def metric_declarations(settings, page_cfg, warn: true)
             bsc = PreProcessCommands::BookSettingsCss
             text_mm = bsc.text_area_width_mm(page_cfg)
             scale = bsc.paper_scale_of(page_cfg)
@@ -73,7 +76,7 @@ module VivlioStarter
             if (chars = settings[:heading_chars_value])
               advance = bsc.chapter_title_advance_mm(scale)
               lines << "--book-frontispiece-heading-width: #{bsc.format_mm(chars * advance)};"
-              bsc.warn_if_wider_than_text_area('theme.frontispiece.heading_chars', chars, advance, text_mm)
+              bsc.warn_if_wider_than_text_area('theme.frontispiece.heading_chars', chars, advance, text_mm) if warn
             end
 
             # 章扉のリードの幅は「字数 × 1 字の送り」で、送りは章扉の倍率と字間で決まる。字数が
@@ -86,7 +89,7 @@ module VivlioStarter
             if chars
               advance_mm = bsc.chapter_lead_advance_mm(page_cfg, lead_size)
               lines << "--book-frontispiece-lead-width: #{bsc.format_mm(chars * advance_mm)};"
-              bsc.warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm)
+              bsc.warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars, advance_mm, text_mm) if warn
             end
 
             lines
