@@ -276,7 +276,8 @@ module VivlioStarter
         # --compress なら圧縮版も作り、作成の報告に並べ、圧縮版を開く
         def test_should_deliver_the_compressed_pdf_when_compress_is_given
           Dir.chdir(@tmpdir) do
-            build = direct_build_for('handout.md', compress: true)
+            direct_build_for('handout.md')
+            build = DirectBuild.new('handout.md', compress: true)
             build.instance_variable_set(:@generated_pdf, File.join(@tmpdir, 'generated.pdf'))
             File.write('generated.pdf', "%PDF-1.7\n")
             compress = ->(_options, input, output) { FileUtils.cp(input, output) }
@@ -287,14 +288,47 @@ module VivlioStarter
             end
 
             assert_match(/handout\.pdf, handout_compressed\.pdf を作成しました/, out)
-            assert_equal ['handout_compressed.pdf'], opened
+            assert_equal [File.expand_path('handout_compressed.pdf')], opened
+          end
+        end
+
+        # シェルが ~ を展開して渡した原稿は、報告でホームを ~ に戻す（`vs build ~/notes/idea.md`）
+        def test_should_show_home_as_tilde_in_the_report
+          build = DirectBuild.new(File.join(Dir.home, 'notes', 'idea.md'))
+
+          assert_equal '~/notes/idea.pdf', build.send(:display_path, File.join(Dir.home, 'notes', 'idea.pdf'))
+        end
+
+        # PDF と圧縮版は、コマンドを実行したディレクトリではなく原稿の隣にできる（改善案 #141）。
+        # 報告は著者が原稿を指定したときの書き方で示す
+        def test_should_deliver_next_to_the_source_when_run_from_another_directory
+          docs = File.join(@tmpdir, 'docs')
+          FileUtils.mkdir_p(docs)
+          Dir.chdir(@tmpdir) do
+            direct_build_for('docs/guide.md')
+            build = DirectBuild.new('docs/guide.md', compress: true)
+            build.instance_variable_set(:@generated_pdf, File.join(@tmpdir, 'generated.pdf'))
+            File.write('generated.pdf', "%PDF-1.7\n")
+            compress = ->(_options, input, output) { FileUtils.cp(input, output) }
+            opened = []
+
+            out, = PdfCommands.stub(:execute_pdf_compress, compress) do
+              build.stub(:open_pdf, ->(path) { opened << path }) { capture_io { build.send(:deliver, 1.0) } }
+            end
+
+            assert_path_exists File.join(docs, 'guide.pdf')
+            assert_path_exists File.join(docs, 'guide_compressed.pdf')
+            assert_empty Dir.glob(File.join(@tmpdir, 'guide*.pdf')), '実行したディレクトリに PDF ができている'
+            assert_match(%r{docs/guide\.pdf, docs/guide_compressed\.pdf を作成しました}, out)
+            assert_equal [File.expand_path('docs/guide_compressed.pdf')], opened
           end
         end
 
         # 圧縮版を作れなかったとき（gs が無いなど）は、圧縮前の PDF だけを報告して開く
         def test_should_fall_back_to_the_plain_pdf_when_compression_fails
           Dir.chdir(@tmpdir) do
-            build = direct_build_for('handout.md', compress: true)
+            direct_build_for('handout.md')
+            build = DirectBuild.new('handout.md', compress: true)
             build.instance_variable_set(:@generated_pdf, File.join(@tmpdir, 'generated.pdf'))
             File.write('generated.pdf', "%PDF-1.7\n")
             File.write('handout_compressed.pdf', '前の回の圧縮版')
@@ -306,7 +340,7 @@ module VivlioStarter
 
             assert_match(/handout\.pdf を作成しました/, out)
             refute_match(/handout_compressed\.pdf/, out)
-            assert_equal ['handout.pdf'], opened
+            assert_equal [File.expand_path('handout.pdf')], opened
           end
         end
 

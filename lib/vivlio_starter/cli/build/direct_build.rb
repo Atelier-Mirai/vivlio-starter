@@ -21,6 +21,8 @@
 #   - theme.style は simple 固定。扉絵・節絵アセットの生成は軽量経路の趣旨に反する
 #   - 出力は閲覧用 PDF のみ（print_pdf / EPUB / Kindle は対象外）。--compress を付けたときだけ、
 #     圧縮した <元basename>_compressed.pdf も作る（配布資料はメールや Web で配ることが多いため）
+#   - PDF は原稿と同じディレクトリに作る（改善案 #141）。どこで実行しても置き場所が同じになり、
+#     vs pdf:compress の「元のファイルの隣に出す」とそろう。出力先のオプションは持たない
 #   - --verify-links を付けたときは、外部 URL の到達性も確かめる（配る資料の URL の誤りを見つけるため）
 #
 # 仕様書との差分（実装時に判明した都合）:
@@ -103,6 +105,8 @@ module VivlioStarter
         def initialize(source, theme: nil, compress: false, verify_links: false)
           # ワークスペースへ chdir した後も同じファイルを指せるよう絶対パスで保持する
           @source = File.expand_path(source.to_s)
+          # 作成の報告は、著者が書いたとおりのパスを元に示す（display_path）
+          @source_argument = source.to_s
           @theme = theme
           @compress = compress
           @verify_links = verify_links
@@ -447,7 +451,7 @@ module VivlioStarter
           )
         end
 
-        # 生成 PDF を呼び出し元 cwd の <元basename>.pdf へ移す（既存ファイルは上書き）。
+        # 生成 PDF を原稿と同じディレクトリの <元basename>.pdf へ移す（既存ファイルは上書き）。
         # 報告はフル/単章ビルドと同じ「📚 <ファイル> を作成しました (N.Ns)」の書式で揃える。
         # @param elapsed [Float] 実行開始からの経過秒
         def deliver(elapsed)
@@ -457,23 +461,35 @@ module VivlioStarter
             return 1
           end
 
-          destination = "#{source_name}.pdf"
+          destination = File.join(File.dirname(source), "#{source_name}.pdf")
           FileUtils.rm_f(destination)
           FileUtils.mv(@generated_pdf, destination)
           created = [destination, (compress_pdf(destination) if @compress)].compact
-          Common.log_result("#{created.join(', ')} を作成しました (#{format('%.1f', elapsed)}s)", status: :artifact)
+          Common.log_result("#{created.map { display_path(it) }.join(', ')} を作成しました " \
+                            "(#{format('%.1f', elapsed)}s)", status: :artifact)
           open_pdf(created.last)
           0
         end
 
-        # 圧縮版 <元basename>_compressed.pdf を作り、そのパスを返す（作れなければ nil）。
-        # vs build の圧縮と同じく、gs が無い・圧縮に失敗したときは 🟡 を出し、圧縮前の PDF で続ける
-        # （pipeline: true）。前の回の圧縮版が残っていると、作れなかったのに作ったと報告するので先に消す
+        # 圧縮版を vs pdf:compress と同じ決まり（PDF の隣に _compressed）で作り、そのパスを返す
+        # （作れなければ nil）。vs build の圧縮と同じく、gs が無い・圧縮に失敗したときは 🟡 を出し、
+        # 圧縮前の PDF で続ける（pipeline: true）。前の回の圧縮版が残っていると、作れなかったのに
+        # 作ったと報告するので先に消す
         def compress_pdf(pdf)
-          compressed = "#{File.basename(pdf, '.pdf')}_compressed.pdf"
+          compressed = PdfCommands::PdfCompressor.default_output_path(pdf)
           FileUtils.rm_f(compressed)
           PdfCommands.execute_pdf_compress({ pipeline: true }, pdf, compressed)
           compressed if File.exist?(compressed)
+        end
+
+        # 作った PDF を、著者が原稿を指定したときの書き方で示す（`../notes/handout.md` なら
+        # `../notes/handout.pdf`、手元の `handout.md` ならファイル名だけ）。PDF は原稿の隣にできるので、
+        # カレントディレクトリに無いときもどこにできたかが分かる。シェルが ~ を展開して渡した
+        # 絶対パスは、ホームを ~ に戻して示す
+        def display_path(path)
+          File.join(File.dirname(@source_argument), File.basename(path))
+              .delete_prefix('./')
+              .sub(%r{\A#{Regexp.escape(Dir.home)}(?=/)}, '~')
         end
 
         def open_pdf(path)

@@ -183,6 +183,14 @@ module VivlioStarter
           false
         end
 
+        # 出力を省略したときの圧縮版のパス。入力の PDF と同じディレクトリに `_compressed` を付ける。
+        # 直接ビルドの `--compress` も同じ決まりで置くので、クラスメソッドにして共有する（改善案 #141）。
+        # 例: "docs/guide.pdf" -> "docs/guide_compressed.pdf"
+        def self.default_output_path(path)
+          stem = File.basename(path).sub(/\.pdf\z/i, '')
+          File.join(File.dirname(path), "#{stem}_compressed.pdf")
+        end
+
         def initialize(options, cli_input = nil, cli_output = nil)
           @options = options || {}
           @cli_input = cli_input
@@ -222,13 +230,13 @@ module VivlioStarter
           elsif input
             # vs pdf:compress filename（出力は _compressed を付与）
             @input_pdf  = input
-            @output_pdf = default_compressed_name(input)
+            @output_pdf = self.class.default_output_path(input)
           else
             # vs pdf:compress（引数なし）: book.yml から解決した最終成果物名を既定入力にする
             # （例: vivlio_starter.pdf。パイプラインが output.pdf をこの名前へリネームするため、
             #  ルートに残る閲覧用 PDF はこの動的名になる）
             @input_pdf  = Common.generate_output_filename('pdf')
-            @output_pdf = default_compressed_name(@input_pdf)
+            @output_pdf = self.class.default_output_path(@input_pdf)
           end
         end
 
@@ -238,20 +246,6 @@ module VivlioStarter
 
           p = path.to_s.strip
           p.end_with?('.pdf') ? p : "#{p}.pdf"
-        end
-
-        # 入力ファイル名からデフォルトの圧縮後ファイル名を生成する
-        # 例: "output.pdf" -> "output_compressed.pdf"
-        def default_compressed_name(path)
-          base = File.basename(path)
-          dir  = File.dirname(path)
-
-          if base.downcase.end_with?('.pdf')
-            stem = base[0...-4]
-            File.join(dir, "#{stem}_compressed.pdf")
-          else
-            File.join(dir, "#{base}_compressed.pdf")
-          end
         end
 
         # 入稿用 PDF を圧縮しようとしていたら引き止める（`print-pdf-compress-guard-spec.md` §4）。

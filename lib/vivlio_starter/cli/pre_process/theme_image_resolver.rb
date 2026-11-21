@@ -276,6 +276,7 @@ module VivlioStarter
         # stylesheets/images/ の画像のバリアントはキャッシュの直下の同じサブパスに、テーマの画像の
         # バリアントは theme-images/themes/<名前>/images/ に出る。
         def find_cached_theme_variant(base_slug, variant)
+          ImageGenerator.discard_outdated_variants!
           stems = [base_slug, *theme_image_dirs.map { cache_stem(File.join(it, theme_slug(base_slug))) }]
           stems.uniq.each do |stem|
             path = File.join(theme_images_cache_root, "#{stem}_#{variant}.webp")
