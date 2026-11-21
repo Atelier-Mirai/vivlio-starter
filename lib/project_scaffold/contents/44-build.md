@@ -399,7 +399,7 @@ vs build myawesome.md                      # プロジェクトの外でも実�
 vs build ~/notes/idea.md --theme blue      # ディレクトリやテーマカラーを指定
 ```
 
-カレントディレクトリに `myawesome.pdf`（元ファイル名の拡張子違い）が生成され、macOS では自動的に開きます。
+原稿と同じディレクトリに `myawesome.pdf`（元ファイル名の拡張子違い）が生成され、macOS では自動的に開きます。`vs build ~/notes/idea.md` なら `~/notes/idea.pdf` ができます。
 
 `--compress` を付けると、圧縮した `myawesome_compressed.pdf` も作り、そちらを開きます。配る前にファイルを小さくするときに使います。画像の多い資料ほど小さくなります。
 
