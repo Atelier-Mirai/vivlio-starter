@@ -9,7 +9,8 @@
 #
 # 生成処理:
 #   1. ImageMagick で透明な余白を除き、対角線で分けて指定の縦横比の画布へ置き直す
-#   2. waifu2x-ncnn-vulkan で 2x アップスケール + ノイズ除去（あれば）
+#   2. 仕上がりの幅の 2/3 に満たない小さい絵だけ、waifu2x-ncnn-vulkan で 2x アップスケール
+#      + ノイズ除去（あれば）。大きい絵は ImageMagick で拡大・縮小する（改善案 #143）
 #   3. WebP 形式で出力（quality=90）
 #
 # バリアント:
@@ -38,6 +39,11 @@ module VivlioStarter
         FRONTISPIECE_SCALE = 2
         FRONTISPIECE_TARGET_WIDTH = 2880 # frontispiece推奨横幅
         FRONTISPIECE_WEBP_QUALITY = 90
+        # 並べ直した絵の幅が仕上がりの幅のこの割合以上なら、waifu2x を通さず ImageMagick で
+        # 拡大・縮小する（改善案 #143）。2/3 の絵では waifu2x あり・なしの差が PSNR で 0.5 dB と
+        # 見分けられず、1/2 以下では waifu2x のほうが細部が残った。waifu2x は 1 枚の絵に
+        # 約 36 秒かかる（ImageMagick だけなら約 9 秒）。仕上がりより広い節絵は縮めるだけで済む
+        WAIFU2X_SKIP_WIDTH_RATIO = 2.0 / 3
 
         # 扉絵・節絵の作り方の版。作り方を変えて、作った絵が変わるときに上げる。
         # 2: 透過を透過のまま運ぶ（改善案 #140）
@@ -111,7 +117,7 @@ module VivlioStarter
           Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 
           waifu2x_available = waifu2x && !waifu2x.strip.empty? && Common.external_command_available?(waifu2x)
-          Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。") unless waifu2x_available
+          warned_missing_waifu2x = false
 
           Dir.mktmpdir('frontispiece-one') do |tmpdir|
             trimmed_path = File.join(tmpdir, "#{basename}_trimmed.png")
@@ -121,12 +127,20 @@ module VivlioStarter
               variant_png = File.join(tmpdir, "#{basename}_#{variant}.png")
               generate_diagonal_variant(trimmed_path, variant_png, ratio)
 
+              # 拡大が要る小さい絵だけ waifu2x を通す。要るのに無いときだけ警告する（十分に
+              # 大きい絵なら、waifu2x が無くても仕上がりは同じなので知らせない）
+              upscale = needs_waifu2x?(variant_png, target_width)
+              if upscale && !waifu2x_available && !warned_missing_waifu2x
+                Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。")
+                warned_missing_waifu2x = true
+              end
+
               target_path = File.join(base_dir, "#{basename}_#{variant}.webp")
               generate_variant_output(
                 variant_png,
                 target_path,
                 variant: variant,
-                waifu2x_available: waifu2x_available,
+                waifu2x_available: upscale && waifu2x_available,
                 waifu2x: waifu2x,
                 waifu2x_args: waifu2x_args,
                 waifu2x_noise: waifu2x_noise,
@@ -144,6 +158,13 @@ module VivlioStarter
         rescue StandardError => e
           Common.log_error("frontispiece/ornament 生成に失敗しました: #{e.message}")
           false
+        end
+
+        # 並べ直した絵が、仕上がりの幅に対して waifu2x で拡大するほど小さいか（改善案 #143）。
+        # 寸法が読めなければ、今までどおり拡大する側に倒す
+        def needs_waifu2x?(variant_png, target_width)
+          width, = Common.image_size(variant_png)
+          width.nil? || width < target_width * WAIFU2X_SKIP_WIDTH_RATIO
         end
 
         # ImageMagick が利用可能かチェック
