@@ -447,4 +447,5 @@ S8 の中の決まり:
   - 直し（11/21・ユーザーの判断「組めない旨を示して止める」）: `RootCommand#stop_unknown_page_preset!` が、本を読むコマンドを 🔴 で止める（`stop_unmigrated_book!` の次）。判定は `Common.find_unknown_page_preset`（`book.yml` をその場で読み直し、`page.use` か本の種類の既定のプリセットが `page_presets.yml` に無いか）。gem の雛形にある名前なら「`vs upgrade` で `config/page_presets.yml` を新しくすると、この判型で組めます」、無い名前なら選べる名前を並べる。`vs upgrade` と `vs doctor` は止めない（doctor は同じ文面を 🟡）。
   - 11/21: 文庫判のプリセットを `a6_*` から `bunko_standard`・`bunko_custom` へ、判型の表の名前を `A6` から `BUNKO`（文面は「文庫」・生成物と下敷きは `bunko`）へ改めた（ユーザーの判断。小説を書く人は「A6」でなく「文庫」と呼ぶ。`shinsho`・`shiroku` と同じく日本語の呼び方の名前にそろえる）。`A6` の名前は残さない（1.x に無く、まだ公開していない）。
   - 1.x の `vs` は A4・B5・A5 だけに対応のまま（ユーザーの判断）。小説の判型を 1.x へ戻して入れない。
-  - `page.size:` に表に無い名前を直に書いた本（プリセットを使わない）は、本文は今も B5 で読み、表紙が 🔴 で止まる。
+  - 11/21（ユーザーの判断「途中で止まるより、最初の vs preflight・build で止める」）: プリセットを当てた後の `size:` が判型の表に無く、`page.width`・`page.height` も無い本も、同じ入口で 🔴 で止める（`Common.find_unknown_page_size`・`page_size_notice`。入口は `RootCommand#stop_unknown_page_size!`）。`size:` が `book.yml` か、どのプリセットから来たかを示す。
+  - 同じ日に、S8-3 で入れた違いを直した: `page:` を書いていない本（`size:` が無い）は、本文が B5 で組まれるのに、表紙の寸法の窓口が nil を返して表紙だけ 🔴 で止まっていた。窓口も本文の `resolve_page_size` と同じく B5 にした（S8-3 の前の表紙も B5）。

@@ -141,14 +141,15 @@ module VivlioStarter
           return Common.ensure_configured!(retired_notice: false) if target.is_a?(UpgradeCommand)
 
           stop_unmigrated_book!
-          stop_unknown_page_preset!
+          stop_unknown_page_size!
           Common.ensure_configured!
         end
 
-        # page_presets.yml に無い判型を選んだ本は、本文が既定の B5 で組まれ、判型の違う本ができる。
+        # page_presets.yml に無いプリセットや、判型の表に無い size: を書いた本は、本文が既定の B5 で組まれ、
+        # 表紙は途中で止まる。うまく組めそうに見えて途中で止まるより先に知らせる。
         # 本を読むコマンドは最初に止める。vs upgrade（page_presets.yml を新しくする）・vs doctor は上で抜けるので止めない
-        def stop_unknown_page_preset!
-          message, detail = Common.unknown_page_preset_notice
+        def stop_unknown_page_size!
+          message, detail = Common.page_size_notice
           return unless message
 
           Common.log_error(message, detail:)

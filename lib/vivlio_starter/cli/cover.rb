@@ -203,7 +203,9 @@ module VivlioStarter
       # @param page [Hash] 判型のプリセットを当てた後の page の設定（シンボルのキー）
       # @return [TrimSize, nil] 寸法が決まらない（size: が表に無く、幅と高さも無い）ときは nil
       def trim_size(page = Common::CONFIG&.page.to_h)
-        size = page[:size].to_s.strip.upcase
+        # size: を書いていない本（page: の無い book.yml）は、本文の Common.resolve_page_size と同じく B5。
+        # 表に無い名前は本を読むコマンドの入口で止まる（RootCommand#stop_unknown_page_size!）
+        size = page[:size].to_s.strip.upcase.then { it.empty? ? 'B5' : it }
         preset = Common::PAGE_SIZES[size]
         width_mm, height_mm = %i[width height].map do |key|
           mm = Units.length_to_mm(page[key]) || Units.length_to_mm(preset&.fetch(key))

@@ -10,7 +10,7 @@
 #   - book.type の読み方（無い・知らない名前は techbook）
 #   - 解決の順: ConfigKeys の既定値 < 種類の既定値 < 判型のプリセット < book.yml に書いた値
 #   - book.type は分冊の巻では上書きできない（§5.4）
-#   - page_presets.yml に無い判型を選んだ本は、本を読むコマンドを 🔴 で止める（cover-size-independence-spec.md §8）
+#   - page_presets.yml に無いプリセット・判型の表に無い size: の本は、本を読むコマンドを 🔴 で止める（cover-size-independence-spec.md §8）
 #
 # 種類ごとの雛形の book.yml との照合（§2.2 の検査の (2)）は、雛形ができる S8 で足す。
 # ================================================================
@@ -198,6 +198,26 @@ module VivlioStarter
         assert_nil Common.unknown_page_preset_notice
         File.write(Common::CONFIG_FILE, { 'book' => { 'main_title' => '題' } }.to_yaml)
         assert_nil Common.unknown_page_preset_notice, 'page.use を書かない技術書はプリセットを選んでいない'
+      end
+
+      # 判型の表に無い size: も止める（表紙を作るところで止まるより先に）。page.width と page.height を
+      # 書いた本と、size: を書いていない本（B5）は止めない
+      def test_should_stop_a_book_whose_page_size_is_unknown
+        File.write(Common::CONFIG_FILE, { 'page' => { 'size' => 'B4' } }.to_yaml)
+        message, detail = Common.page_size_notice
+
+        assert_equal 'config/book.yml の page.size: B4 は vs が知らない判型のため、本を組めません', message
+        assert_match(/\A→ size: に A4・A5・B5・.*のどれかを書くか、page\.width と page\.height に寸法を書いてください/, detail)
+
+        File.write('config/page_presets.yml', { 'b4_standard' => { 'size' => 'B4' } }.to_yaml)
+        File.write(Common::CONFIG_FILE, { 'page' => { 'use' => 'b4_standard' } }.to_yaml)
+        assert_equal 'config/page_presets.yml の b4_standard の size: B4 は vs が知らない判型のため、本を組めません',
+                     Common.page_size_notice.first
+
+        File.write(Common::CONFIG_FILE, { 'page' => { 'size' => 'B4', 'width' => '257mm', 'height' => '364mm' } }.to_yaml)
+        assert_nil Common.page_size_notice, '寸法を書いた本は組める'
+        File.write(Common::CONFIG_FILE, { 'book' => { 'main_title' => '題' } }.to_yaml)
+        assert_nil Common.page_size_notice, 'size: を書いていない本は B5'
       end
 
       # 本を読むコマンドは止め、page_presets.yml を新しくする vs upgrade は止めない

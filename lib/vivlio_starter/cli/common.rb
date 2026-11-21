@@ -394,6 +394,42 @@ module VivlioStarter
         ["#{where} は config/page_presets.yml にない判型のため、本を組めません", fix]
       end
 
+      # プリセットを当てた後の size: が判型の表（PAGE_SIZES）に無く、page.width と page.height も無ければ、
+      # その名前と、どこに書かれていたか。本文は resolve_page_size が黙って B5 で読み、表紙は寸法が決まらずに
+      # 途中で止まるので、本を読むコマンドの入口で止める。size: を書いていない本は B5 で、ここでは止めない
+      # @return [Hash, nil] { size:, preset: }（preset はプリセットの size: のとき、その名前。book.yml なら nil）
+      def find_unknown_page_size(raw_config = load_raw_book_config)
+        return nil unless raw_config.is_a?(Hash) && File.file?(PAGE_PRESETS_FILE)
+
+        written = raw_config[:page].is_a?(Hash) ? raw_config[:page] : {}
+        fallback_use = BookProfile.defaults_for(BookProfile.type_of(raw_config)).dig(:page, :use)
+        page = apply_page_preset(raw_config, fallback_use:)[:page] || {}
+        size = page[:size].to_s.strip
+        return nil if size.empty? || PAGE_SIZES.key?(size.upcase)
+        return nil unless blank?(page[:width]) || blank?(page[:height])
+
+        { size:, preset: written.key?(:size) ? nil : page_preset_name(written, fallback_use) }
+      end
+
+      # 表に無い size: の 🔴 の文面
+      # @return [Array(String, String)] [message, detail]
+      def unknown_page_size_notice(unknown)
+        unknown => { size:, preset: }
+        where = preset ? "config/page_presets.yml の #{preset} の size: #{size}" : "config/book.yml の page.size: #{size}"
+        ["#{where} は vs が知らない判型のため、本を組めません",
+         "→ size: に #{PAGE_SIZES.keys.join('・')} のどれかを書くか、" \
+         'page.width と page.height に寸法を書いてください（例: width: 148mm と height: 210mm）']
+      end
+
+      # 判型が決まらない本の 🔴 の文面（決まれば nil）。プリセットが無いのを先に見る（size: はプリセットから来るので）。
+      # 本を読むコマンドの入口（RootCommand#stop_unknown_page_size!）と vs doctor が使う
+      # @return [Array(String, String), nil] [message, detail]
+      def page_size_notice(raw_config = load_raw_book_config)
+        if (unknown = find_unknown_page_preset(raw_config)) then unknown_page_preset_notice(unknown)
+        elsif (unknown = find_unknown_page_size(raw_config)) then unknown_page_size_notice(unknown)
+        end
+      end
+
       # gem の雛形の page_presets.yml にあるプリセットの名前（本の page_presets.yml が古いかを見分ける）
       def scaffold_page_preset_names
         path = File.join(NewCommands::SCAFFOLD_SOURCE, PAGE_PRESETS_FILE)
@@ -1378,6 +1414,7 @@ module VivlioStarter
                       :generate_output_filename, :generate_print_pdf_filename, :output_basename,
                       :images_dir, :data_dir, :load_config, :load_page_presets, :log_action,
                       :page_preset_name, :find_unknown_page_preset, :unknown_page_preset_notice,
+                      :find_unknown_page_size, :unknown_page_size_notice, :page_size_notice,
                       :scaffold_page_preset_names, :load_raw_book_config,
                       :emit, :confirm?, :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,

@@ -129,10 +129,12 @@ module VivlioStarter
         assert_pattern { trim => { width_mm: 120, height_mm: 180.4, name: '120x180', width: 1654, height: 2486 } }
       end
 
-      # 判型の表に無い size: は、今までのように黙って B5 で組まず、寸法が決まらないとする（§2.3）
+      # 判型の表に無い size: は、今までのように黙って B5 で組まず、寸法が決まらないとする（§2.3）。
+      # size: を書いていない本は、本文と同じく B5（page: の無い book.yml。S8-3 の前の表紙も B5 だった）
       def test_should_not_fall_back_to_b5_for_an_unknown_size
         assert_nil CoverCommands.trim_size(size: 'B4')
-        assert_nil CoverCommands.trim_size({})
+        assert_pattern { CoverCommands.trim_size({}) => { width_mm: 182, height_mm: 257, name: 'b5' } }
+        assert_equal Common.resolve_page_size({}).map { Units.length_to_mm(it) }, CoverCommands.trim_size({}).mm
       end
 
       # 寸法が決まらない本では表紙を作らず、🔴 で page.use を確かめるよう案内する
