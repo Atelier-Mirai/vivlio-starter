@@ -11,7 +11,7 @@
 
     ■ 判型の高さに合わせる印（cover-size-independence-spec.md §4.2）
         幅は 595 のまま、高さを判型の比に合わせ、増えた高さ（Δ）を印のある要素へ割り振ります。
-        data-vs-anchor="middle"／"bottom" は Δ の半分／Δ だけ下へ動かし、data-vs-stretch="y"／"half" は高さを Δ／Δ の半分だけ伸ばします。
+        data-vs-anchor="middle"／"bottom" は Δ の 0.82 倍／Δ だけ下へ動かし、data-vs-stretch="y"／"middle" は高さを Δ／Δ の 0.82 倍だけ伸ばします。
   -->
   <defs>
     <style>

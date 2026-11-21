@@ -137,8 +137,9 @@ module VivlioStarter
         # 同梱のひな形の高さを判型の比に合わせる（cover-size-independence-spec.md §4）。幅（595）は変えず、
         # 字の大きさ・欄の幅・収まりの計算（fit_scale）をどの判型でも同じにする。増えた高さ Δ は、
         # ひな形の印へ割り振る:
-        #   data-vs-anchor="middle" / "bottom" … Δ の半分 / Δ だけ下へ動かす（transform を前に足す）
-        #   data-vs-stretch="y" / "half"       … 高さを Δ / Δ の半分だけ伸ばす（rect の height・グラデーションの y2）
+        #   data-vs-anchor="middle" / "bottom" … Δ の MIDDLE_SHARE 倍 / Δ だけ下へ動かす（transform を前に足す）
+        #   data-vs-stretch="y" / "middle"     … 高さを Δ / Δ の MIDDLE_SHARE 倍だけ伸ばす（rect の height・グラデーションの y2。
+        #                                        middle は中央の図と一緒に下端が動くグリッド）
         # 差が高さの 1% 以下（A 列・B 列）なら何も書き換えない。今の判型の表紙を変えないため。
         def fit_template_height(svg, trim)
           root = svg.match(/<svg\b[^>]*>/m)
@@ -157,9 +158,13 @@ module VivlioStarter
           svg.gsub(/<[a-zA-Z]+\b[^>]*\bdata-vs-(?:anchor|stretch)="[^"]*"[^>]*>/) { apply_height_mark(it, delta) }
         end
 
+        # middle の印（題名の塊・中央の図）を動かす量。Δ の 0.82 倍で、新書の題名の塊の中心が面の上から
+        # 3 分の 1 に来る（半分では 0.27 で上に寄り、図との間が広く空いた）。cover-size-independence-spec.md §8.3
+        MIDDLE_SHARE = 0.82
+
         # 印の付いた開きタグ 1 つに、Δ の割り振りを当てる
         def apply_height_mark(tag, delta)
-          share = { 'middle' => 0.5, 'bottom' => 1.0, 'y' => 1.0, 'half' => 0.5 }
+          share = { 'middle' => MIDDLE_SHARE, 'bottom' => 1.0, 'y' => 1.0 }
           if (anchor = tag[/data-vs-anchor="([^"]*)"/, 1])
             shift = format_number(delta * share.fetch(anchor))
             return tag.sub(/\btransform="/, %(transform="translate(0 #{shift}) )) if tag.match?(/\btransform="/)
