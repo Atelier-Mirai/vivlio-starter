@@ -107,7 +107,7 @@ class TestDictManager < Minitest::Test
   # SCOWL 一般英単語辞書が含まれることを確認する
   def test_bundled_dict_names_includes_english_words
     names = @dm.send(:bundled_dict_names)
-    assert_includes names, 'english-words-20'
+    assert_includes names, 'english-words-40'
   end
 
   # 自作辞書（css-properties, tech-terms 等）が自動認識されることを確認する

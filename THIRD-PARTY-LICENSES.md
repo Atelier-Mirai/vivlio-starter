@@ -143,26 +143,28 @@ softwareTerms, sql-common-terms, sql, swift, tsql, webServices
 ---
 
 ### SCOWL（英単語辞書）
-- License: MIT (SCOWL and Friends)
+- License: SCOWL License (permissive; the copyright and permission notices must appear in all copies)
 - Project: http://wordlist.aspell.net/
 - Source: https://github.com/en-wl/wordlist
-- Copyright: (c) 2000-2018 Kevin Atkinson
+- Version: 2020.12.07
+- Copyright: (c) 2000-2018 Kevin Atkinson, and the copyrights listed in `SCOWL-COPYRIGHT`
 
 以下のファイルを `config/spellcheck_dictionaries/` に同梱しています:
 
 ```
-english-words-10.txt, english-words-20.txt
+english-words-40.txt, SCOWL-COPYRIGHT
 ```
 
 ### 参考訳（日本語・非公式）
-- ライセンス: MIT（SCOWL and Friends）
+- ライセンス: SCOWL の許諾（自由に使用・複製・改変・配布・販売できる。すべての写しに著作権表示と許諾の表示を残す）
 - プロジェクト: http://wordlist.aspell.net/
 - ソース: https://github.com/en-wl/wordlist
-- 著作権表示: (c) 2000-2018 Kevin Atkinson
+- 版: 2020.12.07
+- 著作権表示: (c) 2000-2018 Kevin Atkinson、ほか `SCOWL-COPYRIGHT` に挙げられた著作権者
 
 補足:
-- `english-words-10.txt` および `english-words-20.txt` は SCOWL（Spell Checker Oriented Word Lists）から生成された一般英単語リストです。
-- ライセンスは MIT です。
+- `english-words-40.txt` は、SCOWL（Spell Checker Oriented Word Lists）の大きさ 40 以下の英語・アメリカ英語の一覧（一般の語・大文字で始まる語・固有名・短縮形・略語）をまとめた一般英単語リストです。`scripts/build_english_dictionary.rb` で作ります。
+- `SCOWL-COPYRIGHT` は、SCOWL の配布物の `Copyright`（著作権表示と許諾の全文）をそのまま写したものです。
 
 ---
 
