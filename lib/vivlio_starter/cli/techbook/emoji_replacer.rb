@@ -7,9 +7,14 @@ module VivlioStarter
   module CLI
     module Techbook
       class EmojiReplacer
-        # Unicode Emoji 検出用正規表現
-        # Emoji_Presentation を持つ文字 + Variation Selector 付き文字を対象とする
-        EMOJI_REGEX = /[\p{Emoji_Presentation}\p{Emoji}\uFE0F]+/
+        # 絵文字の候補の並び。
+        #
+        # 隣り合う絵文字（`"🌊🌊🗻"`）はひとかたまりで当たるので、置き換えは書記素クラスタに
+        # 分けてから 1 つずつ画像を探す（改善案 #156）。かたまりのまま `1f30a-1f30a-1f5fb` の
+        # 画像を探していた頃は、見つからずに字のまま残り、PDF で Type 3 になっていた。
+        # ZWJ（200D）・異体字セレクタ（FE0F）・キーキャップ（20E3）・タグ（E0020〜E007F、
+        # 地域の旗）も並びに含める。含めないと `👨‍💻` や `1️⃣` が途中で切れる。
+        EMOJI_REGEX = /[\p{Emoji}\u200D\uFE0F\u20E3\u{E0020}-\u{E007F}]+/
 
         # HTML の地の文だけをブロックの戻り値で置き換える。タグそのものと、style・script・svg の
         # 中身には触れない。Processor の囲み数字の画像化もこれを使う。
@@ -43,13 +48,20 @@ module VivlioStarter
         end
         private_class_method :ignored_element_after
 
+        # 置き換える書記素クラスタか。`\p{Emoji}` は ASCII の `0-9`・`#`・`*` も含むので、
+        # ASCII だけのクラスタ（コードの `24` や `#`）は置き換えない。キーキャップ（`1️⃣`）は
+        # FE0F・20E3 を伴うので ASCII だけにはならず、置き換える。
+        def self.emoji_cluster?(cluster) = !cluster.ascii_only?
+
         # 絵文字の Unicode コードポイントを Twemoji ファイル名形式に変換する
         # 例: "✅" → "2705"、複合絵文字 "👨‍💻" → "1f468-200d-1f4bb"
+        #
+        # FE0F は ZWJ を含まないときだけ落とす（Twemoji の名前の付け方。`🏳️‍🌈` は
+        # `1f3f3-fe0f-200d-1f308`、`🏔️` は `1f3d4`）。
         def self.emoji_codepoint(char)
-          char.codepoints
-              .reject { it == 0xFE0F }
-              .map { it.to_s(16).downcase }
-              .join("-")
+          codepoints = char.codepoints
+          codepoints = codepoints.reject { it == 0xFE0F } unless codepoints.include?(0x200D)
+          codepoints.map { it.to_s(16).downcase }.join("-")
         end
 
         # @param emoji_dir [Pathname, String, nil] SVG ディレクトリ（nil 時は gem 同梱パスを使用）
@@ -63,8 +75,8 @@ module VivlioStarter
         def process(html) = self.class.map_text_segments(html) { replace_emoji_in_text(it) }
 
         def replace_emoji_in_text(text)
-          text.gsub(EMOJI_REGEX) do |match|
-            replace_emoji(match)
+          text.gsub(EMOJI_REGEX) do |run|
+            run.grapheme_clusters.map { self.class.emoji_cluster?(it) ? replace_emoji(it) : it }.join
           end
         end
 

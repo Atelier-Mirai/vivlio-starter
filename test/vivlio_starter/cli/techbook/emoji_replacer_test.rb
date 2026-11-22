@@ -106,6 +106,53 @@ module VivlioStarter
 
           assert default_dir.end_with?("stylesheets/twemoji"), "Expected path to end with stylesheets/twemoji, got: #{default_dir}"
         end
+
+        # 並んだ絵文字・合成の絵文字の置き換え（改善案 #156）。画像は一時ディレクトリに置く。
+        TWEMOJI_NAMES = %w[1f30a 1f5fb 1f468-200d-1f4bb 1f3d4 1f1ef-1f1f5 31-20e3 1f3f3-fe0f-200d-1f308].freeze
+
+        def with_twemoji_dir
+          Dir.mktmpdir do |dir|
+            TWEMOJI_NAMES.each { File.write(File.join(dir, "#{it}.svg"), '<svg/>') }
+            yield EmojiReplacer.new(dir), dir
+          end
+        end
+
+        def test_should_replace_each_emoji_in_adjacent_run
+          with_twemoji_dir do |replacer, dir|
+            result = replacer.process('"🌊🌊🗻"')
+
+            assert_equal 3, result.scan('<img').count
+            assert_equal 2, result.scan(File.join(dir, '1f30a.svg')).count
+            assert_includes result, File.join(dir, '1f5fb.svg')
+            assert result.start_with?('"<img') && result.end_with?('">"'), result
+          end
+        end
+
+        def test_should_keep_compound_emoji_as_one_image
+          with_twemoji_dir do |replacer, dir|
+            { '👨‍💻' => '1f468-200d-1f4bb', "🏔️" => '1f3d4', '🇯🇵' => '1f1ef-1f1f5',
+              "1️⃣" => '31-20e3', "🏳️‍🌈" => '1f3f3-fe0f-200d-1f308' }.each do |emoji, name|
+              result = replacer.process("x#{emoji}y")
+
+              assert_equal 1, result.scan('<img').count, emoji
+              assert_includes result, File.join(dir, "#{name}.svg")
+              assert_includes result, %(alt="#{emoji}")
+            end
+          end
+        end
+
+        def test_should_leave_ascii_digits_and_symbols_as_text
+          with_twemoji_dir do |replacer, _dir|
+            html = 'x = 24 # ok * 2'
+
+            assert_equal html, replacer.process(html)
+          end
+        end
+
+        def test_should_drop_variation_selector_only_without_zwj
+          assert_equal '1f3d4', EmojiReplacer.emoji_codepoint("🏔️")
+          assert_equal '1f3f3-fe0f-200d-1f308', EmojiReplacer.emoji_codepoint("🏳️‍🌈")
+        end
       end
     end
   end

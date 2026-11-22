@@ -808,6 +808,11 @@ module VivlioStarter
           # 「前の章 @ch-x」のように、隣の章を指す言葉の直後の参照（chapter-reference-spec.md §2.10）
           ADJACENT_CHAPTER_WORD = /(前の章|前章|次の章|次章)\s*\z/
 
+          # 端末の枠の開始・終了の行。MarkdownTransformer::TERMINAL_BLOCK_PATTERN と同じ形
+          # （開始行は改行で終わる。最後の行に開始だけがある枠は書き換えない）。
+          TERMINAL_OPEN = /\A:{3,}[ \t]*\{\.terminal\}[ \t]*\n\z/
+          TERMINAL_CLOSE = /\A:{3,}[ \t]*\n?\z/
+
           # 段落の区切りとみなす行（chapter-reference-spec.md §2.9）。空行のほか、箇条書きの項目と
           # 表の行は読者が一つずつ読むので、それぞれを別のまとまりとして扱う。前処理で HTML に
           # なった箇条書き・表（fancy list など）も同じに扱う。
@@ -833,8 +838,9 @@ module VivlioStarter
           end
 
           def replace
-            # コードブロックの除外は Masking（唯一の実装）へ委ねる。
+            # コードブロックの除外は Masking（唯一の実装）へ委ねる。端末の枠も読まない（改善案 #155）。
             code_lines = Masking.code_lines(@content)
+            code_lines |= terminal_block_lines(code_lines)
             result = @content.lines.map.with_index(1) do |line, num|
               in_code = code_lines.include?(num)
               @paged_in_paragraph.clear if in_code || line.match?(PARAGRAPH_START)
@@ -848,6 +854,34 @@ module VivlioStarter
           end
 
           private
+
+          # 端末の枠（`:::{.terminal}` … `:::`）の行番号。
+          #
+          # 前処理は端末の枠を `~~~vs-terminal` のフェンスへ書き換える
+          # （MarkdownTransformer::TERMINAL_BLOCK_PATTERN）ので、作業用の原稿への置き換えでは
+          # 中身がコードとして飛ばされる。ところが警告を集める呼び出しは `contents/` の原稿を
+          # 読むため、`:::` のままの枠の中の irb の出力 `@hp=80` を参照と取っていた。
+          # 書き換えと同じ範囲（コードの外で開き、コードの外の最初の `:::` で閉じる）を
+          # ここでもコードと見て、2 つの呼び出しの答えをそろえる。閉じない枠は書き換えも
+          # しないので、ここでも外さない。
+          def terminal_block_lines(code_lines)
+            lines = Set.new
+            pending = nil
+            @content.each_line.with_index(1) do |line, num|
+              next if code_lines.include?(num)
+
+              if pending
+                pending << num
+                if line.match?(TERMINAL_CLOSE)
+                  lines.merge(pending)
+                  pending = nil
+                end
+              elsif line.match?(TERMINAL_OPEN)
+                pending = [num]
+              end
+            end
+            lines
+          end
 
           def definition_line?(line)
             !CrossReferenceProcessor.extract_caption_label(line).nil? ||

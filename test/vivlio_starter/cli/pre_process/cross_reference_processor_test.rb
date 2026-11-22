@@ -192,6 +192,33 @@ class CrossReferencePagerefTest < Minitest::Test
     assert_includes result[:content], '@pageref:install'
     refute_includes result[:content], '<a href'
   end
+
+  # 端末の枠の中の irb の出力（@hp=80）は参照と見ない。警告を集める呼び出しは
+  # `:::` のままの原稿を読むので、Masking のコードの判定だけでは外れない（改善案 #155）
+  def test_should_not_report_instance_variables_inside_terminal_block
+    content = <<~MD
+      :::{.terminal}
+      irb(main):002> slime = Monster.new(:slime)
+      => #<Monster:0x0000000121098a40 @hp=80, @max_hp=80, @name="スライム">
+      :::
+
+      地の文の @undefined-label は警告する。
+    MD
+
+    result = XR.replace_references(content, labels_map, '16-hero.md')
+
+    assert_equal ['16-hero.md:6 - 未定義のラベルID: @undefined-label'], result[:errors]
+    assert_includes result[:content], '@hp=80, @max_hp=80, @name="スライム"'
+  end
+
+  # 閉じない端末の枠は前処理も書き換えないので、中の参照は今までどおり読む
+  def test_should_read_unclosed_terminal_block_as_prose
+    content = ":::{.terminal}\n@undefined-label\n"
+
+    result = XR.replace_references(content, labels_map, '16-hero.md')
+
+    assert_equal ['16-hero.md:2 - 未定義のラベルID: @undefined-label'], result[:errors]
+  end
 end
 
 # 単独で置いた画像の幅は、% のほかに CSS の長さも受け付ける（改善案.md #55）
