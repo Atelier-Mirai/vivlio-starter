@@ -907,7 +907,19 @@ module VivlioStarter
         # 記号だけを書いたインラインコード（`---` `**`）。記号の名前と同じく扱う。
         # 中身に英数字があるもの（`_index_glossary_review.md`）はファイル名などなので、
         # 「`foo.md` は 4 つのセクション」を記号の個数と取らないよう除く（本書 33 章で実際に誤った）。
-        SYMBOL_ONLY_CODE = /\A`+[^\p{Alnum}`]+`+\z/
+        #
+        # 区切りのバッククォートを外してから中身を見る（改善案.md #154）。バッククォートそのものを
+        # 書くコード（`` ``` ``）は、区切りを 2 つにして中身の両端に空白を 1 つずつ置くので、
+        # 区切りごと 1 つの文字の組で見ると当たらなかった。
+        INLINE_CODE_PARTS = /\A(?<fence>`+)(?<body>.+?)\k<fence>\z/m
+
+        def symbol_only_code?(code)
+          parts = code.match(INLINE_CODE_PARTS) or return false
+          body = parts[:body]
+          body = body[1...-1] if body.length > 2 && body.start_with?(' ') && body.end_with?(' ')
+          !body.strip.empty? && !body.match?(/\p{Alnum}/)
+        end
+        private_class_method :symbol_only_code?
 
         # 記号だけのコードを置き換える目印。私用領域の 1 文字なので原稿には現れず、
         # 強調記法の除去（strip_emphasis）にも削られない。
@@ -917,7 +929,8 @@ module VivlioStarter
 
         # 名前が数の前にある形（`空白 2 つ` `バッククォートを 2 つ`）と、後ろにある形
         # （`3 つのバッククォート` `3 つ以上のハイフン`）
-        SYMBOL_BEFORE_COUNT = /#{COUNTER_SYMBOL}[ \t]*[をがは]?[ \t]*\z/
+        # 助詞の「と」は「`##` と 2 つ書く」の形（改善案.md #154）
+        SYMBOL_BEFORE_COUNT = /#{COUNTER_SYMBOL}[ \t]*[をがはと]?[ \t]*\z/
         SYMBOL_AFTER_COUNT  = /\A(?:以上の|以上|の)?[ \t]*#{COUNTER_SYMBOL}/
 
         # 数と「つ」の表記の指摘。本書の方針（数は漢数字、記号の個数は算用数字）に
@@ -931,7 +944,7 @@ module VivlioStarter
           prose_lines(text).flat_map do |lineno, line|
             protected_line, spans = Masking.protect_code(line)
             spans.each do |placeholder, code|
-              protected_line = protected_line.sub(placeholder, SYMBOL_CODE_MARK) if code.match?(SYMBOL_ONLY_CODE)
+              protected_line = protected_line.sub(placeholder, SYMBOL_CODE_MARK) if symbol_only_code?(code)
             end
             body, = Masking.strip_emphasis(protected_line)
             counter_suffixes(body).filter_map do |found, value, symbol, start, finish|
@@ -942,14 +955,22 @@ module VivlioStarter
           end
         end
 
+        # 記号の個数を「か」「や」で並べた形（「空白を 2 つか 4 つ」の「4 つ」・改善案.md #154）。
+        # 前の数が記号の個数なら、並べた数も同じものの個数。並べ方をこの形だけに絞るのは、
+        # 「`#` が 1 つで `h1`、2 つで `h2`」のような主語の省略まで広げると、同じ文のふつうの
+        # 数まで黙らせるため（ユーザーの判断）。
+        COUNT_JOINED = /\A[ \t]*[かや][ \t]*\z/
+
         # 1 行から [書かれた形, 数, 記号の個数か, 行の中の始まり, 終わり] を拾う
         def counter_suffixes(body)
           hits = []
           body.to_enum(:scan, COUNTER_SUFFIX).each do
             matched = ::Regexp.last_match
             value = counter_value(matched)
+            previous = hits.last
             symbol = body[0...matched.begin(0)].match?(SYMBOL_BEFORE_COUNT) ||
-                     body[matched.end(0)..].match?(SYMBOL_AFTER_COUNT)
+                     body[matched.end(0)..].match?(SYMBOL_AFTER_COUNT) ||
+                     (previous && previous[2] && body[previous[4]...matched.begin(0)].match?(COUNT_JOINED))
             hits << [matched[0], value, symbol, matched.begin(0), matched.end(0)]
           end
           hits
@@ -1013,9 +1034,12 @@ module VivlioStarter
         #
         # **--fix しない。** 言い切れるかどうかは書き手にしか分からない。謝辞の
         # 「生まれていなかったかもしれません」のように、弱さが意図されている文もある。
+        #
+        # **「かも」だけの形は見ない**（改善案.md #152）。「明日は雨かも。」「雨かも、と思って」は
+        # 会話文や言いさしで書き手が選ぶ言い方で、指摘すると lint が信頼されなくなる。
+        # 文字列で探すと「しかも、」「どこにいるかも、」の「か＋も」まで拾っていた。
         WEAK_PHRASES = [
           [/かもしれ/,        'かもしれない'],
-          [/かも[。、！？]/,   'かも'],
           [/思います/,        '思います'],
           [/思う[。、]/,      '思う'],
           [/可能性を示唆/,    '可能性を示唆している']
@@ -1263,10 +1287,14 @@ module VivlioStarter
         # リストの続きは指摘しない。CommonMark で字下げコードかどうかを決めるには
         # リストの中にいるかを追う必要があり、行単位の走査では「4 スペース＝コード」と
         # 言い切れない（実測: 本書の 4 字下げ 2 行はどちらも非コードだった）。
+        #
+        # 実行結果の囲み（:::{.output}・:::{.terminal}）の中は見ない（改善案.md #153）。
+        # 囲みの中は字下げをそのまま組むので、Ruby のエラーの `^^^^` の行のように、
+        # 字下げは書き写した実行結果の一部である。
         def indented_code_findings(text)
           lines = text.lines
 
-          prose_lines(text).filter_map do |lineno, line|
+          authored_prose_lines(text).filter_map do |lineno, line|
             next unless line.match?(INDENTED_LINE)
             next if line.match?(/\A[ \t]+(?:[-*+]|\d{1,9}[.)])[ \t]/) # 字下げした箇条書き
             next unless lines[lineno - 2].to_s.strip.empty?             # ブロックの先頭だけ

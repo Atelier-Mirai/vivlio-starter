@@ -491,6 +491,17 @@ class TestProseChecker < Minitest::Test
     assert_empty check("- 親の項目\n    - 子の項目\n")
   end
 
+  # 実行結果の囲みの中の字下げは、書き写した結果の一部（Ruby のエラーの `^^^^` の行・改善案 #153）
+  def test_should_not_report_indented_lines_inside_output_boxes
+    error = "$ ruby check.rb\n/Users/mirai/rpg/characters.rb:161:in 'Hero#buy': undefined method '[]' for nil (NoMethodError)\n\n" \
+            "    price = ITEMS[id][:price]\n                     ^^^^^^^^\n\tfrom check.rb:113:in '<main>'\n"
+    %w[terminal output].each do |box|
+      findings = check("段落です。\n\n:::{.#{box}}\n#{error}:::\n")
+      refute_includes findings.map(&:rule), 'indented-code-block', box
+    end
+    assert_equal ['indented-code-block'], check("段落です。\n\n    price = ITEMS[id][:price]\n").map(&:rule), '囲みの外は今までどおり'
+  end
+
   # L-3: 直前に文が続く `---` / `===` は改ページではなく見出しになる。
   def test_should_report_setext_underline_after_a_paragraph
     findings = check("本文の途中です\n---\n\n見出しにしたい\n===\n")
@@ -806,6 +817,29 @@ class TestProseChecker < Minitest::Test
     assert_equal ['4 つ => 四つ（数は漢数字で）'], counter_labels("`review.md` は 4 つのセクションです。\n")
   end
 
+  # バッククォートそのものを書いたコード（`` ``` ``）も、記号だけのコード。
+  # 助詞「と」で数につなぐ形も、記号の個数（改善案 #154）
+  def test_should_treat_backtick_only_code_and_to_as_symbol_counts
+    ['`` ``` `` を 2 つ並べます。', '`##` と 2 つ書くと h2 になります。', '`` ` `` を 3 つ重ねます。'].each do |body|
+      assert_empty counter_labels("#{body}\n"), body
+    end
+  end
+
+  # 記号の個数を「か」「や」で並べた数も、記号の個数（「空白を 2 つか 4 つ」・改善案 #154）
+  def test_should_carry_symbol_counts_across_ka_and_ya
+    assert_empty counter_labels("行の頭に空白を 2 つか 4 つ置きます。\n")
+    assert_empty counter_labels("`#` を 1 つや 2 つ書きます。\n")
+    assert_equal ['四つ => 4 つ（記号の個数は算用数字で）'], counter_labels("空白を 2 つか四つ置きます。\n")
+  end
+
+  # 並べ方が「か」「や」でなければ引き継がない（主語を省いた形はふつうの数として指摘する）
+  def test_should_not_carry_symbol_counts_beyond_ka_and_ya
+    assert_equal ['2 つ => 二つ（数は漢数字で）'], counter_labels("`#` が 1 つで `h1`、2 つで `h2` です。\n")
+    assert_equal ['2 つ => 二つ（数は漢数字で）'], counter_labels("`#` を 1 つ書き、見出しを 2 つ作ります。\n")
+    assert_equal ['4 つ => 四つ（数は漢数字で）'], counter_labels("`foo.md` は 4 つのセクションです。\n")
+    assert_equal ['2 つ => 二つ（数は漢数字で）'], counter_labels("見出しを 2 つ作ります。\n")
+  end
+
   # 記号以外の意味を持つ名前（ハッシュ＝Ruby の Hash）は登録していないので、数として扱う
   def test_should_not_treat_ambiguous_names_as_symbols
     assert_equal ['1 つ => 一つ（数は漢数字で）'], counter_labels("1 件のデータは 1 つのハッシュです。\n")
@@ -884,7 +918,16 @@ class TestProseChecker < Minitest::Test
 
   def test_should_catch_the_other_weak_phrases
     assert_equal ['「思います」は弱い表現です（言い切れるなら言い切る）'], weak_labels("よい本になると思います。\n")
-    assert_equal ['「かも」は弱い表現です（言い切れるなら言い切る）'], weak_labels("それは難しいかも。\n")
+  end
+
+  # 「かも」だけの形は指摘しない。会話文や言いさしで書き手が選ぶ言い方で、
+  # 文字列で探すと「しかも、」「どこにいるかも、」の「か＋も」まで拾っていた（改善案 #152）
+  def test_should_not_treat_bare_kamo_as_weak
+    ["明日は雨かも。\n", "雨かも、と思って傘を持った。\n", "しかも、なんだか怒られているみたいだ。\n",
+     "今どこにいるかも、二つの数で表せそうね。\n", "どこにあるのかも、分からなくて。\n"].each do |line|
+      assert_empty weak_labels(line), line
+    end
+    assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'], weak_labels("動くかもしれない、と思った。\n")
   end
 
   # 「思うように動かない」の「思う」は弱い表現ではない。句点か読点が続く形だけを見る
