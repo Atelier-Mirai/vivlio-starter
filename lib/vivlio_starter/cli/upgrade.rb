@@ -72,7 +72,7 @@ module VivlioStarter
       end
 
       # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
-      TidyPlan = Data.define(:book_text, :retired, :orphans, :pages, :new_keys) do
+      TidyPlan = Data.define(:book_text, :retired, :orphans, :pages, :dropped, :new_keys) do
         def book_yml? = retired.any? || new_keys&.added&.any?
         def empty? = paths.empty?
 
@@ -80,7 +80,7 @@ module VivlioStarter
         def paths
           [(File.join('config', 'book.yml') if book_yml?),
            (UnifiedTermsManager::UNIFIED_FILE if orphans.any?),
-           *pages].compact
+           *pages, *dropped].compact
         end
       end
 
@@ -360,6 +360,7 @@ module VivlioStarter
       #   - 雛形で増えた book.yml のキー（scaffold-update-notice-spec.md §10）
       #   - 原稿の無い章を指す索引辞書の main:（ベータ版の雛形が配った本書の辞書の名残など）
       #   - contents/ に残った、今の版では使わない特別ページ
+      #   - 雛形から外したファイル（ScaffoldLock::RETIRED_FILES・改善案.md #149）
       #
       # 雛形追従と違い、著者データ領域に手を入れる。だから計画の表に載せ、同じ確認に含める。
       # 確認の後に整理すると、何が変わるのかを知らないまま答えることになり、「いいえ」と
@@ -370,6 +371,7 @@ module VivlioStarter
                      retired: RetiredKeyRemover.authored(book_text, ConfigKeys::RETIRED.keys),
                      orphans: UnifiedTermsManager.new.orphan_main_references,
                      pages: stale_system_pages,
+                     dropped: retired_scaffold_files,
                      new_keys: ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:))
       end
 
@@ -415,6 +417,12 @@ module VivlioStarter
           FileUtils.rm(page)
         end
 
+        # --- Phase: 雛形から外したファイル ---
+        tidy.dropped.each do |relative|
+          backup_dir = backup!(relative, backup_dir)
+          FileUtils.rm(relative)
+        end
+
         Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
         [backup_dir, new_keys]
       end
@@ -443,6 +451,18 @@ module VivlioStarter
           name = File.basename(path, '.md')
           TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(name) || name.match?(/\A_part\d+\z/)
         end.sort
+      end
+
+      # 雛形から外したファイルのうち、本から消してよいもの（改善案.md #149）。
+      # 雛形が配った版のままのものだけを消す。手を加えてあれば残し、消してよいかを著者に任せる
+      # @return [Array<String>] プロジェクト直下からの相対パス
+      def retired_scaffold_files
+        dropped, kept = ScaffoldLock.retired_files_in_project
+        kept.each do |relative|
+          Common.log_warn("#{relative} は雛形から外しましたが、手を加えてあるので残します",
+                          detail: "#{ScaffoldLock::RETIRED_FILES.fetch(relative).reason}。不要なら削除してください")
+        end
+        dropped
       end
 
       # 値を別のキーへ移した廃止キーなら、移した先のパス（multivolume-spec.md §3.5）
@@ -475,6 +495,7 @@ module VivlioStarter
                                                         '外した語は、次の vs index:auto が主要参照の候補を出します']
         end
         tidy.pages.each { details[it] = ['今の版では使わないので削除します（扉・免責・奥付は book.yml から作ります）'] }
+        tidy.dropped.each { details[it] = ["雛形から外したので削除します（#{ScaffoldLock::RETIRED_FILES.fetch(it).reason}）"] }
         details
       end
 
@@ -597,6 +618,7 @@ module VivlioStarter
         add: ['追加', '雛形の新規ファイル'],
         add_empty: ['追加', '空の辞書を用意'],
         update: ['更新', '著者は未変更'],
+        replace: ['更新', '同梱物 → 手元の版を退避'],
         merge: ['合流', '別の場所を変更 → 両立'],
         conflict: ['競合', '同じ場所を変更 → 確認'],
         tidy: ['整理', nil],
@@ -611,7 +633,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[rename add add_empty update merge conflict tidy]
+        order = %i[rename add add_empty update replace merge conflict tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
@@ -625,7 +647,7 @@ module VivlioStarter
         Common.log_always('')
         merged = counts[:merge] || 0
         message = "--dry-run のため適用しません（追加 #{counts.values_at(:add, :add_empty).compact.sum} 件" \
-                  "・更新 #{counts[:update] || 0} 件"
+                  "・更新 #{counts.values_at(:update, :replace).compact.sum} 件"
         message += "・合流 #{merged} 件" if merged.positive?
         message += "・競合 #{counts[:conflict] || 0} 件"
         message += "・整理 #{counts[:tidy]} 件" if counts[:tidy]
@@ -638,7 +660,8 @@ module VivlioStarter
       #   applied / skipped / バックアップ先（全体確認で中止した場合は applied が nil）
       def apply_plan(cmd, plan, renames)
         adds      = plan.select { %i[add add_empty].include?(it.status) }
-        updates   = plan.select { it.status == :update }
+        # 同梱物（:replace）は、著者に尋ねず、更新と同じく退避して置き換える（改善案.md #150）
+        updates   = plan.select { %i[update replace].include?(it.status) }
         merges    = plan.select { it.status == :merge }
         conflicts = plan.select { it.status == :conflict }
         tidied    = plan.select { it.status == :tidy }
@@ -808,7 +831,7 @@ module VivlioStarter
       def print_summary(plan, applied, skipped, backup_dir)
         add_count    = applied.count { %i[add add_empty].include?(it.status) }
         merge_count  = applied.count { it.status == :merge }
-        update_count = applied.count { %i[update conflict].include?(it.status) }
+        update_count = applied.count { %i[update replace conflict].include?(it.status) }
         counts = "追加 #{add_count}・更新 #{update_count}"
         tidy_count   = plan.count { it.status == :tidy }
         counts += "・合流 #{merge_count}" if merge_count.positive?

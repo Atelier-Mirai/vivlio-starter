@@ -265,17 +265,47 @@ module VivlioStarter
         end
       end
 
-      # --- 同梱素材に著者が手を入れていれば、確認なしには上書きしない ---
-      def test_should_not_overwrite_edited_bundled_assets_without_asking
+      # --- 同梱素材は、中身が lock と違っても尋ねずに置き換え、手元の版は退避する（改善案 #150） ---
+      # 見本は covers/ の直下へ写して直す決まり（43 章）。書体の注記 MODIFICATION-NOTICE.md を
+      # 開発中に直接写した本で「どうしますか」と尋ねたが、著者には答えようがなかった
+      def test_should_replace_differing_bundled_assets_without_asking
         within_project do |scaffold|
-          write('.', 'covers/bundled/frontcover.svg', "<svg>著者の修正</svg>\n")
-          write_lock(scaffold_overrides: { 'covers/bundled/frontcover.svg' => "<svg>旧</svg>\n" })
+          write('.', 'covers/bundled/frontcover.svg', "<svg>手元の版</svg>\n")
+          write('.', 'stylesheets/fonts/Keyboard_font/MODIFICATION-NOTICE.md', "開発中の注記\n")
+          write_lock(scaffold_overrides: { 'covers/bundled/frontcover.svg' => "<svg>旧</svg>\n",
+                                           'stylesheets/fonts/Keyboard_font/MODIFICATION-NOTICE.md' => "旧の注記\n" })
           write(scaffold, 'covers/bundled/frontcover.svg', "<svg>新</svg>\n")
+          write(scaffold, 'stylesheets/fonts/Keyboard_font/MODIFICATION-NOTICE.md', "新の注記\n")
 
-          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
 
-          assert_match(%r{競合\s+covers/bundled/frontcover\.svg}, out)
-          assert_equal "<svg>著者の修正</svg>\n", File.read('covers/bundled/frontcover.svg')
+          assert_match(%r{更新\s+covers/bundled/frontcover\.svg\s+（同梱物 → 手元の版を退避）}, out)
+          refute_match(/競合/, out)
+          assert_equal "<svg>新</svg>\n", File.read('covers/bundled/frontcover.svg')
+          assert_equal "新の注記\n", File.read('stylesheets/fonts/Keyboard_font/MODIFICATION-NOTICE.md')
+          backups = Dir.glob('.vs-backup/upgrade/*/covers/bundled/frontcover.svg')
+          assert_equal ["<svg>手元の版</svg>\n"], backups.map { File.read(it) }, '手元の版は退避に残る'
+        end
+      end
+
+      # --- 雛形から外したファイルは、配った版のままなら整理で消し、手を加えてあれば残す（改善案 #149） ---
+      def test_should_remove_retired_scaffold_files_only_when_untouched
+        retired = ScaffoldLock::RETIRED_FILES.keys
+        within_project do |scaffold|
+          stub_const_digests(retired.first => "雛形が配った版\n", retired.last => "雛形が配った版 2\n") do
+            write('.', retired.first, "雛形が配った版\n")
+            write('.', retired.last, "著者が足した語\n")
+            write_lock
+
+            out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+            assert_match(/整理\s+#{Regexp.escape(retired.first)}/, out)
+            assert_includes out, '雛形から外したので削除します'
+            refute_path_exists retired.first
+            assert_equal ["雛形が配った版\n"], Dir.glob(".vs-backup/upgrade/*/#{retired.first}").map { File.read(it) }
+            assert_path_exists retired.last, '手を加えたものは残す'
+            assert_includes out, '手を加えてあるので残します'
+          end
         end
       end
 
@@ -1568,6 +1598,21 @@ module VivlioStarter
         yield
       ensure
         $stdin = STDIN
+      end
+
+      # 雛形から外したファイルの「配った版」を、テストで書く中身に差し替える
+      # （本物の版は 1 万語の辞書なので、テストに置かない）
+      def stub_const_digests(contents)
+        original = ScaffoldLock::RETIRED_FILES
+        stubbed = original.to_h do |path, file|
+          [path, contents.key?(path) ? file.with(digests: [digest(contents[path])]) : file]
+        end
+        ScaffoldLock.send(:remove_const, :RETIRED_FILES)
+        ScaffoldLock.const_set(:RETIRED_FILES, stubbed.freeze)
+        yield
+      ensure
+        ScaffoldLock.send(:remove_const, :RETIRED_FILES)
+        ScaffoldLock.const_set(:RETIRED_FILES, original)
       end
 
       # ツール更新・自己更新用の Deps スタブ（ネットワーク・外部コマンドを遮断）。

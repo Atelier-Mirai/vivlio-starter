@@ -59,8 +59,45 @@ module VivlioStarter
         File.join('config', 'textlint_allowlist.yml')
       ].freeze
 
+      # 著者が編集しない同梱物（改善案.md #150）。書体とその許諾・注記、同梱の絵、辞書、
+      # 表紙の見本は、手を加えるなら別の名前で写して使う（43 章・covers/_README.md）。
+      # 中身が lock の記録と違っても、競合として尋ねず、退避してから雛形の版に置き換える。
+      # 尋ねても、著者には何を答えればよいか判断できない（haruka_mirai で、開発中に直接写した
+      # 書体の注記 MODIFICATION-NOTICE.md を「どうしますか」と尋ねた）。
+      BUNDLED_ASSET_DIRS = %w[
+        stylesheets/fonts/ stylesheets/images/bundled/ stylesheets/twemoji/
+        config/spellcheck_dictionaries/ config/textlint_dictionaries/
+        covers/bundled/ covers/templates/
+      ].freeze
+
+      # 雛形から外したファイル（改善案.md #149）。`vs upgrade` は雛形に無いファイルを本から
+      # 消さないので、ここに載せたものだけを整理の段で消す。消すのは、中身が雛形の配った版の
+      # どれかと同じとき（著者が手を加えていないとき）だけ。雛形からファイルを外したら、
+      # 理由と、配った版の sha256（`git log` でたどる）をここへ足す。
+      RetiredFile = Data.define(:reason, :digests)
+      RETIRED_FILES = {
+        'config/spellcheck_dictionaries/english-words-10.txt' => RetiredFile.new(
+          reason: 'english-words-40.txt に含まれる', # 改善案.md #147
+          digests: %w[sha256:108251985a4ae80bd64861b5ffa8e96cbbf4c1b19a1c216f58ae923284c1c776]
+        ),
+        'config/spellcheck_dictionaries/english-words-20.txt' => RetiredFile.new(
+          reason: 'english-words-40.txt に含まれる', # 改善案.md #147
+          digests: %w[sha256:81e3554e71857b22ede83d0bb6378657f8419b57e5ceeb53c43c0818d36db465]
+        )
+      }.freeze
+
       # 展開・比較の対象にしない雛形内ファイル
       IGNORED_BASENAMES = %w[.DS_Store].freeze
+
+      # 著者が編集しない同梱物か
+      def bundled_asset?(relative) = relative.start_with?(*BUNDLED_ASSET_DIRS)
+
+      # 雛形から外したファイルのうち、本にあるもの。手を加えていないものと、いるものに分ける
+      # @return [Array(Array<String>, Array<String>)] [消すもの, 手を加えてあるので残すもの]
+      def retired_files_in_project
+        present = RETIRED_FILES.keys.select { File.file?(it) }
+        present.partition { RETIRED_FILES.fetch(it).digests.include?(file_digest(it)) }
+      end
 
       # 著者データ領域（一律 upgrade 対象外）かどうか
       # @param relative [String] プロジェクトルートからの相対パス
@@ -101,24 +138,27 @@ module VivlioStarter
       # @param relative [String] プロジェクトルートからの相対パス
       # @param scaffold_digest [String] 今の雛形のハッシュ
       # @param lock_files [Hash{String => String}] lock の files 節
-      # @return [Symbol] :add / :update / :conflict / :latest
+      # @return [Symbol] :add / :update / :replace / :conflict / :latest
+      #   :replace は、競合になる同梱物（BUNDLED_ASSET_DIRS）。尋ねずに退避して置き換える
       def classify(relative, scaffold_digest, lock_files)
         return :add unless File.exist?(relative)
 
         current_digest = file_digest(relative)
         lock_digest = lock_files[relative]
 
-        if lock_digest.nil?
-          # lock なし（旧プロジェクト or 追跡外ファイル）: 一致なら最新、不一致は安全側で競合
-          current_digest == scaffold_digest ? :latest : :conflict
-        elsif scaffold_digest == lock_digest  then :latest
-        elsif current_digest == lock_digest   then :update
-        # 双方が別経路で同じ内容に到達した（著者が手で新版を当てた等）。lock だけが
-        # 取り残されている状態で、diff は空になる。ここを競合にすると、y/n の
-        # どちらを選んでも結果が変わらない問いを著者に投げることになる
-        elsif current_digest == scaffold_digest then :latest
-        else                                        :conflict
-        end
+        status =
+          if lock_digest.nil?
+            # lock なし（旧プロジェクト or 追跡外ファイル）: 一致なら最新、不一致は安全側で競合
+            current_digest == scaffold_digest ? :latest : :conflict
+          elsif scaffold_digest == lock_digest  then :latest
+          elsif current_digest == lock_digest   then :update
+          # 双方が別経路で同じ内容に到達した（著者が手で新版を当てた等）。lock だけが
+          # 取り残されている状態で、diff は空になる。ここを競合にすると、y/n の
+          # どちらを選んでも結果が変わらない問いを著者に投げることになる
+          elsif current_digest == scaffold_digest then :latest
+          else                                        :conflict
+          end
+        status == :conflict && bundled_asset?(relative) ? :replace : status
       end
 
       # book.yml のキー（親も含む）をドットでつないで返す。
