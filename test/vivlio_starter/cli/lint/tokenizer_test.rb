@@ -208,6 +208,26 @@ class TestTokenizer < Minitest::Test
     refute_includes words, 'ruby'  # URL部分は除去済み
   end
 
+  # 画像の代替テキストは、中のパスごと調べない（改善案 #146）
+  def test_should_skip_image_alt_text
+    line = '![参考画像：sources/images/haruka-winter-casual.png（冬の普段着）](illust-bridge-snow.webp)' \
+           "{width=60%} Mistaek\n"
+    words = T.tokenize(line).map { _1[0] }
+    assert_equal ['Mistaek'], words
+  end
+
+  # 参照形の画像も代替テキストごと落とし、参照リンクのラベルは残す
+  def test_should_skip_reference_image_but_keep_reference_link_label
+    words = T.tokenize("![status-card-lv][card] and [Ruby docs][ruby]\n").map { _1[0] }
+    assert_equal %w[and Ruby docs], words
+  end
+
+  # 画像を包むリンクは、ラベルの中の画像だけを落とす
+  def test_should_keep_link_label_around_an_image
+    words = T.tokenize("[![haruka-badge](badge.svg) Status page](https://example.com)\n").map { _1[0] }
+    assert_equal %w[Status page], words
+  end
+
   # ハイフン複合語が1つのトークンとして抽出されることを確認する
   def test_hyphenated_word_extracted_as_one
     words = T.tokenize("use vivlio-starter here\n").map { _1[0] }
