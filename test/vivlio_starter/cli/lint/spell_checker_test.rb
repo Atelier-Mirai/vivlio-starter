@@ -62,6 +62,37 @@ class TestSpellChecker < Minitest::Test
     assert_nil SC.find_suggestion('cat', word_map)
   end
 
+  # 同じ距離の候補が複数あれば、語の表で先に出てくる語を選ぶ。長さで分けた索引でも、
+  # 短い語を先に見つけたせいで答えが変わらないこと（改善案 #148）
+  def test_find_suggestion_prefers_the_earlier_word_on_a_tie
+    word_map = { 'cbts' => 'cbts', 'cat' => 'cat' }
+    assert_equal 'cbts', SC.find_suggestion('cbt', word_map), '長さ 4 の cbts が表で先'
+
+    word_map = { 'cat' => 'cat', 'cbts' => 'cbts' }
+    assert_equal 'cat', SC.find_suggestion('cbt', word_map)
+  end
+
+  # 距離を途中で打ち切っても、総当たり（DidYouMean::Levenshtein）と同じ候補を選ぶ
+  def test_suggester_matches_brute_force_levenshtein
+    rng = Random.new(148)
+    words = Array.new(300) { Array.new(rng.rand(2..10)) { %w[a b c d e].sample(random: rng) }.join }.uniq
+    word_map = words.to_h { [it, it] }
+    suggester = SC::Suggester.new(word_map)
+
+    queries = Array.new(200) { Array.new(rng.rand(2..11)) { %w[a b c d e f].sample(random: rng) }.join }
+    queries.each do |query|
+      limit = SC.threshold_for(query)
+      in_range = words.select { it.length.between?([query.length - limit, 1].max, query.length + limit) }
+      best, = in_range.each_with_index.min_by { |word, i| [DidYouMean::Levenshtein.distance(query, word), i] }
+      expected = best && DidYouMean::Levenshtein.distance(query, best) <= limit ? best : nil
+      if expected
+        assert_equal expected, suggester.suggest(query), "#{query} の候補"
+      else
+        assert_nil suggester.suggest(query), "#{query} には候補が無い"
+      end
+    end
+  end
+
   # --- check ---
 
   # 全単語が辞書に存在する場合にエラーが返らないことを確認する

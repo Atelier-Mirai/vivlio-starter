@@ -15,15 +15,17 @@ module VivlioStarter
         # @param path [String] チェック対象のMarkdownファイルパス
         # @param word_map [Hash] { downcase_word => display_word }
         # @param check_code_blocks [Boolean] コードブロック内もチェックするか
+        # @param suggester [Suggester] 綴りの候補を探す索引。原稿をまたいで同じものを渡すと、
+        #   同じ未知語の候補を探し直さない（改善案.md #148）
         # @return [Array<Hash>] { line:, word:, suggestion: } の配列
-        def check(path, word_map, check_code_blocks: false)
+        def check(path, word_map, check_code_blocks: false, suggester: Suggester.new(word_map))
           content = File.read(path, encoding: 'UTF-8')
           tokens  = Tokenizer.tokenize(content, check_code_blocks: check_code_blocks)
 
           tokens.filter_map do |word, line_no|
             next if word_map.key?(word.downcase)
 
-            { line: line_no, word: word, suggestion: find_suggestion(word, word_map) }
+            { line: line_no, word: word, suggestion: suggester.suggest(word) }
           end
         rescue Errno::ENOENT => e
           Common.log_warn("[spellcheck] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -76,31 +78,12 @@ module VivlioStarter
           FindingRows.arrange(rows, path: path)
         end
 
-        # Levenshtein距離で最良の候補語を返す
+        # Levenshtein距離で最良の候補語を返す（1 語だけ調べるとき用。原稿を調べるときは
+        # check が Suggester を作り、語の表の索引と答えを使い回す）
         # @param word [String] チェック対象の単語
         # @param word_map [Hash] 辞書
         # @return [String, nil] 候補語、または閾値超過時に nil
-        def find_suggestion(word, word_map)
-          threshold = threshold_for(word)
-          min_len   = [word.length - threshold, 1].max
-          max_len   = word.length + threshold
-          w_down    = word.downcase
-
-          best_word = nil
-          best_dist = threshold + 1
-
-          word_map.each_value do |dict_word|
-            next unless dict_word.length.between?(min_len, max_len)
-
-            dist = DidYouMean::Levenshtein.distance(w_down, dict_word.downcase)
-            if dist < best_dist
-              best_dist = dist
-              best_word = dict_word
-            end
-          end
-
-          best_dist <= threshold ? best_word : nil
-        end
+        def find_suggestion(word, word_map) = Suggester.new(word_map).suggest(word)
 
         # 単語長に応じた許容Levenshtein距離を返す
         # @param word [String]
@@ -110,6 +93,117 @@ module VivlioStarter
           when 1..4 then 1
           when 5..8 then 2
           else           3
+          end
+        end
+
+        # 綴りの候補を探す索引（改善案.md #148）。
+        #
+        # 候補は、許容距離（threshold_for）以内で Levenshtein 距離が最も小さい語で、同じ距離なら
+        # 語の表で先に出てくる語。以前は未知語が 1 か所出るたびに語の表の全語と距離を計算し、
+        # 未知語の多い本（lives-mathematics・3,731 か所）では `vs lint` に 8 分かかっていた。
+        # 答えは変えずに、次の 3 つで計算を減らす。
+        #
+        # - **同じ語の答えを覚える**（`MacTutor` が 1,058 か所あっても 1 回だけ探す）
+        # - **語の表を文字の木にする**。距離の表の 1 行は語の頭の 1 文字ごとに決まるので、
+        #   頭が同じ語（`inter`・`interface`・`internal`）は、その部分の計算を共有できる。
+        #   ある行の最小値が上限を超えたら、その先の語はどれも上限を超えるので、枝ごと見ない。
+        #   上限は許容距離から始め、候補が見つかるたびにその距離へ下げる（同じ距離の語は
+        #   表の順で比べるので、等しい距離の枝は見る）。
+        # - **対角線の近くだけ計算する**。対角線から上限より離れたマスは、必ず上限を超える。
+        #
+        # 語の木は、初めて候補を探すときに作る（未知語の無い本では作らない）。
+        class Suggester
+          # 語の木の節。entry は、ここで終わる語の [表の順, 語]。
+          # 子の表は、子ができたときに初めて作る。語の終わりの節には子が無く、節ごとに空の
+          # Hash を持たせると、size 40 の辞書で約 10 MB 余分に使っていた（52 MB → 42 MB）
+          class Node
+            NO_CHILDREN = {}.freeze
+
+            attr_accessor :entry
+
+            def initialize
+              @children = nil
+              @entry = nil
+            end
+
+            def children = @children || NO_CHILDREN
+
+            # 文字 cp の子（無ければ作る）
+            def child(cp) = (@children ||= {})[cp] ||= Node.new
+          end
+
+          # @param word_map [Hash] { downcase_word => display_word }
+          def initialize(word_map)
+            @word_map = word_map
+            @answers = {}
+          end
+
+          # @param word [String]
+          # @return [String, nil] 候補語。許容距離以内に無ければ nil
+          def suggest(word)
+            return @answers[word] if @answers.key?(word)
+
+            @answers[word] = search(word)
+          end
+
+          private
+
+          # 同じ語（ハイフン抜きの別名など）が表に 2 度あれば、先の順を残す
+          def root
+            @root ||= Node.new.tap do |top|
+              @word_map.each_value.with_index do |dict_word, order|
+                node = dict_word.downcase.each_codepoint.reduce(top) { |n, cp| n.child(cp) }
+                node.entry ||= [order, dict_word]
+              end
+            end
+          end
+
+          def search(word)
+            @limit   = SpellChecker.threshold_for(word)
+            @over    = @limit + 1
+            @lengths = [word.length - @limit, 1].max..(word.length + @limit)
+            @target  = word.downcase.codepoints
+            @best    = nil # [距離, 表の順, 語]
+
+            first_row = (0..@target.size).map { it <= @limit ? it : @over }
+            root.children.each { |char, child| walk(child, char, first_row, 1) }
+            @best&.last
+          end
+
+          # 語の木を 1 文字（depth 文字目の char）進め、距離の表の次の行を作る
+          def walk(node, char, prev, depth)
+            curr = next_row(prev, char, depth)
+            bound = @best ? @best[0] : @limit
+            consider(node.entry, curr.last) if node.entry && curr.last <= bound
+            return if curr.min > (@best ? @best[0] : @limit)
+
+            node.children.each { |next_char, child| walk(child, next_char, curr, depth + 1) }
+          end
+
+          # Levenshtein 距離の表の 1 行（DidYouMean::Levenshtein と同じ定義）。対角線から上限より
+          # 離れたマスは計算せず、上限 + 1 のままにする
+          def next_row(prev, char, depth)
+            m = @target.size
+            curr = Array.new(m + 1, @over)
+            curr[0] = depth <= @limit ? depth : @over
+            j  = [depth - @limit, 1].max
+            hi = [depth + @limit, m].min
+            while j <= hi
+              value = prev[j - 1] + (@target[j - 1] == char ? 0 : 1)
+              value = prev[j] + 1 if prev[j] + 1 < value
+              value = curr[j - 1] + 1 if curr[j - 1] + 1 < value
+              curr[j] = value > @over ? @over : value
+              j += 1
+            end
+            curr
+          end
+
+          # 長さの範囲は以前の判定（表の語の長さで見る）に合わせる
+          def consider((order, dict_word), dist)
+            return unless @lengths.cover?(dict_word.length)
+            return if @best && (dist > @best[0] || (dist == @best[0] && order > @best[1]))
+
+            @best = [dist, order, dict_word]
           end
         end
       end

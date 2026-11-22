@@ -538,9 +538,11 @@ module VivlioStarter
           config     = Common::CONFIG.spellcheck
           word_map   = dict.build_word_map(config)
           check_code = Common.truthy?(config&.check_code_blocks)
+          # 綴りの候補を探す索引は全原稿で 1 つにする。章をまたいで同じ未知語が出ても探し直さない
+          suggester  = Lint::SpellChecker::Suggester.new(word_map)
 
           files.each_with_object({}) do |path, all_errors|
-            errors = Lint::SpellChecker.check(path, word_map, check_code_blocks: check_code)
+            errors = Lint::SpellChecker.check(path, word_map, check_code_blocks: check_code, suggester:)
             all_errors[path] = errors unless errors.empty?
           end
         end
