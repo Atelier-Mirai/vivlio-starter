@@ -121,7 +121,12 @@ module VivlioStarter
         def render_svg(source, side, theme, bundled:)
           # コメントを先に落とす。残すと説明の中の {{title}} に書名が入り、`--` を含む書名で XML が壊れる
           svg = File.read(source, encoding: 'utf-8').gsub(/<!--.*?-->/m, '')
-          svg = apply_palette(svg, theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE) if bundled
+          palette = theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE
+          # 著者の SVG には、色の印（{{bg-from}} など）だけを当てる。同梱の SVG を covers/ へ写して
+          # 直すと、印が残って背景のグラデーションの色が無効になっていた（改善案.md #151）。
+          # CSS 変数（--vs-text-main など）は、著者が値を書き換えているので触れない
+          palette = palette.reject { |key, _| key.start_with?('--') } unless bundled
+          svg = apply_palette(svg, palette)
           svg = replace_spaces_with_gaps(expand_css_custom_properties(apply_text_replacements(svg)))
 
           output = File.join(Common.cover_cache_dir, bundled ? "#{side}cover_#{theme}.svg" : "#{side}cover_#{theme}_rendered.svg")

@@ -520,6 +520,22 @@ module VivlioStarter
         assert_equal '<svg><text>C--とRuby</text></svg>', File.read(output, encoding: 'utf-8')
       end
 
+      # 同梱の SVG を写して直した著者の SVG でも、残った色の印に light の色を当てる。
+      # 著者が値を書き換えた CSS 変数には触れない（改善案 #151）
+      def test_should_fill_color_placeholders_left_in_an_author_svg
+        write_book('main_title' => '本の題')
+        File.write('source.svg', <<~SVG)
+          <svg><style>:root { --vs-text-main: #aa0000; }</style>
+          <stop stop-color="{{bg-from}}"/><stop stop-color="{{bg-to}}"/><text>{{title}}</text></svg>
+        SVG
+
+        output = File.read(CoverCommands::SvgCover.render_svg('source.svg', 'front', 'floral', bundled: false), encoding: 'utf-8')
+
+        assert_includes output, '<stop stop-color="#f8f6f2"/><stop stop-color="#f0ece4"/>', 'light の背景の色'
+        assert_includes output, '#aa0000', '著者の書いた CSS 変数の値は残す'
+        refute_includes output, '{{'
+      end
+
       # 雛形の画像は判型の仕上がりの画素数で配る（scripts/make_cover_templates.rb の写しのずれに気づく）
       def test_should_provide_cover_templates_for_each_page_size
         templates = File.expand_path('../../../covers/templates', __dir__)

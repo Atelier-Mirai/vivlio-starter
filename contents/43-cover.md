@@ -55,6 +55,8 @@ SVG の中に `{{title}}`・`{{subtitle}}`・`{{author}}`・`{{series}}`・`{{re
 
 SVG は、判型と同じ縦横比の `viewBox` で描きます（A4 なら `viewBox="0 0 595 842"`）。入稿用の表紙の塗り足し（@pageref:print-cover）には、`viewBox` の外側に描いた部分が使われます。背景のように紙の端まで届けたい要素は、四辺とも `viewBox` の外へ 3 mm 以上（A4 の `viewBox` なら 9 以上）広げて描いてください。`viewBox` の中だけに描くと、塗り足しは白になります。同梱の `covers/bundled/frontcover.svg` は背景と上下の帯を外側まで描いてあり、描き方の見本になります。
 
+同梱のテンプレートから描き始めるときは、`covers/bundled/frontcover.svg` を `covers/frontcover_<テーマ名>.svg` の名前で写してから直します。背景の色の印（`{{bg-from}}`・`{{bg-to}}`）は、色の値に書き換えなければ `light` の色になります。`covers/bundled/` と `covers/templates/` のファイルは Vivlio Starter が用意する見本で、`vs upgrade` で新しい版に置き換わります。直接は手を加えず、`covers/` の直下へ写して使ってください。
+
 ### 独自の画像を使う
 
 表紙を `frontcover_<テーマ名>.png`、裏表紙を `backcover_<テーマ名>.png` の名前で `covers/` に置きます。JPEG なら拡張子は `.jpg`、WebP なら `.webp` です。次は、テーマ名を `master` にした例です。

@@ -25,6 +25,12 @@ vs cover    # config/book.yml の設定に従って表紙画像を生成
 
 `templates/` の雛形は、画像を自作するときの下敷きです。判型に合うものを開いて描き、文字と線を削除してから `covers/frontcover_<theme>.png`（例: `frontcover_master.png`）として保存し、`book.cover` をそのテーマ名にします。
 
+## bundled/ と templates/ は直さない
+
+`bundled/` と `templates/` のファイルは、Vivlio Starter が用意する見本です。`vs upgrade` で新しい版に置き換わるので、手を加えた内容は残りません。手を加えたいときは、`covers/` の直下へ写し、`frontcover_<theme>.svg` などの名前を付けてから直してください。
+
+同梱の SVG を写した場合、背景の色の印（`{{bg-from}}`・`{{bg-to}}`）は、色の値に書き換えなければ `light` の色になります。書名などの `{{title}}` は、`config/book.yml` の値に置き換わります。
+
 ## ソースの優先順位
 
 1. `covers/<side>cover_<theme>.png` — 著者が用意した画像（`.jpg`・`.jpeg`・`.webp` も可。この順に探す）
