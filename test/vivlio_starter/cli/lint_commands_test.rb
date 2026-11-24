@@ -824,7 +824,7 @@ module VivlioStarter
         @runtime_config_path = runner.send(:generate_runtime_config, base, **options)
         YAML.safe_load_file(@runtime_config_path)
       ensure
-        runner&.instance_variable_get(:@runtime_config_tmp)&.unlink
+        runner&.instance_variable_get(:@runtime_configs)&.each(&:unlink)
       end
 
       # 独自ルールで置き換えた textlint のルールは、著者の設定に依らず常に切る。
@@ -1082,11 +1082,69 @@ module VivlioStarter
           rules = { 'prh' => { 'rulePaths' => ['./textlint_dictionaries/cho_on.yml', './textlint_rewrite.yml'] } }
 
           runner = LintCommands::LintRunner.new([], {})
-          runner.send(:trim_long_vowel_dictionaries!, rules, dir)
+          runner.send(:trim_dictionaries!, rules, dir, long_vowel: true)
           bundled, rewrite = rules.dig('prh', 'rulePaths')
 
           refute_equal './textlint_dictionaries/cho_on.yml', bundled, '同梱の辞書は写しへ差し替える'
           assert_equal './textlint_rewrite.yml', rewrite, '著者の辞書はそのまま読ませる'
+        end
+      end
+
+      # `fix: false` の項目は指摘だけにする。--fix が「猫はいる」を「猫入る」に、「あんなに」を
+      # 「あん何」に書き換えていた（改善案 #159）。修正パスの設定だけが、その項目を外した写しを読む。
+      # 著者の辞書の項目にも効く（印を書いたのは著者なので）
+      def test_fix_config_drops_report_only_entries_from_every_dictionary
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'textlint_dictionaries'))
+          bundled = { 'version' => 1, 'rules' => [
+            { 'expected' => '入る', 'fix' => false, 'patterns' => 'はいる' },
+            { 'expected' => 'あらかじめ', 'patterns' => '予め' }
+          ] }
+          File.write(File.join(dir, 'textlint_dictionaries', 'open_close.yml'), bundled.to_yaml)
+          author = { 'version' => 1, 'rules' => [{ 'expected' => '下さい', 'fix' => false, 'patterns' => 'ください' }] }
+          File.write(File.join(dir, 'textlint_rewrite.yml'), author.to_yaml)
+          base = File.join(dir, '.textlintrc.yml')
+          paths = ['./textlint_dictionaries/open_close.yml', './textlint_rewrite.yml']
+          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => paths } } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          analysis = YAML.safe_load_file(runner.send(:generate_runtime_config, base))
+          fix = YAML.safe_load_file(runner.send(:generate_runtime_config, base, for_fix: true))
+          read_rules = ->(path) { YAML.safe_load_file(File.expand_path(path, dir))['rules'] }
+          fix_bundled, fix_author = fix.dig('rules', 'prh', 'rulePaths')
+
+          assert_equal paths, analysis.dig('rules', 'prh', 'rulePaths'), '解析パスは辞書をそのまま読む（指摘は出す）'
+          assert_equal ['あらかじめ'], read_rules.(fix_bundled).map { it['expected'] }, '同梱の辞書から印の項目を外す'
+          assert_empty read_rules.(fix_author), '著者の辞書の印の項目も外す'
+        ensure
+          runner&.instance_variable_get(:@runtime_configs)&.each(&:unlink)
+          runner&.instance_variable_get(:@trimmed_dictionaries)&.each(&:unlink)
+        end
+      end
+
+      # `fix: false` の項目の指摘は、--fix を走らせても残るので「自動修正可能」に数えない。
+      # 指摘の行そのものは残す。見出し語が正規表現でも、指摘された語で照らし合わせる
+      def test_should_not_count_report_only_findings_as_fixable
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'textlint_dictionaries'))
+          dictionary = { 'version' => 1, 'rules' => [
+            { 'expected' => '入る', 'fix' => false, 'patterns' => 'はいる' },
+            { 'expected' => '何', 'fix' => false, 'patterns' => '/(?<![んみ])なに/' }
+          ] }
+          File.write(File.join(dir, 'textlint_dictionaries', 'open_close.yml'), dictionary.to_yaml)
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_dictionaries/open_close.yml'] } } }.to_yaml)
+          rows = [{ count: 2, label: '[prh] はいる => 入る', lines: [3, 5] },
+                  { count: 1, label: '[prh] なに => 何', lines: [7] },
+                  { count: 4, label: '[prh] 予め => あらかじめ', lines: [1, 2, 4, 6] }]
+          result = { files: [{ path: '11-intro.md', rows: }], total: 7, fixable: 7 }
+
+          runner = LintCommands::LintRunner.new([], {})
+          runner.stub(:config_path, base) { runner.send(:discount_report_only_fixes!, result) }
+
+          assert_equal 4, result[:fixable], '印の項目の 3 件を外す'
+          assert_equal 7, result[:total], '指摘の件数は変えない'
+          assert_equal 3, result[:files].first[:rows].size
         end
       end
 

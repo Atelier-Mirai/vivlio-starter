@@ -68,6 +68,7 @@ module VivlioStarter
           @targets = Array(targets)
           @options = normalize_options(options)
           @trimmed_dictionaries = []
+          @runtime_configs = []
         end
 
         # 日本語校正だけ・スペルチェックだけを選ぶオプションは置かない。原稿を直すときは
@@ -136,7 +137,8 @@ module VivlioStarter
           run_textlint_aggregated(converted_files, path_map, hushed).merge(fixed_files: fixed_files)
         ensure
           cleanup_temp_files(converted_files) if converted_files
-          @runtime_config_tmp&.unlink
+          @runtime_configs.each(&:unlink)
+          @runtime_configs.clear
           @trimmed_dictionaries.each(&:unlink)
           @trimmed_dictionaries.clear
         end
@@ -161,6 +163,7 @@ module VivlioStarter
           # 一時ファイルのパスを元ファイル名へ戻す
           result[:files].each { |f| f[:path] = path_map[File.expand_path(f[:path])] || f[:path] }
           drop_rows_covered_by_index_spacing!(result)
+          discount_report_only_fixes!(result)
           # 無効化で除外した分は問題数に数えない（残り 0 なら成功扱い）
           { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable],
             rows_by_file: result[:files].to_h { [it[:path], it[:rows]] } }
@@ -185,6 +188,53 @@ module VivlioStarter
             result[:total] -= dropped
             result[:fixable] = [result[:fixable] - dropped, 0].max
           end
+        end
+
+        # 辞書の `fix: false` の項目（REPORT_ONLY_KEY）の指摘を、「自動修正可能」の件数から外す。
+        # textlint の出力では prh の指摘はどれも直し方を持つので、数えたままだと
+        # `vs lint --fix` を勧めておいて、走らせても残ることになる。指摘そのものは残す。
+        def discount_report_only_fixes!(result)
+          matchers = report_only_matchers
+          return if matchers.empty?
+
+          result[:files].each do |file|
+            file[:rows].each do |row|
+              m = PRH_ROW.match(row[:label].to_s)
+              next unless m && matchers.any? { |pattern, expected| expected == m[2] && pattern.match?(m[1]) }
+
+              result[:fixable] = [result[:fixable] - row[:count], 0].max
+            end
+          end
+        end
+
+        # `fix: false` の項目の [見出し語の正規表現, 直す先] の一覧。辞書は .textlintrc.yml の
+        # prh.rulePaths から読む。読めない辞書・Ruby で読めない正規表現は飛ばす（件数がずれるだけ）
+        def report_only_matchers
+          dir = File.dirname(config_path)
+          rule_paths = (YAML.safe_load_file(config_path) || {}).dig('rules', 'prh', 'rulePaths')
+          Array(rule_paths).flat_map do |rule_path|
+            data = YAML.safe_load_file(File.expand_path(rule_path.to_s, dir))
+            entries = data.is_a?(Hash) ? Array(data['rules']) : []
+            entries.select { report_only_entry?(it) }.flat_map do |rule|
+              Array(rule['patterns'] || rule['pattern']).filter_map do |pattern|
+                regexp = prh_pattern_regexp(pattern)
+                [regexp, rule['expected'].to_s] if regexp
+              end
+            end
+          rescue StandardError
+            []
+          end
+        rescue StandardError
+          []
+        end
+
+        # prh の見出し語（`はいる`・`/(?<![んみ])なに/`）を、指摘された語の全体に当てる正規表現にする
+        def prh_pattern_regexp(pattern)
+          source = pattern.to_s
+          body = source[%r{\A/(.*)/[a-z]*\z}m, 1]
+          Regexp.new("\\A(?:#{body || Regexp.escape(source)})\\z")
+        rescue RegexpError
+          nil
         end
 
         # textlint では扱えない指摘（交ぜ書き・二通りに読める対比）を当てる。
@@ -743,6 +793,17 @@ module VivlioStarter
           )
         end
 
+        # 修正パス（--fix）に渡す実行時 textlintrc。解析パスと同じ設定から、辞書の
+        # `fix: false` の項目だけを外す（REPORT_ONLY_KEY）
+        def fix_config_path
+          @fix_config_path ||= generate_runtime_config(
+            config_path,
+            allow_code_space: allow_space_around_code?,
+            allow_ja_en_space: allow_space_between_ja_en?,
+            for_fix: true
+          )
+        end
+
         # book.yml lint.sentence_length_max。
         #   未指定 … nil（ProseChecker の既定 100 字）
         #   0      … :off（一文の長さを検査しない）
@@ -801,7 +862,8 @@ module VivlioStarter
         # 設定レベルで無効化するため、隠すだけの出力フィルタと違い --fix でも変更されない。
         # 相対パス（prh.rulePaths / allowlistConfigPaths）が壊れないよう、元の設定と同じ
         # ディレクトリへ書き出す。後始末は run_textlint の ensure で行う。
-        def generate_runtime_config(base_path, allow_code_space: false, allow_ja_en_space: false)
+        # for_fix は修正パスの設定（辞書から `fix: false` の項目を外す）。
+        def generate_runtime_config(base_path, allow_code_space: false, allow_ja_en_space: false, for_fix: false)
           cfg = YAML.safe_load_file(base_path) || {}
           rules = (cfg['rules'] ||= {})
 
@@ -812,13 +874,14 @@ module VivlioStarter
 
           apply_disabled_rules!(rules)
           apply_builtin_allowlist!(cfg)
-          trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
+          trim_dictionaries!(rules, File.dirname(base_path), long_vowel: trim_long_vowel?, for_fix:)
           apply_spacing_allowances!(rules, allow_code_space, allow_ja_en_space)
 
-          @runtime_config_tmp = Tempfile.new(['.textlintrc-runtime-', '.yml'], File.dirname(base_path))
-          @runtime_config_tmp.write(cfg.to_yaml)
-          @runtime_config_tmp.close
-          @runtime_config_tmp.path
+          tmp = Tempfile.new(['.textlintrc-runtime-', '.yml'], File.dirname(base_path))
+          tmp.write(cfg.to_yaml)
+          tmp.close
+          @runtime_configs << tmp
+          tmp.path
         end
 
         # book.yml の allow_space_* を、preset-ja-spacing の該当ルールを切る形で反映する。
@@ -887,6 +950,32 @@ module VivlioStarter
         # 同梱の辞書の置き場（config/ からの相対）。trim_long_vowel が項目を落とすのはここだけ
         BUNDLED_DICTIONARY_DIR = 'textlint_dictionaries'
 
+        # 辞書の項目に `fix: false` と書くと、指摘はするが `--fix` では書き換えない。
+        # prh はこのキーを読まないので、修正パスに渡す辞書の写しからその項目を外して実現する。
+        #
+        # 同梱の辞書では、ひらがなを漢字へ直す項目（`はいる => 入る`・`なに => 何`）に付けた。
+        # ひらがなの綴りは別の語の途中にも現れ、prh は語の切れ目を見ない。`--fix` が
+        # 「猫はいる」を「猫入る」に、「あんなに」を「あん何」に書き換え、著者が紙面を読むまで
+        # 気づかなかった（改善案 #159。haruka_mirai の 5 か所）。
+        # 著者の辞書（`textlint_rewrite.yml`）の項目にも効く——書いた著者が選んだ印だから。
+        REPORT_ONLY_KEY = 'fix'
+
+        # 辞書の写しを作り、そちらを読ませる。
+        #   - trim_long_vowel が有効なら、同梱の辞書から末尾長音の項目を落とす（解析・修正の両方）
+        #   - 修正パスでは、どの辞書からも `fix: false` の項目を落とす
+        def trim_dictionaries!(rules, dir, long_vowel: false, for_fix: false)
+          prh = rules['prh']
+          return unless prh.is_a?(Hash)
+
+          bundled = File.join(File.expand_path(dir), BUNDLED_DICTIONARY_DIR, '')
+          prh['rulePaths'] = Array(prh['rulePaths']).map do |rule_path|
+            trim_long_vowel = long_vowel && File.expand_path(rule_path.to_s, dir).start_with?(bundled)
+            next rule_path unless trim_long_vowel || for_fix
+
+            trimmed_dictionary(rule_path, dir, long_vowel: trim_long_vowel, report_only: for_fix) || rule_path
+          end
+        end
+
         # 末尾長音を足す項目（`サーバ => サーバー`）を落とした辞書の写しを作り、そちらを読ませる。
         #
         # **表示段の抑止だけでは `--fix` に効かない。** textlint はフィルタで消えた指摘の
@@ -902,27 +991,18 @@ module VivlioStarter
         # 意図して書いた規則が黙って消える（実測: 本書の `ユーザ => ユーザー` が落ち、同じ項目の
         # `ユーザーさん`（敬称）の検出まで巻き添えになっていた）。この設定が黙らせたいのは
         # 同梱の長音辞書の一般則で、著者が「この本ではこう書く」と決めた表記ではない。
-        def trim_long_vowel_dictionaries!(rules, dir)
-          prh = rules['prh']
-          return unless prh.is_a?(Hash)
-
-          bundled = File.join(File.expand_path(dir), BUNDLED_DICTIONARY_DIR, '')
-          prh['rulePaths'] = Array(prh['rulePaths']).map do |rule_path|
-            next rule_path unless File.expand_path(rule_path.to_s, dir).start_with?(bundled)
-
-            trimmed_dictionary(rule_path, dir) || rule_path
-          end
-        end
-
-        # 1 つの辞書から末尾長音の項目を落とした写しを作り、設定へ書く相対パスを返す。
+        # （辞書の選び分けは trim_dictionaries! が行う）
+        #
+        # 1 つの辞書から項目を落とした写しを作り、設定へ書く相対パスを返す。
+        # long_vowel は末尾長音の項目を、report_only は `fix: false` の項目を落とす。
         # 該当が無い辞書・読めない辞書は nil（呼び出し側が元のパスをそのまま使う）。
-        def trimmed_dictionary(rule_path, dir)
+        def trimmed_dictionary(rule_path, dir, long_vowel: true, report_only: false)
           source = File.expand_path(rule_path.to_s, dir)
           data   = YAML.safe_load_file(source)
           entries = data.is_a?(Hash) ? data['rules'] : nil
           return nil unless entries.is_a?(Array)
 
-          kept = entries.reject { long_vowel_entry?(it) }
+          kept = entries.reject { (long_vowel && long_vowel_entry?(it)) || (report_only && report_only_entry?(it)) }
           return nil if kept.size == entries.size
 
           tmp = Tempfile.new(['prh-trimmed-', '.yml'], dir)
@@ -944,6 +1024,9 @@ module VivlioStarter
             expected == "#{base}ー"
           end
         end
+
+        # `fix: false`（指摘だけで --fix では書き換えない）の項目か
+        def report_only_entry?(rule) = rule.is_a?(Hash) && rule[REPORT_ONLY_KEY] == false
 
         # 設定に書かれているプリセットのルール表を返す（`true` は空の表へ広げる）。
         # 書かれていない・`false` のプリセットは nil を返し、呼び出し側は何も足さない——
@@ -1060,7 +1143,7 @@ module VivlioStarter
           files.zip(converted, masked_spans).each { |path, tmp, spans| mask_hushed_lines!(path, tmp, spans) }
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
-          command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
+          command = [textlint_command, '--config', fix_config_path, '--fix', *converted]
           stdout, stderr, = Open3.capture3(*command)
           # --fix の終了コードと出力は判定に使わない。残存指摘の判定は解析パスが行う。
           Common.log_debug(stdout) unless stdout.nil? || stdout.empty?
