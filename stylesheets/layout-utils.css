@@ -244,15 +244,11 @@
 }
 
 /* 囲み（.column など）に重ねたときは箱を寄せるだけにし、中の段落は囲みの組み方のままにする
-   （字下げは chapter-common.css と同じく .column・.memo だけ） */
+   （字下げも chapter-common.css の本文と同じく残す） */
 .column.align-center > p,
 .column.align-right > p,
 .memo.align-center > p,
-.memo.align-right > p {
-  text-align: justify;
-  text-indent: 1em;
-}
-
+.memo.align-right > p,
 .tip.align-center > p,
 .tip.align-right > p,
 .note.align-center > p,
@@ -260,6 +256,7 @@
 .notice.align-center > p,
 .notice.align-right > p {
   text-align: justify;
+  text-indent: 1em;
 }
 
 /* テキスト整列（幅を変えずに text-align のみ適用）

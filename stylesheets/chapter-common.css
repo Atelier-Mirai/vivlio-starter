@@ -690,6 +690,9 @@ p > img {
   break-inside: avoid;
 }
 
+/* 中の段落は、5 種とも本文と同じく字下げする（p の text-indent: 1em のまま）。段落の上下の
+   余白は 0 なので、字下げを外すと段落が 2 つ以上あるとき切れ目が見えない。字下げを外すのは、
+   表示例（.output・.diagram）・吹き出し・補足（.small）・引用など、地の文でないものだけ */
 .column {
   margin-block: 8mm 6mm;
   padding: 4mm;
@@ -750,10 +753,6 @@ p > img {
   content: "TIP";
 }
 
-.tip p {
-  text-indent: 0;
-}
-
 /* メモブロック（@div:memo ... @divend） */
 .memo {
   margin-block: 8mm 6mm;
@@ -790,10 +789,6 @@ p > img {
   border-block-end: double 1mm var(--color-mark);
 }
 
-.note p {
-  text-indent: 0;
-}
-
 .notice {
   margin-block: 3mm;
   margin-inline: auto;
@@ -803,10 +798,6 @@ p > img {
   border-inline-start-width: 1mm;
   border-inline-start-color: var(--color-mark);
   background: var(--color-overlay);
-}
-
-.notice p {
-  text-indent: 0;
 }
 
 /* 補足（:::{.small} で囲む／単一段落なら段落末に {.small}）。
@@ -852,7 +843,7 @@ p.references {
   margin-inline: 0;
 }
 
-/* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。
+/* 左右を寄せた分、字下げは打ち消す。
    p.small（段落末 {.small}）と div.small 内の段落の両方に効かせる。 */
 .small,
 .small p,
