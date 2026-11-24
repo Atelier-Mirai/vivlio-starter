@@ -466,6 +466,114 @@ figure.align-center {
   block-size: auto;
 }
 
+/* 小さな挿絵と吹き出し（改善案 #157）
+   本文の端に小さな絵を置き、うしろの段落を横に回り込ませる。
+   .sideimage-* は囲みの中を二列に分ける。こちらは段落を囲みに入れず、入れたい場所の
+   前に囲みを置くだけでよい。囲みの一つ目の段落が、絵の上の吹き出しになる。
+
+     :::{.spot-right}           （左に置くときは .spot-left。幅は {.spot-right width=35%}）
+     あっ、分かった！             ← 一つ目の段落が吹き出し（無ければ絵だけ）
+
+     ![](images/characters/haruka.webp)
+     :::
+
+   前処理（SpotTransformer）が囲みを <div> にし、width= を style へ移し、中の画像に
+   trim=on・border=off を足す。枠と余白の指定は書かなくてよい。
+   吹き出しの色は theme.css の --spot-balloon-border・--spot-balloon-bg（custom.css で変えられる） */
+.spot-right,
+.spot-left {
+  inline-size: 28%;
+  margin-block: 0.2lh 0.5lh;
+  text-align: center;
+  text-indent: 0;
+}
+
+.spot-right {
+  float: right;
+  margin-inline-start: 1.2em;
+}
+
+.spot-left {
+  float: left;
+  margin-inline-end: 1.2em;
+}
+
+.spot-right figure,
+.spot-left figure,
+.spot-right p,
+.spot-left p {
+  margin: 0;
+  text-indent: 0;
+}
+
+/* chapter-common.css の figure:not(.align-center):not(.align-right) が付ける
+   margin-inline-end: auto を打ち消す（あちらのほうが特異度が高い。.pictures と同じ） */
+.spot-right > figure:not(.align-center):not(.align-right),
+.spot-left > figure:not(.align-center):not(.align-right) {
+  margin-inline: 0;
+}
+
+.spot-right img,
+.spot-left img {
+  inline-size: 100%;
+  block-size: auto;
+}
+
+/* 挿絵のうしろの囲み・コード・表・図・引用は、回り込みを解いてから始める。
+   枠や地のある箱は回り込まず（行だけが絵を避ける）、枠と地が絵の下に重なるため。
+   段落と箇条書きは回り込ませる。挿絵より前で回り込みが終わっていれば、clear は何もしない。
+   次の小さな挿絵は外す。解くと 2 枚目の絵だけが下へずれ、その後に書いた段落が
+   1 枚目の絵の横へ先に組まれて、原稿と紙面の順が入れ替わる */
+:is(.spot-right, .spot-left) ~ :is(div:not(.spot-right):not(.spot-left), pre, table, figure, blockquote) {
+  clear: both;
+}
+
+/* 吹き出し（角丸。しっぽは下の絵へ向ける） */
+.spot-right > p:first-child,
+.spot-left > p:first-child {
+  position: relative;
+  display: inline-block;
+  margin-block-end: 2.5mm;
+  padding: 1.2mm 3mm;
+  font-family: var(--font-column);
+  font-size: 9pt;
+  line-height: 1.45;
+  /* 本文の両端揃えを外す（折り返したとき字間が空かないように） */
+  text-align: start;
+  color: var(--color-text);
+  background: var(--spot-balloon-bg);
+  border: 0.45mm solid var(--spot-balloon-border);
+  border-radius: 2.5mm;
+}
+
+.spot-right > p:first-child::before,
+.spot-left > p:first-child::before,
+.spot-right > p:first-child::after,
+.spot-left > p:first-child::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 50%;
+  border-style: solid;
+  border-color: transparent;
+  transform: translateX(-50%);
+}
+
+/* しっぽの枠の色 */
+.spot-right > p:first-child::before,
+.spot-left > p:first-child::before {
+  inset-block-end: -2.4mm;
+  border-width: 2.4mm 1.8mm 0;
+  border-block-start-color: var(--spot-balloon-border);
+}
+
+/* しっぽの中を、吹き出しの地の色で塗る */
+.spot-right > p:first-child::after,
+.spot-left > p:first-child::after {
+  inset-block-end: -1.75mm;
+  border-width: 1.85mm 1.35mm 0;
+  border-block-start-color: var(--spot-balloon-bg);
+}
+
 /* 画像を横並びにするコンテナ（CSS Grid 版）
    使用例（VFM コンテナ）:
    :::{.image-group}
@@ -708,6 +816,28 @@ body.vs-kindle .sideimage-left > figure {
 body.vs-kindle .sideimage-right > img,
 body.vs-kindle .sideimage-right > figure {
   margin: 0 0 0.5em 1em;
+}
+
+/* 小さな挿絵（.spot-*）。KFX は var()・inline-size・::before/::after を解さないので、
+   幅・余白・吹き出しの枠を具体的な値で描く（しっぽは出ない）。吹き出しの色はテーマ色から
+   決まるので、book-settings.css が本の色で上書きする（ここは既定のテーマ色 green の値） */
+body.vs-kindle .spot-right,
+body.vs-kindle .spot-left {
+  width: 28%;
+  page-break-inside: avoid;
+}
+body.vs-kindle .spot-right {
+  margin: 0 0 0.5em 1em;
+}
+body.vs-kindle .spot-left {
+  margin: 0 1em 0.5em 0;
+}
+body.vs-kindle .spot-right > p:first-child,
+body.vs-kindle .spot-left > p:first-child {
+  display: block;
+  margin-bottom: 0.5em;
+  border: 1px solid #15803d;
+  background: #f3f9f5;
 }
 
 /* 横並びの間隔（.img-text 系・.sideimage-*・.image-group・.pictures に併記する）。

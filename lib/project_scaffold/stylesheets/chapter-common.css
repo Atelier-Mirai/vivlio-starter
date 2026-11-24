@@ -92,6 +92,15 @@ h3::before {
   content: none;
 }
 
+/* 節の見出しも、回り込み（小さな挿絵の .spot-*・figure.align-*）を解いてから始める。
+   回り込んだまま始めると、見出しの帯や下線が挿絵の横で途切れる（h3 は上の規則）。
+   style: image の本では h2 が節の帯の箱（article.section-topic・grid）の中にあり、
+   h2 の clear は効かない（grid の箱が挿絵の横に狭まる）ので、箱にも付ける */
+h2,
+.section-topic {
+  clear: both;
+}
+
 .subsection-marker {
   display: inline-flex;
   align-items: center;
@@ -869,6 +878,16 @@ p.references {
 .output p,
 .diagram p {
   text-indent: 0;
+}
+
+/* 表示例の中の回り込み（小さな挿絵の .spot-*・figure.align-*）を、枠の中で終わらせる。
+   枠は float を囲まないので、絵が枠の下へはみ出し、すぐ後の箇条書きの行頭まで押した。
+   display: flow-root で囲むと、Vivliostyle が枠を改ページで丸ごと送るおそれがあるので、
+   最後に回り込みを解く空の箱を置く */
+.output::after {
+  content: "";
+  display: block;
+  clear: both;
 }
 
 /* 枠の内側の空きは padding で取る。最初の子の上の余白と最後の子の下の余白が padding に

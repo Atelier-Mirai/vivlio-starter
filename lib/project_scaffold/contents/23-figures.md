@@ -151,7 +151,7 @@
 
 ### `.sideimage-right` / `.sideimage-left` — サイドイメージ
 
-本文の横に画像を並べます。`.img-text` と違い、画像の幅を `{width=30%}` のように自由に決められます。幅を書かないときは、画像が 40%、本文が 60% です。`.sideimage-right` は画像を右、`.sideimage-left` は左に置きます（`.sideimage` は `.sideimage-left` と同じです）。
+本文の横に画像を並べます。`.img-text` と違い、画像の幅を `{width=30%}` のように自由に決められます。幅を書かないときは、画像が 40%、本文が 60% です。`.sideimage-right` は画像を右、`.sideimage-left` は左に置きます（`.sideimage` は `.sideimage-left` と同じです）。本文を囲みに入れずに絵の横へ回り込ませ、吹き出しを添えるときは、前章 @ch-extensions の @pageref:spot-illustration の `.spot-*` を使います。
 
 ```markdown
 :::{.sideimage-right}

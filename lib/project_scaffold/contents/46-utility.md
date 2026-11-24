@@ -149,7 +149,7 @@ vs pdf:pages --pages=1,5,12-14 --dpi=150 --output=./samples
 CSS 変数やクラスの名前は、今後のバージョンで変わることがあります。バージョンを上げたら、`custom.css` の指定が紙面に反映されているかを確かめてください。
 :::
 
-### CSS 変数で色を変える
+### CSS 変数で色を変える @custom-css-colors
 
 色の多くは CSS 変数で決まっています。`custom.css` の `:root` に同じ名前の変数を書くと、その色に変わります。
 
@@ -176,6 +176,8 @@ CSS 変数やクラスの名前は、今後のバージョンで変わること�
 | `--section-number-color` | テーマ色 | 節番号（`style: image` の本）<br><span class="small">※ PDF のみ</span> |
 | `--heading-accent` | テーマ色 | 章・節の見出しの枠線（`style: simple` の本） |
 | `--talk-bg` | `#fff` | 会話文の吹き出しの地<br><span class="small">※ PDF・EPUB のみ</span> |
+| `--spot-balloon-border` | テーマ色 | 小さな挿絵（`.spot-*`）の吹き出しの枠線 |
+| `--spot-balloon-bg` | テーマ色をごく淡くした色 | 小さな挿絵（`.spot-*`）の吹き出しの地 |
 
 Kindle は CSS 変数に対応していませんが、この表の色は、ビルドのときに Kindle 用の色へ置き換えて組みます（※ の付いた色を除きます）。
 
