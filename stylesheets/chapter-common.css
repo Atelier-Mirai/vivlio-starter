@@ -880,6 +880,16 @@ p.references {
   text-indent: 0;
 }
 
+/* 表示例の中の回り込み（小さな挿絵の .spot-*・figure.align-*）を、枠の中で終わらせる。
+   枠は float を囲まないので、絵が枠の下へはみ出し、すぐ後の箇条書きの行頭まで押した。
+   display: flow-root で囲むと、Vivliostyle が枠を改ページで丸ごと送るおそれがあるので、
+   最後に回り込みを解く空の箱を置く */
+.output::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
 /* 枠の内側の空きは padding で取る。最初の子の上の余白と最後の子の下の余白が padding に
    重なると、中身によって空きが変わる（図なら 4mm、.image-group なら 0.5 行が上乗せされる）。
    特異度 (0,2,0) で、figure の margin-block (0,1,1) や .image-group の margin-block (0,1,0) に勝つ */
