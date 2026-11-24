@@ -71,6 +71,10 @@
   --color-danger:          #f00;
   --color-mark:            var(--theme-accent); /* h3マーク等 */
 
+  /* 小さな挿絵（.spot-*）の吹き出しの枠と地 */
+  --spot-balloon-border:   var(--theme-accent);
+  --spot-balloon-bg:       color-mix(in srgb, var(--theme-accent) 5%, white);
+
   /* 節番号テーマ */
   --section-number-color:  var(--theme-accent);
   /* --section-bg-image は book.yml（theme.ornament）からビルド時に

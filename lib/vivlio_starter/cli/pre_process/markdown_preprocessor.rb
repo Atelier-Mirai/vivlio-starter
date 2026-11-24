@@ -40,6 +40,7 @@ require_relative 'math_letter_wrapper'
 require_relative 'math_transformer'
 require_relative 'glyph_coverage_check'
 require_relative 'showcase_transformer'
+require_relative 'spot_transformer'
 require_relative 'mermaid_transformer'
 require_relative 'talk_registry'
 require_relative 'markdown_utils'
@@ -108,6 +109,7 @@ module VivlioStarter
           validate_directives!
           validate_image_borders!
           validate_image_trims!
+          validate_spot_blocks!
           validate_qr_codes!
           validate_links!
           apply_frontmatter!
@@ -115,6 +117,7 @@ module VivlioStarter
           transform_terminal_blocks!
           process_data_streams!
           normalize_image_paths!
+          transform_spot_blocks!
           transform_image_borders!
           transform_qr_codes!
           validate_images!
@@ -272,6 +275,19 @@ module VivlioStarter
           Common.log_warn("#{context.filename}:#{line_number} - #{message}", detail:)
           IssueRegistry.record(chapter: context.filename, line: line_number, severity: :warn,
                                category: :notation, message:)
+        end
+
+        # 小さな挿絵の囲み（:::{.spot-right width=35%}）の属性を点検する（改善案 #157）。
+        # 原稿そのままの行番号が使えるこの時点で行う。
+        def validate_spot_blocks!
+          SpotTransformer.validate(context.content, context.filename)
+        end
+
+        # 小さな挿絵の囲みを幅つきの <div> へ書き換え、中の画像に trim=on・border=off を足す。
+        # 画像パスの正規化の後・transform_image_borders! の前に置く。足した border=off も
+        # 内部クラスへの読み替えに載せるため。
+        def transform_spot_blocks!
+          context.content = SpotTransformer.transform(context.content)
         end
 
         # 画像の属性の `border=on` / `border=off` を、枠を付ける／外す内部クラスへ読み替える。

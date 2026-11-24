@@ -32,6 +32,8 @@
   --color-em-underline: var(--appendix-accent-color);
   --color-column-border: var(--appendix-accent-color);
   --color-column-bg: color-mix(in srgb, var(--appendix-accent-color) 15%, white);
+  --spot-balloon-border: var(--appendix-accent-color);
+  --spot-balloon-bg: color-mix(in srgb, var(--appendix-accent-color) 5%, white);
 }
 
 /* --theme-accent を直に読む部品の色。選択子は chapter-common.css・components.css と同じにし、

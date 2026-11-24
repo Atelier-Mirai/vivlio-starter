@@ -540,6 +540,18 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     assert(kindle_lines.none? { it.include?('linear-gradient(') }, 'KFX が描かないグラデーションを残さない')
   end
 
+  # 小さな挿絵の吹き出し（改善案 #157）も、枠と地をテーマ色のリテラルで焼く。付録は付録の色
+  def test_should_bake_spot_balloon_colors_for_kindle
+    css = BSC.render(build_config(theme_color: 'yellow', appendix_color: 'red'))
+
+    assert_includes css, 'body.vs-kindle .spot-right > p:first-child, body.vs-kindle .spot-left > p:first-child ' \
+                         '{ border-color: #f0a000; background: #fefaf2; }'
+    assert_includes css, 'body.appendix.vs-kindle .spot-right > p:first-child, ' \
+                         'body.appendix.vs-kindle .spot-left > p:first-child { border-color: #dc2626; }'
+    assert_includes css, 'body.appendix.vs-kindle .spot-right > p:first-child, ' \
+                         'body.appendix.vs-kindle .spot-left > p:first-child { background: #fdf4f4; }'
+  end
+
   # h4 の印は var() で消えるので、文字とテーマ色を Kindle 用に焼く
   def test_should_bake_h4_marker_for_kindle
     css = BSC.render(build_config(theme_color: 'yellow'))
@@ -978,6 +990,16 @@ class BookSettingsCssKindleCustomColorTest < Minitest::Test
     assert_includes css, 'body.chapter.vs-kindle h4::before'
     refute_includes css, '#333'
     refute_includes css, '#000000'
+  end
+
+  # 吹き出しの色を custom.css で変えたら、Kindle にもその色を書く（改善案 #157）
+  def test_should_write_spot_balloon_colors_from_custom_css
+    css = rules_for(":root {\n  --spot-balloon-border: #c9a24a;\n  --spot-balloon-bg: #fefbf9;\n}\n")
+
+    assert_includes css, 'body.vs-kindle .spot-right > p:first-child, ' \
+                         'body.vs-kindle .spot-left > p:first-child { border-color: #c9a24a; }'
+    assert_includes css, 'body.vs-kindle .spot-right > p:first-child, ' \
+                         'body.vs-kindle .spot-left > p:first-child { background: #fefbf9; }'
   end
 
   # 変えた色が無ければ何も書かない（PDF・クリーン EPUB の紙面と book-settings.css は今のまま）

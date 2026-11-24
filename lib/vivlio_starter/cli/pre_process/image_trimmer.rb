@@ -72,8 +72,9 @@ module VivlioStarter
         # SVG のルート要素の開始タグ。
         ROOT_TAG = /<svg\b[^>]*>/m
 
-        # 💡 を出さない囲み。中の画像を記法が自前で組み、trim=on が効かない（§3.1）。
-        HINT_EXCLUDED_CONTAINERS = %w[book-card].freeze
+        # 💡 を出さない囲み。book-card は中の画像を記法が自前で組み、trim=on が効かない（§3.1）。
+        # 小さな挿絵の囲み（spot-right・spot-left）は、trim=on が既定（改善案 #157）。
+        HINT_EXCLUDED_CONTAINERS = %w[book-card spot-right spot-left].freeze
 
         # 測った結果。crop は [上, 右, 下, 左] のパーミル（余白を足し戻した後）、
         # usage は絵が画像の幅に占める割合（余白を足す前）。

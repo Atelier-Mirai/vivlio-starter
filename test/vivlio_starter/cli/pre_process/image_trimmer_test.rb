@@ -310,6 +310,15 @@ class ImageTrimmerTest < Minitest::Test
         **書名**
         :::
 
+        :::{.spot-right width=35%}
+        小さな挿絵の囲みは trim=on が既定
+        ![](workflow.svg)
+        :::
+
+        :::{.spot-left}
+        ![](workflow.svg)
+        :::
+
         ```markdown
         ![](workflow.svg)
         ```

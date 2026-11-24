@@ -744,8 +744,21 @@ module VivlioStarter
           '--heading-accent' => ['body.vs-header-simple.vs-kindle h1 { border-color: %s; }',
                                  'body.vs-header-simple.vs-kindle h1 .chapter-number { color: %s; }',
                                  'body.vs-header-simple.vs-kindle h2 { border-color: %s; border-left-color: %s; }',
-                                 'body.vs-header-simple.vs-kindle h2 .section-number { background: %s; }']
+                                 'body.vs-header-simple.vs-kindle h2 .section-number { background: %s; }'],
+          # 小さな挿絵の吹き出し（改善案 #157）。しっぽは ::before/::after なので Kindle には出ない
+          '--spot-balloon-border' => ['body.vs-kindle .spot-right > p:first-child, ' \
+                                      'body.vs-kindle .spot-left > p:first-child { border-color: %s; }'],
+          '--spot-balloon-bg' => ['body.vs-kindle .spot-right > p:first-child, ' \
+                                  'body.vs-kindle .spot-left > p:first-child { background: %s; }']
         }.freeze
+
+        # 吹き出しの地は、テーマ色を白へこの割合で混ぜる（theme.css の --spot-balloon-bg と同じ）。
+        SPOT_BALLOON_MIX = 0.05
+
+        # 小さな挿絵の吹き出し（囲みの一つ目の段落）の選択子。KFX は :is() を含む規則を捨てるので並べて書く。
+        def spot_balloon_selector(scope)
+          %w[spot-right spot-left].map { "#{scope} .#{it} > p:first-child" }.join(', ')
+        end
 
         # custom.css の :root で変えた色を、Kindle 用のリテラルの規則にする。
         # 色に直せない値（calc() など）は書き出さず、Kindle を組む本なら 🟡 で知らせる。
@@ -858,7 +871,9 @@ module VivlioStarter
             "body.vs-header-simple.vs-kindle h1 { border-color: #{acc}; }",
             "body.vs-header-simple.vs-kindle h1 .chapter-number { color: #{acc}; }",
             "body.vs-header-simple.vs-kindle h2 { border-color: #{acc}; border-left-color: #{acc}; }",
-            "body.vs-header-simple.vs-kindle h2 .section-number { background: #{acc}; }"
+            "body.vs-header-simple.vs-kindle h2 .section-number { background: #{acc}; }",
+            "#{spot_balloon_selector('body.vs-kindle')} { border-color: #{acc}; " \
+            "background: #{ThemeColor.mix_with_white(acc, SPOT_BALLOON_MIX)}; }"
           ] + index_glossary_kindle_accent_rules(acc, colbg)
         end
 
@@ -903,7 +918,9 @@ module VivlioStarter
               "#{scope} .column, #{scope} .memo { border-color: #{apx}; }",
               "#{scope} .column .vs-adm-label, #{scope} .memo .vs-adm-label { color: #{apx}; }"
             ],
-            '--color-column-bg' => ["#{scope} .column { background: #{ThemeColor.mix_with_white(apx, 0.15)}; }"]
+            '--color-column-bg' => ["#{scope} .column { background: #{ThemeColor.mix_with_white(apx, 0.15)}; }"],
+            '--spot-balloon-border' => ["#{spot_balloon_selector(scope)} { border-color: #{apx}; }"],
+            '--spot-balloon-bg' => ["#{spot_balloon_selector(scope)} { background: #{ThemeColor.mix_with_white(apx, SPOT_BALLOON_MIX)}; }"]
           }
           tip = ["#{scope} .tip { border-color: #{apx}; }", "#{scope} .tip .vs-adm-label { color: #{apx}; }"]
           tip + by_variable.except(*overridden).values.flatten
