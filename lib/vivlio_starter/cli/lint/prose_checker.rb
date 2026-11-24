@@ -47,6 +47,7 @@ require_relative '../math_delimiters'
 require_relative '../index_markup'
 require_relative '../index/term_pattern'
 require_relative 'notation_guard'
+require_relative '../pre_process/spot_transformer'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
 
@@ -604,20 +605,39 @@ module VivlioStarter
         # 指摘は正しくないが、助詞の一覧を抱えるより `<!-- no-lint -->`
         # で抑えるほうが軽いと判断した（実測で本書 2 件）。
         #
+        # 小さな挿絵の吹き出し（`:::{.spot-right}` の一つ目の段落）も見ない（改善案 #158）。
+        # 吹き出しは漫画と同じく句点を付けないのがふつうの書き方で、「！」「？」で終わる
+        # 吹き出しとそろえるため、著者は直さない。外すのは句点の点検だけで、表記ゆれなどは
+        # 地の文と同じに調べる。囲みの二つ目より後の段落も、今までどおり調べる。
+        #
         # `--fix` はしない——句点を足すのか体言止めに直すのかは、著者にしか決められない。
         def missing_period_findings(text)
           guarded = NotationGuard.strip_notation(text)
           sources = prose_lines(guarded).to_h { |lineno, line| [lineno, line.strip] }
+          paragraphs = prose_paragraphs(guarded)
+          balloons = balloon_starts(text, paragraphs)
 
-          prose_paragraphs(guarded).filter_map do |paragraph|
+          paragraphs.filter_map do |paragraph|
             body = paragraph[:text]
             next if body.match?(BLOCK_START) || !body.match?(HIRAGANA_END)
-            next if strong_heading?(paragraph, sources)
+            next if strong_heading?(paragraph, sources) || balloons.include?(paragraph[:start])
 
             Finding.new(line: paragraph[:last], rule: MISSING_PERIOD_RULE,
                         label: '文末に句点「。」がありません')
           end
         end
+
+        # 小さな挿絵の囲みごとに、一つ目の段落の開始行。囲みの見分けは前処理
+        # （PreProcessCommands::SpotTransformer）と同じものを使う。strip_notation は行数を
+        # 保つので、原文の行番号と段落の行番号はそろっている。
+        # @return [Set<Integer>]
+        def balloon_starts(text, paragraphs)
+          PreProcessCommands::SpotTransformer.each_block(text).filter_map do |block, close_line|
+            inside = (block.line + 1)...close_line
+            paragraphs.find { inside.cover?(it[:start]) }&.fetch(:start)
+          end.to_set
+        end
+        private_class_method :balloon_starts
 
         # 段落が小見出し（`**…**` 1 行）か。強調を外す前の原文で見る。
         def strong_heading?(paragraph, sources)

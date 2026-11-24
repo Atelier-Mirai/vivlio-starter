@@ -1023,6 +1023,49 @@ class TestProseChecker < Minitest::Test
     assert_empty period_lines(body)
   end
 
+  # 小さな挿絵の吹き出し（spot の囲みの一つ目の段落）には句点を求めない（改善案 #158）。
+  # 1 行・行末の \ で折った 2 行・width= つき・画像との間に空行が無い形
+  def test_should_skip_spot_balloons
+    body = <<~MD
+      :::{.spot-left}
+      すてきな世界だわ
+
+      ![笑顔](a.webp)
+      :::
+
+      :::{.spot-right}
+      大魔王を出したら、\\
+      どうなるかしら
+
+      ![考える](b.webp)
+      :::
+
+      :::{.spot-right width=35%}
+      楽しみにしているわ
+      ![待つ](c.webp)
+      :::
+    MD
+
+    assert_empty period_lines(body)
+  end
+
+  # 囲みの外の同じ文と、囲みの二つ目より後の段落は、今までどおり指摘する
+  def test_should_still_check_text_outside_balloons
+    body = <<~MD
+      :::{.spot-left}
+      すてきな世界だわ
+
+      ![笑顔](a.webp)
+
+      絵の後ろに書いた地の文も調べることになります
+      :::
+
+      すてきな世界だわ
+    MD
+
+    assert_equal [6, 9], period_lines(body)
+  end
+
   # 複数行にわたる段落は、句点を置くべき最後の行を指す
   def test_should_point_at_the_last_line_of_a_paragraph
     body = "図版の作り方はいくつかあります。スクリーンショットで\n示せないものは、自分で描くことになります\n"
