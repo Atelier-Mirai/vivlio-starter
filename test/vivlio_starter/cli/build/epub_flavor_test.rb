@@ -88,7 +88,7 @@ module VivlioStarter
         style = doc.at_css('img.vs-math-inline')['style']
         refute_includes style, 'ex', '残った数式の ex は em へ変換される'
         assert_includes style, 'em'
-        assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text, 'admonition ラベルが注入される'
+        assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-head > .vs-adm-label')&.text, 'admonition ラベルが注入される'
         assert_equal '(a) ', doc.at_css('ol.vs-fancy-list span.vs-li-marker')&.text,
                      'fancy list の実体マーカーが注入される（KFX は ::before を破棄する）'
         assert_equal ['1. ', '1.1. '], doc.css('.outline-list span.vs-li-marker').map(&:text),

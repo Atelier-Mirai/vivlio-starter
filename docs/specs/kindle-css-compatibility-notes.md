@@ -39,7 +39,11 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 | `::before` / `::after` の `content` | **✅ 4 で変わった** | **実体の `<span>` として本文へ注入される。`display:block`・`background-color`・`padding`・`color`・`font-weight` も効く** | 回避策は現状維持（§2.2） |
 | `::after` の clearfix（`content: ""`） | ❌ | 枠は float まで伸びない。実体の `clear: both` の要素・`overflow`・`flow-root`・枠や子の `inline-block`・`flex`・`display: table`・`vw` の `min-height` でも同じ | 枠の中は実体の表で組む（`lay_out_in_table!`）。表の中の画像はページの残りの高さまで縮むので、画像に `min-width: 100%` を付ける。`page-break-inside: avoid` は表・行・セル・枠のどこに付けても効かない |
 | `margin-inline: auto` | ❌ | 0 に解かれ、図が左へ寄る | `margin-left` / `margin-right` の `auto` で書く |
-| `::before` の `position: absolute` | ❌ | 位置指定は効かない | 通常フローで組む |
+| `::before` の `position: absolute` | ❌ | 位置指定は効かない。**`content: ""` と枠線だけの疑似要素（吹き出しのしっぽ）も、透明な枠線の幅を持つ行内の `<span>` として行頭・行末に入る**。1 行目が字下げされたように見え、短い言葉も折り返す（2026-11-24） | 通常フローで組む。Kindle では `content: none` で止める（`.spot-*` の吹き出し） |
+| `page-break-after: avoid` | ❌ | 守られない。囲みの見出し【OUTPUT】【TIP】などだけが前のページの最後に残る（見出しに線や地の色がなくても同じ・2026-11-24） | 見出しと最初の中身を `page-break-inside: avoid` の `div` で包む（`.vs-adm-head`・`EpubBuilder#frame_admonition_for_kindle!`）。中身が 1 ページより長ければ、包みを次のページから始めて中で割る |
+| `page-break-inside: avoid` | △ | **枠線を持つ `div` にだけ効く**。線のない `div` では捨てられ、包みの中で割られる（端末の枠で実測・2026-11-24）。囲みの枠そのもの（中身が長い）に付けても効かない | 包みに上辺の線を持たせる。見せたくなければ地と同じ色で描く（`.terminal`） |
+| `padding-inline` などの論理プロパティ | ❌ | 前処理が捨てる（計算値が 0 や既定のまま）。`.note` の左右の余白が 0 になり、`.tip` の `padding-inline: 6mm` も効かず `padding: 4mm` のままだった（2026-11-24） | `body.vs-kindle` の規則は `padding-left` / `padding-right` などの物理プロパティで書く |
+| 左右の `padding` を持つ要素の枠線 | △ | 計算値の幅は正しいが、描画では線が左右の余白のぶん内側へ縮む（余白 4mm で両端が 7px ほど足りない）。負の `margin` で広げても浅く描かれ、深さが余白の大きさで変わる | 線は左右の余白を持たない要素に描かせ、余白は中の要素に持たせる（`.vs-adm-head` と `.vs-adm-body`） |
 | `linear-gradient()` | ❌ | 宣言は前処理を通るが、描画されない | 単色 `background` / `border` で代替 |
 | WebP 画像（`<img>` / CSS `url()`） | ❌ | 画像が破棄される（`W14012` / `W14015`）。**4 では Enhanced Typesetting ごと落ち、本が `.mobi` になる** | JPEG/PNG へトランスコード＋インライン WebP 宣言を除去 |
 | SVG 画像 | ❌ | **同梱されているだけで Enhanced Typesetting が落ちる**（§5.5） | 参照ぶんはラスタ化し、参照の切れたものは同梱しない |

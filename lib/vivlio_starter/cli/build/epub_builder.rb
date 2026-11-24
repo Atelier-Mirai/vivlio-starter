@@ -400,6 +400,8 @@ module VivlioStarter
             restore_h3_markers_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
             compose_pictures_for_kindle!(chapter_htmls)
+            # 原稿の style 属性で変えた吹き出しの色を、吹き出しの段落へ色で書き込む（var() 非対応）。
+            literalize_spot_balloon_colors_for_kindle!(chapter_htmls)
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
             textify_simple_math_for_kindle!(chapter_htmls)
@@ -2731,12 +2733,13 @@ end
             changed = false
             ADMONITION_LABELS.each do |klass, label|
               doc.css("div.#{klass}").each do |box|
-                next if box.at_css('.vs-adm-label') # 二重注入を防ぐ
+                # 二重注入を防ぐ。直下だけを見る（入れ子の囲みのラベルで外側を飛ばさない）
+                next if box.element_children.any? { %w[vs-adm-label vs-adm-head].intersect?(it['class'].to_s.split) }
 
                 node = Nokogiri::XML::Node.new('p', doc)
                 node['class'] = 'vs-adm-label'
                 node.content = label
-                box.prepend_child(node)
+                frame_admonition_for_kindle!(box, node)
                 changed = true
               end
             end
@@ -2746,6 +2749,109 @@ end
             Common.log_info("[EPUB] #{File.basename(path)} のコラム枠にラベルを注入しました")
           end
           html_files
+        end
+
+        # ラベルを差し込み、囲みの中を次の形に組み直す。
+        #
+        #   <div class="tip">                         枠の左右と下の線（左右の余白は 0）
+        #     <div class="vs-adm-head">               割らない包み。枠の上辺の線を描く
+        #       <p class="vs-adm-label">【TIP】</p>   枠の上の余白
+        #       <div class="vs-adm-body">最初の中身</div>
+        #     </div>
+        #     <div class="vs-adm-body">残りの中身</div>
+        #   </div>
+        #
+        # KFX は page-break-after: avoid を守らず、ページの残りが少ないとラベルだけを前のページに
+        # 残す。包みの page-break-inside: avoid は効くので、ラベルは最初の中身と同じページに組まれる
+        # （最初の中身が 1 ページより長ければ、包みを次のページから始めて中で割る。実測）。
+        # ただし効くのは線を持つ包みだけで、線のない div の avoid は捨てられた。
+        # 枠の上辺は包みが描く。枠のほうに上辺があると、包みが次のページへ移ったとき、枠の上端
+        # だけが前のページに残るため。上辺を枠の左右の線までつなぐため、左右の余白は枠でなく
+        # ラベルと .vs-adm-body が持つ（負の余白は Previewer が浅く描き、余白の大きさで深さが変わった）。
+        # 寸法と色は chapter-common.css の body.vs-kindle .vs-adm-head ほか。
+        def frame_admonition_for_kindle!(box, label)
+          doc = box.document
+          first = box.element_children.first
+          rest = first ? first.xpath('following-sibling::node()').to_a : []
+
+          head = doc.create_element('div', class: 'vs-adm-head')
+          box.prepend_child(head)
+          head.add_child(label)
+          return unless first
+
+          head.add_child(admonition_body(doc, [first]))
+          box.add_child(admonition_body(doc, rest)) if rest.any? { it.element? || !it.text.strip.empty? }
+        end
+
+        # 囲みの中身を、左右の余白を持つ div.vs-adm-body へ移す。
+        def admonition_body(doc, nodes)
+          body = doc.create_element('div', class: 'vs-adm-body')
+          nodes.each { body.add_child(it) }
+          body
+        end
+
+        # 小さな挿絵の吹き出しの色の変数と、Kindle で描く宣言（改善案 #157）。
+        SPOT_BALLOON_PROPERTIES = { '--spot-balloon-border' => 'border-color',
+                                    '--spot-balloon-bg' => 'background' }.freeze
+
+        # 囲み（またはその祖先）の style 属性に書いた --spot-balloon-* を、吹き出しの段落の
+        # style へ具体的な色で書き込む（Kindle のみ）。
+        #
+        # KFX は var() を解さず、style 属性の変数も読まない。custom.css の :root で変えた色は
+        # book-settings.css が色に直して書き出す（BookSettingsCss#kindle_custom_color_rules）が、
+        # 原稿の HTML に書いた色はそこを通らず、Kindle では本の色のまま描かれていた。
+        # 色に直すのも同じ kindle_literal_color で行い、var() は style 属性・custom.css・theme.css の
+        # 順に引く。直せない値は書き込まず 🟡 で知らせる。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def literalize_spot_balloon_colors_for_kindle!(html_files)
+          bsc = PreProcessCommands::BookSettingsCss
+          book_variables = bsc.root_variables(ThemeColor::THEME_CSS).merge(bsc.root_variables(bsc::CUSTOM_CSS))
+          accent = ThemeColor.to_hex6(Common::CONFIG.theme.color)
+
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            next unless html.include?('--spot-balloon-')
+
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+            changed = doc.css('div.spot-right, div.spot-left').map do |box|
+              literalize_spot_balloon!(box, book_variables, accent, path)
+            end.any?
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の吹き出しの色を Kindle 用に書き込みました")
+          end
+          html_files
+        end
+
+        # 吹き出し 1 つへ色を書き込む。吹き出しは囲みの一つ目の段落（layout-utils.css の
+        # .spot-* > p:first-child と同じ）。外側の祖先から順に重ね、近い要素の値を勝たせる。
+        # @return [Boolean] 書き込んだか
+        def literalize_spot_balloon!(box, book_variables, accent, path)
+          balloon = box.element_children.first
+          return false unless balloon&.name == 'p'
+
+          declared = [*box.ancestors.reverse, box].each_with_object({}) do |node, vars|
+            next unless node.element? && node['style']
+
+            vars.merge!(node['style'].scan(/(--[\w-]+)\s*:\s*([^;]+)/).to_h { |name, value| [name, value.strip] })
+          end
+          variables = book_variables.merge(declared)
+
+          css = declared.slice(*SPOT_BALLOON_PROPERTIES.keys).filter_map do |name, value|
+            color = PreProcessCommands::BookSettingsCss.kindle_literal_color(value, variables, accent)
+            next "#{SPOT_BALLOON_PROPERTIES.fetch(name)}: #{color};" if color
+
+            Common.log_warn("contents/#{File.basename(path, '.*')}.md の吹き出しの #{name}（#{value}）は Kindle 用の色に直せません",
+                            detail: "Kindle では本の色で表示されます。同じ色にするときは、#{name}: #c9a24a のように色で書いてください")
+            nil
+          end
+          return false if css.empty?
+
+          add_inline_style(balloon, css.join(' '))
+          true
         end
 
         # 会話文（.talk）を Kindle 向けに劣化させる（talk-display-options-spec.md §2.5）。

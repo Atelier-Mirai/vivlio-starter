@@ -395,17 +395,29 @@ module VivlioStarter
                '<div class="column"><h5>コラム見出し</h5><p>本文</p></div></body></html>'
         doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
 
-        assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text
-        assert_equal '【MEMO】', doc.at_css('.memo > .vs-adm-label')&.text
-        assert_equal '【NOTICE】', doc.at_css('.notice > .vs-adm-label')&.text
-        assert_equal '【NOTE】', doc.at_css('.note > .vs-adm-label')&.text
-        assert_equal '【OUTPUT】', doc.at_css('.output > .vs-adm-label')&.text
-        assert_equal '【TERMINAL】', doc.at_css('.terminal > .vs-adm-label')&.text
-        assert_equal doc.at_css('.terminal > .vs-adm-label'), doc.at_css('.terminal').element_children.first,
-                     'ラベルは <pre> の兄弟として枠の先頭に入る（<pre> の内側には置けない）'
-        assert_equal '【COLUMN】', doc.at_css('.column > .vs-adm-label')&.text
-        assert_equal doc.at_css('.column > .vs-adm-label'), doc.at_css('.column').element_children.first,
-                     'ラベルはコラム枠の先頭子要素（見出しより前）'
+        labels = %w[tip memo notice note output terminal column].to_h do |klass|
+          [klass, doc.at_css(".#{klass} > .vs-adm-head > p.vs-adm-label")&.text]
+        end
+        assert_equal({ 'tip' => '【TIP】', 'memo' => '【MEMO】', 'notice' => '【NOTICE】', 'note' => '【NOTE】',
+                       'output' => '【OUTPUT】', 'terminal' => '【TERMINAL】', 'column' => '【COLUMN】' }, labels)
+        assert_equal '$ vs build', doc.at_css('.terminal > .vs-adm-head > .vs-adm-body > pre')&.text,
+                     'ラベルは <pre> の外に置く（<pre> の内側には置けない）'
+      end
+
+      # Kindle の囲みは、ラベルと最初の中身を割らない包みにまとめ、残りを別の箱へ移す
+      # （ラベルだけが前のページに残らないように。左右の余白は枠でなく中身の箱が持つ）
+      def test_should_frame_admonition_with_head_and_body
+        html = '<html><body class="vs-kindle">' \
+               '<div class="column"><h5>コラム見出し</h5><p>本文1</p><p>本文2</p></div>' \
+               '<div class="tip"><p>一つだけ</p></div></body></html>'
+        doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
+
+        column = doc.at_css('.column')
+        assert_equal %w[vs-adm-head vs-adm-body], column.element_children.map { it['class'] }
+        assert_equal ['【COLUMN】', 'コラム見出し'],
+                     doc.css('.column > .vs-adm-head > p.vs-adm-label, .column > .vs-adm-head > .vs-adm-body > *').map(&:text)
+        assert_equal %w[本文1 本文2], doc.css('.column > .vs-adm-body > p').map(&:text)
+        assert_equal %w[vs-adm-head], doc.at_css('.tip').element_children.map { it['class'] }, '中身が一つなら残りの箱は作らない'
       end
 
       # 既に注入済みのラベルは二重に追加されない
@@ -414,6 +426,37 @@ module VivlioStarter
                '<div class="tip"><p class="vs-adm-label">【TIP】</p><p>本文</p></div></body></html>'
         doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
         assert_equal 1, doc.css('.tip .vs-adm-label').size
+      end
+
+      # Kindle は position: absolute の ::before/::after を行内に差し込み、吹き出しの 1 行目が
+      # 字下げされたように見えた。見出しと最初の中身の囲みは割らない
+      def test_should_suppress_balloon_tail_and_keep_label_with_content_for_kindle
+        layout = File.read(File.expand_path('../../../../stylesheets/layout-utils.css', __dir__), encoding: 'utf-8')
+        chapter = File.read(File.expand_path('../../../../stylesheets/chapter-common.css', __dir__), encoding: 'utf-8')
+
+        pseudo = %w[before after].flat_map { |pe| %w[right left].map { "body\\.vs-kindle \\.spot-#{it} > p:first-child::#{pe}" } }
+        assert_match(/#{pseudo.join(',\s*')} \{\s*content: none;/, layout)
+        assert_match(/body\.vs-kindle \.vs-adm-head \{\s*page-break-inside: avoid;/, chapter)
+      end
+
+      # 囲みの style 属性に書いた吹き出しの色は、Kindle 用に吹き出しの段落へ色で書き込む。
+      # var() は囲みと祖先の style 属性から引き、色に直せない値は書かずに知らせる
+      def test_should_literalize_spot_balloon_colors_for_kindle
+        html = '<html><body class="vs-kindle"><section style="--gold: #c9a24a">' \
+               '<div class="spot-right" style="width: 22%; --spot-balloon-border: var(--gold); --spot-balloon-bg: #fefbf9">' \
+               '<p>できた！</p><figure><img src="a.png" alt=""></figure></div></section>' \
+               '<div class="spot-left"><p>本の色のまま</p></div>' \
+               '<div class="spot-left" style="--spot-balloon-border: calc(1px)"><p>直せない</p></div></body></html>'
+        warnings = []
+        Common.define_singleton_method(:log_warn) { |msg, **| warnings << msg }
+        doc = process(html) { |files| Builder.literalize_spot_balloon_colors_for_kindle!(files) }
+
+        balloons = doc.css('.spot-right > p, .spot-left > p')
+        assert_equal 'border-color: #c9a24a; background: #fefbf9;', balloons[0]['style']
+        assert_nil balloons[1]['style'], '色を書いていない吹き出しは book-settings.css の本の色に任せる'
+        assert_nil balloons[2]['style'], '色に直せない値は書き込まない'
+        assert_equal 1, warnings.size
+        assert_includes warnings.first, '--spot-balloon-border（calc(1px)）'
       end
 
       # chat の会話文は Kindle で inline 形式（名前＋区切り＋発話の 1 段落）へ組み替わる
