@@ -213,12 +213,42 @@ td[colspan] {
    広い表対策（組版用の折返し / 横向き）
    ===================================================================== */
 
-/* セル内のコードやプリフォーマットテキストも折り返す */
-table pre,
-table code {
+/* セル内のプリフォーマットテキストは、どの字のあいだでも折る。一行が長いことが多く、
+   版面からはみ出すよりは折れたほうがよい */
+table pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* セル内のコードは、英字の語の途中で折らない。どこでも折れると列の最小の幅が 1 字ぶんに
+   なり、説明の長い列に幅を取られて `ZeroDivisionErr` ／ `or` のように語の途中で折れる。
+   日本語は字のあいだで折る（keep-all にすると、日本語の文言を書いたコードが一行のまま
+   幅を取り、ほかの列が潰れる） */
+table code {
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* 表の一列目のコードは、一行のまま見せる（PDF のみ）。`save_text(key,` ／ `text)` と
+   分かれないように。`/` の後ろの <wbr> も効かなくする。印（vs-one-line）は後処理が付け、
+   一行にしてもほかの列の幅が残るコードにだけ付く。長いコードは上の規則で折り返す。
+   EPUB は画面が狭いので対象外 */
+body:not(.vs-epub) table code.vs-one-line {
+  white-space: nowrap;
+}
+
+body:not(.vs-epub) table code.vs-one-line wbr {
+  display: none;
+}
+
+/* 語の途中で折らないと、表の列は折れない語より細くならない。長い語
+   （`pneumonoultramicroscopicsilicovolcanoconiosis.rb` など）で列の最小の幅の合計が
+   版面を越える表だけ、後処理がその語を含むコードに vs-break-anywhere を付ける。
+   どこでも折れるようにして、表をはみ出させない */
+table code.vs-break-anywhere {
+  overflow-wrap: anywhere;
 }
 
 /* =====================================================================

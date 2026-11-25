@@ -179,6 +179,7 @@ module VivlioStarter
           mark_code_captions!(html_file)
           mark_strong_headings!(html_file)
           mark_inline_image_blocks!(html_file)
+          fit_table_codes!(html_file)
           add_line_break_opportunities!(html_file)
 
           begin
@@ -423,6 +424,158 @@ module VivlioStarter
         Common.log_info("#{html_file}: 画像を含む段落の折り返しを既定に戻しました")
       end
       module_function :mark_inline_image_blocks!
+
+      # ================================================================
+      # 表の中のコードの折り返し
+      # ----------------------------------------------------------------
+      # table.css は、表の中のコードを英字の語の途中で折らない。その上で、ここで幅を見積もり、
+      # コードに二つの印を付ける（CSS ではコードの長さで扱いを分けられないため）。
+      #
+      # - vs-one-line: 一列目のコードを一行に保つ（PDF のみ）。「書き方｜すること」の表で
+      #   `add_option("enemy", :dragon, "ドラ` ／ `ゴン")` と折れないように。ただし一律に
+      #   一行にすると、エラーの文言や長いタグを書いた表で、ほかの列が潰れる。そこで、
+      #   一行にしてもほかの列の幅が残るコードにだけ付ける。
+      # - vs-break-anywhere: どの字のあいだでも折る。語の途中で折らないと、表の列の幅は
+      #   折れない語より細くならない。`pneumonoultramicroscopicsilicovolcanoconiosis.rb` の
+      #   ような長い語があると、列の最小の幅の合計が版面を越え、表がはみ出す。そのときだけ、
+      #   長い語を含むコードを、収まるまで一つずつ、どこでも折れるようにする。
+      # ================================================================
+      ONE_LINE_CODE_CLASS = 'vs-one-line'
+      BREAK_ANYWHERE_CLASS = 'vs-break-anywhere'
+      # 版面の幅を導けないときの 1 行の字数（A4 の既定の版面 162mm ÷ 本文の字 3.7mm）
+      DEFAULT_LINE_EM = 43.7
+
+      # 列ごとの罫線とセルの左右の余白を、本文の字の幅で見積もった値
+      CELL_PADDING_EM = 0.7
+      # 半角 1 字の幅（全角 1 字 = 1）。コードは同梱の等幅の書体（半角が全角の 3/5）、地の文は欧文の平均
+      CODE_HALF_WIDTH_EM = 0.6
+      TEXT_HALF_WIDTH_EM = 0.55
+      # 一列目を一行にしても、ほかの列に残したい幅。列が二つ以上あれば分け合う（その列の中身が
+      # これより短ければ、中身の長さまで）。二列の表で 8 字にすると「役割」の説明が 4〜5 字ずつ
+      # 折れ、表が縦に延びた。三列の表で 16 字ずつにすると、`text-justify: inter-character` の
+      # ような短いコードまで `-` の後ろで折れた
+      OTHER_COLUMNS_RESERVE_EM = 16.0
+
+      # @param line [Float, nil] 本文の 1 行の字数（全角 1 字 = 1）。省くと判型と字の大きさから求める
+      def fit_table_codes!(html_file, line: nil)
+        content = File.read(html_file, encoding: 'utf-8')
+        return unless content.include?('<table') && content.include?('<code')
+
+        line ||= line_em
+        doc = HtmlParser.parse_html_document(content)
+        tables = doc.xpath('//table')
+        one_line = tables.sum { mark_table_first_column!(it, line) }
+        anywhere = tables.sum { release_overflowing_codes!(it, line) }
+        return if (one_line + anywhere).zero?
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_info("#{html_file}: 表の一列目のコード #{one_line} 個を一行に保ちます") if one_line.positive?
+        Common.log_info("#{html_file}: 表からはみ出さないよう、コード #{anywhere} 個をどこでも折れるようにします") if anywhere.positive?
+      end
+      module_function :fit_table_codes!
+
+      # 一つの表の一列目で、一行にしてもほかの列の幅が残るコードに vs-one-line を付け、付けた数を返す。
+      # 列ごとに残すのは、中身の長さと「OTHER_COLUMNS_RESERVE_EM を列の数で分けた幅」の小さいほう。
+      # ただし折り返せない語（`frontcover_master.png` など）より細くはできないので、その幅は残す
+      def mark_table_first_column!(table, line)
+        rows = table.xpath('.//tr[td]')
+        mins = Hash.new(0)
+        maxes = Hash.new(0)
+        rows.each do |row|
+          row.xpath('./td').drop(1).each_with_index do |cell, index|
+            mins[index] = [mins[index], cell_min_em(cell)].max
+            maxes[index] = [maxes[index], cell_max_em(cell)].max
+          end
+        end
+        share = OTHER_COLUMNS_RESERVE_EM / [mins.size, 1].max
+        reserves = mins.keys.sum { [mins[it], [maxes[it], share].min].max }
+        room = line - (CELL_PADDING_EM * (mins.size + 1)) - reserves
+        codes = rows.flat_map { it.xpath('./td[1]//code[not(ancestor::pre)]').to_a }
+                    .select { code_width_em(it.text) <= room }
+        codes.each { it.add_class(ONE_LINE_CODE_CLASS) }
+        codes.size
+      end
+      module_function :mark_table_first_column!
+
+      # 列の最小の幅の合計が版面を越える表で、折れない語のいちばん長いコードから順に
+      # vs-break-anywhere を付け（一行に保つ印は外す）、付けた数を返す。
+      # 地の文は td の overflow-wrap: anywhere でどこでも折れるので、1 字として数える
+      def release_overflowing_codes!(table, line)
+        rows = table.xpath('.//tr[td]')
+        codes = rows.flat_map { it.xpath('./td//code[not(ancestor::pre)]').to_a }
+        released = 0
+        loop do
+          columns = rows.map { it.xpath('./td').map { cell_min_em(it, text_anywhere: true) } }
+          widths = columns.map(&:size).max.to_i.times.map { |index| columns.filter_map { it[index] }.max }
+          break if widths.sum + (CELL_PADDING_EM * widths.size) <= line
+
+          code = codes.reject { it.classes.include?(BREAK_ANYWHERE_CLASS) }.max_by { code_min_em(it) }
+          break if code.nil? || code_min_em(code) <= 1.0
+
+          code.remove_class(ONE_LINE_CODE_CLASS)
+          code.add_class(BREAK_ANYWHERE_CLASS)
+          released += 1
+        end
+        released
+      end
+      module_function :release_overflowing_codes!
+
+      # 等幅の書体での見た目の幅（全角 1 字 = 1）
+      def code_width_em(text, half: CODE_HALF_WIDTH_EM) = text.each_char.sum { it.bytesize == 1 ? half : 1.0 }
+      module_function :code_width_em
+
+      # コードの最小の幅。一行に保つコードは全体、どこでも折れるコードは 1 字
+      def code_min_em(code)
+        return 1.0 if code.classes.include?(BREAK_ANYWHERE_CLASS)
+        return code_width_em(code.text) if code.classes.include?(ONE_LINE_CODE_CLASS)
+
+        longest_unbreakable_em(code.text)
+      end
+      module_function :code_min_em
+
+      # セルの最小の幅（折り返せない語のいちばん長いもの）。コードと地の文で半角の幅が違うので、
+      # 文字列ごとに測る。text_anywhere: true は、地の文がどこでも折れるものとして 1 字で数える
+      def cell_min_em(cell, text_anywhere: false)
+        cell.xpath('.//text()').map do |text|
+          code = text.ancestors('code').first
+          if code then code_min_em(code)
+          elsif text_anywhere then text.content.strip.empty? ? 0 : 1.0
+          else longest_unbreakable_em(text.content, half: TEXT_HALF_WIDTH_EM)
+          end
+        end.max || 0
+      end
+      module_function :cell_min_em
+
+      # セルを折り返さないときの幅
+      def cell_max_em(cell)
+        cell.xpath('.//text()').sum do |text|
+          half = text.ancestors('code').empty? ? TEXT_HALF_WIDTH_EM : CODE_HALF_WIDTH_EM
+          code_width_em(text.content.gsub(/\s+/, ' '), half:)
+        end
+      end
+      module_function :cell_max_em
+
+      # 折り返せない語のいちばん長い幅。英字は空白と `/`・`-` の後ろで折れ、日本語は字ごとに折れる
+      def longest_unbreakable_em(text, half: CODE_HALF_WIDTH_EM)
+        pieces = text.split(/\s+/).flat_map { it.split(%r{(?<=[/-])}) }
+        pieces.map { |piece| [*piece.scan(/[!-~]+/).map { code_width_em(it, half:) }, piece.ascii_only? ? 0 : 1.0].max || 0 }
+              .max || 0
+      end
+      module_function :longest_unbreakable_em
+
+      # 本文の 1 行の字数（版面の幅 ÷ 本文の字の大きさ）
+      def line_em
+        @line_em ||= begin
+          settings = PreProcessCommands::BookSettingsCss
+          page_cfg = settings.build_page_cfg(Common::CONFIG)
+          text_mm = settings.text_area_width_mm(page_cfg)
+          font_mm = Units.length_to_mm(page_cfg[:base_font_size])
+          font_mm&.positive? ? text_mm / font_mm : DEFAULT_LINE_EM
+        rescue StandardError
+          DEFAULT_LINE_EM
+        end
+      end
+      module_function :line_em
 
       # ================================================================
       # インラインコードと URL の改行位置
