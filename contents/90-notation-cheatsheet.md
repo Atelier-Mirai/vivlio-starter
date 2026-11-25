@@ -137,6 +137,7 @@
 | 行の頭を下げる | `@hspace:2`（単位省略時は em＝全角文字数） | 拡張 |
 | 改ページする | `---` または `@pagebreak` | 拡張 |
 | 右ページから始める | `@pagebreak:recto`（左ページなら `:verso`） | 拡張 |
+| ページをまたぐかを選ぶ | `:::{.memo .split}`（分ける）/ `:::{.column .keep}`（分けない） | 拡張 |
 | クラスを組み合わせる | `:::{.column .align-center}` のように併記 | 拡張 |
 | 独自の装飾を作る | `:::{.myclass}` ＋ `stylesheets/custom.css` に定義 | 拡張 |
 :::

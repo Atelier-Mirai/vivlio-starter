@@ -176,6 +176,39 @@ module VivlioStarter
     end
 
     # ================================================================
+    # 囲みの分割（改善案 #162）
+    # ================================================================
+    # コラムは分けてよく、短い囲みは分けない。.split / .keep は囲みの既定と特異度が同じなので、
+    # 既定より後ろに置かないと効かない（順序が崩れると .memo .split が分かれなくなる）。
+    class CssBoxBreakTest < Minitest::Test
+      def setup
+        @css = File.read('stylesheets/chapter-common.css', encoding: 'utf-8')
+      end
+
+      def test_should_keep_short_boxes_but_let_columns_split
+        avoid_group = @css[/\.tip,\s*\.memo,\s*\.note,\s*\.notice\s*\{\s*break-inside:\s*avoid;/]
+        refute_nil avoid_group, '.tip・.memo・.note・.notice は break-inside: avoid のまま'
+        refute_match(/\.column,\s*\.tip,[^}]*break-inside:\s*avoid/m, @css,
+                     '.column を break-inside: avoid の組へ戻さない')
+      end
+
+      def test_should_place_split_and_keep_after_box_defaults
+        defaults = @css.index(/\.notice\s*\{\s*break-inside:\s*avoid;/)
+        split = @css.index(/^\.split\s*\{\s*break-inside:\s*auto;/)
+        keep = @css.index(/^\.keep\s*\{\s*break-inside:\s*avoid;/)
+
+        assert split && keep, '.split と .keep の規則があること'
+        assert_operator split, :>, defaults, '.split は囲みの既定より後ろ'
+        assert_operator keep, :>, defaults, '.keep は囲みの既定より後ろ'
+      end
+
+      def test_should_keep_column_title_with_first_line
+        assert_match(/:is\(\.column, \.split\) > \.strong-heading:first-child\s*\{\s*break-after:\s*avoid;/,
+                     @css, '分割する囲みの先頭の太字の題は、続く行と離さない')
+      end
+    end
+
+    # ================================================================
     # 奥付偶数ページ配置ロジックのテスト
     # ================================================================
     class ColophonPageParityTest < Minitest::Test
