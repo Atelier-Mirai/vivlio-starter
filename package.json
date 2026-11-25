@@ -8,7 +8,7 @@
     "vfm:version": "vfm --version"
   },
   "devDependencies": {
-    "@vivliostyle/cli": "11.3.3",
+    "@vivliostyle/cli": "11.6.0",
     "@vivliostyle/vfm": "^2.7.2"
   },
   "overrides": {
@@ -31,7 +31,7 @@
     "valibot": "^1.4.2"
   },
   "dependencies": {
-    "@vivliostyle/core": "^2.45.1",
+    "@vivliostyle/core": "^2.47.0",
     "minimatch": "^9.0.9"
   }
 }
