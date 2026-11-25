@@ -573,6 +573,33 @@ module VivlioStarter
           assert rediagnosed, '未導入のツールは再診断（--fix 委譲）が入れる'
         end
 
+        # npm install -g @vivliostyle/cli は、Vivliostyle の別名 vs を作り直す。外すのは再診断の
+        # --fix（handle_vivliostyle_vs_aliases）なので、更新のあとの再診断は fix: true で呼ぶ（改善案 #165）
+        def test_should_rediagnose_with_fix_after_updating_vivliostyle
+          npm_outdated = { '@vivliostyle/cli' => { current: '11.5.0', wanted: '11.5.0', latest: '11.6.0' } }.to_json
+          executed = []
+          deps = stub_deps(capture: capture_map(npm_outdated:), executed:)
+
+          doctor_options = nil
+          rediagnose = lambda do |command|
+            doctor_options = command[:options]
+            true
+          end
+          with_host_os('darwin') do
+            stub_logging do
+              DoctorCommands.stub(:execute_doctor, rediagnose) do
+                DoctorCommands.stub(:pdf_plugin_installed?, false) do
+                  capture_io { ToolUpgrader.run!({ yes: true, dry_run: false }, deps:) }
+                end
+              end
+            end
+          end
+
+          assert executed.any? { it.include?('npm install') && it.include?('@vivliostyle/cli@latest') },
+                 "Vivliostyle CLI を更新する: #{executed.inspect}"
+          assert_equal true, doctor_options&.fetch(:fix), '再診断は --fix で呼び、別名の vs を外させる'
+        end
+
         def test_should_print_the_table_when_a_tool_has_an_update
           brew_outdated = {
             formulae: [{ name: 'qpdf', installed_versions: ['12.1.0'], current_version: '12.2.1' }], casks: []
