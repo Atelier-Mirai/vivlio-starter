@@ -267,6 +267,10 @@ $ cp *.png *.bak
 
 ![](image.png){border=off}
 
+左右に反転して載せる（上下なら `flip=vertical`）:
+
+![](image.png){flip=horizontal}
+
 写真をグリッドで並べる:
 
 :::{.pictures}
