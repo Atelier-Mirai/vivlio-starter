@@ -2,6 +2,10 @@ meta:
   - title: 漢字の閉じ開きルール
   - memo: 手動更新で管理してます
 rules:
+  # fix: false の項目は、vs lint で指摘するだけで、vs lint --fix では書き換えない。
+  # ひらがなを漢字へ直す項目に付ける。ひらがなの綴りは別の語の途中にも現れ、
+  # 書き換えると文が壊れるため（「猫はいる」→「猫入る」、「あんなに」→「あん何」）。
+  # prh はこのキーを読まない。vs lint が --fix のときに辞書の写しから外す
   - expected: $1あとで
     pattern: /(して|した|、)後で/
     specs:
@@ -244,6 +248,7 @@ rules:
       - from: どういうものがthenableなのか
         to:   どのようなものがthenableなのか
   - expected: 明らか
+    fix: false
     patterns: あきらか
   - expected: 疑似
     patterns: 擬似
@@ -254,11 +259,31 @@ rules:
     patterns: /(する)さい/
     prh: さい -> 際
   - expected: 先程
+    fix: false
     patterns:
       - さきほど
       - 先ほど
   - expected: 何
-    patterns: なに
+    fix: false
+    # 「あんなに」「どんなに」「みんなに」「みなに」の「なに」は当てない
+    patterns: /(?<![んみ])なに/
+    specs:
+      - from: なにを書くか
+        to:   何を書くか
+      - from: これはなにか
+        to:   これは何か
+      - from: あんなに香っていた
+        to:   あんなに香っていた
+      - from: どんなに大きな
+        to:   どんなに大きな
+      - from: そんなに大切に
+        to:   そんなに大切に
+      - from: こんなに時間が
+        to:   こんなに時間が
+      - from: みんなに配る
+        to:   みんなに配る
+      - from: みなに伝える
+        to:   みなに伝える
   - expected: はじめに
     patterns: /(始|初)めに(?!くい)/
     specs:
@@ -273,13 +298,17 @@ rules:
     patterns: /(する)かた/
     prh: かたと読む場合は方にする
   - expected: 元々
+    fix: false
     patterns: もともと
     prh: もと -> 元に統一。基づくは例外
   - expected: 基づく
+    fix: false
     patterns: もとづく
   - expected: やり取り
+    fix: false
     patterns: やりとり
   - expected: リンゴ
+    fix: false
     patterns: りんご
   - expected: あるわけ
     patterns: ある訳
@@ -289,17 +318,22 @@ rules:
   - expected: あふれる
     patterns: 溢れる
   - expected: 表す
+    fix: false
     patterns: あらわす
   - expected: 入れる
+    fix: false
     patterns: いれる
   - expected: 受け取り
     patterns: 受けとり
   - expected: 行う
+    fix: false
     patterns: おこなう
   - expected: 終わる
+    fix: false
     patterns: おわる
     prh: おわりに -> 終わりに
   - expected: 関わる
+    fix: false
     patterns: かかわる
   - expected: 気づく
     patterns: 気付く
@@ -333,6 +367,7 @@ rules:
         to:   平らな時空と地上の時計
     prh: 形式名詞の「とき」はひらがなで書きます（時刻・時期を表す「時」は漢字）
   - expected: 異なる
+    fix: false
     patterns: ことなる
   # 開くのは程度を表す「〜すぎる」だけ。本来の動詞（時間が過ぎる・期限を過ぎた）は
   # 漢字で書く——「できる」と「出来上がる」の書き分けと同じ考え方である。
@@ -364,18 +399,24 @@ rules:
     patterns: 取りだす
     prh: だす -> 出す
   - expected: 入る
+    fix: false
     patterns: はいる
   - expected: 開く
+    fix: false
     patterns: ひらく
   - expected: 待つこと
+    fix: false
     patterns: まつこと
     prh: まつ -> 待つ
   - expected: 呼びます
+    fix: false
     patterns: よびます
     prh: よぶ -> 呼ぶ
   - expected: 分ける
+    fix: false
     patterns: わける
   - expected: 渡す
+    fix: false
     patterns: わたす
   - expected: うま$
     patterns: /上手(く|い)/
@@ -384,12 +425,16 @@ rules:
   - expected: すばらしい
     patterns: 素晴らしい
   - expected: 難しい
+    fix: false
     patterns: むずかしい
   - expected: 改めて
+    fix: false
     patterns: あらためて
   - expected: 必ず
+    fix: false
     patterns: かならず
   - expected: 再び
+    fix: false
     patterns: ふたたび
   - expected: という
     patterns: と言う
@@ -435,6 +480,7 @@ rules:
         to:   次の
     prh: 書籍の場合は、以下ではなく次を利用します（常に下にあるとは限らないため）
   - expected: お勧め
+    fix: false
     patterns:
       - おすすめ
       - オススメ

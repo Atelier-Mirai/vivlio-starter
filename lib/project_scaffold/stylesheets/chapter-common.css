@@ -690,6 +690,9 @@ p > img {
   break-inside: avoid;
 }
 
+/* 中の段落は、5 種とも本文と同じく字下げする（p の text-indent: 1em のまま）。段落の上下の
+   余白は 0 なので、字下げを外すと段落が 2 つ以上あるとき切れ目が見えない。字下げを外すのは、
+   表示例（.output・.diagram）・吹き出し・補足（.small）・引用など、地の文でないものだけ */
 .column {
   margin-block: 8mm 6mm;
   padding: 4mm;
@@ -750,10 +753,6 @@ p > img {
   content: "TIP";
 }
 
-.tip p {
-  text-indent: 0;
-}
-
 /* メモブロック（@div:memo ... @divend） */
 .memo {
   margin-block: 8mm 6mm;
@@ -790,10 +789,6 @@ p > img {
   border-block-end: double 1mm var(--color-mark);
 }
 
-.note p {
-  text-indent: 0;
-}
-
 .notice {
   margin-block: 3mm;
   margin-inline: auto;
@@ -803,10 +798,6 @@ p > img {
   border-inline-start-width: 1mm;
   border-inline-start-color: var(--color-mark);
   background: var(--color-overlay);
-}
-
-.notice p {
-  text-indent: 0;
 }
 
 /* 補足（:::{.small} で囲む／単一段落なら段落末に {.small}）。
@@ -852,7 +843,7 @@ p.references {
   margin-inline: 0;
 }
 
-/* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。
+/* 左右を寄せた分、字下げは打ち消す。
    p.small（段落末 {.small}）と div.small 内の段落の両方に効かせる。 */
 .small,
 .small p,
@@ -986,35 +977,85 @@ body.vs-kindle .memo::before,
 body.vs-kindle .column::before {
   content: none;
 }
+/* 囲みの枠（Kindle）。EpubBuilder#frame_admonition_for_kindle! が中を組み直す:
+     枠 > div.vs-adm-head（ラベル＋最初の中身。割らない）＋ div.vs-adm-body（残り）
+   KFX は page-break-after: avoid を守らず、ページの残りが少ないとラベルだけを前のページに
+   残した。包みの page-break-inside: avoid は効くので、ラベルは最初の中身と同じページに組まれる
+   （最初の中身が 1 ページより長いときは、包みを次のページから始めて中で割る）。枠そのものに
+   付けた page-break-inside: avoid は効かなかった。包みの avoid も、包みが線を持つときだけ効く
+   （Previewer 4 で実測）。
+   枠の上辺は包みが、上の余白はラベルが描く。枠のほうに上辺があると、包みが次のページへ移ったとき、
+   枠の上端だけが前のページに残るため。上辺を左右の線までつなぐため、左右の余白は枠でなく
+   ラベルと .vs-adm-body が持つ。
+   Kindle の前処理は padding-inline などの論理プロパティを捨てるので、物理プロパティで書く。 */
 body.vs-kindle .tip,
 body.vs-kindle .memo,
 body.vs-kindle .column,
 body.vs-kindle .notice,
-body.vs-kindle .note {
-  /* ::before 角タブ用に空けていた上余白（6mm）を詰め、注入ラベル上の空行を解消する */
-  padding-block-start: 4mm;
-  /* Kindle は var() 不可。base の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
+body.vs-kindle .note,
+body.vs-kindle .output {
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+  /* Kindle は var() 不可。base の var() 枠線は Kindle で無効化され消えるため、具体色で描く。
+     上辺は線の種類だけを消し、色は残す（包みの上辺が inherit で受け継ぐ）。
+     テーマ色などは book-settings.css が border-color で焼く。 */
   border: 1px solid #888;
+  border-top-style: none;
+  /* 上辺がないので、角を丸めると左右の線の上端が削れて隙間ができる */
+  border-radius: 0;
   /* 枠どうしが一体化して見えないよう、上下に明確な余白を確保する。Kindle は mm 余白が
      詰まりがちなので em で指定（隣接枠の margin 相殺後も視認できる間隔を残す）。 */
   margin-top: 1.5em;
   margin-bottom: 1.5em;
 }
-/* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
-   テキストが枠線に触れないよう左右と下の余白を補う。 */
+/* base .note は枠なし（上下の二重線のみ）。Kindle では囲み枠にするので下の余白を補う */
 body.vs-kindle .note {
-  padding-inline: 4mm;
-  padding-block-end: 3mm;
+  padding-bottom: 3mm;
 }
-/* .output / .terminal の Kindle 劣化（§5 と同方針）。PDF・クリーン EPUB ではラベルなしの
-   素枠だが、Kindle では EpubBuilder が先頭注入する実体ラベル <p class="vs-adm-label">
-   （【OUTPUT】/【TERMINAL】）を見せ、枠線・地色を具体色で描く。注入ラベル用に上余白を確保する。 */
-body.vs-kindle .output {
-  padding-block-start: 4mm;
-  /* .output の枠線は var() のため Kindle で消える。具体色で描き直す。 */
-  border: 1px solid #888;
+body.vs-kindle .terminal {
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-radius: 0;
   margin-top: 1.5em;
   margin-bottom: 1.5em;
+  /* var() を含む base の font 宣言が Kindle で破棄されても等幅を保証する。
+     地色 #1a1a1a・文字色 #f5f5f5 は具体色なので Kindle でもそのまま効く。 */
+  font-family: monospace;
+}
+/* 枠の上辺は包みが描く。線の色は枠の色（テーマ色・付録の色・custom.css の色を book-settings.css が
+   焼いたもの）を inherit で受け継ぐ。Kindle の前処理が具体的な色に解く。地の色は枠の地が広がる。
+   ラベルに描かせると、Previewer は左右の余白（4mm）のぶん線を内側へ縮めて描いた（計算値の幅は
+   枠いっぱいなのに、線の両端が 7px ほど届かない）。包みは左右の余白を持たないので枠いっぱいに描ける */
+body.vs-kindle .vs-adm-head {
+  page-break-inside: avoid;
+  border-top: 1px solid;
+  border-top-color: inherit;
+}
+/* 左右の余白（全部の囲みで 4mm） */
+body.vs-kindle .vs-adm-head > p.vs-adm-label,
+body.vs-kindle .vs-adm-body {
+  padding-left: 4mm;
+  padding-right: 4mm;
+}
+/* 枠の上の余白はラベルが取る。ラベルは段落なので、.memo・.column では本文の字下げ（1em）が
+   付いて一字下がって見えた。ラベルは字下げしない */
+body.vs-kindle .vs-adm-head > p.vs-adm-label {
+  margin: 0 0 0.4em;
+  padding-top: 4mm;
+  text-indent: 0;
+}
+/* .output > :last-child の margin-block-end: 0 を、組み直した中身の最後の要素へ届ける */
+body.vs-kindle .output > .vs-adm-body > :last-child,
+body.vs-kindle .output > .vs-adm-head:last-child > .vs-adm-body > :last-child {
+  margin-bottom: 0;
+}
+/* 端末は枠線を持たない（黒地だけ）。上辺の線は地と同じ色で描いて見せない。線を消すと、KFX は
+   包みの page-break-inside: avoid を守らず、ラベルだけを前のページに残した（線のない div は
+   割らない指定ごと捨てられる。Previewer 4 で実測） */
+body.vs-kindle .terminal > .vs-adm-head {
+  border-top-color: #1a1a1a;
 }
 /* .diagram（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
    ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
@@ -1022,14 +1063,6 @@ body.vs-kindle .diagram {
   border: 1px solid #888;
   margin-top: 1.5em;
   margin-bottom: 1.5em;
-}
-body.vs-kindle .terminal {
-  padding-block-start: 4mm;
-  margin-top: 1.5em;
-  margin-bottom: 1.5em;
-  /* var() を含む base の font 宣言が Kindle で破棄されても等幅を保証する。
-     地色 #1a1a1a・文字色 #f5f5f5 は具体色なので Kindle でもそのまま効く。 */
-  font-family: monospace;
 }
 /* 端末ラベルは黒地に沈まないよう白で見せる（既定の vs-adm-label 色 #444 を上書き）。 */
 body.vs-kindle .terminal .vs-adm-label {

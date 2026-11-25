@@ -82,7 +82,8 @@
 }
 
 /* 列幅 */
-.img-text {
+.img-text,
+.text-img {
   grid-template-columns: 1fr 1fr;
 }
 
@@ -204,6 +205,8 @@
 .text-img,
 .img-text2,
 .text2-img,
+.img-text3,
+.text3-img,
 .text-2dan {
   /* 周囲との視覚的な余白（上下 0.5 行高） */
   margin-block: 0.5lh;
@@ -244,15 +247,11 @@
 }
 
 /* 囲み（.column など）に重ねたときは箱を寄せるだけにし、中の段落は囲みの組み方のままにする
-   （字下げは chapter-common.css と同じく .column・.memo だけ） */
+   （字下げも chapter-common.css の本文と同じく残す） */
 .column.align-center > p,
 .column.align-right > p,
 .memo.align-center > p,
-.memo.align-right > p {
-  text-align: justify;
-  text-indent: 1em;
-}
-
+.memo.align-right > p,
 .tip.align-center > p,
 .tip.align-right > p,
 .note.align-center > p,
@@ -260,6 +259,7 @@
 .notice.align-center > p,
 .notice.align-right > p {
   text-align: justify;
+  text-indent: 1em;
 }
 
 /* テキスト整列（幅を変えずに text-align のみ適用）
@@ -818,9 +818,13 @@ body.vs-kindle .sideimage-right > figure {
   margin: 0 0 0.5em 1em;
 }
 
-/* 小さな挿絵（.spot-*）。KFX は var()・inline-size・::before/::after を解さないので、
-   幅・余白・吹き出しの枠を具体的な値で描く（しっぽは出ない）。吹き出しの色はテーマ色から
-   決まるので、book-settings.css が本の色で上書きする（ここは既定のテーマ色 green の値） */
+/* 小さな挿絵（.spot-*）。KFX は var()・inline-size を解さないので、幅・余白・吹き出しの枠を
+   具体的な値で描く。吹き出しの色はテーマ色から決まるので、book-settings.css が本の色で
+   上書きする（ここは既定のテーマ色 green の値）。style 属性に書いた --spot-balloon-* は、
+   EpubBuilder#literalize_spot_balloon_colors_for_kindle! が吹き出しの style へ色で書き込む。
+   しっぽは出さない。Previewer は position: absolute の ::before/::after を、透明な枠線を持つ
+   行内の要素として行頭と行末へ差し込む（幅 3.6mm・2.7mm）。1 行目が字下げされたように見え、
+   短い言葉も 2 行に折れた（Previewer 4 で実測） */
 body.vs-kindle .spot-right,
 body.vs-kindle .spot-left {
   width: 28%;
@@ -836,8 +840,16 @@ body.vs-kindle .spot-right > p:first-child,
 body.vs-kindle .spot-left > p:first-child {
   display: block;
   margin-bottom: 0.5em;
+  padding: 0.3em 0.6em;
   border: 1px solid #15803d;
+  border-radius: 0.5em;
   background: #f3f9f5;
+}
+body.vs-kindle .spot-right > p:first-child::before,
+body.vs-kindle .spot-left > p:first-child::before,
+body.vs-kindle .spot-right > p:first-child::after,
+body.vs-kindle .spot-left > p:first-child::after {
+  content: none;
 }
 
 /* 横並びの間隔（.img-text 系・.sideimage-*・.image-group・.pictures に併記する）。
