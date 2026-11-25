@@ -84,6 +84,18 @@ module VivlioStarter
         TRIM_VALUES = %w[on off].freeze
         CROP_ATTRIBUTE = /(?<![\w-])crop=/
 
+        # 画像を反転して載せる `flip=horizontal` / `flip=vertical`（改善案 #163）。
+        FLIP_ATTRIBUTE = /(?<!\S)flip=(\S+)/
+        # 反転するのは、段落に単独で置いた画像（図を組む CrossReferenceProcessor が扱うもの）だけ。
+        STANDALONE_IMAGE = /\A\s*!\[[^\]]*\]\([^)]*\)\{[^{}\n]*\}\s*\z/
+        # 中の画像を記法が自前で組み、反転を通さない囲み。
+        FLIP_UNSUPPORTED_CONTAINERS = %w[showcase book-card].freeze
+        # 書き間違いの値から、どちらの向きのつもりかを推す（直し方に添えるため）。
+        FLIP_GUESSES = {
+          'horizontal' => /\A(?:left|right|lr|x|h|horiz\w*|mirror|flop)\z/i,
+          'vertical' => /\A(?:up|down|top|bottom|ud|y|v|vert\w*|flip)\z/i
+        }.freeze
+
         # 撤去したクラス `.bordered`（画像の属性・囲みの両方）
         RETIRED_BORDERED = /(?<![\w-])\.bordered(?![\w-])/
         RETIRED_BORDERED_CONTAINER = /\A\s*:{3,}\s*\{[^}]*#{RETIRED_BORDERED.source}[^}]*\}\s*\z/
@@ -109,6 +121,7 @@ module VivlioStarter
           validate_directives!
           validate_image_borders!
           validate_image_trims!
+          validate_image_flips!
           validate_spot_blocks!
           validate_qr_codes!
           validate_links!
@@ -221,6 +234,55 @@ module VivlioStarter
           record_notation_warning(
             line_number, '画像に crop と trim=on の両方があります。crop を使い、trim=on は使いません',
             detail: "→ 切り抜く範囲を自分で決めるなら trim=on を消してください: #{image}{#{kept}}"
+          )
+        end
+
+        # 画像の `flip` を点検する（改善案 #163）。原稿そのままの行番号が使えるこの時点で行う。
+        # 反転そのものは図を組むとき（ImageTrimmer.framed_image）に行う。反転できない置き方
+        # （文中・表の中・showcase・book-card）では反転せずに組むので、黙って効かないことが無いよう知らせる。
+        def validate_image_flips!
+          containers = []
+          Masking.each_prose_line(context.content) do |line, line_number|
+            next if ImageTrimmer.track_container(containers, line)
+
+            prose = line.gsub(/`[^`]+`/, '')
+            prose.scan(IMAGE_WITH_ATTRIBUTES) do |_image, attributes|
+              values = attributes.scan(FLIP_ATTRIBUTE).flatten
+              next if values.empty?
+
+              values.reject { ShowcaseSvgBuilder::FLIP_DIRECTIONS.include?(it) }.each { warn_invalid_flip(line_number, it) }
+              next unless values.any? { ShowcaseSvgBuilder::FLIP_DIRECTIONS.include?(it) }
+
+              if (container = containers.find { FLIP_UNSUPPORTED_CONTAINERS.include?(it) })
+                warn_flip_in_container(line_number, container)
+              elsif !prose.match?(STANDALONE_IMAGE)
+                warn_flip_not_standalone(line_number)
+              end
+            end
+          end
+        end
+
+        def warn_invalid_flip(line_number, value)
+          guess = FLIP_GUESSES.find { |_direction, pattern| value.match?(pattern) }&.first
+          fix = guess ? "flip=#{guess}" : '、左右に反転するなら flip=horizontal、上下に反転するなら flip=vertical'
+          record_notation_warning(
+            line_number, "画像の flip の値が不正です（flip=#{value}）。この画像は反転せずに組みます",
+            detail: "→ flip=#{value} を#{guess ? ' ' : ''}#{fix} に直してください。"
+          )
+        end
+
+        def warn_flip_in_container(line_number, container)
+          record_notation_warning(
+            line_number, ":::{.#{container}} の中の画像は反転できません。この画像は反転せずに組みます",
+            detail: '→ flip= を消し、反転した画像を画像ソフトで作って使ってください。'
+          )
+        end
+
+        def warn_flip_not_standalone(line_number)
+          record_notation_warning(
+            line_number, 'flip は、段落に単独で置いた画像にだけ効きます。この画像は反転せずに組みます',
+            detail: "→ 画像を、前後に空行を置いた 1 行に移してください。\n" \
+                    '  文中や表の中に置くときは、反転した画像を画像ソフトで作って使ってください。'
           )
         end
 

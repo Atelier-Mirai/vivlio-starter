@@ -110,20 +110,24 @@ module VivlioStarter
         # 段落に単独で置いた画像の `{crop="…"}` は、CrossReferenceProcessor が図を組むときに
         # ここを呼んで画像の参照だけを差し替える。キャプション・図番号・align・border・幅は
         # 普通の図の処理がそのまま引き継ぐ。作れなければ nil（警告は compose が出す）。
+        # `flip=horizontal`・`flip=vertical`（改善案 #163）も、ここで反転して焼く。値の誤りは
+        # 前処理の点検（MarkdownPreprocessor#validate_image_flips!）が知らせ、ここでは反転しない。
         # @return [Array(String, String), nil] [SVG 参照パス, ラスター参照パス]
         def crop_assets(image_line, chapter_slug:, source_filename:, tools: default_tools)
           lines = [image_line]
           image = ShowcaseSvgBuilder.scan_image(lines)
           return nil unless image
 
-          _block, svg_rel, raster_rel = compose(image, lines, chapter_slug:, source_filename:, tools:)
+          flip = image.attributes['flip'].then { ShowcaseSvgBuilder::FLIP_DIRECTIONS.include?(it) ? it : nil }
+          _block, svg_rel, raster_rel = compose(image, lines, chapter_slug:, source_filename:, tools:, flip:)
           svg_rel && [svg_rel, raster_rel]
         end
 
         # 合成 SVG とラスターを（必要なら）生成し、参照パスを返す。縮退すべき場合は nil。
         # @return [Array(ShowcaseSvgBuilder::ShowcaseBlock, String, String), nil]
         #   [ブロック, SVG 参照パス, ラスター参照パス]
-        def compose(image, lines, chapter_slug:, source_filename:, tools:)
+        # flip は段落に単独で置いた画像（crop_assets）だけが渡す。showcase の注釈は反転しない。
+        def compose(image, lines, chapter_slug:, source_filename:, tools:, flip: nil)
           source = resolve_image_file(image.path, source_filename)
           return nil unless source
 
@@ -142,13 +146,15 @@ module VivlioStarter
           block = ShowcaseSvgBuilder.parse(lines, orig_w:, orig_h:,
                                                   on_warn: ->(line) { warn_unparsable(line, source_filename) })
           block = trimmed_block(block, image, source, source_filename)
-          key = cache_key(source, block)
+          # crop と trim=on の値は元の画像の向き。反転して敷く画像に当てる窓へ直す
+          block = block.with(crop: ShowcaseSvgBuilder.flipped_crop(block.crop, flip)) if flip
+          key = cache_key(source, block, flip:)
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE, chapter_slug)
           # 元画像の素性でラスター形式を選ぶ（冒頭コメント参照）。同じ画像なら判定も同じに
           # なるため、キャッシュキーに形式を含める必要はない——ゆえに永続キャッシュに残る
           # 拡張子をそのまま信じてよく、ヒット時は magick identify（0.2〜0.35 秒）ごと省ける。
           ext = cached_raster_ext(key) || (tools.photographic?(source) ? 'jpg' : 'png')
-          return nil unless write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:)
+          return nil unless write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:, flip:)
 
           # <img> の参照は消費者 dir 相対（asset_prefix 無し）。数式 SVG と同じ理由で、
           # ビルド生成物は workspace 内実体のため EPUB の prefix 剥がしを素通りし、
@@ -173,13 +179,13 @@ module VivlioStarter
         # のため、生成物は GeneratedAssetCache（.cache/vs/showcase/）に永続キャッシュされ、
         # 元画像・注釈が変わらない限りクリーンビルドを跨いで再合成しない（キーは内容アドレス）。
         # @return [Boolean] 参照可能な生成物が揃ったか
-        def write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:)
+        def write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:, flip: nil)
           GeneratedAssetCache.fetch(REL_BASE, ["#{key}.svg", "#{key}.#{ext}"], out_dir:) do |cache_dir|
             data_uri = tools.data_uri(source)
             next false unless data_uri
 
             svg = ShowcaseSvgBuilder.build(block, orig_w:, orig_h:, data_uri:,
-                                           font_data: label_font_subset(block))
+                                           font_data: label_font_subset(block), flip:)
             raster = tools.rasterize(svg, raster_width(block, orig_w:, orig_h:), format: ext.to_sym)
             next false unless raster
 
@@ -216,14 +222,16 @@ module VivlioStarter
         # （mermaid 側は最初から font_family をキーに含めていた）。
         # v3: 元画像の埋め込みを PNG 固定から「写真は JPEG」へ変えた（2026-08-17）。
         # SVG が中身を抱えるため、版を上げないと既存キャッシュが PNG のまま残る。
-        def cache_key(source, block)
+        # 反転（flip）も鍵に入れる。反転しない画像の鍵は今までと同じ（nil なら何も足さない）。
+        def cache_key(source, block, flip: nil)
           payload = [
             'v3',
             Digest::SHA256.file(source).hexdigest,
             block.crop.join(','),
             JSON.generate(block.annotations.map(&:to_h)),
             SvgFontEmbedder.configured_heading_font,
-            SvgFontEmbedder::SUBSET_REVISION
+            SvgFontEmbedder::SUBSET_REVISION,
+            *flip
           ].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end

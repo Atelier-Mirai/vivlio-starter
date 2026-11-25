@@ -248,13 +248,35 @@ module VivlioStarter
 
         def number(value) = format('%.2f', value).sub(/\.?0+\z/, '')
 
+        # SVG の写しの中身を、viewBox の範囲の中で反転する（改善案 #163）。ルートの子をまとめて
+        # transform を持つ <g> で包む。ルートの属性（viewBox・width・height）は変えないので、
+        # 窓（window_svg）はこの後にそのまま切れる。中の字も鏡文字になる（記法の章で断っている）。
+        # @return [String, nil] viewBox を決められない SVG なら nil
+        def flip_svg(svg, flip)
+          root = svg[ROOT_TAG]
+          viewbox = root && viewbox_of(root)
+          return nil unless viewbox
+
+          vx, vy, vw, vh = viewbox
+          transform = ShowcaseSvgBuilder.flip_transform(flip, width: vw, height: vh, x: vx, y: vy)
+          head, rest = svg.split(root, 2)
+          body, closing, tail = rest.to_s.rpartition(%r{</svg\s*>})
+          return nil if closing.empty?
+
+          %(#{head}#{root}<g transform="#{transform}">#{body}</g>#{closing}#{tail})
+        end
+
         # 詰めた SVG をワークスペースへ用意する。
         # @return [Array(String, String), nil] [HTML からの参照, data-vs-source に書く実ファイル]
         #   data-vs-source は PDF の差し替え（PdfBuilder#swap_images_for_pdf!）が書体を抱かせる
         #   入口になる。生成物の参照は asset_prefix を持たず、そのままでは差し替えの対象から外れ、
         #   図の文字が Type 3 で埋め込まれる（§3.4）。
-        def svg_window_asset(source, crop, chapter_slug:)
-          windowed = window_svg(File.read(source, encoding: 'utf-8'), crop)
+        #   flip（改善案 #163）は、窓を切る前に写しの中身を反転する。crop は元の画像の向きで受け取り、
+        #   反転した後の窓へ直してから切る。
+        def svg_window_asset(source, crop, chapter_slug:, flip: nil)
+          svg = File.read(source, encoding: 'utf-8')
+          svg = flip_svg(svg, flip) if flip
+          windowed = svg && window_svg(svg, ShowcaseSvgBuilder.flipped_crop(crop, flip))
           return nil unless windowed
 
           name = "#{Digest::SHA256.hexdigest("#{SCHEMA}|#{windowed}")[0, 16]}.svg"
@@ -268,9 +290,11 @@ module VivlioStarter
 
         # --- 図の画像を切り抜く（段落に単独で置いた画像） ---
 
-        # `crop` か `trim=on` のある画像を、切り抜いた画像の参照へ置き換える。
+        # `crop`・`trim=on`・`flip` のある画像を、切り抜いた（反転した）画像の参照へ置き換える。
         # SVG は viewBox を書き換えた写し、ラスターは ShowcaseTransformer#crop_assets の合成画像。
         # `crop` と `trim=on` を併記したら `crop` を使う（警告は前処理の検証が原稿の行番号で出す）。
+        # 反転（改善案 #163）を CSS の transform でなく画像で行うのは、Kindle（KFX）が transform を
+        # 解さないため（回転した表と同じ・kindle-rotate-table-image-spec.md）。
         # @return [Hash, nil] { svg:, source: }（SVG）／{ svg:, raster: }（ラスター）。
         #   切り抜かない・切り抜けないなら nil（元の画像のまま組む）
         def framed_image(image_line, chapter_slug:, source_filename:, tools: default_tools)
@@ -279,12 +303,14 @@ module VivlioStarter
 
           crop_value = image.attributes['crop']
           trim = image.attributes['trim'] == 'on'
-          return nil unless crop_value || trim
-          return framed_svg(image, chapter_slug:, source_filename:, tools:) if svg?(image.path)
+          flip = flip_of(image)
+          return nil unless crop_value || trim || flip
+          return framed_svg(image, chapter_slug:, source_filename:, tools:, flip:) if svg?(image.path)
           # ラスターの crop は値をそのまま crop_assets へ渡す。trim=on は先に測り、
           # 詰める余白が無ければ元の画像のまま組む（crop_assets 側でも同じ値を測り直すが、
           # 結果はキャッシュから読むだけで描き直さない）。
-          return nil if crop_value.nil? && !trimmable_raster?(image, source_filename, tools:)
+          # 反転するなら、詰める余白が無くても作る（反転は crop_assets が焼く）。
+          return nil if crop_value.nil? && flip.nil? && !trimmable_raster?(image, source_filename, tools:)
 
           svg, raster = ShowcaseTransformer.crop_assets(image_line, chapter_slug:, source_filename:)
           svg && { svg:, raster: }
@@ -295,7 +321,7 @@ module VivlioStarter
           !source.nil? && !measured_trim(source, image, source_filename, tools:).nil?
         end
 
-        def framed_svg(image, chapter_slug:, source_filename:, tools:)
+        def framed_svg(image, chapter_slug:, source_filename:, tools:, flip: nil)
           source = ShowcaseTransformer.resolve_image_file(image.path, source_filename)
           return nil unless source
 
@@ -303,12 +329,14 @@ module VivlioStarter
             if (value = image.attributes['crop'])
               viewbox = viewbox_of(File.read(source, encoding: 'utf-8')[ROOT_TAG].to_s)
               viewbox && ShowcaseSvgBuilder.parse_crop(value, orig_w: viewbox[2], orig_h: viewbox[3])
-            else
+            elsif image.attributes['trim'] == 'on'
               measured_trim(source, image, source_filename, tools:)&.crop
             end
-          return nil unless crop&.any?(&:positive?)
+          # 反転するなら、切り抜かなくても（crop が無い・詰める余白が無い）写しを作る
+          crop ||= [0.0, 0.0, 0.0, 0.0] if flip
+          return nil unless crop && (flip || crop.any?(&:positive?))
 
-          svg, original = svg_window_asset(source, crop, chapter_slug:)
+          svg, original = svg_window_asset(source, crop, chapter_slug:, flip:)
           svg && { svg:, source: original }
         end
 
@@ -325,6 +353,12 @@ module VivlioStarter
         end
 
         def svg?(path) = File.extname(path).casecmp?('.svg')
+
+        # 画像の flip の値。読めない値（flip=left など）は反転しない（前処理の点検が知らせる）。
+        def flip_of(image)
+          value = image.attributes['flip']
+          ShowcaseSvgBuilder::FLIP_DIRECTIONS.include?(value) ? value : nil
+        end
 
         def warn_unmeasurable(source_filename, image_path)
           Common.log_warn(

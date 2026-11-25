@@ -650,7 +650,7 @@ module VivlioStarter
             { alt: Regexp.last_match(1), src: Regexp.last_match(2),
               align: extract_attr(attrs, /align=["']?(left|center|right)/),
               width: image_width(attrs),
-              framed: attrs&.match?(/(?<![\w-])(?:crop=|trim=on(?!\S))/), line:,
+              framed: attrs&.match?(/(?<![\w-])(?:crop=|trim=on(?!\S)|flip=)/), line:,
               classes: extract_classes(attrs) }
           end
 
@@ -679,7 +679,7 @@ module VivlioStarter
             "#{parts.join("\n")}\n"
           end
 
-          # crop・trim=on のある画像は、切り抜いた画像へ差し替える（image-trim-spec.md）。
+          # crop・trim=on・flip のある画像は、切り抜いた（反転した）画像へ差し替える（image-trim-spec.md・改善案 #163）。
           # - SVG: viewBox を書き換えた写し。data-vs-source は PDF の差し替えが書体を抱かせる入口
           #   （生成物の参照は asset_prefix を持たず、無いと図の文字が Type 3 になる）。
           # - ラスター: 切り抜いた SVG（PDF 用）とラスター（EPUB 用・data-vs-raster）。

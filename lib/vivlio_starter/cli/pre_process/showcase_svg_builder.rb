@@ -192,12 +192,42 @@ module VivlioStarter
         # 元画像を敷き、注釈をベクタで重ねた合成 SVG を組む。
         #
         # @param block [ShowcaseBlock] パース済みブロック
+        # --- 反転（flip=horizontal・flip=vertical・改善案 #163） ---
+
+        # 画像の属性 flip の値。左右（horizontal）と上下（vertical）の 2 つ。
+        FLIP_DIRECTIONS = %w[horizontal vertical].freeze
+
+        # crop は元の画像の向きで書く（画像ソフトで測った数をそのまま書けるように）。反転した後の
+        # 画像に当てる窓では、反転した向きの値を入れ替える。左右なら右と左、上下なら上と下。
+        # @param crop [Array<Float>] [上, 右, 下, 左]（パーミル）
+        # @param flip [String, nil] FLIP_DIRECTIONS のどれか。nil ならそのまま
+        def flipped_crop(crop, flip)
+          top, right, bottom, left = crop
+          case flip
+          when 'horizontal' then [top, left, bottom, right]
+          when 'vertical' then [bottom, right, top, left]
+          else crop
+          end
+        end
+
+        # 原点 (x, y)・大きさ (width, height) の範囲を、その中で反転する SVG の transform。
+        # 点 (px, py) は、左右なら (2x + width - px, py)、上下なら (px, 2y + height - py) へ移る。
+        # @return [String, nil] flip が無ければ nil
+        def flip_transform(flip, width:, height:, x: 0, y: 0)
+          case flip
+          when 'horizontal' then "matrix(-1 0 0 1 #{fmt((2 * x) + width)} 0)"
+          when 'vertical' then "matrix(1 0 0 -1 0 #{fmt((2 * y) + height)})"
+          end
+        end
+
         # @param orig_w [Integer] 元画像の実幅
         # @param orig_h [Integer] 元画像の実高さ
         # @param data_uri [String] 元画像の base64 data URI（<img> から参照する SVG は
         #   外部リソースを読めないため埋め込みが必須・§6.3）
+        # @param flip [String, nil] 元画像を反転して敷く向き。block.crop は flipped_crop で
+        #   反転後の向きに直したものを渡す（ShowcaseTransformer.crop_assets）
         # @return [String] SVG 文字列
-        def build(block, orig_w:, orig_h:, data_uri:, font_data: nil)
+        def build(block, orig_w:, orig_h:, data_uri:, font_data: nil, flip: nil)
           # --- Phase: crop を viewBox の切り出し窓へ換算（画像は無加工のまま） ---
           top, _right, _bottom, left = block.crop
           view_x = orig_w * left / 1000.0
@@ -208,7 +238,7 @@ module VivlioStarter
           u = view_w / 1000.0
 
           # --- Phase: 元画像を原寸で敷き、注釈を元画像ピクセル座標で描く（窓外は自動的に不可視） ---
-          parts = [image_element(orig_w, orig_h, data_uri)]
+          parts = [image_element(orig_w, orig_h, data_uri, transform: flip_transform(flip, width: orig_w, height: orig_h))]
           parts.concat(block.annotations.map { render_annotation(it, orig_w:, orig_h:, u:) })
 
           # ラベルの字面を SVG 内で自給する（font_data の説明は embedded_font_style を参照）。
@@ -397,8 +427,10 @@ module VivlioStarter
 
         # 元画像を原寸で敷く。xlink:href を使う理由は HeadingImageComposer#image_element
         # と同じ（EPUB を開く WebKit 系リーダー向け）。
-        def image_element(width, height, data_uri)
-          %(<image xlink:href="#{data_uri}" x="0" y="0" width="#{width}" height="#{height}"/>)
+        # transform は反転（flip_transform）。元画像の範囲の中で反転するので、窓の位置は変わらない。
+        def image_element(width, height, data_uri, transform: nil)
+          flip = transform ? %( transform="#{transform}") : ''
+          %(<image xlink:href="#{data_uri}" x="0" y="0" width="#{width}" height="#{height}"#{flip}/>)
         end
 
         # ルートに width/height（クロップ後実寸）を明示する——viewBox だけだと <img> で
