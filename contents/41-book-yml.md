@@ -12,9 +12,9 @@
 
 | 種別 | セクション | 説明 |
 | :--- | :--- | :--- |
-| 本ごとに決める | `book`<br>`project`<br>`theme`<br>`page` | 書籍ごとに異なる基本情報 |
-| 必要に応じて調整する | `typography`<br>`output`<br>`verify`<br>`legal` | 既定値で動くが、カスタマイズしたい場合に |
-| 機能ごとの設定 | `index_glossary`<br>`index`<br>`glossary`<br>`metrics`<br>`lint`<br>`spellcheck`<br>`pdf_read` | 各機能を使う場合のみ設定 |
+| 本ごとに決める | `book`・`project`<br>`theme`・`page` | 書籍ごとに異なる基本情報 |
+| 必要に応じて調整する | `typography`・`output`<br>`verify`・`legal` | 既定値のままでも動く |
+| 機能ごとの設定 | `index_glossary`・`index`<br>`glossary`・`metrics`<br>`lint`・`spellcheck`・`pdf_read` | 各機能を使う場合のみ設定 |
 
 本章の設定例のうち、`book` と `project` の値は記入例で、それ以外は既定値です。
 
@@ -35,7 +35,7 @@ book:
   contact: "contact@atelier-mirai.net"
   author: "早乙女 遙香"
   language: "ja"
-  isbn: ''               # 独自 ISBN 取得の場合のみ記入（Kindle は ASIN が自動割り当てされる）
+  isbn: ''               # 独自 ISBN 取得の場合のみ（Kindle は ASIN が自動で付く）
 
   cover: light           # 標準添付の SVG テンプレート（既定）。dark も選べる
                          # master … covers/ に置いた著者用意の画像を使う
@@ -119,7 +119,7 @@ page:
 
 #### `page_presets.yml` — 判型プリセットの中身
 
-`config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、使う判型の `*_custom`（A4 なら `a4_custom`）を編集し、`book.yml` の `page.use` でそれを選びます。`standard`・`airy`・`compact` は雛形の値のまま使い、手を入れるのは `*_custom` だけにしてください。
+`config/page_presets.yml` には、用紙サイズ・文字サイズ・行送り・字間・余白の組が、判型ごとに `standard`・`airy`・`compact`・`custom` の四つずつ書いてあります。値を変えるときは、`standard`・`airy`・`compact` には手を入れず、使う判型の `*_custom`（A4 なら `a4_custom`）を編集して、`book.yml` の `page.use` でそれを選びます。
 
 ```yaml:config/page_presets.yml
 a4_custom:
@@ -163,9 +163,7 @@ a4_custom:
 
 原稿中に書いた `@pagebreak:recto` / `@pagebreak:verso` は、**この設定より優先されます**。「本全体はどちらでもよいが、この章の扉だけは必ず右から」といった使い分けができます。
 
-:::{.memo}
 `chapter_pagebreak` は**PDF だけに適用されます**。EPUB・Kindle には右ページ・左ページの区別がなく、章は常に新しいページから始まります。
-:::
 
 #### `toc_depth` — 目次にどの深さまで載せるか
 
@@ -179,7 +177,7 @@ a4_custom:
 | `3` | 項（`###`）まで（既定） |
 :::
 
-付録は、`3` でも節までです。早見表のような付録は項が細かく、目次を埋めるだけになるためです。この設定が変えるのは PDF の目次ページだけです。PDF のしおり（アウトライン）や、EPUB・Kindle の目次は変わりません。
+付録は、`3` でも節までです。この設定が変えるのは PDF の目次ページだけで、PDF のしおり（アウトライン）や EPUB・Kindle の目次は変わりません。
 
 #### `heading_numbering` — 見出しに番号を振るか
 
@@ -303,9 +301,9 @@ verify:
 
 | セクション | 説明している章 |
 | :--- | :--- |
-| `index_glossary`<br>`index`<br>`glossary` | @chapref:ch-index-glossary |
+| `index_glossary`・`index`・`glossary` | @chapref:ch-index-glossary |
 | `metrics` | @chapref:ch-metrics |
-| `lint`<br>`spellcheck` | @chapref:ch-lint |
+| `lint`・`spellcheck` | @chapref:ch-lint |
 | `pdf_read` | @chapref:ch-pdf-read |
 
 ## config/catalog.yml — 章の構成 @catalog-yml
@@ -332,15 +330,11 @@ POSTFACE:
   - 99-postface
 ```
 
-`PREFACE`（前書き）・`CHAPTERS`（本文）・`APPENDICES`（付録）・`POSTFACE`（後書き）の下に、`contents/` の原稿を `- ` に続けて一行に一つずつ書きます。原稿は、拡張子の `.md` を省いたファイル名（`11-intro`）か、番号（`11`）で指定します。前書き・付録・後書きが不要な本では、`PREFACE:` などの下に何も書かず、空にします。
+`PREFACE`（前書き）・`CHAPTERS`（本文）・`APPENDICES`（付録）・`POSTFACE`（後書き）の下に、`contents/` の原稿を `- ` に続けて一行に一つずつ書きます。原稿は、拡張子の `.md` を省いたファイル名（`11-intro`）か、番号（`11`）で指定します。前書き・付録・後書きが不要な本では、`PREFACE:` などの下に何も書かず、空にします。番号の範囲（`- 11-13`）や、複数の番号を一行にまとめる書き方（`- 11, 13` や `CHAPTERS: 11, 12`）は使えません。
 
 前書き・本文・付録・後書きのそれぞれの中は、ここに書いた順に組みます。章の並びを変えるときは、行を移します。原稿の番号は付け替えなくても構いません。
 
-本文を部に分けるときは、`CHAPTERS` の下に、末尾に半角の `:` を付けた部の名前を書き、その部の原稿をさらに字下げして並べます。部ごとに部扉が入ります。
-
-番号の範囲（`- 11-13`）や、複数の番号を一行にまとめる書き方（`- 11, 13` や `CHAPTERS: 11, 12`）は使えません。
-
-一冊を上下巻などの巻に分ける書き方は、@chapref:ch-volumes で説明します。
+本文を部に分けるときは、`CHAPTERS` の下に、末尾に半角の `:` を付けた部の名前を書き、その部の原稿をさらに字下げして並べます。部ごとに部扉が入ります。一冊を上下巻などの巻に分ける書き方は、@chapref:ch-volumes で説明します。
 
 ### 書きかけの章を外す
 
@@ -364,7 +358,7 @@ vs config:book index.target_terms   # キーの説明と今の値
 vs config:book 目次                 # 言葉で探す
 ```
 
-キーを指定すると、`vs new` が作る `book.yml` と同じ説明に、今の値を添えて表示します。書いていないキーは既定値を示します。
+キーを指定すると、`vs new` が作る `book.yml` と同じ説明に、今の値を添えて表示します。書いていないキーは既定値を示します。廃止されたキーを指定すると、代わりの書き方を案内します。
 
 :::{.output}
 ```text
@@ -382,7 +376,5 @@ index.target_terms
 今の値: 書いていません（既定値: light）
 ```
 :::
-
-廃止されたキーを指定すると、代わりの書き方を案内します。
 
 ほかの設定ファイルも同じように調べられます。`vs config:catalog` は `catalog.yml` の書き方とこの本の章立てを、`vs config:talk` は `talk.yml` の書き方とこの本の話者を表示します。`vs config` は、これらのコマンドの一覧を表示します。
