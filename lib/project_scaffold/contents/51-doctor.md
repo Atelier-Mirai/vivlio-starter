@@ -43,15 +43,7 @@ Node.js が Vivliostyle の求める版より古いと、ツールの一覧の�
 - **必須設定ファイル**（`config/book.yml` / `config/catalog.yml` / `config/page_presets.yml`）が存在し、YAML として正しく読み込めるかを確認します。
 - **任意設定ファイル**（textlint の設定や辞書ディレクトリなど）の有無を確認します。
 
-必要なファイルが揃っていれば、次のように表示されます。
-
-:::{.output}
-```text
-✅ config/ 設定ファイル: OK
-```
-:::
-
-`--fix` を付けると、不足している設定ファイルや辞書を `vs new` の雛形から補います。
+必要なファイルが揃っていれば、`✅ config/ 設定ファイル: OK` と表示されます。`--fix` を付けると、不足している設定ファイルや辞書を `vs new` の雛形から補います。
 
 必須設定ファイルが破損して読み込めない場合は、雛形から作り直します。`book.yml` は**書名や著者名など、取り出せる値をできるだけ残し**、`catalog.yml` は `contents/` の原稿から章の並びを組み立てます。元のファイルは `config/book.yml.bak.<日時>` のような名前で残るので、作り直した内容と見比べられます。
 
@@ -63,22 +55,14 @@ Node.js が Vivliostyle の求める版より古いと、ツールの一覧の�
 
 ### 診断のみ実行
 
-```bash
-vs doctor
-```
-
-ツールの状態を一覧で表示します。このコマンドだけではインストールや設定の変更は行いません。
+`vs doctor` は、ツールの状態を一覧で表示します。このコマンドだけではインストールや設定の変更は行いません。
 
 :::{.output}
 ```text
 🔎 環境診断を開始します…
 ✅ config/ 設定ファイル: OK
 ✅ Xcode Command Line Tools: OK
-✅ node: OK
-✅ textlint: OK
-✅ vivliostyle: OK
-✅ vfm: OK
-✅ qpdf: OK
+…
 🔴 pdfinfo: 見つかりません
 🔴 pdftoppm: 見つかりません
 🔴 pdftotext: 見つかりません
@@ -92,11 +76,7 @@ vs doctor
 
 ### 自動修正（--fix）
 
-```bash
-vs doctor --fix
-```
-
-診断で見つかった問題を修正します。不足しているツールをインストールし、不足や破損のある設定ファイルを雛形から復元します。Homebrew 自体や Xcode Command Line Tools がインストールされていない場合は、その導入前に確認を求められます。
+`vs doctor --fix` は、診断で見つかった問題を修正します。不足しているツールをインストールし、不足や破損のある設定ファイルを雛形から復元します。Homebrew 自体や Xcode Command Line Tools がインストールされていない場合は、その導入前に確認を求められます。
 
 :::{.output}
 ```text
