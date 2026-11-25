@@ -27,7 +27,7 @@ book:
 |:---:|:---|:---|
 | 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した画像 |
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
-| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート（`light`・`dark` のみ） |
+| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート（`light`・`dark`） |
 
 1 の画像は、PNG のほかに JPEG（`.jpg`・`.jpeg`）と WebP（`.webp`）も使えます。裏表紙は `backcover_<テーマ名>` の名前で、同じ順に探します。
 

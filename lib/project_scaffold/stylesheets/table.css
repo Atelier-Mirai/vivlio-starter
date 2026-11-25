@@ -159,8 +159,12 @@ body.vs-kindle thead tr {
   background: #bbb;
 }
 
+/* 4 字までの見出し（「優先順位」）は折らない。base.css が全要素を border-box にしているが、
+   新しい Chrome（Vivliostyle CLI 11.5 以降）は表のセルの最小の幅に余白と線まで含めて数えるので、
+   4em が字の幅に足りず「優先／順位」と折れた。字の幅で 4em を取るよう content-box に戻す（改善案 #164） */
 th {
   background: #bbb;
+  box-sizing: content-box;
   min-inline-size: 4em;
 }
 
