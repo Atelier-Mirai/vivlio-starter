@@ -1329,6 +1329,9 @@ module VivlioStarter
       # 縦書きの本は、索引と用語集のページを作らない（novel-vertical-spec.md §2.2）。
       # 設定に true とあっても偽を返し、Guards::TraitCombinationCheck が 🟡 で示す
       def index_enabled?     = CONFIG&.index_glossary&.enabled == true && !traits.vertical?
+      # 小説投稿サイトの書き方を読むか（notation.web_novel。novel-vertical-spec.md §5.4）。
+      # 前処理の段の条件（BuildPlan）と、同じ読み替えを通して原稿を見る vs lint が読む
+      def web_novel?         = truthy?(CONFIG&.dig(:notation, :web_novel))
       # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
       def kindle_embed?      = CONFIG&.output&.kindle&.embed == true
       # 本文にフチなし（塗り足しまで届く）要素があるか。true の本は閲覧用 PDF から

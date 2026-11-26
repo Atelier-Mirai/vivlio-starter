@@ -21,7 +21,7 @@ module VivlioStarter
     #
     # @!attribute index                 索引・用語集（index_glossary.enabled）
     # @!attribute techbook_post_process Type 3 対策（output.pdf.techbook）
-    # @!attribute web_novel             小説投稿サイトの記法（notation.web_novel）。読む段は S8 で足す
+    # @!attribute web_novel             小説投稿サイトの記法（notation.web_novel）。前処理の transform_web_novel_marks!
     # @!attribute print_full_bleed      本文にフチなしの要素がある（output.print_pdf.full_bleed）
     # @!attribute pdf_cover             閲覧用 PDF に表紙を綴じる（output.pdf.combined）
     # @!attribute epub_cover            EPUB に表紙を埋める（output.epub.embed）
@@ -47,7 +47,7 @@ module VivlioStarter
             features: BuildFeatures.new(
               index: Common.index_enabled?,
               techbook_post_process: config&.dig(:output, :pdf, :techbook) == true,
-              web_novel: Common.truthy?(config&.dig(:notation, :web_novel)),
+              web_novel: Common.web_novel?,
               print_full_bleed: Common.print_pdf_full_bleed?,
               pdf_cover: Common.pdf_combined?,
               epub_cover: Common.epub_embed?,

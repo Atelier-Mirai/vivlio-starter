@@ -49,6 +49,7 @@ require_relative '../index/term_pattern'
 require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
+require_relative 'novel_checker'
 
 module VivlioStarter
   module CLI
@@ -242,8 +243,10 @@ module VivlioStarter
         # @return [Array<Finding>]
         # @param index_terms [Array<String>] 索引・用語集の辞書の語（index-term-spacing に使う）
         # @param ten_max [Integer, :off, nil] .textlintrc.yml の max-ten の max（読点の上限）
+        # @param web_novel [Boolean] notation.web_novel（小説の規則が投稿サイトの記法を読み替えた字で見る）
+        # @param vertical [Boolean] 縦書きの本か（小説の規則の半角の数字）
         def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil, index_terms: [],
-                  ten_max: nil)
+                  ten_max: nil, web_novel: false, vertical: false)
           text  = File.read(path, encoding: 'UTF-8')
           rules = Array(disabled_rules).map(&:to_s)
 
@@ -276,6 +279,12 @@ module VivlioStarter
           end
           findings.concat(affix_spacing_findings(text, allowlist)) unless rules.include?(AFFIX_SPACING_RULE)
           findings.concat(hiragana_spacing_findings(text, allowlist)) unless rules.include?(HIRAGANA_SPACING_RULE)
+          # 小説の規則（規則の組 novel だけ）は、読者が見る字で見るので、記法を読み替えた行を渡す。
+          # ほかの組は全部を切っているので、読み替えの手間を掛けない
+          unless (NovelChecker::RULES - rules).empty?
+            guarded = prose_lines(NotationGuard.strip_notation(text, web_novel:))
+            findings.concat(NovelChecker.findings(text, guarded, disabled_rules: rules, web_novel:, vertical:))
+          end
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")

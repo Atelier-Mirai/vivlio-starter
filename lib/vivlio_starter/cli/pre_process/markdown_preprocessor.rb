@@ -35,6 +35,7 @@ require_relative 'image_path_normalizer'
 require_relative 'image_trimmer'
 require_relative 'markdown_transformer'
 require_relative 'inline_span_transformer'
+require_relative 'web_novel_mark_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
 require_relative 'math_letter_wrapper'
@@ -135,6 +136,8 @@ module VivlioStarter
           [:transform_showcases!,             :transform, nil],
           [:delimit_bare_urls!,               :transform, nil],
           [:transform_mermaid!,               :transform, nil],
+          # 投稿サイトの書き方（ルビ・傍点）。傍点を [文字]{.sesame} にするので、行内の属性の段の前
+          [:transform_web_novel_marks!,       :transform, ->(plan) { plan.features.web_novel }],
           [:transform_inline_spans!,          :transform, nil],
           [:transform_talk!,                  :transform, nil],
           [:process_code_includes!,           :transform, nil],
@@ -421,6 +424,13 @@ module VivlioStarter
             source_filename: context.filename
           )
           Common.log_success('mermaid 図を生成しました') if context.content != before
+        end
+
+        # 小説投稿サイトの書き方を vs の記法へ読み替える（novel-vertical-spec.md §5.4）。
+        # 傍点を `[文字]{.sesame}` にするので、行内の属性を span にする段より前に置く。ルビの
+        # `{漢字|かんじ}` は VFM が読む。行頭の全角空白は、会話（transform_talk!）の中身も含めて落とす
+        def transform_web_novel_marks!
+          context.content = WebNovelMarkTransformer.transform(context.content)
         end
 
         # 行内の属性 `[文字]{.class}` を span にする（v2-architecture-spec.md §7.1 の D 型）。

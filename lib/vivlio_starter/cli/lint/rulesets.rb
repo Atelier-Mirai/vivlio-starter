@@ -13,6 +13,8 @@
 # さらに外す指定として今と同じに働く（二つを合わせたものが切る規則になる）。
 # ================================================================
 
+require_relative 'novel_checker'
+
 module VivlioStarter
   module CLI
     module Lint
@@ -34,13 +36,15 @@ module VivlioStarter
           ja-no-weak-phrase
         ].freeze
 
+        # 小説の原稿の書き方の決まり（novel-vertical-spec.md §6.2）。小説の組のほかは切る
+        NOVEL_RULES = NovelChecker::RULES
+
         TABLE = {
-          # 技術書向け。今の一組（何も切らない）
-          technical: [].freeze,
+          # 技術書向け。今の一組（小説の規則のほかは何も切らない）
+          technical: NOVEL_RULES,
           # 誤字と表記の揺れだけ（絵本の既定）
-          minimal: STYLE_RULES,
-          # 小説向け。小説の 4 規則（v2-architecture-spec.md §6）は S8 で足す。
-          # それまでは minimal と同じ中身で置く（§8 の S5 の決め 4）
+          minimal: (STYLE_RULES + NOVEL_RULES).freeze,
+          # 小説向け。minimal に小説の規則を足したもの
           novel: STYLE_RULES
         }.freeze
 

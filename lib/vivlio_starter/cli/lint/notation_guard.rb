@@ -40,6 +40,7 @@ require_relative '../pre_process/markdown_transformer'
 require_relative '../pre_process/math_transformer'
 require_relative '../pre_process/cross_reference_processor'
 require_relative '../pre_process/qr_transformer'
+require_relative '../pre_process/web_novel_mark_transformer'
 
 module VivlioStarter
   module CLI
@@ -241,6 +242,14 @@ module VivlioStarter
         FURIGANA_PLACEHOLDER = 'VSRUBY'
         LABEL_PLACEHOLDER    = 'VSLABL'
 
+        # 投稿サイトの記法（ルビ・傍点・打ち消し）。修正パスで記法ごと守る
+        WEB_NOVEL_MARKS = Regexp.union(
+          PreProcessCommands::WebNovelMarkTransformer::SESAME,
+          PreProcessCommands::WebNovelMarkTransformer::ESCAPED_OPEN,
+          PreProcessCommands::WebNovelMarkTransformer::BAR_RUBY,
+          PreProcessCommands::WebNovelMarkTransformer::BARE_RUBY
+        )
+
         # QR コードの記法（@qr:URL{…}）の退避に使う目印
         QR_PLACEHOLDER = 'VSQRCD'
 
@@ -258,9 +267,12 @@ module VivlioStarter
         # `{たくさん|たくさん}` になる（実測）。解析パスも親文字を指摘しないので
         # （FURIGANA_STAND_IN）、表示と修正は食い違わない。
         #
+        # **投稿サイトの記法も記法ごと守る**（notation.web_novel の本）。解析パスは読み替えて
+        # 親文字を見せないので、修正だけが `|沢山《たくさん》` の内側へ当たらないようにする。
+        #
         # spans は退避した順に積む（restore_masked が逆順に剥がす前提）。
         # @return [Array(String, Hash)] 退避後テキストと { 目印 => 原文 }
-        def mask_for_fix(text)
+        def mask_for_fix(text, web_novel: Common.web_novel?)
           masked, math = mask_math(text)
           protected_text, code = Masking.protect_code(masked)
           inline = {}
@@ -275,6 +287,7 @@ module VivlioStarter
                      .gsub(VALUE_ATTRIBUTE) { stash.call(ATTRIBUTE_PLACEHOLDER) }
                      .gsub(FURIGANA)        { stash.call(FURIGANA_PLACEHOLDER) }
                      .gsub(LABEL_REFERENCE) { stash.call(LABEL_PLACEHOLDER) }
+          replaced = replaced.gsub(WEB_NOVEL_MARKS) { stash.call(FURIGANA_PLACEHOLDER) } if web_novel
           guarded, machine = mask_machine_blocks(Masking.restore_code(replaced, code), text)
           [guarded, math.merge(inline).merge(machine)]
         end
@@ -322,7 +335,12 @@ module VivlioStarter
           spans.keys.reduce(masked) { |acc, key| acc.sub(key, '') }
         end
 
-        def strip_notation(text)
+        # 投稿サイトの記法を読む本（notation.web_novel）では、ビルドと同じ読み替えを先に通す
+        # （novel-vertical-spec.md §5.4「vs lint も、置き換えた後の文で見る」）。`|漢字《かんじ》` は
+        # ふりがなになって親文字を見せず（G3）、`《《文字》》` は傍点の属性が外れて字だけが残る。
+        # 行頭の全角空白は落とさない（小説の規則 novel-paragraph-indent が見る）
+        def strip_notation(text, web_novel: Common.web_novel?)
+          text = PreProcessCommands::WebNovelMarkTransformer.transform(text, drop_indent: false) if web_novel
           text = blank_math(text)
           prose   = prose_lines(text)
           machine = machine_block_lines(text, prose)

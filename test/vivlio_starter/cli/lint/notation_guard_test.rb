@@ -459,6 +459,26 @@ module VivlioStarter
 
           refute_includes stripped, '(4/3)'
         end
+
+        # 投稿サイトの記法を読む本（notation.web_novel）は、ビルドと同じ読み替えを通して見る
+        # （novel-vertical-spec.md §5.4）。ルビの親文字は見せず、傍点は字だけ残し、行頭の全角空白は残す
+        def test_should_read_web_novel_marks_only_for_web_novel_books
+          src = "　|沢山《たくさん》と《《傍点》》と|《題名》。\n"
+
+          assert_equal "　語と[傍点]と《題名》。\n", NotationGuard.strip_notation(src, web_novel: true)
+          assert_includes NotationGuard.strip_notation(src, web_novel: false), '|沢山《たくさん》'
+        end
+
+        # 修正パスも記法ごと守る。解析パスは親文字を見せないので、修正だけが内側へ当たらないように
+        def test_should_mask_web_novel_marks_for_the_fix_path
+          src = "|沢山《たくさん》と沢山《たくさん》と《《傍点》》と|《題名》。\n"
+          masked, spans = NotationGuard.mask_for_fix(src, web_novel: true)
+
+          refute_includes masked, '沢山'
+          refute_includes masked, '《'
+          assert_equal src, NotationGuard.restore_masked(masked, spans), '往復で原文に戻る'
+          assert_includes NotationGuard.mask_for_fix(src, web_novel: false).first, '沢山《たくさん》'
+        end
       end
     end
   end

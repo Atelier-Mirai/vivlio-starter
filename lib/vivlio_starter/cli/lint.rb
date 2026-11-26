@@ -235,7 +235,9 @@ module VivlioStarter
                                          parenthetical_max: parenthetical_length_max,
                                          sentence_max: sentence_length_max,
                                          index_terms: index_terms_for(path),
-                                         ten_max: ten_max)
+                                         ten_max: ten_max,
+                                         web_novel: Common.web_novel?,
+                                         vertical: Common.traits.vertical?)
         end
 
         # その原稿で照らし合わせる索引・用語集の辞書の語（index-term-spacing・改善案 #102）。
