@@ -4,7 +4,7 @@
 > ステータス: **仕様確定・未実装**（1.1.0 に入れる）
 > 対象: 本文や表のセルの一部の字に色を付ける記法、コードのコメントの `[!]` の色、蛍光ペン（`PLANNED.md`「文字の色を変えるインライン記法」を仕様にしたもの）
 > 決定事項（2026-11-26 ユーザー決定）:
-> - **文字の色は 2 通り。** `[文字]{.red}` は**この本のテーマ色**（テーマ色の 12 色と `accent`。`red` は `#dc2626`）。`[文字]{color=red}` は **CSS の色そのもの**（`red` は `#ff0000`。`#3a9d5d` のような値も書ける）（§1.1）
+> - **文字の色は 2 通り。** `[文字]{.red}` は**この本のテーマ色**（テーマ色の 12 色と、`book.yml` の `theme.color` に従う `theme`。`red` は `#dc2626`）。`[文字]{color=red}` は **CSS の色そのもの**（`red` は `#ff0000`。`#3a9d5d` のような値も書ける）（§1.1）
 > - **コメントの `[!]` は既定の赤のまま、`[!]{.blue}`・`[!]{color=#…}` で色を選べる**（§1.2）
 > - **蛍光ペンは `==文字==`。** 下半分を塗る。既定は黄色。`==文字=={.green}` はテーマ色を淡くした色、塗る色の値は `{background=#fff3a0}`。`[文字]{…}` と `==文字=={…}` は同じ項目を受け、`color=` は字の色、`background=` は蛍光ペンの色（どちらの形でも下半分を塗る）。淡さの割合は実装の後に紙面を見て決める（§1.3）
 > - **v2 の `InlineSpanTransformer`（行内の属性 `[文字]{.class}`）を同じパス・同じ形で master へ写して作る。** 2.0 の傍点 `{.sesame}`・縦中横 `{.tcy}` と同じ仕組みに載る。v2 のセッションと整合を確認済み（§8）
@@ -31,11 +31,12 @@
 
 | 書き方 | 意味 | 例 |
 |---|---|---|
-| `[文字]{.名前}` | この本のテーマ色 | `[■]{.red}` は `#dc2626`・`[注意]{.accent}` は本のテーマ色 |
+| `[文字]{.名前}` | この本のテーマ色 | `[■]{.red}` は `#dc2626`・`[注意]{.theme}` は本のテーマ色 |
 | `[文字]{color=値}` | CSS の色そのもの | `[■]{color=red}` は `#ff0000`・`[緑]{color=#3a9d5d}` |
 
-- **名前**（クラス）は、テーマ色の 12 色 `yellow` `orange` `red` `magenta` `purple` `indigo` `navy` `blue` `cyan` `teal` `green` `lime` と、本のテーマ色 `accent`（`book.yml` の `theme.color`）の 13 個。値は `stylesheets/theme.css` の `--accent-*`・`--theme-accent` から取る。`book.yml` の `theme:` と同じ語なので、一覧を一つ覚えれば済む。
-- **値**（`color=`）は、CSS の色の名前（`red`・`rebeccapurple` など 148 個）と、`#rgb`・`#rrggbb`。大文字・小文字は問わない。`rgb()`・`hsl()`・`#rrggbbaa` は、まず受けない（§2.3。受ける範囲を広げるのは後からできるが、狭めると原稿の意味が変わる）。
+- **名前**（クラス）は、テーマ色の 12 色 `yellow` `orange` `red` `magenta` `purple` `indigo` `navy` `blue` `cyan` `teal` `green` `lime` と、本のテーマ色 `theme`（`book.yml` の `theme.color`。`green` の本なら緑、`red` に変えれば赤）の 13 個。値は `stylesheets/theme.css` の `--accent-*`・`--theme-accent` から取る。`book.yml` の `theme:` と同じ語なので、一覧を一つ覚えれば済む。
+- **値**（`color=`）は、CSS の色の名前（`red`・`rebeccapurple` など 148 個）と、`#rgb`・`#rrggbb`、それに本のテーマ色を表す `theme`。大文字・小文字は問わない。`rgb()`・`hsl()`・`#rrggbbaa` は、まず受けない（§2.3。受ける範囲を広げるのは後からできるが、狭めると原稿の意味が変わる）。
+- **`color=theme`** は `{.theme}` と同じく、本のテーマ色になる（`theme` は CSS の色の名前に無いので、取り違えない）。`[字]{color=theme}` を後から `[字]{background=theme}` に書き換えれば、テーマ色の蛍光ペンになる（§1.3）。
 - 名前と値を両方書いたとき（`{.red color=#000}`）は、値が勝つ（style 属性のため）。書く理由が無いので、文書では触れない。
 
 ### 1.2 コードのコメントの `[!]`
@@ -63,6 +64,7 @@ puts total   # [!]{color=#3a9d5d} 値で指定（太字）
 - `{background=値}` は、塗る色を CSS の色そのもので指定する（値の書き方は §1.1 の `color=` と同じ）。淡くはしない。著者が書いた色で塗る。
 - `[文字]{background=値}` も同じ蛍光ペンになる（背の全体を塗る別の見た目は作らない）。字の色を付けていた `[文字]{color=red}` を、後から `[文字]{background=red}` に書き換えて蛍光ペンにできる。
 - `color=` と `background=` は、どちらの形にも並べて書ける（`==注意=={color=red}`・`[注意]{color=red background=#fff3a0}`）。`color=` が字の色、`background=` が蛍光ペンの色。
+- `background=theme` は `{.theme}` の蛍光ペンと同じく、本のテーマ色を淡くした色で塗る（ほかの `background=` の値は淡くしない。テーマ色をそのまま塗ると字が読めないため）。
 - クラス `{.名前}` だけは形で意味が変わる。`[文字]{.green}` は字の色、`==文字=={.green}` は蛍光ペンの色（淡くした色）。テーマ色の字に蛍光ペンを重ねるときは `==[注意]{.red}==`。
 - **淡さの割合**（既定の黄色の値と、テーマ色を白と混ぜる割合）は、実装の後に 2〜3 通り組んで、ユーザーが紙面を見て決める（§9）。
 
@@ -131,7 +133,7 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 `prism_lines.rb` の `ALERT_COMMENT_PATTERN` を `[!]` の後ろの `{…}` まで読むように広げる。
 
 - `{…}` の文法は §2.1 と同じ（`.クラス名` は §1.1 の 13 個だけ、`color=値`）。
-- 色は Ruby の側で値に直し、コメントの span に `style="color: …"` で書く（`codered` のクラスは太字のために残す）。名前は `ThemeColor::PALETTE`、`accent` は `book.yml` の `theme.color`、`color=` は書いた値。値で書くので Kindle にもそのまま届く。
+- 色は Ruby の側で値に直し、コメントの span に `style="color: …"` で書く（`codered` のクラスは太字のために残す）。名前は `ThemeColor::PALETTE`、`theme` は `book.yml` の `theme.color`、`color=` は書いた値。値で書くので Kindle にもそのまま届く。
 - 読めない名前・値は、色を付けずに既定の赤にし、🟡 で示す（前処理の検査で、コードブロックの中の `[!]{…}` を見る）。
 - 記法の説明（`language-markdown` の `<pre>` の中）は今までどおり対象外。
 
@@ -142,6 +144,8 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 | `[字]{.red}` | `<span class="red">字</span>` |
 | `[字]{.red .small}` | `<span class="red small">字</span>` |
 | `[字]{color=#3A9D5D}` | `<span class="vs-color" style="color: #3a9d5d">字</span>` |
+| `[字]{color=theme}` | `<span class="vs-text-theme">字</span>`（`{.theme}` と同じ色） |
+| `[字]{background=theme}` | `<mark class="theme">字</mark>`（`==字=={.theme}` と同じ） |
 | `[字]{.small color=red}` | `<span class="small vs-color" style="color: red">字</span>` |
 | `==字==` | `<mark>字</mark>` |
 | `==字=={.green}` | `<mark class="green">字</mark>` |
@@ -162,14 +166,14 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 ```css
 .yellow  { color: var(--accent-yellow); }
 /* … 12 色 … */
-.accent  { color: var(--theme-accent); }
+.theme, .vs-text-theme  { color: var(--theme-accent); }
 
 /* 中のコード・太字に色を受け継がせる（コードは code.css で、太字はテーマ色で、それぞれ色を持つ） */
-:is(.vs-color, .yellow, …, .accent) :is(code, strong) { color: inherit; }
+:is(.vs-color, .vs-text-theme, .yellow, …, .theme) :is(code, strong) { color: inherit; }
 ```
 
 - 13 個のクラスは `mark` には当てない（`mark` では淡い地の色を決める。§4.2）。`:not(mark)` を付けるか、`mark:is(…)` で字の色を戻す。
-- `.accent` は `--theme-accent`（`book.yml` の `theme.color` で決まる）を読む。
+- `.theme` は `--theme-accent`（`book.yml` の `theme.color` で決まる）を読む。`theme.color` を変えて組み直せば、色も変わる。
 
 ### 4.2 蛍光ペン
 
@@ -181,7 +185,7 @@ mark {
   box-decoration-break: clone;
 }
 mark.green { --vs-mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }  /* 割合は §9 */
-/* … 12 色と accent … */
+/* … 12 色と theme … */
 ```
 
 - 塗る位置の割合は素の `%` で書く。`calc()` と `var()` を `background` の宣言で混ぜない（Vivliostyle が捨てる。`vivliostyle-css-pitfalls-notes.md`）。`linear-gradient` の色の位置の `var()` は効くかを実装で確かめ、効かなければ色ごとに宣言を書き分ける。
@@ -206,7 +210,7 @@ KFX は `var()`・`color-mix()`・`linear-gradient()` を描かない（`kindle-
 | 記法 | Kindle での扱い |
 |---|---|
 | `[字]{.red}` など 12 色 | `body.vs-kindle .red { color: #dc2626; }` のように値で書いた規則を足す。12 色の値は `ThemeColor::PALETTE` で決まっているので、`book_settings_css.rb` で生成する |
-| `[字]{.accent}` | `kindle_accent_rules` に `body.vs-kindle .accent { color: <テーマ色>; }` を足す |
+| `[字]{.theme}`・`{color=theme}` | `kindle_accent_rules` に `body.vs-kindle :is(.theme, .vs-text-theme) { color: <テーマ色>; }` を足す（`mark.theme` は下の蛍光ペンの規則が持つ） |
 | `[字]{color=…}` | style 属性の値がそのまま届く。何もしない |
 | `==字==` | 背の全体を塗る（下半分の塗りは描けない）。`body.vs-kindle mark { background: <既定の黄色>; }` |
 | `==字=={.green}` | テーマ色を白と混ぜた値（`ThemeColor.mix_with_white`）で、色ごとの規則を足す |
@@ -239,6 +243,7 @@ v2 のセッション（vivlio-starter-v2-dd）に相談し、整合を確認し
 - 一緒に写すもの: `ContainerClassCheck#inline_warnings`・`IndexMarkup::INLINE_ATTRIBUTE_AHEAD`（§6 で広げた形）・前処理の段の位置。
 - CSS は master の `chapter-common.css` に書き、取り込みのときに v2 の `parts/inline.css` へ手で写す（`v2-migration-plan.md` §6.2 の表の扱い）。
 - §5.2 の Kindle 用の規則は、v2 では外す（LiteralResolver が解く）。
+- 本のテーマ色のクラスは `.theme`（v2 のセッションとの相談では `.accent` と呼んでいた。11/26 にユーザーの提案で `theme` に改めた）。v2 では `--book-color-accent` を読む。novel はこれを `#222` にしているので、novel の `{.theme}` はほぼ黒になる（色を抑える novel の意図どおり）。`{color=theme}` の目印のクラス `vs-text-theme` も同じ変数を読む。
 - 出し方（`style="color: …"`）は、v2 の AuthorPriority（style 属性の同じプロパティにも `!important` を付ける・11/15 ユーザー決定）と合う。
 
 ### 8.2 v2 でだけ働くこと
@@ -285,13 +290,13 @@ v2 のセッションが直した（2026-11-26・`8ef04aef`）。選ばれたテ
 1. 変換: §3 の表の全部。エスケープ・大文字の値・クラスと `color=` の並び。
 2. 読まないもの: コード・数式・画像・インライン脚注・`\[`・行末の段落のクラス・`a == b`・`=` だけの行・記法の説明のフェンスの中。
 3. 組み合わせ: `[[用語]]{.red}`（索引に載り、赤）・`[緑]{color=#3a9d5d}`（索引に載らない）・表のセル・会話文と `:::{.memo}` の中。
-4. `[!]`: 既定・`{.blue}`・`{.accent}`・`{color=…}`・読めない値（既定の赤と 🟡）・`language-markdown` の中は対象外。
+4. `[!]`: 既定・`{.blue}`・`{.theme}`・`{color=theme}`・`{color=…}`・読めない値（既定の赤と 🟡）・`language-markdown` の中は対象外。
 5. 検査: §2.3 の表の全部。
 6. Kindle: §5.2 の規則が `book-settings.css` に出る・`{background=…}` の書き換え。
 
 **紙面**:
 
 - 本体の本で PDF・EPUB・Kindle の KPF を組む。epubcheck でエラー・警告とも 0。
-- Kindle Previewer で、12 色・`accent`・値の色・`mark`（既定・色・値）・`[!]` の色を見る。
+- Kindle Previewer で、12 色・`theme`・値の色・`mark`（既定・色・値）・`[!]` の色を見る。
 - `vs lint` の指摘を前の版と突き合わせる（本体・haruka_mirai）。
 - `rake test`・`rake test:standard`。
