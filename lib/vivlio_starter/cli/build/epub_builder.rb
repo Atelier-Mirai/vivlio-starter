@@ -2832,7 +2832,7 @@ end
             next unless html.include?('--spot-balloon-')
 
             doc = PostProcessCommands::HtmlParser.parse_html_document(html)
-            changed = doc.css('div.spot-right, div.spot-left').map do |box|
+            changed = doc.css('div.spot-right, div.spot-left, div.spot-center').map do |box|
               literalize_spot_balloon!(box, book_variables, accent, path)
             end.any?
             next unless changed

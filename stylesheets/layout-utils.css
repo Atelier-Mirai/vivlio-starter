@@ -477,11 +477,15 @@ figure.align-center {
      ![](images/characters/haruka.webp)
      :::
 
+   回り込む段落のない所（章の終わりの空きなど）には、.spot-center で中央に置く（改善案 #168）。
+   前後の段落は回り込まない。
+
    前処理（SpotTransformer）が囲みを <div> にし、width= を style へ移し、中の画像に
    trim=on・border=off を足す。枠と余白の指定は書かなくてよい。
    吹き出しの色は theme.css の --spot-balloon-border・--spot-balloon-bg（custom.css で変えられる） */
 .spot-right,
-.spot-left {
+.spot-left,
+.spot-center {
   inline-size: 28%;
   margin-block: 0.2lh 0.5lh;
   text-align: center;
@@ -498,10 +502,23 @@ figure.align-center {
   margin-inline-end: 1.2em;
 }
 
+/* 中央の絵は、空きを埋める使い方が多いので端の絵より大きく置く。吹き出しと絵を同じページに
+   保つ（端の絵は float なので初めから割れない）。前に端の絵があれば、その下から始める
+   （下の :is() の clear と同じ。Kindle 用の規則にも同じ clear を書くため、ここにも持たせる） */
+.spot-center {
+  clear: both;
+  inline-size: 40%;
+  margin-block: 0.5lh;
+  margin-inline: auto;
+  break-inside: avoid;
+}
+
 .spot-right figure,
 .spot-left figure,
+.spot-center figure,
 .spot-right p,
-.spot-left p {
+.spot-left p,
+.spot-center p {
   margin: 0;
   text-indent: 0;
 }
@@ -509,12 +526,14 @@ figure.align-center {
 /* chapter-common.css の figure:not(.align-center):not(.align-right) が付ける
    margin-inline-end: auto を打ち消す（あちらのほうが特異度が高い。.pictures と同じ） */
 .spot-right > figure:not(.align-center):not(.align-right),
-.spot-left > figure:not(.align-center):not(.align-right) {
+.spot-left > figure:not(.align-center):not(.align-right),
+.spot-center > figure:not(.align-center):not(.align-right) {
   margin-inline: 0;
 }
 
 .spot-right img,
-.spot-left img {
+.spot-left img,
+.spot-center img {
   inline-size: 100%;
   block-size: auto;
 }
@@ -530,7 +549,8 @@ figure.align-center {
 
 /* 吹き出し（角丸。しっぽは下の絵へ向ける） */
 .spot-right > p:first-child,
-.spot-left > p:first-child {
+.spot-left > p:first-child,
+.spot-center > p:first-child {
   position: relative;
   display: inline-block;
   margin-block-end: 2.5mm;
@@ -548,8 +568,10 @@ figure.align-center {
 
 .spot-right > p:first-child::before,
 .spot-left > p:first-child::before,
+.spot-center > p:first-child::before,
 .spot-right > p:first-child::after,
-.spot-left > p:first-child::after {
+.spot-left > p:first-child::after,
+.spot-center > p:first-child::after {
   content: "";
   position: absolute;
   inset-inline-start: 50%;
@@ -560,7 +582,8 @@ figure.align-center {
 
 /* しっぽの枠の色 */
 .spot-right > p:first-child::before,
-.spot-left > p:first-child::before {
+.spot-left > p:first-child::before,
+.spot-center > p:first-child::before {
   inset-block-end: -2.4mm;
   border-width: 2.4mm 1.8mm 0;
   border-block-start-color: var(--spot-balloon-border);
@@ -568,7 +591,8 @@ figure.align-center {
 
 /* しっぽの中を、吹き出しの地の色で塗る */
 .spot-right > p:first-child::after,
-.spot-left > p:first-child::after {
+.spot-left > p:first-child::after,
+.spot-center > p:first-child::after {
   inset-block-end: -1.75mm;
   border-width: 1.85mm 1.35mm 0;
   border-block-start-color: var(--spot-balloon-bg);
@@ -836,8 +860,21 @@ body.vs-kindle .spot-right {
 body.vs-kindle .spot-left {
   margin: 0 1em 0.5em 0;
 }
+/* KFX は margin-inline: auto を 0 に解く（絵が左へ寄る）ので、左右を別に書く。
+   回り込みを解く :is() の規則は KFX が丸ごと捨てるので、clear もここに書く（無いと、前の
+   端の絵の横の残りの幅の中央に寄った。Previewer 4 で実測） */
+body.vs-kindle .spot-center {
+  clear: both;
+  width: 40%;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  margin-left: auto;
+  margin-right: auto;
+  page-break-inside: avoid;
+}
 body.vs-kindle .spot-right > p:first-child,
-body.vs-kindle .spot-left > p:first-child {
+body.vs-kindle .spot-left > p:first-child,
+body.vs-kindle .spot-center > p:first-child {
   display: block;
   margin-bottom: 0.5em;
   padding: 0.3em 0.6em;
@@ -847,9 +884,16 @@ body.vs-kindle .spot-left > p:first-child {
 }
 body.vs-kindle .spot-right > p:first-child::before,
 body.vs-kindle .spot-left > p:first-child::before,
+body.vs-kindle .spot-center > p:first-child::before,
 body.vs-kindle .spot-right > p:first-child::after,
-body.vs-kindle .spot-left > p:first-child::after {
+body.vs-kindle .spot-left > p:first-child::after,
+body.vs-kindle .spot-center > p:first-child::after {
   content: none;
+}
+/* Kindle の吹き出しは箱の幅いっぱいの帯になる（display: block）。中央の絵の箱は端の絵より
+   広いので、字を帯の中央にそろえる */
+body.vs-kindle .spot-center > p:first-child {
+  text-align: center;
 }
 
 /* 横並びの間隔（.img-text 系・.sideimage-*・.image-group・.pictures に併記する）。

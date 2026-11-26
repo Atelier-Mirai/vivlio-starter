@@ -3,8 +3,8 @@
 # ================================================================
 # Test: spot_transformer_test.rb
 # ================================================================
-# 検証内容（改善案 #157）:
-#   - :::{.spot-right}・:::{.spot-left} を <div> へ書き換え、width= を style へ移す
+# 検証内容（改善案 #157・#168）:
+#   - :::{.spot-right}・:::{.spot-left}・:::{.spot-center} を <div> へ書き換え、width= を style へ移す
 #   - 中の画像に trim=on・border=off を足す（著者が書いた trim=・crop=・border= を優先）
 #   - 記法解説フェンスの中・閉じない囲み・ほかの囲みは書き換えない
 #   - 読めない属性を原稿の行番号で知らせる
@@ -47,6 +47,15 @@ class SpotTransformerTest < Minitest::Test
                     '<div class="spot-right" style="width: 35%">'
     assert_includes ST.transform(":::{.spot-right width=40mm}\n![a](a.webp)\n:::\n"), 'style="width: 40mm"'
     assert_includes ST.transform(":::{.spot-right width=120}\n![a](a.webp)\n:::\n"), 'style="width: 120px"'
+  end
+
+  # 中央に置く :::{.spot-center} も、端の二つと同じく <div> にし、幅と画像の既定を足す（改善案 #168）
+  def test_should_transform_spot_center_like_side_spots
+    result = ST.transform(":::{.spot-center width=50%}\n自分だけの\\\nゲームを作ろう！\n\n![二人](a.webp){flip=horizontal}\n:::\n")
+
+    assert_includes result, '<div class="spot-center" style="width: 50%">'
+    assert_includes result, '![二人](a.webp){flip=horizontal trim=on border=off}'
+    assert_includes result, "自分だけの\\\nゲームを作ろう！", '吹き出しの行末の \ はそのまま'
   end
 
   # 著者が書いた属性はそのまま使う（足すのは書いていないものだけ）
@@ -100,5 +109,9 @@ class SpotTransformerTest < Minitest::Test
     assert_includes out, '11-x.md:3 - 小さな挿絵の囲みの属性を読めません（width=abc）'
     assert_includes out, ':::{.spot-right width=35%}'
     refute_includes out, 'width=30%）'
+    assert_includes out, '版面の 28% で組みます'
+
+    out, = capture_io { ST.validate(":::{.spot-center width=abc}\n:::\n", '11-x.md') }
+    assert_includes out, '版面の 40% で組みます', '中央の絵の既定の幅を案内する'
   end
 end

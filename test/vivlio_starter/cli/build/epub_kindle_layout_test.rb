@@ -434,9 +434,26 @@ module VivlioStarter
         layout = File.read(File.expand_path('../../../../stylesheets/layout-utils.css', __dir__), encoding: 'utf-8')
         chapter = File.read(File.expand_path('../../../../stylesheets/chapter-common.css', __dir__), encoding: 'utf-8')
 
-        pseudo = %w[before after].flat_map { |pe| %w[right left].map { "body\\.vs-kindle \\.spot-#{it} > p:first-child::#{pe}" } }
+        pseudo = %w[before after].flat_map { |pe| %w[right left center].map { "body\.vs-kindle \.spot-#{it} > p:first-child::#{pe}" } }
         assert_match(/#{pseudo.join(',\s*')} \{\s*content: none;/, layout)
         assert_match(/body\.vs-kindle \.vs-adm-head \{\s*page-break-inside: avoid;/, chapter)
+      end
+
+      # 中央の小さな挿絵（改善案 #168）は、KFX が margin-inline: auto を 0 に解くので、
+      # 左右の margin を別に auto で書いて中央に置く。回り込みを解く :is() の規則は KFX が捨てるので、
+      # clear も自前で持つ（無いと前の端の絵の横の残りの幅の中央に寄った）。吹き出しと絵は割らない
+      def test_should_center_spot_center_with_physical_margins_for_kindle
+        layout = File.read(File.expand_path('../../../../stylesheets/layout-utils.css', __dir__), encoding: 'utf-8')
+        rule = layout[/^body\.vs-kindle \.spot-center \{([^}]*)\}/, 1]
+
+        refute_nil rule
+        assert_includes rule, 'margin-left: auto;'
+        assert_includes rule, 'margin-right: auto;'
+        refute_includes rule, 'margin-inline'
+        assert_includes rule, 'clear: both;'
+        assert_includes rule, 'page-break-inside: avoid;'
+        refute_includes rule, 'float'
+        assert_match(/^body\.vs-kindle \.spot-center > p:first-child \{\s*text-align: center;/, layout)
       end
 
       # 囲みの style 属性に書いた吹き出しの色は、Kindle 用に吹き出しの段落へ色で書き込む。
@@ -446,15 +463,17 @@ module VivlioStarter
                '<div class="spot-right" style="width: 22%; --spot-balloon-border: var(--gold); --spot-balloon-bg: #fefbf9">' \
                '<p>できた！</p><figure><img src="a.png" alt=""></figure></div></section>' \
                '<div class="spot-left"><p>本の色のまま</p></div>' \
-               '<div class="spot-left" style="--spot-balloon-border: calc(1px)"><p>直せない</p></div></body></html>'
+               '<div class="spot-left" style="--spot-balloon-border: calc(1px)"><p>直せない</p></div>' \
+               '<div class="spot-center" style="--spot-balloon-bg: #fff8e1"><p>中央</p></div></body></html>'
         warnings = []
         Common.define_singleton_method(:log_warn) { |msg, **| warnings << msg }
         doc = process(html) { |files| Builder.literalize_spot_balloon_colors_for_kindle!(files) }
 
-        balloons = doc.css('.spot-right > p, .spot-left > p')
+        balloons = doc.css('.spot-right > p, .spot-left > p, .spot-center > p')
         assert_equal 'border-color: #c9a24a; background: #fefbf9;', balloons[0]['style']
         assert_nil balloons[1]['style'], '色を書いていない吹き出しは book-settings.css の本の色に任せる'
         assert_nil balloons[2]['style'], '色に直せない値は書き込まない'
+        assert_equal 'background: #fff8e1;', balloons[3]['style'], '中央の絵の吹き出しにも書き込む（改善案 #168）'
         assert_equal 1, warnings.size
         assert_includes warnings.first, '--spot-balloon-border（calc(1px)）'
       end

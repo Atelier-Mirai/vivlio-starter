@@ -1023,7 +1023,7 @@ class TestProseChecker < Minitest::Test
     assert_empty period_lines(body)
   end
 
-  # 小さな挿絵の吹き出し（spot の囲みの一つ目の段落）には句点を求めない（改善案 #158）。
+  # 小さな挿絵の吹き出し（spot の囲みの一つ目の段落）には句点を求めない（改善案 #158・中央の絵は #168）。
   # 1 行・行末の \ で折った 2 行・width= つき・画像との間に空行が無い形
   def test_should_skip_spot_balloons
     body = <<~MD
@@ -1043,6 +1043,12 @@ class TestProseChecker < Minitest::Test
       :::{.spot-right width=35%}
       楽しみにしているわ
       ![待つ](c.webp)
+      :::
+
+      :::{.spot-center width=50%}
+      自分だけのゲームを作ろうね
+
+      ![二人](d.webp)
       :::
     MD
 

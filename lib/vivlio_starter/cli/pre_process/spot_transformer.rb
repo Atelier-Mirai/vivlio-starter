@@ -4,7 +4,8 @@
 # File: lib/vivlio_starter/cli/pre_process/spot_transformer.rb
 # ================================================================
 # 責務:
-#   本文の端に小さな挿絵を置く囲み `:::{.spot-right}`・`:::{.spot-left}`（改善案 #157）を、
+#   小さな挿絵を置く囲み `:::{.spot-right}`・`:::{.spot-left}`（改善案 #157）と、回り込ませずに
+#   中央に置く `:::{.spot-center}`（改善案 #168）を、
 #   幅を持つ `<div>` へ書き換え、中の画像に既定の属性を足す。
 #
 #     :::{.spot-left width=35%}          <div class="spot-left" style="width: 35%">
@@ -42,12 +43,12 @@ require_relative 'issue_registry'
 module VivlioStarter
   module CLI
     module PreProcessCommands
-      # 小さな挿絵の囲み（.spot-right・.spot-left）の前処理
+      # 小さな挿絵の囲み（.spot-right・.spot-left・.spot-center）の前処理
       module SpotTransformer
         module_function
 
         # 小さな挿絵の囲みのクラス名。ImageTrimmer の余白の警告もこれを見る。
-        CLASSES = %w[spot-right spot-left].freeze
+        CLASSES = %w[spot-right spot-left spot-center].freeze
 
         # 囲みの開き（`:::{.spot-right width=35%}`）。中身はクラス名と属性。
         OPEN = /\A[ \t]*:::[ \t]*\{([^{}\n]*)\}[ \t]*\n?\z/
@@ -153,7 +154,7 @@ module VivlioStarter
           Common.log_warn(
             "#{filename}:#{block.line} - #{message}",
             detail: "→ 幅を変えるなら #{opener} のように書いてください（% か mm などの長さ）。\n" \
-                    '  幅を書かなければ、版面の 28% で組みます。'
+                    "  幅を書かなければ、版面の #{block.classes.include?('spot-center') ? 40 : 28}% で組みます。"
           )
           IssueRegistry.record(chapter: filename, line: block.line, severity: :warn, category: :notation, message:)
         end

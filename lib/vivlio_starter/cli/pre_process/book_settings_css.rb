@@ -796,9 +796,11 @@ module VivlioStarter
                                  'body.vs-header-simple.vs-kindle h2 .section-number { background: %s; }'],
           # 小さな挿絵の吹き出し（改善案 #157）。しっぽは ::before/::after なので Kindle には出ない
           '--spot-balloon-border' => ['body.vs-kindle .spot-right > p:first-child, ' \
-                                      'body.vs-kindle .spot-left > p:first-child { border-color: %s; }'],
+                                      'body.vs-kindle .spot-left > p:first-child, ' \
+                                      'body.vs-kindle .spot-center > p:first-child { border-color: %s; }'],
           '--spot-balloon-bg' => ['body.vs-kindle .spot-right > p:first-child, ' \
-                                  'body.vs-kindle .spot-left > p:first-child { background: %s; }']
+                                  'body.vs-kindle .spot-left > p:first-child, ' \
+                                  'body.vs-kindle .spot-center > p:first-child { background: %s; }']
         }.freeze
 
         # 吹き出しの地は、テーマ色を白へこの割合で混ぜる（theme.css の --spot-balloon-bg と同じ）。
@@ -806,7 +808,7 @@ module VivlioStarter
 
         # 小さな挿絵の吹き出し（囲みの一つ目の段落）の選択子。KFX は :is() を含む規則を捨てるので並べて書く。
         def spot_balloon_selector(scope)
-          %w[spot-right spot-left].map { "#{scope} .#{it} > p:first-child" }.join(', ')
+          %w[spot-right spot-left spot-center].map { "#{scope} .#{it} > p:first-child" }.join(', ')
         end
 
         # custom.css の :root で変えた色を、Kindle 用のリテラルの規則にする。
