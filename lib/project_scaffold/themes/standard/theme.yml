@@ -55,6 +55,6 @@ styles:
   - simple-header.css
   - image-header.css
 
-parts:                 # ページの種類ごとに、vs の部品の後（parts 層の最後）に読む CSS。
+parts_styles:          # ページの種類ごとに、vs の部品の後（parts 層の最後）に読む CSS。
   preface: [preface.css]   # 部品の記法の規則と詳細度で競う（styles: の theme 層に置くと記法の規則に勝つ）
   postface: [preface.css]

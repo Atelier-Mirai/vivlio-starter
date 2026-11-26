@@ -42,26 +42,26 @@ module VivlioStarter
         assert_equal %w[themes/standard/epub.css], theme.target_files('chapter', :epub)
         assert_equal %w[themes/standard/epub.css themes/standard/kindle.css], theme.target_files('index', :kindle)
         # 前書きの見た目は parts 層の最後（novel-vertical-spec.md §3.4）
-        assert_equal %w[themes/standard/preface.css], theme.parts_files('preface')
-        assert_equal %w[themes/standard/preface.css], theme.parts_files('postface')
-        assert_empty theme.parts_files('chapter')
+        assert_equal %w[themes/standard/preface.css], theme.parts_style_files('preface')
+        assert_equal %w[themes/standard/preface.css], theme.parts_style_files('postface')
+        assert_empty theme.parts_style_files('chapter')
       end
 
-      # parts: はページの種類ごと。土台 → 自分の順に重ねる（theme-contract-spec.md §3.1 の「parts:」）
+      # parts_styles: はページの種類ごと。土台 → 自分の順に重ねる（theme-contract-spec.md §3.1 の「parts_styles:」）
       def test_should_read_parts_per_kind_base_first
         with_book do |root|
-          write_theme(root, 'base', { 'parts' => { 'preface' => %w[front.css] } }, %w[front.css])
-          write_theme(root, 'mono', { 'extends' => 'base', 'parts' => { 'preface' => %w[mono.css], 'chapter' => %w[mono.css] } },
+          write_theme(root, 'base', { 'parts_styles' => { 'preface' => %w[front.css] } }, %w[front.css])
+          write_theme(root, 'mono', { 'extends' => 'base', 'parts_styles' => { 'preface' => %w[mono.css], 'chapter' => %w[mono.css] } },
                       %w[mono.css])
           theme = Theme.resolve('mono', root:)
 
-          assert_equal %w[themes/base/front.css themes/mono/mono.css], theme.parts_files('preface')
-          assert_equal %w[themes/mono/mono.css], theme.parts_files('chapter')
-          assert_empty theme.parts_files('toc')
+          assert_equal %w[themes/base/front.css themes/mono/mono.css], theme.parts_style_files('preface')
+          assert_equal %w[themes/mono/mono.css], theme.parts_style_files('chapter')
+          assert_empty theme.parts_style_files('toc')
         end
       end
 
-      # parts: に書ける種類は、入口の名前と同じ（設定の読み込みの途中で読むので、Css を読まずに持つ）
+      # parts_styles: に書ける種類は、入口の名前と同じ（設定の読み込みの途中で読むので、Css を読まずに持つ）
       def test_should_keep_the_parts_kinds_in_step_with_the_entries
         require 'vivlio_starter/cli/css/entry_writer'
 
@@ -139,9 +139,9 @@ module VivlioStarter
             { 'contract' => nil } => '契約の版（contract:）が書かれていません',
             { 'styles' => %w[../../stylesheets/custom.css] } => 'テーマの中の CSS でないものが書かれています',
             { 'styles' => %w[missing.css] } => 'styles: のファイルがありません: missing.css',
-            { 'parts' => { 'cover' => %w[a.css] } } => 'parts: に、知らないページの種類 cover: が書かれています',
-            { 'parts' => { 'preface' => 'a.css' } } => 'parts.preface は並び（- で始まる行）で書いてください',
-            { 'parts' => { 'preface' => %w[missing.css] } } => 'parts.preface のファイルがありません: missing.css',
+            { 'parts_styles' => { 'cover' => %w[a.css] } } => 'parts_styles: に、知らないページの種類 cover: が書かれています',
+            { 'parts_styles' => { 'preface' => 'a.css' } } => 'parts_styles.preface は並び（- で始まる行）で書いてください',
+            { 'parts_styles' => { 'preface' => %w[missing.css] } } => 'parts_styles.preface のファイルがありません: missing.css',
             { 'tokens' => { 'color-accent' => 'red; } body { color: blue' } } => 'tokens.color-accent の値を CSS に書き出せません',
             { 'tokens' => { '--book-color-accent' => 'red' } } => '--book- を除いた名前で書いてください',
             { 'supports' => { 'writing_mode' => %w[diagonal] } } => 'supports.writing_mode に、知らない値か空の並び'

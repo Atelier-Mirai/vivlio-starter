@@ -148,11 +148,11 @@ styles:
 - **脚注**は、Vivliostyle の `float: footnote` のまま使う。縦書きではページの左端（行の進む先の端）に組まれる。合印と注番号は縦中横にする（`theme-bunko` と同じ）。EPUB と Kindle は今の脚注の変換のまま。S8-4 の材料の本で、3 つの出力先の脚注を見る。
 - **前書きの飾り（`parts/preface.css`）は `standard` へ移す**（S8-5。`theme-contract-spec.md` §10 の論点 5）。小説の前書きと後書きは本文と同じ見た目で組むので、部品に残すと `novel` が全部を打ち消すことになる。移すのは飾りの規則だけで、構造の規則（S2-4 でそろえた部分）は部品に残す。ほかの部品の飾りは、`novel` を書いて打ち消しが要ったものだけを移す。移した規則は、この節に表で記録する。移すたびに本書を基準と比べる。
 
-  **移した規則（S8-5・2026-11-21）。** 前書きの見た目は、記法の規則と詳細度で競わせるために parts 層の最後に置いている（S2-4）。theme 層へ移すとこの競い方が崩れるので、テーマが parts 層の最後に CSS を足す `parts:`（`theme-contract-spec.md` §3.1）を作り、そこへ移した。読む順と詳細度は移す前と同じである。
+  **移した規則（S8-5・2026-11-21）。** 前書きの見た目は、記法の規則と詳細度で競わせるために parts 層の最後に置いている（S2-4）。theme 層へ移すとこの競い方が崩れるので、テーマが parts 層の最後に CSS を足す `parts_styles:`（`theme-contract-spec.md` §3.1）を作り、そこへ移した。読む順と詳細度は移す前と同じである。
 
   | 移す前 | 移した先 | 規則 |
   | :--- | :--- | :--- |
-  | `parts/preface.css` | `themes/standard/preface.css`（`parts:` の `preface`・`postface`） | 見出し（h1〜h3 と h3 の印）・段落の間・箇条書き・リンク・強調の色・ルビ・水平線と改ページの線の打ち消し・節・引用・節リードの上の余白・章の部品の打ち消し（見出しの字間・項見出しの高さ・箇条書きの太さ・章リード・図の余白と枠・幅を指定した図） |
+  | `parts/preface.css` | `themes/standard/preface.css`（`parts_styles:` の `preface`・`postface`） | 見出し（h1〜h3 と h3 の印）・段落の間・箇条書き・リンク・強調の色・ルビ・水平線と改ページの線の打ち消し・節・引用・節リードの上の余白・章の部品の打ち消し（見出しの字間・項見出しの高さ・箇条書きの太さ・章リード・図の余白と枠・幅を指定した図） |
   | `targets/kindle-preface.css` | `themes/standard/kindle.css` | Kindle の前書きの見出しの下線・節見出しと引用の線・リンクの色。全部の種類の束に入るので、h1 の選択子に `body.preface`・`body.postface` を足した（前書きの h1 に当たるほかの target 層の規則は無く、勝ち負けは同じ） |
   | （残した）`parts/preface.css` | — | 表の行頭寄せ（`table { text-align: start }`）。前書きのページの組み方（`pages/preface.css` の body の両端揃え）に付く規則で、どのテーマにも要る |
 - **目次**は縦に組み、ページ番号は算用数字を縦中横にする（3 桁まで 1 字分に収める。`text-combine-upright: all`）。相互参照が作る番号（「第 3 章」など）も同じにする。
@@ -524,7 +524,7 @@ S8 の中の決まり:
 
 #### 作ったもの
 
-- **前書きの見た目を `standard` へ移した**（§3.4 の「移した規則」の表）。移す先として、テーマが parts 層の最後に CSS を足す `parts:` を `theme.yml` に足した（`Theme::Manifest`・`Theme::Resolved#parts_files`・`Css::EntryWriter.theme_hrefs`。`theme-contract-spec.md` §3.1）。縦書きの本の横組みの箱（`parts/vertical.css`）は `parts:` の後に読む。`targets/kindle-preface.css` は消し、規則を `themes/standard/kindle.css` へ移した。
+- **前書きの見た目を `standard` へ移した**（§3.4 の「移した規則」の表）。移す先として、テーマが parts 層の最後に CSS を足す `parts_styles:` を `theme.yml` に足した（`Theme::Manifest`・`Theme::Resolved#parts_style_files`・`Css::EntryWriter.theme_hrefs`。`theme-contract-spec.md` §3.1）。縦書きの本の横組みの箱（`parts/vertical.css`）は `parts_styles:` の後に読む。`targets/kindle-preface.css` は消し、規則を `themes/standard/kindle.css` へ移した。
 - **`themes/novel/`**: `theme.yml`（`supports.writing_mode: [vertical]`・`features: []`・`tokens:`・オプション無し）・`prose.css`（会話文の字下げ 0・行末のぶら下げ・強調は太字だけ・区切りは線を引かず 1 行空ける）・`headings.css`（章題は天から 3 字下げ・後ろを 2 行空ける・1.6 倍。節題は 5 字下げ・1.2 倍）・`page.css`（柱を明朝に）。`tokens:` は飾りの色を `#222` に、見出しの印を空に、章リードを本文と同じ大きさに。
 - `BookProfile` の `novel` に `theme.name: novel` と `typography.heading.font: Noto Serif JP`。
 - `Css::Cascade` が、規則の列に `base/vertical.css` があれば論理方向を縦書き（vertical-rl）の向きで物理方向へ読む（§10.4 の決めたことの 9 の答え）。`InversionCheck`（`vs theme:check` の 💡 と `--log=debug` の要素ごとの判定）と `AuthorPriority`（著者の `custom.css` を平らな CSS でも勝たせる。style 属性の読み方も）が同じ表を使う。
@@ -535,7 +535,7 @@ S8 の中の決まり:
 
 #### 仕様に無かったので決めたこと
 
-1. **前書きの見た目は theme 層でなく parts 層の最後へ入れる（`parts:`）。** theme 層へ移すと、素の `p` などが `.tip p`・`.talk-body p` などの記法の規則に層で勝ち、S2-4 でそろえた前書きの記法が崩れる（`css-layer-restructure-spec.md` §10.4 の「仕様と違えたこと」の 2 の予告どおり）。キーの名前はテーマを作る人から見えるので、了承待ちの一覧に載せた。
+1. **前書きの見た目は theme 層でなく parts 層の最後へ入れる（`parts_styles:`）。** theme 層へ移すと、素の `p` などが `.tip p`・`.talk-body p` などの記法の規則に層で勝ち、S2-4 でそろえた前書きの記法が崩れる（`css-layer-restructure-spec.md` §10.4 の「仕様と違えたこと」の 2 の予告どおり）。キーの名前はテーマを作る人から見えるので、了承待ちの一覧に載せた。最初は層の名前にそろえて `parts:` としたが、テーマを作る人に伝わりやすいよう、2026-11-26 にユーザーの決定で `parts_styles:` へ改めた（`styles:` と対になる名前）。
 2. **部品に残したのは表の行頭寄せだけ。** 「章の部品の打ち消し」（箇条書き・図・章リード・見出しの字間）も、1.x の前書きの見た目を保つ `standard` の選択なので移した。`novel` の前書きは章と同じ見た目になる。
 3. **`standard` の `vs theme:check` に 🟡 が 2 件出る。** 前書きの見出しの地のぼかし（`linear-gradient`）と下線（oklab の `color-mix`）が Kindle に届かない。前は vs の部品の規則で、層の検査の許可表に載せていた。直すと Kindle の見た目が変わる（下線が出る）ので段階の中では直さず、テストに 2 件を書いた。直すかは段階の外でユーザーが決める（`v2-migration-plan.md` §4.1 の「段階の間に、見た目を変える変更を入れる決まり」）。
 4. **`novel` の規則は本文のページの body（`body:is(.chapter, .appendix, .preface, .postface)`）で絞る。** `styles:` は全部の種類の入口に入り、最初の材料では章題の規則が権利ページの見出しと本扉の書名に当たり、区切りの規則で奥付が 2 ページに割れた。

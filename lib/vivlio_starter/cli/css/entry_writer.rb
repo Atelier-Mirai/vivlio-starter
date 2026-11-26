@@ -206,18 +206,18 @@ module VivlioStarter
         def vertical_page?(name, traits) = traits.vertical? && VERTICAL_KINDS.include?(name)
 
         # 組方向を base 層の最後に、横組みの箱を（本文の部品を読む種類だけ）parts 層の最後に足す。
-        # 横組みの箱はテーマの parts: の後に読む（テーマの飾りの余白に、箱の幅と前後の空きが勝つ）
+        # 横組みの箱はテーマの parts_styles: の後に読む（テーマの飾りの余白に、箱の幅と前後の空きが勝つ）
         def vertical_layers(layered)
           parts = layered.fetch('parts', [])
           boxes = parts.include?("#{CACHE_TO_STYLESHEETS}parts/box.css") ? ["#{CACHE_TO_STYLESHEETS}#{VERTICAL_PARTS}"] : []
           layered.merge('base' => [*layered['base'], "#{CACHE_TO_STYLESHEETS}#{VERTICAL}"], 'parts' => [*parts, *boxes])
         end
 
-        # テーマの tokens: は tokens 層の最後、parts: はその種類の parts 層の最後（vs の部品の後）、
+        # テーマの tokens: は tokens 層の最後、parts_styles: はその種類の parts 層の最後（vs の部品の後）、
         # styles: は theme 層（どれも土台 → 自分の順。theme-contract-spec.md §3.1）
         def theme_hrefs(theme, name)
           { 'tokens' => theme.tokens.empty? ? [] : [THEME_TOKENS],
-            'parts' => theme.parts_files(name).map { "#{CACHE_TO_ROOT}#{it}" },
+            'parts' => theme.parts_style_files(name).map { "#{CACHE_TO_ROOT}#{it}" },
             'theme' => theme.styles.map { "#{CACHE_TO_ROOT}#{it}" } }
         end
 

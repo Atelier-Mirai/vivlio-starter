@@ -65,8 +65,8 @@ module VivlioStarter
 
         # その種類の parts 層の最後に入る CSS（本のルートからの相対パス。土台 → 自分）
         # @param kind [String] 入口の名前（Css::EntryWriter::IMPORTS のキー）
-        def parts_files(kind)
-          chain.flat_map { |theme| theme.parts.fetch(kind, []).map { File.join(theme.dir, it) } }
+        def parts_style_files(kind)
+          chain.flat_map { |theme| theme.parts_styles.fetch(kind, []).map { File.join(theme.dir, it) } }
         end
 
         # tokens 層に入る値（`--book-` を除いた名前 → 値）。自分の値が土台の値に勝つ

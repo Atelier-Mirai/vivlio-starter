@@ -27,9 +27,9 @@ module VivlioStarter
       # theme.yml を読んだ結果。dir は本のルートからの相対（`themes/standard`）、path は絶対パス。
       # supports は書かれたキーだけを持つ（書いていない軸は、Theme::Resolved が土台か既定から補う）。
       # css_files はテーマのディレクトリの直下にある CSS の名前（出力先の CSS を探すのに使う）。
-      # parts はページの種類 → parts 層の最後に入る CSS の並び
+      # parts_styles はページの種類 → parts 層の最後に入る CSS の並び
       Manifest = Data.define(:name, :title, :version, :contract, :requires_vs, :license, :extends,
-                             :supports, :features, :tokens, :kindle_tokens, :options, :styles, :parts,
+                             :supports, :features, :tokens, :kindle_tokens, :options, :styles, :parts_styles,
                              :dir, :path, :css_files, :warnings) do
         # 出力先の CSS（theme-contract-spec.md §3.1 の表）。読む順は
         # css-layer-restructure-spec.md §5 の「target 層の中の順」の 4・5 の中の順
@@ -52,9 +52,9 @@ module VivlioStarter
 
         # theme.yml に書けるキー（theme-contract-spec.md §3.1 の例の順）
         KNOWN_KEYS = %w[name title version contract requires_vs license extends supports
-                        features tokens kindle_tokens options styles parts].freeze
+                        features tokens kindle_tokens options styles parts_styles].freeze
 
-        # parts: に書けるページの種類（入口の名前。Css::EntryWriter::IMPORTS のキーと同じで、theme_test.rb が
+        # parts_styles: に書けるページの種類（入口の名前。Css::EntryWriter::IMPORTS のキーと同じで、theme_test.rb が
         # 見張る）。設定の読み込みの途中でテーマを読むので、Css をここで読まない
         PAGE_KINDS = %w[chapter appendix preface postface toc index glossary colophon titlepage legalpage
                         part-title].freeze
@@ -111,7 +111,7 @@ module VivlioStarter
               kindle_tokens: tokens(raw, 'kindle_tokens', label),
               options: OptionParser.parse(typed(raw, 'options', Hash, {}, label), label:, feature_names: Features.names),
               styles: styles(raw, path, label),
-              parts: parts(raw, path, label),
+              parts_styles: parts_styles(raw, path, label),
               dir:, path:,
               css_files: Dir.children(path).select { it.end_with?('.css') && File.file?(File.join(path, it)) }.sort,
               warnings: (raw.keys.map(&:to_s) - KNOWN_KEYS).map { "#{label} の知らないキー #{it}: を読み飛ばしました" }
@@ -205,19 +205,19 @@ module VivlioStarter
             css_list(typed(raw, 'styles', Array, [], label), path, label, 'styles:')
           end
 
-          # parts: は、ページの種類 → parts 層の最後に入る CSS の並び（theme-contract-spec.md §3.1 の「parts:」）。
+          # parts_styles: は、ページの種類 → parts 層の最後に入る CSS の並び（theme-contract-spec.md §3.1 の「parts_styles:」）。
           # 種類は入口の名前（Css::EntryWriter::IMPORTS のキー）
           # @return [Hash{String => Array<String>}]
-          def parts(raw, path, label)
-            typed(raw, 'parts', Hash, {}, label).to_h do |kind, files|
+          def parts_styles(raw, path, label)
+            typed(raw, 'parts_styles', Hash, {}, label).to_h do |kind, files|
               name = kind.to_s
               unless PAGE_KINDS.include?(name)
-                raise Error.new("#{label} の parts: に、知らないページの種類 #{name}: が書かれています",
+                raise Error.new("#{label} の parts_styles: に、知らないページの種類 #{name}: が書かれています",
                                 detail: "書ける種類: #{PAGE_KINDS.join('・')}")
               end
-              raise Error.new("#{label} の parts.#{name} は並び（- で始まる行）で書いてください") unless files.is_a?(Array)
+              raise Error.new("#{label} の parts_styles.#{name} は並び（- で始まる行）で書いてください") unless files.is_a?(Array)
 
-              [name, css_list(files, path, label, "parts.#{name}")]
+              [name, css_list(files, path, label, "parts_styles.#{name}")]
             end
           end
 

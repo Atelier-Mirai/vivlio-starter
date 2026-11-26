@@ -259,7 +259,7 @@ styles:                      # 読み込む CSS（順に theme 層へ入る）
   - simple-header.css
   - image-header.css
 
-parts:                       # ページの種類ごとに、vs の部品の後（parts 層の最後）に読む CSS（下の「parts:」）
+parts_styles:                # ページの種類ごとに、vs の部品の後（parts 層の最後）に読む CSS（下の「parts_styles:」）
   preface: [preface.css]
   postface: [preface.css]
 ```
@@ -272,12 +272,12 @@ parts:                       # ページの種類ごとに、vs の部品の後�
 - theme 層に入れないのは、pages 層が `:root` で付録の色（`pages/appendix.css`）と前書きの色（`pages/preface.css`）を付け替えているためである。テーマの値が theme 層にあるとこの付け替えに勝ち、付録と前書きが本文の色になる。
 - theme 層に入るのは `styles:` の CSS だけである。`styles:` には CSS を直接並べる。入口の 1 枚から `@import` で読む形は取らない（層を付けた `@import` の中の `@import` を、平らな CSS の生成が解く必要が出て、確かめる対象が増える）。
 
-**`parts:`（S8-5 で足した。`novel-vertical-spec.md` §10.5）。** ページの種類（入口の名前）ごとに、parts 層の最後、vs の部品の後に読む CSS を並べる。`extends:` があれば土台 → 自分の順に並ぶ。縦書きの本の横組みの箱（`parts/vertical.css`）は、この後に読む。
+**`parts_styles:`（S8-5 で足した。`novel-vertical-spec.md` §10.5。名前は 2026-11-26 にユーザーが決めた）。** ページの種類（入口の名前）ごとに、parts 層の最後、vs の部品の後に読む CSS を並べる。`extends:` があれば土台 → 自分の順に並ぶ。縦書きの本の横組みの箱（`parts/vertical.css`）は、この後に読む。
 
 - 使い道は、部品の記法の規則と詳細度で競わせたい飾りである。theme 層の規則は、層の順で部品の規則に勝つので、theme 層に素の `p { margin-block-end: … }` を書くと、`.tip p`・`.talk-body p` などの記法の段落にも当たる。parts 層の最後に置くと、詳細度の高い記法の規則に負け、記法は章と同じ見た目のまま残る（`css-layer-restructure-spec.md` §10.4 の「仕様と違えたこと」の 2）。
 - `standard` は前書きと後書きの見た目（`themes/standard/preface.css`）をここに置く。ほかの種類の束には入らないので、選択子をページの種類で絞らなくてよい（絞ると詳細度が上がり、競い方が変わる）。
 - 書ける種類は入口の 11 種類（`Theme::Manifest::PAGE_KINDS`。`Css::EntryWriter::IMPORTS` のキーと同じで、`theme_test.rb` が見張る）。知らない種類・テーマの外のファイル・無いファイルは 🔴。
-- 出力先の CSS は、今までどおりファイルの名前の決まり（下の表）で置く。`parts:` は PDF・EPUB・Kindle の全部の束に入る。
+- 出力先の CSS は、今までどおりファイルの名前の決まり（下の表）で置く。`parts_styles:` は PDF・EPUB・Kindle の全部の束に入る。
 
 **出力先の CSS（`epub.css`・`kindle.css`）。** vs の `stylesheets/targets/` と同じ名前の決まりを、テーマにも認める（`v2-post-s3-consultation.md` §5.4）。テーマのディレクトリの直下に置き、どれも任意である。`theme.yml` には書かない（`styles:` は theme 層に入る CSS だけを並べる）。
 
@@ -432,7 +432,7 @@ parts:                       # ページの種類ごとに、vs の部品の後�
 
 - 部品の色と書体は、すでに公開する変数を読んでいる。テーマは変数で変えられる。規則で変えたいテーマは theme 層に書けば、PDF では詳細度に関係なく勝つ。規則を移さなくても、テーマにできることは減らない。
 - 規則を parts 層から theme 層へ移すたびに、詳細度が同じ組で勝つ側が入れ替わりうる。組版のテーマが `standard` の 1 つしか無い時点では、どの規則が「どのテーマにも要る骨格」で、どれが「`standard` だけの飾り」かを確かめる相手が無い。「迷う規則は部品の側に置く」（同 §3.2）に合う。
-- 残した規則のうち、`novel`（S8）を書くときに打ち消しが要ったものを、S8 の中で `standard` へ移す（§10 の論点 5）。前書きの飾り（`parts/preface.css`）は S8-5 で移した（`themes/standard/preface.css`。`theme.yml` の `parts:` で parts 層の最後に読む。§3.1・`novel-vertical-spec.md` §3.4）。Kindle の前書きの規則（`targets/kindle-preface.css`）も一緒に `themes/standard/kindle.css` へ移した。
+- 残した規則のうち、`novel`（S8）を書くときに打ち消しが要ったものを、S8 の中で `standard` へ移す（§10 の論点 5）。前書きの飾り（`parts/preface.css`）は S8-5 で移した（`themes/standard/preface.css`。`theme.yml` の `parts_styles:` で parts 層の最後に読む。§3.1・`novel-vertical-spec.md` §3.4）。Kindle の前書きの規則（`targets/kindle-preface.css`）も一緒に `themes/standard/kindle.css` へ移した。
 
 **`targets/` の規則の線引き（`v2-post-s3-consultation.md` §5.4）。**
 
@@ -758,7 +758,7 @@ S6 の範囲に入れないもの: `vs theme:add` の git と npm の経路（S7
 | 2 | 対応表（`bridge.css`）に載せる変数の一覧 | S7b | S7a の結果を見て、S7b で Opus が決める。軸: 公式テーマと vs の両方が定義し、判型・余白・書体・本文の字の大きさと行送りに効くものだけ。色と飾りは載せない。20 を超えるなら、載せすぎを疑う（`v2-plan-review-consultation.md` §4.6 の 6） |
 | 3 | テーマを探すための一覧（登録簿）を持つか | 2.0 の後 | 2.0 では作らない |
 | 4 | `theme-epub3j` を土台にしたテーマを同梱するか（電書協の様式を求める著者向け） | 決定済み（2026-11-17） | 同梱しない（`v2-plan-review-consultation.md` §4.6 の 5） |
-| 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8-5（済み） | 前書きの見た目（`parts/preface.css` の、表の行頭寄せを除く全部）と Kindle の前書きの規則を移した（§3.1 の「`parts:`」・`novel-vertical-spec.md` §10.5）。S6 では見出しの 2 枚だけを移す。S8-5 で Opus が決める。軸: `novel` で打ち消しが要った規則だけを移す。いちばんの候補は前書きの見た目（`parts/preface.css`）。移すたびに本書を基準と比べる（`v2-s8-novel-consultation.md` §4.3） |
+| 5 | 部品に残した飾りの規則（§4 の「部品に残す飾り」）を `standard` へ移す範囲 | S8-5（済み） | 前書きの見た目（`parts/preface.css` の、表の行頭寄せを除く全部）と Kindle の前書きの規則を移した（§3.1 の「`parts_styles:`」・`novel-vertical-spec.md` §10.5）。S6 では見出しの 2 枚だけを移す。S8-5 で Opus が決める。軸: `novel` で打ち消しが要った規則だけを移す。いちばんの候補は前書きの見た目（`parts/preface.css`）。移すたびに本書を基準と比べる（`v2-s8-novel-consultation.md` §4.3） |
 | 6 | 改ページの打ち消しが写すテーマの選択子 | 決定済み（2026-11-17） | 公開する変数で読む（§3.5・§5.2。`v2-s6-10-consultation.md` §4.3） |
 | 7 | 著者が入れたテーマの層の勝ち負けの組を知らせる形 | S7a | `vs build` では 🟡 にしない（`--log=debug` のときだけ）。S7 の入口の実験で公式テーマの組の数を記録し、多くて取り込みの変換で直せないと分かったときに限り、「`vs theme:add` が入れた時点で 1 回知らせる」形を S7 の仕様で決める（`v2-s6-10-consultation.md` §4.6） |
 | 8 | 雛形から消えたテーマのファイル | 決定済み（2026-11-17） | `vs upgrade` が消す（§7.3。S6-10。`v2-s6-10-consultation.md` §4.7） |
