@@ -320,6 +320,62 @@ a.cross-ref-number {
 }
 
 /* -------------------------------------------------------------
+   文字の色と蛍光ペン（inline-color-mark-spec.md §4）
+   -------------------------------------------------------------
+   [文字]{.red} はテーマ色の字、[文字]{color=…} は style 属性で色を書いた span.vs-color、
+   [文字]{color=theme} は span.vs-text-theme、==文字== は mark（前処理の InlineSpanTransformer）。
+   色のクラスは mark には当てない。mark の色のクラスは「ペンの色」（下の --vs-mark-color）。
+   Kindle は var()・color-mix()・linear-gradient()・:is() を描かないので、book-settings.css に
+   値で書いた規則を足す（BookSettingsCss#kindle_inline_color_rules）。 */
+.yellow:not(mark)  { color: var(--accent-yellow); }
+.orange:not(mark)  { color: var(--accent-orange); }
+.red:not(mark)     { color: var(--accent-red); }
+.magenta:not(mark) { color: var(--accent-magenta); }
+.purple:not(mark)  { color: var(--accent-purple); }
+.indigo:not(mark)  { color: var(--accent-indigo); }
+.navy:not(mark)    { color: var(--accent-navy); }
+.blue:not(mark)    { color: var(--accent-blue); }
+.cyan:not(mark)    { color: var(--accent-cyan); }
+.teal:not(mark)    { color: var(--accent-teal); }
+.green:not(mark)   { color: var(--accent-green); }
+.lime:not(mark)    { color: var(--accent-lime); }
+.theme:not(mark),
+.vs-text-theme     { color: var(--theme-accent); }
+
+/* 中のコードと太字にも同じ色を。太字はテーマ色（--color-strong）、コードは code.css の色を持つ */
+:is(.yellow, .orange, .red, .magenta, .purple, .indigo, .navy, .blue, .cyan, .teal, .green, .lime, .theme):not(mark)
+  :is(code, strong),
+:is(.vs-color, .vs-text-theme) :is(code, strong) {
+  color: inherit;
+}
+
+/* 蛍光ペン。字の背の下を塗る（手で引いた線に近い形）。塗る色は --vs-mark-color で、
+   ==文字=={background=…} は style 属性でこの変数を書き換える。
+   background の宣言に calc() と var() を混ぜない（Vivliostyle が宣言ごと捨てる。
+   vivliostyle-css-pitfalls-notes.md）ので、塗る位置は素の % で書く。
+   既定の黄色・混ぜる割合・塗る高さは BookSettingsCss の MARK_* と同じ値にする（Kindle 用） */
+mark {
+  --vs-mark-color: #fff3a0;
+  color: inherit;
+  background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);
+  box-decoration-break: clone;
+}
+
+mark.yellow  { --vs-mark-color: color-mix(in srgb, var(--accent-yellow) 35%, white); }
+mark.orange  { --vs-mark-color: color-mix(in srgb, var(--accent-orange) 35%, white); }
+mark.red     { --vs-mark-color: color-mix(in srgb, var(--accent-red) 35%, white); }
+mark.magenta { --vs-mark-color: color-mix(in srgb, var(--accent-magenta) 35%, white); }
+mark.purple  { --vs-mark-color: color-mix(in srgb, var(--accent-purple) 35%, white); }
+mark.indigo  { --vs-mark-color: color-mix(in srgb, var(--accent-indigo) 35%, white); }
+mark.navy    { --vs-mark-color: color-mix(in srgb, var(--accent-navy) 35%, white); }
+mark.blue    { --vs-mark-color: color-mix(in srgb, var(--accent-blue) 35%, white); }
+mark.cyan    { --vs-mark-color: color-mix(in srgb, var(--accent-cyan) 35%, white); }
+mark.teal    { --vs-mark-color: color-mix(in srgb, var(--accent-teal) 35%, white); }
+mark.green   { --vs-mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }
+mark.lime    { --vs-mark-color: color-mix(in srgb, var(--accent-lime) 35%, white); }
+mark.theme   { --vs-mark-color: color-mix(in srgb, var(--theme-accent) 35%, white); }
+
+/* -------------------------------------------------------------
    リスト
    ------------------------------------------------------------- */
 ul,

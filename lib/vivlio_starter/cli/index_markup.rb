@@ -26,6 +26,7 @@
 
 require 'cgi'
 require_relative 'math_delimiters'
+require_relative 'pre_process/inline_span_transformer'
 
 module VivlioStarter
   module CLI
@@ -40,24 +41,36 @@ module VivlioStarter
       #
       #   (?!\()   リンク・画像記法 `[text](url)` … `]` の直後が `(`
       #   (?<!\^)  インライン脚注 `^[本文]`       … `[` の直前が `^`
+      #   INLINE_ATTRIBUTE_AHEAD  行内の属性 `[文字]{.red}`・`[文字]{color=…}`・`[文字]{background=…}`
+      #            … `]` の直後が `{.`・`{color=`・`{background=`
+      #            （PreProcessCommands::InlineSpanTransformer。行末の `[用語]{.text-right}`・`[用語]{.aki}` など
+      #            は段落に付けるクラスの記法なので、索引語のまま読む。クラスの並びは PARAGRAPH_CLASSES）
       #
       # 参照脚注 `[^id]` は「ブラケットの中身」で見分けるのでパターンでは弾かず、
       # skip_term? が落とす。ブラケットの外と中で担当が分かれている。
 
       # 索引マークアップ全体（`[用語]` と `[用語|読み]` の双方に一致し、
       # 読みの分離は利用側が行う）。前処理・索引スキャナが使う。
-      TERM_PATTERN = /(?<!\^)\[([^\[\]\n]+)\](?!\()/
+      # 行内の属性の `{.`・`{color=`・`{background=`（行末の、段落に付けるクラスを除く）。
+      # 下の 3 つのパターンが `]` の直後で見る。v2 は `{.` だけを見る。色の記法（inline-color-mark-spec.md §6）で
+      # キーの形を足した。足さないと `[緑]{color=#3a9d5d}` の「緑」が索引語になる
+      INLINE_ATTRIBUTE_AHEAD = /
+        \{(?:\.(?!(?:#{PreProcessCommands::InlineSpanTransformer::PARAGRAPH_CLASSES.join('|')})\}[ \t]*$)
+            |(?:#{PreProcessCommands::InlineSpanTransformer::KEYS.join('|')})=)
+      /x
+
+      TERM_PATTERN = /(?<!\^)\[([^\[\]\n]+)\](?!\(|#{INLINE_ATTRIBUTE_AHEAD})/
 
       # 読み付き `[用語|読み]`。辞書登録が読みを取り出すために使う。
       #
       # 中身に `[` と改行を許さないのは TERM_PATTERN と同じ。許すと、本文の区間の表記
       # `[0,1)` から同じ行の次の `]` までを一語として辞書へ登録していた（実測: 205 字の
       # 「語」が入った）。ビルドはその語を一語とは読まないので、辞書だけが汚れる。
-      TERM_WITH_YOMI_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\|([^\[\]\n]+)\]/
+      TERM_WITH_YOMI_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\|([^\[\]\n]+)\](?!#{INLINE_ATTRIBUTE_AHEAD})/
 
       # 読みなし `[用語]` のみ（`|` を含むものは TERM_WITH_YOMI_PATTERN の担当）。
       # 辞書登録が 2 パターンを順に当てる方式のため、こちらは `|` を持たない。
-      TERM_ONLY_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\](?!\()/
+      TERM_ONLY_PATTERN = /(?<!\^)\[([^\[\]|\n]+)\](?!\(|#{INLINE_ATTRIBUTE_AHEAD})/
 
       # --- 参照リンク（CommonMark）との共存 -------------------------------
       #

@@ -41,6 +41,14 @@ module VivlioStarter
           assert_operator stats.notation_chars, :positive?
         end
 
+        # 文字の色 `[文字]{.red}`・蛍光ペン `==文字==` の記号は数えず、字だけを本文に数える
+        # （inline-color-mark-spec.md §7）。比較の `a == b` はそのまま
+        def test_should_count_only_text_of_inline_colors_and_marks
+          prose = Analyzer.prose_of('[赤]{.red}と==大事=={.green}と[緑]{color=#3a9d5d}と[[用語]]{.red}で a == b')
+
+          assert_equal '赤と大事と緑と[用語]で a == b', prose
+        end
+
         def test_basic_stats_counts_sentences
           content = '一つ目の文。二つ目の文！三つ目の文？'
           analyzer = Analyzer.new(content)

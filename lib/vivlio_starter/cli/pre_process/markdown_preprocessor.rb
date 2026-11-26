@@ -34,6 +34,7 @@ require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'image_trimmer'
 require_relative 'markdown_transformer'
+require_relative 'inline_span_transformer'
 require_relative 'table_converter'
 require_relative 'math_span_detector'
 require_relative 'math_letter_wrapper'
@@ -138,6 +139,7 @@ module VivlioStarter
           transform_showcases!
           delimit_bare_urls!
           transform_mermaid!
+          transform_inline_spans!
           transform_talk!
           process_code_includes!
           normalize_code_languages!
@@ -483,6 +485,16 @@ module VivlioStarter
           Common.log_success('mermaid 図を生成しました') if context.content != before
         end
 
+        # 行内の属性 `[文字]{.red}`・`[文字]{color=…}` を span に、蛍光ペン `==文字==` を mark にする
+        # （inline-color-mark-spec.md §2。v2 の transform_inline_spans! と同じ位置）。
+        # 中の Markdown を Kramdown で HTML にする段（会話・寄せ・fancy list・book-card・表）より前に置く。
+        # Kramdown は `{.class}` も `==` も知らず、文字のまま紙面に出すため。行末の、段落に付けるクラス
+        # （`…{.text-right}`）は読まないので、transform_text_right_inlines! より前でよい。
+        # 数式（`$…$`）はこの段では字のままなので、変換器が自分で退避する
+        def transform_inline_spans!
+          context.content = InlineSpanTransformer.transform(context.content)
+        end
+
         # 会話文記法 :::{.talk} を会話文 HTML へ変換する（characters-dialogue-spec.md §2.2 /
         # talk-display-options-spec.md）。表示設定と話者定義は config/talk.yml。
         # 画像パス正規化の後・コードインクルードやコンテナ整形がブロック内部を壊す前に置く。
@@ -657,10 +669,15 @@ module VivlioStarter
         #
         # また、</small> の後に空白のみの行がある場合も真の空行に置換する
         # コードブロック・インラインコードは extract_code_spans で退避して除外する
+        #
+        # `</span>` は、行全体が HTML の行（`<` で始まる行）のときだけ対象にする。行内の色の記法
+        # `**[注意]{.red}**`（inline-color-mark-spec.md）は文の途中に `</span>**` を作り、ここで割ると
+        # 段落が二つに分かれて `**` が字のまま組まれていた
         def normalize_html_block_boundaries!
-          html_closing_tags = %w[small div span p blockquote pre table ul ol li dl dt dd
+          html_closing_tags = %w[small div p blockquote pre table ul ol li dl dt dd
                                  figure figcaption aside article section header footer nav main]
           closing_tag_pattern = %r{</\s*(#{html_closing_tags.join('|')})\s*>}
+          span_closing_pattern = %r{</\s*span\s*>}
 
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
@@ -685,15 +702,17 @@ module VivlioStarter
 
             # HTML 閉じタグの直後に Markdown 見出し(#)や段落が続く場合、空行を挿入
             # 例: </small>## 見出し → </small>\n\n## 見出し
-            if line.match?(/#{closing_tag_pattern}\s*(#|\*|-)/)
-              modified = line.gsub(/(#{closing_tag_pattern})\s*(#|\*|-)/) do
-                "#{::Regexp.last_match(1)}\n\n#{::Regexp.last_match(3)}"
+            html_line = line.lstrip.start_with?('<')
+            line_closing_pattern = html_line ? /#{closing_tag_pattern}|(#{span_closing_pattern})/ : closing_tag_pattern
+            if line.match?(/#{line_closing_pattern}\s*(#|\*|-)/)
+              modified = line.gsub(/(#{line_closing_pattern})\s*(#|\*|-)/) do
+                "#{::Regexp.last_match(1)}\n\n#{::Regexp.last_match[-1]}"
               end
               out << modified
               prev_was_html_closing = false
             else
               out << line
-              prev_was_html_closing = line.strip.match?(closing_tag_pattern)
+              prev_was_html_closing = line.strip.match?(line_closing_pattern)
             end
           end
 

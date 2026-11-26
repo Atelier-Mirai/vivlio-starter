@@ -21,6 +21,7 @@
 # ================================================================
 
 require_relative '../masking'
+require_relative '../pre_process/inline_span_transformer'
 require_relative 'readability'
 require_relative 'content_words'
 
@@ -306,9 +307,13 @@ module VivlioStarter
           strip_markdown(Masking.strip_code(text))
         end
 
-        # Markdown 記法を除去する
+        # Markdown 記法を除去する。行内の属性 `[文字]{.red}` と蛍光ペン `==文字==` は字だけを残す
+        # （`{…}` と `==` は強調の記号と同じく数えない。inline-color-mark-spec.md §7）
         def strip_markdown(text)
-          text.gsub(/^#+\s*/, '')
+          inline = PreProcessCommands::InlineSpanTransformer
+          text.gsub(inline::LOOSE_PATTERN) { ::Regexp.last_match[:text] }
+              .gsub(inline::LOOSE_MARK_PATTERN) { ::Regexp.last_match[:text] }
+              .gsub(/^#+\s*/, '')
               .gsub(/\[([^\]]+)\]\(#{Masking::LINK_DESTINATION}\)/, '\1')
               .gsub(/[*_`~]/, '')
               .gsub(/^>\s*/, '')

@@ -561,8 +561,10 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   end
 
   # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば既定色は消える。
+  # 文字の色の 12 色（`span.green` は本のテーマ色によらず緑）は、テーマ色に従う規則ではないので照合から外す
   def test_should_follow_theme_color_in_kindle_accent
-    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'blue'))
+    cfg = build_config(theme_color: 'blue', appendix_color: 'blue')
+    css = BSC.render(cfg).sub(BSC.kindle_inline_color_rules(cfg), '')
 
     assert_includes css, 'body.vs-kindle strong { color: #0186d8; }'
     assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0186d8; }'
@@ -1032,6 +1034,70 @@ class BookSettingsCssKindleCustomColorTest < Minitest::Test
           File.write(File.join('stylesheets', 'custom.css'), custom_css)
         end
         BSC.kindle_custom_color_rules(cfg)
+      end
+    end
+  end
+end
+
+# ================================================================
+# Kindle 用: 文字の色と蛍光ペン（inline-color-mark-spec.md §5.2・§11 の 6）
+# ================================================================
+# chapter-common.css の色のクラスと mark は var()・color-mix()・linear-gradient()・:is() で書くので、
+# KFX では効かない。book-settings.css に値で書いた規則を出し、値は chapter-common.css とそろえる。
+class BookSettingsCssKindleInlineColorTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  Common = VivlioStarter::CLI::Common
+  CHAPTER_COMMON_CSS = File.expand_path('../../../../stylesheets/chapter-common.css', __dir__)
+
+  def test_should_bake_text_and_mark_colors_for_kindle
+    css = rules_for(nil, theme_color: 'blue')
+
+    assert_includes css, 'body.vs-kindle span.red, body.vs-kindle span.red strong, ' \
+                         'body.vs-kindle span.red code { color: #dc2626; }'
+    assert_includes css, 'body.vs-kindle span.theme, body.vs-kindle .vs-text-theme, ' \
+                         'body.vs-kindle span.theme strong, body.vs-kindle span.theme code, ' \
+                         'body.vs-kindle .vs-text-theme strong, body.vs-kindle .vs-text-theme code { color: #0186d8; }'
+    assert_includes css, 'body.vs-kindle .vs-color strong, body.vs-kindle .vs-color code { color: inherit; }'
+    assert_includes css, 'body.vs-kindle mark { color: inherit; background: #fff3a0; }'
+    assert_includes css, "body.vs-kindle mark.red { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#dc2626', 0.35)}; }"
+    assert_includes css, "body.vs-kindle mark.theme { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#0186d8', 0.35)}; }"
+    refute_match(/var\(|color-mix\(|linear-gradient\(|:is\(/, css.lines.grep_v(%r{/\*}).join)
+    assert_includes BSC.render(Common::CONFIG), 'body.vs-kindle mark {', 'book-settings.css の全文に入る'
+  end
+
+  # custom.css で変えたテーマ色（--accent-red）は Kindle にも届ける
+  def test_should_follow_accent_overridden_in_custom_css
+    css = rules_for(":root {\n  --accent-red: #b91c1c;\n}\n")
+
+    assert_includes css, 'body.vs-kindle span.red code { color: #b91c1c; }'
+    assert_includes css, "body.vs-kindle mark.red { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#b91c1c', 0.35)}; }"
+  end
+
+  # 既定の黄色・混ぜる割合は chapter-common.css の mark の規則と同じ値（Kindle だけ色が違わないように）
+  def test_should_match_mark_values_in_chapter_common_css
+    css = File.read(CHAPTER_COMMON_CSS, encoding: 'utf-8')
+
+    assert_includes css, "--vs-mark-color: #{BSC::MARK_DEFAULT_COLOR};"
+    ratio = "#{(BSC::MARK_MIX * 100).round}%"
+    VivlioStarter::CLI::PreProcessCommands::InlineSpanTransformer::THEME_COLOR_NAMES.each do |name|
+      variable = name == 'theme' ? '--theme-accent' : "--accent-#{name}"
+      assert_includes css, "mark.#{name}", name
+      assert_match(/mark\.#{name}\s*\{ --vs-mark-color: color-mix\(in srgb, var\(#{variable}\) #{ratio}, white\); \}/, css)
+      assert_match(/\.#{name}:not\(mark\)/, css)
+    end
+  end
+
+  private
+
+  def rules_for(custom_css, theme_color: 'green')
+    cfg = Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color))
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        if custom_css
+          FileUtils.mkdir_p('stylesheets')
+          File.write(File.join('stylesheets', 'custom.css'), custom_css)
+        end
+        BSC.kindle_inline_color_rules(cfg)
       end
     end
   end

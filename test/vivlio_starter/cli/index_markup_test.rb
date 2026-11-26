@@ -40,6 +40,20 @@ module VivlioStarter
         assert_empty '[公式](https://example.com)と ![図](img.png)'.scan(IndexMarkup::TERM_PATTERN)
       end
 
+      # 行内の属性 `[文字]{.class}`・`{color=…}`・`{background=…}` は索引語にしない（3 つのパターンとも）。
+      # 行末の段落のクラス `[用語]{.text-right}`・`[用語]{.aki}` は段落の記法なので、索引語のまま読む
+      def test_should_not_detect_inline_attribute_but_keep_paragraph_attribute
+        line = '[傍点]{.sesame}と[漢字|かんじ]{.tcy}と[緑]{color=#3a9d5d}と[字]{background=red}と[用語]'
+
+        assert_equal [['用語']], line.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], line.scan(IndexMarkup::TERM_ONLY_PATTERN)
+        assert_empty line.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN)
+        assert_equal [['用語']], '右に寄せる[用語]{.text-right}'.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], '下を空ける[用語]{.aki}'.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], '[用語]\{.x} は字のまま'.scan(IndexMarkup::TERM_PATTERN)
+        assert_equal [['用語']], '[[用語]]{.red}'.scan(IndexMarkup::TERM_PATTERN), '中の [用語] は索引に載る'
+      end
+
       # --- phase: 参照脚注は「中身」で落とす（パターンには一致する） ---
 
       def test_should_match_but_skip_footnote_reference

@@ -39,6 +39,7 @@ require_relative 'css_updater'
 require_relative '../post_process/heading_processor'
 require_relative 'frontmatter_generator'
 require_relative 'talk_registry'
+require_relative 'inline_span_transformer'
 require_relative 'svg_font_embedder'
 require_relative 'book_setting_warning'
 
@@ -113,6 +114,7 @@ module VivlioStarter
             #{font_synthesis_rules(cfg)}
             #{fallback_font_rules(image_prefix:)}
             #{kindle_accent_rules(cfg)}
+            #{kindle_inline_color_rules(cfg)}
             #{kindle_custom_color_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
@@ -710,6 +712,49 @@ module VivlioStarter
           <<~CSS.chomp
             /* Kindle 用テーマ色リテラル（KFX は var()/color-mix 非対応・最後に読まれ静的フォールバックを上書き） */
             #{lines.join("\n")}
+          CSS
+        end
+
+        # ================================================================
+        # Kindle 用: 文字の色と蛍光ペン（inline-color-mark-spec.md §5.2）
+        # ================================================================
+        # 蛍光ペンの既定の黄色と、テーマ色を白へ混ぜる割合。chapter-common.css の mark の規則と同じ値
+        # （book_settings_css_test が確かめる）
+        MARK_DEFAULT_COLOR = '#fff3a0'
+        MARK_MIX = 0.35
+
+        # 文字の色（`[字]{.red}`）と蛍光ペン（`==字==`）を、Kindle 用に値で書いた規則にする。
+        # chapter-common.css の規則は var()・color-mix()・linear-gradient()・:is() を使うので、KFX では
+        # 一つも効かない。蛍光ペンは下半分の塗りを描けないので、背の全体を塗る。
+        # 字の色は span だけに当てる（mark の色のクラスはペンの色。KFX の :not() は確かめていない）。
+        # 色は theme.css の --accent-*（custom.css で変えた値を含む）と book.yml の theme.color で決まる。
+        # v2 では LiteralResolver が部品の層の var() を解くので、取り込みのときに外す（§8.1）
+        # @return [String]
+        def kindle_inline_color_rules(cfg)
+          variables = root_variables(ThemeColor::THEME_CSS).merge(root_variables(CUSTOM_CSS))
+          accent = ThemeColor.to_hex6(cfg.theme.color)
+          colors = PreProcessCommands::InlineSpanTransformer::THEME_COLOR_NAMES.to_h do |name|
+            variable = name == 'theme' ? '--theme-accent' : "--accent-#{name}"
+            [name, kindle_literal_color("var(#{variable})", variables, accent) || accent]
+          end
+
+          text_rules = colors.map do |name, color|
+            selectors = name == 'theme' ? ['span.theme', '.vs-text-theme'] : ["span.#{name}"]
+            inner = selectors.flat_map { |s| %w[strong code].map { "body.vs-kindle #{s} #{it}" } }
+            "#{selectors.map { "body.vs-kindle #{it}" }.join(', ')}, #{inner.join(', ')} { color: #{color}; }"
+          end
+          # custom.css に色の名前（`--accent-red: crimson`）で書いた色は、白と混ぜられないので塗らない
+          mark_rules = colors.filter_map do |name, color|
+            hex = ThemeColor.normalize_hex6(color)
+            "body.vs-kindle mark.#{name} { background: #{ThemeColor.mix_with_white(hex, MARK_MIX)}; }" if hex
+          end
+
+          <<~CSS.chomp
+            /* Kindle 用: 文字の色と蛍光ペン（KFX は var()/color-mix/linear-gradient/:is() 非対応） */
+            #{text_rules.join("\n")}
+            body.vs-kindle .vs-color strong, body.vs-kindle .vs-color code { color: inherit; }
+            body.vs-kindle mark { color: inherit; background: #{MARK_DEFAULT_COLOR}; }
+            #{mark_rules.join("\n")}
           CSS
         end
 

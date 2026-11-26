@@ -3,6 +3,8 @@
 require 'nokogiri'
 require_relative 'post_process/html_parser'
 require_relative 'pre_process/markdown_transformer'
+require_relative 'pre_process/inline_span_transformer'
+require_relative 'theme_color'
 
 module VivlioStarter
   module CLI
@@ -42,7 +44,8 @@ module VivlioStarter
       # Prism コメントトークンの [!] マーカーを赤強調クラスに変換する。
       # コメント記号（# / // / -- / /* / <!--）は保持し、[!] とその前後の空白 1 つを除去する。
       # 旧 post_replace_list.yml の [!] 赤強調ルール（Prism 出力狙い）をここへ移設したもの。
-      ALERT_COMMENT_PATTERN = %r{\A(\#|//|--|/\*|<!--)\s*\[!\]\s?}
+      # `[!]` の後ろの `{…}` は色（inline-color-mark-spec.md §2.4）。書き方は行内の属性と同じ
+      ALERT_COMMENT_PATTERN = %r{\A(?<marker>\#|//|--|/\*|<!--)\s*\[!\](?:\{(?<attributes>[^{}\n]*)\})?\s?}
 
       # 行番号を付けない枠。実行結果（.output）・端末転写（.terminal）・
       # テキストの図/アスキーアート（.diagram）の <pre> は「コードの提示」ではないため、
@@ -98,9 +101,29 @@ module VivlioStarter
           next unless text_node
           next unless (m = text_node.text.match(ALERT_COMMENT_PATTERN))
 
-          text_node.content = text_node.text.sub(ALERT_COMMENT_PATTERN) { "#{m[1]} " }
+          text_node.content = text_node.text.sub(ALERT_COMMENT_PATTERN) { "#{m[:marker]} " }
           span['class'] = "#{span['class']} codered"
+          color = m[:attributes] && alert_color(m[:attributes])
+          span['style'] = "color: #{color}" if color
         end
+      end
+
+      # `[!]{…}` の色を値にする。値で書くので Kindle にもそのまま届く（var() を使わない）。
+      # クラスはテーマ色の 13 個（theme.css の値・theme は book.yml の theme.color）、`color=` は書いた値で、
+      # 両方あれば値が勝つ（行内の属性の style 属性と同じ）。読めないものは nil にして既定の赤
+      # （code.css の .codered）のまま組む。🟡 は前処理の検査（Guards::ContainerClassCheck）が出す
+      # @param attributes [String] `{` と `}` の間
+      # @param theme_color [String] book.yml の theme.color
+      # @return [String, nil]
+      def alert_color(attributes, theme_color: Common::CONFIG.theme.color)
+        inline = PreProcessCommands::InlineSpanTransformer
+        attrs = inline.parse_attributes(attributes)
+        value = attrs.color || attrs.classes.reverse.find { inline::THEME_COLOR_NAMES.include?(it) }
+        return nil if value.nil?
+        return ThemeColor.to_hex6(theme_color) if value == inline::THEME_VALUE
+        return value if attrs.color # CSS の色（`red` は #ff0000）
+
+        ThemeColor.palette.fetch(value) # テーマ色（`red` は #dc2626）
       end
 
       # figcaption 末尾の開始行マーカー（例: prime.rb#L22-L25）。

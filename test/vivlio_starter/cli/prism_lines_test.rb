@@ -75,6 +75,33 @@ module VivlioStarter
         assert_includes out, '# 普通のコメント'
       end
 
+      # `[!]{…}` の色（inline-color-mark-spec.md §1.2・§2.4）。クラスはテーマ色（theme.css の値）、
+      # `color=` は CSS の色そのもの。値で書くので Kindle にもそのまま届く。太字の codered は残す
+      def test_should_color_alert_comment_with_attributes
+        assert_includes process(pre_with('# [!]{.blue} 注意')),
+                        '<span class="token comment codered" style="color: #0186d8"># 注意'
+        assert_includes process(pre_with('// [!]{color=#3A9D5D} 注意')),
+                        '<span class="token comment codered" style="color: #3a9d5d">// 注意'
+        assert_includes process(pre_with('# [!]{.red color=red} 注意')),
+                        '<span class="token comment codered" style="color: red"># 注意', '名前と値なら値が勝つ'
+      end
+
+      # `{.theme}`・`{color=theme}` は book.yml の theme.color
+      def test_should_color_alert_comment_with_book_theme_color
+        assert_equal '#7c3aed', PrismLinesCommands.alert_color('.theme', theme_color: 'purple')
+        assert_equal '#7c3aed', PrismLinesCommands.alert_color('color=theme', theme_color: 'purple')
+        assert_equal '#0186d8', PrismLinesCommands.alert_color('.blue', theme_color: 'purple')
+        assert_nil PrismLinesCommands.alert_color('.small', theme_color: 'purple'), 'テーマ色でないクラスは色にしない'
+      end
+
+      # 読めない値は既定の赤のまま（🟡 は前処理の検査が出す）。記号ごと紙面から取り除く
+      def test_should_keep_default_red_for_unreadable_alert_color
+        out = process(pre_with('# [!]{color=reed} 注意'))
+
+        assert_includes out, '<span class="token comment codered"># 注意'
+        refute_includes out, 'reed'
+      end
+
       def test_should_not_highlight_inside_language_markdown_pre
         html = <<~HTML
           <pre class="language-markdown"><code class="language-markdown"><span class="token comment"># [!] 記法説明の例</span></code></pre>

@@ -459,6 +459,19 @@ module VivlioStarter
         assert_includes warnings.first, '--spot-balloon-border（calc(1px)）'
       end
 
+      # 蛍光ペンの塗る色（style 属性の --vs-mark-color）は、KFX が変数を読まないので背の色に書き換える。
+      # 字の色（color:）と mark の外の style はそのまま（inline-color-mark-spec.md §5.2）
+      def test_should_literalize_mark_colors_for_kindle
+        html = '<html><body class="vs-kindle"><p><mark class="vs-color" style="color: red; --vs-mark-color: #fff3a0">字</mark>' \
+               '<mark class="green">緑</mark><span style="--vs-mark-color: x">外</span></p></body></html>'
+        doc = process(html) { |files| Builder.literalize_mark_colors_for_kindle!(files) }
+
+        marks = doc.css('mark')
+        assert_equal 'color: red; background-color: #fff3a0', marks[0]['style']
+        assert_nil marks[1]['style']
+        assert_equal '--vs-mark-color: x', doc.at_css('span')['style']
+      end
+
       # chat の会話文は Kindle で inline 形式（名前＋区切り＋発話の 1 段落）へ組み替わる
       def test_should_flatten_chat_talk_to_inline_for_kindle
         html = '<html><body class="vs-kindle">' \

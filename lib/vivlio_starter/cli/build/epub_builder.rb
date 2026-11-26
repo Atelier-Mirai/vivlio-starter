@@ -402,6 +402,8 @@ module VivlioStarter
             compose_pictures_for_kindle!(chapter_htmls)
             # 原稿の style 属性で変えた吹き出しの色を、吹き出しの段落へ色で書き込む（var() 非対応）。
             literalize_spot_balloon_colors_for_kindle!(chapter_htmls)
+            # 蛍光ペンの style 属性の色を、背の色へ書き換える（変数を読まないため）。
+            literalize_mark_colors_for_kindle!(chapter_htmls)
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
             textify_simple_math_for_kindle!(chapter_htmls)
@@ -2793,6 +2795,21 @@ end
         # 小さな挿絵の吹き出しの色の変数と、Kindle で描く宣言（改善案 #157）。
         SPOT_BALLOON_PROPERTIES = { '--spot-balloon-border' => 'border-color',
                                     '--spot-balloon-bg' => 'background' }.freeze
+
+        # 蛍光ペン `==字=={background=…}` の `style="--vs-mark-color: 値"` を `background-color: 値` にする
+        # （Kindle のみ・inline-color-mark-spec.md §5.2）。KFX は style 属性の変数も linear-gradient() も
+        # 読まないので、背の全体を著者の色で塗る。値は前処理が CSS の色の名前と #rrggbb に限っている
+        # @param html_files [Array<String>]
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def literalize_mark_colors_for_kindle!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            next unless html.include?('--vs-mark-color')
+
+            File.write(path, html.gsub(/<mark\b[^>]*>/) { it.gsub('--vs-mark-color:', 'background-color:') })
+          end
+          html_files
+        end
 
         # 囲み（またはその祖先）の style 属性に書いた --spot-balloon-* を、吹き出しの段落の
         # style へ具体的な色で書き込む（Kindle のみ）。
