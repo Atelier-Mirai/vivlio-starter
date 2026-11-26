@@ -121,9 +121,11 @@ vs upgrade --dry-run  # 計画を表示するだけで、何も変更しない
 
 :::{.output}
 ```text
-🔍 雛形との差分を確認しています…（gem 1.0.0 の雛形）
+🔍 雛形との差分を確認しています…（gem 1.1.0 の雛形）
 📋 更新計画:
    追加   covers/templates/frontcover_a4.png        （雛形の新規ファイル）
+   更新   package.json                              （著者は未変更）
+            Vivliostyle CLI 11.3.3 → 11.6.0
    更新   stylesheets/chapter-common.css            （著者は未変更）
    合流   stylesheets/preface.css                   （別の場所を変更 → 両立）
    競合   stylesheets/custom.css                    （同じ場所を変更 → 確認）

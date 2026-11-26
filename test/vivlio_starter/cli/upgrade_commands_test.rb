@@ -1499,7 +1499,7 @@ module VivlioStarter
         end
       end
 
-      # package.json の行には、著者が使うツール（devDependencies）の版の変化を添える。
+      # package.json の行の下には、著者が使うツール（devDependencies）の版の変化を並べる。
       # 脆弱性への対策で固定している dependencies・overrides の版は添えない
       def test_should_show_tool_version_changes_for_package_json
         package = lambda do |cli, core|
@@ -1513,7 +1513,7 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, dry_run: true) }
 
-          assert_match(/更新   package\.json +（著者は未変更・Vivliostyle CLI 11\.3\.3 → 11\.6\.0）$/, out)
+          assert_match(/更新   package\.json +（著者は未変更）\n {12}Vivliostyle CLI 11\.3\.3 → 11\.6\.0\n/, out)
         end
       end
 
@@ -1526,7 +1526,7 @@ module VivlioStarter
 
           out, = capture_io { run_upgrade(scaffold, dry_run: true) }
 
-          assert_match(/更新   package\.json +（著者は未変更）$/, out)
+          assert_match(/更新   package\.json +（著者は未変更）\n(?! )/, out)
         end
       end
 
