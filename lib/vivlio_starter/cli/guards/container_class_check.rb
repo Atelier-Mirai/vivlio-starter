@@ -25,7 +25,9 @@ module VivlioStarter
       #
       # 許可リスト: stylesheets/**/*.css のクラスセレクタを自動抽出する。custom.css が
       #   著者の自由記述用に用意されているため「クラスに CSS を書けば自動的に許可される」で
-      #   完結する。過剰許可（Prism のトークンクラス等が混ざる）は偽陰性しか生まないため許容する。
+      #   完結する。`.a.b`・`div.a` のように前の選択子に続けたクラスも拾う（改善案 #169）。
+      #   div・span 以外の型に付けたクラスと Prism のトークンは、原稿に書いても飾りが付かない
+      #   ので拾わない。残る過剰許可（内部のクラス等）は偽陰性しか生まないため許容する。
       class ContainerClassCheck < BaseCheck
         include ManuscriptScope
 
@@ -37,8 +39,25 @@ module VivlioStarter
           book-card rotate-table long-table text-right text-center text-left showcase talk
         ].freeze
 
-        # CSS のクラスセレクタ。小数（`0.5em`）や `nth-child()` を拾わないよう直前を除外する。
-        CSS_CLASS_SELECTOR = /(?<![\w.\-])\.([a-zA-Z_][\w-]*)/
+        # 規則の選択子の部分（`{` の直前の、`;`・`{`・`}` で区切られた一塊）。入れ子の CSS
+        # （`.a { color: red; .b { … } }`）でも、宣言は `;` で切れるので選択子だけが残る。
+        # 宣言を外すので、小数（`0.5em`）や `url(a.png)` の `.5em`・`.png` を拾わない。
+        CSS_RULE_PRELUDE = /([^{};]*)\{/
+
+        # 複合選択子の区切り（子孫・子・兄弟の結合子と、選択子の並び、:is()・:not() の括弧）
+        CSS_COMPOUND_SEPARATOR = /[\s,>+~()]+/
+
+        # 複合選択子の中のクラス。`.a.b` の 2 つ目も、`div.a` のように型に続けたものも拾う（改善案 #169）。
+        CSS_CLASS_SELECTOR = /(?<!\\)\.([a-zA-Z_][\w-]*)/
+
+        # 原稿の記法が作る要素の型。囲み `:::{.a}` は div、行内の属性 `[字]{.a}` は span になる。
+        # `body.toc`・`ol.vs-list-lower-alpha`・`img.vs-bordered` のようにほかの型に付けたクラスは、
+        # 原稿に書いても飾りが付かないので、既知にしない（書き誤りの 🟡 を見逃さないため）。
+        NOTATION_ELEMENTS = %w[div span].freeze
+
+        # Prism が色分けのために付けるトークンのクラス（`.token.comment` など）。著者が書くものでは
+        # なく、`.comment`・`.important` を既知にすると、囲みの書き誤りを見逃すので拾わない。
+        PRISM_TOKEN = '.token'
 
         # 提示する修正候補の上限。実データでは 1 件に収まるが、似た名前のクラスが
         # 増えたときに候補が並びすぎないよう蓋をする。
@@ -235,8 +254,16 @@ module VivlioStarter
 
         def css_classes
           Dir.glob(File.join(Common.stylesheets_dir, '**', '*.css')).flat_map do |path|
-            strip_css_noise(File.read(path, encoding: 'utf-8')).scan(CSS_CLASS_SELECTOR).flatten
+            css = strip_css_noise(File.read(path, encoding: 'utf-8'))
+            compounds = css.scan(CSS_RULE_PRELUDE).flatten.flat_map { it.split(CSS_COMPOUND_SEPARATOR) }
+            compounds.select { notation_compound?(it) }.flat_map { it.scan(CSS_CLASS_SELECTOR).flatten }
           end
+        end
+
+        # 原稿の記法が作る要素に当たりうる複合選択子か（型が無いか div・span で、Prism のトークンでない）
+        def notation_compound?(compound)
+          element = compound[/\A[a-zA-Z][\w-]*/]
+          (element.nil? || NOTATION_ELEMENTS.include?(element.downcase)) && !compound.include?(PRISM_TOKEN)
         end
 
         # コメントと文字列リテラルを除去する。`content: ".foo"` を

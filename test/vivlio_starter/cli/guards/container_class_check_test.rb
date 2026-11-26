@@ -221,6 +221,40 @@ module VivlioStarter
         end
       end
 
+      # 前の選択子に続けて書いたクラス（`.a.b` の 2 つ目・`div.a`）と、:is() の中・入れ子の CSS の
+      # クラスも既知とする（改善案 #169。`.spot-right.spot-center` で未知と警告していた）
+      def test_should_know_classes_compounded_with_previous_selector
+        css = <<~CSS
+          .spot-right.spot-center { float: none; }
+          div.foo { color: red; }
+          .bar:is(.baz) { color: red; }
+          .outer { color: red; .nested { color: blue; } }
+        CSS
+        with_temp_project(css:) do
+          File.write('contents/11-install.md', %w[spot-center foo baz nested].map { ":::{.#{it}}\n:::\n" }.join)
+
+          assert_empty Guards::ContainerClassCheck.new.validate
+        end
+      end
+
+      # 宣言の中の小数・URL、div・span 以外の型に付けたクラス、Prism のトークンは既知にしない。
+      # 囲みに書いても飾りが付かないので、書き誤りとして知らせる（改善案 #169）
+      def test_should_not_know_values_other_elements_and_prism_tokens
+        css = <<~CSS
+          .real { margin: 1.5em; background: url(images/a.png); }
+          body.toc { color: red; }
+          .token.important { font-weight: bold; }
+        CSS
+        with_temp_project(css:) do
+          File.write('contents/11-install.md', %w[5em png toc important].map { ":::{.#{it}}\n:::\n" }.join)
+
+          messages = Guards::ContainerClassCheck.new.validate.map(&:message)
+
+          assert_equal 4, messages.size
+          %w[5em png toc important].each { |klass| assert(messages.any? { it.include?("'.#{klass}'") }, klass) }
+        end
+      end
+
       private
 
       DEFAULT_CSS = <<~CSS
