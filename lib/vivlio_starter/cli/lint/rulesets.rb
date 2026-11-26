@@ -44,8 +44,19 @@ module VivlioStarter
           technical: NOVEL_RULES,
           # 誤字と表記の揺れだけ（絵本の既定）
           minimal: (STYLE_RULES + NOVEL_RULES).freeze,
-          # 小説向け。minimal に小説の規則を足したもの
-          novel: STYLE_RULES
+          # 小説向け。minimal に小説の規則を足し、技術書の用語の辞書（spellcheck-tech-word）を切る。
+          # この辞書は「。」」→「」」・「――」→「──」・「！？」→「!?」と、小説の書き方と逆の向きに
+          # 直させる（青空文庫の 3 作品で「。」」だけで 62・7・47 件。novel-vertical-spec.md §10.6）
+          novel: (STYLE_RULES + %w[spellcheck-tech-word]).freeze
+        }.freeze
+
+        # 組が prh の読み込み（.textlintrc.yml の prh.rulePaths）から外す、同梱の辞書のファイル名。
+        # prh の指摘はどれも規則の名前が prh で、lint.disabled_rules では辞書ごとに切れない
+        # （prh を切ると、著者の textlint_rewrite.yml と誤字の辞書まで止まる）。
+        # 小説では、ひらく漢字・閉じる漢字（出来る→できる・事→こと）は著者の選ぶ表記である
+        # （青空文庫の 3 作品で prh の指摘 106 件のほとんど）
+        DICTIONARY_TABLE = {
+          novel: %w[prh_open_close.yml].freeze
         }.freeze
 
         module_function
@@ -58,11 +69,20 @@ module VivlioStarter
         # @return [Array<String>]
         # @raise [KeyError] 知らない組の名前
         def disabled_by(name)
-          key = name.to_s.strip
-          key = 'technical' if key.empty?
-          TABLE.fetch(key.to_sym) do
-            raise KeyError, "config/book.yml の lint.ruleset に、知らない規則の組が書かれています: #{key}"
+          TABLE.fetch(key_of(name)) do
+            raise KeyError, "config/book.yml の lint.ruleset に、知らない規則の組が書かれています: #{key_of(name)}"
           end
+        end
+
+        # 組が prh の読み込みから外す同梱の辞書のファイル名（知らない組は disabled_by が止める）
+        # @param name [String, Symbol, nil]
+        # @return [Array<String>]
+        def dropped_dictionaries(name) = DICTIONARY_TABLE.fetch(key_of(name), [])
+
+        # 書かなければ technical
+        def key_of(name)
+          key = name.to_s.strip
+          (key.empty? ? 'technical' : key).to_sym
         end
       end
     end

@@ -933,6 +933,29 @@ module VivlioStarter
         Common.install_configuration!(original)
       end
 
+      # 小説の組は、技術書の用語の辞書（spellcheck-tech-word）を切り、同梱のひらく漢字・閉じる漢字の
+      # 辞書を prh から外す。著者の辞書は同じファイル名でも残す（novel-vertical-spec.md §10.6）
+      def test_novel_ruleset_drops_tech_word_and_the_open_close_dictionary
+        original = Common::CONFIG
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          paths = ['./textlint_rewrite.yml', './textlint_dictionaries/prh_idiom.yml',
+                   './textlint_dictionaries/prh_open_close.yml', './my/prh_open_close.yml']
+          File.write(base, { 'rules' => { 'spellcheck-tech-word' => true, 'prh' => { 'rulePaths' => paths } } }.to_yaml)
+
+          { 'novel' => [false, paths - ['./textlint_dictionaries/prh_open_close.yml']],
+            'technical' => [true, paths] }.each do |ruleset, (tech_word, rule_paths)|
+            Common.install_configuration!(Common.wrap_config(Common.merge_hardcoded_defaults(lint: { ruleset: })).freeze)
+            cfg = runtime_config(base)
+
+            assert_equal tech_word, cfg.dig('rules', 'spellcheck-tech-word'), ruleset
+            assert_equal rule_paths, cfg.dig('rules', 'prh', 'rulePaths'), ruleset
+          end
+        end
+      ensure
+        Common.install_configuration!(original)
+      end
+
       # スペース許容指定時に、preset-ja-spacing の該当ルールを設定レベルで無効化する
       def test_generate_runtime_config_allows_spacing
         Dir.mktmpdir do |dir|

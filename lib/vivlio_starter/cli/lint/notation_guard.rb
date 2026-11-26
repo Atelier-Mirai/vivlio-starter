@@ -338,9 +338,10 @@ module VivlioStarter
         # 投稿サイトの記法を読む本（notation.web_novel）では、ビルドと同じ読み替えを先に通す
         # （novel-vertical-spec.md §5.4「vs lint も、置き換えた後の文で見る」）。`|漢字《かんじ》` は
         # ふりがなになって親文字を見せず（G3）、`《《文字》》` は傍点の属性が外れて字だけが残る。
-        # 行頭の全角空白は落とさない（小説の規則 novel-paragraph-indent が見る）
+        # 組むための読み替え（行頭の全角空白を落とす・1 行を 1 段落にする）は掛けない。全角空白は
+        # 小説の規則 novel-paragraph-indent が見て、行数は原稿と同じに保つ（I1）
         def strip_notation(text, web_novel: Common.web_novel?)
-          text = PreProcessCommands::WebNovelMarkTransformer.transform(text, drop_indent: false) if web_novel
+          text = PreProcessCommands::WebNovelMarkTransformer.transform(text, layout: false) if web_novel
           text = blank_math(text)
           prose   = prose_lines(text)
           machine = machine_block_lines(text, prose)

@@ -13,6 +13,7 @@
 #   - 傍点 `《《文字》》` は行内の属性の傍点にする
 #   - 打ち消し `|《` は `《` を字のまま残す
 #   - 行頭の全角空白は 1 つだけ落とす（lint の読み替えでは落とさない）
+#   - 空行を挟まずに続く地の文の行は 1 行を 1 段落にする（行をまたぐ Markdown の形・囲み・明示の改行は分けない）
 #   - コード・vs のルビ・表の区切りの縦棒は読まない
 #   - 段は notation.web_novel が有効な本でだけ走り、行内の属性の段より前にある
 # ================================================================
@@ -48,10 +49,10 @@ module VivlioStarter
         end
 
         def test_should_drop_one_leading_ideographic_space
-          source = "　一つ目の段落。\n「会話」\n　　二つの空白。\n文中の　空白。\n"
+          source = "　一つ目の段落。\n\n「会話」\n\n　　二つの空白。\n\n文中の　空白。\n"
 
-          assert_equal "一つ目の段落。\n「会話」\n　二つの空白。\n文中の　空白。\n", transform(source)
-          assert_equal source, transform(source, drop_indent: false), 'lint の読み替えは字下げを残す'
+          assert_equal "一つ目の段落。\n\n「会話」\n\n　二つの空白。\n\n文中の　空白。\n", transform(source)
+          assert_equal source, transform(source, layout: false), 'lint の読み替えは字下げを残す'
         end
 
         def test_should_leave_code_vs_ruby_and_table_separators
@@ -73,11 +74,71 @@ module VivlioStarter
           assert_equal expected, transform(source)
         end
 
-        # 読み替えの結果は行数が変わらない（lint の行番号がずれない）
-        def test_should_keep_the_line_count
+        # lint の読み替えは行数が変わらない（指摘の行番号が原稿とずれない）
+        def test_lint_reading_should_keep_the_line_count
           source = "　|猫《ねこ》\n《《傍点》》\n\n　地の文\n"
 
-          assert_equal source.count("\n"), transform(source).count("\n")
+          assert_equal source.count("\n"), transform(source, layout: false).count("\n")
+        end
+
+        # 投稿サイトの原稿は段落の間に空行を入れないことが多い。1 行を 1 段落にしないと、
+        # 続く行が 1 つの段落になり、2 行目からの字下げと括弧の段落の印が付かない
+        def test_should_make_each_prose_line_a_paragraph
+          source = <<~MD
+            ---
+            title: 題
+            lang: ja
+            ---
+            # 章
+            　雨が降っていた。
+            「これ？」
+            明示の改行\
+            続き
+
+            - 箇条
+              続き
+            - 二
+            > 引用
+            > 二行目
+
+            :::{.note}
+            注の一
+            注の二
+            :::
+            ![絵](x.png)
+            後の文。
+          MD
+          expected = <<~MD
+            ---
+            title: 題
+            lang: ja
+            ---
+            # 章
+
+            雨が降っていた。
+
+            「これ？」
+
+            明示の改行\
+            続き
+
+            - 箇条
+              続き
+            - 二
+            > 引用
+            > 二行目
+
+            :::{.note}
+            注の一
+            注の二
+            :::
+            ![絵](x.png)
+
+            後の文。
+          MD
+
+          assert_equal expected, transform(source)
+          assert_equal source, transform(source, layout: false), 'lint の読み替えは段落を分けない'
         end
 
         # 傍点を [文字]{.sesame} にするので、行内の属性を span にする段より前に走る。

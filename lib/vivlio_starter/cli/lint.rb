@@ -821,6 +821,7 @@ module VivlioStarter
           end
 
           apply_disabled_rules!(rules)
+          drop_ruleset_dictionaries!(rules, File.dirname(base_path))
           apply_builtin_allowlist!(cfg)
           trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
           apply_spacing_allowances!(rules, allow_code_space, allow_ja_en_space)
@@ -921,6 +922,22 @@ module VivlioStarter
             next rule_path unless File.expand_path(rule_path.to_s, dir).start_with?(bundled)
 
             trimmed_dictionary(rule_path, dir) || rule_path
+          end
+        end
+
+        # 規則の組が外す同梱の prh の辞書を、prh.rulePaths から除く（Lint::Rulesets::DICTIONARY_TABLE）。
+        # 小説の組は、ひらく漢字・閉じる漢字の辞書を読まない（novel-vertical-spec.md §10.6）。
+        # 外すのは同梱の辞書（config/textlint_dictionaries/）だけで、著者の辞書はファイル名が
+        # 同じでも残す（trim_long_vowel_dictionaries! と同じ線）
+        def drop_ruleset_dictionaries!(rules, dir)
+          dropped = Lint::Rulesets.dropped_dictionaries(Common::CONFIG.lint.ruleset)
+          prh = rules['prh']
+          return if dropped.empty? || !prh.is_a?(Hash)
+
+          bundled = File.join(File.expand_path(dir), BUNDLED_DICTIONARY_DIR, '')
+          prh['rulePaths'] = Array(prh['rulePaths']).reject do |rule_path|
+            path = File.expand_path(rule_path.to_s, dir)
+            path.start_with?(bundled) && dropped.include?(File.basename(path))
           end
         end
 
