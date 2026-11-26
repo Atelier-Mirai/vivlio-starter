@@ -719,8 +719,9 @@ module VivlioStarter
         # Kindle 用: 文字の色と蛍光ペン（inline-color-mark-spec.md §5.2）
         # ================================================================
         # 蛍光ペンの既定の黄色と、テーマ色を白へ混ぜる割合。chapter-common.css の mark の規則と同じ値
-        # （book_settings_css_test が確かめる）
-        MARK_DEFAULT_COLOR = '#fff3a0'
+        # （book_settings_css_test が確かめる）。黄色は oklch(0.935 0.152 102)。白からの色の差を
+        # 35% に混ぜた赤・青・緑とそろえた値（chapter-common.css のコメント）
+        MARK_DEFAULT_COLOR = '#feed69'
         MARK_MIX = 0.35
 
         # 文字の色（`[字]{.red}`）と蛍光ペン（`==字==`）を、Kindle 用に値で書いた規則にする。
@@ -743,8 +744,11 @@ module VivlioStarter
             inner = selectors.flat_map { |s| %w[strong code].map { "body.vs-kindle #{s} #{it}" } }
             "#{selectors.map { "body.vs-kindle #{it}" }.join(', ')}, #{inner.join(', ')} { color: #{color}; }"
           end
-          # custom.css に色の名前（`--accent-red: crimson`）で書いた色は、白と混ぜられないので塗らない
+          # 黄色のペンは既定の黄色で塗る（テーマ色の黄は混ぜると淡い橙になる）。custom.css に色の名前
+          # （`--accent-red: crimson`）で書いた色は、白と混ぜられないので塗らない
           mark_rules = colors.filter_map do |name, color|
+            next "body.vs-kindle mark.yellow { background: #{MARK_DEFAULT_COLOR}; }" if name == 'yellow'
+
             hex = ThemeColor.normalize_hex6(color)
             "body.vs-kindle mark.#{name} { background: #{ThemeColor.mix_with_white(hex, MARK_MIX)}; }" if hex
           end

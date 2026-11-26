@@ -353,15 +353,21 @@ a.cross-ref-number {
    ==文字=={background=…} は style 属性でこの変数を書き換える。
    background の宣言に calc() と var() を混ぜない（Vivliostyle が宣言ごと捨てる。
    vivliostyle-css-pitfalls-notes.md）ので、塗る位置は素の % で書く。
-   既定の黄色・混ぜる割合・塗る高さは BookSettingsCss の MARK_* と同じ値にする（Kindle 用） */
+   既定の黄色・混ぜる割合・塗る高さは BookSettingsCss の MARK_* と同じ値にする（Kindle 用）。
+
+   既定の黄色 #feed69 は oklch(0.935 0.152 102)。白からの色の差（OKLab の ΔE 0.165）を、
+   テーマ色を 35% に混ぜた赤（0.189）・青（0.163）・緑（0.175）とそろえた。黄色は明るさを
+   下げると黄土色になるので、明るさを保ったまま彩度で濃さを合わせている。
+   黄色のペン（==文字=={.yellow}）も既定の黄色で塗る。テーマ色の黄 --accent-yellow（#f0a000）は
+   橙寄りで、35% に混ぜると淡い橙になり、ほかの色より淡くも見えた（2026-11-26 ユーザー決定） */
 mark {
-  --vs-mark-color: #fff3a0;
+  --vs-mark-color: #feed69;
   color: inherit;
   background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);
   box-decoration-break: clone;
 }
 
-mark.yellow  { --vs-mark-color: color-mix(in srgb, var(--accent-yellow) 35%, white); }
+mark.yellow  { --vs-mark-color: #feed69; }
 mark.orange  { --vs-mark-color: color-mix(in srgb, var(--accent-orange) 35%, white); }
 mark.red     { --vs-mark-color: color-mix(in srgb, var(--accent-red) 35%, white); }
 mark.magenta { --vs-mark-color: color-mix(in srgb, var(--accent-magenta) 35%, white); }

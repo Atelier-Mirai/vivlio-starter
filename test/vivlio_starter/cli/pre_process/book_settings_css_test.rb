@@ -1058,7 +1058,8 @@ class BookSettingsCssKindleInlineColorTest < Minitest::Test
                          'body.vs-kindle span.theme strong, body.vs-kindle span.theme code, ' \
                          'body.vs-kindle .vs-text-theme strong, body.vs-kindle .vs-text-theme code { color: #0186d8; }'
     assert_includes css, 'body.vs-kindle .vs-color strong, body.vs-kindle .vs-color code { color: inherit; }'
-    assert_includes css, 'body.vs-kindle mark { color: inherit; background: #fff3a0; }'
+    assert_includes css, 'body.vs-kindle mark { color: inherit; background: #feed69; }'
+    assert_includes css, 'body.vs-kindle mark.yellow { background: #feed69; }', '黄色のペンは既定の黄色'
     assert_includes css, "body.vs-kindle mark.red { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#dc2626', 0.35)}; }"
     assert_includes css, "body.vs-kindle mark.theme { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#0186d8', 0.35)}; }"
     refute_match(/var\(|color-mix\(|linear-gradient\(|:is\(/, css.lines.grep_v(%r{/\*}).join)
@@ -1073,18 +1074,21 @@ class BookSettingsCssKindleInlineColorTest < Minitest::Test
     assert_includes css, "body.vs-kindle mark.red { background: #{VivlioStarter::CLI::ThemeColor.mix_with_white('#b91c1c', 0.35)}; }"
   end
 
-  # 既定の黄色・混ぜる割合は chapter-common.css の mark の規則と同じ値（Kindle だけ色が違わないように）
+  # 既定の黄色・混ぜる割合は chapter-common.css の mark の規則と同じ値（Kindle だけ色が違わないように）。
+  # 黄色のペンは既定の黄色で塗る（テーマ色の黄は混ぜると淡い橙になる）
   def test_should_match_mark_values_in_chapter_common_css
     css = File.read(CHAPTER_COMMON_CSS, encoding: 'utf-8')
 
     assert_includes css, "--vs-mark-color: #{BSC::MARK_DEFAULT_COLOR};"
     ratio = "#{(BSC::MARK_MIX * 100).round}%"
-    VivlioStarter::CLI::PreProcessCommands::InlineSpanTransformer::THEME_COLOR_NAMES.each do |name|
+    assert_includes css, "mark.yellow  { --vs-mark-color: #{BSC::MARK_DEFAULT_COLOR}; }"
+    (VivlioStarter::CLI::PreProcessCommands::InlineSpanTransformer::THEME_COLOR_NAMES - %w[yellow]).each do |name|
       variable = name == 'theme' ? '--theme-accent' : "--accent-#{name}"
       assert_includes css, "mark.#{name}", name
       assert_match(/mark\.#{name}\s*\{ --vs-mark-color: color-mix\(in srgb, var\(#{variable}\) #{ratio}, white\); \}/, css)
       assert_match(/\.#{name}:not\(mark\)/, css)
     end
+    assert_match(/\.yellow:not\(mark\)/, css)
   end
 
   private

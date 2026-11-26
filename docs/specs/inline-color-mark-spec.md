@@ -1,12 +1,12 @@
 # 文字の色・コメントの色・蛍光ペンの記法の仕様書
 
 > 作成日: 2026-11-26
-> ステータス: **実装済み（2026-11-26）**。淡さの値（§9）をユーザーが選ぶのと、原稿（§10）が残り（1.1.0 に入れる）
+> ステータス: **実装済み（2026-11-26）**。淡さの値（§9）も決定済み。原稿（§10）が残り（1.1.0 に入れる）
 > 対象: 本文や表のセルの一部の字に色を付ける記法、コードのコメントの `[!]` の色、蛍光ペン（`PLANNED.md`「文字の色を変えるインライン記法」を仕様にしたもの）
 > 決定事項（2026-11-26 ユーザー決定）:
 > - **文字の色は 2 通り。** `[文字]{.red}` は**この本のテーマ色**（テーマ色の 12 色と、`book.yml` の `theme.color` に従う `theme`。`red` は `#dc2626`）。`[文字]{color=red}` は **CSS の色そのもの**（`red` は `#ff0000`。`#3a9d5d` のような値も書ける）（§1.1）
 > - **コメントの `[!]` は既定の赤のまま、`[!]{.blue}`・`[!]{color=#…}` で色を選べる**（§1.2）
-> - **蛍光ペンは `==文字==`。** 下半分を塗る。既定は黄色。`==文字=={.green}` はテーマ色を淡くした色、塗る色の値は `{background=#fff3a0}`。`[文字]{…}` と `==文字=={…}` は同じ項目を受け、`color=` は字の色、`background=` は蛍光ペンの色（どちらの形でも下半分を塗る）。淡さの割合は実装の後に紙面を見て決める（§1.3）
+> - **蛍光ペンは `==文字==`。** 下半分を塗る。既定は黄色。`==文字=={.green}` はテーマ色を淡くした色、塗る色の値は `{background=#fff3a0}`。`[文字]{…}` と `==文字=={…}` は同じ項目を受け、`color=` は字の色、`background=` は蛍光ペンの色（どちらの形でも下半分を塗る）。淡さは実装の後に紙面を見て決めた（既定の黄色 `#feed69`・テーマ色 35%・下 45%。§9）
 > - **v2 の `InlineSpanTransformer`（行内の属性 `[文字]{.class}`）を同じパス・同じ形で master へ写して作る。** 2.0 の傍点 `{.sesame}`・縦中横 `{.tcy}` と同じ仕組みに載る。v2 のセッションと整合を確認済み（§8）
 > - **11/17 の決定を改める。** `v2-migration-plan.md` §6.3（色の記法は 1.1.0 を出さず v2 で作る・master には作らない）を、ユーザーが 11/26 に改めた。§6.3 の書き換えは、取り込みのときに v2 のセッションが行う（§8.3）
 > 関連: `notation-implementation-guide.md`（【B】前処理変換型＋【A】CSS 型）, `lib/vivlio_starter/cli/index_markup.rb`, `lib/vivlio_starter/cli/prism_lines.rb`（`[!]`）, `lib/vivlio_starter/cli/guards/container_class_check.rb`, `lib/vivlio_starter/cli/theme_color.rb`, `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（`kindle_accent_rules`）, `stylesheets/theme.css`（`--accent-*`）, `stylesheets/code.css`（`.codered`）, `kindle-css-compatibility-notes.md`（`linear-gradient` は KFX で描かれない）, `vivliostyle-css-pitfalls-notes.md`（`background` の `calc()`+`var()`）, v2 の `inline_span_transformer.rb`・`novel-vertical-spec.md` §5.1・`v2-architecture-spec.md` §7.1
@@ -66,7 +66,7 @@ puts total   # [!]{color=#3a9d5d} 値で指定（太字）
 - `color=` と `background=` は、どちらの形にも並べて書ける（`==注意=={color=red}`・`[注意]{color=red background=#fff3a0}`）。`color=` が字の色、`background=` が蛍光ペンの色。
 - `background=theme` は `{.theme}` の蛍光ペンと同じく、本のテーマ色を淡くした色で塗る（ほかの `background=` の値は淡くしない。テーマ色をそのまま塗ると字が読めないため）。
 - クラス `{.名前}` だけは形で意味が変わる。`[文字]{.green}` は字の色、`==文字=={.green}` は蛍光ペンの色（淡くした色）。テーマ色の字に蛍光ペンを重ねるときは `==[注意]{.red}==`。
-- **淡さの割合**（既定の黄色の値と、テーマ色を白と混ぜる割合）は、実装の後に 2〜3 通り組んで、ユーザーが紙面を見て決める（§9）。
+- **淡さの割合**（既定の黄色の値と、テーマ色を白と混ぜる割合）は、実装の後に紙面を見て決めた（§9）。黄色のペン `{.yellow}` だけは、テーマ色を混ぜずに既定の黄色で塗る。
 
 ### 1.4 組み合わせ
 
@@ -179,13 +179,14 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 
 ```css
 mark {
-  --vs-mark-color: #fff3a0;           /* 既定の黄色（値は §9 で決める） */
+  --vs-mark-color: #feed69;           /* 既定の黄色（§9 で決定） */
   color: inherit;
-  background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);  /* 55% は §9 で決める */
+  background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);  /* 下 45% を塗る（§9） */
   box-decoration-break: clone;
 }
+mark.yellow { --vs-mark-color: #feed69; }  /* 黄色のペンは既定の黄色（§9） */
 mark.green { --vs-mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }  /* 割合は §9 */
-/* … 12 色と theme … */
+/* … ほかの 10 色と theme … */
 ```
 
 - 塗る位置の割合は素の `%` で書く。`calc()` と `var()` を `background` の宣言で混ぜない（Vivliostyle が捨てる。`vivliostyle-css-pitfalls-notes.md`）。`linear-gradient` の色の位置の `var()` は効くかを実装で確かめ、効かなければ色ごとに宣言を書き分ける。
@@ -270,6 +271,19 @@ v2 のセッションが直した（2026-11-26・`8ef04aef`）。選ばれたテ
 - 既定の黄色の値（`#fff3a0` 前後）
 - テーマ色を白と混ぜる割合（30〜40% 前後）
 - 塗る高さ（下から 40〜50% 前後）
+
+**決定（2026-11-26 ユーザー）:**
+
+| 項目 | 値 |
+|---|---|
+| 既定の黄色 | `#feed69`（`oklch(0.935 0.152 102)`） |
+| テーマ色を白と混ぜる割合 | 35% |
+| 塗る高さ | 下から 45%（`transparent 55%`） |
+| 黄色のペン `{.yellow}` | 既定の黄色と同じ `#feed69` |
+
+- 最初の候補 `#fff3a0` は、赤・青の 35% と並べると黄色だけが淡く見えた。白からの色の差（OKLab の ΔE）で測ると、`#fff3a0` が 0.113、35% に混ぜた赤が 0.189・青が 0.163・緑が 0.175。黄色は明るさを下げると黄土色になるので、明るさ（L）と色相を保ち、彩度（C）で ΔE を 0.165（青と赤の中間）に合わせた。
+- 黄色のペンをテーマ色の黄（`#f0a000`）の 35% にすると、淡い橙（`#fadea6`・ΔE 0.119）になる。黄色の蛍光ペンとして既定の黄色と同じ色にした。ほかの 11 色とテーマ色は、§1.3 のとおりテーマ色を淡くした色。
+- 本のテーマ色が `yellow` の本では、`{.theme}` のペンは混ぜた淡い橙のまま（`--theme-accent` から混ぜるため）。
 
 ## 10. 文書
 
