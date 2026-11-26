@@ -56,7 +56,7 @@ project:
   include_version: true      # false: vivlio_starter.pdf
 ```
 
-### theme — テーマ設定
+### theme — テーマ設定 @theme-settings
 
 章扉のスタイルやアクセントカラー、扉絵、節見出しの装飾画像をここで選びます。まず `style` を決めると、必要な項目が見通しやすくなります。
 
@@ -86,15 +86,15 @@ theme:
     h4: ♦            # 号見出し（h4）の先頭記号
 ```
 
-`color`・`preface_color`・`appendix_color` には、カラーパレットの色の名前か、`'#ff0000'` のような HEX 記法を書きます。
+`color`・`preface_color`・`appendix_color` には、カラーパレットの色の名前か、`'#ff0000'` のような HEX 記法を書きます。パレットの色の名前は、本文の字の色（@pageref:text-color）にも使えます。
 
 **カラーパレット**
 
 | 系統 | 選択肢 |
 | :--- | :--- |
-| 暖色 | <span style="color: #f0a000">■</span>`yellow` <span style="color: #ea580c">■</span>`orange` <span style="color: #dc2626">■</span>`red` <span style="color: #e11d74">■</span>`magenta` |
-| 寒色 | <span style="color: #7c3aed">■</span>`purple` <span style="color: #4f46e5">■</span>`indigo` <span style="color: #1d4ed8">■</span>`navy` <span style="color: #0186d8">■</span>`blue` |
-| 中間色 | <span style="color: #06b6d4">■</span>`cyan` <span style="color: #0d9488">■</span>`teal` <span style="color: #15803d">■</span>`green` <span style="color: #65a30d">■</span>`lime` |
+| 暖色 | [■]{.yellow}`yellow` [■]{.orange}`orange` [■]{.red}`red` [■]{.magenta}`magenta` |
+| 寒色 | [■]{.purple}`purple` [■]{.indigo}`indigo` [■]{.navy}`navy` [■]{.blue}`blue` |
+| 中間色 | [■]{.cyan}`cyan` [■]{.teal}`teal` [■]{.green}`green` [■]{.lime}`lime` |
 
 `style: simple` を選ぶと、`frontispiece` と `ornament` の設定は使われません。付録は、`image` の本でも `simple` で組みます。
 
