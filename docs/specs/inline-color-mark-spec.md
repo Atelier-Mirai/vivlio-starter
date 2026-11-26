@@ -149,10 +149,10 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 | `[字]{.small color=red}` | `<span class="small vs-color" style="color: red">字</span>` |
 | `==字==` | `<mark>字</mark>` |
 | `==字=={.green}` | `<mark class="green">字</mark>` |
-| `==字=={background=#fff3a0}` | `<mark style="--vs-mark-color: #fff3a0">字</mark>`（§4.2） |
-| `[字]{background=#fff3a0}` | `<mark style="--vs-mark-color: #fff3a0">字</mark>`（上と同じ） |
+| `==字=={background=#fff3a0}` | `<mark style="--_mark-color: #fff3a0">字</mark>`（§4.2） |
+| `[字]{background=#fff3a0}` | `<mark style="--_mark-color: #fff3a0">字</mark>`（上と同じ） |
 | `==字=={color=red}` | `<mark class="vs-color" style="color: red">字</mark>` |
-| `[字]{color=red background=yellow}` | `<mark class="vs-color" style="color: red; --vs-mark-color: yellow">字</mark>` |
+| `[字]{color=red background=yellow}` | `<mark class="vs-color" style="color: red; --_mark-color: yellow">字</mark>` |
 
 - クラス名は書いたとおりに出す（`{.x}` は `class="x"`。v2 の D 型の決まり）。接頭辞は付けない。公式テーマ 7 種（bunko 3.1.1・epub3j 2.1.0・techbook 3.1.1・base 3.1.0・academic・slide・gutenberg 3.1.1）と v2・master の CSS に、13 個の名前と `vs-color` の重なりが無いこと、`mark` の規則を持つテーマが無いことを確かめた（2026-11-26）。epub3j（電書協）の `.color-red`（`#ff0000`）・`.bg-red`・`.em-sesame` は接頭辞つきで、名前が違うので共存する。
 - `[…]{…}` に `background=` があれば、`<span>` ではなく `<mark>` を出す（蛍光ペンの見た目は `mark` の規則が一つだけ持つ）。
@@ -179,18 +179,18 @@ v2 の `inline_warnings` は、CSS に無いクラスを「知らないクラス
 
 ```css
 mark {
-  --vs-mark-color: #feed69;           /* 既定の黄色（§9 で決定） */
+  --_mark-color: #feed69;           /* 既定の黄色（§9 で決定） */
   color: inherit;
-  background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);  /* 下 45% を塗る（§9） */
+  background: linear-gradient(transparent 55%, var(--_mark-color) 55%);  /* 下 45% を塗る（§9） */
   box-decoration-break: clone;
 }
-mark.yellow { --vs-mark-color: #feed69; }  /* 黄色のペンは既定の黄色（§9） */
-mark.green { --vs-mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }  /* 割合は §9 */
+mark.yellow { --_mark-color: #feed69; }  /* 黄色のペンは既定の黄色（§9） */
+mark.green { --_mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }  /* 割合は §9 */
 /* … ほかの 10 色と theme … */
 ```
 
 - 塗る位置の割合は素の `%` で書く。`calc()` と `var()` を `background` の宣言で混ぜない（Vivliostyle が捨てる。`vivliostyle-css-pitfalls-notes.md`）。`linear-gradient` の色の位置の `var()` は効くかを実装で確かめ、効かなければ色ごとに宣言を書き分ける。
-- `{background=値}` は `style="--vs-mark-color: 値"` で出す（上の規則がそのまま使う）。
+- `{background=値}` は `style="--_mark-color: 値"` で出す（上の規則がそのまま使う）。
 - 行をまたぐ蛍光ペンで、塗りが行ごとに切れるか（`box-decoration-break` を Vivliostyle が扱うか）を紙面で確かめる。
 
 ### 4.3 白黒印刷・読みやすさ
@@ -215,7 +215,7 @@ KFX は `var()`・`color-mix()`・`linear-gradient()` を描かない（`kindle-
 | `[字]{color=…}` | style 属性の値がそのまま届く。何もしない |
 | `==字==` | 背の全体を塗る（下半分の塗りは描けない）。`body.vs-kindle mark { background: <既定の黄色>; }` |
 | `==字=={.green}` | テーマ色を白と混ぜた値（`ThemeColor.mix_with_white`）で、色ごとの規則を足す |
-| `==字=={background=…}` | `EpubBuilder` の Kindle の変換で、`mark` の `style="--vs-mark-color: 値"` を `style="background-color: 値"` に書き換える |
+| `==字=={background=…}` | `EpubBuilder` の Kindle の変換で、`mark` の `style="--_mark-color: 値"` を `style="background-color: 値"` に書き換える |
 | `[!]{…}` | style 属性の値がそのまま届く。何もしない |
 
 - `custom.css` で `--accent-red` などを書き換えた本は、`CUSTOM_CSS` の仕組み（`root_variables`）に 13 個を足し、書き換えた値を Kindle にも届ける。
@@ -324,3 +324,4 @@ v2 のセッションが直した（2026-11-26・`8ef04aef`）。選ばれたテ
 - **KFX は `<mark>` を描く**（Kindle Previewer 4 で確認）。`<span class="vs-mark">` への書き換えは要らなかった。塗りは背の全体。
 - **書き誤りの候補は、隣り合う 2 字の入れ替えも拾う。** DidYouMean は 3〜4 字の語では 1 字の違いも候補にしない（`rde` から `red` が出ない）。`ContainerClassCheck#suggest_word` で入れ替えを先に足す。`:::{.class}` の候補（`suggest`）は変えていない。
 - 写しの本で `vs lint` を通し、見本の章で指摘 0 件。`vs metrics` は `{…}` と `==` を本文の字数に数えない（`Metrics::Analyzer#strip_markdown`）。
+- **蛍光ペンの変数は `--_mark-color`**（2026-11-26 ユーザー了承。最初は `--vs-mark-color`）。v2 の `theme-contract-spec.md` §5.1 は、`--vs-*` を Vivliostyle の公式テーマの変数の範囲とし、vs の内部の変数を `--_*` とする。著者向けには公開していない（書けるのは `background=値` だけ）ので、公開前に v2 と同じ名前へそろえた。custom.css で書き換える変数（`--accent-*`・`--color-*` など）は変わらない。

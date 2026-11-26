@@ -1079,13 +1079,13 @@ class BookSettingsCssKindleInlineColorTest < Minitest::Test
   def test_should_match_mark_values_in_chapter_common_css
     css = File.read(CHAPTER_COMMON_CSS, encoding: 'utf-8')
 
-    assert_includes css, "--vs-mark-color: #{BSC::MARK_DEFAULT_COLOR};"
+    assert_includes css, "--_mark-color: #{BSC::MARK_DEFAULT_COLOR};"
     ratio = "#{(BSC::MARK_MIX * 100).round}%"
-    assert_includes css, "mark.yellow  { --vs-mark-color: #{BSC::MARK_DEFAULT_COLOR}; }"
+    assert_includes css, "mark.yellow  { --_mark-color: #{BSC::MARK_DEFAULT_COLOR}; }"
     (VivlioStarter::CLI::PreProcessCommands::InlineSpanTransformer::THEME_COLOR_NAMES - %w[yellow]).each do |name|
       variable = name == 'theme' ? '--theme-accent' : "--accent-#{name}"
       assert_includes css, "mark.#{name}", name
-      assert_match(/mark\.#{name}\s*\{ --vs-mark-color: color-mix\(in srgb, var\(#{variable}\) #{ratio}, white\); \}/, css)
+      assert_match(/mark\.#{name}\s*\{ --_mark-color: color-mix\(in srgb, var\(#{variable}\) #{ratio}, white\); \}/, css)
       assert_match(/\.#{name}:not\(mark\)/, css)
     end
     assert_match(/\.yellow:not\(mark\)/, css)

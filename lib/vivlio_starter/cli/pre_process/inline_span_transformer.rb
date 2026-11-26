@@ -249,7 +249,7 @@ module VivlioStarter
         def mark_classes(attrs) = attrs.background == THEME_VALUE ? ['theme'] : []
 
         def mark_styles(attrs)
-          attrs.background.nil? || attrs.background == THEME_VALUE ? [] : ["--vs-mark-color: #{attrs.background}"]
+          attrs.background.nil? || attrs.background == THEME_VALUE ? [] : ["--_mark-color: #{attrs.background}"]
         end
 
         def element(tag, text, classes, styles)

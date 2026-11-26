@@ -2796,7 +2796,7 @@ end
         SPOT_BALLOON_PROPERTIES = { '--spot-balloon-border' => 'border-color',
                                     '--spot-balloon-bg' => 'background' }.freeze
 
-        # 蛍光ペン `==字=={background=…}` の `style="--vs-mark-color: 値"` を `background-color: 値` にする
+        # 蛍光ペン `==字=={background=…}` の `style="--_mark-color: 値"` を `background-color: 値` にする
         # （Kindle のみ・inline-color-mark-spec.md §5.2）。KFX は style 属性の変数も linear-gradient() も
         # 読まないので、背の全体を著者の色で塗る。値は前処理が CSS の色の名前と #rrggbb に限っている
         # @param html_files [Array<String>]
@@ -2804,9 +2804,9 @@ end
         def literalize_mark_colors_for_kindle!(html_files)
           html_files.each do |path|
             html = File.read(path, encoding: 'utf-8')
-            next unless html.include?('--vs-mark-color')
+            next unless html.include?('--_mark-color')
 
-            File.write(path, html.gsub(/<mark\b[^>]*>/) { it.gsub('--vs-mark-color:', 'background-color:') })
+            File.write(path, html.gsub(/<mark\b[^>]*>/) { it.gsub('--_mark-color:', 'background-color:') })
           end
           html_files
         end

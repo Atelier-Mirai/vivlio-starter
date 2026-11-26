@@ -324,7 +324,7 @@ a.cross-ref-number {
    -------------------------------------------------------------
    [文字]{.red} はテーマ色の字、[文字]{color=…} は style 属性で色を書いた span.vs-color、
    [文字]{color=theme} は span.vs-text-theme、==文字== は mark（前処理の InlineSpanTransformer）。
-   色のクラスは mark には当てない。mark の色のクラスは「ペンの色」（下の --vs-mark-color）。
+   色のクラスは mark には当てない。mark の色のクラスは「ペンの色」（下の --_mark-color）。
    Kindle は var()・color-mix()・linear-gradient()・:is() を描かないので、book-settings.css に
    値で書いた規則を足す（BookSettingsCss#kindle_inline_color_rules）。 */
 .yellow:not(mark)  { color: var(--accent-yellow); }
@@ -349,8 +349,10 @@ a.cross-ref-number {
   color: inherit;
 }
 
-/* 蛍光ペン。字の背の下を塗る（手で引いた線に近い形）。塗る色は --vs-mark-color で、
+/* 蛍光ペン。字の背の下を塗る（手で引いた線に近い形）。塗る色は --_mark-color で、
    ==文字=={background=…} は style 属性でこの変数を書き換える。
+   --_ で始まる名前は vs の内部の変数（著者の custom.css が読み書きするものではない）。
+   --vs- で始まる名前は Vivliostyle の公式テーマの変数と重なるので使わない。
    background の宣言に calc() と var() を混ぜない（Vivliostyle が宣言ごと捨てる。
    vivliostyle-css-pitfalls-notes.md）ので、塗る位置は素の % で書く。
    既定の黄色・混ぜる割合・塗る高さは BookSettingsCss の MARK_* と同じ値にする（Kindle 用）。
@@ -361,25 +363,25 @@ a.cross-ref-number {
    黄色のペン（==文字=={.yellow}）も既定の黄色で塗る。テーマ色の黄 --accent-yellow（#f0a000）は
    橙寄りで、35% に混ぜると淡い橙になり、ほかの色より淡くも見えた（2026-11-26 ユーザー決定） */
 mark {
-  --vs-mark-color: #feed69;
+  --_mark-color: #feed69;
   color: inherit;
-  background: linear-gradient(transparent 55%, var(--vs-mark-color) 55%);
+  background: linear-gradient(transparent 55%, var(--_mark-color) 55%);
   box-decoration-break: clone;
 }
 
-mark.yellow  { --vs-mark-color: #feed69; }
-mark.orange  { --vs-mark-color: color-mix(in srgb, var(--accent-orange) 35%, white); }
-mark.red     { --vs-mark-color: color-mix(in srgb, var(--accent-red) 35%, white); }
-mark.magenta { --vs-mark-color: color-mix(in srgb, var(--accent-magenta) 35%, white); }
-mark.purple  { --vs-mark-color: color-mix(in srgb, var(--accent-purple) 35%, white); }
-mark.indigo  { --vs-mark-color: color-mix(in srgb, var(--accent-indigo) 35%, white); }
-mark.navy    { --vs-mark-color: color-mix(in srgb, var(--accent-navy) 35%, white); }
-mark.blue    { --vs-mark-color: color-mix(in srgb, var(--accent-blue) 35%, white); }
-mark.cyan    { --vs-mark-color: color-mix(in srgb, var(--accent-cyan) 35%, white); }
-mark.teal    { --vs-mark-color: color-mix(in srgb, var(--accent-teal) 35%, white); }
-mark.green   { --vs-mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }
-mark.lime    { --vs-mark-color: color-mix(in srgb, var(--accent-lime) 35%, white); }
-mark.theme   { --vs-mark-color: color-mix(in srgb, var(--theme-accent) 35%, white); }
+mark.yellow  { --_mark-color: #feed69; }
+mark.orange  { --_mark-color: color-mix(in srgb, var(--accent-orange) 35%, white); }
+mark.red     { --_mark-color: color-mix(in srgb, var(--accent-red) 35%, white); }
+mark.magenta { --_mark-color: color-mix(in srgb, var(--accent-magenta) 35%, white); }
+mark.purple  { --_mark-color: color-mix(in srgb, var(--accent-purple) 35%, white); }
+mark.indigo  { --_mark-color: color-mix(in srgb, var(--accent-indigo) 35%, white); }
+mark.navy    { --_mark-color: color-mix(in srgb, var(--accent-navy) 35%, white); }
+mark.blue    { --_mark-color: color-mix(in srgb, var(--accent-blue) 35%, white); }
+mark.cyan    { --_mark-color: color-mix(in srgb, var(--accent-cyan) 35%, white); }
+mark.teal    { --_mark-color: color-mix(in srgb, var(--accent-teal) 35%, white); }
+mark.green   { --_mark-color: color-mix(in srgb, var(--accent-green) 35%, white); }
+mark.lime    { --_mark-color: color-mix(in srgb, var(--accent-lime) 35%, white); }
+mark.theme   { --_mark-color: color-mix(in srgb, var(--theme-accent) 35%, white); }
 
 /* -------------------------------------------------------------
    リスト

@@ -65,18 +65,18 @@ module VivlioStarter
         def test_should_turn_double_equals_into_mark
           assert_equal '大事な<mark>ところ</mark>です', transform('大事な==ところ==です')
           assert_equal '<mark class="green">字</mark>', transform('==字=={.green}')
-          assert_equal '<mark style="--vs-mark-color: #fff3a0">字</mark>', transform('==字=={background=#FFF3A0}')
+          assert_equal '<mark style="--_mark-color: #fff3a0">字</mark>', transform('==字=={background=#FFF3A0}')
           assert_equal '<mark class="vs-color" style="color: red">字</mark>', transform('==字=={color=red}')
           assert_equal '<mark class="theme">字</mark>', transform('==字=={background=theme}')
         end
 
         # `[…]{background=…}` も同じ蛍光ペン。`[…]` のクラスは字の色なので、中の span に付ける
         def test_should_turn_bracket_with_background_into_mark
-          assert_equal '<mark style="--vs-mark-color: #fff3a0">字</mark>', transform('[字]{background=#fff3a0}')
+          assert_equal '<mark style="--_mark-color: #fff3a0">字</mark>', transform('[字]{background=#fff3a0}')
           assert_equal '<mark class="theme">字</mark>', transform('[字]{background=theme}')
-          assert_equal '<mark class="vs-color" style="color: red; --vs-mark-color: yellow">字</mark>',
+          assert_equal '<mark class="vs-color" style="color: red; --_mark-color: yellow">字</mark>',
                        transform('[字]{color=red background=yellow}')
-          assert_equal '<mark style="--vs-mark-color: yellow"><span class="red">字</span></mark>',
+          assert_equal '<mark style="--_mark-color: yellow"><span class="red">字</span></mark>',
                        transform('[字]{.red background=yellow}')
         end
 
