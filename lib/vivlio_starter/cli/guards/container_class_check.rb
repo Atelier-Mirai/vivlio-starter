@@ -128,9 +128,18 @@ module VivlioStarter
         end
 
         def css_classes
-          Dir.glob(File.join(Common.stylesheets_dir, '**', '*.css')).flat_map do |path|
+          css_paths.flat_map do |path|
             strip_css_noise(File.read(path, encoding: 'utf-8')).scan(CSS_CLASS_SELECTOR).flatten
           end
+        end
+
+        # stylesheets/ と、選ばれたテーマ（extends: の土台を含む）のディレクトリの CSS。
+        # テーマの CSS は本の themes/<名前>/ にあり stylesheets/ の外なので、公式テーマのクラス
+        # （theme-epub3j の電書協の `.color-red`・`.em-sesame` など）も別に拾う。テーマの中で
+        # 読まれていないファイルのクラスも拾うが、過剰な許可は見逃しにしかならないので許す
+        def css_paths
+          theme_dirs = Theme.selected&.chain&.map(&:dir) || []
+          [Common.stylesheets_dir, *theme_dirs].flat_map { Dir.glob(File.join(it, '**', '*.css')) }
         end
 
         # コメントと文字列リテラルを除去する。`content: ".foo"` を

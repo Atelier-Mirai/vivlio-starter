@@ -162,7 +162,32 @@ module VivlioStarter
         end
       end
 
+      # テーマの CSS（本の themes/<名前>/。stylesheets/ の外）のクラスも知っているクラスにする。
+      # theme-epub3j の電書協のクラスを行内の属性で書いたとき、CSS が当たるのに 🟡 を出さない
+      def test_should_not_warn_on_class_defined_in_selected_theme
+        with_temp_project do
+          write_theme(Theme.selected_name(Common::CONFIG), 'ebpaj/style-standard.css' => '.color-red { color: #f00; }')
+          write_theme('other', 'other.css' => '.other-only { color: #00f; }')
+          File.write('contents/11-install.md', "[字]{.color-red}と[字]{.other-only}\n")
+
+          violations = Guards::ContainerClassCheck.new.validate
+
+          assert_equal 1, violations.size, '選ばれていないテーマのクラスは知らないクラスのまま'
+          assert_includes violations.first.message, "'.other-only'"
+        end
+      end
+
       private
+
+      def write_theme(name, files)
+        dir = File.join('themes', name)
+        FileUtils.mkdir_p(dir)
+        File.write(File.join(dir, 'theme.yml'), { 'name' => name, 'contract' => 1 }.to_yaml)
+        files.each do |file, css|
+          FileUtils.mkdir_p(File.dirname(File.join(dir, file)))
+          File.write(File.join(dir, file), css)
+        end
+      end
 
       DEFAULT_CSS = <<~CSS
         .notice { border: 1px solid #ccc; }
