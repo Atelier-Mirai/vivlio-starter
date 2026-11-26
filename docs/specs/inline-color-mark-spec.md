@@ -253,10 +253,11 @@ v2 のセッション（vivlio-starter-v2-dd）に相談し、整合を確認し
 - `novel-vertical-spec.md` §5.1・`v2-architecture-spec.md` §7.1: 「`{…}` はクラスだけ」を「クラスと `color=`・`background=`」へ。`==…==` を D 型の記法として足す。
 - `theme-contract-spec.md` §2.5: 色のクラス・`vs-color`・`mark` を表に足す。
 
-### 8.4 v2 へ伝えた未解決の点
+### 8.4 公式テーマのクラスの検査（v2 で解決済み）
 
-v2 の `ContainerClassCheck` は、本の `stylesheets/` の CSS だけからクラスを集める。epub3j のテーマで組む本で `[字]{.color-red}`（電書協のクラス）と書くと、効くのに 🟡 が出るおそれがある。公式テーマの CSS がどこから読まれるか（S7a の作り）次第なので、v2 で確かめてもらう（2026-11-26 に伝えた）。master は公式テーマで組まないので関係しない。
+v2 の `ContainerClassCheck` は、本の `stylesheets/` の CSS だけからクラスを集めていた。`vs theme:add` で入れたテーマは `themes/<名前>/` に置かれるので、epub3j のテーマで組む本で `[字]{.color-red}`（電書協のクラス）と書くと、効くのに 🟡 が出ていた（同梱の standard でも、`themes/standard` にしか無い 7 つのクラスが同じ扱い）。
 
+v2 のセッションが直した（2026-11-26・`8ef04aef`）。選ばれたテーマ（`extends:` の土台を含む）のディレクトリの `**/*.css` も読む。選ばれていないテーマのクラスは今までどおり 🟡。master にはテーマの仕組みが無いので、master の `ContainerClassCheck` は変えない。**取り込みのときは、v2 側の `css_paths` を残す。**
 ## 9. 実装の後にユーザーと決めること
 
 紙面（PDF）と Kindle Previewer で 2〜3 通り組み、ユーザーに見てもらって決める。
