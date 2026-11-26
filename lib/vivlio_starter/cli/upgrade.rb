@@ -36,6 +36,7 @@
 # ================================================================
 
 require 'fileutils'
+require 'json'
 
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
@@ -636,10 +637,41 @@ module VivlioStarter
         order = %i[rename add add_empty update replace merge conflict tidy]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
+          note = [note, package_version_changes(item.relative)].compact.join('・') if note
           row = note ? format('   %s   %-42s（%s）', label, item.relative, note) : "   #{label}   #{item.relative}"
           Common.log_always(row)
           details.fetch(item.relative, []).each { Common.log_always("#{PLAN_DETAIL_INDENT}#{it}") }
         end
+      end
+
+      # package.json の行に添える、ツールの版の変化（「Vivliostyle CLI 11.3.3 → 11.6.0」）。
+      # 著者も依存を書き足すことがあるファイルなので、計画には載せたうえで、何が変わるかを示す。
+      # 見るのは devDependencies（著者が使うツール）だけ。dependencies と overrides は脆弱性への
+      # 対策で版を固定しているもので、著者が選ぶものではない
+      PACKAGE_JSON = 'package.json'
+      PACKAGE_LABELS = { '@vivliostyle/cli' => 'Vivliostyle CLI', '@vivliostyle/vfm' => 'VFM' }.freeze
+
+      # @return [String, nil] 版が変わらない・読めないときは nil
+      def package_version_changes(relative)
+        return nil unless relative == PACKAGE_JSON
+
+        mine, theirs = [relative, File.join(scaffold_source, relative)].map { dev_dependencies(it) }
+        return nil if mine.nil? || theirs.nil?
+
+        changes = theirs.filter_map do |name, version|
+          next if mine[name].nil? || mine[name] == version
+
+          "#{PACKAGE_LABELS.fetch(name, name)} #{mine[name]} → #{version}"
+        end
+        changes.empty? ? nil : changes.join('・')
+      end
+
+      def dev_dependencies(path)
+        return nil unless File.file?(path)
+
+        JSON.parse(File.read(path, encoding: 'utf-8')).fetch('devDependencies', {})
+      rescue JSON::ParserError
+        nil
       end
 
       def finish_dry_run(actionable)

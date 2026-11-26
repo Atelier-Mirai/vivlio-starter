@@ -1499,6 +1499,37 @@ module VivlioStarter
         end
       end
 
+      # package.json の行には、著者が使うツール（devDependencies）の版の変化を添える。
+      # 脆弱性への対策で固定している dependencies・overrides の版は添えない
+      def test_should_show_tool_version_changes_for_package_json
+        package = lambda do |cli, core|
+          JSON.pretty_generate('devDependencies' => { '@vivliostyle/cli' => cli, '@vivliostyle/vfm' => '^2.7.2' },
+                               'dependencies' => { '@vivliostyle/core' => core })
+        end
+        within_project do |scaffold|
+          write('.', 'package.json', package.('11.3.3', '^2.45.1'))
+          write_lock
+          write(scaffold, 'package.json', package.('11.6.0', '^2.47.0'))
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_match(/更新   package\.json +（著者は未変更・Vivliostyle CLI 11\.3\.3 → 11\.6\.0）$/, out)
+        end
+      end
+
+      def test_should_keep_plain_note_when_tool_versions_do_not_change
+        within_project do |scaffold|
+          write('.', 'package.json', JSON.pretty_generate('devDependencies' => { '@vivliostyle/cli' => '11.6.0' }))
+          write_lock
+          write(scaffold, 'package.json', JSON.pretty_generate('devDependencies' => { '@vivliostyle/cli' => '11.6.0' },
+                                                               'overrides' => { 'tar' => '>=7.5.22' }))
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_match(/更新   package\.json +（著者は未変更）$/, out)
+        end
+      end
+
       private
 
       # 色付け判定（diff_color_enabled?）の DI 用スタブ
