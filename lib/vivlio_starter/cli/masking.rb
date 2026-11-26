@@ -38,10 +38,20 @@ module VivlioStarter
       # protect_code が用いるプレースホルダの接頭辞（既存 MarkdownUtils と互換）。
       CODE_SPAN_PLACEHOLDER_PREFIX = '__VS_CODE_SPAN__'
 
+      # キーの記法の中のバッククォート（〘`〙・〘Ctrl + `〙）。バッククォートのキーを示す字で、
+      # インラインコードの区切りではない。区切りと見なすと、後ろのコードの開きと対になり、
+      # その間の端末の枠や地の文がコードとして退避される（改善案 #167: 〘⌃〙 + 〘`〙 の後ろの
+      # :::{.terminal} が変換されず、中の URL が段落の自動リンクになった）。
+      # 後読みは固定長しか書けないので、〘 からバッククォートまでを 0〜12 字の選択肢で並べる。
+      # キーの名前（⌃・Ctrl + ・Shift + Ctrl + ）は 12 字に収まる
+      KEYCAP_INNER_CHAR = '[^〘〙\n`]'
+      KEYCAP_TICKS = "(?<=#{(0..12).map { "〘#{KEYCAP_INNER_CHAR}{#{it}}" }.join('|')})`+#{KEYCAP_INNER_CHAR}{0,12}〙"
+
       # インラインコードスパン（N 個の連続バッククォート同士の対）。
       # (?<!`) / (?!`) で開き・閉じの両端が「ちょうど N 個のラン」であることを担保し、
       # ``foo`bar`` のように内部にバッククォートを含むケースも 1 スパンとして保護する。
-      INLINE_CODE_SPAN = /(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)/m
+      # キーの記法の中のバッククォート（KEYCAP_TICKS）は、開きにも閉じにもしない
+      INLINE_CODE_SPAN = /(?<!`)(?!#{KEYCAP_TICKS})(`+)(?!`).+?(?<!`)(?!#{KEYCAP_TICKS})\1(?!`)/m
 
       # HTML 化されたインラインコード（<code>…</code>）。
       # 前処理が表やコンテナを生 HTML へ変換したあとはバッククォートが残らないため、
@@ -114,7 +124,7 @@ module VivlioStarter
       # 囲みの長さは INLINE_CODE_SPAN と同じく数える。`[^`]+` の 1 個囲みだけを見ていた頃は、
       # 2 個で囲んだ `` `[g]` `` の中身が地の文に残り、索引の走査が `[g]` を
       # 索引の記法と見なしていた（改善案 #99）。
-      INLINE_CODE_SPAN_IN_LINE = /(?<!`)(`+)(?!`)[^\n]+?(?<!`)\1(?!`)/
+      INLINE_CODE_SPAN_IN_LINE = /(?<!`)(?!#{KEYCAP_TICKS})(`+)(?!`)[^\n]+?(?<!`)(?!#{KEYCAP_TICKS})\1(?!`)/
       def strip_inline_code(text) = text.gsub(INLINE_CODE_SPAN_IN_LINE, ' ')
 
       # URL を空白 1 つにしたテキストを返す。行数は保つ。

@@ -128,6 +128,7 @@ module VivlioStarter
           apply_frontmatter!
           strip_html_comments!
           transform_terminal_blocks!
+          escape_keycap_backticks!
           process_data_streams!
           normalize_image_paths!
           transform_spot_blocks!
@@ -396,6 +397,12 @@ module VivlioStarter
           before = context.content.dup
           context.content = MarkdownTransformer.convert_terminal_blocks(context.content)
           Common.log_success('terminal ブロックをリテラル化しました') if context.content != before
+        end
+
+        # キーの記法の中のバッククォート（〘`〙）を文字参照にする（改善案 #167）。
+        # 端末の枠がフェンスになった後（枠の中は触らない）、表・囲みを HTML へ起こす段より前
+        def escape_keycap_backticks!
+          context.content = MarkdownTransformer.escape_keycap_backticks(context.content)
         end
 
         # QueryStream 記法（= books | tags=ruby 等）をデータ展開する

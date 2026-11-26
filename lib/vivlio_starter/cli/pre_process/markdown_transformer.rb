@@ -68,6 +68,21 @@ module VivlioStarter
           MarkdownUtils.restore_code_spans(converted, spans)
         end
 
+        # バッククォートを含むキーの記法（〘`〙・〘Ctrl + `〙）。
+        KEYCAP_WITH_BACKTICK = /〘[^〘〙\n]*`[^〘〙\n]*〙/
+
+        # キーの記法の中のバッククォートを文字参照 `&#96;` にする（改善案 #167）。
+        # VFM（CommonMark）は 〘`〙 の `` ` `` をインラインコードの開きと読み、後ろのコードの
+        # 開きと対にして、間の地の文を <code> にする。文字参照なら VFM は字の `` ` `` として
+        # 出すので、後処理の置換規則が <kbd>`</kbd> にできる。コードの中の 〘`〙
+        # （``` ``〘`〙`` ```）は退避して触らない。端末の枠がフェンスになった後に呼ぶこと
+        # （枠の中の 〘`〙 は端末の文字どおりに見せる）
+        def escape_keycap_backticks(content)
+          protected_text, spans = Masking.protect_code(content)
+          escaped = protected_text.gsub(KEYCAP_WITH_BACKTICK) { it.gsub('`', '&#96;') }
+          Masking.restore_code(escaped, spans)
+        end
+
         # フェンスの長さ。本文に `~~~` が現れても閉じ位置がずれないよう、
         # 本文中の最長のチルダ連続 + 1 と 3 の大きい方を採る。
         def terminal_fence_length(body)

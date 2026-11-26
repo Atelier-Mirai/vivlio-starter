@@ -1356,6 +1356,43 @@ module VivlioStarter
           assert_equal md, MarkdownTransformer.convert_terminal_blocks(md)
         end
 
+        # 〘`〙（バッククォートのキー）の `` ` `` を後ろのコードの開きと対にすると、間の端末の枠が
+        # コードとして退避され、変換されずに段落になる（改善案 #167）
+        def test_should_convert_terminal_blocks_after_backtick_keycap
+          md = <<~MD
+            〘⌃〙 + 〘`〙 を押すと、`Ruby title.rb` のような命令を打てます。
+
+            :::{.terminal}
+            $ /bin/bash -c "$(curl -fsSL https://example.com/install.sh)"
+            :::
+
+            `brew --version` で確かめます。
+          MD
+
+          result = MarkdownTransformer.convert_terminal_blocks(md)
+
+          assert_includes result, "~~~vs-terminal\n$ /bin/bash -c"
+          refute_includes result, ':::{.terminal}'
+        end
+
+        def test_should_escape_backtick_inside_keycap_outside_code
+          md = <<~MD
+            〘⌃〙 + 〘`〙・〘Ctrl + `〙 を押して `x` を打ちます。
+
+            キーの記法は ``〘`〙`` と書きます。
+
+            ~~~vs-terminal
+            $ echo 〘`〙
+            ~~~
+          MD
+
+          result = MarkdownTransformer.escape_keycap_backticks(md)
+
+          assert_includes result, '〘⌃〙 + 〘&#96;〙・〘Ctrl + &#96;〙 を押して `x` を打ちます。'
+          assert_includes result, '``〘`〙``', 'コードの中は書いたとおり'
+          assert_includes result, '$ echo 〘`〙', 'フェンス（端末の枠）の中は書いたとおり'
+        end
+
         # =================================================================
         # 会話文（対話）記法 :::{.talk}（characters-dialogue-spec.md §3-2）
         # =================================================================

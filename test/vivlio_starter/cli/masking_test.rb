@@ -235,6 +235,26 @@ module VivlioStarter
         refute_match(/__VS_CODE_SPAN__\d+__/, restored)
       end
 
+      # キーの記法の中のバッククォート（〘`〙）はコードの区切りではない（改善案 #167）。
+      # 区切りと見なすと後ろのコードの開きと対になり、間の地の文がコードとして退避される
+      def test_should_not_pair_backtick_inside_keycap
+        text = "〘⌃〙 + 〘`〙 を押すと、`Ruby title.rb` のような命令を打てます。\n" \
+               "〘Ctrl + `〙 と `x` と `y`\n"
+        _protected_text, spans = Masking.protect_code(text)
+
+        assert_equal ['`Ruby title.rb`', '`x`', '`y`'], spans.values
+        assert_equal "〘⌃〙 + 〘`〙 を押すと、  のような命令を打てます。\n〘Ctrl + `〙 と   と  \n",
+                     Masking.strip_inline_code(text)
+      end
+
+      # 〘 〙 をコードの中に書いた形（記法の説明）は、今までどおりコードとして退避する
+      def test_should_keep_code_spans_that_contain_keycap_brackets
+        text = "`〘` と `〙` で囲み、``〘`〙`` と書きます。\n"
+        _protected_text, spans = Masking.protect_code(text)
+
+        assert_equal ['`〘`', '`〙`', '``〘`〙``'], spans.values
+      end
+
       def test_protect_code_leaves_prose_untouched
         text = 'No code spans here'
         protected_text, spans = Masking.protect_code(text)
