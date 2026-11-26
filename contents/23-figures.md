@@ -197,6 +197,22 @@
 
 段落に単独で置いた画像は、`{flip=horizontal}` で左右に、`{flip=vertical}` で上下に反転して載せられます。`crop` の範囲は元の画像の向きで数えます。絵の中の文字も裏返るので、画面写し・図・地図には使いません。人物の絵では、髪の分け目や利き手も逆になります。
 
+:::::{.side-by-side}
+```markdown
+:::{.image-group}
+![](haruka.webp)
+![](haruka.webp){flip=horizontal}
+:::
+```
+
+::::{.output}
+:::{.image-group}
+![](haruka.webp)
+![](haruka.webp){flip=horizontal}
+:::
+::::
+:::::
+
 ## 図解注釈の方法 @showcase-howto
 
 操作手順のスクリーンショットには、ボタンを枠で囲む・矢印で指す・丸数字で本文と対応させるといった注釈を付けます。画像編集ソフトで描き込むと、位置を少し直すたびに画像を書き出し直すことになり、注釈の変更も原稿の履歴に残りません。
