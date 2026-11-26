@@ -120,7 +120,7 @@ module VivlioStarter
          %w[talk talk-style-chat talk-style-inline talk-item talk-left talk-right talk-speaker talk-icon talk-name
             talk-name-off talk-body talk-sep]],
         [:generated_page, :guaranteed, :contract,
-         %w[toc-title toc-chapter toc-chapter-appendix toc-chapter-no-number toc-preface toc-section toc-subsection
+         %w[toc-title toc-label toc-chapter toc-chapter-appendix toc-chapter-no-number toc-preface toc-section toc-subsection
             whole-toc whole-toc-volume whole-toc-volume-name vs-current-volume whole-toc-preface whole-toc-part
             whole-toc-chapter whole-toc-appendix whole-toc-postface whole-toc-number whole-toc-sections
             whole-toc-section
@@ -131,7 +131,6 @@ module VivlioStarter
             subtitle subtitle--wave subtitle--bar subtitle--none author series release-info publication-info
             info-list copyright powered-by disclaimer trademark twemoji-credit]],
         [:generated_page, :guaranteed, :target, %w[vs-index-item vs-index-items vs-index-refs]],
-        [:generated_page, :internal, :contract, %w[toc-label]],
         [:new_part, :guaranteed, :contract, %w[tcy sesame vs-full-page vs-video vs-open-bracket]]
       ].freeze
 

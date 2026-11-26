@@ -212,7 +212,6 @@ li.toc-section {
   margin-inline-start: 0.5em;
   content: leader(dotted) " " target-counter(attr(href url), page);
 }
-
 /* 付録配下の節見出しは A-1, A-2 ... のように表示 */
 /* stylelint-disable no-descending-specificity */
 
@@ -312,4 +311,40 @@ h2 {
   letter-spacing: 0.02em;
   align-content: center;
   border-block-end: none;
+}
+
+/* ========================================================= */
+/*  縦書きの目次（body.vs-vertical）                          */
+/* ========================================================= */
+/* 半角の点（leader(dotted)）とページ番号は、縦の行では横倒しになり、字の左に寄る。点線は
+   行の中央に来る三点リーダーで引き、ページ番号は縦中横にする（novel-vertical-spec.md §3.4）。
+   縦中横は数字だけに掛けたいので、点線（.toc-label::after）とページ番号（.toc-title::after）を
+   別の疑似要素に分ける。leader() は後ろに続く疑似要素の分を空けないので、項目の行末に
+   1.5em を空け（padding-inline-end）、ページ番号をそこへ置く（縦書きの行末は下、行の頭は右）。
+   入れ子の節の行末も章とそろえるため、入れ子の ul は空けた分だけ行末へ出す */
+body.vs-vertical #toc li {
+  position: relative;
+  padding-inline-end: 1.5em;
+}
+
+body.vs-vertical #toc li > ul {
+  margin-inline-end: -1.5em;
+}
+
+body.vs-vertical #toc li > .toc-title > .toc-label::after {
+  content: leader("…");
+}
+
+body.vs-vertical #toc li > .toc-title::after {
+  position: absolute;
+  top: auto;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  text-combine-upright: all;
+  content: target-counter(attr(href url), page);
+}
+
+body.vs-vertical #toc li.toc-preface > .toc-title::after {
+  content: target-counter(attr(href url), page, lower-roman);
 }
