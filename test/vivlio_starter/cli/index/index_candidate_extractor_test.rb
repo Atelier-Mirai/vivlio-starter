@@ -426,6 +426,20 @@ module VivlioStarter
           assert_includes candidates, 'ライプニッツ級数' if YomiInferrer.new.available?
         end
 
+        # キーの記法（〘F〙・〘return〙）は候補にしない。中身はキーの名前で、索引から案内する語ではない。
+        # haruka_mirai のレビューファイルに `〘F〙`・`〘return〙`・`Alt〙`・`space〙` が並んでいた（改善案 #172 の残り）。
+        # 見出しのキーも同じ。キーの両側の語は、空白越しにつながらない
+        def test_keycaps_are_not_a_source_of_candidates
+          markdown = "## 〘⌘〙 + 〘F〙 で検索\n\n" +
+                     ("〘⌘〙 + 〘F〙 で検索し、〘return〙 で次へ進みます。〘Alt〙 と 〘space〙 も使います。\n\n" * 4) +
+                     "ショートカットキーで検索窓を開きます。\n"
+          candidates = extract(markdown)
+
+          keyish = candidates.grep(/[〘〙]|\A(?:F|return|Alt|space)\z/)
+          assert_empty keyish, "キーの記法が候補に残った: #{keyish}"
+          refute(candidates.any? { it.include?('〓') }, 'キーの跡の印は候補に出ない')
+        end
+
         # 数式を外した跡がどれも同じ印になるので、続きに数式がある言い回しを決まり文句と見ない
         def test_phrases_around_different_formulas_are_not_boilerplate
           mecab!

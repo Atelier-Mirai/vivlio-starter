@@ -579,7 +579,7 @@ module VivlioStarter
 
         # 見出しから、語の切り出しに要らないもの（インラインコード・ラベル・強調）を外す
         def sanitize_heading(heading)
-          strip_math(heading).gsub(/`[^`]*`/, ' ').gsub(/(?<![\w.])@[\w:.-]+/, ' ').delete('*')
+          strip_keycaps(strip_math(heading)).gsub(/`[^`]*`/, ' ').gsub(/(?<![\w.])@[\w:.-]+/, ' ').delete('*')
         end
 
         # 単独の名詞として見出しから拾う品詞（MeCab の細分類）。
@@ -877,6 +877,9 @@ module VivlioStarter
           # `$\pi`・`pi$` が候補に並んでいた（spiral-ruby で 131 語）。改行は残す
           text = strip_math(text)
 
+          # キーの記法（〘⌘〙・〘return〙）も外す（strip_keycaps）
+          text = strip_keycaps(text)
+
           # 図解注釈・実行結果・端末の記録は、紙面に文として出ない機械データなので読まない。
           # 図解注釈の著者コメント（「愛用のバイオリン」）が候補の上位に来ていた
           text = strip_machine_data_blocks(text)
@@ -930,6 +933,12 @@ module VivlioStarter
             acc.gsub(pattern) { "#{MATH_GAP}#{"\n" * it.count("\n")}" }
           end
         end
+
+        # キーの記法（〘⌘〙・〘return〙・〘[〙）を MATH_GAP に置き換える。中身はキーの名前で、索引から
+        # 案内する語ではない。外さないと `〘F〙`・`〘return〙` や、記法の割れた残り（`Alt〙`・`space〙`）が
+        # 候補に並んでいた（haruka_mirai・改善案 #172 の残り）。空白でなく数式と同じ跡にするのは、
+        # 「〘⌘〙 + 〘C〙 でコピー」の両側の語を、空白越しにつなげないため。綴りは Masking::KEYCAP
+        def strip_keycaps(text) = text.gsub(Masking::KEYCAP, MATH_GAP)
 
         # 機械データのブロック（lint の記法ガードと同じ定義）を空行にする
         def strip_machine_data_blocks(text)
