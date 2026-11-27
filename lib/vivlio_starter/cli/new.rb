@@ -131,7 +131,7 @@ module VivlioStarter
       end
 
       # 種類の雛形（共通の雛形に種類の差分を重ねたもの。ScaffoldTypes）を写す
-      def expand_scaffold(cmd, project_name, answers, type)
+      def expand_scaffold(cmd, project_name, answers, type = BookProfile::DEFAULT_TYPE)
         # クリーンアップ対象にするのは「今回作成した」ディレクトリのみ。
         # 既存ディレクトリは check_existing_directory! が弾くが、中断時の部分破壊を
         # 避ける方針は変えない。
