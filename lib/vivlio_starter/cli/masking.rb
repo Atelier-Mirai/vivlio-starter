@@ -77,7 +77,11 @@ module VivlioStarter
       # 空白の手前までとすると、上の例の「）を使う」が URL に呑まれ、校正にかからない
       # 半角の `)` `]` `>` でも止める（`[文字](URL)を参照` の「)を参照」、`<URL>は` の「>は」）。
       # ただし URL の中で対になった `( )` は URL に含める（`…/File:Alan_Kay_(cropped).jpg`）
-      URL = %r{https?://(?:[^\s()\]>#{URL_TERMINATORS}]|\([^\s()\]>#{URL_TERMINATORS}]*\))+}
+      # バッククォートでも止める。URL に生のバッククォートは書けない（`%60` になる）。止めないと
+      # インラインコードの URL（`` `https://github.com/yuru7/HackGen` ``）が閉じのバッククォートまで
+      # 取り、その行のインラインコードの対が一つずつずれる。索引の照合では、コードの中の
+      # `HackGen35-Regular.ttf` が地の文になり、索引の印の HTML が紙面に出た（改善案 #176）
+      URL = %r{https?://(?:[^\s()\]>`#{URL_TERMINATORS}]|\([^\s()\]>`#{URL_TERMINATORS}]*\))+}
 
       # リンク・画像の `[文字](…)` の括弧の中身（URL とタイトル）。`\(#{LINK_DESTINATION}\)` と使う。
       # URL の中で対になった `( )` は中身に含める（CommonMark と同じ。`…/File:Karen_(2008).jpg`）。

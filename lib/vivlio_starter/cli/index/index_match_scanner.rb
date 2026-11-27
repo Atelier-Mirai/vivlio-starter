@@ -670,14 +670,16 @@ end
           # <a> と </a> が個別に退避され、リンクの文字が露出する
           mask.protect!(HTML_LINK_ELEMENT_PATTERN)
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
+          # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
+          # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。
+          # リンクと URL より先に退避する。コードの中の URL を先に取ると、URL の範囲の判定しだいで
+          # 閉じのバッククォートまで呑まれ、行のコードの対がずれる（改善案 #176）
+          mask.protect!(Masking::INLINE_CODE_SPAN)
           mask.protect!(MARKDOWN_LINK_PATTERN) # リンク・画像記法 [ラベル](URL)
           # 裸 URL と、リンクを脚注にした定義行（`[^url1]: https://…`）の URL。
           # 当てると URL の途中にタグが入り、リンク先が壊れる
           mask.protect!(Masking::URL)
           mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}
-          # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
-          # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。
-          mask.protect!(Masking::INLINE_CODE_SPAN)
           # キーの名前（〘Esc〙）。語のタグが入るとキーの絵が分かれる（改善案 #133）
           mask.protect!(Masking::KEYCAP)
           # 素のまま残った数式（SVG 化が使えない環境）。語のタグが式へ入ると組めない（改善案.md #115）

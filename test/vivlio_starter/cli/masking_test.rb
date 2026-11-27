@@ -364,6 +364,15 @@ module VivlioStarter
         assert_equal 0, yielded
         assert_equal md, result
       end
+
+      # URL はバッククォートで終わる。インラインコードの URL が閉じのバッククォートまで取ると、
+      # 行のインラインコードの対がずれる（改善案 #176）。全角の記号・対の無い `)` で止まるのは今までどおり
+      def test_url_should_stop_at_a_backtick
+        line = '配布元（`https://github.com/yuru7/HackGen`）と https://ja.wikipedia.org/wiki/Alan_Kay_(cropped).jpg）'
+
+        assert_equal %w[https://github.com/yuru7/HackGen https://ja.wikipedia.org/wiki/Alan_Kay_(cropped).jpg],
+                     line.scan(Masking::URL)
+      end
     end
   end
 end

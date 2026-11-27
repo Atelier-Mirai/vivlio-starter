@@ -74,6 +74,23 @@ module VivlioStarter
           assert_equal 1, out.scan('index-term').size
         end
 
+        # インラインコードの URL のうしろの、インラインコードの中の語には当てない（改善案 #176）。
+        # URL が閉じのバッククォートまで取り、行のコードの対がずれて、コードの中の HackGen35 に
+        # 索引の印の HTML が入り、字のまま紙面に出ていた（haruka_mirai の付録 A）
+        def test_should_not_tag_terms_in_code_after_a_url_in_code
+          scanner = build_scanner([{ 'term' => 'HackGen35', 'yomi' => 'HackGen35', 'flags' => 'i',
+                                     'pattern' => '/\bHackGen35\b/' }])
+          line = "**HackGen35**：配布元（`https://github.com/yuru7/HackGen`）の「Releases」から " \
+                 "`HackGen_v2.10.0.zip` のような zip をダウンロードします。中の `HackGen35-Regular.ttf` と " \
+                 "`HackGen35-Bold.ttf` を開きます。\n"
+          out = scanner.send(:process_content_with_code_block_exclusion, line, '11-probe')
+
+          assert_equal 1, out.scan('index-term').size, 'コードの外の 1 か所だけに当てる'
+          assert_includes out, '`https://github.com/yuru7/HackGen`'
+          assert_includes out, '`HackGen35-Regular.ttf`'
+          assert_includes out, '`HackGen35-Bold.ttf`'
+        end
+
         # 読みを添えてあるのは索引へ載せる意思表示。3 文字以上や日本語の語は従来どおり載る
         def test_should_tag_short_terms_with_reading_and_ordinary_terms
           scanner = build_scanner([])
