@@ -464,6 +464,21 @@ module VivlioStarter
           assert_includes html, 'CSS'
         end
 
+        # ふりがなは字の種類ごとに振る（改善案 #175）。漢字は読みから割り出し、英字は確かめた読みだけ、
+        # かなには振らない。以前は「ローカルストレージ」の上に「ろーかるすとれーじ」が付いていた
+        def test_glossary_heading_should_ruby_each_part_by_its_kind
+          terms = [{ 'term' => 'ローカルストレージ', 'yomi' => 'ろーかるすとれーじ', 'definition' => '説明', 'flags' => 'g' },
+                   { 'term' => 'インスタンス変数', 'yomi' => 'いんすたんすへんすう', 'definition' => '説明', 'flags' => 'g' },
+                   { 'term' => 'JIS 配列', 'yomi' => 'JIS はいれつ', 'definition' => '説明', 'flags' => 'g', 'furigana' => 'ジス' }]
+
+          @builder.build_glossary!(terms)
+
+          headings = File.read(GLOSSARY_OUTPUT_FILE).scan(%r{<dt [^>]*>\s*(.*?)\s*</dt>}m).flatten.map { it.gsub(%r{<rp>[()]</rp>}, '') }
+          assert_includes headings, 'ローカルストレージ'
+          assert_includes headings, 'インスタンス<ruby>変数<rt>へんすう</rt></ruby>'
+          assert_includes headings, '<ruby>JIS<rt>ジス</rt></ruby> <ruby>配列<rt>はいれつ</rt></ruby>'
+        end
+
         # 読みが語と同じなら、同じ字をルビに重ねない。読みが違う語のルビは残す
         def test_build_glossary_should_omit_ruby_when_yomi_equals_term
           terms = [{ 'term' => 'CSS', 'yomi' => 'css', 'definition' => '説明', 'flags' => 'g' },

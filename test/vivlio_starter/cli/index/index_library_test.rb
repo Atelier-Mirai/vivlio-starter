@@ -115,6 +115,28 @@ module VivlioStarter
           assert_equal %w[i ローカル定義 いーぱぶ], load_terms.first.values_at('flags', 'definition', 'yomi')
         end
 
+        # 著者が確かめたふりがなも運ぶ（改善案 #175）。取り込む側では、新しい語に付け、この本にもある語で
+        # ふりがなを確かめていない語には写す。この本で確かめたふりがなは上書きしない
+        def test_furigana_travels_with_the_library
+          write_terms([{ 'term' => 'YAML', 'yomi' => 'YAML', 'flags' => 'ig', 'definition' => '設定の書式。', 'furigana' => 'ヤムル' }])
+          assert IndexLibrary.new.export!('lib.yml')
+          assert_equal 'ヤムル', YAML.load_file('lib.yml')['glossary'].first['furigana']
+
+          write_terms([{ 'term' => 'YAML', 'yomi' => 'YAML', 'flags' => 'g', 'definition' => 'ローカル定義' },
+                       { 'term' => 'JIS 配列', 'yomi' => 'JIS はいれつ', 'flags' => 'g', 'definition' => '説明', 'furigana' => 'ジス' }])
+          write_library('lib.yml', reject: [], glossary: [
+                          { 'term' => 'YAML', 'yomi' => 'YAML', 'definition' => '設定の書式。', 'furigana' => 'ヤムル' },
+                          { 'term' => 'JIS 配列', 'yomi' => 'JIS はいれつ', 'definition' => '説明', 'furigana' => 'ジーアイエス' },
+                          { 'term' => 'rbenv', 'yomi' => 'rbenv', 'definition' => '版の切り替え。', 'furigana' => 'アールビーエンブ' }
+                        ])
+
+          IndexLibrary.new.import!('lib.yml')
+
+          furigana = load_terms.to_h { [it['term'], it['furigana']] }
+          assert_equal({ 'YAML' => 'ヤムル', 'JIS 配列' => 'ジス', 'rbenv' => 'アールビーエンブ' }, furigana)
+          assert_equal 'ローカル定義', load_terms.find { it['term'] == 'YAML' }['definition'], '説明文は今までどおり残す'
+        end
+
         # この本で棄却した語は、ライブラリに説明文があっても取り込まない（この本の判断を優先）。
         # 説明文の無い語も取り込まない
         def test_import_skips_terms_rejected_here_and_terms_without_definition

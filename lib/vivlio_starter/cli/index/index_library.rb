@@ -96,7 +96,7 @@ module VivlioStarter
                         .select { glossary_flag?(it) || it['flags'].to_s.empty? }
                         .reject { it['definition'].to_s.strip.empty? }
                         .sort_by { it['term'].to_s }
-                        .map { { 'term' => it['term'], 'yomi' => it['yomi'], 'definition' => it['definition'].to_s } }
+                        .map { glossary_record(it) }
         end
 
         # reject 一覧を term 昇順で term(+reason) のみ抽出する。
@@ -121,7 +121,29 @@ module VivlioStarter
           YomiOverrides.load.merge(from_terms).sort.to_h
         end
 
+        # この本にもある語で、ふりがなをまだ確かめていない語には、ライブラリのふりがなを写す。
+        # 説明文や印と違って、ふりがなは本によって変わらない（同じ著者が前の本で確かめた読み）。
+        # この本で確かめた・外したふりがなは上書きしない
+        def fill_furigana!(entries)
+          known = @terms_manager.load_terms.to_h { [it['term'], it] }
+          filled = entries.filter_map do |entry|
+            current = known[entry['term']]
+            next unless entry['furigana'] && current && !current.key?('furigana')
+
+            { 'term' => entry['term'], 'furigana' => entry['furigana'] }
+          end
+          @terms_manager.merge_terms!(filled, flags: '') if filled.any?
+        end
+
         def glossary_flag?(term) = term['flags'].to_s.include?('g')
+
+        # 用語集の語の記録。著者が確かめたふりがな（furigana:）も運ぶ（改善案 #175）。
+        # 読みの補正と同じく、一度確かめた英字の読みは次の本でも同じ
+        def glossary_record(term)
+          record = { 'term' => term['term'], 'yomi' => term['yomi'], 'definition' => term['definition'].to_s }
+          record['furigana'] = term['furigana'] if term['furigana']
+          record
+        end
 
         def author_touched?(term)
           term['flags'].to_s.include?('g') || term['source'] == 'manual_markup'
@@ -181,6 +203,7 @@ module VivlioStarter
         def import_glossary(entries, rejected_here)
           existing = @terms_manager.term_names
           skipped = 0
+          fill_furigana!(entries)
 
           to_merge = entries.filter_map do |entry|
             term = entry['term']
@@ -191,7 +214,9 @@ module VivlioStarter
               next
             end
 
-            { 'term' => term, 'yomi' => entry['yomi'] || term, 'definition' => entry['definition'].to_s }
+            record = { 'term' => term, 'yomi' => entry['yomi'] || term, 'definition' => entry['definition'].to_s }
+            record['furigana'] = entry['furigana'] if entry['furigana']
+            record
           end
 
           @terms_manager.merge_terms!(to_merge, flags: '', source: 'imported') if to_merge.any?

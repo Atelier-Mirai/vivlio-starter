@@ -36,6 +36,7 @@ require_relative 'main_reference_suggester'
 require_relative 'other_volume_main'
 require_relative '../token_resolver'
 require_relative 'yomi_inferrer'
+require_relative 'furigana'
 
 module VivlioStarter
   module CLI
@@ -181,10 +182,34 @@ module VivlioStarter
         report_auto_results(auto_approved, high_candidates, low_candidates,
                             rejected_count_in_candidates, present_rejected.size)
         warn_unreadable_yomi(high_candidates + low_candidates)
+        warn_unsplit_furigana
       end
 
       # 読みに漢字が残った候補を挙げる数（残りは件数だけ）
       UNREADABLE_YOMI_SHOWN = 10
+
+      # 用語集の語のうち、漢字の部分の読みを読みから割り出せなかった語を知らせる（改善案 #175）。
+      # 紙面では今のとおり語の全体に振るので誤りではないが、カタカナの上にもひらがなが重なる。
+      # 直す場所はレビューファイルの子行なので、ビルドでなくこの手順の終わりで示す。
+      # 割り出せない語は、著者が読みを独自に書いた語（読みと字面が食い違う）にほぼ限られる
+      def warn_unsplit_furigana
+        unsplit = @terms_manager.load_terms.select do |term|
+          next false unless term['flags'].to_s.include?('g')
+
+          IndexCommands::Furigana.segments(term['term'], term['yomi'], term['furigana']).last == :whole
+        end
+        return if unsplit.empty?
+
+        shown = unsplit.first(UNREADABLE_YOMI_SHOWN).map { "#{it['term']}（#{it['yomi']}）" }
+        rest = unsplit.size - shown.size
+        example = unsplit.first
+        Common.log_warn(
+          "用語集のふりがなを、漢字の部分に分けて振れない語が #{unsplit.size} 語あります",
+          detail: "#{shown.join('・')}#{" ほか #{rest} 語" if rest.positive?}\n" \
+                  "語の全体に振ります。分けて振るなら、#{ReviewMarkdownGenerator::REVIEW_FILE} の語の下に全体の形で書いてください" \
+                  "（例: - ふりがな: #{IndexCommands::Furigana.full_form_example(example['term'])}）"
+        )
+      end
 
       # 読みを推測できなかった候補を知らせる。MeCab の辞書に無い漢語（「互除」「置記」）は
       # 読みが取れず、漢字のまま残る（「互除法」→「互除ほう」）。辞書の読みからは直せないので、
@@ -349,6 +374,9 @@ module VivlioStarter
 
         # --- Phase: 主要参照 ---
         changes_made = true if apply_main_references!(main_references)
+
+        # --- Phase: 用語集のふりがな ---
+        changes_made = true if apply_furigana!(@markdown_generator.parse_furigana)
 
         # --- Phase: 孤立データ除去 ---
         index_approved_names = index_approved.map { it['term'] }
@@ -911,6 +939,34 @@ module VivlioStarter
       # 付ける。空の配列と区別しないと、著者が `m?12` を消して「付けない」と決めても、
       # 次の実行で推測が付き直し、そのまま apply すると採用されていた
       # （index-glossary-registration-spec.md §3.1.1・改善案 #101）。
+      # 用語集の見出し語のふりがな（子行 `- ふりがな:`）を辞書の furigana: へ書く（改善案 #175）。
+      # 「?」の付いた機械の候補は書かない（確かめていない読みを刷らない）。行を消した語は外す。
+      # 振る所の決まらない値（英字の部分が 2 つある語に読みだけ・親文字が見出し語と合わない全体の形）は
+      # 書かずに、全体の形の書き方を添えて知らせる
+      # @param furigana [Hash{String => String, Symbol, nil}] ReviewMarkdownGenerator#parse_furigana
+      # @return [Boolean] 辞書を変えたか
+      def apply_furigana!(furigana)
+        furigana.count do |term, value|
+          next false if value == :pending
+
+          entry = @terms_manager.find_term(term) or next false
+          next false unless entry['flags'].to_s.include?('g')
+          next false if value == entry['furigana']
+          next false if value.nil? && !entry.key?('furigana')
+
+          if value && (problem = IndexCommands::Furigana.problem(term, value))
+            Common.log_warn("「#{term}」のふりがなを登録しませんでした: #{problem}",
+                            detail: "現状: - ふりがな: #{value}\n" \
+                                    "候補: - ふりがな: #{IndexCommands::Furigana.full_form_example(term)}")
+            next false
+          end
+
+          @terms_manager.merge_terms!([{ 'term' => term, 'furigana' => value }], flags: '')
+          Common.log_info(value ? "ふりがなを登録しました: #{term}（#{value}）" : "ふりがなを外しました: #{term}")
+          true
+        end.positive?
+      end
+
       def apply_main_references!(main_references)
         return false if main_references.empty?
 

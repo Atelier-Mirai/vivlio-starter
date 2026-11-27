@@ -232,6 +232,7 @@ Notes:
 Notes:
 - `lib/vivlio_starter/cli/lint/data/mazegaki.tsv` is a derived work, extracted and filtered from the normalized-form field of SudachiDict. It is used by `vs lint` to detect mixed kana-kanji spellings.
 - The upstream data (`mazegaki-source.tsv`) and the script that derives the shipped file (`filter.rb`) sit next to it in the same directory.
+- `lib/vivlio_starter/cli/index/data/furigana-sudachi.tsv` is a second derived work: pairs of Latin-script spellings and katakana readings, extracted from the surface, normalized-form and reading fields of SudachiDict (core_lex and notcore_lex, release 20261015). It supplies candidate readings for glossary headings (`vs index:auto`). The script that derives it (`filter.rb`) and a copy of the license text (`LICENSE-APACHE-2.0.txt`) sit next to it. The hand-written `furigana-extra.tsv` in the same directory is part of Vivlio Starter (MIT), not derived from SudachiDict.
 - SudachiDict itself bundles UniDic (BSD 3-Clause) and parts of mecab-unidic-NEologd (Apache-2.0). Their notices are reproduced verbatim below, as required by section 4(d).
 
 ### 参考訳（日本語・非公式）
@@ -243,6 +244,7 @@ Notes:
 補足:
 - `lib/vivlio_starter/cli/lint/data/mazegaki.tsv` は、SudachiDict の「正規化表記」フィールドから抽出・加工した派生物です。`vs lint` の交ぜ書き検出（第 2 層）で使用します。
 - 元データ（`mazegaki-source.tsv`）と、出荷用ファイルを生成するスクリプト（`filter.rb`）は同じディレクトリに置いてあります。
+- `lib/vivlio_starter/cli/index/data/furigana-sudachi.tsv` は 2 つ目の派生物で、SudachiDict（core_lex・notcore_lex、20261015 版）の「表記」「正規化表記」「読み」フィールドから、英字の綴りとカタカナの読みの組を取り出したものです。用語集の見出し語のふりがなの候補（`vs index:auto`）に使います。生成するスクリプト（`filter.rb`）とライセンス本文の写し（`LICENSE-APACHE-2.0.txt`）は同じディレクトリにあります。同じディレクトリの `furigana-extra.tsv` は手で書いた表で、SudachiDict の派生物ではなく Vivlio Starter（MIT）の一部です。
 - 第 4 条 (b) が求める改変内容の一覧と、第 4 条 (d) が求める帰属表示（UniDic・NEologd）を、以下に原文のまま収録します。
 
 ### 帰属表示と改変内容（Apache License 2.0 第 4 条 (b)(d)）
@@ -458,6 +460,38 @@ SudachiDict は UniDic および NEologd の一部を含みます。
   limitations under the License.
 
 ================================================================================
+```
+
+### 用語集のふりがなの候補（furigana-sudachi.tsv）の改変内容（Apache License 2.0 第 4 条 (b)）
+
+```text
+================================================================================
+用語集のふりがなの候補（furigana-sudachi.tsv）のライセンス表示
+================================================================================
+
+lib/vivlio_starter/cli/index/data/furigana-sudachi.tsv は、SudachiDict の
+語彙から抽出・加工して作成した派生物です。Vivlio Starter 本体は MIT License
+ですが、furigana-sudachi.tsv には Apache License, Version 2.0 が適用されます。
+一次著作物の表示は上の「1. 一次著作物」と同じです。使用した語彙は次の 2 つです。
+
+  - SudachiDict core    (core_lex.csv,    20261015 版)
+  - SudachiDict notcore (notcore_lex.csv, 20261015 版)
+
+small_lex.csv は使用していません。
+
+改変の内容:
+
+  a. 各エントリの「表記」（5 列目）「正規化表記」（13 列目）「読み」（12 列目）の
+     3 項目のみを使い、品詞・コスト・その他の項目は持ち出していない。
+  b. 読みがカタカナ（長音符・中黒を含む）のみのエントリに限った。
+  c. 表記または正規化表記のうち、ASCII の印字可能文字のみからなり、英数字で
+     始まり、英字を 1 字以上含むものを「綴り」とし、その読みと組にした。
+  d. 同じ綴りの読みを、重複を除いて出現順に「|」でつないだ。
+  e. 綴りの順に並べ、`綴り<TAB>読み` の形式で出力した。
+  f. 先頭に出典とライセンスの注記行（「#」で始まる行）を加えた。
+
+SudachiDict が依拠する第三者データ（UniDic・NEologd）の表示は、上の
+「3. SudachiDict が依拠する第三者データの表示」を引き継ぎます。
 ```
 
 ## Adobe mapping-resources-pdf（Adobe-Japan1-UCS2）

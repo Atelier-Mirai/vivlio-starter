@@ -28,6 +28,7 @@ require 'fileutils'
 require 'time'
 require_relative '../common'
 require_relative 'term_line'
+require_relative 'furigana'
 
 module VivlioStarter
   module CLI
@@ -227,6 +228,30 @@ module VivlioStarter
       SPELLING_PREFIX = /^\s*-\s*綴り\s*[:：]/
       SPELLING_LINE = /#{SPELLING_PREFIX}\s*(.+)$/
 
+      # 用語集の見出し語のふりがなの子行（`- ふりがな: ヤムル`・`- ふりがな: {明日|あした}の{予定|よてい}`。
+      # 改善案 #175）。値の頭の「?」は機械の候補で、著者が消すまで振らない
+      FURIGANA_PREFIX = /^\s*-\s*ふりがな\s*[:：]/
+      FURIGANA_LINE = /#{FURIGANA_PREFIX}[ \t]*(.*)$/
+      FURIGANA_UNCONFIRMED = /\A[?？]/
+
+      # ふりがなの指定。主要参照と同じく棄却した語の節より前を読む（行を消した語は外す）
+      # @return [Hash{String => String, Symbol, nil}] 用語 → 確かめた読み／:pending（「?」の候補のまま）／
+      #   nil（行が無い＝外す）
+      def parse_furigana
+        return {} unless exists?
+
+        content = File.read(review_file_path, encoding: 'utf-8')
+        boundary = self.class.section_index(content, REJECTED_SECTION)
+        search = boundary ? content[0...boundary] : content
+        term_blocks(search).to_h do |term, body|
+          value = body[FURIGANA_LINE, 1]&.strip
+          [term, if value.nil? || value.empty? then nil
+                 elsif value.match?(FURIGANA_UNCONFIRMED) then :pending
+                 else value
+                 end]
+        end
+      end
+
       # 綴りを直す指定。全節から読む（登録済みの語は 1 節にも 5 節にも並ぶ）
       # @return [Hash{String => String}] いまの綴り → 新しい綴り
       def parse_spelling_changes
@@ -341,7 +366,7 @@ module VivlioStarter
               # `  - ラベル: 値` で下の出現箇所行と同型なので、先に弾かないと
               # `chapter: 主要参照` という文脈が辞書へ入る。しかもレビューを
               # 往復するたび再出力・再取り込みされ、値が空へ潰れて残り続ける。
-              if current_line.match?(MAIN_REFERENCE_PREFIX) || current_line.match?(SPELLING_PREFIX)
+              if [MAIN_REFERENCE_PREFIX, SPELLING_PREFIX, FURIGANA_PREFIX].any? { current_line.match?(it) }
                 i += 1
                 next
               end
@@ -419,6 +444,7 @@ module VivlioStarter
           ※ 用語の下には、空行を挟まずに次の子行を書けます。
             - 主要参照: … 主要参照を、章だけでなく節まで指す（例: `- 主要参照: 25#ラベルIDの扱い`）
             - 綴り: … 辞書に登録した語そのものの綴りを直す（例: 「ラベルID」を `- 綴り: ラベル ID` で「ラベル ID」に。読み・印・説明文・主要参照はそのまま残る。原稿に古い綴りがあれば、apply のときに直すか尋ねる）
+            - ふりがな: … 用語集の見出し語の英字の部分に振る読み（カタカナ。例: `- ふりがな: ヤムル`）。漢字は読みから自動で振り、かなには振らない。`?` の付いた値は機械の候補で、`?` を消すと振る。英字の部分が 2 つ以上ある語や、読みを直したい語は、全体の形で書く（例: `- ふりがな: {明日|あした}の{予定|よてい}`）。行を消すとふりがなを外す
           ※ 用語集の説明文は、空行の後に字下げして書きます。次は、子行と説明文を書いた例です。
 
               - [igm25] **ラベルID** (らべるID)
@@ -617,6 +643,11 @@ module VivlioStarter
           line += "  - 主要参照: #{proposal}#{tokens.join(', ')}\n"
         end
 
+        # 用語集の見出し語の、英字の部分のふりがな（改善案 #175）。確かめた読みはそのまま、
+        # まだの語には同梱の読みの辞書の候補を「?」付きで見せる。「?」を消した読みだけを振る
+        furigana = furigana_child_value(term)
+        line += "  - ふりがな: #{furigana}\n" if furigana
+
         # 文脈を最大2件表示（Candidatesと同様）
         contexts = term['contexts'] || []
         contexts.first(2).each do |ctx|
@@ -650,6 +681,22 @@ module VivlioStarter
 
         IndexCommands::TermLine.build(base_flag(term), main: Array(term['main_tokens']),
                                                        suggested: term['main_suggested'])
+      end
+
+      # ふりがなの子行の値。用語集に載る語で、英字の部分がある語だけに出す。
+      # 英字の部分が一つなら候補を並べ（`?ヤムル`・`?ジフ / ギフ`）、二つ以上なら全体の形の例を出す
+      # （読みだけでは、どの部分に振るか決まらない）。候補の無い語には出さない（行を増やさない）
+      def furigana_child_value(term)
+        return term['furigana'] if term['furigana']
+        return nil unless term['flags'].to_s.include?('g')
+
+        runs = IndexCommands::Furigana.ascii_runs(term['term'])
+        if runs.size == 1
+          found = IndexCommands::Furigana.candidates(runs.first)
+          "?#{found.join(' / ')}" if found.any?
+        elsif runs.size > 1
+          "?#{IndexCommands::Furigana.full_form_example(term['term'])}"
+        end
       end
 
       def base_flag(term)

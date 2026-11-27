@@ -342,6 +342,14 @@ namespace :math do
   end
 end
 
+namespace :furigana do
+  desc '用語集のふりがなの候補（index/data/furigana-sudachi.tsv）を SudachiDict の語彙から作り直す'
+  task :build do
+    # SUDACHI_DIR・SUDACHI_VERSION の渡し方と語彙の置き場は filter.rb の冒頭にある
+    ruby 'lib/vivlio_starter/cli/index/data/filter.rb'
+  end
+end
+
 namespace :mazegaki do
   desc '交ぜ書き辞書の第 2 層（lint/data/mazegaki.tsv）を元データから作り直す'
   task :build do

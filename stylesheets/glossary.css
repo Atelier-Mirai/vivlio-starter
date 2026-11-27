@@ -86,8 +86,10 @@ body.vs-kindle .glossary-title {
   padding-top: 0;
 }
 
+/* ふりがなは、振った部分の頭にそろえる（改善案 #175）。英字の語は字面より長い読みが付く
+   （HTML → エイチティーエムエル）。中央にそろえると見出し語が右へずれ、左端がそろわない */
 .glossary-term ruby {
-  ruby-align: center;
+  ruby-align: start;
 }
 
 .glossary-term rt {
@@ -95,12 +97,12 @@ body.vs-kindle .glossary-title {
   color: #666;
 }
 
-/* 説明文（dd） */
+/* 説明文（dd）。字下げだけで見出し語と分け、左の縦線は引かない
+   （2 段に組むと段の罫・語の区切りの点線と並んで煩い） */
 .glossary-definition {
   margin-left: 1em;
   margin-bottom: 0.5em;
   padding-left: 1em;
-  border-left: 2px solid #eee;
 }
 
 /* 説明文本体 */

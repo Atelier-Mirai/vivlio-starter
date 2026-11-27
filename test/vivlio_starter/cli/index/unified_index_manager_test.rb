@@ -649,6 +649,58 @@ module VivlioStarter
         assert_equal 'g', UnifiedTermsManager.new.find_term('Vivlio Starter')['flags'], 'そのまま apply しても変わらない'
       end
 
+      # --- phase: 用語集のふりがな（`- ふりがな: …`・改善案 #175） ---
+
+      def write_furigana_review(lines)
+        File.write('_index_glossary_review.md', <<~MD)
+          ## 1. 登録済みの語（#{lines.size}語）
+          #{lines.join("\n")}
+          ## 4. 棄却した語（0語）
+          ## 5. 原稿に出てこない語（0語）
+        MD
+      end
+
+      # 用語集の英字の語には、同梱の辞書の候補を「?」付きで出す。そのまま apply しても振らない
+      def test_review_should_offer_furigana_candidates_with_a_question_mark
+        File.write('contents/10-intro.md', "# 章\n\nYAML と JSON を使います。YAML は設定に使います。\n")
+        seed_unified_terms([{ name: 'YAML', flags: 'ig', definition: '設定の書式。' },
+                            { name: 'JSON', flags: 'i' }])
+
+        capture_io { @manager.auto_process!(['10-intro']) }
+        assert_match(/\*\*YAML\*\*.*\n  - ふりがな: \?ヤムル\n/, review_text)
+        refute_match(/\*\*JSON\*\*.*\n  - ふりがな:/, review_text, '索引だけの語には出さない')
+
+        capture_io { @manager.apply_markdown_review! }
+        refute UnifiedTermsManager.new.find_term('YAML').key?('furigana'), '「?」の候補は振らない'
+        assert_empty(UnifiedTermsManager.new.find_term('YAML')['definition'].lines.grep(/ふりがな/), '説明文に混ざらない')
+      end
+
+      # 「?」を消した読みは辞書に書き、次のレビューではそのまま見せる。行を消すと外す
+      def test_confirmed_furigana_is_stored_shown_and_removable
+        seed_unified_terms([{ name: 'YAML', flags: 'ig', definition: '設定の書式。' }])
+        write_furigana_review(["- [ig] **YAML** (YAML)\n  - ふりがな: ヤムル\n\n  設定の書式。\n"])
+
+        capture_io { @manager.apply_markdown_review! }
+        entry = UnifiedTermsManager.new.find_term('YAML')
+        assert_equal %w[ヤムル 設定の書式。], entry.values_at('furigana', 'definition').map(&:strip)
+
+        write_furigana_review(["- [ig] **YAML** (YAML)\n\n  設定の書式。\n"])
+        capture_io { @manager.apply_markdown_review! }
+        refute UnifiedTermsManager.new.find_term('YAML').key?('furigana'), '行を消すと外す'
+      end
+
+      # 英字の部分が 2 つある語に読みだけを書いたら、書かずに全体の形の書き方を示す
+      def test_furigana_that_cannot_be_placed_is_reported_with_the_full_form
+        seed_unified_terms([{ name: 'HTML と CSS', flags: 'g', definition: '説明。' }])
+        write_furigana_review(["- [g] **HTML と CSS** (HTML と CSS)\n  - ふりがな: エイチ\n\n  説明。\n"])
+
+        output, = capture_io { @manager.apply_markdown_review! }
+
+        refute UnifiedTermsManager.new.find_term('HTML と CSS').key?('furigana')
+        assert_includes output, '「HTML と CSS」のふりがなを登録しませんでした'
+        assert_includes output, '候補: - ふりがな: {HTML|エイチティーエムエル} と {CSS|シーエスエス}'
+      end
+
       # --- phase: 見出し語の綴りを直す（`- 綴り: …`・改善案 #103） ---
 
       def write_spelling_review(term, spelled, flag: 'ig')

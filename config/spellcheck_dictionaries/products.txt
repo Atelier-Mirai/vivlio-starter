@@ -781,6 +781,7 @@ Anthropic
 Guesslang
 Tesseract
 MeCab
+SudachiDict
 
 # Code Editors（AI）
 Windsurf

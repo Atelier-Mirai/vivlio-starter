@@ -23,6 +23,7 @@ require 'cgi'
 require_relative '../common'
 require_relative '../pre_process/book_settings_css'
 require_relative '../token_resolver'
+require_relative 'furigana'
 
 module VivlioStarter
   module CLI
@@ -586,12 +587,7 @@ module VivlioStarter
           definition = term['definition'] || ''
           slug = generate_slug(term_text)
           backlinks = build_glossary_backlinks(term)
-          # 読みが語と同じ（CSS・Markdown など）なら、同じ字を上に重ねても読み方は伝わらない。
-          heading = if yomi.casecmp?(term_text)
-                      escape_html(term_text)
-                    else
-                      "<ruby>#{escape_html(term_text)}<rp>(</rp><rt>#{escape_html(yomi)}</rt><rp>)</rp></ruby>"
-                    end
+          heading = glossary_heading(term_text, yomi, term['furigana'])
 
           <<~HTML.chomp
             <dt id="gls-#{slug}" class="glossary-term">
@@ -602,6 +598,20 @@ module VivlioStarter
               #{backlinks}
             </dd>
           HTML
+        end
+
+        # 見出し語のふりがな。字の種類ごとに振る（改善案 #175。決め方は IndexCommands::Furigana）。
+        # 漢字は読みから割り出してひらがなで、英字は著者が確かめた読み（furigana:）だけをカタカナで振り、
+        # かなには振らない。語の全体に振ると「ローカルストレージ」の上に「ろーかるすとれーじ」が付いていた。
+        # 読みが語と同じ語（CSS）に同じ字を重ねないのも、この決め方に含まれる
+        def glossary_heading(term_text, yomi, furigana)
+          segments, = IndexCommands::Furigana.segments(term_text, yomi, furigana)
+          segments.map do |segment|
+            base = escape_html(segment.base)
+            next base unless segment.reading
+
+            "<ruby>#{base}<rp>(</rp><rt>#{escape_html(segment.reading)}</rt><rp>)</rp></ruby>"
+          end.join
         end
 
         # 説明文をレンダリング（Markdown 対応）
