@@ -924,9 +924,11 @@ module VivlioStarter
           # 章題・見出しを鉤括弧で出す参照（:chap・:sec）は、和文と接する側の半角空白を取り除く
           # （chapter-reference-spec.md §1.2）。原稿は `次の章 @ch-new では` と区切って書くほうが
           # 読みやすいが、鉤括弧にはもともとアキがあるので、空白が残ると「「新規」 では」と間延びする。
+          # 別の巻への参照（リンクにしない span、other_volume_text）も同じに扱う（改善案 #178）。
           # 図表の参照（「図 4-1 を」）と、置き換えなかった参照（未定義など）は書いたとおりに残す。
           def join_spaces(match, lead, html, trail, label)
-            return "#{lead}#{html}#{trail}" unless html.start_with?('<a') && %i[sec chap].include?(label&.type)
+            replaced = html.start_with?('<a', '<span class="cross-ref-other-volume"')
+            return "#{lead}#{html}#{trail}" unless replaced && %i[sec chap].include?(label&.type)
 
             lead = '' if japanese_char?(match.pre_match[-1])
             trail = '' if japanese_char?(match.post_match[0])

@@ -424,10 +424,39 @@ module VivlioStarter
             content, labels, nil, other_volumes: { '08-dom.md' => '上巻' }
           )[:content]
 
-          assert_includes result, '<span class="cross-ref-other-volume">上巻 第8章「ページを操作する」</span> と'
+          assert_includes result, '<span class="cross-ref-other-volume">上巻 第8章「ページを操作する」</span>と'
           assert_includes result, '<span class="cross-ref-other-volume">上巻 図 8-2</span>'
           assert_equal 2, result.scan('上巻 第8章').size, '@pageref:ch-dom も章番号と章題になる'
           refute_includes result, '<a ', '別の巻へはリンクしない'
+        end
+
+        # 別の巻への章の参照も、同じ巻と同じく和文と接する側の空白を出さない（改善案 #178）。
+        # 図表の参照と、英数字と接する側の空白は書いたとおりに残す
+        def test_should_drop_spaces_next_to_japanese_around_reference_to_other_volume
+          label = PreProcessCommands::CrossReferenceProcessor::Label
+          labels = {
+            'ch-dom' => label.new('ch-dom', :chap, '8', '第8章', 'ページを操作する', '08-dom.md', 1, true),
+            'fig-tree' => label.new('fig-tree', :fig, '8', '8-2', 'DOM の木', '08-dom.md', 20, false)
+          }
+          content = <<~MD
+            これは @chapref:ch-dom で学んだ。
+
+            木は @fig-tree を見ます。
+
+            節は @pageref:ch-dom を見ます。
+
+            Read @chapref:ch-dom first.
+          MD
+
+          result = PreProcessCommands::CrossReferenceProcessor.replace_references(
+            content, labels, nil, other_volumes: { '08-dom.md' => '上巻' }
+          )[:content]
+
+          chapter = '<span class="cross-ref-other-volume">上巻 第8章「ページを操作する」</span>'
+          assert_includes result, "これは#{chapter}で学んだ"
+          assert_includes result, '木は <span class="cross-ref-other-volume">上巻 図 8-2</span> を見ます', '図表の参照は空白を残す'
+          assert_includes result, "節は#{chapter}を見ます", '@pageref: も章を指せば同じ'
+          assert_includes result, "Read #{chapter} first", '英数字と接する側の空白は残す'
         end
 
         # 別の巻のラベルは、その巻の振り方で数える（組んでいる巻の並びでは数えられない）
