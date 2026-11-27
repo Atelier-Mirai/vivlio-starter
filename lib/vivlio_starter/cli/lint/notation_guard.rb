@@ -35,6 +35,7 @@
 # 仕様: lint-notation-guard-spec.md §3
 # ================================================================
 
+require 'query_stream'
 require_relative '../masking'
 require_relative '../pre_process/markdown_transformer'
 require_relative '../pre_process/math_transformer'
@@ -247,6 +248,15 @@ module VivlioStarter
         # バッククォートを含むキーの記法（〘`〙）の退避に使う目印
         KEYCAP_PLACEHOLDER = 'VSKEYC'
 
+        # データ展開の行（`= reference_books | category=javascript`）。紙面には展開した中身が組まれ、
+        # 行そのものは記法である。読むと `javascript => JavaScript` と指摘され、`--fix` が値を書き換えて
+        # `data/` の値と合わなくなり、一覧が組まれなくなっていた（改善案 #180）。
+        # 形は query-stream の判定そのものを使い、ビルド・スペルチェック（Tokenizer）と食い違わせない
+        DATA_STREAM_LINE = QueryStream::QUERY_STREAM_PATTERN
+
+        # データ展開の行の退避に使う目印
+        DATA_PLACEHOLDER = 'VSDATA'
+
         # バッククォートを含むキーの記法。綴りはビルドの前処理と同じ定義を使う（改善案 #167）。
         #
         # textlint の Markdown の解析は、〘`〙 の `` ` `` をインラインコードの開きと読み、後ろの
@@ -291,6 +301,7 @@ module VivlioStarter
                      .gsub(VALUE_ATTRIBUTE) { stash.call(ATTRIBUTE_PLACEHOLDER) }
                      .gsub(FURIGANA)        { stash.call(FURIGANA_PLACEHOLDER) }
                      .gsub(LABEL_REFERENCE) { stash.call(LABEL_PLACEHOLDER) }
+                     .gsub(DATA_STREAM_LINE) { stash.call(DATA_PLACEHOLDER) }
           guarded, machine = mask_machine_blocks(Masking.restore_code(replaced, code), text)
           [guarded, math.merge(inline).merge(machine)]
         end
@@ -347,6 +358,7 @@ module VivlioStarter
             if !prose.include?(lineno)          then line          # コード領域は不変
             elsif machine.include?(lineno)      then blank(line)   # G1 機械データ・ブロック
             elsif line.match?(CONTAINER_MARKER) then blank(line)   # G2 コンテナのマーカー行
+            elsif line.match?(DATA_STREAM_LINE) then blank(line)   # データ展開の行
             else neutralize_inline(delist_fancy_marker(line))      # G6 fancy list → G3 ふりがな → G4 クラス属性
             end
           end.join

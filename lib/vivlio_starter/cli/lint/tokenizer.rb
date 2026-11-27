@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'query_stream'
 require_relative '../common'
 require_relative '../masking'
 require_relative 'notation_guard'
@@ -61,11 +60,6 @@ module VivlioStarter
 
             # 抑止コメントによる除外
             next if excluded_lines.include?(line_no)
-
-            # データ展開の行（`= books | tags=ruby`）は記法で、紙面には展開した中身が組まれる。
-            # データ名・条件の値（`html-css`）は英単語ではない（改善案 #179）。
-            # 形は query-stream の判定（QUERY_STREAM_PATTERN）そのものを使い、ビルドと食い違わせない
-            next if line.match?(QueryStream::QUERY_STREAM_PATTERN)
 
             extract_words(line).each { |word| tokens << [word, line_no] }
           end

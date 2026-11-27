@@ -14,8 +14,9 @@
 # 手口:
 #   記法と抑止を網羅した見本原稿（fixtures/lint_fix_invariant/before.md）に、**出荷している
 #   雛形の設定**（lib/project_scaffold/config）で実物の textlint を当て、結果を期待値
-#   （after.md）と突き合わせる。期待値で変わるのは 3 行目と 29 行目だけ——表示される指摘のうち
-#   直してよいもの（`(2026年)` → `（2026年）`、著者の規則 `ユーザ` → `ユーザー`、正しい綴りの後ろの `ruby`）である。
+#   （after.md）と突き合わせる。期待値で変わるのは 3・29・45 行目だけ——表示される指摘のうち
+#   直してよいもの（`(2026年)` → `（2026年）`、著者の規則 `ユーザ` → `ユーザー`、正しい綴りの後ろの `ruby`、
+#   活用形の「気付い」→「気づい」）である。
 #
 #   見本原稿の各行が守りを確かめるもの:
 #     5 行目  disabled_rules（一つ）・trim_long_vowel の上流項目（ディレクタ・ベンダ・メンバ）
@@ -28,6 +29,9 @@
 #     25 行目 〘`〙 の後ろのコード・名前の一部の小文字（ruby/ruby.wasm・javascript.info。後者は prh にも当たる）（改善案 #170）
 #     27 行目 英字の語の後ろのかっこの読み（**Unicode**（ユニコード））
 #     29 行目 同じ段落の 2 つ目の当たり（上流の規則は最初の 1 か所しか照合しなかった）
+#     31-45   改善案 #180: 語の途中の大小（WEBrick）・git のコマンド・剰余の %・訳語に添えた原語と
+#             カギかっこの文言・「の時・分」「通り道」・算用数字の「2 通り」（指摘だけ）・データ展開の行・
+#             「気付く」の活用形（直す）
 #
 # 前提:
 #   textlint とプリセットが入っていない環境（CI など）では skip する。
@@ -58,6 +62,26 @@ class TestLintFixInvariant < Minitest::Test
 
       assert_equal File.read(File.join(FIXTURES, 'after.md')), File.read(chapter),
                    "--fix が表示と食い違う書き換えをした（lint-false-positive-notes.md §7）\n#{err}"
+    end
+  end
+
+  # 31-45 行目（改善案 #180）は、表示でも指摘しない。「2 通り」だけは指摘を残し、--fix では直さない
+  def test_analysis_leaves_the_lines_of_improvement_180_alone
+    skip 'textlint が見つかりません（この検査は実物の textlint が要る）' unless textlint_available?
+
+    Dir.mktmpdir do |dir|
+      FileUtils.cp_r(File.join(REPO, 'lib/project_scaffold/config'), File.join(dir, 'config'))
+      FileUtils.mkdir_p(File.join(dir, 'contents'))
+      FileUtils.cp(File.join(FIXTURES, 'before.md'), File.join(dir, 'contents', '98-fixture.md'))
+
+      out, = Open3.capture3(RbConfig.ruby, '-I', File.join(REPO, 'lib'), File.join(REPO, 'bin/vs'), 'lint', '98', chdir: dir)
+      labels = out.lines.grep(/件\s+\[/).map(&:strip)
+
+      %w[WEBr git ％ パス アクティビティ のとき とおり道 JavaScript].each do |word|
+        assert labels.none? { it.include?(word) }, "#{word} を含む指摘が出た:\n#{labels.join("\n")}"
+      end
+      assert labels.any? { it.include?('2 通り => 二通り') }, "算用数字の「2 通り」は指摘を残す:\n#{labels.join("\n")}"
+      assert labels.any? { it.include?('気付い => 気づい') }, "「気付く」の活用形も指摘する:\n#{labels.join("\n")}"
     end
   end
 

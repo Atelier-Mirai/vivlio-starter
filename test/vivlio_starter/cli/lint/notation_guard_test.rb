@@ -478,6 +478,20 @@ module VivlioStarter
 
           refute_includes stripped, '(4/3)'
         end
+
+        # データ展開の行（`= 名前 | 条件`）は記法なので、解析パスでは空行にし、修正パスでは退避する。
+        # `category=javascript` を `JavaScript` に直されると data/ の値と合わなくなる（改善案 #180）。
+        # 地の文の `=` は query-stream の判定に合わないので読む
+        def test_should_hide_data_expansion_lines_from_both_paths
+          src = "前の文\n= reference_books | category=javascript\n= books\nx = books is prose\n"
+
+          assert_equal "前の文\n\n\nx = books is prose\n", NotationGuard.strip_notation(src)
+
+          masked, spans = NotationGuard.mask_for_fix(src)
+          refute_includes masked, 'javascript'
+          assert_includes masked, 'x = books is prose'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
       end
     end
   end
