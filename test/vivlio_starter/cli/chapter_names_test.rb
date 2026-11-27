@@ -90,6 +90,14 @@ module VivlioStarter
         assert_equal '98-chapter', ChapterNames.suggestion('97-サンプル', TAKEN)
       end
 
+      # 番号とスラッグの区切りを省いた名前も、打った字を残して区切りを補う
+      def test_should_keep_the_slug_when_the_separator_is_missing
+        assert_equal '01-a', ChapterNames.suggestion('1a', TAKEN)
+        assert_equal '98-guide', ChapterNames.suggestion('97guide', TAKEN), '番号が重なれば空き番号へ'
+        assert_equal '01-chapter-1', ChapterNames.suggestion('1-1', TAKEN), '区切りのある名前は変わらない'
+        assert_equal '15', ChapterNames.suggestion('15', TAKEN), '番号だけの名前は番号だけのまま'
+      end
+
       # 空白・括弧などはエスケープし、日本語はそのまま残す（引用符を求めない）
       def test_should_escape_only_shell_meta_characters
         assert_equal 'contents/97-sample\ のコピー.md', ChapterNames.shell_word('contents/97-sample のコピー.md')

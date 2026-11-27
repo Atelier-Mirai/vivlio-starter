@@ -127,9 +127,10 @@ module VivlioStarter
       end
 
       # 決まりの形に直した番号とスラッグ。3 桁以上の番号は nil（空き番号を当てる）。
+      # 区切りを省いた名前（「1a」）も番号の後ろをスラッグと読み、打った字を案内から落とさない（「01-a」）。
       # スラッグに使える字が残らなければ「chapter」、数字だけになれば「chapter-245」
       def repaired_parts(basename)
-        digits, rest = basename.match(/\A(\d+)(?:[-_\s](.*))?\z/m)&.captures
+        digits, rest = basename.match(/\A(\d+)[-_\s]?(.*)\z/m)&.captures
         number = digits && digits.size <= 2 ? format('%02d', digits.to_i) : nil
         return [number, nil] if rest.nil? || rest.empty?
 
