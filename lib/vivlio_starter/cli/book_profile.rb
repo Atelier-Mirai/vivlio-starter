@@ -18,7 +18,9 @@ module VivlioStarter
     # 本の種類ごとの、設定の既定値の組
     module BookProfile
       # 小説の権利ページの「免責」の文。技術書の既定（教育目的の入門書…）は小説に合わない。
-      # 商標の文は空にし、権利ページに節を載せない（CreateCommands#execute_legalpage。novel-vertical-spec.md §10.7）
+      # 商標の文は空にし、権利ページに節を載せない（CreateCommands#execute_legalpage。novel-vertical-spec.md §10.7）。
+      # 絵文字のクレジットも空にする。テーマ novel は見出しの印（Twemoji から作る画像）を出さず、
+      # 小説の本は Twemoji を使わない（2026-11-28 ユーザー判断）
       NOVEL_DISCLAIMER = "この物語はフィクションです。登場する人物・団体・名称などは、実在のものとは関係ありません。\n"
 
       # 種類ごとに、ConfigKeys の既定値と違うキーだけを書く。
@@ -47,7 +49,8 @@ module VivlioStarter
           %i[theme name]              => 'novel',
           %i[typography heading font] => 'Noto Serif JP',
           %i[legal disclaimer]        => NOVEL_DISCLAIMER,
-          %i[legal trademark]         => ''
+          %i[legal trademark]         => '',
+          %i[legal twemoji]           => ''
         },
         picture_book: {
           %i[page layout]            => 'fixed',

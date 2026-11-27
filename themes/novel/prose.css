@@ -21,6 +21,12 @@ body:is(.chapter, .appendix, .preface, .postface) p.vs-open-bracket {
   text-indent: 0;
 }
 
+/* 引用（看板や扉の字など）には線を引かない。字下げ（parts/prose.css の padding-inline）だけで
+   地の文と分ける。縦書きでは parts の border-inline-start が字の上の線になる（2026-11-28 ユーザー判断） */
+body:is(.chapter, .appendix, .preface, .postface) blockquote {
+  border-inline-start: none;
+}
+
 /* 強調は太字だけにする（色を変えない） */
 body:is(.chapter, .appendix, .preface, .postface) strong {
   font-weight: bold;

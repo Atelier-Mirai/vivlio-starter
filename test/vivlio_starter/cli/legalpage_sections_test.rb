@@ -10,6 +10,7 @@
 #   - 文の空いた節は載せない（小説の既定は商標の文が空。BookProfile::NOVEL_DISCLAIMER）
 #   - 小説の本の権利ページに、技術書の免責の文が載らない
 #   - 両方が書いてある本（技術書）は、2 つの節を載せる
+#   - 小説の本には絵文字のクレジットを載せない（技術書は載せる）
 # ================================================================
 
 require 'test_helper'
@@ -49,6 +50,7 @@ module VivlioStarter
         assert_includes page, 'この物語はフィクションです。'
         refute_includes page, '■商標', '文の空いた節は載せない'
         refute_includes page, '教育目的', '技術書の免責の文は載せない'
+        refute_includes page, '■絵文字クレジット', '小説は Twemoji を使わないので、クレジットを載せない'
       end
 
       def test_should_show_both_sections_in_a_techbook
@@ -57,6 +59,7 @@ module VivlioStarter
         assert_includes page, '■免責'
         assert_includes page, '■商標'
         assert_includes page, '教育目的'
+        assert_includes page, '■絵文字クレジット'
       end
     end
   end
