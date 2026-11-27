@@ -92,6 +92,25 @@ body.vs-kindle .table-text > .table-text-table {
   margin-block-end: 3mm;
 }
 
+/* --- parts/figure.css --- */
+
+/* 全面の挿絵（figure.vs-full-page）の幅を、Apple Books では中身に合わせる。Apple Books は
+   見開きで組むと 100vw を 2 ページ分の幅に解き（100% も同じ）、その中央に置いた画像が
+   ページの境目をまたいで切れる（縦書きの本で確かめた。novel-vertical-spec.md §10.7）。
+   auto なら、縦書きでは画像の幅、横書きでは 1 ページの幅になる。PDF は 100vw のまま
+   （Vivliostyle では版面の幅）。Kindle は 1 ページずつ組むので 100vw のままで崩れず、変えない */
+body.vs-epub:not(.vs-kindle) figure.vs-full-page {
+  width: auto;
+}
+
+/* 縦書きの本の行の間の図（`{width=70%}` など）も、Apple Books では % の幅が見開きの 2 ページ分を
+   基準に解かれ、ページの境目で割れる。幅の上限を画面の幅の 40% にして、見開きでも 1 ページに
+   収める（1 ページずつ組む画面では、著者の書いた幅より小さく出る。2026-11-28 ユーザー判断）。
+   横書きの本は % が 1 ページの幅に解かれるので変えない。Kindle は崩れないので変えない */
+body.vs-vertical.vs-epub:not(.vs-kindle) figure:not(.vs-full-page) {
+  max-width: 40vw;
+}
+
 /* --- parts/footnote.css --- */
 
 /* ---------------------------------------------------------------
