@@ -56,6 +56,12 @@ module VivlioStarter
 
       TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
+      # vs の側で組み直した textlint の規則（`--rulesdir` で読み込む）。規則の名前はファイル名から付く。
+      # `spellcheck-tech-word` は上流の規則の照合の仕方を直したもの（改善案 #170。
+      # 中身と理由は lint/textlint_rules/spellcheck-tech-word.js の冒頭）
+      OWN_TEXTLINT_RULES_DIR = File.expand_path('lint/textlint_rules', __dir__)
+      SPELLCHECK_TECH_WORD_RULE = 'spellcheck-tech-word'
+
       def self.execute_lint(targets, options = {})
         LintRunner.new(targets, options).call
       end
@@ -315,6 +321,18 @@ module VivlioStarter
         def prose_allowlist
           @prose_allowlist ||=
             Lint::ProseChecker.allowlist_from(Common.resolve_path_from_root(TEXTLINT_ALLOWLIST_RELATIVE))
+        end
+
+        # vs の規則を読み込む textlint の引数。`.textlintrc.yml` で `spellcheck-tech-word` を
+        # 点けていて、book.yml の lint.disabled_rules で切っていないときだけ読み込む。
+        # `--rulesdir` の規則は設定の `false` では切れない（textlint 16.1 で実測）ので、
+        # 切るときは読み込まない
+        def own_rule_args
+          @own_rule_args ||= begin
+            rules = (YAML.safe_load_file(config_path) || {})['rules'] || {}
+            enabled = rules[SPELLCHECK_TECH_WORD_RULE] && !disabled_rules.include?(SPELLCHECK_TECH_WORD_RULE)
+            enabled ? ['--rulesdir', OWN_TEXTLINT_RULES_DIR] : []
+          end
         end
 
         # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
@@ -637,7 +655,7 @@ module VivlioStarter
         # --fix は付けない（自動修正は apply_textlint_fixes! の修正パスが担う。
         # ここで付けると解析用の一時ファイルを直して捨てるだけの no-op になる）。
         def build_command(files, format: 'json')
-          cmd = [textlint_command, '--config', effective_config_path]
+          cmd = [textlint_command, '--config', effective_config_path, *own_rule_args]
           cmd += ['--format', format]
           cmd + files
         end
@@ -755,7 +773,15 @@ module VivlioStarter
           # 「PC・スマホ」にすると読者に向けた語り口が変わる。
           # どちらを使うかは本の読者層で決まるので、上流が一律に寄せてよい話ではない。
           # チェーンと違って**正しい綴りが一方に決まらない**ため、逆向きの規則は置かない
-          '/パソコン/'
+          '/パソコン/',
+          # 英字の語のすぐ後ろのかっこに書いた読み（「**Unicode**（ユニコード）」「Zed（ゼッド）」）。
+          # 読みは語の綴りの言い換えではなく発音を示したもので、`ユニコード => Unicode` と直すと
+          # 「Unicode（Unicode）」になる（改善案 #170）。同じ項目が prh の同梱辞書と
+          # spellcheck-tech-word の辞書の両方にある。prh は文の切れ目（`**` の前後）より先を
+          # 見られず、辞書の側では「語のすぐ後ろのかっこ」を書けないので、全文を見るここで外す。
+          # 強調・コードの閉じ（`**`・`` ` ``）はかっこの前に挟まってよい。中身がカタカナだけの
+          # かっこに限る（「Ruby（2024 年）」のような補足は今までどおり点検する）
+          '/(?<=[A-Za-z0-9#+][*_`]*[（(])[ァ-ヶー・]+(?=[）)])/'
         ].freeze
 
         # 上流（technical-word-rules）の「末尾に長音を足す」項目を、`lint.trim_long_vowel` が
@@ -873,6 +899,8 @@ module VivlioStarter
           end
 
           apply_disabled_rules!(rules)
+          # 上流の規則は読み込まない（vs の規則と二重に指摘される）。点けるかは own_rule_args が決める
+          rules.delete(SPELLCHECK_TECH_WORD_RULE)
           apply_builtin_allowlist!(cfg)
           trim_dictionaries!(rules, File.dirname(base_path), long_vowel: trim_long_vowel?, for_fix:)
           apply_spacing_allowances!(rules, allow_code_space, allow_ja_en_space)
@@ -963,6 +991,7 @@ module VivlioStarter
         # 辞書の写しを作り、そちらを読ませる。
         #   - trim_long_vowel が有効なら、同梱の辞書から末尾長音の項目を落とす（解析・修正の両方）
         #   - 修正パスでは、どの辞書からも `fix: false` の項目を落とす
+        #   - どの辞書でも、大文字と小文字だけを直す項目を名前の一部に当てない（guard_name_parts）
         def trim_dictionaries!(rules, dir, long_vowel: false, for_fix: false)
           prh = rules['prh']
           return unless prh.is_a?(Hash)
@@ -970,8 +999,6 @@ module VivlioStarter
           bundled = File.join(File.expand_path(dir), BUNDLED_DICTIONARY_DIR, '')
           prh['rulePaths'] = Array(prh['rulePaths']).map do |rule_path|
             trim_long_vowel = long_vowel && File.expand_path(rule_path.to_s, dir).start_with?(bundled)
-            next rule_path unless trim_long_vowel || for_fix
-
             trimmed_dictionary(rule_path, dir, long_vowel: trim_long_vowel, report_only: for_fix) || rule_path
           end
         end
@@ -995,7 +1022,8 @@ module VivlioStarter
         #
         # 1 つの辞書から項目を落とした写しを作り、設定へ書く相対パスを返す。
         # long_vowel は末尾長音の項目を、report_only は `fix: false` の項目を落とす。
-        # 該当が無い辞書・読めない辞書は nil（呼び出し側が元のパスをそのまま使う）。
+        # 残した項目には、名前の一部を外す条件を書き足す（guard_name_parts。解析・修正の両方・どの辞書にも）。
+        # 変わる所が無い辞書・読めない辞書は nil（呼び出し側が元のパスをそのまま使う）。
         def trimmed_dictionary(rule_path, dir, long_vowel: true, report_only: false)
           source = File.expand_path(rule_path.to_s, dir)
           data   = YAML.safe_load_file(source)
@@ -1003,7 +1031,8 @@ module VivlioStarter
           return nil unless entries.is_a?(Array)
 
           kept = entries.reject { (long_vowel && long_vowel_entry?(it)) || (report_only && report_only_entry?(it)) }
-          return nil if kept.size == entries.size
+                        .map { guard_name_parts(it) }
+          return nil if kept == entries
 
           tmp = Tempfile.new(['prh-trimmed-', '.yml'], dir)
           tmp.write(data.merge('rules' => kept).to_yaml)
@@ -1023,6 +1052,62 @@ module VivlioStarter
             base = pattern.to_s.sub(%r{\A/}, '').sub(%r{/[imx]*\z}, '').sub(/\(\?!.*\)\z/, '')
             expected == "#{base}ー"
           end
+        end
+
+        # 名前の一部（`.`・`/` で前後の英数字とつながった語）を外す前後の条件。
+        # 同梱の spellcheck-tech-word.js の partOfName と同じ判定（改善案 #170）
+        NAME_PART_BEFORE = '(?<![A-Za-z0-9][.\/])'
+        NAME_PART_AFTER  = '(?![.\/][A-Za-z0-9])'
+
+        # 大文字と小文字だけを直す項目（`javascript => JavaScript`・見出し語を省いた `Markdown`）に、
+        # 名前の一部では当てない条件を書き足す。`javascript.info`・`markdown/` のような
+        # ファイル名・パッケージ名・リポジトリの名前の一部は、小文字が正しい綴り。
+        #
+        # spellcheck-tech-word.js と同じ判定にそろえる。同じ語が二つの規則の辞書にあり、
+        # 片方だけが外すと指摘が残る（実測: `javascript.info` を prh だけが指摘した）。
+        # 辞書の項目を語ごとに書き直すのでなく、形で決めて写しに書き足す。
+        #
+        # 書き足すのは、字どおりの綴りで直す先と大小だけが違うものと、見出し語を省いた項目
+        # （prh は直す先の大小・全角を広げて当てる）。正規表現で書いた見出し語（`/UTF16/i`）は、
+        # 大小だけの直しか読み取れないので触らない。
+        def guard_name_parts(rule)
+          return rule unless rule.is_a?(Hash)
+
+          expected = rule['expected'].to_s
+          return rule unless expected.match?(/\A[\x20-\x7e]+\z/)
+
+          key = rule.key?('patterns') ? 'patterns' : 'pattern'
+          patterns = rule[key]
+          if patterns.nil?
+            return rule.merge('pattern' => name_guarded(spread_alpha_num(expected)))
+          end
+
+          guarded = Array(patterns).map do |pattern|
+            literal = pattern.is_a?(String) && !pattern.match?(%r{\A/.*/[a-z]*\z})
+            literal && pattern.downcase == expected.downcase ? name_guarded(escape_prh(pattern)) : pattern
+          end
+          guarded == Array(patterns) ? rule : rule.merge(key => patterns.is_a?(Array) ? guarded : guarded.first)
+        end
+
+        def name_guarded(source) = "/#{NAME_PART_BEFORE}#{source}#{NAME_PART_AFTER}/"
+
+        # prh の escapeSpecialChars と同じ字を逃がす（字どおりの見出し語を正規表現にするため）
+        def escape_prh(text) = text.gsub(%r{[\\*+.?{}()|^$\[\]/]}) { "\\#{it}" }
+
+        # prh の spreadAlphaNum と同じ広げ方（見出し語を省いた項目は、直す先の大小・全角に当たる）。
+        # 英数字でない字は逃がす（prh は逃がさないが、`.` を任意の 1 字にしないため）
+        def spread_alpha_num(text)
+          text.each_char.map do |char|
+            if char.match?(/[A-Za-z]/)
+              up = char.upcase
+              down = char.downcase
+              "[#{up}#{down}#{(up.ord + 0xFEE0).chr('UTF-8')}#{(down.ord + 0xFEE0).chr('UTF-8')}]"
+            elsif char.match?(/[0-9]/)
+              "[#{char}#{(char.ord + 0xFEE0).chr('UTF-8')}]"
+            else
+              escape_prh(char)
+            end
+          end.join
         end
 
         # `fix: false`（指摘だけで --fix では書き換えない）の項目か
@@ -1143,7 +1228,7 @@ module VivlioStarter
           files.zip(converted, masked_spans).each { |path, tmp, spans| mask_hushed_lines!(path, tmp, spans) }
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
-          command = [textlint_command, '--config', fix_config_path, '--fix', *converted]
+          command = [textlint_command, '--config', fix_config_path, *own_rule_args, '--fix', *converted]
           stdout, stderr, = Open3.capture3(*command)
           # --fix の終了コードと出力は判定に使わない。残存指摘の判定は解析パスが行う。
           Common.log_debug(stdout) unless stdout.nil? || stdout.empty?

@@ -757,6 +757,31 @@ module VivlioStarter
         end
       end
 
+      # 大文字と小文字だけを直す項目には、名前の一部（`javascript.info`）に当てない条件を書き足す。
+      # 見出し語を省いた項目は、prh と同じく大小・全角へ広げてから書き足す。
+      # 大小より多くを直す項目・正規表現の見出し語は触らない（改善案 #170）
+      def test_trimmed_dictionary_guards_case_only_entries_against_name_parts
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, 'web.yml'), {
+            'version' => 1,
+            'rules' => [
+              { 'expected' => 'JavaScript', 'patterns' => ['Javascript', 'Java Script', 'javascript'] },
+              { 'expected' => 'Markdown' },
+              { 'expected' => 'UTF-16', 'patterns' => '/UTF16/i' }
+            ]
+          }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          written = runner.send(:trimmed_dictionary, './web.yml', dir, long_vowel: false)
+          js, md, utf = YAML.safe_load_file(File.join(dir, File.basename(written)))['rules']
+
+          guard = ->(source) { "/(?<![A-Za-z0-9][.\\/])#{source}(?![.\\/][A-Za-z0-9])/" }
+          assert_equal [guard.call('Javascript'), 'Java Script', guard.call('javascript')], js['patterns']
+          assert_equal guard.call('[MmＭｍ][AaＡａ][RrＲｒ][KkＫｋ][DdＤｄ][OoＯｏ][WwＷｗ][NnＮｎ]'), md['pattern']
+          assert_equal '/UTF16/i', utf['patterns']
+        end
+      end
+
       # 原稿ごとに、textlint が見る一時ファイルのパスへ紐づける
       def test_suppressed_lines_map_keys_on_the_temp_file
         Dir.mktmpdir do |dir|
@@ -1008,9 +1033,40 @@ module VivlioStarter
                        '短縮名は読み込んでいるプリセットで切る'
           assert_equal false, rules.dig('preset-ja-spacing', 'ja-space-around-code'), '完全名はそのプリセットで切る'
           refute rules['preset-ja-technical-writing'].key?('ja-space-around-code'), '完全名を他のプリセットへ広げない'
-          assert_equal false, rules['spellcheck-tech-word'], 'プリセットの外のルールはルールごと切る'
+          refute rules.key?('spellcheck-tech-word'), '上流の spellcheck-tech-word は読み込まない（vs の規則が代わる）'
           assert_equal false, rules.dig('preset-ja-technical-writing', 'no-doubled-joshi'), '既存の設定は保持'
           refute rules.key?('preset-japanese'), '読み込んでいないプリセットは足さない'
+        end
+      ensure
+        Common.install_configuration!(original)
+      end
+
+      # spellcheck-tech-word は vs の規則（lint/textlint_rules）を --rulesdir で読み込み、上流の規則は
+      # 実行時 textlintrc から外す。--rulesdir の規則は設定の false で切れないので、
+      # .textlintrc.yml か book.yml の lint.disabled_rules で切ったときは読み込まない（改善案 #170）
+      def test_should_load_own_spellcheck_rule_instead_of_upstream
+        original = Common::CONFIG
+        rules_dir = LintCommands::OWN_TEXTLINT_RULES_DIR
+        assert_path_exists File.join(rules_dir, 'spellcheck-tech-word.js')
+
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'spellcheck-tech-word' => true } }.to_yaml)
+          refute runtime_config(base)['rules'].key?('spellcheck-tech-word'), '上流の規則は読み込まない'
+
+          own_rule_args = lambda do |textlintrc, disabled|
+            Common.install_configuration!(
+              Common.wrap_config(Common.merge_hardcoded_defaults(lint: { disabled_rules: disabled })).freeze
+            )
+            File.write(base, textlintrc.to_yaml)
+            runner = LintCommands::LintRunner.new([], {})
+            runner.stub(:config_path, base) { runner.send(:own_rule_args) }
+          end
+
+          assert_equal ['--rulesdir', rules_dir], own_rule_args.call({ 'rules' => { 'spellcheck-tech-word' => true } }, [])
+          assert_empty own_rule_args.call({ 'rules' => { 'spellcheck-tech-word' => false } }, [])
+          assert_empty own_rule_args.call({ 'rules' => {} }, [])
+          assert_empty own_rule_args.call({ 'rules' => { 'spellcheck-tech-word' => true } }, ['spellcheck-tech-word'])
         end
       ensure
         Common.install_configuration!(original)

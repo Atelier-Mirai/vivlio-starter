@@ -53,12 +53,20 @@ prh も `spellcheck-tech-word` も、**語の切れ目を見ずに部分文字�
 |---|---|---|
 | **自前の辞書が誤っている** | 辞書のパターンを絞る（先読み等）＋`specs` で固定 | `config/textlint_dictionaries/` |
 | **上流が誤っている**（項目単位で切れない） | 打ち消す | `LintRunner::BUILTIN_ALLOWLIST`（`lint.rb`） |
+| **`spellcheck-tech-word` の照合の仕方が誤っている**（当たりの数・前後の字の見方） | vs の規則を直す | `lib/vivlio_starter/cli/lint/textlint_rules/spellcheck-tech-word.js` |
 | **本の方針と違うだけ**（誤りではない） | そのまま通す | `config/textlint_allowlist.yml`（著者のもの） |
 
 判別の勘どころ。
 
 - **`spellcheck-tech-word` は `context.options` を一切読まない。** 項目単位で無効化する術が
   無いので、打ち消すほかない（雛形の `skip:` は効かないので外した）。
+- **`spellcheck-tech-word` は vs の規則が代わりに走る**（改善案 #170）。辞書は上流（technical-word-rules）を
+  そのまま読み、照合の仕方だけを直した——段落のすべての当たりを照合する（上流は最初の 1 か所だけ）、
+  `.`・`/` でつながった名前の一部（`ruby.wasm`）に大文字と小文字の直しを当てない。
+  同じ判定を prh の辞書の写しにも書き足す（`LintRunner#guard_name_parts`）。片方だけが外すと、
+  同じ語の項目を持つもう一方が指摘する（`javascript.info` を prh だけが指摘した）。
+  英字の語の後ろのかっこの読み（`**Unicode**（ユニコード）`）は prh の同梱辞書も当たるので、
+  全文を見る `BUILTIN_ALLOWLIST` で外す（prh は `Str` ごとに照合し、`**` の向こうを見られない）。
 - **prh 辞書は当方で編集できる。** 誤っている項目は allowlist で覆わず辞書から直す。
   `specs` を必ず添える——prh は辞書を読むたびに自己検査し、期待を壊すとその場で lint が止まる。
 - **`BUILTIN_ALLOWLIST` に本の方針を書かない。** `マスター => マスタ` のような長音の扱いは

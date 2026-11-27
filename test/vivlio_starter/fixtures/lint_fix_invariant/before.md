@@ -21,3 +21,9 @@
 
 (1) 最初の項目
 (2) 次の項目
+
+〘⌃〙 + 〘`〙 を押し、`ruby title.rb` と打ちます。リポジトリは ruby/ruby.wasm、解説は javascript.info です。
+
+読み方は **Unicode**（ユニコード）です。
+
+Ruby で書き、のちに ruby で動かします。

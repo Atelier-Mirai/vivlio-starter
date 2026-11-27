@@ -244,10 +244,25 @@ module VivlioStarter
         # QR コードの記法（@qr:URL{…}）の退避に使う目印
         QR_PLACEHOLDER = 'VSQRCD'
 
+        # バッククォートを含むキーの記法（〘`〙）の退避に使う目印
+        KEYCAP_PLACEHOLDER = 'VSKEYC'
+
+        # バッククォートを含むキーの記法。綴りはビルドの前処理と同じ定義を使う（改善案 #167）。
+        #
+        # textlint の Markdown の解析は、〘`〙 の `` ` `` をインラインコードの開きと読み、後ろの
+        # コードの開きと対にする。すると間の地の文がコードとして飛ばされ、後ろのコードの中身が
+        # 地の文として点検される（改善案 #170。`` `ruby title.rb` `` が「ruby => Ruby」と指摘され、
+        # `--fix` でコマンドが `Ruby title.rb` に書き換えられた）。
+        KEYCAP_WITH_BACKTICK = PreProcessCommands::MarkdownTransformer::KEYCAP_WITH_BACKTICK
+
+        # 解析パスでキーの中のバッククォートの代わりに置く字。ビルドと同じ文字参照にする。
+        # 字の数と半角の形が保たれ、Markdown の解析はコードの開きと読まない
+        KEYCAP_BACKTICK_STAND_IN = '&#96;'
+
         # 修正パスで守る記法をまとめて退避する。`--fix` は textlint に原稿を直接
         # 直させるので、**解析パスの中和（strip_notation）は効かない**——守りたいものは
         # ここで目印へ逃がすしかない。守る対象は「地の文ではないのに素の文として
-        # 読まれるもの」＝数式、QR コードの記法、値つきの属性記法、ふりがな、相互参照のラベル、出力例の囲み（G1）。
+        # 読まれるもの」＝数式、バッククォートを含むキーの記法、QR コードの記法、値つきの属性記法、ふりがな、相互参照のラベル、出力例の囲み（G1）。
         #
         # **出力例の囲みを守らないと、見えない指摘が当たる。** 解析パスは G1 を中和するので
         # 指摘は表示に出ないが、`--fix` は textlint の修正をそのまま当てる（実測:
@@ -271,6 +286,7 @@ module VivlioStarter
             key
           end
           replaced = protected_text
+                     .gsub(KEYCAP_WITH_BACKTICK) { stash.call(KEYCAP_PLACEHOLDER) }
                      .gsub(QR_DIRECTIVE)    { stash.call(QR_PLACEHOLDER) }
                      .gsub(VALUE_ATTRIBUTE) { stash.call(ATTRIBUTE_PLACEHOLDER) }
                      .gsub(FURIGANA)        { stash.call(FURIGANA_PLACEHOLDER) }
@@ -395,7 +411,7 @@ module VivlioStarter
         end
         private_class_method :delist_fancy_marker
 
-        # 行内の記法を中和する（QR → G3 → G4 → G5 → ラベル）。
+        # 行内の記法を中和する（キーの中のバッククォート → QR → G3 → G4 → G5 → ラベル）。
         # 地の文が記法を「解説している」インラインコード（例: `{.aki}` の書き方を
         # 説明する行）を壊さないよう、コードを退避してから置換する。
         #
@@ -410,6 +426,7 @@ module VivlioStarter
         def neutralize_inline(line)
           protected_line, spans = Masking.protect_code(line)
           neutralized = protected_line
+                        .gsub(KEYCAP_WITH_BACKTICK) { it.gsub('`', KEYCAP_BACKTICK_STAND_IN) }
                         .gsub(QR_DIRECTIVE, LABEL_STAND_IN)
                         .gsub(FURIGANA, FURIGANA_STAND_IN)
                         .gsub(CLASS_ATTRIBUTE, '')

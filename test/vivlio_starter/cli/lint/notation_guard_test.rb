@@ -406,6 +406,25 @@ module VivlioStarter
           assert_equal src, NotationGuard.restore_masked(masked, spans)
         end
 
+        # キーの記法 〘`〙 のバッククォートは、textlint にコードの開きと読ませない（改善案 #170）。
+        # 読ませると後ろのコード `ruby title.rb` が地の文として点検され、--fix で書き換えられる。
+        # コードの中の 〘`〙 は触らない
+        def test_should_hide_keycap_backticks_from_the_linter
+          stripped = NotationGuard.strip_notation("〘⌃〙 + 〘`〙 を押し、`ruby title.rb` と打つ。``〘`〙`` と書く。\n")
+
+          assert_equal "〘⌃〙 + 〘&#96;〙 を押し、`ruby title.rb` と打つ。``〘`〙`` と書く。\n", stripped
+        end
+
+        def test_should_mask_keycap_backticks_for_the_fix_path
+          src = "〘⌃〙 + 〘`〙 を押し、`ruby title.rb` と打つ。ruby で書く。\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, '〘`〙'
+          assert_includes masked, '`ruby title.rb`', 'コードは原稿のまま残り、textlint がコードとして飛ばす'
+          assert_includes masked, 'ruby で書く。', '地の文は点検と修正の対象に残す'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
         # 出力例の囲みの行番号は、解析・修正・独自校正が同じ答えを使う
         def test_should_report_machine_data_lines
           src = "地の文\n\n:::{.output}\n出力 1\n\n```\ncode\n```\n:::\n後の文\n"
