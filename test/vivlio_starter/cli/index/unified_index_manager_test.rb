@@ -230,6 +230,23 @@ module VivlioStarter
         assert_empty terms.grep(/Omega|text|\Aa\z/), '数式の中のブラケットを語として登録してはならない'
       end
 
+      # 回帰: 別々のキー 〘[〙…〘]〙 にまたがる角かっこを手動登録の語にしない（改善案 #172）。
+      # haruka_mirai の記号の表で「〙（〘@〙の右）、〘」「〙、〘⇧〙 + 〘」が辞書に入っていた。
+      # 同じ行のキーの外の印は今までどおり拾う
+      def test_auto_process_ignores_brackets_across_keycaps
+        File.write('contents/92-symbols.md', <<~MD)
+          # 記号
+
+          | 角かっこ | 〘[〙（〘@〙の右）、〘]〙（〘:〙の右） | 〘[〙、〘]〙 |
+
+          〘⇧〙 + 〘[〙、〘⇧〙 + 〘]〙 で波かっこを打ちます。[索引|さくいん]にも載せます。
+        MD
+
+        capture_io { @manager.auto_process!(['92-symbols']) }
+
+        assert_equal ['索引'], load_all_terms, 'キーの外の印だけを登録する'
+      end
+
       # auto は件数と次の手順だけを告げる。目安の表は vs index:plan の役目（改善案 #99）
       def test_auto_process_reports_only_the_review_file_summary
         File.write('contents/10-intro.md', "Vivliostyle で組版します。Vivliostyle は CSS 組版エンジンです。\n")

@@ -254,20 +254,54 @@ body.vs-kindle .glossary-backlinks {
 }
 
 /* ----------------------------------------------------------------
- * 印刷用調整
+ * 印刷用調整（PDF）
  * ---------------------------------------------------------------- */
+/* 紙面では索引と同じく 2 段に組み、語と語のあいだを詰める（改善案 #173）。
+   1 段では 1 語に語・説明・ページ番号の 3 段と上下の余白を使い、説明が 1〜2 行の
+   102 語で 15 ページになった（haruka_mirai・B5 判）。2 段にして 8 ページ。
+   @media print の中に置き、EPUB・Kindle は 1 段のまま組む（画面の幅で組み直すため。
+   段の狭い 2 段は、スマートフォンの幅では説明が 1 行に数字しか入らない）。
+   - 五十音の見出しは段の中に置く。段をまたぐ帯（column-span: all）にすると、
+     見出しのたびに段が切れて空きが増える
+   - ページ番号の上の破線は外す。段が狭いと、語の区切りの点線と近くに並んで煩い */
 @media print {
-  .glossary-term {
+  .glossary-list {
+    columns: 2;
+    column-gap: 2em;
+    column-rule: 1px solid #ddd;
+  }
+
+  .glossary-group-header {
+    font-size: 1.15em;
+    margin-top: 1em;
     break-after: avoid;
   }
-  
+
+  .glossary-term {
+    font-size: 1em;
+    margin-top: 0.7em;
+    margin-bottom: 0.1em;
+    padding-top: 0.4em;
+    break-after: avoid;
+  }
+
   .glossary-definition {
+    margin-left: 0;
+    margin-bottom: 0;
+    padding-left: 0.8em;
     break-before: avoid;
     break-inside: avoid;
   }
-  
-  .glossary-group-header {
-    break-after: avoid;
+
+  .glossary-body,
+  .glossary-text-line {
+    margin: 0.1em 0;
+  }
+
+  .glossary-backlinks {
+    margin-top: 0.2em;
+    padding-top: 0;
+    border-top: none;
   }
 }
 

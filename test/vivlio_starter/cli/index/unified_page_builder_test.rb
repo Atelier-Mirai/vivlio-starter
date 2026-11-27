@@ -67,6 +67,19 @@ module VivlioStarter
           assert_includes File.read(INDEX_OUTPUT_FILE), '<html lang="en-US">'
         end
 
+        # 索引・用語集も章と同じく、custom.css を最後に読み込む（改善案 #174）。
+        # 「ここに書いたスタイルが最優先」と案内する custom.css が、この 2 ページだけ効かなかった
+        def test_generated_pages_load_custom_css_last
+          create_index_cache({ 'CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }] })
+          @builder.build_index!
+          @builder.build_glossary!([{ 'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'スタイルシート言語', 'flags' => 'g' }])
+
+          [[INDEX_OUTPUT_FILE, 'index.css'], [GLOSSARY_OUTPUT_FILE, 'glossary.css']].each do |path, theme|
+            hrefs = File.read(path).scan(/<link rel="stylesheet" href="([^"]+)">/).flatten.map { File.basename(it) }
+            assert_equal [theme, 'book-settings.css', 'custom.css'], hrefs, path
+          end
+        end
+
         def test_build_index_groups_by_kana_row
           create_index_cache(
             {

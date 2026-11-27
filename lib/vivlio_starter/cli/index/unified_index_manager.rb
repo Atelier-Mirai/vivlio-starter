@@ -1177,6 +1177,8 @@ module VivlioStarter
           content_without_code = CodeBlockStripper.strip(content)
           # 数式の中のブラケット（`$$5\,[\Omega]$$`）も印ではない。行数を保って退避する（改善案.md #115）
           content_without_code, = IndexMarkup.protect_math(content_without_code)
+          # キーの記法の中の角かっこ（〘[〙…〘]〙）も印ではない（改善案 #172）
+          content_without_code, = IndexMarkup.protect_keycaps(content_without_code)
           chapter_name = File.basename(chapter_path, '.*')
           labels = IndexMarkup.link_labels(content_without_code)
           # 実行結果の囲み（:::{.output} など）の中の [arm64-darwin27] は印ではない（改善案 #136）

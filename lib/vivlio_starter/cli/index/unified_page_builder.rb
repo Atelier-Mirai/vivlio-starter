@@ -182,6 +182,11 @@ module VivlioStarter
           %(<link rel="stylesheet" href="#{href}">)
         end
 
+        # 著者の custom.css への link。章 HTML と同じく最後に置き、どのテーマ CSS・設定値より後に効かせる。
+        # custom.css の冒頭は「ここに書いたスタイルが最優先で適用されます」と案内しているのに、
+        # 索引・用語集だけは読み込んでおらず、用語集を調整しようとした著者が戸惑った（改善案 #174）
+        def custom_css_link = %(<link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/custom.css">)
+
         # 索引 HTML を生成
         def generate_index_html
           sorted_terms = sort_index_terms_by_yomi
@@ -195,6 +200,7 @@ module VivlioStarter
               <title>索引</title>
               <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/index.css">
               #{book_settings_link}
+              #{custom_css_link}
             </head>
             <body class="index-page">
               <section class="index">
@@ -507,6 +513,7 @@ module VivlioStarter
               <title>#{title}</title>
               <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/glossary.css">
               #{book_settings_link}
+              #{custom_css_link}
             </head>
             <body class="glossary-page">
               <section class="glossarypage" role="doc-glossary">

@@ -271,6 +271,34 @@ module VivlioStarter
         lines.include?(text[0...offset].count("\n") + 1)
       end
 
+      # --- キーの記法の中のブラケット ---------------------------------------
+      #
+      # キーの記法は角かっこのキーを書く（〘[〙・〘]〙）。一行に `〘[〙（〘@〙の右）、〘]〙` と並ぶと、
+      # 別々のキーの `[` と `]` にまたがる `[〙（〘@〙の右）、〘]` が索引の印に見える。
+      # 実害（改善案 #172）: `vs index:auto` が「〙（〘@〙の右）、〘」を手動登録の語として辞書に足し、
+      # その語を棄却すると `vs index:apply` が原稿からキーの角かっこを外そうとした。
+      # ビルドの索引（IndexMatchScanner）と lint（ProseChecker）は退避していて、辞書を作る側と
+      # 印を外す側（UnifiedIndexManager・ManuscriptMarkup）だけが退避していなかった。
+      # キーの記法は 1 行に収まる（Masking::KEYCAP）ので、行番号はずれない。
+
+      # 退避の目印。NUL 区切りで、ブラケットを含まない（印の照合に自己一致しない）
+      KEYCAP_PLACEHOLDER = /\u0000VSKEY(\d+)\u0000/
+
+      # キーの記法を目印へ退避する
+      # @param text [String]
+      # @return [Array(String, Array<String>)] 退避後の本文と、退避したキーの記法の並び
+      def protect_keycaps(text)
+        spans = []
+        protected_text = text.to_s.gsub(Masking::KEYCAP) do |keycap|
+          spans << keycap
+          "\u0000VSKEY#{spans.size - 1}\u0000"
+        end
+        [protected_text, spans]
+      end
+
+      # protect_keycaps で退避したキーの記法を戻す
+      def restore_keycaps(text, spans) = text.gsub(KEYCAP_PLACEHOLDER) { spans[::Regexp.last_match(1).to_i] }
+
       # --- 数式の中のブラケット ---------------------------------------------
       #
       # 数式は単位を角かっこで囲む（`$$R = 5\,[\Omega]$$`）し、`\[…\]` は区切りそのものが

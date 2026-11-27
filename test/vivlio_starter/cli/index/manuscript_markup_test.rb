@@ -82,6 +82,16 @@ module VivlioStarter
           assert_equal original.sub('と [\Omega]。', 'と \Omega。'), File.read(@path)
         end
 
+        # 回帰: 辞書に紛れ込んだ語（キーにまたがる角かっこ）を棄却しても、キーの角かっこを外さない（改善案 #172）
+        def test_strip_keeps_brackets_inside_keycaps
+          original = "〘[〙、〘]〙 を押す。[〙、〘] と書いた本物の印も外す。\n"
+          File.write(@path, original)
+
+          assert_equal ['11-intro:1'], ManuscriptMarkup.places('〙、〘', [@path]), 'キーの外の印だけを挙げるべき'
+          assert_equal 1, ManuscriptMarkup.strip!('〙、〘', [@path])
+          assert_equal "〘[〙、〘]〙 を押す。〙、〘 と書いた本物の印も外す。\n", File.read(@path)
+        end
+
         def test_strip_does_not_touch_other_terms
           File.write(@path, "[Ruby]と[セットアップ]です。\n")
 

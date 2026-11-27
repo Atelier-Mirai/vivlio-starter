@@ -12,7 +12,7 @@
 #   棄却すると原稿の印が残り、辞書と原稿が食い違う。`vs index:apply` は著者に
 #   確かめたうえで、原稿の印も外す（index-glossary-registration-spec.md §3.1.3）。
 #
-#   印の見分け方はビルド・lint と同じ IndexMarkup に従う。コード・数式・リンク・脚注・
+#   印の見分け方はビルド・lint と同じ IndexMarkup に従う。コード・数式・キーの記法・リンク・脚注・
 #   タスクリストのブラケットは印ではないので、探さないし触らない。
 #
 #   綴りも同じ理由で直す。索引の照合は大文字・小文字を区別し、lint は空白の違いしか
@@ -40,6 +40,7 @@ module VivlioStarter
           paths.flat_map do |path|
             # コードを空行にして行数を保つ（行番号を著者に見せるため）
             text, = IndexMarkup.protect_math(CodeBlockStripper.strip(File.read(path, encoding: 'utf-8')))
+            text, = IndexMarkup.protect_keycaps(text) # キーの記法の中の角かっこは印ではない（改善案 #172）
             labels = IndexMarkup.link_labels(text)
             machine = IndexMarkup.machine_data_lines(text) # 実行結果の囲みの中は印ではない（改善案 #136）
             text.each_line.with_index(1).flat_map do |line, lineno|
@@ -59,6 +60,7 @@ module VivlioStarter
             original = File.read(path, encoding: 'utf-8')
             protected_text, spans = Masking.protect_code(original)
             protected_text, maths = IndexMarkup.protect_math(protected_text)
+            protected_text, keycaps = IndexMarkup.protect_keycaps(protected_text) # 改善案 #172
             labels = IndexMarkup.link_labels(protected_text)
             machine = IndexMarkup.machine_data_lines(protected_text) # 実行結果の囲みの中は触らない（改善案 #136）
             count = 0
@@ -74,7 +76,10 @@ module VivlioStarter
                 match[1].split('|', 2).first
               end
             end.join
-            File.write(path, Masking.restore_code(IndexMarkup.restore_math(rewritten, maths), spans), encoding: 'utf-8') if count.positive?
+            if count.positive?
+              restored = IndexMarkup.restore_math(IndexMarkup.restore_keycaps(rewritten, keycaps), maths)
+              File.write(path, Masking.restore_code(restored, spans), encoding: 'utf-8')
+            end
             count
           end
         end
