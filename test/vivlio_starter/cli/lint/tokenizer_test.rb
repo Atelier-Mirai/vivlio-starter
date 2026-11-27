@@ -319,4 +319,29 @@ class TestTokenizer < Minitest::Test
 
     assert_equal %w[CSS Håkon Wium Lie Poincaré Erdős], words
   end
+
+  # 英字に挟まれたアポストロフィと、英字に続く数字で語を割らない（改善案 #179）。
+  # 引用符として使ったアポストロフィ、数字で始まる部分は今までどおり語に含めない
+  def test_should_keep_apostrophes_and_digits_inside_a_word
+    words = T.tokenize("It doesn't fit. It’s 'quoted' and users' files.\n").map { _1[0] }
+    assert_equal %w[It doesn't fit It’s quoted and users files], words
+
+    words = T.tokenize("MDN の「CanvasRenderingContext2D」と Float32Array と html5、3D と 2nd\n").map { _1[0] }
+    assert_equal %w[MDN CanvasRenderingContext2D Float32Array html5 nd], words
+  end
+
+  # 英字が 1 字だけの型番（`Z80`・`s2`）は、1 字の語と同じく点検しない
+  def test_should_skip_model_numbers_with_a_single_letter
+    words = T.tokenize("Z80 と s2 と CP2102\n").map { _1[0] }
+
+    assert_equal %w[CP2102], words
+  end
+
+  # データ展開の行（`= 名前 | 条件`）は記法なので読まない。地の文の `=` は読む（改善案 #179）
+  def test_should_skip_data_expansion_lines
+    content = "= reference_books | category=html-css\n= books\nx = books is prose\n"
+    tokens = T.tokenize(content)
+
+    assert_equal [%w[books 3], %w[is 3], %w[prose 3]], tokens.map { |word, line| [word, line.to_s] }
+  end
 end

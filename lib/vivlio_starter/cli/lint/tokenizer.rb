@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'query_stream'
 require_relative '../common'
 require_relative '../masking'
 require_relative 'notation_guard'
@@ -61,6 +62,11 @@ module VivlioStarter
             # 抑止コメントによる除外
             next if excluded_lines.include?(line_no)
 
+            # データ展開の行（`= books | tags=ruby`）は記法で、紙面には展開した中身が組まれる。
+            # データ名・条件の値（`html-css`）は英単語ではない（改善案 #179）。
+            # 形は query-stream の判定（QUERY_STREAM_PATTERN）そのものを使い、ビルドと食い違わせない
+            next if line.match?(QueryStream::QUERY_STREAM_PATTERN)
+
             extract_words(line).each { |word| tokens << [word, line_no] }
           end
 
@@ -121,11 +127,24 @@ module VivlioStarter
         # `Poincaré` が `Poincar` に割れ、辞書に正しい綴りを載せても割れた後の断片が指摘されていた。
         # `\p{Latin}` にしないのは、和文の中の全角英字（Ａ〜Ｚ）まで拾ってしまうため。
         WORD_LETTER = "a-zA-ZÀ-ÖØ-öø-ɏ"
-        WORD = /[#{WORD_LETTER}]+(?:-[#{WORD_LETTER}]+)*/
 
-        # 点検する語の最短の字数。1 字（`c`・`a`）は略語や記号の名前で、綴りを論じられない。
+        # 語は英字で始まり、英字・数字が続く。ハイフンと、英字に挟まれたアポストロフィ
+        # （`'`・`’`）でつないだものまでを 1 語とする（改善案 #179）。
+        # 語の途中で割ると、辞書に正しい綴りがあっても割れた断片を引いていた
+        # （`doesn't` → `doesn`、`CanvasRenderingContext2D` → `CanvasRenderingContext`）。
+        # 語頭・語末のアポストロフィは引用符なので含めない。数字で始まる `3D`・`2nd` は今までどおり
+        # 英字の部分（`D` は 1 字なので捨てる・`nd`）から語になる。
+        # 1 語として取り出した語の照らし方は SpellChecker.known? にある
+        WORD_SEGMENT = /[#{WORD_LETTER}][#{WORD_LETTER}0-9]*/
+        WORD = /#{WORD_SEGMENT}(?:(?:-|['’](?=[#{WORD_LETTER}]))#{WORD_SEGMENT})*/
+
+        # 点検する語の最短の字数（英字だけを数える）。1 字（`c`・`a`）は略語や記号の名前で、
+        # 綴りを論じられない。英字が 1 字の型番（`Z80`・`s2`）も同じ扱いにする。
         # 綴りの候補もこの字数以上の語から選ぶ（SpellChecker::Suggester）
         MIN_WORD_LENGTH = 2
+
+        # @return [Integer] 語の英字の字数
+        def letter_count(word) = word.count(WORD_LETTER)
 
         # `.`・`/`・`@` で英数字どうしをつないだ名前（`main.py`・`src/led.c`・`ruby/ruby.wasm`・
         # `example.com`・`contact@example.com`）。ファイル名・パッケージ名・ドメイン・宛先は
@@ -165,7 +184,7 @@ module VivlioStarter
 
           cleaned.gsub!(NAME, ' ')                               # ファイル名・ドメインなどの名前
 
-          cleaned.scan(WORD).select { it.length >= MIN_WORD_LENGTH }
+          cleaned.scan(WORD).select { letter_count(it) >= MIN_WORD_LENGTH }
         end
       end
     end

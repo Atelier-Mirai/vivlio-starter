@@ -129,6 +129,7 @@ perceptron
 sigmoid
 softmax
 dropout
+overfitting
 convolution
 pooling
 embedding

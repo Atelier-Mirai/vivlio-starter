@@ -23,14 +23,60 @@ module VivlioStarter
           content = File.read(path, encoding: 'UTF-8')
           tokens  = Tokenizer.tokenize(content, check_code_blocks: check_code_blocks)
 
-          tokens.filter_map do |word, line_no|
-            next if word_map.key?(word.downcase)
-
-            { line: line_no, word: word, suggestion: suggester.suggest(word) }
+          tokens.flat_map do |token, line_no|
+            unknown_words(token, word_map).map do |word|
+              { line: line_no, word: word, suggestion: suggestion_for(word, word_map, suggester) }
+            end
           end
         rescue Errno::ENOENT => e
           Common.log_warn("[spellcheck] ファイルを読み込めませんでした: #{path} (#{e.message})")
           []
+        end
+
+        # 語の部分の区切り。ハイフン・アポストロフィ・数字（Tokenizer::WORD が 1 語にまとめるもの）
+        PART_SEPARATOR = /[-'’]|[0-9]+/
+
+        # 語が正しい綴りか（改善案 #179）。全体が辞書にあれば通す（`doesn't`・`Float32Array`・
+        # ユーザー辞書の `CanvasRenderingContext2D`）。無ければ、区切りで分けた部分（英字 2 字以上）が
+        # どれも辞書にあれば通す（`pseudo-class`・`Ruby's`・`html5`）。大文字と小文字は区別しない。
+        # 指摘するのは部分ではなく語の全体で、`vs lint --register` も全体を登録する
+        # （`joyful-janken` は `janken` が未知なので、`joyful-janken` として指摘する）
+        def known?(word, word_map)
+          return true if word_map.key?(lookup_key(word))
+
+          parts = word.split(PART_SEPARATOR).select { Tokenizer.letter_count(it) >= Tokenizer::MIN_WORD_LENGTH }
+          parts != [word] && parts.all? { word_map.key?(lookup_key(it)) }
+        end
+
+        # 指摘する語。ハイフン・数字でつないだ語は全体を指摘する（`joyful-janken`・`CanvasRenderingContext2D`）。
+        # アポストロフィでつないだ語は、未知の部分を指摘する。所有格（`Brill's`）とフランス語の省略形
+        # （`l'École`）は名前の部分（`Brill`・`École`）を登録するもので、全体を登録すると所有格の
+        # 付かない形が別に指摘され続ける（改善案 #179）
+        # @return [Array<String>]
+        def unknown_words(token, word_map)
+          return [] if known?(token, word_map)
+          return [token] unless token.match?(/['’]/)
+
+          token.split(/['’]/).select { Tokenizer.letter_count(it) >= Tokenizer::MIN_WORD_LENGTH }
+               .reject { known?(it, word_map) }
+        end
+
+        # 辞書を引く形。辞書のアポストロフィは `'` にそろえてある（DictManager#normalize）
+        def lookup_key(word) = word.downcase.tr('’', "'")
+
+        # 綴りの候補。ハイフンでつないだ語は、未知の部分ごとに候補を探してつなぐ
+        # （`pseudo-clas` → `pseudo-class`）。全体で探すと、ハイフンを含む語は辞書に少なく、
+        # 候補が出ないか、つなぎ方の違う語（`pseudoclass`）になる。部分の候補が 1 つでも
+        # 見つからなければ、全体で探す
+        def suggestion_for(word, word_map, suggester)
+          return suggester.suggest(word) unless word.include?('-')
+
+          parts = word.split('-').map do |part|
+            next part if Tokenizer.letter_count(part) < Tokenizer::MIN_WORD_LENGTH || known?(part, word_map)
+
+            suggester.suggest(part) || break
+          end
+          parts&.join('-') || suggester.suggest(word)
         end
 
         # 複数ファイルのエラーを標準出力に表示する。
@@ -165,6 +211,11 @@ module VivlioStarter
             # 候補は点検する語と同じく 2 字以上から選ぶ。1 字の語（`y`・`a`）を直す先に出さない（改善案 #171）
             @lengths = [word.length - @limit, Tokenizer::MIN_WORD_LENGTH].max..(word.length + @limit)
             @target  = word.downcase.codepoints
+            # アポストロフィを含む語（短縮形・所有格）は、点検する語にもアポストロフィがあるときと、
+            # アポストロフィを書き忘れた形（`doesnt` → `doesn't`）のときだけ選ぶ。辞書には所有格が多く、
+            # `SOLIDUS => solid's` のように `solids` より先に選ばれていた（改善案 #179）
+            @apostrophe = word.match?(/['’]/)
+            @plain   = word.downcase
             @best    = nil # [距離, 表の順, 語]
 
             first_row = (0..@target.size).map { it <= @limit ? it : @over }
@@ -203,6 +254,7 @@ module VivlioStarter
           # 長さの範囲は以前の判定（表の語の長さで見る）に合わせる
           def consider((order, dict_word), dist)
             return unless @lengths.cover?(dict_word.length)
+            return if !@apostrophe && dict_word.include?("'") && dict_word.downcase.delete("'") != @plain
             return if @best && (dist > @best[0] || (dist == @best[0] && order > @best[1]))
 
             @best = [dist, order, dict_word]

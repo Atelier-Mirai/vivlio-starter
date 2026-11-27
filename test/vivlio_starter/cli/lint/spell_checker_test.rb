@@ -128,6 +128,56 @@ class TestSpellChecker < Minitest::Test
     end
   end
 
+  # 全体が辞書に無い語は、ハイフン・アポストロフィ・数字で分けた部分（英字 2 字以上）がどれも辞書にあれば通す。
+  # 大文字と小文字は区別しない。部分に未知の綴りがあれば、全体を指摘する（改善案 #179）
+  def test_should_accept_words_whose_parts_are_all_known
+    word_map = %w[object oriented pseudo class ruby float array html words doesn't].to_h { [it, it] }
+    known = %w[object-oriented Object-Oriented OBJECT-ORIENTED pseudo-class Ruby's Float32Array html5 e-Words doesn't doesn’t]
+    unknown = %w[objct-orientd object-orientd doesnt joyful-object CanvasRenderingContext2D]
+
+    known.each { assert SC.known?(it, word_map), "#{it} は通す" }
+    unknown.each { refute SC.known?(it, word_map), "#{it} は指摘する" }
+  end
+
+  # ハイフン・数字でつないだ語は全体を、アポストロフィでつないだ語は未知の部分を指摘する
+  def test_should_report_whole_words_but_the_unknown_part_around_an_apostrophe
+    word_map = %w[joyful doesn't].to_h { [it, it] }
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'test.md')
+      File.write(path, "joyful-janken と Canvas2D、Brill's と l'École、doesn't と dosen't\n")
+
+      assert_equal %w[joyful-janken Canvas2D Brill École dosen], SC.check(path, word_map).map { it[:word] }
+    end
+  end
+
+  # 全体を辞書に載せれば、部分が未知でも通る（ユーザー辞書の `CanvasRenderingContext2D`）
+  def test_should_accept_a_word_registered_as_a_whole
+    word_map = { 'canvasrenderingcontext2d' => 'CanvasRenderingContext2D', 'joyful-janken' => 'joyful-janken' }
+
+    assert SC.known?('CanvasRenderingContext2D', word_map)
+    assert SC.known?('Joyful-Janken', word_map)
+  end
+
+  # ハイフンでつないだ語の候補は、未知の部分ごとに探してつなぐ。部分の候補が無ければ全体で探す
+  def test_should_suggest_hyphenated_words_part_by_part
+    word_map = %w[object oriented pseudo class pseudoclass].to_h { [it, it] }
+    suggester = SC::Suggester.new(word_map)
+
+    assert_equal 'object-oriented', SC.suggestion_for('objct-orientd', word_map, suggester)
+    assert_equal 'pseudo-class', SC.suggestion_for('pseudo-clas', word_map, suggester), 'つなぎ方の違う pseudoclass にしない'
+    assert_nil SC.suggestion_for('qqqqq-zzzzz', word_map, suggester)
+  end
+
+  # アポストロフィを含む語は、点検する語にアポストロフィがあるときと、書き忘れた形のときだけ候補にする
+  def test_should_suggest_apostrophe_words_only_where_an_apostrophe_is_meant
+    word_map = { "solid's" => "solid's", 'solids' => 'solids', "doesn't" => "doesn't", 'does' => 'does' }
+    suggester = SC::Suggester.new(word_map)
+
+    assert_equal 'solids', suggester.suggest('SOLIDUS'), '所有格を選ばない'
+    assert_equal "doesn't", suggester.suggest("dosn't")
+    assert_equal "doesn't", suggester.suggest('doesnt'), 'アポストロフィの書き忘れ'
+  end
+
   # <!-- no-lint --> が付いた行の次の行がスキップされることを確認する
   def test_check_skips_vs_lint_disable_next_line
     word_map = {}

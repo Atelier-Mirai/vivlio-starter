@@ -102,6 +102,7 @@ OCR
 CI
 UX
 AGPL
+LLM
 
 # Media / Formats
 FAX
@@ -116,6 +117,7 @@ JPG
 GIF
 SVG
 PDF
+BGM
 
 # Web / Cloud
 PWA

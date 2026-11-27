@@ -49,6 +49,30 @@ class TestDictManager < Minitest::Test
     assert_equal 'Poincaré', @dm.send(:normalize, 'Poincaré # 数学者')
   end
 
+  # 語の中のアポストロフィは残す。落とすと `doesnt` が辞書に載る（改善案 #179）
+  def test_normalize_keeps_apostrophes_inside_a_word
+    assert_equal "doesn't", @dm.send(:normalize, "doesn't")
+    assert_equal "doesn't", @dm.send(:normalize, 'doesn’t'), '’ は \' にそろえる'
+    assert_equal 'tis', @dm.send(:normalize, "'tis"), '語頭・語末のアポストロフィは落とす'
+  end
+
+  # 大文字だけの書き方（SQL の予約語）が英語の辞書の普通の語を上書きしたら、英語の書き方へ戻す。
+  # 英語の辞書に無い略語（ERB）と、大文字だけでない書き方（JavaScript）は後の辞書のまま（改善案 #179）
+  def test_restore_english_forms_over_all_caps_keywords
+    words = { 'object' => 'OBJECT', 'erb' => 'ERB', 'pdf' => 'PDF', 'javascript' => 'JavaScript' }
+    english = { 'object' => 'object', 'pdf' => 'PDF', 'javascript' => 'javascript' }
+    @dm.send(:restore_english_forms!, words, english)
+
+    assert_equal({ 'object' => 'object', 'erb' => 'ERB', 'pdf' => 'PDF', 'javascript' => 'JavaScript' }, words)
+  end
+
+  # 同梱の辞書では、SQL の予約語の後でも英単語は小文字で、Ruby の ERB は大文字で出す
+  def test_build_word_map_shows_english_words_in_lowercase
+    words = @dm.build_word_map(nil)
+
+    assert_equal %w[object overriding ERB], words.values_at('object', 'overriding', 'erb')
+  end
+
   # 記号のみの行が nil を返すことを確認する
   def test_normalize_returns_nil_for_symbol_only
     assert_nil @dm.send(:normalize, '***')

@@ -1,0 +1,26 @@
+# Web の標準の名前（DOM の API・CSS の用語）のうち、cspell 由来の辞書に無いもの（改善案 #179）。
+# 地の文に書かれやすい名前を置く。コードの中（インラインコード・コードブロック）は点検しない。
+
+# DOM
+DOMContentLoaded
+appendChild
+classList
+createElement
+getElementById
+getElementsByClassName
+innerHTML
+innerText
+outerHTML
+querySelector
+querySelectorAll
+textContent
+
+# Canvas
+CanvasRenderingContext2D
+WebGL2RenderingContext
+
+# CSS
+specificity
+
+# Upload / Download
+uploading

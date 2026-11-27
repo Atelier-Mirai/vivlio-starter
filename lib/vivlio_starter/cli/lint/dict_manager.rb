@@ -48,10 +48,15 @@ module VivlioStarter
         # @return [Hash] { downcase_word => display_word }
         def build_word_map(config)
           words = {}
+          english = {}
           (bundled_dict_names + extra_dicts(config)).uniq.each do |name|
             path = resolve_path(name)
-            load_into_word_map(path, words) if path
+            next unless path
+
+            load_into_word_map(path, words)
+            load_into_word_map(path, english) if name.start_with?(ENGLISH_DICT_PREFIX)
           end
+          restore_english_forms!(words, english)
           load_glossary_terms(words)
           # ユーザー辞書は YAML なので read_user_words（YAML パーサ）で読む。
           # 辞書ファイルと同じ行単位の読み方をすると `- "High-Score"` が `-High-Score`
@@ -160,9 +165,28 @@ module VivlioStarter
           words[word.delete('-').downcase] ||= word
         end
 
+        # 一般の英単語の辞書（SCOWL から作る english-words-40.txt）
+        ENGLISH_DICT_PREFIX = 'english-words'
+
+        # 同じ語が 2 つの辞書にあれば後の辞書の書き方を表示に使うが、大文字だけの書き方が英語の辞書の
+        # 普通の語（`object`・`overriding`）を上書きしていたら、英語の辞書の書き方へ戻す（改善案 #179）。
+        # SQL の予約語の一覧（`OBJECT`・`OVERRIDING`）が後に読まれ、綴りの候補が `objct => OBJECT` と
+        # 大文字で出ていた。英語の辞書に無い略語（Ruby の辞書の `ERB`）は大文字のまま残す。
+        # 用語集とユーザー辞書はこの後に読むので、著者の決めた書き方が最後に勝つ
+        def restore_english_forms!(words, english)
+          words.each do |key, display|
+            form = english[key]
+            next unless form && display == display.upcase && display != key && form != form.upcase
+
+            words[key] = form
+          end
+        end
+
         # 辞書ファイルの1行を正規化して単語文字列を返す
         # コメント行・空行・Hunspellフラグ・記号をすべて除去する。アクセント記号の付いた文字は、
-        # 本文の単語の切り出し（Tokenizer::WORD_LETTER）と同じ範囲を残す（`Håkon` を `Hkon` にしない）
+        # 本文の単語の切り出し（Tokenizer::WORD_LETTER）と同じ範囲を残す（`Håkon` を `Hkon` にしない）。
+        # 語の中のアポストロフィも残し、`’` は `'` にそろえる（`doesn't`。本文も 1 語で取り出す。改善案 #179）。
+        # 落とすと `doesnt` が辞書に載り、アポストロフィを書き忘れた綴りが通っていた
         # @param line [String] 辞書ファイルの1行
         # @return [String, nil] 正規化後の単語。除外対象なら nil
         def normalize(line)
@@ -171,7 +195,7 @@ module VivlioStarter
 
           line = line.split('#').first.strip
           line = line.split('/').first.strip
-          line = line.gsub(/[^#{Tokenizer::WORD_LETTER}0-9-]/o, '').strip
+          line = line.tr('’', "'").gsub(/[^#{Tokenizer::WORD_LETTER}0-9'-]/o, '').gsub(/\A'+|'+\z/, '')
           line.empty? ? nil : line
         end
 
