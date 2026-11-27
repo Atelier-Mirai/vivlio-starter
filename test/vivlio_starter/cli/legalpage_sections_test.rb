@@ -22,8 +22,11 @@ module VivlioStarter
     class LegalpageSectionsTest < Minitest::Test
       PAGE_PRESETS = File.expand_path('../../../config/page_presets.yml', __dir__)
 
+      # load_config は読んだ本のテーマの宣言を Common に覚えさせる（小説は novel）。
+      # 戻さないと、後で走る既定値のテストが standard の宣言（theme.markers）を見失う
       def legalpage(book_yml)
         original = Common::CONFIG
+        original_specs = Common.instance_variable_get(:@theme_specs)
         Dir.mktmpdir do |dir|
           Dir.chdir(dir) do
             FileUtils.mkdir_p('config')
@@ -36,6 +39,7 @@ module VivlioStarter
         end
       ensure
         Common.install_configuration!(original)
+        Common.instance_variable_set(:@theme_specs, original_specs)
       end
 
       def test_should_show_only_the_fiction_note_in_a_novel

@@ -129,8 +129,11 @@ module VivlioStarter
 
     # Common.load_config の値の解決の順（book.yml を一時ディレクトリに書いて読む）
     class BookProfileLoadConfigTest < Minitest::Test
+      # load_config は読んだ本のテーマの宣言を Common に覚えさせる（小説は novel）。
+      # 戻さないと、後で走る既定値のテストが standard の宣言（theme.markers）を見失う
       def setup
         @original_dir = Dir.pwd
+        @original_specs = Common.instance_variable_get(:@theme_specs)
         @temp_dir = Dir.mktmpdir('vs-book-profile')
         Dir.chdir(@temp_dir)
         FileUtils.mkdir_p('config')
@@ -142,6 +145,7 @@ module VivlioStarter
       def teardown
         Dir.chdir(@original_dir)
         FileUtils.rm_rf(@temp_dir)
+        Common.instance_variable_set(:@theme_specs, @original_specs)
       end
 
       def load(book_yml)
