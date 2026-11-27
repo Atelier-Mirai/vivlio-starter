@@ -56,6 +56,7 @@
 - `vs lint` のスペルチェックで、正しく書いた英語を指摘していたのを直した。`doesn't` を `doesn` に、`CanvasRenderingContext2D` を `CanvasRenderingContext` に割らずに 1 語として辞書を引く。`pseudo-class`・`Object-Oriented` のようにハイフンでつないだ語は、部分がどれも辞書にあれば通し、綴りの候補も部分ごとに出す（`pseudo-clas => pseudo-class`）。データ展開の行（`= books | tags=ruby`）は読まない。英字が 1 字の型番（`Z80`）は点検しない（改善案 #179）。
 - `vs lint` の綴りの候補が、`objct => OBJECT` のように大文字で出ていたのを直した。普通の英単語は英語の辞書の書き方で出す（改善案 #179）。
 - スペルチェックの同梱の辞書に、`LLM`・`BGM`・`WebGPU`・`overfitting`・`radian` と、DOM・Canvas の名前（`innerHTML`・`textContent`・`querySelector`・`CanvasRenderingContext2D` など）・`specificity`・`uploading` を足した。今ある本には `vs upgrade` で入る（改善案 #179）。
+- `vs lint` の表記の規則「無駄 => ムダ」と「りんご => リンゴ」を外した。どちらも正しい書き方で、どう書くかは著者に任せる。
 - バッククォートのキー 〘`〙 を書くと、その後ろの文章がコードとして組まれ、`:::{.terminal}` が普通の段落になっていたのを直した（枠の中の URL が `)"` まで含めてリンクになり、EPUB が epubcheck のエラーになっていた）。〘`〙・〘Ctrl + `〙 はキーとして組み、`vs lint` もその後ろの文章を点検する。
 - 表の見出しのうち「優先順位」のような 4 字までのものが、Vivliostyle CLI 11.5 以降で「優先／順位」と 2 行に折れていたのを直した。
 - `vs lint` の表記の規則「なに => 何」が、「あんなに」「どんなに」「みんなに」の中の「なに」にも当たっていたのを直した。

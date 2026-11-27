@@ -167,9 +167,6 @@ rules:
   - expected: まったく
     pattern: 全く
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - pattern: 無駄
-    expected: ムダ
-    prh: カタカナで書くと読みやすくなります（ひらく漢字）
   - expected: もっとも
     pattern: 最も
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
@@ -307,9 +304,6 @@ rules:
   - expected: やり取り
     fix: false
     patterns: やりとり
-  - expected: リンゴ
-    fix: false
-    patterns: りんご
   - expected: あるわけ
     patterns: ある訳
     prh: 〜する訳 -> 〜するわけ
