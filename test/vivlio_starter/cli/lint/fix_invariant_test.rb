@@ -32,6 +32,7 @@
 #     31-45   改善案 #180: 語の途中の大小（WEBrick）・git のコマンド・剰余の %・訳語に添えた原語と
 #             カギかっこの文言・「の時・分」「通り道」・算用数字の「2 通り」（指摘だけ）・データ展開の行・
 #             「気付く」の活用形（直す）
+#     47 行目 改善案 #181: 同じ段落の 2 つの「じゃんけん」（形態素解析が頭の「じゃ」を接続詞に切る）
 #
 # 前提:
 #   textlint とプリセットが入っていない環境（CI など）では skip する。
@@ -82,6 +83,7 @@ class TestLintFixInvariant < Minitest::Test
       end
       assert labels.any? { it.include?('2 通り => 二通り') }, "算用数字の「2 通り」は指摘を残す:\n#{labels.join("\n")}"
       assert labels.any? { it.include?('気付い => 気づい') }, "「気付く」の活用形も指摘する:\n#{labels.join("\n")}"
+      assert labels.none? { it.include?('接続詞（じゃ）') }, "「じゃんけん」を接続詞の連続と読んだ（改善案 #181）:\n#{labels.join("\n")}"
     end
   end
 

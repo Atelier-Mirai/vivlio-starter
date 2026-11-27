@@ -845,6 +845,15 @@ class TestProseChecker < Minitest::Test
     assert_equal ['1 つ => 一つ（数は漢数字で）'], counter_labels("1 件のデータは 1 つのハッシュです。\n")
   end
 
+  # 主題の「は」の後ろの数と、ブラウザのタブの数は、記号の個数ではない（改善案 #181）。
+  # 「を」「と」で書いた記号の個数と、タブ文字の個数は今までどおり算用数字を薦める
+  def test_should_not_read_counts_after_wa_or_browser_tabs_as_symbols
+    assert_empty counter_labels("| `..` は一つ上のフォルダ |\n")
+    assert_empty counter_labels("本格版を二つのタブで開きます。\n")
+    assert_equal ['二つ => 2 つ（記号の個数は算用数字で）'], counter_labels("`..` を二つ書きます。\n")
+    assert_equal ['二つ => 2 つ（記号の個数は算用数字で）'], counter_labels("行の頭にタブ文字を二つ置きます。\n")
+  end
+
   # lint の出力を書き写したインラインコードは検査しない
   def test_should_not_report_counts_inside_code
     assert_empty counter_labels("`arabic-kanji-numbers`（`一つ → 1つ`）を切ります。\n")
