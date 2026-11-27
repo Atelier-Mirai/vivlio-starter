@@ -62,6 +62,15 @@ class TestSpellChecker < Minitest::Test
     assert_nil SC.find_suggestion('cat', word_map)
   end
 
+  # 候補は点検する語と同じく 2 字以上から選ぶ。`py` に 1 字の `y` を出していた（改善案 #171）
+  def test_find_suggestion_skips_single_letter_words
+    word_map = { 'y' => 'y', 'a' => 'a' }
+    assert_nil SC.find_suggestion('py', word_map)
+
+    word_map = { 'y' => 'y', 'pi' => 'pi' }
+    assert_equal 'pi', SC.find_suggestion('py', word_map)
+  end
+
   # 同じ距離の候補が複数あれば、語の表で先に出てくる語を選ぶ。長さで分けた索引でも、
   # 短い語を先に見つけたせいで答えが変わらないこと（改善案 #148）
   def test_find_suggestion_prefers_the_earlier_word_on_a_tie
@@ -82,7 +91,7 @@ class TestSpellChecker < Minitest::Test
     queries = Array.new(200) { Array.new(rng.rand(2..11)) { %w[a b c d e f].sample(random: rng) }.join }
     queries.each do |query|
       limit = SC.threshold_for(query)
-      in_range = words.select { it.length.between?([query.length - limit, 1].max, query.length + limit) }
+      in_range = words.select { it.length.between?([query.length - limit, VivlioStarter::CLI::Lint::Tokenizer::MIN_WORD_LENGTH].max, query.length + limit) }
       best, = in_range.each_with_index.min_by { |word, i| [DidYouMean::Levenshtein.distance(query, word), i] }
       expected = best && DidYouMean::Levenshtein.distance(query, best) <= limit ? best : nil
       if expected

@@ -3,6 +3,7 @@
 require 'did_you_mean'
 require_relative '../common'
 require_relative 'finding_rows'
+require_relative 'tokenizer'
 
 module VivlioStarter
   module CLI
@@ -161,7 +162,8 @@ module VivlioStarter
           def search(word)
             @limit   = SpellChecker.threshold_for(word)
             @over    = @limit + 1
-            @lengths = [word.length - @limit, 1].max..(word.length + @limit)
+            # 候補は点検する語と同じく 2 字以上から選ぶ。1 字の語（`y`・`a`）を直す先に出さない（改善案 #171）
+            @lengths = [word.length - @limit, Tokenizer::MIN_WORD_LENGTH].max..(word.length + @limit)
             @target  = word.downcase.codepoints
             @best    = nil # [距離, 表の順, 語]
 

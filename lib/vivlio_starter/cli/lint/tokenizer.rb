@@ -123,6 +123,18 @@ module VivlioStarter
         WORD_LETTER = "a-zA-ZÀ-ÖØ-öø-ɏ"
         WORD = /[#{WORD_LETTER}]+(?:-[#{WORD_LETTER}]+)*/
 
+        # 点検する語の最短の字数。1 字（`c`・`a`）は略語や記号の名前で、綴りを論じられない。
+        # 綴りの候補もこの字数以上の語から選ぶ（SpellChecker::Suggester）
+        MIN_WORD_LENGTH = 2
+
+        # `.`・`/`・`@` で英数字どうしをつないだ名前（`main.py`・`src/led.c`・`ruby/ruby.wasm`・
+        # `example.com`・`contact@example.com`）。ファイル名・パッケージ名・ドメイン・宛先は
+        # 英単語ではなく、綴りの直す先も原稿の側に無いので、丸ごと点検しない（改善案 #171）。
+        # 割って点検すると、拡張子が辞書にあるかの偶然で指摘が決まっていた（`main.py` は
+        # `py => y`・`main.hpp` は `hpp => app` と指摘され、`main.rb`・`main.js` は指摘されない）。
+        # 名前の形は spellcheck-tech-word.js の partOfName と同じ（`.`・`/` の両側が英数字）
+        NAME = %r{[A-Za-z0-9_-]+(?:[./@][A-Za-z0-9_-]+)+}
+
         # @param line [String] 1行のMarkdownテキスト
         # @return [Array<String>] 抽出された英単語の配列
         def extract_words(line)
@@ -151,7 +163,9 @@ module VivlioStarter
           cleaned.gsub!(/\[([^\]]*)\]\[[^\]]*\]/, '\1')            # 参照リンク
           cleaned.gsub!(/^#+\s*/, '')                            # 見出し記号を除去
 
-          cleaned.scan(WORD).select { it.length >= 2 }
+          cleaned.gsub!(NAME, ' ')                               # ファイル名・ドメインなどの名前
+
+          cleaned.scan(WORD).select { it.length >= MIN_WORD_LENGTH }
         end
       end
     end

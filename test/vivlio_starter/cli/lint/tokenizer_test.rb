@@ -296,11 +296,21 @@ class TestTokenizer < Minitest::Test
     assert_empty words
   end
 
-  # メールアドレスは相互参照ラベルとして誤って分解されないことを確認する
+  # メールアドレスは相互参照ラベルとして分解せず、宛先の名前として丸ごと点検しない（改善案 #171）。
+  # ラベルとして読むと `@example` だけが落ち、`contact` と `.com` の断片が残る
   def test_email_address_not_treated_as_label
-    words = T.tokenize("contact@example.com まで\n").map { _1[0] }
-    assert_includes words, 'example'  # @ 直前が単語文字なのでラベル除去は発動しない
-    assert_includes words, 'contact'
+    words = T.tokenize("contact@example.com まで mail を送る\n").map { _1[0] }
+    assert_equal %w[mail], words
+  end
+
+  # `.`・`/` で英数字どうしをつないだ名前（ファイル名・パッケージ名・ドメイン）は割らず、丸ごと点検しない。
+  # 割ると拡張子が辞書にあるかの偶然で指摘が決まる（`main.py` が `py => y` になった。改善案 #171）。
+  # 文末の `.` の後ろに空白が続く語と、名前の外の語は今までどおり点検する
+  def test_should_skip_names_joined_by_dots_and_slashes
+    words = T.tokenize("main.py と src/led.c と ruby/ruby.wasm と example.com、__init__.py を書く。Use pyhton. Then go\n")
+              .map { _1[0] }
+
+    assert_equal %w[Use pyhton Then go], words
   end
 
   # アクセント記号の付いた文字で単語を割らない（改善案.md #63）。全角英字や × は拾わない
