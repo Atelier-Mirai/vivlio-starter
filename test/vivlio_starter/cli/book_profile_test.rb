@@ -12,7 +12,7 @@
 #   - book.type は分冊の巻では上書きできない（§5.4）
 #   - page_presets.yml に無いプリセット・判型の表に無い size: の本は、本を読むコマンドを 🔴 で止める（cover-size-independence-spec.md §8）
 #
-# 種類ごとの雛形の book.yml との照合（§2.2 の検査の (2)）は、雛形ができる S8 で足す。
+#   - 種類ごとの雛形の book.yml に書いた値が、その種類の解決後の既定値と一致する（§2.2 の検査の (2)）
 # ================================================================
 
 require 'test_helper'
@@ -50,6 +50,28 @@ module VivlioStarter
 
         assert_includes bundled, ConfigKeys::KEYS.fetch(%i[theme name]).default
         assert_empty named - bundled, 'PROFILES の theme.name が同梱のテーマ（リポジトリの themes/）に無い'
+      end
+
+      # (2) 種類ごとの雛形の book.yml に書いた値が、その種類の解決後の既定値と一致する（v2-architecture-spec.md §2.2）。
+      # 一致しないと、著者が書いていない値で雛形の本が組まれ、消すと組み上がりが変わる
+      def test_should_match_the_type_scaffold_book_yml_with_the_type_defaults
+        types_root = File.expand_path('../../../lib/project_scaffold_types', __dir__)
+        books = Dir.glob('*/config/book.yml', base: types_root)
+        refute_empty books, '種類ごとの雛形がある（ruby scripts/copy_to_scaffold.rb）'
+
+        mismatches = books.flat_map do |relative|
+          type = relative.split('/').first.to_sym
+          raw = YAML.safe_load_file(File.join(types_root, relative), aliases: true, permitted_classes: [Date])
+          leaves(raw).filter_map do |path, value|
+            spec = ConfigKeys::KEYS[path] or next "#{type}: #{path.join('.')} は ConfigKeys::KEYS に無い"
+            next if spec.authored? || value.to_s.match?(/\A\{\{.+\}\}\z/)
+
+            expected = path == %i[book type] ? type.to_s : BookProfile::PROFILES.fetch(type).fetch(path) { spec.default }
+            "#{type}: #{path.join('.')}: 既定値 #{expected.inspect} / 雛形 #{value.inspect}" unless expected == value
+          end
+        end
+
+        assert_empty mismatches
       end
 
       def test_should_keep_techbook_as_the_default_with_no_overrides
@@ -91,6 +113,17 @@ module VivlioStarter
       def test_should_not_let_a_volume_override_the_book_type
         refute_includes ConfigKeys.book_keys, 'type'
         assert_includes ConfigKeys.book_keys, 'main_title', '書誌のキーはこれまでどおり巻で上書きできる'
+      end
+
+      private
+
+      # book.yml を { [:a, :b] => 値 } に平坦化する
+      def leaves(node, prefix = [], into = {})
+        node.each do |key, value|
+          path = prefix + [key.to_sym]
+          value.is_a?(Hash) ? leaves(value, path, into) : into[path] = value
+        end
+        into
       end
     end
 

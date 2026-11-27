@@ -58,3 +58,7 @@ vivlio_starter_v1.0.0_images/
 # 数式チェックページの複製（正本は test/vivlio_starter/fixtures/math/math-check.md）。
 # rake math:check が毎回置き直す使い捨てなので、追跡すると正本と乖離する。
 contents/81-math-check.md
+
+# 種類ごとの雛形の本（scaffolds/<種類>/）を組んだときの生成物
+/scaffolds/*/.cache/
+/scaffolds/*/*_frontcover*.jpg

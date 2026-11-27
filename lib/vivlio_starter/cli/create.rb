@@ -212,18 +212,26 @@ module VivlioStarter
         target = File.join(Common::CACHE_DIR, '_legalpage.md')
 
         disclaimer, trademark = legal_texts
-        body = <<~MD
-          <h1 style="display: none;">本書について</h1>
-          <div class="disclaimer">
-            <h2>■免責</h2>
-            #{disclaimer.split(/\r?\n/).map { |line| "  <p>#{line}</p>" }.join("\n")}
-          </div>
-
-          <div class="trademark">
-            <h2>■商標</h2>
-            #{trademark.split(/\r?\n/).map { |line| "  <p>#{line}</p>" }.join("\n")}
-          </div>
-        MD
+        body = +%(<h1 style="display: none;">本書について</h1>\n)
+        # 文の空いた節は載せない（小説の既定は商標の文が空。BookProfile::NOVEL_DISCLAIMER）。
+        # 両方が空の本は、legal_texts がひな形の文で埋める
+        unless disclaimer.empty?
+          body << <<~MD
+            <div class="disclaimer">
+              <h2>■免責</h2>
+              #{disclaimer.split(/\r?\n/).map { |line| "  <p>#{line}</p>" }.join("\n")}
+            </div>
+          MD
+        end
+        unless trademark.empty?
+          body << "\n" unless disclaimer.empty?
+          body << <<~MD
+            <div class="trademark">
+              <h2>■商標</h2>
+              #{trademark.split(/\r?\n/).map { |line| "  <p>#{line}</p>" }.join("\n")}
+            </div>
+          MD
+        end
 
         # Twemoji クレジット（legal.twemoji が設定されている場合のみ）
         twemoji_credit = Common::CONFIG.legal.twemoji

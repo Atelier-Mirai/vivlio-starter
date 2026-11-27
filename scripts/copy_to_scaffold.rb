@@ -200,4 +200,58 @@ content.sub!(/^( +)# cover: light/, '\1cover: light')
   puts "TMPL  config/book.yml -> テンプレート記法に置換しました"
 end
 
+# ================================================================
+# 種類ごとの雛形（v2-architecture-spec.md §2.6）
+# ================================================================
+# scaffolds/<種類>/ の差分を lib/project_scaffold_types/<種類>/ へ写す。vs new --type <種類> は、
+# 共通の雛形（上で写した lib/project_scaffold/）に、この差分を重ねる（ScaffoldTypes）。
+# scaffolds/<種類>/ は、それ自体が組める本にするため、共通の部分（stylesheets/・themes/・config/ の
+# 設定ファイルなど）を直下へのリンクで持つ。リンクは写さない（共通の雛形にある）。
+TYPES_ROOT = File.join(ROOT, 'lib/project_scaffold_types')
+
+# 種類ごとに配る表紙の下敷きの判型（cover-size-independence-spec.md §5）。共通の雛形は技術書の
+# A4・A5・B5 を配るので、ここにはそれ以外の判型を書く
+TYPE_UNDERLAY_SIZES = { 'novel' => %w[bunko b6 shinsho shiroku] }.freeze
+
+Dir.glob(File.join(ROOT, 'scaffolds', '*')).select { File.directory?(it) }.each do |type_root|
+  type = File.basename(type_root)
+  dst_root = File.join(TYPES_ROOT, type)
+  FileUtils.rm_rf(dst_root)
+
+  copied = 0
+  Dir.glob('**/*', File::FNM_DOTMATCH, base: type_root).each do |relative|
+    src = File.join(type_root, relative)
+    # リンクと、リンクの中は写さない（共通の部分）。組んだときの生成物も写さない
+    next if relative.split('/').each_index.any? { File.symlink?(File.join(type_root, *relative.split('/')[0..it])) }
+    next if File.directory?(src) || relative.start_with?('.cache/') || File.basename(relative) == '.DS_Store'
+
+    FileUtils.mkdir_p(File.dirname(File.join(dst_root, relative)))
+    FileUtils.cp(src, File.join(dst_root, relative))
+    copied += 1
+  end
+
+  Array(TYPE_UNDERLAY_SIZES[type]).each do |size|
+    Dir.glob(File.join(ROOT, 'covers', 'templates', "*cover_#{size}.png")).each do |underlay|
+      dst = File.join(dst_root, 'covers', 'templates', File.basename(underlay))
+      FileUtils.mkdir_p(File.dirname(dst))
+      FileUtils.cp(underlay, dst)
+      copied += 1
+    end
+  end
+  puts "COPY  scaffolds/#{type}/ -> lib/project_scaffold_types/#{type}/（#{copied} 件）"
+
+  # book.yml は、vs new で置換する値だけを {{PLACEHOLDER}} にする（空の値も置換の対象にする。
+  # vs new は副題と発行者も尋ねる）
+  type_book = File.join(dst_root, 'config', 'book.yml')
+  next unless File.exist?(type_book)
+
+  content = File.read(type_book, encoding: 'utf-8')
+  { 'main_title' => 'MAIN_TITLE', 'subtitle' => 'SUBTITLE', 'author' => 'AUTHOR',
+    'publisher' => 'PUBLISHER', 'name' => 'PROJECT_NAME' }.each do |key, placeholder|
+    content.sub!(/^(\s+#{key}:\s*)(['"].*?['"])(\s*#.*)?$/) { "#{Regexp.last_match(1)}\"{{#{placeholder}}}\"#{Regexp.last_match(3)}" }
+  end
+  File.write(type_book, content, encoding: 'utf-8')
+  puts "TMPL  lib/project_scaffold_types/#{type}/config/book.yml -> テンプレート記法に置換しました"
+end
+
 puts "\nDone."

@@ -14,11 +14,16 @@ module VivlioStarter
       #
       # 縦書きでは、字数が天と地の間、行数がノドと小口の間に入る。
       #   字数 ＝（紙の高さ − 天 − 地）÷ 字の大きさ
-      #   行数 ＝ ⌊（紙の幅 − ノド − 小口 − 字の大きさ）÷ 行送り⌋ ＋ 1
+      #   行数 ＝ ⌊（紙の幅 − ノド − 小口）÷ 行送り⌋
+      # 行数は「行送り ×（行数 − 1）＋ 字の大きさ」では数えない。組版（CSS）は、最後の行も含めて 1 行ごとに
+      # 行送り 1 つ分の幅を取る（文庫の版面 232.4pt に、前の式なら 16 行、実際は 15 行。novel-vertical-spec.md §10.7）
       # ================================================================
       module TextGridNotice
         # 字数の端数をこれ未満なら整数とみなす（§4.2）
         FRACTION_TOLERANCE = 0.2
+
+        # mm と pt の行き来の丸めの誤差で、ちょうど入る行を落とさないための幅（行数の 1000 分の 1）
+        LINE_EPSILON = 0.001
 
         Grid = Data.define(:chars, :lines, :font_mm)
 
@@ -44,7 +49,7 @@ module VivlioStarter
           return unless font.positive? && advance.positive?
 
           Grid.new(chars: (height - top - bottom) / font,
-                   lines: ((width - inner - outer - font) / advance).floor + 1,
+                   lines: ((width - inner - outer) / advance + LINE_EPSILON).floor,
                    font_mm: font)
         end
 

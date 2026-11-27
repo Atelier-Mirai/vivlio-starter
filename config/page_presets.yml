@@ -161,7 +161,7 @@ bunko_standard: &bunko_std
   margin_top: 15mm             # 天（上余白）
   margin_bottom: 12.35mm       # 地（下余白）
   margin_inner: 13mm           # ノド（綴じ側。無線綴じで読める幅は 13mm 以上）
-  margin_outer: 10mm           # 小口（外側）
+  margin_outer: 8mm            # 小口（外側）
 
 # 文庫判 カスタムテンプレート
 # 既存のプリセットでは満足できない場合、ここを自由に編集して使用してください。
@@ -178,7 +178,7 @@ bunko_custom:
   margin_top: 15mm             # 天（上余白）
   margin_bottom: 12.35mm       # 地（下余白）
   margin_inner: 13mm           # ノド（綴じ側。無線綴じで読める幅は 13mm 以上）
-  margin_outer: 10mm           # 小口（外側）
+  margin_outer: 8mm            # 小口（外側）
 
 # -------------------------------------------------------------
 # B6 判（128×182mm）- 単行本やライトノベルの判型
@@ -195,7 +195,7 @@ b6_standard: &b6_std
   margin_top: 22mm             # 天（上余白）
   margin_bottom: 19.24mm       # 地（下余白）
   margin_inner: 17mm           # ノド（綴じ側）
-  margin_outer: 16mm           # 小口（外側）
+  margin_outer: 14mm           # 小口（外側）
 
 # B6 カスタムテンプレート
 # 既存のプリセットでは満足できない場合、ここを自由に編集して使用してください。
@@ -212,7 +212,7 @@ b6_custom:
   margin_top: 22mm             # 天（上余白）
   margin_bottom: 19.24mm       # 地（下余白）
   margin_inner: 17mm           # ノド（綴じ側）
-  margin_outer: 16mm           # 小口（外側）
+  margin_outer: 14mm           # 小口（外側）
 
 # -------------------------------------------------------------
 # 新書判（103×182mm）- 細長い判型
@@ -229,7 +229,7 @@ shinsho_standard:
   margin_top: 23mm             # 天（上余白）
   margin_bottom: 19.3mm        # 地（下余白）
   margin_inner: 14mm           # ノド（綴じ側）
-  margin_outer: 10mm           # 小口（外側）
+  margin_outer: 8mm            # 小口（外側）
 
 # -------------------------------------------------------------
 # 四六判（127×188mm）- 文芸書の単行本の判型
@@ -246,4 +246,4 @@ shiroku_standard:
   margin_top: 23mm             # 天（上余白）
   margin_bottom: 20.89mm       # 地（下余白）
   margin_inner: 17mm           # ノド（綴じ側）
-  margin_outer: 15mm           # 小口（外側）
+  margin_outer: 13mm           # 小口（外側）

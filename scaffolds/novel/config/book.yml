@@ -1,0 +1,131 @@
+# =============================================================
+#  📚 Vivlio Starter 書籍プロジェクト設定（縦書きの小説）📚
+# -------------------------------------------------------------
+#  本全体の設定を書くファイルです。ここに書いていない設定は、
+#  小説の既定値（縦書き・文庫判・テーマ novel など）で組まれます。
+#
+#  • book     : 書籍情報（書名、著者、発行者など）
+#  • project  : プロジェクト情報（出力ファイル名、版）
+#  • theme    : テーマ
+#  • page     : ページ設定（判型・改ページ・組方向）
+#  • typography : 書体
+#  • output   : 出力設定（PDF、印刷用 PDF、EPUB、Kindle）
+#  • legal    : 権利ページの文面
+#  • notation : 原稿の記法
+#  • lint     : 文章校正（vs lint）
+# =============================================================
+
+# ======= 書籍情報 =======
+book:
+  type: novel # 本の種類（novel: 縦書きの小説）。種類ごとに、ほかの設定の既定値が変わる
+
+  # ------- 書籍名 -------
+  main_title: "注文の多い料理店"
+  subtitle: "" # 副題（任意）
+
+  # ------- 付帯情報（任意） -------
+  release: "" # 発行日（例: 令和九年一月一日）
+  publisher: "" # 発行者・サークル名
+  contact: "" # 連絡先
+  author: "宮沢 賢治" # 著者名（本名・ペンネーム）
+  language: "ja" # 言語
+  isbn: "" # 任意（独自 ISBN を取得した場合、EPUB の識別子 urn:isbn に使う）
+
+  # ------- 表紙・裏表紙 -------
+  cover: light # light / dark は標準添付。master は covers/ に置いた画像
+               # （frontcover_master.png・backcover_master.png。下敷きは covers/templates/）
+
+# ======= プロジェクト情報 =======
+project:
+  name: "novel" # 出力ファイル名のもと
+  version: "0.1.0" # 本の版
+  include_version: true # true:  novel_v0.1.0.pdf
+                        # false: novel.pdf
+
+# ======= テーマ =======
+theme:
+  name: novel # テーマ（themes/ の中のディレクトリの名前）。novel は縦書きの小説のテーマ
+
+# ======= ページ設定 =======
+page:
+  use: bunko_standard # 判型（config/page_presets.yml のプリセットから選ぶ）
+  # use: bunko_custom     # 文庫判（105 × 148mm）を自分で調整する
+  # use: b6_standard      # B6 判（128 × 182mm）
+  # use: b6_custom
+  # use: shinsho_standard # 新書判（103 × 182mm）
+  # use: shiroku_standard # 四六判（127 × 188mm）
+
+  section_pagebreak: false # 節（## 見出し）をページの先頭から始めるか（false: 続けて組む）
+
+  chapter_pagebreak: any # 章をどちら側の面から始めるか
+                         # any   … どちらでもよい（白紙が入らない）
+                         # recto … 右ページから（いわゆる改丁。必要なら白紙が 1 枚入る）
+                         # 原稿中の @pagebreak:recto / :verso は、この設定より優先される
+
+  toc_depth: 3 # 目次にどの深さの見出しまで載せるか（1: 章だけ・2: 節まで・3: 項まで）
+
+  heading_numbering: none # 見出しに番号を振るか（none: 振らない・chapter: 章にだけ振る）
+
+  writing_mode: vertical # 組方向（vertical: 縦書き・horizontal: 横書き）
+  layout: reflowable     # レイアウト（reflowable: 文字の大きさに合わせて組み直す）
+
+# ======= 書体 =======
+typography:
+  # 標準添付の書体: Noto Serif JP（明朝体）・Noto Sans JP（ゴシック体）・Zen Maru Gothic（丸ゴシック体）
+  body:
+    font: Noto Serif JP # 本文
+  heading:
+    font: Noto Serif JP # 見出し
+  folio:
+    font: Noto Sans JP # ノンブル（ページ番号）
+    placement: sides # center / sides
+
+# ======= 出力設定 =======
+output:
+  targets: pdf                          # 閲覧用 PDF
+  # targets: pdf, print_pdf               # 閲覧用 PDF と印刷所入稿用 PDF
+  # targets: pdf, print_pdf, epub, kindle # 電子書籍（EPUB と Kindle 用 KPF）も
+
+  # ------- PDF プレビュー（macOS のみ） -------
+  pdf_preview:
+    close_existing_windows: true # 開く前にプレビューのウィンドウをすべて閉じる（false: 開くだけ）
+    window_bounds: "{0, 0, 1280, 960}" # PDF を開く位置と大きさ
+
+  # ------- 閲覧用 PDF -------
+  pdf:
+    combined: true  # 表紙と裏表紙を綴じる
+    compress: false # 自動で圧縮する（時間が掛かる。vs build --compress でも指定できる）
+    techbook: true  # 絵文字を画像に差し替え、入稿できない Type 3 フォントになるのを防ぐ
+
+  # ------- 印刷所入稿用 PDF -------
+  print_pdf:
+    bleed: 3mm # 塗り足しの幅
+    crop_marks: true # トンボを付ける
+    full_bleed: false # 本文に紙の端まで届く画像があるなら true
+    cover_bleed: scale # 著者が用意した表紙の塗り足し（scale: 拡大して使う・keep: 拡大しない）
+    icc_profile: # CMYK 変換用の ICC プロファイルのパス（空なら Japan Color 2001 Coated）
+
+  # ------- EPUB（楽天 Kobo・Apple Books 向け） -------
+  epub:
+    embed: true # 表紙の画像を EPUB に埋め込む
+
+  # ------- Kindle（KPF へ自動で変換する） -------
+  kindle:
+    embed: false # 表紙の画像を埋め込む（Kindle は表紙が二重になるのを避けるため false）
+
+# ======= 権利ページ =======
+legal:
+  disclaimer: | # 権利ページの「免責」に載せる文
+    この物語はフィクションです。登場する人物・団体・名称などは、実在のものとは関係ありません。
+  trademark: "" # 権利ページの「商標」に載せる文（空なら載せない）
+
+# ======= 原稿の記法 =======
+notation:
+  web_novel: true # 小説投稿サイトの書き方（|漢字《かんじ》 のルビ・《《傍点》》・行頭の全角空白）を読む
+
+# ======= 文章校正（vs lint） =======
+lint:
+  ruleset: novel # 校正の規則の組（novel: 小説向け。三点リーダー・ダッシュ・感嘆符の後の空白など）
+
+  disabled_rules: # 無効にする規則の名前（vs lint の指摘の [ ] の中の名前）
+    - arabic-kanji-numbers # 「一つ→1つ」を無効にする

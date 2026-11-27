@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <!-- 山の中に建つ西洋造りの家（山猫軒）。字は入れない（書体に依らず、どの出力先でも同じに出る） -->
+  <rect width="800" height="500" fill="#f4efe4"/>
+  <!-- 遠くの山 -->
+  <path d="M0 300 L120 170 L230 260 L360 120 L500 250 L620 150 L800 290 L800 500 L0 500 Z" fill="#c9d3c0"/>
+  <!-- 森 -->
+  <g fill="#5f7a5a">
+    <path d="M40 360 L80 240 L120 360 Z"/>
+    <path d="M100 370 L150 220 L200 370 Z"/>
+    <path d="M600 370 L650 230 L700 370 Z"/>
+    <path d="M670 380 L715 250 L760 380 Z"/>
+    <path d="M720 380 L760 280 L800 380 Z"/>
+  </g>
+  <!-- 地面 -->
+  <rect y="360" width="800" height="140" fill="#b8a27a"/>
+  <!-- 家 -->
+  <g stroke="#3b3027" stroke-width="3">
+    <rect x="260" y="230" width="280" height="160" fill="#efe6d2"/>
+    <path d="M240 235 L400 130 L560 235 Z" fill="#8c3b2f"/>
+    <rect x="470" y="150" width="30" height="60" fill="#8c3b2f"/>
+    <!-- 窓 -->
+    <rect x="285" y="265" width="50" height="50" fill="#9fc3d6"/>
+    <rect x="465" y="265" width="50" height="50" fill="#9fc3d6"/>
+    <line x1="310" y1="265" x2="310" y2="315"/>
+    <line x1="285" y1="290" x2="335" y2="290"/>
+    <line x1="490" y1="265" x2="490" y2="315"/>
+    <line x1="465" y1="290" x2="515" y2="290"/>
+    <!-- 玄関と札 -->
+    <rect x="370" y="300" width="60" height="90" fill="#6b4a32"/>
+    <rect x="360" y="240" width="80" height="40" fill="#fffaf0"/>
+    <line x1="372" y1="252" x2="428" y2="252" stroke-width="2"/>
+    <line x1="372" y1="260" x2="428" y2="260" stroke-width="2"/>
+    <line x1="372" y1="268" x2="428" y2="268" stroke-width="2"/>
+  </g>
+  <!-- すすき -->
+  <g stroke="#8a7a4a" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M60 470 Q70 420 50 380"/>
+    <path d="M80 470 Q85 410 110 375"/>
+    <path d="M100 470 Q95 430 80 395"/>
+    <path d="M700 470 Q705 420 690 380"/>
+    <path d="M720 470 Q730 415 750 385"/>
+    <path d="M740 470 Q735 430 760 400"/>
+  </g>
+</svg>

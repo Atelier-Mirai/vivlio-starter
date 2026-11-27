@@ -246,6 +246,63 @@ module VivlioStarter
         end
       end
 
+      # --type novel は、共通の雛形に小説の差分を重ねる（v2-architecture-spec.md §2.6）。
+      # 技術書の原稿・画像・コード・データの見本と、ほかの種類のテーマは写さない
+      def test_should_expand_a_novel_book_with_the_novel_scaffold
+        within_temp_dir do
+          stub_doctor_run do
+            capture_io { run_new_command(['novelbook', '--yes', '--type', 'novel']) }
+          end
+
+          book_yml = File.read('novelbook/config/book.yml', encoding: 'utf-8')
+          assert_match(/^\s+type: novel/, book_yml)
+          assert_includes book_yml, '新しい本'
+          refute_match(/\{\{[A-Z_]+\}\}/, book_yml, 'プレースホルダーが残っていてはいけない')
+
+          assert_equal %w[00-preface.md 11-chumon.md 91-notation.md 99-postface.md],
+                       Dir.children('novelbook/contents').sort
+          assert File.exist?('novelbook/images/11-chumon/door.svg')
+          refute Dir.exist?('novelbook/codes'), '技術書のコードの見本は写さない'
+          refute Dir.exist?('novelbook/data'), '技術書のデータの見本は写さない'
+          assert File.exist?('novelbook/themes/novel/theme.yml')
+          refute Dir.exist?('novelbook/themes/standard'), 'ほかの種類のテーマは写さない'
+          assert File.exist?('novelbook/covers/templates/frontcover_bunko.png'), '小説の判型の下敷き'
+          assert File.exist?('novelbook/stylesheets/tokens.css'), '共通の雛形は写す'
+          assert Dir.exist?('novelbook/stylesheets/fonts/google'), '空のディレクトリも作る'
+
+          lock = ScaffoldLock.read('novelbook')
+          assert_includes lock[:book_keys], 'notation.web_novel', '小説の雛形の book.yml のキーを記録する'
+          refute_includes lock[:book_keys], 'index_glossary.enabled', '技術書の雛形のキーは記録しない'
+        end
+      end
+
+      # 技術書（既定）の本には、小説のテーマを写さない（novel-vertical-spec.md §10.5 の 7）
+      def test_should_not_copy_the_novel_theme_into_a_techbook
+        within_temp_dir do
+          stub_doctor_run do
+            capture_io { run_new_command(['techbook', '--yes']) }
+          end
+
+          assert File.exist?('techbook/themes/standard/theme.yml')
+          refute Dir.exist?('techbook/themes/novel')
+          assert File.exist?('techbook/contents/11-workflow.md')
+        end
+      end
+
+      # 雛形の無い種類は、作れる種類を示して止まる
+      def test_should_stop_for_a_type_without_a_scaffold
+        within_temp_dir do
+          out, err = capture_io do
+            error = assert_raises(SystemExit) { run_new_command(['comic', '--yes', '--type', 'comic']) }
+
+            assert_equal 1, error.status
+          end
+
+          assert_includes out + err, 'techbook・novel'
+          refute Dir.exist?('comic')
+        end
+      end
+
       # 既存ディレクトリを指すと vs upgrade を案内して止まる（撤去した --add-missing の代替）。
       def test_should_guide_to_upgrade_when_directory_exists
         within_temp_dir do

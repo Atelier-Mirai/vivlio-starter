@@ -95,6 +95,24 @@ class TestNovelChecker < Minitest::Test
     assert_empty lines_of(even, NC::PARAGRAPH_INDENT_RULE)
   end
 
+  # 囲みの中（地付きの底本の表記など）と脚注の定義は、本文の段落の字下げで組まれないので数えない
+  def test_paragraph_indent_should_skip_containers_and_footnote_definitions
+    findings = check(<<~MD)
+      　一[^1]。
+
+      　二。
+
+      [^1]: 注の文。
+
+      :::{.text-right}
+      底本：「本」
+      入力：誰か
+      :::
+    MD
+
+    assert_empty lines_of(findings, NC::PARAGRAPH_INDENT_RULE)
+  end
+
   def test_halfwidth_digits_should_flag_three_or_more_digits_in_vertical_books
     source = <<~MD
       2026年に12人と100円。３００円と三百円。

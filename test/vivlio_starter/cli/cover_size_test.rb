@@ -109,7 +109,8 @@ module VivlioStarter
             area_w = width - Units.length_to_mm(preset[:margin_inner]) - Units.length_to_mm(preset[:margin_outer])
 
             assert_in_delta chars, area_h / font, 0.01, "#{name} の字数"
-            assert_equal lines, ((area_w - font) / advance).floor + 1, "#{name} の行数"
+            # 1 行ごとに行送り 1 つ分の幅を取る（Build::TextGridNotice と同じ数え方。novel-vertical-spec.md §10.7）
+            assert_equal lines, (area_w / advance + 0.001).floor, "#{name} の行数"
             assert_operator Units.length_to_mm(preset[:margin_inner]), :>=, 13, "#{name} のノドは 13mm 以上"
           end
       end

@@ -22,6 +22,8 @@ require 'date'
 require 'digest'
 require 'yaml'
 
+require_relative 'scaffold_types'
+
 module VivlioStarter
   module CLI
     module ScaffoldLock
@@ -131,9 +133,11 @@ module VivlioStarter
         key_paths(YAML.safe_load(text, permitted_classes: [Date, Time], aliases: true))
       end
 
-      # 雛形の book.yml のキー（並べ替え済み）。lock の book_keys 節に書く
-      def scaffold_book_keys(scaffold_source)
-        book_keys(File.read(File.join(scaffold_source, BOOK_RELATIVE), encoding: 'utf-8')).sort
+      # 雛形の book.yml のキー（並べ替え済み）。lock の book_keys 節に書く。
+      # 種類ごとの雛形の本は、その種類の雛形の book.yml を読む（ScaffoldTypes）
+      # @param type [Symbol, nil] 省略時は作業ディレクトリの本の種類（vs new は作る本の種類を渡す）
+      def scaffold_book_keys(scaffold_source, type: nil)
+        book_keys(File.read(ScaffoldTypes.book_yml(scaffold_source:, type:), encoding: 'utf-8')).sort
       end
 
       # lock を読み込む。存在しない・壊れている場合は nil（呼び出し側で lock なしフォールバック）
@@ -172,12 +176,13 @@ module VivlioStarter
       # `vs new` の展開末尾から呼ぶ生成処理。
       # 既存の lock があれば既存エントリを優先して残す（重ね展開が起きても、
       # 著者の手元ファイルの「展開時点ハッシュ」という意味を壊さないため）。
-      def generate!(project_root, scaffold_source:, version:)
+      # @param type [Symbol, nil] 作る本の種類（book_keys を、その種類の雛形の book.yml から取る）
+      def generate!(project_root, scaffold_source:, version:, type: nil)
         files = digest_scaffold(scaffold_source)
         existing = read(project_root)
         files = files.merge(existing[:files]) if existing
         write(project_root, version:, files:,
-                            book_keys: existing&.dig(:book_keys) || scaffold_book_keys(scaffold_source),
+                            book_keys: existing&.dig(:book_keys) || scaffold_book_keys(scaffold_source, type:),
                             declined: existing&.dig(:declined) || {})
       end
 

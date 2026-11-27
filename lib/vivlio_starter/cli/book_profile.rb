@@ -17,6 +17,10 @@ module VivlioStarter
   module CLI
     # 本の種類ごとの、設定の既定値の組
     module BookProfile
+      # 小説の権利ページの「免責」の文。技術書の既定（教育目的の入門書…）は小説に合わない。
+      # 商標の文は空にし、権利ページに節を載せない（CreateCommands#execute_legalpage。novel-vertical-spec.md §10.7）
+      NOVEL_DISCLAIMER = "この物語はフィクションです。登場する人物・団体・名称などは、実在のものとは関係ありません。\n"
+
       # 種類ごとに、ConfigKeys の既定値と違うキーだけを書く。
       #
       # 載せるのは ConfigKeys::KEYS にあるキーだけ（book_profile_test.rb が検査する）。
@@ -27,6 +31,7 @@ module VivlioStarter
       # section_pagebreak: true と書けばそれが勝つ（novel-vertical-spec.md §4.3）。
       # 小説の見出しは本文と同じ明朝で組む。書体は book-settings.css（settings 層）が書き、テーマの tokens:
       # （tokens 層）に勝つので、テーマでなく種類の既定値で決める（同 §3.3）
+
       PROFILES = {
         techbook: {},
         novel: {
@@ -40,7 +45,9 @@ module VivlioStarter
           %i[metrics use]             => 'none',
           %i[notation web_novel]      => true,
           %i[theme name]              => 'novel',
-          %i[typography heading font] => 'Noto Serif JP'
+          %i[typography heading font] => 'Noto Serif JP',
+          %i[legal disclaimer]        => NOVEL_DISCLAIMER,
+          %i[legal trademark]         => ''
         },
         picture_book: {
           %i[page layout]            => 'fixed',

@@ -16,6 +16,8 @@ module VivlioStarter
         many :names, 'プロジェクト名', default: []
 
         options do
+          # 本の種類の雛形を選ぶ（v2-architecture-spec.md §2.6）。省略すると技術書
+          option '--type <name>', '本の種類（techbook: 技術書・novel: 縦書きの小説）', default: 'techbook', key: :type
           # 質問はどれも Enter で既定の値を選べるので、著者向けのヘルプとマニュアルには載せない。
           # テストや検証用のプロジェクト作り（developer-guide.md）が対話せずに作るために受け付ける
           internal_option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes

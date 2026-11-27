@@ -24,6 +24,7 @@ require_relative 'config_keys'
 require_relative 'new'
 require_relative 'retired_key_remover'
 require_relative 'scaffold_lock'
+require_relative 'scaffold_types'
 require_relative '../version'
 
 module VivlioStarter
@@ -128,8 +129,9 @@ module VivlioStarter
         key_lines(scaffold_book(scaffold_source), keys).each { Common.log_always("#{Common::DETAIL_INDENT}#{it}") }
       end
 
+      # 本の種類の雛形の book.yml（小説の本に、技術書の雛形のキーを足さない。v2-migration-plan.md §5.1）
       def scaffold_book(scaffold_source)
-        File.read(File.join(scaffold_source, ScaffoldLock::BOOK_RELATIVE), encoding: 'utf-8')
+        File.read(ScaffoldTypes.book_yml(scaffold_source:), encoding: 'utf-8')
       end
 
       # 著者がまだ書いている廃止キーの、値の移し先。vs upgrade が値を移すので新しいキーではない

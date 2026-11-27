@@ -9,6 +9,7 @@ require 'fileutils'
 
 require_relative 'scaffold_lock'
 require_relative 'scaffold_base'
+require_relative 'scaffold_types'
 require_relative '../version'
 
 module VivlioStarter
@@ -33,10 +34,11 @@ module VivlioStarter
         return cmd.print_usage if cmd.options[:help]
 
         project_name = validated_project_name!(cmd)
+        type = validated_type!(cmd)
         check_existing_directory!(cmd, project_name)
 
         answers = collect_answers(cmd, project_name)
-        expand_scaffold(cmd, project_name, answers)
+        expand_scaffold(cmd, project_name, answers, type)
         run_doctor(cmd, project_name)
         print_success(project_name)
         0
@@ -56,6 +58,19 @@ module VivlioStarter
           exit 1
         end
         raw
+      end
+
+      # --type の値。雛形のある種類だけを受ける（絵本の雛形は S9 で足す）
+      # @return [Symbol]
+      def validated_type!(cmd)
+        name = cmd.options[:type].to_s.strip
+        name = BookProfile::DEFAULT_TYPE.to_s if name.empty?
+        available = ScaffoldTypes.available(scaffold_source: SCAFFOLD_SOURCE)
+        return name.to_sym if available.include?(name.to_sym)
+
+        Common.log_error("エラー: 本の種類 \"#{name}\" の雛形はありません。")
+        Common.log_error("  作れる種類: #{available.join('・')}（例: vs new mybook --type novel）")
+        exit 1
       end
 
       def check_existing_directory!(_cmd, project_name)
@@ -115,7 +130,8 @@ module VivlioStarter
         exit 0
       end
 
-      def expand_scaffold(cmd, project_name, answers)
+      # 種類の雛形（共通の雛形に種類の差分を重ねたもの。ScaffoldTypes）を写す
+      def expand_scaffold(cmd, project_name, answers, type)
         # クリーンアップ対象にするのは「今回作成した」ディレクトリのみ。
         # 既存ディレクトリは check_existing_directory! が弾くが、中断時の部分破壊を
         # 避ける方針は変えない。
@@ -123,11 +139,8 @@ module VivlioStarter
         FileUtils.mkdir_p(project_name)
 
         begin
-          Dir.glob('**/*', File::FNM_DOTMATCH, base: SCAFFOLD_SOURCE).each do |relative|
-            src = File.join(SCAFFOLD_SOURCE, relative)
+          ScaffoldTypes.files(type, scaffold_source: SCAFFOLD_SOURCE).each do |relative, src|
             dst = File.join(project_name, relative)
-
-            next if File.basename(relative) == '.DS_Store'
 
             if File.directory?(src)
               FileUtils.mkdir_p(dst)
@@ -158,7 +171,7 @@ module VivlioStarter
         end
 
         # 雛形マニフェストを生成（vs upgrade の三者比較の基準になる展開時点ハッシュ）
-        ScaffoldLock.generate!(project_name, scaffold_source: SCAFFOLD_SOURCE, version: VivlioStarter::VERSION)
+        ScaffoldLock.generate!(project_name, scaffold_source: SCAFFOLD_SOURCE, version: VivlioStarter::VERSION, type:)
         log_debug("scaffold.lock を生成しました: #{File.join(project_name, ScaffoldLock::LOCK_RELATIVE)}")
 
         # 展開時の雛形そのものを次回 upgrade の共通祖先として保管する。lock はハッシュ

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="66 56 468 768" width="468" height="768">
+  <!-- 奥の扉。二つのかぎ穴から青い眼玉がのぞき、銀いろのホークとナイフの形が切りだしてある。字は入れない -->
+  <!-- 扉の枠と板 -->
+  <rect x="70" y="60" width="460" height="760" rx="6" fill="#5a3b28" stroke="#1d1510" stroke-width="8"/>
+  <rect x="110" y="110" width="380" height="250" fill="#6e4a33" stroke="#3a281c" stroke-width="5"/>
+  <rect x="110" y="520" width="380" height="250" fill="#6e4a33" stroke="#3a281c" stroke-width="5"/>
+  <!-- 銀いろのホーク -->
+  <g fill="#c9ccd1" stroke="#8d9198" stroke-width="2">
+    <rect x="200" y="560" width="10" height="170" rx="4"/>
+    <rect x="182" y="560" width="8" height="60" rx="3"/>
+    <rect x="200" y="560" width="10" height="60"/>
+    <rect x="220" y="560" width="8" height="60" rx="3"/>
+    <rect x="182" y="612" width="46" height="14" rx="5"/>
+  </g>
+  <!-- 銀いろのナイフ -->
+  <g fill="#c9ccd1" stroke="#8d9198" stroke-width="2">
+    <path d="M390 560 Q420 600 405 660 L392 660 Z"/>
+    <rect x="388" y="655" width="12" height="80" rx="4"/>
+  </g>
+  <!-- 二つのかぎ穴と、のぞく青い眼玉 -->
+  <g>
+    <circle cx="225" cy="440" r="34" fill="#111"/>
+    <path d="M207 460 L243 460 L232 505 L218 505 Z" fill="#111"/>
+    <circle cx="375" cy="440" r="34" fill="#111"/>
+    <path d="M357 460 L393 460 L382 505 L368 505 Z" fill="#111"/>
+    <circle cx="225" cy="440" r="22" fill="#e8f1f7"/>
+    <circle cx="375" cy="440" r="22" fill="#e8f1f7"/>
+    <circle cx="232" cy="442" r="13" fill="#2f7fc1"/>
+    <circle cx="382" cy="442" r="13" fill="#2f7fc1"/>
+    <circle cx="234" cy="443" r="6" fill="#0b1f33"/>
+    <circle cx="384" cy="443" r="6" fill="#0b1f33"/>
+    <circle cx="229" cy="437" r="3" fill="#fff"/>
+    <circle cx="379" cy="437" r="3" fill="#fff"/>
+  </g>
+  <!-- 取っ手 -->
+  <circle cx="480" cy="445" r="14" fill="#b8962e" stroke="#6d5718" stroke-width="3"/>
+</svg>

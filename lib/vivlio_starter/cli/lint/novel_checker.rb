@@ -58,8 +58,8 @@ module VivlioStarter
         # 括弧で始まる段落（vs が字下げを 0 にする段落。novel-vertical-spec.md §6.1）
         OPEN_BRACKET = /\A[「『（〈《【〔]/
 
-        # 段落でない行。箇条書き・表・見出し・引用・画像・改ページ・区切り線・HTML
-        NON_PARAGRAPH = /\A[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\||\#+[ \t]|>|!\[|@pagebreak|<)/
+        # 段落でない行。箇条書き・表・見出し・引用・画像・改ページ・区切り線・HTML・脚注の定義
+        NON_PARAGRAPH = /\A[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\||\#+[ \t]|>|!\[|@pagebreak|<|\[\^[^\]]*\]:)/
         THEMATIC_BREAK = /\A[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*\z/
 
         # 縦書きの本で横組みの箱になる囲み（stylesheets/parts/vertical.css の並びと同じ）。
@@ -87,7 +87,7 @@ module VivlioStarter
           active = RULES - disabled_rules
           return [] if active.empty?
 
-          boxed = horizontal_box_lines(text)
+          boxed, contained = container_lines(text)
           readable = lines.filter_map do |lineno, line|
             body = reader_text(line)
             [lineno, body] unless body.strip.empty?
@@ -105,8 +105,10 @@ module VivlioStarter
           if active.include?(PERIOD_BEFORE_BRACKET_RULE)
             found.concat(period_before_bracket_findings(readable))
           end
+          # 字下げは本文の段落だけで数える。囲みの中（寄せ・会話・横組みの箱）の行は、本文の段落の
+          # 字下げで組まれないので数えない（雛形の作品の終わりの、底本の表記の地付きの囲みなど）
           if active.include?(PARAGRAPH_INDENT_RULE)
-            heads = lines.reject { |lineno, line| boxed.include?(lineno) || !paragraph_line?(line) }
+            heads = lines.reject { |lineno, line| contained.include?(lineno) || !paragraph_line?(line) }
             found.concat(paragraph_indent_findings(heads, web_novel:))
           end
           found.sort_by(&:line)
@@ -212,8 +214,10 @@ module VivlioStarter
         # --- 内部 -------------------------------------------------------------
 
         # 横組みの箱になる囲みの中の行と、前付けの行
-        def horizontal_box_lines(text)
+        # @return [Array(Set<Integer>, Set<Integer>)] 横組みの箱の中と前付けの行、どれかの囲みの中の行
+        def container_lines(text)
           boxed = Set.new
+          contained = Set.new
           front = text[FRONT_MATTER]
           boxed.merge(1..front.count("\n")) if front
           stack = []
@@ -224,8 +228,9 @@ module VivlioStarter
               stack << name
             end
             boxed << lineno if stack.intersect?(HORIZONTAL_CONTAINERS)
+            contained << lineno unless stack.empty?
           end
-          boxed
+          [boxed, contained]
         end
 
         def finding(line, rule, label) = ProseChecker::Finding.new(line:, rule:, label:)

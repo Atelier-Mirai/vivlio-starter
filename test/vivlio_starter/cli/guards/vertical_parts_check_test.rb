@@ -53,10 +53,13 @@ module VivlioStarter
       # 字数が整数のときは数だけ、端数が 0.2 字以上なら天地の余白の直し方を添える
       def test_should_report_the_text_grid_of_a_vertical_book
         page = { size: 'BUNKO', base_font_size: '9pt', base_line_height: '14.85pt',
-                 margin_top: '15mm', margin_bottom: '12.35mm', margin_inner: '13mm', margin_outer: '10mm' }
+                 margin_top: '15mm', margin_bottom: '12.35mm', margin_inner: '13mm', margin_outer: '8mm' }
         grid = Build::TextGridNotice.resolve(page)
 
         assert_equal '版面: 38 字 × 16 行', Build::TextGridNotice.message(grid)
+        # 1 行ごとに行送り 1 つ分の幅を取る。小口 10mm（版面 82mm）は 16 × 14.85pt（83.8mm）に足りず、
+        # 組んだ PDF も 15 行だった（novel-vertical-spec.md §10.7）
+        assert_equal 15, Build::TextGridNotice.resolve(page.merge(margin_outer: '10mm')).lines
 
         uneven = Build::TextGridNotice.resolve(page.merge(margin_bottom: '11mm'))
         assert_match(/\A版面: 38\.4 字 × 16 行（天と地の余白の和を 1\.4mm 増やすと 38 字、1\.8mm 減らすと 39 字ちょうどになります）\z/,

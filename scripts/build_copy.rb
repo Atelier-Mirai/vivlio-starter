@@ -85,9 +85,12 @@ if File.exist?(out)
 end
 FileUtils.mkdir_p(out)
 
+# リンクはたどって中身を写す（cp -RL）。種類ごとの雛形の本（scaffolds/novel/）は、共通の部分を
+# 直下への相対のリンクで持つので、リンクのまま写すと写しの先で切れる（FileUtils.cp_r は入れ子の
+# リンクをリンクのまま写す）
 MATERIALS.each do |name|
   src = File.join(options[:book], name)
-  FileUtils.cp_r(src, out) if File.exist?(src)
+  system('cp', '-RL', src, out, exception: true) if File.exist?(src)
 end
 
 # このリポジトリ（本書）は、ルートの images/ を git で追跡しない（.git/info/exclude）。
