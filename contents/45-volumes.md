@@ -157,7 +157,7 @@ VOLUMES:
 | `subtitle_style` | 副題の装飾 | `author` | 著者名 |
 | `series` | 連載名 | `language` | 言語 |
 | `release` | 発行日 | `isbn` | ISBN |
-| `cover` | 表紙のテーマ名 | | |
+| `cover` | 表紙のテーマ名 | `theme` | 扉絵・装飾画像 |
 
 合本も組む本では、`book.yml` に合本の書名と表紙を書き、各巻の書名と表紙は、最初の巻のものも各巻の中に書きます。書名と表紙を書かなかった巻は、合本と同じ書名と表紙で組まれます。次の例では、各巻の原稿の並びを省いています。
 
@@ -204,6 +204,18 @@ covers/
 `light`・`dark` には、各巻の表紙なら各巻の書名が、合本の表紙なら `book.yml` の書名が入ります。合本の表紙の画像を用意しないときは、`book.yml` を `cover: light` にすれば、合本の書名の入った表紙ができます。
 
 表紙だけを作り直すときは、各巻の `id` を添えて `vs cover upper` のように実行します。`vs cover all` なら全巻の表紙を、`id` を添えない `vs cover` なら合本の表紙を作ります。プロジェクト直下の表紙の名前には、`mybook_upper_frontcover_v0.1.0.pdf` のように各巻の `id` が付きます。合本の表紙は `mybook_frontcover_v0.1.0.pdf` です。
+
+### 扉絵と装飾画像を変える
+
+各巻の `theme:` の下に `frontispiece`・`ornament` を書くと、その巻の扉絵と装飾画像を変えられます。画像の置き場と書き方は、一冊の本と同じです（@chapref:ch-frontispiece）。書かなかった値（`edge_inset` など）と合本は、`book.yml` の `theme:` の値で組みます。色は巻ごとには変えられません。
+
+```yaml:config/catalog.yml
+  - name: 下巻
+    id: lower
+    theme:
+      frontispiece: koubou_lower  # stylesheets/images/koubou_lower.webp
+      ornament: koubou_lower
+```
 
 ## 各巻と合本を組む @build-volumes
 

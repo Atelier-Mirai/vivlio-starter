@@ -82,8 +82,10 @@ module VivlioStarter
             warning("#{index + 1} 番目の巻の #{key} は、巻に書けるキーではありません（使われません）",
                     detail: ["巻の設定: #{Build::Volumes::VOLUME_KEYS.join('・')}",
                              "書誌情報（book.yml の book: と同じ名前）: #{Build::Volumes::BOOK_KEYS.join('・')}",
+                             "章扉・節絵: #{Build::Volumes::THEME_KEY}（#{Build::Volumes::THEME_KEYS.join('・')}）",
                              "目次の区分: #{Build::CatalogLoader::SECTION_KEYS.join('・')}"])
           end
+          warnings.concat(theme_warnings(entry[Build::Volumes::THEME_KEY], index)) if entry.key?(Build::Volumes::THEME_KEY)
           start = entry['chapter_start']
           if start && !start.is_a?(Integer)
             warnings << warning("#{index + 1} 番目の巻の chapter_start: #{start} は数ではないので、前の巻から続けます",
@@ -95,6 +97,40 @@ module VivlioStarter
                                 detail: '→ appendix_start: A のように英字 1 字で書いてください')
           end
           warnings
+        end
+
+        # 巻の theme:（改善案 #186）。書けるのは章扉と節絵だけで、ほかのキーは組むときに使わない。
+        # 画像が見つからないと、その巻を組んだときに既定の画像で代用されるので、組む前に知らせる
+        # （preflight は合本の設定で走り、巻の画像を確かめる段が無い）
+        def theme_warnings(theme, index)
+          label = "#{index + 1} 番目の巻の theme"
+          allowed = Build::Volumes::THEME_KEYS
+          unless theme.is_a?(Hash)
+            return [warning("#{label} は、frontispiece・ornament を並べて書きます（使われません）",
+                            detail: ['theme:', '  frontispiece:', '    image: koubou_upper',
+                                     '  ornament:', '    image: koubou_upper'])]
+          end
+
+          unknown = (theme.keys - allowed).map do |key|
+            warning("#{label} の #{key} は、巻ごとには変えられません（使われません）",
+                    detail: ["巻の theme: に書けるのは #{allowed.join('・')} だけです。",
+                             "→ #{key} は config/book.yml の theme: に書き、本全体で一つにします"])
+          end
+          unknown + missing_image_warnings(theme.slice(*allowed), label)
+        end
+
+        def missing_image_warnings(images, label)
+          return [] if Common::CONFIG.theme&.style.to_s.strip.downcase == 'simple'
+
+          images.filter_map do |key, value|
+            name = value.is_a?(Hash) ? value['image'] : value
+            variant = key == 'frontispiece' ? :portrait : :landscape
+            next if name.nil? || name.to_s.strip.empty? ||
+                    PreProcessCommands::ThemeImageResolver.theme_image_available?(name, variant:)
+
+            warning("#{label}.#{key} の画像 '#{name}' が見つかりません。この巻は既定の画像で組まれます",
+                    detail: "→ stylesheets/images/#{name}.webp を置くか、画像の名前を確かめてください")
+          end
         end
 
         # book.yml の ISBN を、二つ以上の巻が上書きせずに使っているか（multivolume-spec.md §4.7）。

@@ -36,8 +36,13 @@ module VivlioStarter
         # 一覧を書き並べず ConfigKeys から作るので、book: にキーを足せば巻でもそのまま上書きできる
         BOOK_KEYS = ConfigKeys.book_keys.freeze
 
+        # 巻で上書きできる book.yml の theme:（改善案 #186）。章扉と節絵の画像だけを巻ごとに変えられる。
+        # 色まで巻ごとに変えると、book.yml の一色で組む合本との見え方の差が大きくなるので、ほかのキーは許さない
+        THEME_KEY  = 'theme'
+        THEME_KEYS = %w[frontispiece ornament].freeze
+
         # 巻に書ける小文字のキーすべて
-        SETTING_KEYS = (VOLUME_KEYS + BOOK_KEYS).freeze
+        SETTING_KEYS = (VOLUME_KEYS + BOOK_KEYS + [THEME_KEY]).freeze
 
         # 巻の id。ファイル名と、コマンドの引数（vs build lower）に使う。英字で始め、数字は末尾だけにするので、
         # 章の番号（21）や範囲（21-23）と読み分けられる。大文字と小文字は区別しない（list が小文字にそろえる）
@@ -53,6 +58,12 @@ module VivlioStarter
           def whole_toc? = settings['whole_toc'] == true
           # 巻に書いた書誌情報（book.yml の book: を上書きする値）
           def book_overrides = settings.slice(*BOOK_KEYS)
+
+          # 巻に書いた章扉・節絵（book.yml の theme: を上書きする値）。書けないキーは VolumeDefinitionCheck が知らせる
+          def theme_overrides
+            theme = settings[THEME_KEY]
+            theme.is_a?(Hash) ? theme.slice(*THEME_KEYS) : {}
+          end
         end
 
         module_function
@@ -349,14 +360,36 @@ module VivlioStarter
 
         # --- 巻の設定（§4.1） ---
 
-        # 巻に書いた書誌情報（書名・ISBN・発行日・表紙など）を、book.yml の book: に重ねた CONFIG にする。
-        # 値を空欄にしたキー（nil）は、book.yml と同じく上書きしない（deep_merge_config の決まり）
+        # 巻に書いた書誌情報（書名・ISBN・発行日・表紙など）を book.yml の book: に、章扉・節絵を theme: に
+        # 重ねた CONFIG にする。値を空欄にしたキー（nil）は、book.yml と同じく上書きしない（deep_merge_config の決まり）
         def apply_config!(volume)
-          overrides = volume.book_overrides
-          return if overrides.empty?
+          book  = volume.book_overrides
+          theme = volume.theme_overrides
+          return if book.empty? && theme.empty?
 
-          merged = Common.deep_merge_config(Common.load_config, { book: overrides.transform_keys(&:to_sym) })
-          Common.install_configuration!(Common.wrap_config(merged).freeze)
+          config = Common.deep_merge_config(Common.load_config, { book: book.transform_keys(&:to_sym) })
+          config = merge_theme_images(config, theme) unless theme.empty?
+          Common.install_configuration!(Common.wrap_config(config).freeze)
+        end
+
+        # 巻の章扉・節絵を book.yml の theme: に重ねる（改善案 #186）。どちらも「画像名だけ」の短縮形
+        # （frontispiece: sakura）と「image: と寸法」の形を書けるので、両側を後者にそろえてから重ねる。
+        # そろえないと、片方が短縮形のとき deep_merge_config が丸ごと置き換え、巻に画像名だけを書くと
+        # book.yml の寸法（edge_inset など）が、book.yml が短縮形だと画像名が消える
+        def merge_theme_images(config, theme)
+          base = config[:theme] || {}
+          images = theme.to_h do |key, value|
+            [key.to_sym, Common.deep_merge_config(image_mapping(base[key.to_sym]), image_mapping(value))]
+          end
+          config.merge(theme: base.merge(images))
+        end
+
+        def image_mapping(value)
+          case value
+          in Hash then value.transform_keys(&:to_sym)
+          in nil then {}
+          else { image: value }
+          end
         end
 
         # 読めない目次は空とみなす（知らせるのは CatalogFileCheck）

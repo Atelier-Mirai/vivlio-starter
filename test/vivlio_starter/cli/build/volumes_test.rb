@@ -718,6 +718,51 @@ module VivlioStarter
           assert_includes Volumes::BOOK_KEYS, 'cover', 'cover は book: の下へ移した（§3.5）'
         end
 
+        # --- 章扉・節絵の上書き（改善案 #186） ---
+
+        THEME_BOOK_YML = <<~YAML
+          theme:
+            color: green
+            frontispiece:
+              image: sakura
+              edge_inset: 5mm
+            ornament: sakura
+        YAML
+
+        # 巻に画像名だけを書いても book.yml の寸法は残り、book.yml が短縮形でも巻の画像に替わる
+        def test_should_override_frontispiece_and_ornament_written_in_volume
+          catalog = CATALOG.sub("  - name: 上巻\n    id: upper\n",
+                                "  - name: 上巻\n    id: upper\n    theme:\n      frontispiece: koubou_upper\n" \
+                                "      ornament:\n        image: koubou_upper\n")
+          with_project(catalog:, book_yml: THEME_BOOK_YML) do
+            original = Common::CONFIG
+
+            Volumes.apply_config!(Volumes.find('upper'))
+            theme = Common::CONFIG.theme
+            assert_equal %w[koubou_upper 5mm koubou_upper green],
+                         [theme.frontispiece.image, theme.frontispiece.edge_inset, theme.ornament.image, theme.color]
+            assert_empty Volumes.find('lower').theme_overrides, '書かなかった巻は book.yml の値で組む'
+          ensure
+            Common.install_configuration!(original)
+          end
+        end
+
+        def test_should_warn_theme_keys_that_volume_cannot_override
+          catalog = CATALOG.sub("    id: middle\n",
+                                "    id: middle\n    theme:\n      color: red\n      frontispiece:\n" \
+                                "        image: nothing_here\n      ornament: koubou_lower\n")
+          with_project(catalog:) do
+            FileUtils.mkdir_p('stylesheets/images')
+            File.write('stylesheets/images/koubou_lower.webp', '')
+            messages = Guards::VolumeDefinitionCheck.new.validate.select(&:warn?).map(&:message)
+
+            assert(messages.any? { it.include?('theme の color は、巻ごとには変えられません') }, messages.join("\n"))
+            assert(messages.any? { it.include?("frontispiece の画像 'nothing_here' が見つかりません") }, messages.join("\n"))
+            assert(messages.none? { it.include?('koubou_lower') }, 'stylesheets/images/ に置いた画像は見つかる')
+            assert(messages.none? { it.include?('巻に書けるキーではありません') }, 'theme は巻に書けるキー')
+          end
+        end
+
         def test_should_accept_book_keys_written_in_volume
           catalog = CATALOG.sub("    id: middle\n", "    id: middle\n    release: 令和九年\n    cover: middle\n    isbn: \"\"\n")
           with_project(catalog:) { assert_empty Guards::VolumeDefinitionCheck.new.validate }
