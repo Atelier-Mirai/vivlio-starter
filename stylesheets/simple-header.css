@@ -102,8 +102,14 @@ body.vs-header-simple h1 .chapter-number {
   color: var(--heading-text);
 }
 
+/* 長い章題も折り返して枠の中に収める（改善案 #185）。flex のアイテムは既定の
+   min-width:auto で中身より縮まず、base.css の見出し共通 keep-all のままでは
+   1 行のまま枠の両端で切れる。直し方は下の節題と同じ */
 body.vs-header-simple h1 .chapter-title {
   display: block;
+  min-inline-size: 0;
+  word-break: normal;
+  word-break: auto-phrase;
 }
 
 
@@ -179,9 +185,19 @@ body.vs-header-simple h2 .section-number {
   font-variant-numeric: tabular-nums;
 }
 
+/* 長い節題は折り返して枠の中に収める（改善案 #185）。
+   - min-inline-size … grid のアイテムは既定の min-width:auto で中身より縮まず、
+                       1fr の列が版面を突き抜けて枠の右へはみ出す
+   - word-break      … base.css の見出し共通 keep-all は CJK 文字間の折返しまで禁止する
+                       ため、節題に限り日本語の行分割へ戻す。normal は語中でも割り、
+                       auto-phrase は文節で割る（Chromium 119+）。非対応環境は normal へ劣化
+                       （image-header.css の節題と同じ） */
 body.vs-header-simple h2 .section-title {
   grid-area: title;
+  min-inline-size: 0;
   color: var(--heading-text);
+  word-break: normal;
+  word-break: auto-phrase;
 }
 
 /* =============================================================
