@@ -13,8 +13,12 @@ module VivlioStarter
 
           # macOS は濁点付きファイル名を NFD で保持することがあり、catalog の
           # NFC 表記と文字列比較で不一致になる（NF-02 で検出）。両辺を NFC へ
-          # 揃えて正規化差だけのファイルを孤立扱いしない
-          catalog_basenames = TokenResolver::Resolver.new.resolve.map { it.basename.unicode_normalize(:nfc) }
+          # 揃えて正規化差だけのファイルを孤立扱いしない。
+          # 分冊の本では、巻を選んでいても全巻の目次と比べる（改善案 #188）。選んだ巻の目次と比べると、
+          # ほかの巻に載せた原稿（合本なら 2 巻目以降の前書きも）を未登録として挙げていた
+          catalog_basenames = Build::Volumes.with_selection(:all) do
+            TokenResolver::Resolver.new.resolve.map { it.basename.unicode_normalize(:nfc) }
+          end
           orphans = contents_basenames.map { it.unicode_normalize(:nfc) } - catalog_basenames
           return [] if orphans.empty?
 

@@ -11,6 +11,7 @@
 #   GC-02: CatalogEntriesCheck - 1 件欠落 → :error 1 件・detail に該当パス
 #   GC-03: CatalogEntriesCheck - catalog.yml なし → 違反 0 件
 #   GC-04: OrphanFileCheck - 未登録ファイル → :warn 1 件・detail に該当パス
+#   GC-04c: OrphanFileCheck - 分冊の本で巻を選んでも全巻の目次と比べる（改善案 #188）
 #   GC-04b: DuplicateNumberCheck - 章番号の重複 → :error 1 件・重なった番号とファイル・振り直すコマンドを列挙
 #   GC-05: CatalogFileCheck - catalog.yml なし → :error 1 件
 #   GC-06: NodeCheck - node なし（runner DI） → :error 1 件
@@ -75,6 +76,43 @@ module VivlioStarter
           assert violations.first.detail.any? { it.include?('contents/12-orphan.md') }
           refute violations.first.detail.any? { it.include?('_titlepage') },
                  'アンダースコア始まりのシステムページは孤立扱いしない'
+        end
+      end
+
+      # GC-04c: 分冊の本は、巻を選んでも全巻の目次と比べる（改善案 #188）。
+      # ほかの巻の原稿・2 巻目の前書き・本全体の後書きは挙げず、どこにも書いていない原稿だけを挙げる
+      def test_should_compare_orphans_with_all_volumes_whichever_volume_is_selected
+        with_temp_project do
+          File.write('config/catalog.yml', <<~YAML)
+            VOLUMES:
+              - name: 上巻
+                id: upper
+                PREFACE:
+                  - 00-preface
+                CHAPTERS:
+                  - 01-intro
+              - name: 下巻
+                id: lower
+                PREFACE:
+                  - 20-vol2-intro
+                CHAPTERS:
+                  - 21-final
+                  # - 22-draft
+            POSTFACE:
+              - 99-postface
+          YAML
+          %w[00-preface 01-intro 20-vol2-intro 21-final 22-draft 99-postface 98-draft].each { write_content(it) }
+
+          [nil, Build::Volumes.find('upper'), Build::Volumes.find('lower'), :combined].each do |selection|
+            Build::Volumes.select!(selection)
+            violations = Guards::OrphanFileCheck.new.validate
+
+            assert_equal 1, violations.size, "選択: #{selection.inspect}"
+            assert_equal ['- contents/22-draft.md', '- contents/98-draft.md'], violations.first.detail,
+                         "コメントアウトした章と、どこにも書いていない原稿だけを挙げる（選択: #{selection.inspect}）"
+          end
+        ensure
+          Build::Volumes.select!(nil)
         end
       end
 
