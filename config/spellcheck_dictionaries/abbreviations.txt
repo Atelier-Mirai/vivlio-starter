@@ -211,6 +211,7 @@ Tbps
 Gbps
 Mbps
 kbps
+bps
 
 # 電力・電気
 kW
