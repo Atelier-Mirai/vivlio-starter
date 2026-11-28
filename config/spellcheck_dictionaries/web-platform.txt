@@ -22,5 +22,9 @@ WebGL2RenderingContext
 # CSS
 specificity
 
+# アクセシビリティ（WAI-ARIA は部分の WAI と ARIA で通る。a11y は英字 1 字の部分なので点検しない）
+WAI
+WCAG
+
 # Upload / Download
 uploading
