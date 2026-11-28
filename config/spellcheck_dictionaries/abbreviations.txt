@@ -296,6 +296,26 @@ us
 ns
 ps
 
+# キーボードのキー名（〘Esc〙・<kbd>Esc</kbd> の中も点検するので、打ち間違い 〘Comand〙 は拾う）
+Esc
+CapsLock
+PrtSc
+PrtScn
+ScrLk
+ScrollLock
+NumLk
+NumLock
+SysRq
+AltGr
+Bksp
+PageUp
+PageDown
+ArrowUp
+ArrowDown
+ArrowLeft
+ArrowRight
+Spacebar
+
 # Misc
 NAND
 NOR
