@@ -1310,6 +1310,41 @@ module VivlioStarter
         end
       end
 
+      # 雛形で誤りを直した説明コメントは、古い文言と一字一句同じ行だけを直す（改善案 #187）。
+      # 値・字下げ・著者が書き足したコメントには触れない
+      def test_should_fix_corrected_comments_word_for_word
+        within_project do |scaffold|
+          write('.', 'config/book.yml', <<~YAML)
+            #  • verify       : 原稿の検証（画像パス、裸URL、外部URL）
+            book:
+              main_title: "わたしの本"
+            theme:
+              frontispiece:
+                image: koubou   # 上巻の章扉
+                                # images/内の独自画像も指定可
+                edge_inset:      8mm # 扉絵を紙の端から内側へ引っ込める量
+                heading_chars:  10   # images/内の独自画像も指定可（自分で書いたメモ）
+          YAML
+          write_lock
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_includes out, 'theme.frontispiece.edge_inset の説明を直します（扉絵を紙の端から内側へ引っ込める量 → 扉絵の上下と紙の端の間の余白）'
+          assert_equal <<~YAML, File.read('config/book.yml')
+            #  • verify       : 原稿の検証（画像パス、外部URL）
+            book:
+              main_title: "わたしの本"
+            theme:
+              frontispiece:
+                image: koubou   # 上巻の章扉
+                                # stylesheets/images/ の独自画像も指定可
+                edge_inset:      8mm # 扉絵の上下と紙の端の間の余白
+                heading_chars:  10   # images/内の独自画像も指定可（自分で書いたメモ）
+          YAML
+          assert_equal ['config/book.yml'], Dir.glob('.vs-backup/upgrade/*/config/*').map { it.split('/', 4).last }
+        end
+      end
+
       def test_should_only_report_tidying_on_dry_run
         within_project do |scaffold|
           write('.', 'config/book.yml', "book:\n  main_title: \"わたしの本\"\nverify:\n  bare_urls: true\n")

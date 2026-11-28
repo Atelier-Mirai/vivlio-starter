@@ -43,6 +43,7 @@ require_relative 'scaffold_base'
 require_relative 'scaffold_updates'
 require_relative 'config_keys'
 require_relative 'retired_key_remover'
+require_relative 'book_comment_fixer'
 require_relative 'token_resolver'
 require_relative 'index/unified_terms_manager'
 require_relative 'new'
@@ -72,9 +73,10 @@ module VivlioStarter
         def initialize(code: 0, new_keys: nil, aborted: false, renames: Renames.new, summary: nil) = super
       end
 
-      # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身
-      TidyPlan = Data.define(:book_text, :retired, :orphans, :pages, :dropped, :new_keys) do
-        def book_yml? = retired.any? || new_keys&.added&.any?
+      # 著者データの整理の計画。book_text は計画を立てたときの book.yml の中身、
+      # comments は直す古い説明コメント（BookCommentFixer・改善案 #187）
+      TidyPlan = Data.define(:book_text, :retired, :orphans, :pages, :dropped, :new_keys, :comments) do
+        def book_yml? = retired.any? || new_keys&.added&.any? || comments.any?
         def empty? = paths.empty?
 
         # 整理で書き換えるファイル
@@ -359,6 +361,7 @@ module VivlioStarter
       # 古い版から持ち越した著者データを、今の版に合わせて片づける計画（改善案.md #114）。
       #   - book.yml の廃止キー（読まれないのに、どのコマンドでも警告が出続ける）
       #   - 雛形で増えた book.yml のキー（scaffold-update-notice-spec.md §10）
+      #   - 雛形で誤りを直した book.yml の説明コメント（改善案 #187）
       #   - 原稿の無い章を指す索引辞書の main:（ベータ版の雛形が配った本書の辞書の名残など）
       #   - contents/ に残った、今の版では使わない特別ページ
       #   - 雛形から外したファイル（ScaffoldLock::RETIRED_FILES・改善案.md #149）
@@ -373,7 +376,8 @@ module VivlioStarter
                      orphans: UnifiedTermsManager.new.orphan_main_references,
                      pages: stale_system_pages,
                      dropped: retired_scaffold_files,
-                     new_keys: ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:))
+                     new_keys: ScaffoldUpdates.plan_new_book_keys(lock, scaffold_source:),
+                     comments: BookCommentFixer.corrections(book_text))
       end
 
       # 整理で書き換えるファイルを計画の行にする
@@ -406,6 +410,9 @@ module VivlioStarter
         # --- Phase: 雛形で増えたキー（廃止キーを整理した後の中身へ差し込む） ---
         new_keys, backup_dir = add_new_book_keys!(lock, backup_dir)
 
+        # --- Phase: 誤りを直した説明コメント（キーを整理した後の中身を直す） ---
+        backup_dir = fix_book_comments!(book_yml, backup_dir) if tidy.comments.any?
+
         # --- Phase: 索引辞書の main: ---
         if tidy.orphans.any?
           backup_dir = backup!(UnifiedTermsManager::UNIFIED_FILE, backup_dir)
@@ -426,6 +433,15 @@ module VivlioStarter
 
         Common.log_result("整理しました（バックアップ: #{backup_dir}/）", status: :success) if backup_dir
         [backup_dir, new_keys]
+      end
+
+      # 雛形で誤りを直した説明コメントを、今の文言に直す（改善案 #187）。値とほかのコメントには触れない
+      # @return [String] バックアップ先
+      def fix_book_comments!(book_yml, backup_dir)
+        backup_dir = backup!(book_yml, backup_dir)
+        text = File.read(book_yml, encoding: 'utf-8')
+        File.write(book_yml, BookCommentFixer.apply(text), encoding: 'utf-8')
+        backup_dir
       end
 
       # 雛形で増えたキーを book.yml へ足す（scaffold-update-notice-spec.md §10）。
@@ -508,7 +524,7 @@ module VivlioStarter
 
         added = tidy.new_keys&.added.to_a
         lines << "新しい設定キーを追加します（#{added.first}#{" ほか #{added.size - 1} 件" if added.size > 1}）" if added.any?
-        lines
+        lines.concat(tidy.comments.map { "#{it.key} の説明を直します（#{it.old} → #{it.new}）" })
       end
 
       # @return [Gem::Version, nil] lock が読めない・自分の行が無い・版が壊れていれば nil
