@@ -45,6 +45,20 @@ body {
   page: front;
 }
 
+/* 長い見出しを文節で折り返して版面に収める（改善案 #185）。base.css の見出し共通 keep-all は
+   CJK 文字間の折返しまで禁止するため、句読点も空白も無い題が 1 行のまま版面の外で切れる。
+   normal は語中でも割り、auto-phrase は文節で割る（Chromium 119+）。非対応環境は normal へ劣化
+   （章・付録の見出しの image-header.css・simple-header.css と同じ） */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  word-break: normal;
+  word-break: auto-phrase;
+}
+
 /* 見出し */
 h1 {
   font-family: var(--font-header);
