@@ -103,6 +103,7 @@ CI
 UX
 AGPL
 LLM
+RLHF
 
 # Media / Formats
 FAX
@@ -212,6 +213,8 @@ Gbps
 Mbps
 kbps
 bps
+kbit
+Mbit
 
 # 電力・電気
 kW
@@ -221,6 +224,14 @@ mW
 kWh
 MWh
 kV
+Wh
+mAh
+kVA
+dBm
+dBi
+kJ
+MJ
+kcal
 MHz
 mPD
 
@@ -241,6 +252,9 @@ UHD
 CGA
 EGA
 HDR
+fps
+ppi
+dp
 
 # 長さ・面積・体積
 cm
@@ -251,11 +265,30 @@ pm
 m2
 m3
 cc
+kL
+
+# CSS の単位（ビューポート・コンテナ・行の高さ）
+dvh
+svh
+lvh
+svw
+cqw
+cqh
+rlh
 
 # 重さ
 kg
 mg
 ug
+
+# 圧力・濃度・光・拍
+hPa
+kPa
+MPa
+ppm
+ppb
+lx
+bpm
 
 # 時間
 ms
@@ -268,4 +301,5 @@ NAND
 NOR
 GFLOPS
 TFLOPS
+PFLOPS
 EPR
